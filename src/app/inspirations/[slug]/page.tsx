@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: InspirationPageProps): Promis
   if (!page) {
     return { title: "Inspiracje podrozy", description: "Planowanie city breakow i ranking kierunkow." };
   }
-  return { title: `${page.title} | HelpTravel Agency`, description: page.description };
+  return { title: page.title, description: page.description };
 }
 
 export default async function InspirationPage({ params }: InspirationPageProps) {
