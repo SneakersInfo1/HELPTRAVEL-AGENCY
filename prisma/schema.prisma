@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AnonymousSession {
+  id         String   @id
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @updatedAt
+
+  tripRequests    TripRequest[]
+  savedTrips      SavedTrip[]
+  affiliateClicks AffiliateClick[]
+  events          Event[]
+}
+
+model TripRequest {
+  id                  String   @id
+  sessionId           String
+  mode                String
+  rawQuery            String
+  normalizedPrefsJson Json
+  createdAt           DateTime @default(now())
+
+  session           AnonymousSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  destinationScores DestinationScore[]
+  itineraryResults  ItineraryResult[]
+}
+
+model Destination {
+  id                       String   @id
+  slug                     String   @unique
+  city                     String
+  country                  String
+  visaForPL                Boolean
+  avgTempByMonthJson       Json
+  costIndex                Float
+  beachScore               Float
+  cityScore                Float
+  sightseeingScore         Float
+  nightlifeScore           Float
+  natureScore              Float
+  safetyScore              Float
+  accessScore              Float
+  typicalFlightHoursFromPL Float
+  affiliateLinksJson       Json
+
+  destinationScores DestinationScore[]
+  itineraryResults  ItineraryResult[]
+}
+
+model DestinationScore {
+  id            String @id
+  tripRequestId String
+  destinationId String
+  totalScore    Float
+  breakdownJson Json
+  reasonsJson   Json
+  rank          Int
+
+  tripRequest TripRequest @relation(fields: [tripRequestId], references: [id], onDelete: Cascade)
+  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+}
+
+model ItineraryResult {
+  id                 String @id
+  tripRequestId      String
+  destinationId      String
+  estimatedBudgetMin Int
+  estimatedBudgetMax Int
+  aiSummary          String
+  aiPlanJson         Json
+
+  tripRequest     TripRequest      @relation(fields: [tripRequestId], references: [id], onDelete: Cascade)
+  destination     Destination      @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  savedTrips      SavedTrip[]
+  affiliateClicks AffiliateClick[]
+}
+
+model SavedTrip {
+  id                String   @id
+  sessionId         String
+  itineraryResultId String
+  createdAt         DateTime @default(now())
+
+  session         AnonymousSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  itineraryResult ItineraryResult  @relation(fields: [itineraryResultId], references: [id], onDelete: Cascade)
+}
+
+model AffiliateClick {
+  id                String   @id
+  sessionId         String
+  itineraryResultId String?
+  provider          String
+  targetUrl         String
+  contextJson       Json?
+  createdAt         DateTime @default(now())
+
+  session         AnonymousSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  itineraryResult ItineraryResult? @relation(fields: [itineraryResultId], references: [id], onDelete: SetNull)
+}
+
+model Event {
+  id          String   @id
+  sessionId   String
+  eventType   String
+  payloadJson Json
+  createdAt   DateTime @default(now())
+
+  session AnonymousSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}

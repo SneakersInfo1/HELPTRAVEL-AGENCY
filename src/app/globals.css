@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f8f2;
+  --foreground: #163324;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-ui), sans-serif;
+  background-image:
+    radial-gradient(circle at top left, rgba(72, 164, 103, 0.15), transparent 28%),
+    radial-gradient(circle at top right, rgba(190, 232, 205, 0.55), transparent 22%),
+    linear-gradient(180deg, #f7fbf6 0%, #eef6ef 100%);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 80px rgba(14, 55, 32, 0.08);
+}
+
+.animate-fade-in {
+  animation: fadeIn 320ms ease-out;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 420ms ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 360ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-scale-in {
+    animation: none;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(47, 125, 87, 0.18);
+  color: #0e241b;
+}
+
+img,
+video {
+  backface-visibility: hidden;
+}
