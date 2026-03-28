@@ -62,6 +62,7 @@ const footerColumns = [
       { href: "/planner?mode=discovery", label: "Nie wiem dokad leciec" },
       { href: "/mapa-serwisu", label: "Mapa serwisu" },
       { href: "/jak-pracujemy", label: "Jak pracujemy" },
+      { href: "/standard-redakcyjny", label: "Standard redakcyjny" },
     ],
   },
   {
@@ -82,6 +83,8 @@ const footerColumns = [
       { href: "/regulamin", label: "Regulamin" },
       { href: "/linki-partnerskie", label: "Linki partnerskie" },
       { href: "/jak-pracujemy", label: "Jak pracujemy" },
+      { href: "/dla-partnerow", label: "Dla partnerow" },
+      { href: "/standard-redakcyjny", label: "Standard redakcyjny" },
     ],
   },
 ];

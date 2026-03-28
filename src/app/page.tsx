@@ -237,6 +237,53 @@ export default async function Home() {
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Zaufanie i struktura</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Publiczne strony, ktore pokazuja ze to dojrzaly projekt travelowy.</h2>
+          </div>
+          <Link href="/dla-partnerow" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+            Zobacz informacje dla partnerow
+          </Link>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-4">
+          {[
+            {
+              title: "Dla partnerow",
+              text: "Publiczne wyjasnienie modelu dzialania projektu, warstwy contentowej i flow partnerskiego.",
+              href: "/dla-partnerow",
+            },
+            {
+              title: "Standard redakcyjny",
+              text: "Opis tego, jak budowane sa przewodniki, artykuly i destination huby bez pustych landingow.",
+              href: "/standard-redakcyjny",
+            },
+            {
+              title: "Jak pracujemy",
+              text: "Metodologia laczaca travel content, planner i przejscia do partnerow zewnetrznych.",
+              href: "/jak-pracujemy",
+            },
+            {
+              title: "Linki partnerskie",
+              text: "Jawna informacja o przekierowaniach, mierzeniu klikniec i modelu afiliacyjnym.",
+              href: "/linki-partnerskie",
+            },
+          ].map((item) => (
+            <article key={item.title} className="rounded-[1.75rem] border border-emerald-900/10 bg-emerald-50/75 p-5">
+              <h3 className="text-xl font-bold text-emerald-950">{item.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-emerald-900/78">{item.text}</p>
+              <Link
+                href={item.href}
+                className="mt-5 inline-flex rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+              >
+                Otworz strone
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Sciezki startowe</p>
             <h2 className="mt-2 font-display text-4xl text-emerald-950">Wejdz do serwisu od potrzeby, nie od losowej podstrony.</h2>
           </div>

@@ -16,6 +16,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/inspiracje",
     "/mapa-serwisu",
     "/jak-pracujemy",
+    "/dla-partnerow",
+    "/standard-redakcyjny",
     "/o-nas",
     "/kontakt",
     "/polityka-prywatnosci",

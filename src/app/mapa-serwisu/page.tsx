@@ -59,6 +59,8 @@ export default function SiteMapPage() {
             <Link href="/polityka-prywatnosci" className="hover:text-emerald-700">Polityka prywatnosci</Link>
             <Link href="/regulamin" className="hover:text-emerald-700">Regulamin</Link>
             <Link href="/linki-partnerskie" className="hover:text-emerald-700">Linki partnerskie</Link>
+            <Link href="/dla-partnerow" className="hover:text-emerald-700">Dla partnerow</Link>
+            <Link href="/standard-redakcyjny" className="hover:text-emerald-700">Standard redakcyjny</Link>
           </div>
         </article>
       </section>

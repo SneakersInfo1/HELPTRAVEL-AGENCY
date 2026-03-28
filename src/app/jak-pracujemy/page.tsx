@@ -80,6 +80,12 @@ export default function HowWeWorkPage() {
               Zobacz inspiracje
             </Link>
             <Link
+              href="/standard-redakcyjny"
+              className="rounded-full border border-emerald-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+            >
+              Standard redakcyjny
+            </Link>
+            <Link
               href="/mapa-serwisu"
               className="rounded-full border border-emerald-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
             >
