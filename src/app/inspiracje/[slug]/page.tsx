@@ -5,11 +5,13 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
+import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import {
   getDestinationGuideBySlug,
   getEditorialArticleBySlug,
   getEditorialArticles,
+  getEditorialCategories,
   getRelatedArticles,
 } from "@/lib/mvp/publisher-content";
 import { curatedDestinations } from "@/lib/mvp/destinations";
@@ -54,6 +56,10 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
   if (!article) notFound();
 
   const relatedArticles = getRelatedArticles(article, 3);
+  const categoryLabels = getEditorialCategories()
+    .filter((category) => article.categorySlugs.includes(category.slug))
+    .map((category) => category.title)
+    .slice(0, 3);
   const destinationCards = await Promise.all(
     article.destinationSlugs.map(async (destinationSlug) => {
       const destination = curatedDestinations.find((item) => item.slug === destinationSlug);
@@ -116,6 +122,12 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
           </div>
         </div>
       </section>
+
+      <EditorialMetaBar
+        eyebrow="Artykuł redakcyjny"
+        title="Scenariusz wyjazdu przygotowany jako treść wydawnicza i punkt wejścia do planera"
+        items={[...categoryLabels, `${article.destinationSlugs.length} powiązanych kierunków`]}
+      />
 
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">

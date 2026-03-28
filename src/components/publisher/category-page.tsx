@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Script from "next/script";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
+import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import {
   getArticlesForCategory,
@@ -10,6 +12,7 @@ import {
 } from "@/lib/mvp/publisher-content";
 import { curatedDestinations } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
+import { getSiteUrl } from "@/lib/mvp/site";
 
 export async function CategoryPage({ slug }: { slug: string }) {
   const category = getEditorialCategoryBySlug(slug);
@@ -30,9 +33,33 @@ export async function CategoryPage({ slug }: { slug: string }) {
       };
     }),
   );
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        name: category.title,
+        description: category.description,
+        url: `${getSiteUrl()}/${category.slug}`,
+        inLanguage: "pl-PL",
+      },
+      {
+        "@type": "ItemList",
+        itemListElement: articles.map((article, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          url: `${getSiteUrl()}/inspiracje/${article.slug}`,
+          name: article.title,
+        })),
+      },
+    ],
+  };
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+      <Script id={`category-${slug}-jsonld`} type="application/ld+json">
+        {JSON.stringify(structuredData)}
+      </Script>
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
         <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: category.title }]} />
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{category.eyebrow}</p>
@@ -60,6 +87,12 @@ export async function CategoryPage({ slug }: { slug: string }) {
           </Link>
         </div>
       </section>
+
+      <EditorialMetaBar
+        eyebrow="Kolekcja redakcyjna"
+        title="Tematyczny hub laczacy artykuły, kierunki i przejscie do planera"
+        items={[`${articles.length} artykulow`, `${destinations.filter(Boolean).length} kierunkow`, "aktualizowany hub tematyczny"]}
+      />
 
       <section className="grid gap-4 lg:grid-cols-2">
         {articles.map((article) => (

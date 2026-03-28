@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
+import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { getDestinationGuideBySlug, getEditorialCategories, getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
+import { getSiteUrl } from "@/lib/mvp/site";
 
 export const metadata: Metadata = {
   title: "Kierunki",
@@ -20,9 +23,35 @@ export default async function DestinationsIndexPage() {
       media: await resolveDestinationMedia(destination),
     })),
   );
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        name: "Kierunki",
+        description: "Katalog kierunkow city break i krotkich wyjazdow z Polski.",
+        url: `${getSiteUrl()}/kierunki`,
+        inLanguage: "pl-PL",
+      },
+      {
+        "@type": "ItemList",
+        itemListElement: cards
+          .filter((item) => item.guide)
+          .map((item, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            url: `${getSiteUrl()}/kierunki/${item.destination.slug}`,
+            name: item.destination.city,
+          })),
+      },
+    ],
+  };
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+      <Script id="destinations-index-jsonld" type="application/ld+json">
+        {JSON.stringify(structuredData)}
+      </Script>
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Katalog kierunkow</p>
         <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] text-emerald-950">
@@ -48,6 +77,12 @@ export default async function DestinationsIndexPage() {
           ))}
         </div>
       </section>
+
+      <EditorialMetaBar
+        eyebrow="Warstwa publishera"
+        title="Katalog kierunkow budowany jako indeksowalny hub z przejsciem do planera"
+        items={[`${destinations.length} kierunkow`, `${categories.length} sciezek tematycznych`, "treści dla polskiego odbiorcy"]}
+      />
 
       <section className="grid gap-5 lg:grid-cols-3">
         {cards.map((item) =>

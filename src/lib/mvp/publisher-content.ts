@@ -55,17 +55,24 @@ export interface DestinationGuideContent extends DestinationGuideOverrides {
 const publishedDestinationSlugs = [
   "malaga-spain",
   "barcelona-spain",
+  "valencia-spain",
   "lisbon-portugal",
   "rome-italy",
+  "naples-italy",
   "budapest-hungary",
   "prague-czechia",
   "athens-greece",
   "valletta-malta",
   "larnaca-cyprus",
+  "tirana-albania",
   "istanbul-turkey",
   "antalya-turkey",
   "marrakesh-morocco",
   "agadir-morocco",
+  "berlin-germany",
+  "amsterdam-netherlands",
+  "dublin-ireland",
+  "london-uk",
   "las-palmas-spain",
   "funchal-portugal",
 ] as const;
@@ -563,6 +570,237 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
         question: "Czy to dobry kierunek dla osob, ktore nie lubia samego lezenia na plazy?",
         answer:
           "Tak, zdecydowanie. Najmocniej wygrywa tu widok, natura i aktywne odkrywanie wyspy.",
+      },
+    ],
+  },
+  {
+    slug: "valencia-spain",
+    overview:
+      "Walencja to jeden z najlepszych kompromisow miedzy klasycznym city breakiem a wyjazdem z oddechem. Daje plaze, dobre jedzenie, nowoczesna architekture i mniej przytlaczajace tempo niz Barcelona.",
+    whyGo: [
+      "Bardzo dobrze laczy miejski rytm z dostepem do morza i szerokich spacerowych stref.",
+      "Dobrze wypada dla osob, ktore chca Hiszpanii, ale mniej chaosu niz w najwiekszych miastach.",
+      "Nadaje sie na 4-5 dni i dobrze znosi scenariusz plaza plus zwiedzanie.",
+    ],
+    bestTime:
+      "Najbardziej komfortowe miesiace to kwiecien-czerwiec oraz wrzesien-listopad. Wysokie lato nadal ma sens, ale poza szczytem sezonu latwiej o przyjemniejszy rytm miasta i nizsza presje cenowa.",
+    budgetNote:
+      "Walencja dobrze wyglada przy budzecie srednim. Nie jest tak tania jak Budapeszt czy Praga, ale czesto daje bardzo dobry stosunek jakosci pobytu do finalnego kosztu.",
+    whoFor: [
+      "dla osob, ktore chca Hiszpanii bez przesadnie intensywnego tempa",
+      "dla par i wyjazdow 4-5 dni",
+      "dla scenariuszy plaza plus zwiedzanie",
+    ],
+    highlights: ["Miasto Sztuki i Nauki", "plaża Malvarrosa", "stare miasto", "Mercado Central", "Turia"],
+    districts: ["Ciutat Vella", "Ruzafa", "El Carmen", "okolice Turii"],
+    faq: [
+      {
+        question: "Czy Walencja jest lepsza od Barcelony na spokojniejszy wyjazd?",
+        answer:
+          "Dla wielu osob tak. Nadal daje Hiszpanie, plaze i dobre jedzenie, ale zwykle z mniejszym tlokiem i spokojniejszym rytmem niz Barcelona.",
+      },
+      {
+        question: "Ile dni najlepiej zaplanowac na Walencje?",
+        answer:
+          "Najlepiej 4-5 dni. To format, w ktorym dobrze da sie polaczyc centrum, nowoczesne strefy i chwile nad morzem.",
+      },
+    ],
+  },
+  {
+    slug: "naples-italy",
+    overview:
+      "Neapol jest kierunkiem dla osob, ktore chca intensywnego klimatu poludniowych Wloch, mocnej kuchni i miasta z charakterem. To nie jest wypolerowany city break, ale wlasnie dlatego daje bardzo mocne wrazenie miejsca.",
+    whyGo: [
+      "Jedzenie i lokalny rytm miasta sa same w sobie bardzo mocnym powodem wyjazdu.",
+      "To dobry kierunek dla osob, ktore chca zobaczyc bardziej surowa i autentyczna strone Wloch.",
+      "Dobrze laczy sie z pomyslem na 3-4 dni w miescie lub z szerszym planem wokol Kampanii.",
+    ],
+    bestTime:
+      "Najlepiej planowac Neapol na wiosne i jesien, gdy temperatury sprzyjaja spacerom i wyjazdom po okolicy. Lato bywa bardziej meczace, szczegolnie przy intensywnym zwiedzaniu.",
+    budgetNote:
+      "Neapol potrafi byc rozsadniejszy kosztowo niz Rzym czy Mediolan, ale warto pilnowac lokalizacji noclegu i logistyki pierwszego dnia. To kierunek, gdzie wygoda bazy noclegowej ma duze znaczenie.",
+    whoFor: [
+      "dla foodie tripow i intensywnych miejskich wyjazdow",
+      "dla osob, ktore lubia surowy lokalny klimat",
+      "dla 3-4 dni we Wloszech bez zbednego polerowania",
+    ],
+    highlights: ["Spaccanapoli", "historyczne centrum", "nabrzeze", "pizza", "punkty startowe na Pompeje i Wezuwiusz"],
+    districts: ["Centro Storico", "Chiaia", "Quartieri Spagnoli", "okolice nabrzeza"],
+    faq: [
+      {
+        question: "Czy Neapol to dobry pierwszy city break we Wloszech?",
+        answer:
+          "Tak, ale raczej dla osob, ktore lubia miasta z mocnym charakterem. Jesli szukasz bardziej klasycznego i przewidywalnego scenariusza, prostszy moze byc Rzym.",
+      },
+      {
+        question: "Czy na Neapol wystarcza 3 dni?",
+        answer:
+          "Tak. To jeden z tych kierunkow, ktore potrafia zrobic wrazenie juz przy 3 dniach, jesli plan jest dobrze ustawiony.",
+      },
+    ],
+  },
+  {
+    slug: "tirana-albania",
+    overview:
+      "Tirana to ciekawy kierunek dla osob, ktore szukaja mniej oczywistego miasta na city break i chca polaczyc nizszy koszt z poczuciem odkrywania czegos mniej oklepanego. Daje miejski klimat, prostszy budzet i dobry punkt startowy do dalszego poznawania Albanii.",
+    whyGo: [
+      "Dobrze sprawdza sie dla osob, ktore chca nowego kierunku bez presji najdrozszych stolic Europy.",
+      "To mocny kandydat do tresci o tanich wyjazdach i mniej oczywistych city breakach.",
+      "Przy krotszym pobycie daje miejski klimat, a przy 4-5 dniach mozna myslec tez o okolicy.",
+    ],
+    bestTime:
+      "Najprzyjemniejsze miesiace to kwiecien-czerwiec i wrzesien-pazdziernik. Wtedy Tirana daje przyjemniejszy balans pogody i miejskiego tempa.",
+    budgetNote:
+      "To jeden z kierunkow, ktory czesto dobrze wypada przy ograniczonym budzecie. Nadal warto jednak patrzec na calosc wyjazdu: lot, lokalizacje noclegu i plan dnia.",
+    whoFor: [
+      "dla osob szukajacych mniej oczywistych miast",
+      "dla budzetowych city breakow",
+      "dla wyjazdow 3-4 dni z poczuciem odkrywania nowego kierunku",
+    ],
+    highlights: ["Plac Skanderbega", "Bunk'Art", "kawiarnie", "kolejka Dajti", "miejskie zycie wieczorne"],
+    districts: ["Blloku", "centrum", "okolice placu Skanderbega", "rejony kawiarniane"],
+    faq: [
+      {
+        question: "Czy Tirana nadaje sie na tani city break?",
+        answer:
+          "Tak, to jedna z jej mocniejszych stron. Przy dobrze dobranym locie i rozsadnym noclegu potrafi bardzo dobrze wypasc kosztowo.",
+      },
+      {
+        question: "Czy Tirana jest dobrym kierunkiem dla osob, ktore byly juz w klasycznych stolicach Europy?",
+        answer:
+          "Tak. Wlasnie wtedy daje dodatkowa wartosc, bo pokazuje mniej oczywisty miejski klimat i nie jest kopia najpopularniejszych tras city breakowych.",
+      },
+    ],
+  },
+  {
+    slug: "berlin-germany",
+    overview:
+      "Berlin jest dobrym kierunkiem dla osob, ktore szukaja duzego europejskiego miasta z muzeami, dzielnicami i bardzo wyraznym charakterem. To mocny kandydat do city breakow dla osob, ktore cenią kulture, gastro i miejski rytm bardziej niz klasyczne odhaczanie ikon.",
+    whyGo: [
+      "Daje ogrom tresci: muzea, architekture, dzielnice i bardzo mocny klimat miejski.",
+      "Dobrze pasuje do wyjazdow 3-4 dni i do odbiorcy, ktory lubi odkrywac miasto warstwami.",
+      "To mocny kierunek pod publiczny travel content, bo dobrze laczy praktyke z wyrazna tozsamoscia miejsca.",
+    ],
+    bestTime:
+      "Berlin najlepiej sprawdza sie od kwietnia do czerwca oraz we wrzesniu i pazdzierniku. To miesiace, w ktorych spacery i tempo miasta sa najbardziej komfortowe.",
+    budgetNote:
+      "Berlin bywa sredni lub wyzszy kosztowo, ale nadal da sie go zaplanowac rozsadnie. Kluczowe jest znalezienie dobrej bazy w dzielnicy, ktora nie utrudnia poruszania sie po miescie.",
+    whoFor: [
+      "dla osob lubiacych muzea, dzielnice i gastronomię",
+      "dla city breakow z miejskim rytmem zamiast typowego sightseeingu",
+      "dla wyjazdow 3-4 dni z naciskiem na kulture",
+    ],
+    highlights: ["Wyspa Muzeow", "East Side Gallery", "Mitte", "Kreuzberg", "Prenzlauer Berg"],
+    districts: ["Mitte", "Kreuzberg", "Prenzlauer Berg", "Neukolln"],
+    faq: [
+      {
+        question: "Czy Berlin pasuje na pierwszy city break do Niemiec?",
+        answer:
+          "Tak. To bardzo mocny wybor, szczegolnie jesli bardziej od klasycznych zabytkow interesuje Cie nowoczesne duze miasto z warstwami i klimatem.",
+      },
+      {
+        question: "Ile dni warto przeznaczyc na Berlin?",
+        answer:
+          "Najlepiej 3-4 dni. Taki format pozwala zobaczyc kilka roznych dzielnic i nie robic wyjazdu w zbyt duzym pospiechu.",
+      },
+    ],
+  },
+  {
+    slug: "amsterdam-netherlands",
+    overview:
+      "Amsterdam to kierunek mocny dla osob, ktore szukaja kompaktowego miasta o wysokiej jakosci spaceru, estetyce i bardzo czytelnym miejskim klimacie. Dobrze dziala na 3-4 dni i ma silna rozpoznawalnosc dla polskiego odbiorcy.",
+    whyGo: [
+      "Miasto jest kompaktowe i bardzo dobrze nadaje sie do zwiedzania bez rozbudowanej logistyki.",
+      "To mocny kierunek dla par, weekendowych wypadów i scenariuszy z naciskiem na klimat miejsca.",
+      "Bardzo dobrze wyglada tresciowo: kanały, muzea, dzielnice i spokojniejszy rytm dnia.",
+    ],
+    bestTime:
+      "Najbardziej komfortowe sa wiosna oraz wczesna jesien. To czas, w ktorym Amsterdam daje najlepszy balans pogody, spaceru i klimatu miasta.",
+    budgetNote:
+      "Amsterdam rzadko jest kierunkiem budzetowym, dlatego trzeba uczciwie komunikowac wyzsze koszty noclegow. Nadal jednak wiele osob uznaje go za kierunek wart doplaty ze wzgledu na jakosc pobytu.",
+    whoFor: [
+      "dla par i estetycznych city breakow",
+      "dla osob, ktore lubia kompaktowe miasta",
+      "dla 3-4 dni z naciskiem na muzealny i spacerowy rytm",
+    ],
+    highlights: ["kanały", "Jordaan", "muzea", "Vondelpark", "de 9 straatjes"],
+    districts: ["Jordaan", "centrum", "De Pijp", "Museumplein"],
+    faq: [
+      {
+        question: "Czy Amsterdam nadaje sie na weekend we dwoje?",
+        answer:
+          "Tak, to jeden z jego najmocniejszych scenariuszy. Miasto jest zwarte, klimatyczne i dobrze dziala przy spokojniejszym rytmie.",
+      },
+      {
+        question: "Czy Amsterdam jest dobrym kierunkiem przy ograniczonym budzecie?",
+        answer:
+          "Raczej nie jest to najtanszy wybor. To kierunek, ktory bardziej wygrywa klimatem i jakoscia miasta niz sama niska cena.",
+      },
+    ],
+  },
+  {
+    slug: "dublin-ireland",
+    overview:
+      "Dublin pasuje do osob, ktore chca prostego, anglojezycznego city breaku z pubami, muzyka na zywo i klimatem miasta, ktore dobrze sprawdza sie na szybki wyjazd. To kierunek bardziej o atmosferze niz o długiej liscie ikon.",
+    whyGo: [
+      "To prosty format na 2-4 dni z bardzo czytelnym rytmem miasta.",
+      "Dobrze wypada dla osob, ktore cenią klimat, muzyke, gastro i wieczorne zycie.",
+      "To przydatny kontrapunkt wobec bardziej slonecznych city breakow.",
+    ],
+    bestTime:
+      "Dublin najlepiej planowac od maja do wrzesnia, kiedy pogoda bardziej sprzyja spacerom. Poza tym okresem nadal ma sens, ale trzeba liczyc sie z bardziej zmiennymi warunkami.",
+    budgetNote:
+      "Dublin nie jest kierunkiem niskobudzetowym, dlatego najwazniejsze jest uczciwe ustawienie oczekiwan. Najlepiej traktowac go jako city break premium-light, a nie tania ucieczke na weekend.",
+    whoFor: [
+      "dla osob szukajacych klimatu miasta i wieczornego zycia",
+      "dla wyjazdow 2-4 dni",
+      "dla tych, ktorzy cenią latwy format bez rozbudowanej logistyki",
+    ],
+    highlights: ["Temple Bar", "Trinity College", "puby", "nadbrzeza", "miejskie spacery"],
+    districts: ["Temple Bar", "centrum", "St Stephen's Green", "Docklands"],
+    faq: [
+      {
+        question: "Czy Dublin to bardziej kierunek na klimat niz na klasyczne zabytki?",
+        answer:
+          "Tak. To miasto bardziej wygrywa atmosfera, pubami, muzyka i spacerowym rytmem niz bardzo dluga lista ikon do odhaczenia.",
+      },
+      {
+        question: "Na ile dni najlepiej planowac Dublin?",
+        answer:
+          "Najlepiej 2-4 dni. To format, w ktorym najlepiej wypada i nie potrzebuje rozciagania do tygodniowego urlopu.",
+      },
+    ],
+  },
+  {
+    slug: "london-uk",
+    overview:
+      "Londyn to kierunek dla osob, ktore chca duzego, wielowarstwowego miasta z muzeami, dzielnicami i bardzo mocnym powodem do wyjazdu. To nie jest tani city break, ale nadal jest jednym z najmocniejszych kierunkow dla odbiorcy szukajacego duzego europejskiego miasta.",
+    whyGo: [
+      "Daje bardzo szeroki wachlarz scenariuszy: kultura, muzea, zakupy, gastronomia i klasyczne ikony miasta.",
+      "To kierunek, ktory dobrze dziala w tresciach porownawczych i scenariuszach premium-light.",
+      "Bardzo mocno pracuje na rozpoznawalnosc marki i publiczny charakter serwisu.",
+    ],
+    bestTime:
+      "Najbardziej komfortowe miesiace to maj-czerwiec oraz wrzesien-pazdziernik. Londyn da sie odwiedzac przez caly rok, ale w tych miesiacach zwykle najlatwiej o wygodny rytm spacerowy.",
+    budgetNote:
+      "To kierunek drozszy, dlatego kluczowe jest uczciwe ustawienie oczekiwan i budzetu. W zamian Londyn daje ogrom tresci, muzeow i scenariuszy pobytu nawet na krotki wyjazd.",
+    whoFor: [
+      "dla osob, ktore chca duzego miasta z bardzo szeroka oferta",
+      "dla 3-5 dni z naciskiem na kulture i dzielnice",
+      "dla wyjazdow, gdzie koszt schodzi na drugi plan wobec jakosci kierunku",
+    ],
+    highlights: ["Westminster", "South Bank", "muzea", "Covent Garden", "Notting Hill"],
+    districts: ["West End", "South Bank", "Notting Hill", "Shoreditch"],
+    faq: [
+      {
+        question: "Czy Londyn ma sens na 3 dni?",
+        answer:
+          "Tak, ale trzeba podejsc do niego selektywnie. To kierunek, ktory daje duzo nawet przy 3 dniach, ale zdecydowanie nie da sie wtedy zobaczyc wszystkiego.",
+      },
+      {
+        question: "Czy Londyn nadaje sie do tresci o tanich podrozach?",
+        answer:
+          "Raczej nie. To kierunek, ktory lepiej opisywac przez jakosc i sile scenariusza wyjazdu niz przez bardzo niski budzet.",
       },
     ],
   },
@@ -1128,6 +1366,231 @@ const editorialArticles: EditorialArticle[] = [
       },
     ],
   },
+  {
+    slug: "kierunki-na-pierwszy-city-break",
+    title: "Kierunki na pierwszy city break",
+    description:
+      "Przewodnik po miastach, ktore najlepiej nadaja sie na pierwszy zagraniczny city break z Polski: proste, czytelne i bez zbednej logistyki.",
+    excerpt:
+      "Pierwszy city break powinien byc latwy do ogarniecia. Najlepiej wygrywaja miasta z mocnym centrum, prostym dojazdem i scenariuszem, ktory nie wymaga eksperckiej wiedzy.",
+    hero:
+      "To jeden z najbardziej praktycznych tematow dla serwisu travelowego. Dobrze dobrany pierwszy city break buduje zaufanie do marki, bo pomaga czytelnikowi podjac decyzje bez chaosu.",
+    plannerPrompt:
+      "Szukam pierwszego city breaku z Polski, 3-4 dni, bez skomplikowanej logistyki, budzet do 2500 zl.",
+    categorySlugs: ["city-breaki", "przewodniki", "weekendowe-wyjazdy"],
+    destinationSlugs: ["budapest-hungary", "prague-czechia", "rome-italy", "malaga-spain", "lisbon-portugal"],
+    practicalBullets: [
+      "Najpierw patrz na prosty dojazd i kompaktowe centrum.",
+      "Pierwszy wyjazd nie powinien wymagac walki z dalekimi transferami i przejazdami pomiedzy atrakcjami.",
+      "Lepiej wybrac jedno miasto z jasnym rytmem niz ambitny kierunek, ktory na starcie meczy logistyka.",
+    ],
+    sections: [
+      {
+        title: "Jak rozpoznac dobry pierwszy kierunek",
+        paragraphs: [
+          "Najlepiej wygrywaja miasta, w ktorych juz pierwszy dzien jest przyjemny i czytelny. Po wyjsciu z lotniska powinienes szybko trafic do centrum i miec od razu poczucie, ze wyjazd zaczal sie dobrze.",
+          "Dlatego tak dobrze wypadaja Budapeszt, Praga czy Malaga. Daja szybki efekt i nie wymagaja od czytelnika zbyt wielu decyzji organizacyjnych.",
+        ],
+      },
+      {
+        title: "Czego unikac przy pierwszym city breaku",
+        paragraphs: [
+          "Nie warto zaczynac od miasta, ktore jest bardzo drogie, rozlegle albo wymaga wielu przesiadek. Lepiej zostawic sobie takie kierunki na pozniejszy etap, kiedy wiesz juz, jaki styl wyjazdu najbardziej Ci odpowiada.",
+        ],
+        bullets: [
+          "zbyt dlugiego lotu jak na 2-4 dni",
+          "noclegu daleko od centrum tylko dlatego, ze jest nizsza cena",
+          "planu, ktory probuje zmiescic cale miasto w 48 godzin",
+        ],
+      },
+      {
+        title: "Jak korzystac z tego scenariusza w plannerze",
+        paragraphs: [
+          "Wpisz w plannerze, ze to Twoj pierwszy city break, dodaj liczbe dni i budzet. To pozwoli silnikowi mocniej premiowac kierunki, ktore sa proste, sprawdzone i dobrze pracuja dla polskiego odbiorcy.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "Czy pierwszy city break musi byc bardzo tani?",
+        answer:
+          "Nie. Wazniejsze jest to, zeby byl prosty i wygodny. Czasem troche wyzszy budzet daje znacznie lepszy pierwszy kontakt z zagranicznym wyjazdem.",
+      },
+      {
+        question: "Czy lepiej zaczac od miasta czy od kierunku z plaza?",
+        answer:
+          "Na pierwszy raz zwykle najlepiej wypada miasto albo kierunek typu plaza plus zwiedzanie, gdzie latwo ustawic rytm dnia bez skrajnych kompromisow.",
+      },
+    ],
+  },
+  {
+    slug: "gdzie-poleciec-w-maju",
+    title: "Gdzie poleciec w maju",
+    description:
+      "Najlepsze kierunki na majowy wyjazd z Polski, kiedy pogoda zaczyna juz mocno sprzyjac city breakom i krotkim wakacjom.",
+    excerpt:
+      "Maj to jeden z najlepszych miesiecy na wyjazdy. W wielu kierunkach jest juz cieplo, ale nadal bez najwiekszego sezonowego tloku.",
+    hero:
+      "To bardzo mocny temat dla serwisu travelowego, bo laczy wysoką intencje, dobra pogode i praktyczne pytanie o to, gdzie najlepiej wykorzystac kilka dni wolnego.",
+    plannerPrompt:
+      "Gdzie poleciec w maju z Polski, 4-5 dni, najlepiej cieplo i cos do zwiedzania, budzet do 3000 zl.",
+    categorySlugs: ["cieple-kierunki", "przewodniki"],
+    destinationSlugs: ["malaga-spain", "valencia-spain", "athens-greece", "larnaca-cyprus", "valletta-malta"],
+    practicalBullets: [
+      "Maj premiuje kierunki, ktore maja juz pogode, ale jeszcze nie sa w pelnym szczycie sezonu.",
+      "To dobry miesiac dla scenariuszy plaza plus miasto oraz dla lagodniejszych city breakow na poludniu Europy.",
+      "Warto pilnowac terminu wylotu, bo okolice dlugich weekendow potrafia mocno zmienic dostepnosc i ceny.",
+    ],
+    sections: [
+      {
+        title: "Dlaczego maj jest tak dobry na wyjazd",
+        paragraphs: [
+          "W maju wiele kierunkow daje juz bardzo przyjemna pogode do spacerow, plazy i wieczornego zycia miasta. Jednoczesnie nie ma jeszcze takiego obciazenia jak w pelni lata, co poprawia komfort pobytu.",
+        ],
+      },
+      {
+        title: "Jak wybierac kierunek na maj",
+        paragraphs: [
+          "Najbardziej oplacalne sa miejsca, ktore lacza slonce z czytelnym planem dnia. Dobrze sprawdzaja sie Malaga, Malta, Ateny czy Walencja, bo daja i klimat, i realny sens na 4-5 dni.",
+        ],
+        bullets: [
+          "sprawdzaj nie tylko temperature, ale tez wiatr i komfort spaceru",
+          "premiuj kierunki z prostym dojazdem z lotniska",
+          "szukaj miast, ktore dobrze dzialaja juz od pierwszego popoludnia",
+        ],
+      },
+      {
+        title: "Jak wpisac taka potrzebe do planera",
+        paragraphs: [
+          "Najlepiej wpisac miesiac, liczbe dni, budzet i to, czy wolisz miejski klimat czy bardziej wakacyjny układ dnia. Taki opis bardzo dobrze przeklada sie na sensowny ranking kierunkow.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "Czy maj jest lepszy od czerwca na krotki wyjazd?",
+        answer:
+          "Czesto tak, bo daje bardzo dobry balans pogody i tloku. Dla wielu osob to jeden z najlepszych miesiecy na city breaki i krotkie wakacje.",
+      },
+      {
+        question: "Czy w maju lepiej wybierac miasto czy kierunek plazowy?",
+        answer:
+          "Oba scenariusze maja sens. Maj jest mocny wlasnie dlatego, ze wiele kierunkow daje wtedy i komfort zwiedzania, i pierwsze odczucie cieplego wyjazdu.",
+      },
+    ],
+  },
+  {
+    slug: "europa-na-5-dni",
+    title: "Europa na 5 dni",
+    description:
+      "Najlepsze kierunki w Europie na 5-dniowy wyjazd z Polski: ani za krotko, ani jeszcze nie pelne wakacje, ale idealnie pod praktyczny reset.",
+    excerpt:
+      "Pieciodniowy wyjazd to bardzo wdzieczny format. Daje wiecej swobody niz weekend, ale nadal wymaga dobrego doboru miasta lub kierunku.",
+    hero:
+      "To temat o wysokiej intencji, bo wiele osob ma wlasnie 5 dni i chce wybrac miejsce, ktore wykorzysta ten czas najlepiej: bez chaosu, ale z realnym efektem wyjazdu.",
+    plannerPrompt:
+      "Szukam kierunku w Europie na 5 dni, z Polski, budzet do 3200 zl, zwiedzanie albo plaza plus miasto.",
+    categorySlugs: ["przewodniki", "cieple-kierunki", "city-breaki"],
+    destinationSlugs: ["lisbon-portugal", "valencia-spain", "athens-greece", "valletta-malta", "funchal-portugal"],
+    practicalBullets: [
+      "5 dni to dobry format na wyjazdy, ktore potrzebuja troche wiecej oddechu niz klasyczny city break.",
+      "Najlepiej pracuja kierunki, ktore nie marnuja pierwszego dnia na logistyczne zamieszanie.",
+      "To dobry moment, by pozwolic sobie na 1-2 mocne atrakcje i nadal zachowac spokojny rytm.",
+    ],
+    sections: [
+      {
+        title: "Co daje 5 dni, czego nie daje weekend",
+        paragraphs: [
+          "Przede wszystkim pozwala przestac gonic. Mozesz rozlozyc wyjazd na dzien przylotu, dwa mocniejsze dni zwiedzania, jeden spokojniejszy i finalny dzien bez poczucia, ze wszystko dzieje sie za szybko.",
+        ],
+      },
+      {
+        title: "Jak wybierac miasto lub kierunek na taki format",
+        paragraphs: [
+          "Najlepiej wypadaja miejsca, ktore maja kilka warstw: stare miasto, dzielnice, punkty widokowe, jedzenie, a czasem takze morze. Wtedy 5 dni nie jest ani przesadnie dlugie, ani zbyt krotkie.",
+        ],
+        bullets: [
+          "premiuj miasta z mocnym centrum i 1-2 dodatkowymi strefami",
+          "dla ciepla szukaj kierunkow typu Malta, Walencja, Ateny",
+          "dla spokoju i natury dobrze wyglada tez Madera",
+        ],
+      },
+      {
+        title: "Jak ustawic wyszukiwanie ofert",
+        paragraphs: [
+          "Przy 5 dniach warto jasno wpisac, czy to ma byc bardziej city break czy bardziej krotki urlop. To jedna z tych informacji, ktore bardzo mocno poprawiaja jakosc wynikow.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "Czy 5 dni to juz dobry format na cieply kierunek?",
+        answer:
+          "Tak. To jeden z najlepszych formatow na miejsca, ktore lacza odpoczynek i zwiedzanie bez koniecznosci brania pelnego tygodnia urlopu.",
+      },
+      {
+        question: "Czy na 5 dni lepiej wybrac jedno miasto czy dwa miejsca?",
+        answer:
+          "W wiekszosci przypadkow nadal lepiej wygrywa jeden kierunek. Pozwala to zachowac wygode i nie psuc wyjazdu przeladowana logistyka.",
+      },
+    ],
+  },
+  {
+    slug: "gdzie-poleciec-latem-na-krotko",
+    title: "Gdzie poleciec latem na krotko",
+    description:
+      "Kierunki na 3-5 dni latem, kiedy chcesz wykorzystac pogode, ale nie budowac od razu pelnych wakacji.",
+    excerpt:
+      "Latem wiele osob szuka nie tylko duzego urlopu, ale tez krotszego wyjazdu, ktory daje szybki reset i poczucie prawdziwego lata.",
+    hero:
+      "To scenariusz bardzo komercyjny i bardzo praktyczny jednoczesnie: kilka dni, slonce, dobra logistyka i kierunek, ktory nie rozczarowuje po przylocie.",
+    plannerPrompt:
+      "Gdzie poleciec latem na krotko z Polski, 3-5 dni, slonce, plaza albo ladne miasto, budzet do 3000 zl.",
+    categorySlugs: ["cieple-kierunki", "weekendowe-wyjazdy", "przewodniki"],
+    destinationSlugs: ["malaga-spain", "valencia-spain", "larnaca-cyprus", "valletta-malta", "las-palmas-spain"],
+    practicalBullets: [
+      "Latem szczegolnie liczy sie to, zeby kierunek dawal efekt juz przy krotkim pobycie.",
+      "Najmocniej wygrywaja miejsca, w ktorych nie tracisz czasu na dalekie transfery i rozciagnieta logistyke.",
+      "Krotki letni wyjazd powinien miec prosty model: centrum, morze, jedzenie i kilka pewnych atrakcji.",
+    ],
+    sections: [
+      {
+        title: "Kiedy krotki letni wyjazd ma sens",
+        paragraphs: [
+          "Wtedy, gdy chcesz wykorzystac pogode i nie czekac na dluzszy urlop. Dla wielu osob 3-5 dni latem jest wystarczajace, zeby realnie odpoczac i zobaczyc cos nowego.",
+        ],
+      },
+      {
+        title: "Jakie kierunki najlepiej dzialaja latem",
+        paragraphs: [
+          "Najbezpieczniej wypadaja miasta i kierunki, ktore maja i rytm miejski, i latwy dostep do morza. Dzięki temu nawet przy krotszym pobycie masz poczucie pelnego wyjazdu, a nie tylko szybkiego przelotu i powrotu.",
+        ],
+        bullets: [
+          "Walencja i Malaga dla plazy plus miasta",
+          "Malta i Cypr dla bardziej wakacyjnego klimatu",
+          "Kanary wtedy, gdy priorytetem jest mocna pogoda niezaleznie od sezonu",
+        ],
+      },
+      {
+        title: "Jak opisywac taka potrzebe w plannerze",
+        paragraphs: [
+          "Najlepiej wpisac, ze chodzi o lato, 3-5 dni i konkretny budzet. Warto tez dodac, czy celem ma byc glownie plaza, czy jednak po rowno plaza i zwiedzanie.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "Czy 3 dni latem wystarcza na cieply wyjazd?",
+        answer:
+          "Tak, jesli wybierzesz kierunek o prostym dojezdzie i nie bedziesz probowal zmiescic zbyt wielu rzeczy w jednym planie.",
+      },
+      {
+        question: "Czy lepiej latem wybrac miasto czy typowo wakacyjny kierunek?",
+        answer:
+          "To zalezy od stylu wyjazdu. Przy 3-5 dniach najlepiej wypadaja kierunki hybrydowe, gdzie miasto i odpoczynek wzajemnie sie uzupelniaja.",
+      },
+    ],
+  },
 ];
 
 const editorialCategories: EditorialCategory[] = [
@@ -1142,11 +1605,15 @@ const editorialCategories: EditorialCategory[] = [
       "cieple-kraje-bez-wizy",
       "najlepsze-kierunki-na-4-dni",
       "najlepsze-kierunki-na-krotki-urlop",
+      "kierunki-na-pierwszy-city-break",
+      "gdzie-poleciec-w-maju",
+      "europa-na-5-dni",
+      "gdzie-poleciec-latem-na-krotko",
       "tanie-kierunki-z-polski",
       "gdzie-poleciec-jesienia-z-polski",
       "gdzie-poleciec-zima-z-polski",
     ],
-    destinationSlugs: ["malaga-spain", "lisbon-portugal", "rome-italy", "marrakesh-morocco", "funchal-portugal"],
+    destinationSlugs: ["malaga-spain", "lisbon-portugal", "rome-italy", "marrakesh-morocco", "funchal-portugal", "valencia-spain", "naples-italy"],
   },
   {
     slug: "city-breaki",
@@ -1160,8 +1627,10 @@ const editorialCategories: EditorialCategory[] = [
       "najlepsze-kierunki-na-4-dni",
       "pomysly-na-city-break-w-europie",
       "gdzie-na-weekend-we-dwoje",
+      "kierunki-na-pierwszy-city-break",
+      "europa-na-5-dni",
     ],
-    destinationSlugs: ["rome-italy", "budapest-hungary", "prague-czechia", "barcelona-spain", "lisbon-portugal"],
+    destinationSlugs: ["rome-italy", "budapest-hungary", "prague-czechia", "barcelona-spain", "lisbon-portugal", "berlin-germany", "amsterdam-netherlands"],
   },
   {
     slug: "cieple-kierunki",
@@ -1173,11 +1642,14 @@ const editorialCategories: EditorialCategory[] = [
     articleSlugs: [
       "cieple-kraje-bez-wizy",
       "kierunki-z-plaza-i-zwiedzaniem",
+      "gdzie-poleciec-w-maju",
+      "europa-na-5-dni",
+      "gdzie-poleciec-latem-na-krotko",
       "gdzie-poleciec-jesienia-z-polski",
       "gdzie-poleciec-zima-z-polski",
       "krotkie-wakacje-w-europie",
     ],
-    destinationSlugs: ["malaga-spain", "larnaca-cyprus", "valletta-malta", "marrakesh-morocco", "las-palmas-spain"],
+    destinationSlugs: ["malaga-spain", "larnaca-cyprus", "valletta-malta", "marrakesh-morocco", "las-palmas-spain", "valencia-spain", "funchal-portugal"],
   },
   {
     slug: "bez-wizy",
@@ -1187,7 +1659,7 @@ const editorialCategories: EditorialCategory[] = [
     eyebrow: "Mniej formalnosci",
     hero: "To jeden z najmocniejszych tematow do wyszukiwania naturalnym jezykiem i do budowy contentu o wysokiej intencji.",
     articleSlugs: ["cieple-kraje-bez-wizy"],
-    destinationSlugs: ["marrakesh-morocco", "agadir-morocco", "antalya-turkey", "larnaca-cyprus"],
+    destinationSlugs: ["marrakesh-morocco", "agadir-morocco", "antalya-turkey", "larnaca-cyprus", "tirana-albania"],
   },
   {
     slug: "tanie-podroze",
@@ -1196,8 +1668,8 @@ const editorialCategories: EditorialCategory[] = [
       "Tresc dla osob, ktore chca dobrze wydac budzet, a nie tylko szukac najnizszej cyfry za wszelka cene.",
     eyebrow: "Budzet pod kontrola",
     hero: "Najlepsze kierunki do budzetowych decyzji to te, ktore nadal daja sensowna jakosc i prosty plan.",
-    articleSlugs: ["tanie-city-breaki-na-weekend", "gdzie-poleciec-do-2000-zl", "tanie-kierunki-z-polski"],
-    destinationSlugs: ["budapest-hungary", "prague-czechia", "athens-greece", "malaga-spain"],
+    articleSlugs: ["tanie-city-breaki-na-weekend", "gdzie-poleciec-do-2000-zl", "tanie-kierunki-z-polski", "kierunki-na-pierwszy-city-break"],
+    destinationSlugs: ["budapest-hungary", "prague-czechia", "athens-greece", "malaga-spain", "tirana-albania"],
   },
   {
     slug: "weekendowe-wyjazdy",
@@ -1206,8 +1678,8 @@ const editorialCategories: EditorialCategory[] = [
       "Kierunki i poradniki pod 2-4 dni, kiedy licza sie czas lotu, prostota planu i dobry rytm wyjazdu.",
     eyebrow: "Wyjazdy na szybko",
     hero: "Weekendowe wyjazdy powinny byc czytelne, dobrze ustawione logistycznie i przyjazne dla ograniczonego czasu.",
-    articleSlugs: ["tanie-city-breaki-na-weekend", "gdzie-na-weekend-we-dwoje", "krotkie-wakacje-w-europie"],
-    destinationSlugs: ["prague-czechia", "budapest-hungary", "rome-italy", "malaga-spain"],
+    articleSlugs: ["tanie-city-breaki-na-weekend", "gdzie-na-weekend-we-dwoje", "krotkie-wakacje-w-europie", "kierunki-na-pierwszy-city-break", "gdzie-poleciec-latem-na-krotko"],
+    destinationSlugs: ["prague-czechia", "budapest-hungary", "rome-italy", "malaga-spain", "amsterdam-netherlands", "dublin-ireland"],
   },
 ];
 

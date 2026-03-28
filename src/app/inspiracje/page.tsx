@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 
+import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import { getEditorialArticles, getEditorialCategories } from "@/lib/mvp/publisher-content";
+import { getSiteUrl } from "@/lib/mvp/site";
 
 export const metadata: Metadata = {
   title: "Inspiracje",
@@ -12,9 +15,33 @@ export const metadata: Metadata = {
 export default function InspirationsIndexPage() {
   const articles = getEditorialArticles();
   const categories = getEditorialCategories();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        name: "Inspiracje",
+        description: "Przewodniki, pomysly na wyjazdy, city breaki i praktyczne scenariusze dla polskiego odbiorcy.",
+        url: `${getSiteUrl()}/inspiracje`,
+        inLanguage: "pl-PL",
+      },
+      {
+        "@type": "ItemList",
+        itemListElement: articles.map((article, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          url: `${getSiteUrl()}/inspiracje/${article.slug}`,
+          name: article.title,
+        })),
+      },
+    ],
+  };
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+      <Script id="inspirations-index-jsonld" type="application/ld+json">
+        {JSON.stringify(structuredData)}
+      </Script>
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Warstwa wydawnicza</p>
         <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] text-emerald-950">
@@ -40,6 +67,12 @@ export default function InspirationsIndexPage() {
           ))}
         </div>
       </section>
+
+      <EditorialMetaBar
+        eyebrow="Biblioteka tresci"
+        title="Publiczna warstwa travel contentu przygotowana pod discovery, SEO i dalsze planowanie"
+        items={[`${articles.length} artykulow`, `${categories.length} kategorii`, "praktyczne scenariusze wyjazdow"]}
+      />
 
       <section className="grid gap-4 lg:grid-cols-2">
         {articles.map((article) => (

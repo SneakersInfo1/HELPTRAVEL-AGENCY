@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
+import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
@@ -159,6 +160,17 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
         </div>
       </section>
+
+      <EditorialMetaBar
+        eyebrow="Sygnał redakcyjny"
+        title="Przewodnik kierunkowy przygotowany pod realne planowanie wyjazdu"
+        items={[
+          `${guide.destination.city} z Polski`,
+          `${guide.destination.typicalFlightHoursFromPL.toFixed(1)} h lotu`,
+          "plan 3-5 dni",
+          "linkowanie do planera",
+        ]}
+      />
 
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
