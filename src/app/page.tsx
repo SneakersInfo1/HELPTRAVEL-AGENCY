@@ -2,58 +2,61 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { HeroMedia } from "@/components/mvp/hero-media";
-import { curatedDestinations } from "@/lib/mvp/destinations";
-import { getDestinationStory, getFeaturedStorySlugs, getVideoHeroSource } from "@/lib/mvp/destination-content";
+import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
+import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
+import { getDestinationStory, getVideoHeroSource } from "@/lib/mvp/destination-content";
+import {
+  getEditorialArticles,
+  getEditorialCategories,
+  getPublishedDestinations,
+} from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 
 const modes = [
   {
-    title: "Nie wiem dokąd lecieć",
+    title: "Nie wiem dokad leciec",
     description:
-      "Napisz po swojemu, czego szukasz, a system poda 3-5 najlepszych kierunków z rankingiem, uzasadnieniem i planem.",
+      "Opisujesz potrzebe naturalnym jezykiem, a serwis uklada sensowne kierunki, wyjasnia ranking i prowadzi do realnego flow wyszukiwania.",
     href: "/planner?mode=discovery",
-    cta: "Uruchom inteligentne szukanie",
+    cta: "Uruchom planer discovery",
   },
   {
     title: "Mam kierunek",
     description:
-      "Wybierz miejsce i parametry, a zobaczysz dopasowane oferty, lokalne atrakcje i estetyczny plan wyjazdu.",
+      "Wybierasz konkretne miasto i od razu przechodzisz do wynikow, atrakcji, tresci lokalnych i planu dalszego wyszukiwania.",
     href: "/planner?mode=standard",
-    cta: "Sprawdź wybrany kierunek",
+    cta: "Sprawdz kierunek w planerze",
   },
 ];
 
-const steps = [
-  "Opisujesz potrzebę albo konkretny kierunek.",
-  "System porządkuje preferencje i liczy ranking opłacalności.",
-  "Dostajesz wizualny wynik z kosztem orientacyjnym i lokalnym kontekstem.",
-  "Przechodzisz do partnerów i zapisujesz plan podróży.",
+const trustPoints = [
+  "katalog kierunkow i strony destination hub",
+  "publiczne przewodniki i scenariusze wyjazdow",
+  "wewnetrzne linkowanie do planera i ofert",
+  "polskie tresci z naciskiem na praktyczna wartosc",
 ];
-
-const proofPoints = [
-  { label: "3-5", value: "kierunków w rankingu" },
-  { label: "Lokalne", value: "zdjęcia i atrakcje" },
-  { label: "PL", value: "cały interfejs i copy" },
-];
-
-const featuredSlugs = getFeaturedStorySlugs();
 
 export default async function Home() {
+  const categories = getEditorialCategories();
+  const articles = getEditorialArticles();
+  const destinations = getPublishedDestinations();
+  const featuredArticles = articles.slice(0, 6);
+  const articleCount = articles.length;
+  const destinationCount = destinations.length;
   const featuredDestinations = await Promise.all(
-    featuredSlugs.map(async (slug) => {
-      const destination = curatedDestinations.find((item) => item.slug === slug);
-      if (!destination) return null;
-      return { ...destination, media: await resolveDestinationMedia(destination) };
-    }),
+    destinations.slice(0, 6).map(async (destination) => ({
+      destination,
+      story: getDestinationStory(destination),
+      media: await resolveDestinationMedia(destination),
+    })),
   );
-
   const video = getVideoHeroSource();
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <section className="relative isolate overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-emerald-950 text-white shadow-[0_30px_100px_rgba(8,40,24,0.24)] animate-fade-in-up">
+      <section className="relative isolate overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-emerald-950 text-white shadow-[0_30px_100px_rgba(8,40,24,0.24)]">
         <div className="absolute inset-0">
-          <HeroMedia src={video.src} poster={video.poster} alt="Podróżniczy klimat" className="opacity-60" />
+          <HeroMedia src={video.src} poster={video.poster} alt="Podrozniczy klimat" className="opacity-60" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,18,11,0.84)_0%,rgba(8,28,16,0.64)_48%,rgba(8,28,16,0.34)_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.24),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.18),transparent_24%)]" />
         </div>
@@ -61,14 +64,14 @@ export default async function Home() {
         <div className="relative grid gap-8 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
           <div className="max-w-3xl">
             <span className="inline-flex rounded-full border border-white/18 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/90">
-              Premium planer podróży
+              Planer + przewodniki
             </span>
             <h1 className="mt-5 text-balance font-display text-5xl leading-[0.95] text-white sm:text-6xl lg:text-7xl">
-              Zaplanuj wyjazd, który wygląda i działa jak produkt liderów travel-tech.
+              Odkrywaj kierunki, czytaj przewodniki i planuj wyjazd w jednym miejscu.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-emerald-50/82 sm:text-lg">
-              HelpTravel Agency porządkuje kierunki, pokazuje lokalny kontekst, rekomenduje najlepsze opcje i prowadzi
-              do partnerów afiliacyjnych. Bez chaosu. Bez generycznych wyników. Po polsku.
+              HelpTravel Agency to hybryda travelowego serwisu wydawniczego i planera: katalog kierunkow, praktyczne
+              inspiracje, city breaki, cieple wyjazdy i flow prowadzacy do realnego wyszukiwania oraz partnerow zewnetrznych.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -79,26 +82,36 @@ export default async function Home() {
                 Zacznij planowanie
               </Link>
               <Link
-                href="/inspirations/cieple-kraje-bez-wizy-do-2500-zl"
+                href="/inspiracje"
                 className="rounded-full border border-white/15 bg-white/6 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/12"
               >
-                Zobacz inspiracje
+                Czytaj inspiracje
               </Link>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {[
-                "lokalne zdjęcia i klimat miejsca",
-                "ranking opłacalności kierunków",
-                "zapis planów i afiliacja od startu",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-emerald-50/88"
+            <div className="mt-8 flex flex-wrap gap-2">
+              {categories.map((category) => (
+                <Link
+                  key={category.slug}
+                  href={`/${category.slug}`}
+                  className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/92 transition hover:bg-white/12"
                 >
-                  {item}
-                </div>
+                  {category.title}
+                </Link>
               ))}
+            </div>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/8 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Kierunki</p>
+                <p className="mt-2 text-3xl font-bold text-white">{destinationCount}</p>
+                <p className="mt-1 text-sm text-white/74">stron kierunkowych z przewodnikami i przejsciem do planera.</p>
+              </div>
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/8 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Artykuly</p>
+                <p className="mt-2 text-3xl font-bold text-white">{articleCount}</p>
+                <p className="mt-1 text-sm text-white/74">tresci scenariuszowych pod city breaki, cieplo i budzet.</p>
+              </div>
             </div>
           </div>
 
@@ -106,7 +119,7 @@ export default async function Home() {
             <div className="absolute inset-0">
               <Image
                 src={video.poster}
-                alt="Podróżniczy klimat"
+                alt="Podrozniczy klimat"
                 fill
                 priority
                 className="object-cover"
@@ -116,41 +129,25 @@ export default async function Home() {
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,23,17,0.06)_0%,rgba(14,23,17,0.5)_100%)]" />
             <div className="absolute inset-x-0 bottom-0 p-5">
               <div className="flex flex-wrap gap-2">
-                <span className="inline-flex rounded-full bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                  Klimat premium
-                </span>
-                <span className="inline-flex rounded-full bg-emerald-400/18 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                  Hero video
-                </span>
-                <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                  Fallback na mobile
-                </span>
+                {trustPoints.map((item) => (
+                  <span
+                    key={item}
+                    className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white"
+                  >
+                    {item}
+                  </span>
+                ))}
               </div>
-              <p className="mt-3 max-w-xs text-sm leading-6 text-white/84">
-                Hero video buduje atmosferę podróży, a statyczny poster trzyma lekkość i wydajność na mobile.
-              </p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3 animate-fade-in-up">
-        {proofPoints.map((item) => (
-          <article
-            key={item.value}
-            className="rounded-[1.5rem] border border-emerald-900/10 bg-white/92 p-5 shadow-[0_14px_38px_rgba(16,84,48,0.06)]"
-          >
-            <p className="text-3xl font-bold text-emerald-950">{item.label}</p>
-            <p className="mt-2 text-sm leading-6 text-emerald-900/75">{item.value}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2 animate-fade-in-up">
+      <section className="grid gap-4 md:grid-cols-2">
         {modes.map((mode) => (
           <article
             key={mode.title}
-            className="group rounded-[1.75rem] border border-emerald-900/10 bg-white/90 p-6 shadow-[0_16px_46px_rgba(16,84,48,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_54px_rgba(16,84,48,0.12)]"
+            className="rounded-[1.75rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_46px_rgba(16,84,48,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_54px_rgba(16,84,48,0.12)]"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Tryby planowania</p>
             <h2 className="mt-3 text-3xl font-bold text-emerald-950">{mode.title}</h2>
@@ -165,107 +162,121 @@ export default async function Home() {
         ))}
       </section>
 
-      <section className="grid gap-6 rounded-[2rem] border border-emerald-900/10 bg-white/92 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)] lg:grid-cols-[0.9fr_1.1fr] animate-fade-in-up">
-        <article>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Jak to działa</p>
-          <h3 className="mt-3 text-3xl font-bold text-emerald-950">Prosty flow, ale z premium odczuciem.</h3>
-          <ol className="mt-5 space-y-3">
-            {steps.map((step, index) => (
-              <li
-                key={step}
-                className="rounded-2xl border border-emerald-900/8 bg-emerald-50/70 px-4 py-3 text-sm leading-7 text-emerald-900 transition duration-200 hover:bg-emerald-50"
-              >
-                <span className="font-semibold text-emerald-800">Krok {index + 1}. </span>
-                {step}
-              </li>
-            ))}
-          </ol>
-        </article>
-
-        <article className="grid gap-4">
-          <div className="rounded-[1.75rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.95),rgba(225,243,231,0.88))] p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Dlaczego to działa</p>
-            <h3 className="mt-2 text-2xl font-bold text-emerald-950">Ranking, wizualna wiarygodność i lokalny kontekst.</h3>
-            <p className="mt-3 text-sm leading-7 text-emerald-900/78">
-              Strona nie wygląda jak prototyp. Mamy dużo powietrza, mocne CTA, zdjęcia, lokalne opisy i wyniki dopasowane
-              do kierunku, np. Malagi.
-            </p>
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kierunki</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Najmocniejsze destination huby na start</h2>
           </div>
+          <Link href="/kierunki" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+            Zobacz wszystkie kierunki
+          </Link>
+        </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {featuredDestinations.map((destination) => {
-              if (!destination) return null;
-              const story = getDestinationStory(destination);
-              return (
-                <Link
-                  key={destination.id}
-                  href={`/planner?mode=standard&q=${encodeURIComponent(destination.city)}`}
-                  className="group overflow-hidden rounded-[1.5rem] border border-emerald-900/10 bg-white shadow-[0_14px_38px_rgba(16,84,48,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(16,84,48,0.14)]"
-                >
-                  <div className="relative h-40">
-                    <Image
-                      src={story.heroImage}
-                      alt={story.name}
-                      fill
-                      sizes="(max-width: 640px) 100vw, 50vw"
-                      className="object-cover transition duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{story.tagline}</p>
-                    <h4 className="mt-2 text-xl font-bold text-emerald-950">{story.name}</h4>
-                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-emerald-900/76">{story.summary}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {story.bestFor.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </article>
+        <div className="mt-6 grid gap-5 lg:grid-cols-3">
+          {featuredDestinations.map((item) => (
+            <DestinationGuideCard
+              key={item.destination.slug}
+              destination={item.destination}
+              media={item.media}
+              summary={item.story.summary}
+            />
+          ))}
+        </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1fr_1fr] animate-fade-in-up">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/92 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Inspiracje podróżnicze</p>
-          <h3 className="mt-3 text-3xl font-bold text-emerald-950">Gotowe scenariusze, które sprzedają się także w SEO.</h3>
-          <div className="mt-5 grid gap-3">
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Inspiracje i przewodniki</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">
+              Tresci, ktore wygladaja jak prawdziwy serwis travelowy.
+            </h2>
+          </div>
+          <Link href="/inspiracje" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+            Wszystkie artykuly
+          </Link>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {featuredArticles.map((article) => (
+            <EditorialArticleCard key={article.slug} article={article} compact />
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Dlaczego to wyglada wiarygodnie</p>
+          <h2 className="mt-3 font-display text-4xl text-emerald-950">Serwis ma warstwe tresciowa, nie tylko formularz.</h2>
+          <div className="mt-5 space-y-3 text-sm leading-7 text-emerald-900/78">
+            <p>Kierunki dostaja osobne strony z budzetem orientacyjnym, sekcjami praktycznymi, FAQ i linkowaniem do powiazanych tresci.</p>
+            <p>Artykuly nie sa pustymi landingami. Kazdy scenariusz ma opis, praktyczne wskazowki, powiazane kierunki i przejscie do planera.</p>
+            <p>Stopka, strony zaufania, disclosure, mapa serwisu i wewnetrzne linkowanie wzmacniaja obraz publicznego projektu travelowego.</p>
+          </div>
+        </article>
+
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-emerald-950 p-6 text-white shadow-[0_18px_50px_rgba(8,40,24,0.2)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Scenariusze dla afiliacji</p>
+          <h2 className="mt-3 font-display text-4xl">Frazy, ktore naturalnie prowadza do decyzji wyjazdowej.</h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {[
-              "Weekend w Rzymie do 2000 zł",
-              "4 dni w Barcelonie z plażą i zwiedzaniem",
-              "Ciepłe kraje bez wizy do 2500 zł",
-              "Gdzie polecieć zimą tanio z Polski",
+              "cieple kraje bez wizy",
+              "city break do 2000 zl",
+              "gdzie poleciec zima z Polski",
+              "kierunki z plaza i zwiedzaniem",
             ].map((item) => (
-              <div key={item} className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm font-medium text-emerald-950">
+              <div key={item} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-white/88">
                 {item}
               </div>
             ))}
           </div>
         </article>
+      </section>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-emerald-950 p-6 text-white shadow-[0_18px_50px_rgba(8,40,24,0.2)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200">Premium wygląd i odczucie</p>
-          <h3 className="mt-3 text-3xl font-bold">Zielony motyw, większa głębia, lepsza hierarchia.</h3>
-          <p className="mt-3 text-sm leading-7 text-emerald-50/82">
-            Używamy większych sekcji, subtelnych cieni, mocniejszych CTA, eleganckich kart i animacji wejścia. Dzięki
-            temu strona wygląda bardziej jak produkt z rynku travel-tech niż zwykły landing.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {["video hero", "lokalne zdjęcia", "rekomendacje kierunkowe", "mocne CTA"].map((tag) => (
-              <span key={tag} className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
-                {tag}
-              </span>
-            ))}
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Sciezki startowe</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Wejdz do serwisu od potrzeby, nie od losowej podstrony.</h2>
           </div>
-        </article>
+          <Link href="/mapa-serwisu" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+            Otworz mape serwisu
+          </Link>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          {[
+            {
+              title: "Najpierw czytam",
+              text: "Dla osob, ktore chca najpierw zrozumiec kierunki, budzet i format wyjazdu przed kliknieciem w wyniki.",
+              href: "/inspiracje",
+              cta: "Przejdz do inspiracji",
+            },
+            {
+              title: "Najpierw wybieram kierunek",
+              text: "Dla osob, ktore porownuja konkretne miasta i chca wejsc w przewodnik, FAQ oraz dalsze wyszukiwanie.",
+              href: "/kierunki",
+              cta: "Przejdz do kierunkow",
+            },
+            {
+              title: "Najpierw planuje",
+              text: "Dla osob, ktore od razu chca przejsc do planera i zaczac od potrzeby zapisanej naturalnym jezykiem.",
+              href: "/planner?mode=discovery",
+              cta: "Uruchom planer",
+            },
+          ].map((item) => (
+            <article key={item.title} className="rounded-[1.75rem] border border-emerald-900/10 bg-emerald-50/75 p-5">
+              <h3 className="text-2xl font-bold text-emerald-950">{item.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-emerald-900/78">{item.text}</p>
+              <Link
+                href={item.href}
+                className="mt-5 inline-flex rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+              >
+                {item.cta}
+              </Link>
+            </article>
+          ))}
+        </div>
       </section>
     </main>
   );

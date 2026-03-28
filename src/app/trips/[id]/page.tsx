@@ -2,17 +2,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
 import { ActivityOffersPanel } from "@/components/mvp/activity-offers-panel";
-import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
+import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
+import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
 import { TravelPackagePanel } from "@/components/mvp/travel-package-panel";
 import { getDestinationMedia } from "@/lib/mvp/commercial-assets";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
+import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { getTrip } from "@/lib/mvp/service";
-import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 
 interface TripDetailsPageProps {
   params: Promise<{ id: string }>;
@@ -65,12 +65,12 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)] animate-fade-in-up">
+      <section className="animate-fade-in-up overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
         <div className="relative h-72 sm:h-96">
           <Image src={resolvedMedia.heroImage} alt={story.name} fill priority className="object-cover" sizes="100vw" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,16,10,0.06)_0%,rgba(6,16,10,0.7)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">Plan szczegĂłĹ‚owy</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">Plan szczegolowy</p>
             <h1 className="mt-2 text-4xl font-bold">
               {trip.city}, {trip.country}
             </h1>
@@ -121,12 +121,12 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
 
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] animate-fade-in-up">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Co zobaczyÄ‡</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Co zobaczyc</p>
           <h2 className="mt-2 text-2xl font-bold text-emerald-950">Lokalne atrakcje i plan dnia</h2>
           <div className="mt-4 grid gap-3">
             {trip.plan.map((day) => (
               <article key={day.day} className="rounded-2xl bg-emerald-50/70 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">DzieĹ„ {day.day}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Dzien {day.day}</p>
                 <h3 className="mt-1 text-sm font-bold text-emerald-950">{day.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-emerald-900/82">{day.description}</p>
               </article>
@@ -139,7 +139,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Dlaczego warto</p>
             <ul className="mt-3 space-y-2 text-sm leading-7 text-emerald-900/82">
               {story.highlights.map((highlight) => (
-                <li key={highlight}>â€˘ {highlight}</li>
+                <li key={highlight}>• {highlight}</li>
               ))}
             </ul>
           </div>
@@ -155,15 +155,15 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
             </div>
             <ul className="mt-4 space-y-2 text-sm leading-7 text-emerald-900/82">
               {story.foodSpots.map((spot) => (
-                <li key={spot}>â€˘ {spot}</li>
+                <li key={spot}>• {spot}</li>
               ))}
             </ul>
           </div>
         </article>
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)] animate-fade-in-up">
-        <h2 className="text-xl font-bold text-emerald-950">PrzejdĹş do partnerĂłw</h2>
+      <section className="animate-fade-in-up rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+        <h2 className="text-xl font-bold text-emerald-950">Przejdz do partnerow</h2>
         <div className="mt-4 flex flex-wrap gap-2">
           <a href={flightLink} target="_blank" rel="noreferrer" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800">
             Loty
@@ -175,12 +175,10 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
             Atrakcje
           </a>
           <Link href="/planner" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-            WrĂłÄ‡ do planera
+            Wroc do planera
           </Link>
         </div>
       </section>
     </main>
   );
 }
-
-
