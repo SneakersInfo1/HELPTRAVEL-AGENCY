@@ -4,7 +4,7 @@ import Script from "next/script";
 
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
-import { getEditorialArticles, getEditorialCategories } from "@/lib/mvp/publisher-content";
+import { getEditorialArticles, getEditorialCategories, getLatestEditorialArticles } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 export const metadata: Metadata = {
@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 
 export default function InspirationsIndexPage() {
   const articles = getEditorialArticles();
+  const latestArticles = getLatestEditorialArticles(6);
   const categories = getEditorialCategories();
   const structuredData = {
     "@context": "https://schema.org",
@@ -75,7 +76,7 @@ export default function InspirationsIndexPage() {
       />
 
       <section className="grid gap-4 lg:grid-cols-2">
-        {articles.map((article) => (
+        {latestArticles.map((article) => (
           <EditorialArticleCard key={article.slug} article={article} />
         ))}
       </section>

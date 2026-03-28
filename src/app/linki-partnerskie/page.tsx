@@ -59,7 +59,7 @@ export default function AffiliateDisclosurePage() {
           <div className="rounded-2xl bg-white px-4 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Planer i wyniki</p>
             <p className="mt-2 text-sm leading-7 text-emerald-900/78">
-              Planer porzadkuje scenariusz i prowadzi do partnerow, ale nie zastępuje finalnej weryfikacji u zewnetrznego dostawcy.
+              Planer porzadkuje scenariusz i prowadzi do partnerow, ale nie zastepuje finalnej weryfikacji u zewnetrznego dostawcy.
             </p>
           </div>
           <div className="rounded-2xl bg-white px-4 py-4">
@@ -73,3 +73,4 @@ export default function AffiliateDisclosurePage() {
     </main>
   );
 }
+

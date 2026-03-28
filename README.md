@@ -34,6 +34,10 @@ Projekt jest zbudowany w Next.js i przygotowany pod publiczny serwis travelowy z
 - `/polityka-prywatnosci`
 - `/regulamin`
 - `/linki-partnerskie`
+- `/dla-partnerow`
+- `/standard-redakcyjny`
+- `/mapa-serwisu`
+- `/jak-pracujemy`
 
 ## Wymagane env
 
@@ -42,6 +46,7 @@ Podstawowe:
 - `DATABASE_URL`
 - `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_CONTACT_EMAIL` - opcjonalne, ale zalecane dla publicznej strony kontaktowej
+- `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` - opcjonalne, jezeli chcesz podpiac Google Search Console
 
 Integracje:
 
@@ -95,6 +100,15 @@ pnpm build
 3. Dodaj wszystkie env-y z `.env.example`.
 4. Ustaw `NEXT_PUBLIC_SITE_URL` na produkcyjny adres Vercela lub wlasna domene.
 5. Zrob deploy.
+
+## Search Console
+
+Jesli chcesz przyspieszyc indeksacje:
+
+1. Dodaj witryne w Google Search Console.
+2. Pobierz kod weryfikacyjny typu `google-site-verification`.
+3. Wklej go do `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` w `.env.local` i w Vercelu.
+4. Po deployu przejdz do Search Console i wyślij sitemapę: `/sitemap.xml`.
 
 ## Uwagi produktowe
 

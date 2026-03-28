@@ -8,6 +8,7 @@ import { getDestinationStory, getVideoHeroSource } from "@/lib/mvp/destination-c
 import {
   getEditorialArticles,
   getEditorialCategories,
+  getLatestEditorialArticles,
   getPublishedDestinations,
 } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -39,6 +40,7 @@ const trustPoints = [
 export default async function Home() {
   const categories = getEditorialCategories();
   const articles = getEditorialArticles();
+  const latestArticles = getLatestEditorialArticles(4);
   const destinations = getPublishedDestinations();
   const featuredArticles = articles.slice(0, 6);
   const articleCount = articles.length;
@@ -200,6 +202,23 @@ export default async function Home() {
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           {featuredArticles.map((article) => (
+            <EditorialArticleCard key={article.slug} article={article} compact />
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Ostatnie publikacje</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Serwis jest aktualizowany tresciowo, nie tylko technologicznie.</h2>
+          </div>
+          <Link href="/inspiracje" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+            Przejdz do biblioteki artykulow
+          </Link>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {latestArticles.map((article) => (
             <EditorialArticleCard key={article.slug} article={article} compact />
           ))}
         </div>

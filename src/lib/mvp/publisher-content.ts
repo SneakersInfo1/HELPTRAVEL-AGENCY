@@ -1710,6 +1710,10 @@ export function getEditorialArticles(): EditorialArticle[] {
   return editorialArticles;
 }
 
+export function getLatestEditorialArticles(limit = 6): EditorialArticle[] {
+  return [...editorialArticles].slice(-limit).reverse();
+}
+
 export function getEditorialArticleBySlug(slug: string): EditorialArticle | undefined {
   return editorialArticles.find((article) => article.slug === slug);
 }

@@ -6,6 +6,7 @@ import "./globals.css";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 const siteUrl = getSiteUrl();
+const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 
 const displayFont = Cormorant_Garamond({
   variable: "--font-display",
@@ -39,6 +40,7 @@ export const metadata: Metadata = {
     title: "HelpTravel Agency",
     description: "Planer podrozy, kierunki, inspiracje i przewodniki dla city breakow oraz krotkich wyjazdow z Polski.",
   },
+  verification: googleVerification ? { google: googleVerification } : undefined,
 };
 
 const navItems = [
