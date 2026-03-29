@@ -15,7 +15,7 @@ export function DestinationGuideCard({
 }) {
   return (
     <article className="group overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white shadow-[0_16px_40px_rgba(16,84,48,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(16,84,48,0.14)]">
-      <div className="relative h-56">
+      <Link href={`/kierunki/${destination.slug}`} className="relative block h-56">
         <Image
           src={media.heroImage}
           alt={`${destination.city}, ${destination.country}`}
@@ -27,8 +27,11 @@ export function DestinationGuideCard({
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">{destination.country}</p>
           <h3 className="mt-2 font-display text-3xl leading-none">{destination.city}</h3>
+          <span className="mt-4 inline-flex rounded-full bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+            Otworz przewodnik
+          </span>
         </div>
-      </div>
+      </Link>
 
       <div className="p-5">
         <p className="line-clamp-3 text-sm leading-7 text-emerald-900/78">{summary}</p>

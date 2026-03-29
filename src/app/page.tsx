@@ -37,6 +37,29 @@ const trustPoints = [
   "polskie tresci z naciskiem na praktyczna wartosc",
 ];
 
+const starterRoutes = [
+  {
+    title: "Cieple kierunki",
+    description: "Szybkie wejscie dla osob szukajacych slonca, plaz i prostych decyzji na start.",
+    href: "/cieple-kierunki",
+  },
+  {
+    title: "Bez wizy",
+    description: "Kierunki, ktore sa wygodne dla osob planujacych wyjazd bez dodatkowych formalnosci.",
+    href: "/bez-wizy",
+  },
+  {
+    title: "City breaki",
+    description: "Pomysly na krotkie wyjazdy z Polski, gdy chcesz zobaczyc duzo w 3-5 dni.",
+    href: "/city-breaki",
+  },
+  {
+    title: "Weekendowe wyjazdy",
+    description: "Szybkie scenariusze na krotki urlop bez przepalania budzetu i czasu.",
+    href: "/weekendowe-wyjazdy",
+  },
+];
+
 export default async function Home() {
   const categories = getEditorialCategories();
   const articles = getEditorialArticles();
@@ -162,6 +185,35 @@ export default async function Home() {
             </Link>
           </article>
         ))}
+      </section>
+
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Szybki start</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Najprostsze sciezki do klikniecia i dalszego czytania.</h2>
+          </div>
+          <Link href="/mapa-serwisu" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+            Otworz mape serwisu
+          </Link>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {starterRoutes.map((route) => (
+            <Link
+              key={route.href}
+              href={route.href}
+              className="group rounded-[1.75rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(240,250,243,0.98),rgba(232,246,236,0.94))] p-5 shadow-[0_16px_42px_rgba(16,84,48,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-[0_22px_54px_rgba(16,84,48,0.12)]"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kliknij i przejdz</p>
+              <h3 className="mt-3 text-2xl font-bold text-emerald-950">{route.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-emerald-900/78">{route.description}</p>
+              <span className="mt-5 inline-flex rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition group-hover:bg-emerald-800">
+                Otworz sekcje
+              </span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
