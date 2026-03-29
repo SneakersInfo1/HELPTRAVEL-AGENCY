@@ -10,6 +10,16 @@ import { getSiteUrl } from "@/lib/mvp/site";
 export const metadata: Metadata = {
   title: "Inspiracje",
   description: "Przewodniki, pomysly na wyjazdy, city breaki i praktyczne scenariusze dla polskiego odbiorcy.",
+  alternates: {
+    canonical: "/inspiracje",
+  },
+  openGraph: {
+    title: "Inspiracje i przewodniki - HelpTravel",
+    description:
+      "Praktyczne scenariusze wyjazdow, porownania kierunkow i artykuly pomagajace przejsc do konkretnego planu.",
+    url: `${getSiteUrl()}/inspiracje`,
+    type: "website",
+  },
 };
 
 export default function InspirationsIndexPage() {

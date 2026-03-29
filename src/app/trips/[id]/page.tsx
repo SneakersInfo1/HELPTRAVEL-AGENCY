@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,6 +14,18 @@ import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { getTrip } from "@/lib/mvp/service";
+
+export const metadata: Metadata = {
+  title: "Plan podrozy",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
+};
 
 interface TripDetailsPageProps {
   params: Promise<{ id: string }>;

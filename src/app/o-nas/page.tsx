@@ -4,6 +4,9 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "O nas",
   description: "Poznaj HelpTravel - polski serwis do odkrywania kierunkow, planowania wyjazdow i przechodzenia do ofert partnerow.",
+  alternates: {
+    canonical: "/o-nas",
+  },
 };
 
 const pillars = [

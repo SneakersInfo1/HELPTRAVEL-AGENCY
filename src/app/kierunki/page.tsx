@@ -11,6 +11,16 @@ import { getSiteUrl } from "@/lib/mvp/site";
 export const metadata: Metadata = {
   title: "Kierunki",
   description: "Katalog kierunkow city break i krotkich wyjazdow z Polski: opisy, budzety, atrakcje i przejscie do planera.",
+  alternates: {
+    canonical: "/kierunki",
+  },
+  openGraph: {
+    title: "Kierunki - HelpTravel",
+    description:
+      "Katalog kierunkow pod city break i krotkie wyjazdy z Polski. Praktyczne opisy, FAQ i przejscie do planera.",
+    url: `${getSiteUrl()}/kierunki`,
+    type: "website",
+  },
 };
 
 export default async function DestinationsIndexPage() {
@@ -81,7 +91,7 @@ export default async function DestinationsIndexPage() {
       <EditorialMetaBar
         eyebrow="Warstwa publishera"
         title="Katalog kierunkow budowany jako indeksowalny hub z przejsciem do planera"
-        items={[`${destinations.length} kierunkow`, `${categories.length} sciezek tematycznych`, "treści dla polskiego odbiorcy"]}
+        items={[`${destinations.length} kierunkow`, `${categories.length} sciezek tematycznych`, "tresci dla polskiego odbiorcy"]}
       />
 
       <section className="grid gap-5 lg:grid-cols-3">
@@ -99,3 +109,4 @@ export default async function DestinationsIndexPage() {
     </main>
   );
 }
+

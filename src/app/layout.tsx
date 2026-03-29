@@ -26,6 +26,11 @@ export const metadata: Metadata = {
     default: "HelpTravel",
     template: "%s | HelpTravel",
   },
+  alternates: {
+    types: {
+      "application/rss+xml": `${siteUrl}/feed.xml`,
+    },
+  },
   description: "Planer podrozy, kierunki, inspiracje i przewodniki dla city breakow oraz krotkich wyjazdow z Polski.",
   openGraph: {
     title: "HelpTravel",
@@ -101,6 +106,11 @@ const structuredData = {
       inLanguage: "pl-PL",
       description:
         "Planer podrozy, katalog kierunkow, inspiracje i przewodniki dla osob planujacych city breaki i krotkie wyjazdy z Polski.",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${siteUrl}/planner?mode=standard&q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
     },
     {
       "@type": "Organization",

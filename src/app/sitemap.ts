@@ -9,6 +9,7 @@ import { getSiteUrl } from "@/lib/mvp/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = getSiteUrl();
+  const baseLastModified = new Date("2026-03-29T00:00:00.000Z");
   const staticRoutes = [
     "",
     "/planner",
@@ -31,8 +32,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...articleRoutes].map((route) => ({
     url: `${siteUrl}${route}`,
-    lastModified: new Date(),
-    changeFrequency: route === "" ? "daily" : "weekly",
-    priority: route === "" ? 1 : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/") ? 0.8 : 0.7,
+    lastModified: baseLastModified,
+    changeFrequency: route === "" ? "daily" : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/") ? "weekly" : "monthly",
+    priority: route === "" ? 1 : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/") ? 0.8 : 0.65,
   }));
 }

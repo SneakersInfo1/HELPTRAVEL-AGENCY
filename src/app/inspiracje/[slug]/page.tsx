@@ -43,9 +43,10 @@ export async function generateMetadata({ params }: InspirationPageProps): Promis
       canonical: `/inspiracje/${article.slug}`,
     },
     openGraph: {
-    title: `${article.title} | HelpTravel`,
+      title: `${article.title} | HelpTravel`,
       description: article.description,
       url: `${getSiteUrl()}/inspiracje/${article.slug}`,
+      type: "article",
     },
   };
 }
@@ -83,6 +84,9 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
         description: article.description,
         mainEntityOfPage: `${getSiteUrl()}/inspiracje/${article.slug}`,
         inLanguage: "pl-PL",
+        articleSection: categoryLabels,
+        keywords: [...article.categorySlugs, ...article.destinationSlugs].join(", "),
+        about: article.destinationSlugs.map((destinationSlug) => destinationSlug.replace(/-/g, " ")),
       },
       {
         "@type": "FAQPage",
@@ -124,9 +128,9 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
       </section>
 
       <EditorialMetaBar
-        eyebrow="Artykuł redakcyjny"
-        title="Scenariusz wyjazdu przygotowany jako treść wydawnicza i punkt wejścia do planera"
-        items={[...categoryLabels, `${article.destinationSlugs.length} powiązanych kierunków`]}
+        eyebrow="Artykul redakcyjny"
+        title="Scenariusz wyjazdu przygotowany jako tresc wydawnicza i punkt wejscia do planera"
+        items={[...categoryLabels, `${article.destinationSlugs.length} powiazanych kierunkow`]}
       />
 
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
@@ -265,3 +269,4 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
     </main>
   );
 }
+

@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: "Standard redakcyjny",
   description:
     "Publiczny standard redakcyjny HelpTravel: jak budowane sa przewodniki, artykuly, destination huby i tresci praktyczne.",
+  alternates: {
+    canonical: "/standard-redakcyjny",
+  },
 };
 
 const standards = [
@@ -26,7 +29,7 @@ const standards = [
 ];
 
 const editorialChecklist = [
-  "czy strona odpowiada na konkretna potrzebe podróżnicza",
+  "czy strona odpowiada na konkretna potrzebe podroznicza",
   "czy czytelnik dostaje praktyczne sekcje, a nie sam naglowek i krotki akapit",
   "czy istnieje logiczne przejscie do powiazanych kierunkow, artykulow albo planera",
   "czy copy nie udaje autorytetu, ktorego projekt jeszcze nie ma",
@@ -43,8 +46,8 @@ export default function EditorialStandardPage() {
         </h1>
         <p className="mt-4 max-w-4xl text-base leading-8 text-emerald-900/78">
           To publiczna informacja o tym, jak powstaja destination huby, artykuly, kategorie i tresci praktyczne w
-        HelpTravel. Strona ma pokazywac, ze projekt rozwija sie jak prawdziwy travel publisher: z intencja,
-          procesem i odpowiedzialnoscia za jakość publicznych tresci.
+          HelpTravel. Strona ma pokazywac, ze projekt rozwija sie jak prawdziwy travel publisher: z intencja, procesem i
+          odpowiedzialnoscia za jakosc publicznych tresci.
         </p>
       </section>
 

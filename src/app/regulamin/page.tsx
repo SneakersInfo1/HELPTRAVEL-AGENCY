@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Regulamin",
   description: "Podstawowe zasady korzystania z serwisu HelpTravel.",
+  alternates: {
+    canonical: "/regulamin",
+  },
 };
 
 const rules = [

@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Linki partnerskie",
   description: "Informacja o linkach partnerskich i przekierowaniach do zewnetrznych partnerow rezerwacyjnych.",
+  alternates: {
+    canonical: "/linki-partnerskie",
+  },
 };
 
 export default function AffiliateDisclosurePage() {

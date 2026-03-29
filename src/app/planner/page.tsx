@@ -1,4 +1,15 @@
+import type { Metadata } from "next";
+
 import { PlannerClient } from "@/components/mvp/planner-client";
+
+export const metadata: Metadata = {
+  title: "Planer wyjazdu",
+  description:
+    "Wyszukaj kierunek po potrzebie albo wpisz konkretne miasto. Planer porzadkuje scenariusz i prowadzi do realnych wynikow.",
+  alternates: {
+    canonical: "/planner",
+  },
+};
 
 interface PlannerPageProps {
   searchParams: Promise<{
@@ -14,4 +25,3 @@ export default async function PlannerPage({ searchParams }: PlannerPageProps) {
 
   return <PlannerClient initialMode={mode} initialQuery={query} />;
 }
-

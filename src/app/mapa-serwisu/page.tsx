@@ -10,6 +10,9 @@ import {
 export const metadata: Metadata = {
   title: "Mapa serwisu",
   description: "Przeglad najwazniejszych sekcji, kierunkow, przewodnikow i stron zaufania w HelpTravel.",
+  alternates: {
+    canonical: "/mapa-serwisu",
+  },
 };
 
 export default function SiteMapPage() {

@@ -90,7 +90,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
 
       <EditorialMetaBar
         eyebrow="Kolekcja redakcyjna"
-        title="Tematyczny hub laczacy artykuły, kierunki i przejscie do planera"
+        title="Tematyczny hub laczacy artykuly, kierunki i przejscie do planera"
         items={[`${articles.length} artykulow`, `${destinations.filter(Boolean).length} kierunkow`, "aktualizowany hub tematyczny"]}
       />
 
@@ -127,3 +127,4 @@ export async function CategoryPage({ slug }: { slug: string }) {
     </main>
   );
 }
+

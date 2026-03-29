@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -12,6 +13,25 @@ import {
   getPublishedDestinations,
 } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
+import { getSiteUrl } from "@/lib/mvp/site";
+
+const siteUrl = getSiteUrl();
+
+export const metadata: Metadata = {
+  title: "HelpTravel - planer i przewodniki podrozy",
+  description:
+    "Planer podrozy, katalog kierunkow, inspiracje i praktyczne przewodniki dla city breakow oraz krotkich wyjazdow z Polski.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "HelpTravel - planer i przewodniki podrozy",
+    description:
+      "Odkrywaj kierunki, czytaj przewodniki i planuj wyjazd w jednym miejscu. Serwis travelowy dla polskiego odbiorcy.",
+    url: siteUrl,
+    type: "website",
+  },
+};
 
 const modes = [
   {

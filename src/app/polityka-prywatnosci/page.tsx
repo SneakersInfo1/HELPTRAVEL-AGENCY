@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Polityka prywatnosci",
   description: "Informacje o danych, analityce, plikach cookie i partnerach zewnetrznych w HelpTravel.",
+  alternates: {
+    canonical: "/polityka-prywatnosci",
+  },
 };
 
 const privacySections = [

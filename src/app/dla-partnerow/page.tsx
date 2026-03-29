@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "Dla partnerow",
   description:
     "Media kit i publiczna strona dla partnerow: model dzialania, typy ekspozycji, content inventory i punkt kontaktu.",
+  alternates: {
+    canonical: "/dla-partnerow",
+  },
 };
 
 const audienceCards = [
@@ -19,11 +22,11 @@ const audienceCards = [
   },
   {
     title: "Intencja zakupu",
-    body: "Treści i planner prowadza uzytkownika od inspiracji do konkretu. To nie jest ruch przypadkowy, tylko wejscia o wysokiej intencji.",
+    body: "Tresci i planner prowadza uzytkownika od inspiracji do konkretu. To nie jest ruch przypadkowy, tylko wejscia o wysokiej intencji.",
   },
   {
     title: "Format publishera",
-    body: "Strona laczy destination huby, przewodniki, kategorie i strony zaufania. Dzięki temu wyglada jak serwis travelowy z redakcja, a nie tylko narzedzie.",
+    body: "Strona laczy destination huby, przewodniki, kategorie i strony zaufania. Dzieki temu wyglada jak serwis travelowy z redakcja, a nie tylko narzedzie.",
   },
 ];
 
@@ -36,7 +39,7 @@ const placementFormats = [
   {
     title: "Artykul inspiracyjny",
     body:
-      "Dla fraz typu 'gdzie poleciec zimą z Polski' albo 'city break do 2000 zl'. Artykul buduje kontekst i otwiera sciezke do dalszego wyboru.",
+      "Dla fraz typu 'gdzie poleciec zima z Polski' albo 'city break do 2000 zl'. Artykul buduje kontekst i otwiera sciezke do dalszego wyboru.",
   },
   {
     title: "Kategoria tematyczna",
@@ -58,7 +61,7 @@ const reviewSignals = [
 ];
 
 const partnerBenefits = [
-  "serwis jest zbudowany jako publisher i planera jednoczesnie",
+  "serwis jest zbudowany jako publisher i planer jednoczesnie",
   "uzytkownik dostaje kontekst przed kliknieciem w oferte",
   "linki partnerskie sa opisane publicznie i uczciwie",
   "content jest po polsku i dopasowany do polskiego rynku",
@@ -80,9 +83,7 @@ export default function PartnersPage() {
               Travel publisher z plannerem, contentem i uczciwym flow do partnerow
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-              HelpTravel laczy publiczny serwis travelowy, destination huby i planer wyjazdow. Projekt jest
-              budowany tak, by czytelnik najpierw dostal wartosc redakcyjna, potem porownanie, a na koncu uczciwe
-              przejscie do partnera zewnetrznego. Nie pokazujemy fikcyjnego ruchu ani nie udajemy pelnego booking engine.
+              HelpTravel laczy publiczny serwis travelowy, destination huby i planer wyjazdow. Projekt jest budowany tak, by czytelnik najpierw dostal wartosc redakcyjna, potem porownanie, a na koncu uczciwe przejscie do partnera zewnetrznego. Nie pokazujemy fikcyjnego ruchu ani nie udajemy pelnego booking engine.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
@@ -184,9 +185,9 @@ export default function PartnersPage() {
         </article>
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(7,30,18,0.96),rgba(8,40,24,0.92))] p-6 text-white shadow-[0_20px_54px_rgba(8,40,24,0.18)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Jak wygląda wspolpraca</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Jak wyglada wspolpraca</p>
           <div className="mt-4 space-y-3 text-sm leading-7 text-white/82">
-            <p>1. Dobieramy format kampanii do struktury serwisu i typu intencji użytkownika.</p>
+            <p>1. Dobieramy format kampanii do struktury serwisu i typu intencji uzytkownika.</p>
             <p>2. Ustalamy najlepsze miejsca ekspozycji: content, hub, planner albo kierunek.</p>
             <p>3. Weryfikujemy feed, deeplinki lub model przekierowania.</p>
             <p>4. Zachowujemy jawne oznaczenia partnerstwa i przejrzysty flow dla czytelnika.</p>
@@ -233,3 +234,4 @@ export default function PartnersPage() {
     </main>
   );
 }
+

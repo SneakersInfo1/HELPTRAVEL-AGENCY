@@ -1,4 +1,18 @@
+import type { Metadata } from "next";
+
 import { getAnalyticsSummary } from "@/lib/mvp/analytics";
+
+export const metadata: Metadata = {
+  title: "Analityka",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
+};
 
 export default async function AnalyticsPage() {
   const summary = await getAnalyticsSummary();

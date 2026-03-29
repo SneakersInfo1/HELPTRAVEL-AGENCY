@@ -4,6 +4,9 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Jak pracujemy",
   description: "Jak HelpTravel buduje przewodniki, strony kierunkowe i publiczna warstwe travel contentu.",
+  alternates: {
+    canonical: "/jak-pracujemy",
+  },
 };
 
 const principles = [

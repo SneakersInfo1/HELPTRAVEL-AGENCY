@@ -75,9 +75,10 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
       canonical: `/kierunki/${guide.destination.slug}`,
     },
     openGraph: {
-    title: `${guide.destination.city} - przewodnik HelpTravel`,
+      title: `${guide.destination.city} - przewodnik HelpTravel`,
       description: guide.overview,
       url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
+      type: "article",
     },
   };
 }
@@ -126,6 +127,14 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           },
         })),
       },
+      {
+        "@type": "Article",
+        headline: `${guide.destination.city} - przewodnik`,
+        description: guide.overview,
+        inLanguage: "pl-PL",
+        mainEntityOfPage: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
+        about: [guide.destination.city, guide.destination.country, "city break", "planowanie podrozy"],
+      },
     ],
   };
 
@@ -162,7 +171,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       </section>
 
       <EditorialMetaBar
-        eyebrow="Sygnał redakcyjny"
+        eyebrow="Sygnal redakcyjny"
         title="Przewodnik kierunkowy przygotowany pod realne planowanie wyjazdu"
         items={[
           `${guide.destination.city} z Polski`,
@@ -352,3 +361,4 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     </main>
   );
 }
+
