@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Jak pracujemy",
-  description: "Jak HelpTravel Agency buduje przewodniki, strony kierunkowe i publiczna warstwe travel contentu.",
+  description: "Jak HelpTravel buduje przewodniki, strony kierunkowe i publiczna warstwe travel contentu.",
 };
 
 const principles = [
@@ -35,7 +35,7 @@ export default function HowWeWorkPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Metodologia</p>
         <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Jak pracujemy nad tresciami i produktem</h1>
         <p className="mt-4 text-base leading-8 text-emerald-900/78">
-          HelpTravel Agency ma byc jednoczesnie planeriem wyjazdow i publicznym serwisem travelowym. Ta strona pokazuje,
+          HelpTravel ma byc jednoczesnie planeriem wyjazdow i publicznym serwisem travelowym. Ta strona pokazuje,
           jak podchodzimy do budowy contentu, kierunkow i sciezek, ktore prowadza czytelnika od inspiracji do realnej decyzji.
         </p>
       </section>

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "O nas",
-  description: "Poznaj HelpTravel Agency - polski serwis do odkrywania kierunkow, planowania wyjazdow i przechodzenia do ofert partnerow.",
+  description: "Poznaj HelpTravel - polski serwis do odkrywania kierunkow, planowania wyjazdow i przechodzenia do ofert partnerow.",
 };
 
 const pillars = [
@@ -26,9 +26,9 @@ export default function AboutPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">O marce</p>
-        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">HelpTravel Agency</h1>
+        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">HelpTravel</h1>
         <p className="mt-4 text-base leading-8 text-emerald-900/78">
-          HelpTravel Agency laczy dwie warstwy: praktyczny planer wyjazdow i publiczny serwis travelowy z tresciami o
+          HelpTravel laczy dwie warstwy: praktyczny planer wyjazdow i publiczny serwis travelowy z tresciami o
           kierunkach, scenariuszach wyjazdow i city breakach. Celem projektu jest pomagac w szybszym wyborze kierunku i
           prowadzeniu do sensownych, partnerskich ofert rezerwacyjnych.
         </p>

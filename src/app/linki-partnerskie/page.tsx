@@ -21,7 +21,7 @@ export default function AffiliateDisclosurePage() {
             wplywa na cene oferty, ale moze oznaczac, ze serwis otrzyma prowizje, jesli partner przewiduje taki model.
           </p>
           <p>
-            HelpTravel Agency nie deklaruje fikcyjnych partnerstw, ruchu ani wynikow. Linki partnerskie sa traktowane jako
+            HelpTravel nie deklaruje fikcyjnych partnerstw, ruchu ani wynikow. Linki partnerskie sa traktowane jako
             jeden z modeli monetyzacji serwisu i sa opisywane otwarcie.
           </p>
         </div>

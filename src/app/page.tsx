@@ -72,7 +72,7 @@ export default async function Home() {
               Odkrywaj kierunki, czytaj przewodniki i planuj wyjazd w jednym miejscu.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-emerald-50/82 sm:text-lg">
-              HelpTravel Agency to hybryda travelowego serwisu wydawniczego i planera: katalog kierunkow, praktyczne
+              HelpTravel to hybryda travelowego serwisu wydawniczego i planera: katalog kierunkow, praktyczne
               inspiracje, city breaki, cieple wyjazdy i flow prowadzacy do realnego wyszukiwania oraz partnerow zewnetrznych.
             </p>
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Polityka prywatnosci",
-  description: "Informacje o danych, analityce, plikach cookie i partnerach zewnetrznych w HelpTravel Agency.",
+  description: "Informacje o danych, analityce, plikach cookie i partnerach zewnetrznych w HelpTravel.",
 };
 
 const privacySections = [
@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Prywatnosc</p>
         <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Polityka prywatnosci</h1>
         <p className="mt-4 text-base leading-8 text-emerald-900/78">
-          Ta strona opisuje podstawowe zasady przetwarzania danych w publicznym serwisie HelpTravel Agency. Dokument ma
+          Ta strona opisuje podstawowe zasady przetwarzania danych w publicznym serwisie HelpTravel. Dokument ma
           charakter informacyjny i powinien zostac zaktualizowany po wdrozeniu dodatkowych narzedzi, takich jak formularz
           kontaktowy, newsletter albo rozszerzona analityka marketingowa.
         </p>

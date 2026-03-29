@@ -68,7 +68,7 @@ export default function PartnersPage() {
   const destinations = getPublishedDestinations();
   const articles = getEditorialArticles();
   const categories = getEditorialCategories();
-  const emailHref = contactEmail ? `mailto:${contactEmail}?subject=Wspolpraca%20HelpTravel%20Agency` : "/kontakt";
+  const emailHref = contactEmail ? `mailto:${contactEmail}?subject=Wspolpraca%20HelpTravel` : "/kontakt";
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -80,7 +80,7 @@ export default function PartnersPage() {
               Travel publisher z plannerem, contentem i uczciwym flow do partnerow
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-              HelpTravel Agency laczy publiczny serwis travelowy, destination huby i planer wyjazdow. Projekt jest
+              HelpTravel laczy publiczny serwis travelowy, destination huby i planer wyjazdow. Projekt jest
               budowany tak, by czytelnik najpierw dostal wartosc redakcyjna, potem porownanie, a na koncu uczciwe
               przejscie do partnera zewnetrznego. Nie pokazujemy fikcyjnego ruchu ani nie udajemy pelnego booking engine.
             </p>

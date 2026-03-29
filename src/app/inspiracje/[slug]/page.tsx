@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: InspirationPageProps): Promis
       canonical: `/inspiracje/${article.slug}`,
     },
     openGraph: {
-      title: `${article.title} | HelpTravel Agency`,
+    title: `${article.title} | HelpTravel`,
       description: article.description,
       url: `${getSiteUrl()}/inspiracje/${article.slug}`,
     },

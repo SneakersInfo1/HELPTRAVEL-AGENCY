@@ -4,7 +4,7 @@ const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
 
 export const metadata: Metadata = {
   title: "Kontakt",
-  description: "Kontakt w sprawie serwisu HelpTravel Agency, tresci, wspolpracy i uwag do dzialania strony.",
+  description: "Kontakt w sprawie serwisu HelpTravel, tresci, wspolpracy i uwag do dzialania strony.",
 };
 
 const contactTopics = [

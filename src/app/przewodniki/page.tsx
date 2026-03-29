@@ -7,7 +7,7 @@ const category = getEditorialCategoryBySlug("przewodniki");
 
 export const metadata: Metadata = {
   title: category?.title ?? "Przewodniki",
-  description: category?.description ?? "Przewodniki travelowe HelpTravel Agency.",
+  description: category?.description ?? "Przewodniki travelowe HelpTravel.",
 };
 
 export default function GuidesCategoryPage() {

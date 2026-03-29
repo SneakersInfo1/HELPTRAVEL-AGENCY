@@ -9,7 +9,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Mapa serwisu",
-  description: "Przeglad najwazniejszych sekcji, kierunkow, przewodnikow i stron zaufania w HelpTravel Agency.",
+  description: "Przeglad najwazniejszych sekcji, kierunkow, przewodnikow i stron zaufania w HelpTravel.",
 };
 
 export default function SiteMapPage() {

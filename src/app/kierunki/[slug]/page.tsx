@@ -75,7 +75,7 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
       canonical: `/kierunki/${guide.destination.slug}`,
     },
     openGraph: {
-      title: `${guide.destination.city} - przewodnik HelpTravel Agency`,
+    title: `${guide.destination.city} - przewodnik HelpTravel`,
       description: guide.overview,
       url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
     },

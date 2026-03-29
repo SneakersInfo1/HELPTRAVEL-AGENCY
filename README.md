@@ -1,6 +1,6 @@
-# HelpTravel Agency
+# HelpTravel
 
-HelpTravel Agency to hybryda:
+HelpTravel to hybryda:
 - travel plannera
 - katalogu kierunkow
 - serwisu z inspiracjami i przewodnikami
