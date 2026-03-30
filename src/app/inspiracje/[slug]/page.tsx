@@ -74,7 +74,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
     }),
   );
   const heroDestination = destinationCards.find(Boolean);
-  const heroImage = heroDestination?.media.heroImage ?? "/favicon.ico";
+  const heroImage = heroDestination?.media.heroImage ?? "/branding/helptravel-logo.png";
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
