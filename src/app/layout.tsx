@@ -138,21 +138,6 @@ const structuredData = {
   ],
 };
 
-function BrandMark() {
-  return (
-    <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl shadow-[0_10px_25px_rgba(21,128,61,0.24)]">
-      <Image
-        src="/branding/helptravel-mark.png"
-        alt="HelpTravel logo"
-        width={40}
-        height={40}
-        className="h-10 w-10 rounded-2xl object-cover"
-        priority
-      />
-    </span>
-  );
-}
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -165,14 +150,15 @@ export default function RootLayout({
         <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-4 sm:px-6 lg:px-8">
           <header className="sticky top-0 z-30 mt-3 rounded-[1.75rem] border border-emerald-900/10 bg-white/75 px-4 py-3 shadow-[0_14px_40px_rgba(12,58,34,0.06)] backdrop-blur-xl">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Link href="/" className="flex items-center gap-3">
-                <BrandMark />
-                <span>
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                    HelpTravel
-                  </span>
-                  <span className="block text-sm font-semibold text-emerald-950">Planer i serwis travelowy</span>
-                </span>
+              <Link href="/" className="flex items-center">
+                <Image
+                  src="/branding/helptravel-logo.png"
+                  alt="HelpTravel"
+                  width={320}
+                  height={240}
+                  className="h-auto w-[140px] sm:w-[170px]"
+                  priority
+                />
               </Link>
 
               <nav className="flex flex-wrap items-center gap-2">
