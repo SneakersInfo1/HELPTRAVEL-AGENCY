@@ -156,7 +156,7 @@ export default function RootLayout({
                   alt="HelpTravel"
                   width={320}
                   height={240}
-                  className="h-auto w-[140px] sm:w-[170px]"
+                  className="h-auto w-[118px] sm:w-[148px]"
                   priority
                 />
               </Link>
@@ -166,7 +166,7 @@ export default function RootLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="rounded-full border border-emerald-900/10 bg-white/70 px-3.5 py-1.5 text-xs font-semibold text-emerald-900 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/50 hover:bg-emerald-50"
+                    className="rounded-full border border-emerald-900/10 bg-white/70 px-4 py-2 text-sm font-semibold text-emerald-900 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/50 hover:bg-emerald-50"
                   >
                     {item.label}
                   </Link>
