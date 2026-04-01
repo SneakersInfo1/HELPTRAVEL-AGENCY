@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createId } from "./db";
+import { buildFallbackDestinationProfile, findCuratedDestination, parseDestinationHint } from "./destination-fallback";
 import { parseDiscoveryInput } from "./parser";
 import { scoreDestinations } from "./scoring";
 import type {
@@ -65,6 +66,113 @@ function toOptionView(args: {
     tradeoffs: args.tradeoffs,
     aiSummary: args.aiSummary,
     aiPlan: args.aiPlan,
+  };
+}
+
+async function runVirtualStandard(input: StandardRequestInput, sessionId: string): Promise<DiscoveryResponse> {
+  await ensureSession(sessionId);
+  await trackEvent(sessionId, {
+    eventType: "planner_started",
+    payload: { mode: "standard", source: "virtual_destination" },
+  });
+
+  const query = [
+    `lot z ${input.originCity}`,
+    `do ${input.destinationHint}`,
+    `budzet do ${input.budgetMaxPln} zl`,
+    `${input.durationDays} dni`,
+    input.style ? `styl ${input.style}` : "",
+  ]
+    .join(", ")
+    .trim();
+
+  const basicPrefs = parseDiscoveryInput({
+    query,
+    originCity: input.originCity,
+    travelers: input.travelers,
+    budgetMaxPln: input.budgetMaxPln,
+    durationMinDays: input.durationDays,
+    durationMaxDays: input.durationDays,
+    departureMonth: input.departureMonth,
+  });
+  const parsedPrefs = await refinePreferencesWithAI(query, basicPrefs);
+
+  const parsedHint = parseDestinationHint(input.destinationHint);
+  const baseDestination = buildFallbackDestinationProfile(parsedHint);
+  const destination = {
+    ...baseDestination,
+    media: await resolveDestinationMedia(baseDestination),
+  };
+
+  const requestId = createId("req");
+  await createTripRequestRecord({
+    id: requestId,
+    sessionId,
+    mode: "standard",
+    rawQuery: query,
+    normalizedPrefsJson: parsedPrefs,
+  });
+
+  const estimatedBudgetMin = clamp(Math.round(input.budgetMaxPln * 0.58), 700, input.budgetMaxPln);
+  const estimatedBudgetMax = input.budgetMaxPln;
+  const reasons = [
+    `Kierunek zostal wybrany bezposrednio przez Ciebie: ${destination.city}.`,
+    "Mozesz od razu przejsc do lotow, noclegow i pozostalych uslug wyjazdowych.",
+    "System utrzymuje ten kierunek jako glowny punkt dalszego planowania.",
+  ];
+  const tradeoffs = [
+    "Pelny ranking redakcyjny dla tego miasta moze byc jeszcze bardziej ograniczony niz dla glownych hubow serwisu.",
+  ];
+  const breakdown = {
+    budgetFit: 78,
+    weatherFit: 74,
+    travelEase: 72,
+    styleMatch: 84,
+    attractionPotential: 76,
+    safetyQuality: 72,
+    penalties: 6,
+  };
+
+  const generated = await generateSummaryAndPlan({
+    rawQuery: query,
+    preferences: parsedPrefs,
+    destination,
+    reasons,
+    tradeoffs,
+    estimatedBudgetMin,
+    estimatedBudgetMax,
+  });
+
+  const virtualOption = toOptionView({
+    itineraryResultId: `virtual_${createId("itn")}`,
+    destination,
+    rank: 1,
+    score: 84,
+    estimatedBudgetMin,
+    estimatedBudgetMax,
+    breakdown,
+    reasons,
+    tradeoffs,
+    aiSummary: generated.summary,
+    aiPlan: generated.plan,
+  });
+
+  await trackEvent(sessionId, {
+    eventType: "standard_generated",
+    payload: {
+      requestId,
+      destinationHint: input.destinationHint,
+      options: 1,
+      source: "virtual_destination",
+    },
+  });
+
+  return {
+    requestId,
+    mode: "standard",
+    rawQuery: query,
+    interpreted: parsedPrefs,
+    options: [virtualOption],
   };
 }
 
@@ -170,6 +278,12 @@ export async function runDiscovery(input: DiscoveryRequestInput, sessionId: stri
 }
 
 export async function runStandard(input: StandardRequestInput, sessionId: string): Promise<DiscoveryResponse> {
+  const parsedHint = parseDestinationHint(input.destinationHint);
+  const curatedMatch = findCuratedDestination(parsedHint);
+  if (!curatedMatch) {
+    return runVirtualStandard(input, sessionId);
+  }
+
   const query = [
     `lot z ${input.originCity}`,
     `do ${input.destinationHint}`,
@@ -194,10 +308,11 @@ export async function runStandard(input: StandardRequestInput, sessionId: string
   );
 
   const filtered = discovery.options.filter((option) => {
-    const hint = input.destinationHint.toLowerCase();
+    const hint = parsedHint.city.toLowerCase();
+    const countryHint = parsedHint.country?.toLowerCase();
     return (
       option.destination.city.toLowerCase().includes(hint) ||
-      option.destination.country.toLowerCase().includes(hint) ||
+      Boolean(countryHint && option.destination.country.toLowerCase().includes(countryHint)) ||
       hint.length < 3
     );
   });

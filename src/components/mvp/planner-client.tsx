@@ -68,7 +68,7 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
   const [durationMin, setDurationMin] = useState(4);
   const [durationMax, setDurationMax] = useState(5);
   const [originCity, setOriginCity] = useState("Warszawa");
-  const [destinationHint, setDestinationHint] = useState("Malaga");
+  const [destinationHint, setDestinationHint] = useState(initialMode === "standard" && initialQuery ? initialQuery : "Malaga");
   const [standardDays, setStandardDays] = useState(4);
   const [standardStyle, setStandardStyle] = useState("city break");
 
@@ -132,6 +132,7 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
   const selectedStory = selectedOption ? getDestinationStory(selectedOption.destination) : null;
   const destinationFocus = result?.interpreted.destinationFocus;
   const localFocus = Boolean(destinationFocus && selectedOption && selectedOption.destination.slug === destinationFocus);
+  const isVirtualSelection = Boolean(selectedOption?.itineraryResultId.startsWith("virtual_"));
 
   const buildSelectedRedirectHref = (providerKey: "flights" | "stays" | "attractions", url: string) =>
     buildRedirectHref({
@@ -389,12 +390,20 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
               <a href={buildSelectedRedirectHref("attractions", selectedOption.destination.affiliateLinks.attractions)} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
                 Zobacz atrakcje
               </a>
-              <button type="button" onClick={() => void onSave(selectedOption.itineraryResultId)} disabled={savingMap[selectedOption.itineraryResultId]} className="rounded-full border border-emerald-900/12 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-100 disabled:opacity-70">
-                {savingMap[selectedOption.itineraryResultId] ? "Zapisywanie..." : "Zapisz plan"}
-              </button>
-              <Link href={`/trips/${selectedOption.itineraryResultId}`} className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-                Otworz szczegoly
-              </Link>
+              {!isVirtualSelection ? (
+                <>
+                  <button type="button" onClick={() => void onSave(selectedOption.itineraryResultId)} disabled={savingMap[selectedOption.itineraryResultId]} className="rounded-full border border-emerald-900/12 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-100 disabled:opacity-70">
+                    {savingMap[selectedOption.itineraryResultId] ? "Zapisywanie..." : "Zapisz plan"}
+                  </button>
+                  <Link href={`/trips/${selectedOption.itineraryResultId}`} className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
+                    Otworz szczegoly
+                  </Link>
+                </>
+              ) : (
+                <span className="rounded-full border border-emerald-900/12 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950">
+                  Kierunek z podpowiedzi API - otworz partnerow lub oferty ponizej
+                </span>
+              )}
             </div>
           </section>
 

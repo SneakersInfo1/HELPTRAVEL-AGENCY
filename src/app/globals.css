@@ -48,6 +48,10 @@ body {
   animation: scaleIn 360ms ease-out;
 }
 
+.animate-hero-pan {
+  animation: heroPan 18s ease-in-out infinite alternate;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -55,7 +59,8 @@ body {
 
   .animate-fade-in,
   .animate-fade-in-up,
-  .animate-scale-in {
+  .animate-scale-in,
+  .animate-hero-pan {
     animation: none;
   }
 }
@@ -90,6 +95,15 @@ body {
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes heroPan {
+  from {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.1) translate3d(1.5%, -1.5%, 0);
   }
 }
 

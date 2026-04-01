@@ -295,6 +295,18 @@ export interface DestinationAttractionsResponse {
   fetchedAt: string;
 }
 
+export interface DestinationSuggestion {
+  id: string;
+  city: string;
+  country: string;
+  region?: string;
+  label: string;
+  queryValue: string;
+  source: "curated" | "geoapify";
+  destinationSlug?: string;
+  airportCode?: string;
+}
+
 export interface TravelPackageOffer {
   packageId: string;
   title: string;

@@ -1,254 +1,205 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
-import { HeroMedia } from "@/components/mvp/hero-media";
+import { PremiumHomeHero } from "@/components/home/premium-home-hero";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
-import { getDestinationStory, getVideoHeroSource } from "@/lib/mvp/destination-content";
+import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
   getEditorialArticles,
-  getEditorialCategories,
   getLatestEditorialArticles,
   getPublishedDestinations,
 } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
+import type { DestinationProfile } from "@/lib/mvp/types";
 
 const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
-  title: "HelpTravel - planer i przewodniki podrozy",
+  title: "HelpTravel - wybierz kierunek i zaplanuj wyjazd",
   description:
-    "Planer podrozy, katalog kierunkow, inspiracje i praktyczne przewodniki dla city breakow oraz krotkich wyjazdow z Polski.",
+    "Wpisz miasto albo opisz idealny wyjazd. HelpTravel prowadzi od inspiracji do lotow, noclegow, atrakcji i wygodnych dodatkow podrozy.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "HelpTravel - planer i przewodniki podrozy",
+    title: "HelpTravel - wybierz kierunek i zaplanuj wyjazd",
     description:
-      "Odkrywaj kierunki, czytaj przewodniki i planuj wyjazd w jednym miejscu. Serwis travelowy dla polskiego odbiorcy.",
+      "Nowoczesna strona startowa do wyboru kierunku, discovery mode i szybkiego przejscia do lotow, hoteli oraz uslug wyjazdowych.",
     url: siteUrl,
     type: "website",
   },
 };
 
-const modes = [
+const heroDestinationSlugs = [
+  "malaga-spain",
+  "barcelona-spain",
+  "lisbon-portugal",
+  "rome-italy",
+  "valencia-spain",
+  "athens-greece",
+] as const;
+
+const valueCards = [
   {
-    title: "Nie wiem dokad leciec",
-    description:
-      "Opisujesz potrzebe naturalnym jezykiem, a serwis uklada sensowne kierunki, wyjasnia ranking i prowadzi do realnego flow wyszukiwania.",
-    href: "/planner?mode=discovery",
-    cta: "Uruchom planer discovery",
+    eyebrow: "Dwa starty",
+    title: "Jeden dla zdecydowanych, drugi dla tych, ktorzy chca dopiero odkryc kierunek.",
+    text: "Strona od pierwszego ekranu pokazuje zarowno mocne wyszukiwanie miasta, jak i tryb discovery dla niezdecydowanych.",
   },
   {
-    title: "Mam kierunek",
-    description:
-      "Wybierasz konkretne miasto i od razu przechodzisz do wynikow, atrakcji, tresci lokalnych i planu dalszego wyszukiwania.",
-    href: "/planner?mode=standard",
-    cta: "Sprawdz kierunek w planerze",
+    eyebrow: "Autocomplete",
+    title: "Podpowiedzi kierunkow sa szybkie, czytelne i gotowe pod miasta z calego swiata.",
+    text: "Sugestie korzystaja z API-backed flow, a nie z malej, recznie wpisanej listy kilku miast.",
+  },
+  {
+    eyebrow: "Pelny funnel",
+    title: "Po wyborze kierunku naturalnie przechodzisz dalej do lotow, hoteli i uslug wyjazdowych.",
+    text: "Homepage ma prowadzic do dzialania, nie zatrzymywac na samym czytaniu inspiracji.",
+  },
+  {
+    eyebrow: "Premium feel",
+    title: "Warstwa wizualna ma inspirowac, ale nadal byc praktyczna i bardzo czytelna.",
+    text: "Mocna typografia, ruchome tlo, hierarchia akcji i sekcje zbudowane pod klikniecia oraz dalsze planowanie.",
   },
 ];
 
-const trustPoints = [
-  "katalog kierunkow i strony destination hub",
-  "publiczne przewodniki i scenariusze wyjazdow",
-  "wewnetrzne linkowanie do planera i ofert",
-  "polskie tresci z naciskiem na praktyczna wartosc",
-];
-
-const starterRoutes = [
+const inspirationCards = [
+  {
+    title: "City breaki",
+    description: "Kierunki na 3-5 dni, gdy chcesz zobaczyc duzo i nie tracic czasu na nadmiar logistyki.",
+    href: "/city-breaki",
+    accent: "miasto, jedzenie, szybka decyzja",
+  },
   {
     title: "Cieple kierunki",
-    description: "Szybkie wejscie dla osob szukajacych slonca, plaz i prostych decyzji na start.",
+    description: "Slonce, plaza i prostszy reset glowy. Dobre, gdy liczy sie klimat i lekki wyjazd.",
     href: "/cieple-kierunki",
+    accent: "slonce, morze, wygoda",
   },
   {
     title: "Bez wizy",
-    description: "Kierunki, ktore sa wygodne dla osob planujacych wyjazd bez dodatkowych formalnosci.",
+    description: "Sciezki dla osob, ktore chca uniknac dodatkowych formalnosci i szybciej kliknac dalej.",
     href: "/bez-wizy",
-  },
-  {
-    title: "City breaki",
-    description: "Pomysly na krotkie wyjazdy z Polski, gdy chcesz zobaczyc duzo w 3-5 dni.",
-    href: "/city-breaki",
+    accent: "mniej formalnosci, szybszy start",
   },
   {
     title: "Weekendowe wyjazdy",
-    description: "Szybkie scenariusze na krotki urlop bez przepalania budzetu i czasu.",
+    description: "Mocne kierunki na krotki urlop, gdy liczy sie tempo, prosty plan i sensowny budzet.",
     href: "/weekendowe-wyjazdy",
+    accent: "2-4 dni, malo logistyki, szybki efekt",
+  },
+];
+
+const processSteps = [
+  {
+    step: "01",
+    title: "Wybierasz kierunek albo opisujesz wyjazd",
+    text: "Strona glowna nie ukrywa glownej akcji. Albo od razu wpisujesz miasto, albo wchodzisz w discovery mode.",
+  },
+  {
+    step: "02",
+    title: "Dostajesz sensowny kierunek i lokalny kontekst",
+    text: "Planner zbiera miejsce, zdjecia, przewodnik, atrakcje i argumenty, ktore pomagaja podjac decyzje.",
+  },
+  {
+    step: "03",
+    title: "Przechodzisz dalej do realnych ofert i dodatkow",
+    text: "Loty, noclegi, atrakcje, auta i kolejne kroki wyjazdu sa gotowe do klikniecia bez chaosu i skakania po serwisie.",
+  },
+];
+
+const serviceCards = [
+  {
+    title: "Loty",
+    description: "Szybkie przejscie do wyszukiwania polaczen i dalszego porownywania ofert partnerow.",
+  },
+  {
+    title: "Noclegi",
+    description: "Naturalny kolejny krok po wyborze miasta: hotele, apartamenty i miejsce, od ktorego zalezy komfort calego wyjazdu.",
+  },
+  {
+    title: "Atrakcje",
+    description: "Lokalne miejsca, bilety i podpowiedzi, ktore zmieniaja zwykle wyszukiwanie w prawdziwy plan wyjazdu.",
+  },
+  {
+    title: "Auta i transfery",
+    description: "Wygodny dodatek dla osob, ktore chca domknac mobilnosc od razu po wyborze kierunku.",
+  },
+  {
+    title: "Dodatki podrzy",
+    description: "eSIM, ubezpieczenie i inne wygodne uslugi, ktore dobrze domykaja komercyjny funnel.",
   },
 ];
 
 export default async function Home() {
-  const categories = getEditorialCategories();
-  const articles = getEditorialArticles();
+  const editorialArticles = getEditorialArticles();
   const latestArticles = getLatestEditorialArticles(4);
-  const destinations = getPublishedDestinations();
-  const featuredArticles = articles.slice(0, 6);
-  const articleCount = articles.length;
-  const destinationCount = destinations.length;
-  const featuredDestinations = await Promise.all(
-    destinations.slice(0, 6).map(async (destination) => ({
+  const publishedDestinations = getPublishedDestinations();
+  const destinationCount = publishedDestinations.length;
+  const articleCount = editorialArticles.length;
+
+  const selectedHeroDestinations = heroDestinationSlugs
+    .map((slug) => publishedDestinations.find((destination) => destination.slug === slug))
+    .filter((destination): destination is DestinationProfile => Boolean(destination));
+
+  const resolvedHeroDestinations = await Promise.all(
+    selectedHeroDestinations.map(async (destination) => ({
       destination,
       story: getDestinationStory(destination),
       media: await resolveDestinationMedia(destination),
     })),
   );
-  const video = getVideoHeroSource();
+
+  const featuredGuides = resolvedHeroDestinations.slice(0, 4);
+  const heroSlides = resolvedHeroDestinations.slice(0, 5).map((item) => ({
+    id: item.destination.slug,
+    city: item.destination.city,
+    country: item.destination.country,
+    label: `${item.destination.city}, ${item.destination.country}`,
+    title: item.destination.city,
+    description: item.story.tagline,
+    image: item.media.heroImage,
+    href: `/kierunki/${item.destination.slug}`,
+    tags: item.story.bestFor.slice(0, 3),
+    meta: `lot ok. ${item.destination.typicalFlightHoursFromPL.toFixed(1)} h z Polski`,
+  }));
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <section className="relative isolate overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-emerald-950 text-white shadow-[0_30px_100px_rgba(8,40,24,0.24)]">
-        <div className="absolute inset-0">
-          <HeroMedia src={video.src} poster={video.poster} alt="Podrozniczy klimat" className="opacity-60" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,18,11,0.84)_0%,rgba(8,28,16,0.64)_48%,rgba(8,28,16,0.34)_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.24),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.18),transparent_24%)]" />
-        </div>
+      <PremiumHomeHero slides={heroSlides} destinationCount={destinationCount} articleCount={articleCount} />
 
-        <div className="relative grid gap-8 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
-          <div className="max-w-3xl">
-            <span className="inline-flex rounded-full border border-white/18 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/90">
-              Planer + przewodniki
-            </span>
-            <h1 className="mt-5 text-balance font-display text-5xl leading-[0.95] text-white sm:text-6xl lg:text-7xl">
-              Odkrywaj kierunki, czytaj przewodniki i planuj wyjazd w jednym miejscu.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-emerald-50/82 sm:text-lg">
-              HelpTravel to hybryda travelowego serwisu wydawniczego i planera: katalog kierunkow, praktyczne
-              inspiracje, city breaki, cieple wyjazdy i flow prowadzacy do realnego wyszukiwania oraz partnerow zewnetrznych.
-            </p>
-
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                href="/planner?mode=discovery"
-                className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-300"
-              >
-                Zacznij planowanie
-              </Link>
-              <Link
-                href="/inspiracje"
-                className="rounded-full border border-white/15 bg-white/6 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/12"
-              >
-                Czytaj inspiracje
-              </Link>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <Link
-                  key={category.slug}
-                  href={`/${category.slug}`}
-                  className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/92 transition hover:bg-white/12"
-                >
-                  {category.title}
-                </Link>
-              ))}
-            </div>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/8 px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Kierunki</p>
-                <p className="mt-2 text-3xl font-bold text-white">{destinationCount}</p>
-                <p className="mt-1 text-sm text-white/74">stron kierunkowych z przewodnikami i przejsciem do planera.</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/8 px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Artykuly</p>
-                <p className="mt-2 text-3xl font-bold text-white">{articleCount}</p>
-                <p className="mt-1 text-sm text-white/74">tresci scenariuszowych pod city breaki, cieplo i budzet.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative min-h-[22rem] overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/20">
-            <div className="absolute inset-0">
-              <Image
-                src={video.poster}
-                alt="Podrozniczy klimat"
-                fill
-                priority
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 40vw"
-              />
-            </div>
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,23,17,0.06)_0%,rgba(14,23,17,0.5)_100%)]" />
-            <div className="absolute inset-x-0 bottom-0 p-5">
-              <div className="flex flex-wrap gap-2">
-                {trustPoints.map((item) => (
-                  <span
-                    key={item}
-                    className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2">
-        {modes.map((mode) => (
+      <section className="grid gap-4 lg:grid-cols-4">
+        {valueCards.map((card) => (
           <article
-            key={mode.title}
-            className="rounded-[1.75rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_46px_rgba(16,84,48,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_54px_rgba(16,84,48,0.12)]"
+            key={card.title}
+            className="rounded-[1.85rem] border border-emerald-900/10 bg-white/94 p-5 shadow-[0_18px_50px_rgba(16,84,48,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_58px_rgba(16,84,48,0.11)]"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Tryby planowania</p>
-            <h2 className="mt-3 text-3xl font-bold text-emerald-950">{mode.title}</h2>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-emerald-900/78">{mode.description}</p>
-            <Link
-              href={mode.href}
-              className="mt-5 inline-flex rounded-full bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition duration-200 hover:bg-emerald-200"
-            >
-              {mode.cta}
-            </Link>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{card.eyebrow}</p>
+            <h2 className="mt-3 text-2xl font-bold leading-tight text-emerald-950">{card.title}</h2>
+            <p className="mt-3 text-sm leading-7 text-emerald-900/76">{card.text}</p>
           </article>
         ))}
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <section className="rounded-[2.2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_56px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Szybki start</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Najprostsze sciezki do klikniecia i dalszego czytania.</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Popularne kierunki</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">
+              Najmocniejsze kierunki, od ktorych najlatwiej zaczac.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-900/74">
+              To sekcja pod osoby, ktore chca zobaczyc kilka mocnych opcji od razu, bez przekopywania calego serwisu.
+            </p>
           </div>
-          <Link href="/mapa-serwisu" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-            Otworz mape serwisu
-          </Link>
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {starterRoutes.map((route) => (
-            <Link
-              key={route.href}
-              href={route.href}
-              className="group rounded-[1.75rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(240,250,243,0.98),rgba(232,246,236,0.94))] p-5 shadow-[0_16px_42px_rgba(16,84,48,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-[0_22px_54px_rgba(16,84,48,0.12)]"
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kliknij i przejdz</p>
-              <h3 className="mt-3 text-2xl font-bold text-emerald-950">{route.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-emerald-900/78">{route.description}</p>
-              <span className="mt-5 inline-flex rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition group-hover:bg-emerald-800">
-                Otworz sekcje
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kierunki</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Najmocniejsze destination huby na start</h2>
-          </div>
-          <Link href="/kierunki" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+          <Link href="/kierunki" className="rounded-full bg-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-200">
             Zobacz wszystkie kierunki
           </Link>
         </div>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-3">
-          {featuredDestinations.map((item) => (
+        <div className="mt-6 grid gap-5 xl:grid-cols-4">
+          {featuredGuides.map((item) => (
             <DestinationGuideCard
               key={item.destination.slug}
               destination={item.destination}
@@ -259,161 +210,149 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <section className="rounded-[2.2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(235,248,239,0.98),rgba(225,242,232,0.92))] p-6 shadow-[0_18px_56px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Inspiracje i przewodniki</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">
-              Tresci, ktore wygladaja jak prawdziwy serwis travelowy.
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Start od potrzeby</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">
+              Klikaj od nastroju wyjazdu, nie od przypadkowej podstrony.
             </h2>
           </div>
-          <Link href="/inspiracje" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-            Wszystkie artykuly
+          <Link href="/inspiracje" className="rounded-full border border-emerald-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50">
+            Otworz inspiracje
           </Link>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          {featuredArticles.map((article) => (
-            <EditorialArticleCard key={article.slug} article={article} compact />
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {inspirationCards.map((card) => (
+            <Link
+              key={card.href}
+              href={card.href}
+              className="group rounded-[1.75rem] border border-emerald-900/10 bg-white/90 p-5 shadow-[0_16px_42px_rgba(16,84,48,0.06)] transition duration-300 hover:-translate-y-1 hover:border-emerald-500/45 hover:shadow-[0_22px_56px_rgba(16,84,48,0.11)]"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700">{card.accent}</p>
+              <h3 className="mt-3 text-2xl font-bold text-emerald-950">{card.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-emerald-900/76">{card.description}</p>
+              <span className="mt-5 inline-flex rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition group-hover:bg-emerald-800">
+                Otworz sekcje
+              </span>
+            </Link>
           ))}
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <section className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-emerald-950 p-6 text-white shadow-[0_24px_70px_rgba(6,29,16,0.18)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Jak to dziala</p>
+          <h2 className="mt-3 font-display text-4xl sm:text-5xl">Nowoczesna strona startowa ma od razu prowadzic do decyzji.</h2>
+          <p className="mt-4 max-w-2xl text-sm leading-8 text-emerald-50/78">
+            Najpierw wybierasz kierunek albo opisujesz potrzebe. Potem dostajesz lokalny kontekst, przewodnik i wejscie w kolejne uslugi wyjazdowe. Bez slabej, prototypowej pierwszej impresji.
+          </p>
+        </article>
+
+        <div className="grid gap-4">
+          {processSteps.map((step) => (
+            <article
+              key={step.step}
+              className="rounded-[1.8rem] border border-emerald-900/10 bg-white/95 p-5 shadow-[0_16px_44px_rgba(16,84,48,0.06)]"
+            >
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-sm font-extrabold text-emerald-950">
+                  {step.step}
+                </span>
+                <div>
+                  <h3 className="text-2xl font-bold text-emerald-950">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-emerald-900/76">{step.text}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[2.2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_56px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Ostatnie publikacje</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Serwis jest aktualizowany tresciowo, nie tylko technologicznie.</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pelny funnel wyjazdu</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">
+              Od miasta do uslug, ktore domykaja podroz.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-900/74">
+              Homepage ma zapowiadac caly produkt: nie tylko inspiracje, ale tez przejscie do lotow, noclegow i wygodnych dodatkow.
+            </p>
           </div>
-          <Link href="/inspiracje" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-            Przejdz do biblioteki artykulow
+          <Link href="/planner" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+            Wejdz do planera
           </Link>
         </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {serviceCards.map((card) => (
+            <article
+              key={card.title}
+              className="rounded-[1.75rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(245,252,247,0.98),rgba(234,247,239,0.92))] p-5 transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_52px_rgba(16,84,48,0.1)]"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Usluga</p>
+              <h3 className="mt-3 text-2xl font-bold text-emerald-950">{card.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-emerald-900/76">{card.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[2.2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_56px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Nowe przewodniki i inspiracje</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">
+              Tresci, ktore podbijaja decyzje, a nie rozpraszaja.
+            </h2>
+          </div>
+          <Link href="/inspiracje" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
+            Zobacz cala biblioteke
+          </Link>
+        </div>
+
+        <div className="mt-6 grid gap-4 xl:grid-cols-4">
           {latestArticles.map((article) => (
             <EditorialArticleCard key={article.slug} article={article} compact />
           ))}
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Dlaczego to wyglada wiarygodnie</p>
-          <h2 className="mt-3 font-display text-4xl text-emerald-950">Serwis ma warstwe tresciowa, nie tylko formularz.</h2>
-          <div className="mt-5 space-y-3 text-sm leading-7 text-emerald-900/78">
-            <p>Kierunki dostaja osobne strony z budzetem orientacyjnym, sekcjami praktycznymi, FAQ i linkowaniem do powiazanych tresci.</p>
-            <p>Artykuly nie sa pustymi landingami. Kazdy scenariusz ma opis, praktyczne wskazowki, powiazane kierunki i przejscie do planera.</p>
-            <p>Stopka, strony zaufania, disclosure, mapa serwisu i wewnetrzne linkowanie wzmacniaja obraz publicznego projektu travelowego.</p>
+      <section className="relative overflow-hidden rounded-[2.3rem] border border-emerald-900/10 bg-emerald-950 px-6 py-8 text-white shadow-[0_28px_80px_rgba(6,29,16,0.18)] sm:px-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(110,231,183,0.22),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(52,211,153,0.18),transparent_26%)]" />
+        <div className="relative flex flex-wrap items-end justify-between gap-5">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200">Mocne wejscie w produkt</p>
+            <h2 className="mt-3 font-display text-4xl sm:text-5xl">
+              Ta strona glowna ma od razu uruchamiac planowanie i dawc chec do klikniecia.
+            </h2>
+            <p className="mt-4 text-sm leading-8 text-emerald-50/78">
+              Wpisz miasto, wybierz discovery mode albo wejdz w katalog kierunkow. Wszystko dalej ma prowadzic do realnego planu wyjazdu.
+            </p>
           </div>
-        </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-emerald-950 p-6 text-white shadow-[0_18px_50px_rgba(8,40,24,0.2)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Scenariusze dla afiliacji</p>
-          <h2 className="mt-3 font-display text-4xl">Frazy, ktore naturalnie prowadza do decyzji wyjazdowej.</h2>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {[
-              "cieple kraje bez wizy",
-              "city break do 2000 zl",
-              "gdzie poleciec zima z Polski",
-              "kierunki z plaza i zwiedzaniem",
-            ].map((item) => (
-              <div key={item} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-white/88">
-                {item}
-              </div>
-            ))}
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/planner?mode=standard"
+              className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-300"
+            >
+              Wpisz kierunek
+            </Link>
+            <Link
+              href="/planner?mode=discovery"
+              className="rounded-full border border-white/14 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/14"
+            >
+              Opisz idealny wyjazd
+            </Link>
+            <Link
+              href="/kierunki"
+              className="rounded-full border border-white/14 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/14"
+            >
+              Przejdz do kierunkow
+            </Link>
           </div>
-        </article>
-      </section>
-
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Zaufanie i struktura</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Publiczne strony, ktore pokazuja ze to dojrzaly projekt travelowy.</h2>
-          </div>
-          <Link href="/dla-partnerow" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-            Zobacz informacje dla partnerow
-          </Link>
-        </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-4">
-          {[
-            {
-              title: "Dla partnerow",
-              text: "Publiczne wyjasnienie modelu dzialania projektu, warstwy contentowej i flow partnerskiego.",
-              href: "/dla-partnerow",
-            },
-            {
-              title: "Standard redakcyjny",
-              text: "Opis tego, jak budowane sa przewodniki, artykuly i destination huby bez pustych landingow.",
-              href: "/standard-redakcyjny",
-            },
-            {
-              title: "Jak pracujemy",
-              text: "Metodologia laczaca travel content, planner i przejscia do partnerow zewnetrznych.",
-              href: "/jak-pracujemy",
-            },
-            {
-              title: "Linki partnerskie",
-              text: "Jawna informacja o przekierowaniach, mierzeniu klikniec i modelu afiliacyjnym.",
-              href: "/linki-partnerskie",
-            },
-          ].map((item) => (
-            <article key={item.title} className="rounded-[1.75rem] border border-emerald-900/10 bg-emerald-50/75 p-5">
-              <h3 className="text-xl font-bold text-emerald-950">{item.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-emerald-900/78">{item.text}</p>
-              <Link
-                href={item.href}
-                className="mt-5 inline-flex rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
-              >
-                Otworz strone
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Sciezki startowe</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Wejdz do serwisu od potrzeby, nie od losowej podstrony.</h2>
-          </div>
-          <Link href="/mapa-serwisu" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-            Otworz mape serwisu
-          </Link>
-        </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          {[
-            {
-              title: "Najpierw czytam",
-              text: "Dla osob, ktore chca najpierw zrozumiec kierunki, budzet i format wyjazdu przed kliknieciem w wyniki.",
-              href: "/inspiracje",
-              cta: "Przejdz do inspiracji",
-            },
-            {
-              title: "Najpierw wybieram kierunek",
-              text: "Dla osob, ktore porownuja konkretne miasta i chca wejsc w przewodnik, FAQ oraz dalsze wyszukiwanie.",
-              href: "/kierunki",
-              cta: "Przejdz do kierunkow",
-            },
-            {
-              title: "Najpierw planuje",
-              text: "Dla osob, ktore od razu chca przejsc do planera i zaczac od potrzeby zapisanej naturalnym jezykiem.",
-              href: "/planner?mode=discovery",
-              cta: "Uruchom planer",
-            },
-          ].map((item) => (
-            <article key={item.title} className="rounded-[1.75rem] border border-emerald-900/10 bg-emerald-50/75 p-5">
-              <h3 className="text-2xl font-bold text-emerald-950">{item.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-emerald-900/78">{item.text}</p>
-              <Link
-                href={item.href}
-                className="mt-5 inline-flex rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
-              >
-                {item.cta}
-              </Link>
-            </article>
-          ))}
         </div>
       </section>
     </main>
