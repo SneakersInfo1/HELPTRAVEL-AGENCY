@@ -55,6 +55,9 @@ Integracje:
 - `DUFFEL_VERSION`
 - `PEXELS_API_KEY`
 - `GEOAPIFY_API_KEY`
+- `AFFILIATE_FLIGHTS_TEMPLATE` - szablon deeplinku dla lotow (np. z Travelpayouts/CJ)
+- `AFFILIATE_STAYS_TEMPLATE` - szablon deeplinku dla noclegow
+- `AFFILIATE_ATTRACTIONS_TEMPLATE` - szablon deeplinku dla atrakcji
 - `HOTELBEDS_HOTEL_API_KEY`
 - `HOTELBEDS_HOTEL_API_SECRET`
 - `HOTELBEDS_HOTEL_API_URL`
@@ -69,6 +72,18 @@ Opcjonalne:
 
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+
+Szablony deeplinkow obsluguja placeholdery:
+
+- `{city}`
+- `{country}`
+- `{cityCountry}`
+- `{cityEncoded}`
+- `{countryEncoded}`
+- `{cityCountryEncoded}`
+- `{flightsQuery}` / `{flightsQueryEncoded}`
+- `{staysQuery}` / `{staysQueryEncoded}`
+- `{attractionsQuery}` / `{attractionsQueryEncoded}`
 
 ## Uruchomienie lokalne
 

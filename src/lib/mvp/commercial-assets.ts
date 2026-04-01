@@ -1,5 +1,6 @@
 import type { DestinationProfile } from "./types";
 import type { DestinationMedia } from "./visuals";
+import { buildAffiliateLinks } from "./affiliate-links";
 
 const image = (url: string) => `${url}?auto=format&fit=crop&w=1600&q=82`;
 
@@ -135,10 +136,6 @@ export function getDestinationMediaBySlug(slug: string, destination?: Pick<Desti
     safetyScore: 0.5,
     accessScore: 0.5,
     typicalFlightHoursFromPL: 0,
-    affiliateLinks: {
-      flights: "https://www.google.com",
-      stays: "https://www.booking.com",
-      attractions: "https://www.google.com",
-    },
+    affiliateLinks: buildAffiliateLinks(destination?.city ?? slug, destination?.country ?? ""),
   });
 }

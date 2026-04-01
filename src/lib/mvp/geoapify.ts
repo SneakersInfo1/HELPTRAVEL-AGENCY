@@ -1,5 +1,6 @@
 import "server-only";
 
+import { buildAffiliateLinks } from "./affiliate-links";
 import { curatedDestinations } from "./destinations";
 import { getDestinationStory } from "./destination-content";
 import { normalizeLookup, resolveCountryCode } from "./location";
@@ -320,11 +321,7 @@ function fallbackDestination(city: string, country: string): DestinationProfile 
     safetyScore: 0.5,
     accessScore: 0.5,
     typicalFlightHoursFromPL: 0,
-    affiliateLinks: {
-      flights: "https://www.google.com",
-      stays: "https://www.booking.com",
-      attractions: "https://www.google.com",
-    },
+    affiliateLinks: buildAffiliateLinks(city, country),
   };
 }
 

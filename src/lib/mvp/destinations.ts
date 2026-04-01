@@ -1,13 +1,7 @@
 import type { DestinationProfile } from "./types";
+import { buildAffiliateLinks } from "./affiliate-links";
 
-function links(city: string, country: string) {
-  const place = `${city} ${country}`;
-  return {
-    flights: `https://www.google.com/search?q=${encodeURIComponent(`loty z Polski do ${place}`)}`,
-    stays: `https://www.booking.com/searchresults.pl.html?ss=${encodeURIComponent(place)}`,
-    attractions: `https://www.google.com/search?q=${encodeURIComponent(`${place} atrakcje`)}`,
-  };
-}
+const links = buildAffiliateLinks;
 
 export const curatedDestinations: DestinationProfile[] = [
   {
