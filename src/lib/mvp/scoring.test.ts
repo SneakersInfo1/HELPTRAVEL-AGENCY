@@ -24,6 +24,7 @@ const baseDestination = (overrides: Partial<DestinationProfile>): DestinationPro
     flights: "https://example.com/flights",
     stays: "https://example.com/stays",
     attractions: "https://example.com/attractions",
+    cars: "https://example.com/cars",
   },
   ...overrides,
 });

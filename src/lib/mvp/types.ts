@@ -36,6 +36,7 @@ export interface AffiliateLinks {
   flights: string;
   stays: string;
   attractions: string;
+  cars: string;
 }
 
 export interface DestinationProfile {

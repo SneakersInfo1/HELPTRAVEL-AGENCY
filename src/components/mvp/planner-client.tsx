@@ -134,7 +134,7 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
   const localFocus = Boolean(destinationFocus && selectedOption && selectedOption.destination.slug === destinationFocus);
   const isVirtualSelection = Boolean(selectedOption?.itineraryResultId.startsWith("virtual_"));
 
-  const buildSelectedRedirectHref = (providerKey: "flights" | "stays" | "attractions", url: string) =>
+  const buildSelectedRedirectHref = (providerKey: "flights" | "stays" | "attractions" | "cars", url: string) =>
     buildRedirectHref({
       providerKey,
       targetUrl: url,
@@ -389,6 +389,9 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
               </a>
               <a href={buildSelectedRedirectHref("attractions", selectedOption.destination.affiliateLinks.attractions)} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
                 Zobacz atrakcje
+              </a>
+              <a href={buildSelectedRedirectHref("cars", selectedOption.destination.affiliateLinks.cars)} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
+                Zobacz auta
               </a>
               {!isVirtualSelection ? (
                 <>

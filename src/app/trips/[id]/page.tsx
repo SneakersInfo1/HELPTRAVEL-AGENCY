@@ -60,7 +60,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const story = getDestinationStory(destinationWithMedia);
   const resolvedMedia = getDestinationMedia(destinationWithMedia);
 
-  const buildTripRedirectHref = (providerKey: "flights" | "stays" | "attractions", targetUrl: string) =>
+  const buildTripRedirectHref = (providerKey: "flights" | "stays" | "attractions" | "cars", targetUrl: string) =>
     buildRedirectHref({
       providerKey,
       targetUrl,
@@ -75,6 +75,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const flightLink = buildTripRedirectHref("flights", trip.affiliateLinks.flights);
   const stayLink = buildTripRedirectHref("stays", trip.affiliateLinks.stays);
   const attractionLink = buildTripRedirectHref("attractions", trip.affiliateLinks.attractions);
+  const carLink = buildTripRedirectHref("cars", trip.affiliateLinks.cars);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -186,6 +187,9 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           </a>
           <a href={attractionLink} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
             Atrakcje
+          </a>
+          <a href={carLink} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
+            Samochody
           </a>
           <Link href="/planner" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
             Wroc do planera

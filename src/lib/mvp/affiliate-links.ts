@@ -11,6 +11,7 @@ const TEMPLATE_BY_KIND: Record<AffiliateKind, string | undefined> = {
   flights: process.env.AFFILIATE_FLIGHTS_TEMPLATE?.trim(),
   stays: process.env.AFFILIATE_STAYS_TEMPLATE?.trim(),
   attractions: process.env.AFFILIATE_ATTRACTIONS_TEMPLATE?.trim(),
+  cars: process.env.AFFILIATE_CARS_TEMPLATE?.trim(),
 };
 
 function fallbackLink(kind: AffiliateKind, place: string): string {
@@ -19,6 +20,9 @@ function fallbackLink(kind: AffiliateKind, place: string): string {
   }
   if (kind === "stays") {
     return `https://www.booking.com/searchresults.pl.html?ss=${encodeURIComponent(place)}`;
+  }
+  if (kind === "cars") {
+    return `https://www.google.com/search?q=${encodeURIComponent(`wynajem samochodu ${place}`)}`;
   }
   return `https://www.google.com/search?q=${encodeURIComponent(`${place} atrakcje`)}`;
 }
@@ -41,6 +45,8 @@ function interpolateTemplate(template: string, input: AffiliateTemplateInput, ki
     staysQueryEncoded: encodeURIComponent(cityCountry),
     attractionsQuery: `${cityCountry} atrakcje`,
     attractionsQueryEncoded: encodeURIComponent(`${cityCountry} atrakcje`),
+    carsQuery: `${cityCountry} wynajem samochodu`,
+    carsQueryEncoded: encodeURIComponent(`${cityCountry} wynajem samochodu`),
   };
 
   const fallback = fallbackLink(kind, cityCountry);
@@ -62,6 +68,6 @@ export function buildAffiliateLinks(city: string, country: string): AffiliateLin
     flights: buildAffiliateLink("flights", input),
     stays: buildAffiliateLink("stays", input),
     attractions: buildAffiliateLink("attractions", input),
+    cars: buildAffiliateLink("cars", input),
   };
 }
-

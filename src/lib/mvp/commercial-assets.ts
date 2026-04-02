@@ -4,7 +4,7 @@ import { buildAffiliateLinks } from "./affiliate-links";
 
 const image = (url: string) => `${url}?auto=format&fit=crop&w=1600&q=82`;
 
-export type TravelProviderKey = "flights" | "stays" | "attractions";
+export type TravelProviderKey = "flights" | "stays" | "attractions" | "cars";
 
 const mediaBySlug: Record<string, DestinationMedia> = {
   "malaga-spain": {

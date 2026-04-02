@@ -4,6 +4,7 @@ const providerLabels: Record<TravelProviderKey, string> = {
   flights: "Loty",
   stays: "Noclegi",
   attractions: "Atrakcje",
+  cars: "Samochody",
 };
 
 export function getProviderLabel(providerKey: TravelProviderKey): string {
