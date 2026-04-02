@@ -9,6 +9,7 @@ import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
 import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
 import { TravelPackagePanel } from "@/components/mvp/travel-package-panel";
+import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { getDestinationMedia } from "@/lib/mvp/commercial-assets";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -76,6 +77,10 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const stayLink = buildTripRedirectHref("stays", trip.affiliateLinks.stays);
   const attractionLink = buildTripRedirectHref("attractions", trip.affiliateLinks.attractions);
   const carLink = buildTripRedirectHref("cars", trip.affiliateLinks.cars);
+  const flightPartner = getAffiliateBrandLabel(trip.affiliateLinks.flights, "Partner lotniczy");
+  const stayPartner = getAffiliateBrandLabel(trip.affiliateLinks.stays, "Partner hotelowy");
+  const attractionPartner = getAffiliateBrandLabel(trip.affiliateLinks.attractions, "Partner atrakcji");
+  const carPartner = getAffiliateBrandLabel(trip.affiliateLinks.cars, "Partner aut");
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -180,16 +185,16 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
         <h2 className="text-xl font-bold text-emerald-950">Przejdz do partnerow</h2>
         <div className="mt-4 flex flex-wrap gap-2">
           <a href={flightLink} target="_blank" rel="noreferrer" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800">
-            Loty
+            Loty w {flightPartner}
           </a>
           <a href={stayLink} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-            Noclegi
+            Noclegi w {stayPartner}
           </a>
           <a href={attractionLink} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-            Atrakcje
+            Atrakcje w {attractionPartner}
           </a>
           <a href={carLink} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-            Samochody
+            Auta w {carPartner}
           </a>
           <Link href="/planner" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
             Wroc do planera

@@ -10,6 +10,7 @@ import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
 import { TravelPackagePanel } from "@/components/mvp/travel-package-panel";
 import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
+import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import type { DiscoveryResponse, SavedTripView } from "@/lib/mvp/types";
@@ -133,6 +134,10 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
   const destinationFocus = result?.interpreted.destinationFocus;
   const localFocus = Boolean(destinationFocus && selectedOption && selectedOption.destination.slug === destinationFocus);
   const isVirtualSelection = Boolean(selectedOption?.itineraryResultId.startsWith("virtual_"));
+  const flightPartner = getAffiliateBrandLabel(selectedOption?.destination.affiliateLinks.flights, "Partner lotniczy");
+  const stayPartner = getAffiliateBrandLabel(selectedOption?.destination.affiliateLinks.stays, "Partner hotelowy");
+  const attractionPartner = getAffiliateBrandLabel(selectedOption?.destination.affiliateLinks.attractions, "Partner atrakcji");
+  const carPartner = getAffiliateBrandLabel(selectedOption?.destination.affiliateLinks.cars, "Partner aut");
 
   const buildSelectedRedirectHref = (providerKey: "flights" | "stays" | "attractions" | "cars", url: string) =>
     buildRedirectHref({
@@ -382,16 +387,16 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
 
             <div className="flex flex-wrap gap-3">
               <a href={buildSelectedRedirectHref("flights", selectedOption.destination.affiliateLinks.flights)} target="_blank" rel="noreferrer" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800">
-                Zobacz loty
+                Loty w {flightPartner}
               </a>
               <a href={buildSelectedRedirectHref("stays", selectedOption.destination.affiliateLinks.stays)} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-                Zobacz noclegi
+                Noclegi w {stayPartner}
               </a>
               <a href={buildSelectedRedirectHref("attractions", selectedOption.destination.affiliateLinks.attractions)} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-                Zobacz atrakcje
+                Atrakcje w {attractionPartner}
               </a>
               <a href={buildSelectedRedirectHref("cars", selectedOption.destination.affiliateLinks.cars)} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-                Zobacz auta
+                Auta w {carPartner}
               </a>
               {!isVirtualSelection ? (
                 <>

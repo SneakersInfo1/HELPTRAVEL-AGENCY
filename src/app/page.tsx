@@ -4,7 +4,9 @@ import Link from "next/link";
 import { PremiumHomeHero } from "@/components/home/premium-home-hero";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
+import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
+import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
 import {
   getEditorialArticles,
   getLatestEditorialArticles,
@@ -109,29 +111,6 @@ const processSteps = [
   },
 ];
 
-const serviceCards = [
-  {
-    title: "Loty",
-    description: "Szybkie przejscie do wyszukiwania polaczen i dalszego porownywania ofert partnerow.",
-  },
-  {
-    title: "Noclegi",
-    description: "Naturalny kolejny krok po wyborze miasta: hotele, apartamenty i miejsce, od ktorego zalezy komfort calego wyjazdu.",
-  },
-  {
-    title: "Atrakcje",
-    description: "Lokalne miejsca, bilety i podpowiedzi, ktore zmieniaja zwykle wyszukiwanie w prawdziwy plan wyjazdu.",
-  },
-  {
-    title: "Auta i transfery",
-    description: "Wygodny dodatek dla osob, ktore chca domknac mobilnosc od razu po wyborze kierunku.",
-  },
-  {
-    title: "Dodatki podrzy",
-    description: "eSIM, ubezpieczenie i inne wygodne uslugi, ktore dobrze domykaja komercyjny funnel.",
-  },
-];
-
 export default async function Home() {
   const editorialArticles = getEditorialArticles();
   const latestArticles = getLatestEditorialArticles(4);
@@ -164,10 +143,69 @@ export default async function Home() {
     tags: item.story.bestFor.slice(0, 3),
     meta: `lot ok. ${item.destination.typicalFlightHoursFromPL.toFixed(1)} h z Polski`,
   }));
+  const partnerPreviewLinks = buildAffiliateLinks("Malaga", "Spain");
+  const serviceCards = [
+    {
+      title: "Loty",
+      description: "Szybkie przejscie do wyszukiwania polaczen i dalszego porownywania ofert partnerow.",
+      partner: getAffiliateBrandLabel(partnerPreviewLinks.flights, "Partner lotniczy"),
+      cta: "/planner?mode=standard&q=Malaga",
+    },
+    {
+      title: "Noclegi",
+      description: "Naturalny kolejny krok po wyborze miasta: hotele, apartamenty i miejsce, od ktorego zalezy komfort calego wyjazdu.",
+      partner: getAffiliateBrandLabel(partnerPreviewLinks.stays, "Partner hotelowy"),
+      cta: "/planner?mode=standard&q=Barcelona",
+    },
+    {
+      title: "Atrakcje",
+      description: "Lokalne miejsca, bilety i podpowiedzi, ktore zmieniaja zwykle wyszukiwanie w prawdziwy plan wyjazdu.",
+      partner: getAffiliateBrandLabel(partnerPreviewLinks.attractions, "Partner atrakcji"),
+      cta: "/planner?mode=standard&q=Rome",
+    },
+    {
+      title: "Auta",
+      description: "Wygodny dodatek dla osob, ktore chca domknac mobilnosc od razu po wyborze kierunku.",
+      partner: getAffiliateBrandLabel(partnerPreviewLinks.cars, "Partner aut"),
+      cta: "/planner?mode=standard&q=Lisbon",
+    },
+    {
+      title: "Plan calego wyjazdu",
+      description: "Najlepszy wynik daje polaczenie wyboru miasta, hoteli, lotow i dodatkow w jednym flow.",
+      partner: "Planner + partnerzy",
+      cta: "/planner?mode=discovery",
+    },
+  ];
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
       <PremiumHomeHero slides={heroSlides} destinationCount={destinationCount} articleCount={articleCount} />
+
+      <section className="rounded-[1.9rem] border border-emerald-900/10 bg-white/95 p-4 shadow-[0_18px_48px_rgba(16,84,48,0.05)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Aktywne przejscia komercyjne</p>
+            <h2 className="mt-2 text-2xl font-bold text-emerald-950">Po wyborze kierunku prowadzimy dalej do aktywnych partnerow.</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-7 text-emerald-900/72">
+            Loty, noclegi i auta sa juz podpiete. To nie jest martwy landing, tylko wejscie w realny funnel wyjazdowy.
+          </p>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: "Loty", partner: getAffiliateBrandLabel(partnerPreviewLinks.flights, "Partner lotniczy") },
+            { label: "Noclegi", partner: getAffiliateBrandLabel(partnerPreviewLinks.stays, "Partner hotelowy") },
+            { label: "Auta", partner: getAffiliateBrandLabel(partnerPreviewLinks.cars, "Partner aut") },
+            { label: "Atrakcje", partner: getAffiliateBrandLabel(partnerPreviewLinks.attractions, "Partner atrakcji") },
+          ].map((item) => (
+            <article key={item.label} className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{item.label}</p>
+              <p className="mt-2 text-xl font-bold text-emerald-950">{item.partner}</p>
+              <p className="mt-2 text-sm text-emerald-900/72">Widoczne w plannerze i gotowe do klikniecia po wyborze kierunku.</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-4">
         {valueCards.map((card) => (
@@ -288,14 +326,21 @@ export default async function Home() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {serviceCards.map((card) => (
-            <article
+            <Link
               key={card.title}
+              href={card.cta}
               className="rounded-[1.75rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(245,252,247,0.98),rgba(234,247,239,0.92))] p-5 transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_52px_rgba(16,84,48,0.1)]"
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Usluga</p>
               <h3 className="mt-3 text-2xl font-bold text-emerald-950">{card.title}</h3>
               <p className="mt-3 text-sm leading-7 text-emerald-900/76">{card.description}</p>
-            </article>
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-900 shadow-sm">
+                  {card.partner}
+                </span>
+                <span className="text-sm font-bold text-emerald-800">Otworz flow</span>
+              </div>
+            </Link>
           ))}
         </div>
       </section>
