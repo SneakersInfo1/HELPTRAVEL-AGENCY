@@ -8,7 +8,6 @@ import { DestinationAttractionsPanel } from "@/components/mvp/destination-attrac
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
 import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
-import { TravelPackagePanel } from "@/components/mvp/travel-package-panel";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { getDestinationMedia } from "@/lib/mvp/commercial-assets";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
@@ -123,14 +122,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
       </section>
 
       <div className="grid gap-5">
-        <TravelPackagePanel
-          destinationCity={trip.city}
-          destinationCountry={trip.country}
-          destinationImage={resolvedMedia.heroImage}
-          defaultOriginCity="Warszawa"
-          defaultPassengers={2}
-        />
-        <FlightOffersPanel destinationCity={trip.city} destinationCountry={trip.country} defaultOriginCity="Warszawa" passengers={2} />
+        <FlightOffersPanel destinationCity={trip.city} destinationCountry={trip.country} defaultOriginCity="Warszawa" passengers={2} partnerUrl={trip.affiliateLinks.flights} />
         <StayOffersPanel destinationCity={trip.city} destinationCountry={trip.country} defaultPassengers={2} />
       </div>
 

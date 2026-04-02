@@ -63,11 +63,11 @@ export function StayOffersPanel(props: {
   const [nights, setNights] = useState(4);
   const [guests, setGuests] = useState(props.defaultPassengers ?? 2);
   const [rooms, setRooms] = useState(1);
-  const [sortBy, setSortBy] = useState<StaySortMode>("cheap");
+  const [sortBy, setSortBy] = useState<StaySortMode>("value");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<StaySearchResponse | null>(null);
-  const [visibleCount, setVisibleCount] = useState(24);
+  const [visibleCount, setVisibleCount] = useState(20);
 
   useEffect(() => {
     if (!props.destinationCity) return;
@@ -89,7 +89,7 @@ export function StayOffersPanel(props: {
           });
           if (!cancelled) {
             setData(result);
-            setVisibleCount(24);
+            setVisibleCount(20);
           }
         } catch (err) {
           if (!cancelled) {
@@ -118,7 +118,7 @@ export function StayOffersPanel(props: {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Noclegi</p>
           <h3 className="mt-2 text-2xl font-bold text-emerald-950">
-            Hotele w {props.destinationCity}, {props.destinationCountry}
+            20 najlepiej dopasowanych hoteli w {props.destinationCity}, {props.destinationCountry}
           </h3>
           <p className="mt-2 text-sm leading-6 text-emerald-900/72">
             Realne ceny z aktywnego dostawcy noclegów albo bezpieczny fallback, jeśli feed nie jest jeszcze dostępny.

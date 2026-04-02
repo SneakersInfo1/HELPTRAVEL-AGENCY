@@ -8,7 +8,6 @@ import { ActivityOffersPanel } from "@/components/mvp/activity-offers-panel";
 import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
-import { TravelPackagePanel } from "@/components/mvp/travel-package-panel";
 import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
@@ -341,8 +340,7 @@ export function PlannerClient({
           ) : null}
 
           <div className="grid gap-5">
-            <TravelPackagePanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} destinationImage={selectedStory.heroImage} defaultOriginCity={originCity} defaultPassengers={travelers} />
-            <FlightOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultOriginCity={originCity} passengers={travelers} />
+            <FlightOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultOriginCity={originCity} passengers={travelers} partnerUrl={selectedOption.destination.affiliateLinks.flights} />
             <StayOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultPassengers={travelers} />
             <DestinationAttractionsPanel city={selectedOption.destination.city} country={selectedOption.destination.country} />
             <ActivityOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultTravelers={travelers} />
