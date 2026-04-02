@@ -34,6 +34,8 @@ interface PremiumHomeHeroProps {
   articleCount: number;
 }
 
+type SearchField = "origin" | "destination";
+
 const discoveryPrompts = [
   "Cieply kierunek na 5 dni, budzet do 2000 zl, plaza i zwiedzanie, wylot z Polski.",
   "Romantyczny wyjazd na 4 dni, dobre jedzenie, malo logistyki i ladne centrum.",
@@ -46,20 +48,32 @@ function plannerHref(mode: "standard" | "discovery", query: string): string {
   return `/planner?mode=${mode}&q=${encodeURIComponent(query)}`;
 }
 
+function buildStandardPlannerHref(params: { origin: string; destination: string }): string {
+  const searchParams = new URLSearchParams({
+    mode: "standard",
+    q: params.destination,
+    origin: params.origin,
+    destination: params.destination,
+  });
+  return `/planner?${searchParams.toString()}`;
+}
+
 export function PremiumHomeHero({ slides, destinationCount, articleCount }: PremiumHomeHeroProps) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [knownQuery, setKnownQuery] = useState("");
-  const [knownFocused, setKnownFocused] = useState(false);
+  const [originQuery, setOriginQuery] = useState("Warszawa");
+  const [destinationQuery, setDestinationQuery] = useState("");
+  const [activeField, setActiveField] = useState<SearchField | null>(null);
   const [discoveryQuery, setDiscoveryQuery] = useState(discoveryPrompts[0]);
   const [suggestions, setSuggestions] = useState<DestinationSuggestion[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
 
-  const deferredKnownQuery = useDeferredValue(knownQuery.trim());
+  const activeQuery = activeField === "origin" ? originQuery.trim() : destinationQuery.trim();
+  const deferredKnownQuery = useDeferredValue(activeQuery);
   const safeSlides =
     slides.length > 0
       ? slides
@@ -107,7 +121,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
 
     const target = event.target;
     if (target instanceof Node && !rootRef.current.contains(target)) {
-      setKnownFocused(false);
+      setActiveField(null);
       setHighlightedIndex(-1);
     }
   });
@@ -120,7 +134,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
   }, []);
 
   useEffect(() => {
-    if (!knownFocused) {
+    if (!activeField) {
       return;
     }
 
@@ -161,16 +175,16 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [deferredKnownQuery, knownFocused]);
+  }, [activeField, deferredKnownQuery]);
 
   const submitKnownSearch = (suggestion?: DestinationSuggestion | null) => {
-    const fallbackValue = knownQuery.trim();
-    const nextValue = suggestion?.queryValue ?? fallbackValue;
-    if (!nextValue) {
+    const nextDestination = suggestion?.queryValue ?? destinationQuery.trim();
+    const nextOrigin = originQuery.trim() || "Warszawa";
+    if (!nextDestination) {
       return;
     }
 
-    router.push(plannerHref("standard", nextValue));
+    router.push(buildStandardPlannerHref({ origin: nextOrigin, destination: nextDestination }));
   };
 
   const submitDiscoverySearch = () => {
@@ -182,7 +196,24 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
     router.push(plannerHref("discovery", nextValue));
   };
 
-  const handleKnownKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const applySuggestionToField = (field: SearchField, suggestion?: DestinationSuggestion | null) => {
+    if (!suggestion) {
+      return;
+    }
+
+    if (field === "origin") {
+      setOriginQuery(suggestion.city);
+      setActiveField(null);
+      setHighlightedIndex(-1);
+      return;
+    }
+
+    setDestinationQuery(suggestion.queryValue);
+    setActiveField(null);
+    setHighlightedIndex(-1);
+  };
+
+  const handleKnownKeyDown = (field: SearchField, event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setHighlightedIndex((current) => {
@@ -206,24 +237,30 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
     }
 
     if (event.key === "Escape") {
-      setKnownFocused(false);
+      setActiveField(null);
       setHighlightedIndex(-1);
       return;
     }
 
     if (event.key === "Enter") {
       event.preventDefault();
-      if (knownFocused && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        submitKnownSearch(suggestions[highlightedIndex]);
+      if (activeField === field && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        if (field === "origin") {
+          applySuggestionToField(field, suggestions[highlightedIndex]);
+        } else {
+          submitKnownSearch(suggestions[highlightedIndex]);
+        }
         return;
       }
 
-      submitKnownSearch();
+      if (field === "destination") {
+        submitKnownSearch();
+      }
     }
   };
 
   const quickDestinations = safeSlides.slice(0, 5);
-  const dropdownVisible = knownFocused && (isSearching || searchError || suggestions.length > 0);
+  const dropdownVisible = Boolean(activeField) && (isSearching || searchError || suggestions.length > 0);
 
   return (
     <section
@@ -349,7 +386,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Sciezka 1</p>
                   <h2 className="mt-2 text-3xl font-bold text-emerald-950">Mam kierunek</h2>
                   <p className="mt-2 max-w-xl text-sm leading-7 text-emerald-900/74">
-                    Wpisujesz miasto lub kraj, dostajesz eleganckie podpowiedzi i przechodzisz prosto do planowania wyjazdu.
+                    Ustaw miasto wylotu i kierunek, a dalej pokazujemy konkretny funnel: loty, hotele i wygodne dodatki.
                   </p>
                 </div>
                 <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">
@@ -357,67 +394,120 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                 </span>
               </div>
 
-              <div className="relative mt-5">
-                <label className="sr-only" htmlFor="hero-destination-search">
-                  Wyszukaj kierunek
-                </label>
-                <input
-                  id="hero-destination-search"
-                  value={knownQuery}
-                  onChange={(event) => setKnownQuery(event.target.value)}
-                  onFocus={() => setKnownFocused(true)}
-                  onKeyDown={handleKnownKeyDown}
-                  placeholder="Dokad chcesz poleciec? Malaga, Rzym, Barcelona, Paryz, Bali..."
-                  className="w-full rounded-[1.6rem] border border-emerald-900/12 bg-white px-5 py-4 text-base font-medium text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-                />
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="relative">
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700" htmlFor="hero-origin-search">
+                    Skad lecisz
+                  </label>
+                  <input
+                    id="hero-origin-search"
+                    value={originQuery}
+                    onChange={(event) => setOriginQuery(event.target.value)}
+                    onFocus={() => setActiveField("origin")}
+                    onKeyDown={(event) => handleKnownKeyDown("origin", event)}
+                    placeholder="Warszawa, Krakow, Gdansk..."
+                    className="mt-2 w-full rounded-[1.6rem] border border-emerald-900/12 bg-white px-5 py-4 text-base font-medium text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
+                  />
 
-                {dropdownVisible ? (
-                  <div className="absolute inset-x-0 top-[calc(100%+0.75rem)] z-20 rounded-[1.5rem] border border-emerald-900/10 bg-white p-3 shadow-[0_28px_60px_rgba(12,58,34,0.12)]">
-                    {isSearching ? (
-                      <div className="flex items-center gap-3 rounded-[1.2rem] bg-emerald-50/80 px-4 py-3 text-sm font-medium text-emerald-900">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
-                        Szukamy miast i kierunkow...
-                      </div>
-                    ) : null}
+                  {dropdownVisible && activeField === "origin" ? (
+                    <div className="absolute inset-x-0 top-[calc(100%+0.75rem)] z-20 rounded-[1.5rem] border border-emerald-900/10 bg-white p-3 shadow-[0_28px_60px_rgba(12,58,34,0.12)]">
+                      {isSearching ? (
+                        <div className="flex items-center gap-3 rounded-[1.2rem] bg-emerald-50/80 px-4 py-3 text-sm font-medium text-emerald-900">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
+                          Szukamy miasta wylotu...
+                        </div>
+                      ) : null}
 
-                    {!isSearching && suggestions.length > 0 ? (
-                      <div className="space-y-2">
-                        {suggestions.map((suggestion, index) => (
-                          <button
-                            key={`${suggestion.id}-${suggestion.label}`}
-                            type="button"
-                            onMouseEnter={() => setHighlightedIndex(index)}
-                            onClick={() => submitKnownSearch(suggestion)}
-                            className={`flex w-full items-start justify-between gap-3 rounded-[1.2rem] px-4 py-3 text-left transition ${
-                              highlightedIndex === index ? "bg-emerald-50 ring-1 ring-emerald-200" : "hover:bg-emerald-50/70"
-                            }`}
-                          >
-                            <div>
-                              <p className="text-sm font-bold text-emerald-950">{suggestion.city}</p>
-                              <p className="mt-1 text-xs leading-5 text-emerald-900/66">
-                                {suggestion.country}
-                                {suggestion.region ? `, ${suggestion.region}` : ""}
-                              </p>
-                            </div>
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
-                                suggestion.destinationSlug
-                                  ? "bg-emerald-100 text-emerald-900"
-                                  : "bg-slate-100 text-slate-700"
+                      {!isSearching && suggestions.length > 0 ? (
+                        <div className="space-y-2">
+                          {suggestions.map((suggestion, index) => (
+                            <button
+                              key={`${suggestion.id}-${suggestion.label}-origin`}
+                              type="button"
+                              onMouseEnter={() => setHighlightedIndex(index)}
+                              onClick={() => applySuggestionToField("origin", suggestion)}
+                              className={`flex w-full items-start justify-between gap-3 rounded-[1.2rem] px-4 py-3 text-left transition ${
+                                highlightedIndex === index ? "bg-emerald-50 ring-1 ring-emerald-200" : "hover:bg-emerald-50/70"
                               }`}
                             >
-                              {suggestion.destinationSlug ? "przewodnik + planner" : "miasto"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
+                              <div>
+                                <p className="text-sm font-bold text-emerald-950">{suggestion.city}</p>
+                                <p className="mt-1 text-xs leading-5 text-emerald-900/66">
+                                  {suggestion.country}
+                                  {suggestion.region ? `, ${suggestion.region}` : ""}
+                                </p>
+                              </div>
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                                wylot
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
 
-                    {!isSearching && searchError ? (
-                      <p className="rounded-[1.2rem] bg-red-50 px-4 py-3 text-sm text-red-700">{searchError}</p>
-                    ) : null}
-                  </div>
-                ) : null}
+                      {!isSearching && searchError ? <p className="rounded-[1.2rem] bg-red-50 px-4 py-3 text-sm text-red-700">{searchError}</p> : null}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="relative">
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700" htmlFor="hero-destination-search">
+                    Dokad lecisz
+                  </label>
+                  <input
+                    id="hero-destination-search"
+                    value={destinationQuery}
+                    onChange={(event) => setDestinationQuery(event.target.value)}
+                    onFocus={() => setActiveField("destination")}
+                    onKeyDown={(event) => handleKnownKeyDown("destination", event)}
+                    placeholder="Malaga, Rzym, Barcelona, Paryz, Bali..."
+                    className="mt-2 w-full rounded-[1.6rem] border border-emerald-900/12 bg-white px-5 py-4 text-base font-medium text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
+                  />
+
+                  {dropdownVisible && activeField === "destination" ? (
+                    <div className="absolute inset-x-0 top-[calc(100%+0.75rem)] z-20 rounded-[1.5rem] border border-emerald-900/10 bg-white p-3 shadow-[0_28px_60px_rgba(12,58,34,0.12)]">
+                      {isSearching ? (
+                        <div className="flex items-center gap-3 rounded-[1.2rem] bg-emerald-50/80 px-4 py-3 text-sm font-medium text-emerald-900">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
+                          Szukamy miast i kierunkow...
+                        </div>
+                      ) : null}
+
+                      {!isSearching && suggestions.length > 0 ? (
+                        <div className="space-y-2">
+                          {suggestions.map((suggestion, index) => (
+                            <button
+                              key={`${suggestion.id}-${suggestion.label}-destination`}
+                              type="button"
+                              onMouseEnter={() => setHighlightedIndex(index)}
+                              onClick={() => submitKnownSearch(suggestion)}
+                              className={`flex w-full items-start justify-between gap-3 rounded-[1.2rem] px-4 py-3 text-left transition ${
+                                highlightedIndex === index ? "bg-emerald-50 ring-1 ring-emerald-200" : "hover:bg-emerald-50/70"
+                              }`}
+                            >
+                              <div>
+                                <p className="text-sm font-bold text-emerald-950">{suggestion.city}</p>
+                                <p className="mt-1 text-xs leading-5 text-emerald-900/66">
+                                  {suggestion.country}
+                                  {suggestion.region ? `, ${suggestion.region}` : ""}
+                                </p>
+                              </div>
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                                  suggestion.destinationSlug ? "bg-emerald-100 text-emerald-900" : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {suggestion.destinationSlug ? "planner" : "miasto"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {!isSearching && searchError ? <p className="rounded-[1.2rem] bg-red-50 px-4 py-3 text-sm text-red-700">{searchError}</p> : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2">
@@ -426,8 +516,8 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                     key={slide.id}
                     type="button"
                     onClick={() => {
-                      setKnownQuery(slide.label);
-                      router.push(plannerHref("standard", slide.label));
+                      setDestinationQuery(slide.label);
+                      router.push(buildStandardPlannerHref({ origin: originQuery.trim() || "Warszawa", destination: slide.label }));
                     }}
                     className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-500/40 hover:bg-emerald-100"
                   >
@@ -442,10 +532,10 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                   onClick={() => submitKnownSearch()}
                   className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-[0_16px_32px_rgba(21,128,61,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-800"
                 >
-                  Szukaj kierunku
+                  Pokaz loty i hotele
                 </button>
                 <p className="text-sm text-emerald-900/66">
-                  Po wyborze prowadzimy dalej do lotow, hoteli, atrakcji i wygodnych dodatkow.
+                  Najpierw konkretne wyniki dla trasy, nizej lokalny kontekst, atrakcje i dodatki.
                 </p>
               </div>
             </article>

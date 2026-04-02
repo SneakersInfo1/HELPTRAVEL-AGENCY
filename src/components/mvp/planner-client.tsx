@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { startTransition, useEffect, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
 import { ActivityOffersPanel } from "@/components/mvp/activity-offers-panel";
 import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
@@ -54,7 +54,29 @@ const discoveryPresets = [
 
 const standardPresets = ["Malaga", "Barcelona", "Lizbona", "Walencja"];
 
-export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: { initialMode?: Mode; initialQuery?: string }) {
+interface PlannerClientProps {
+  initialMode?: Mode;
+  initialQuery?: string;
+  initialOriginCity?: string;
+  initialDestinationHint?: string;
+  initialTravelers?: number;
+  initialBudget?: number;
+  initialStandardDays?: number;
+  initialStyle?: string;
+  autoRunStandardSearch?: boolean;
+}
+
+export function PlannerClient({
+  initialMode = "discovery",
+  initialQuery = "",
+  initialOriginCity = "",
+  initialDestinationHint = "",
+  initialTravelers = 2,
+  initialBudget = 2500,
+  initialStandardDays = 4,
+  initialStyle = "city break",
+  autoRunStandardSearch = false,
+}: PlannerClientProps) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -62,16 +84,17 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
   const [selectedOptionId, setSelectedOptionId] = useState("");
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
   const [savedTrips, setSavedTrips] = useState<SavedTripView[]>([]);
+  const autoSearchRef = useRef(false);
 
   const [query, setQuery] = useState(initialQuery || "Chce poleciec do cieplego kraju do 2000 zl na 5 dni, bez wizy, z plaza i zwiedzaniem.");
-  const [budget, setBudget] = useState(2500);
-  const [travelers, setTravelers] = useState(2);
+  const [budget, setBudget] = useState(initialBudget);
+  const [travelers, setTravelers] = useState(initialTravelers);
   const [durationMin, setDurationMin] = useState(4);
   const [durationMax, setDurationMax] = useState(5);
-  const [originCity, setOriginCity] = useState("Warszawa");
-  const [destinationHint, setDestinationHint] = useState(initialMode === "standard" && initialQuery ? initialQuery : "Malaga");
-  const [standardDays, setStandardDays] = useState(4);
-  const [standardStyle, setStandardStyle] = useState("city break");
+  const [originCity, setOriginCity] = useState(initialOriginCity || "Warszawa");
+  const [destinationHint, setDestinationHint] = useState(initialDestinationHint || (initialMode === "standard" && initialQuery ? initialQuery : "Malaga"));
+  const [standardDays, setStandardDays] = useState(initialStandardDays);
+  const [standardStyle, setStandardStyle] = useState(initialStyle);
 
   useEffect(() => {
     fetch("/api/trips/history")
@@ -115,6 +138,23 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
     }
   };
 
+  const triggerInitialStandardSearch = useEffectEvent(() => {
+    void runPlanner();
+  });
+
+  useEffect(() => {
+    if (!autoRunStandardSearch || autoSearchRef.current) {
+      return;
+    }
+
+    if (mode !== "standard" || !destinationHint.trim()) {
+      return;
+    }
+
+    autoSearchRef.current = true;
+    triggerInitialStandardSearch();
+  }, [autoRunStandardSearch, destinationHint, mode]);
+
   const onSave = async (itineraryResultId: string) => {
     setSavingMap((prev) => ({ ...prev, [itineraryResultId]: true }));
     try {
@@ -138,6 +178,7 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
   const stayPartner = getAffiliateBrandLabel(selectedOption?.destination.affiliateLinks.stays, "Partner hotelowy");
   const attractionPartner = getAffiliateBrandLabel(selectedOption?.destination.affiliateLinks.attractions, "Partner atrakcji");
   const carPartner = getAffiliateBrandLabel(selectedOption?.destination.affiliateLinks.cars, "Partner aut");
+  const isDirectRouteSearch = mode === "standard" && Boolean(originCity.trim()) && Boolean(destinationHint.trim());
 
   const buildSelectedRedirectHref = (providerKey: "flights" | "stays" | "attractions" | "cars", url: string) =>
     buildRedirectHref({
@@ -280,6 +321,34 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
 
       {result && selectedOption && selectedStory ? (
         <>
+          {isDirectRouteSearch ? (
+            <section className="rounded-[2rem] border border-emerald-500/15 bg-[linear-gradient(135deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Szybki wynik komercyjny</p>
+                  <h2 className="mt-2 text-3xl font-bold text-emerald-950">
+                    {originCity} → {selectedOption.destination.city}
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-7 text-emerald-900/76">
+                    Najpierw pokazujemy konkretne oferty lotow i hoteli dla tej trasy. Nizej zostawiamy lokalny kontekst, atrakcje i dodatkowe uslugi, zeby to nie wygladalo jak demo, tylko jak realny funnel wyjazdowy.
+                  </p>
+                </div>
+                <div className="rounded-[1.5rem] border border-emerald-900/10 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 shadow-sm">
+                  {travelers} os. · {standardDays} dni · budzet do {budget.toLocaleString("pl-PL")} PLN
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          <div className="grid gap-5">
+            <TravelPackagePanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} destinationImage={selectedStory.heroImage} defaultOriginCity={originCity} defaultPassengers={travelers} />
+            <FlightOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultOriginCity={originCity} passengers={travelers} />
+            <StayOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultPassengers={travelers} />
+            <DestinationAttractionsPanel city={selectedOption.destination.city} country={selectedOption.destination.country} />
+            <ActivityOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultTravelers={travelers} />
+            <TransferOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultPassengers={travelers} />
+          </div>
+
           <section className="grid gap-5 rounded-[2rem] border border-emerald-900/10 bg-white/92 p-4 sm:p-6">
             <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
               <div className="overflow-hidden rounded-[1.75rem] border border-emerald-900/10">
@@ -415,14 +484,6 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
             </div>
           </section>
 
-          <div className="grid gap-5">
-            <TravelPackagePanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} destinationImage={selectedStory.heroImage} defaultOriginCity={originCity} defaultPassengers={travelers} />
-            <FlightOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultOriginCity={originCity} passengers={travelers} />
-            <StayOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultPassengers={travelers} />
-            <DestinationAttractionsPanel city={selectedOption.destination.city} country={selectedOption.destination.country} />
-            <ActivityOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultTravelers={travelers} />
-            <TransferOffersPanel destinationCity={selectedOption.destination.city} destinationCountry={selectedOption.destination.country} defaultPassengers={travelers} />
-          </div>
         </>
       ) : null}
 
@@ -431,10 +492,12 @@ export function PlannerClient({ initialMode = "discovery", initialQuery = "" }: 
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Pozostale propozycje</p>
-              <h2 className="mt-1 text-2xl font-bold text-emerald-950">3-5 najlepszych kierunkow</h2>
+              <h2 className="mt-1 text-2xl font-bold text-emerald-950">{mode === "standard" ? "Podobne kierunki obok glownej trasy" : "3-5 najlepszych kierunkow"}</h2>
             </div>
             <p className="max-w-xl text-sm leading-7 text-emerald-900/72">
-              Kazda karta ma zdjecie, lokalny opis i uzasadnienie dopasowania. Realne ceny pokazujemy w dedykowanych panelach lotow, noclegow i atrakcji.
+              {mode === "standard"
+                ? "Glowna trasa jest juz policzona wyzej. Te karty zostawiamy jako alternatywy, gdy chcesz porownac podobne kierunki."
+                : "Kazda karta ma zdjecie, lokalny opis i uzasadnienie dopasowania. Realne ceny pokazujemy w dedykowanych panelach lotow, noclegow i atrakcji."}
             </p>
           </div>
 
