@@ -33,6 +33,21 @@ const CJ_DESTINATIONS: CjDestinationSeed[] = [
   { city: "Valencia", country: "Spain", destinationLabel: "Valencia, Spain" },
   { city: "Valletta", country: "Malta", destinationLabel: "Valletta, Malta" },
   { city: "Istanbul", country: "Turkey", destinationLabel: "Istanbul, Turkey" },
+  { city: "Naples", country: "Italy", destinationLabel: "Naples, Italy" },
+  { city: "Larnaca", country: "Cyprus", destinationLabel: "Larnaca, Cyprus" },
+  { city: "Tirana", country: "Albania", destinationLabel: "Tirana, Albania" },
+  { city: "Antalya", country: "Turkey", destinationLabel: "Antalya, Turkey" },
+  { city: "Marrakesh", country: "Morocco", destinationLabel: "Marrakesh, Morocco" },
+  { city: "Agadir", country: "Morocco", destinationLabel: "Agadir, Morocco" },
+  { city: "Prague", country: "Czechia", destinationLabel: "Prague, Czechia" },
+  { city: "Berlin", country: "Germany", destinationLabel: "Berlin, Germany" },
+  { city: "Amsterdam", country: "Netherlands", destinationLabel: "Amsterdam, Netherlands" },
+  { city: "Dublin", country: "Ireland", destinationLabel: "Dublin, Ireland" },
+  { city: "London", country: "United Kingdom", destinationLabel: "London, United Kingdom" },
+  { city: "Las Palmas", country: "Spain", destinationLabel: "Las Palmas, Spain" },
+  { city: "Funchal", country: "Portugal", destinationLabel: "Funchal, Portugal" },
+  { city: "Alicante", country: "Spain", destinationLabel: "Alicante, Spain" },
+  { city: "New York", country: "United States of America", destinationLabel: "New York, United States of America" },
 ];
 
 function normalize(value: string): string {

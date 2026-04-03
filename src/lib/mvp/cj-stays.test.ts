@@ -10,6 +10,13 @@ test("getCjDestinationSeed returns starter metadata for curated CJ city", () => 
   assert.equal(seed?.destinationLabel, "Malaga, Spain");
 });
 
+test("getCjDestinationSeed supports expanded starter list", () => {
+  const seed = getCjDestinationSeed("London", "United Kingdom");
+
+  assert.ok(seed);
+  assert.equal(seed?.destinationLabel, "London, United Kingdom");
+});
+
 test("buildCjStayLinks generates wrapped Hotels.com, Expedia and Vrbo links", () => {
   process.env.CJ_HOTELS_COM_TEMPLATE = "https://example.com/hotels?redirect={urlEncoded}";
   process.env.CJ_EXPEDIA_TEMPLATE = "https://example.com/expedia?redirect={urlEncoded}";
