@@ -58,6 +58,9 @@ Integracje:
 - `AFFILIATE_FLIGHTS_TEMPLATE` - szablon deeplinku dla lotow (np. z Travelpayouts/CJ)
 - `AFFILIATE_STAYS_TEMPLATE` - szablon deeplinku dla noclegow
 - `AFFILIATE_ATTRACTIONS_TEMPLATE` - szablon deeplinku dla atrakcji
+- `CJ_HOTELS_COM_TEMPLATE` - wrapper CJ dla wynikow Hotels.com z placeholderem `{urlEncoded}`
+- `CJ_EXPEDIA_TEMPLATE` - wrapper CJ dla wynikow Expedia z placeholderem `{urlEncoded}`
+- `CJ_VRBO_TEMPLATE` - wrapper CJ dla wynikow Vrbo z placeholderem `{urlEncoded}`
 - `HOTELBEDS_HOTEL_API_KEY`
 - `HOTELBEDS_HOTEL_API_SECRET`
 - `HOTELBEDS_HOTEL_API_URL`
@@ -84,6 +87,11 @@ Szablony deeplinkow obsluguja placeholdery:
 - `{flightsQuery}` / `{flightsQueryEncoded}`
 - `{staysQuery}` / `{staysQueryEncoded}`
 - `{attractionsQuery}` / `{attractionsQueryEncoded}`
+
+Dodatkowo wrappery CJ dla top kierunkow obsluguja:
+
+- `{url}`
+- `{urlEncoded}`
 
 ## Uruchomienie lokalne
 

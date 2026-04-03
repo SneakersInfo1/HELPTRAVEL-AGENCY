@@ -1,4 +1,5 @@
 import type { AffiliateLinks } from "./types";
+import { buildCjStayLinks } from "./cj-stays";
 
 type AffiliateKind = keyof AffiliateLinks;
 
@@ -64,9 +65,10 @@ function buildAffiliateLink(kind: AffiliateKind, input: AffiliateTemplateInput):
 
 export function buildAffiliateLinks(city: string, country: string): AffiliateLinks {
   const input = { city, country };
+  const cjStayLinks = buildCjStayLinks(city, country);
   return {
     flights: buildAffiliateLink("flights", input),
-    stays: buildAffiliateLink("stays", input),
+    stays: cjStayLinks?.hotels ?? buildAffiliateLink("stays", input),
     attractions: buildAffiliateLink("attractions", input),
     cars: buildAffiliateLink("cars", input),
   };

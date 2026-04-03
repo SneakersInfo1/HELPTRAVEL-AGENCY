@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
+import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
+import { buildCjStayLinks } from "@/lib/mvp/cj-stays";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import type { StaySearchResponse, StaySortMode } from "@/lib/mvp/types";
 
@@ -111,6 +113,54 @@ export function StayOffersPanel(props: {
   }, [props.destinationCity, props.destinationCountry, checkInDate, nights, guests, rooms, sortBy]);
 
   const displayedOffers = useMemo(() => data?.offers.slice(0, visibleCount) ?? [], [data?.offers, visibleCount]);
+  const fallbackPartnerLinks = useMemo(
+    () =>
+      buildCjStayLinks(props.destinationCity, props.destinationCountry, {
+        checkIn: checkInDate,
+        checkOut: addNights(checkInDate, nights),
+        adults: guests,
+        rooms,
+      }),
+    [checkInDate, guests, nights, props.destinationCity, props.destinationCountry, rooms],
+  );
+  const fallbackPartnerButtons = useMemo(
+    () =>
+      fallbackPartnerLinks
+        ? [
+            {
+              label: getAffiliateBrandLabel(fallbackPartnerLinks.hotels, "Hotels.com"),
+              href: buildRedirectHref({
+                providerKey: "stays",
+                targetUrl: fallbackPartnerLinks.hotels,
+                city: props.destinationCity,
+                country: props.destinationCountry,
+                source: "stay_panel_hotels",
+              }),
+            },
+            {
+              label: getAffiliateBrandLabel(fallbackPartnerLinks.expedia, "Expedia"),
+              href: buildRedirectHref({
+                providerKey: "stays",
+                targetUrl: fallbackPartnerLinks.expedia,
+                city: props.destinationCity,
+                country: props.destinationCountry,
+                source: "stay_panel_expedia",
+              }),
+            },
+            {
+              label: getAffiliateBrandLabel(fallbackPartnerLinks.vrbo, "Vrbo"),
+              href: buildRedirectHref({
+                providerKey: "stays",
+                targetUrl: fallbackPartnerLinks.vrbo,
+                city: props.destinationCity,
+                country: props.destinationCountry,
+                source: "stay_panel_vrbo",
+              }),
+            },
+          ]
+        : [],
+    [fallbackPartnerLinks, props.destinationCity, props.destinationCountry],
+  );
 
   return (
     <section className="rounded-[1.75rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
@@ -208,6 +258,28 @@ export function StayOffersPanel(props: {
       </div>
 
       {error ? <div className="mt-4 rounded-[1.5rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+
+      {fallbackPartnerButtons.length ? (
+        <div className="mt-4 rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Szybkie przejscia partnerow</p>
+          <p className="mt-2 text-sm leading-6 text-emerald-900/78">
+            Dla top kierunkow system automatycznie buduje gotowe przejscia do wynikow w Hotels.com, Expedia i Vrbo dla wybranych dat i liczby gosci.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {fallbackPartnerButtons.map((partner) => (
+              <a
+                key={partner.label}
+                href={partner.href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-emerald-950 ring-1 ring-emerald-900/10 hover:bg-emerald-100"
+              >
+                Otworz w {partner.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-5 space-y-3">
         {loading ? (
