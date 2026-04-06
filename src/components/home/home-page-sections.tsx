@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 
+import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import type { EditorialArticle, EditorialCategory } from "@/lib/mvp/publisher-content";
@@ -23,6 +23,16 @@ interface HomePageSectionsProps {
   editorialCategories: EditorialCategory[];
   staysLabel: string;
   flightsLabel: string;
+}
+
+function buildPlannerHref(destination: string, origin = "Warszawa") {
+  const params = new URLSearchParams({
+    mode: "standard",
+    q: destination,
+    origin,
+  });
+
+  return `/planner?${params.toString()}`;
 }
 
 const copy = {
@@ -64,6 +74,11 @@ const copy = {
     describeTrip: "Opisz wyjazd",
     openCatalog: "Otworz katalog",
     readArticle: "Czytaj artykul",
+    plannerDestinations: {
+      hotel: "Malaga",
+      flights: "Barcelona",
+      apartments: "Lizbona",
+    },
   },
   en: {
     commerceEyebrow: "Commercial fast lane",
@@ -103,6 +118,11 @@ const copy = {
     describeTrip: "Describe your trip",
     openCatalog: "Open catalog",
     readArticle: "Read article",
+    plannerDestinations: {
+      hotel: "Malaga",
+      flights: "Barcelona",
+      apartments: "Lisbon",
+    },
   },
 } as const;
 
@@ -124,36 +144,36 @@ export function HomePageSections({
           <h2 className="mt-3 font-display text-4xl leading-[0.94] sm:text-5xl">{text.commerceTitle}</h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-white/72">{text.commerceBody}</p>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <Link
-              href="/planner?mode=standard&q=Malaga&origin=Warszawa"
+            <LocalizedLink
+              href={buildPlannerHref(text.plannerDestinations.hotel)}
               className="rounded-[1.6rem] bg-white p-4 text-emerald-950 transition duration-300 hover:-translate-y-1 hover:bg-emerald-50"
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.hotelLabel}</p>
               <p className="mt-2 text-2xl font-bold">{staysLabel}</p>
               <p className="mt-2 text-sm leading-6 text-emerald-900/72">{text.hotelBody}</p>
-            </Link>
-            <Link
-              href="/planner?mode=standard&q=Barcelona&origin=Warszawa"
+            </LocalizedLink>
+            <LocalizedLink
+              href={buildPlannerHref(text.plannerDestinations.flights)}
               className="rounded-[1.6rem] border border-white/14 bg-white/8 p-4 transition duration-300 hover:-translate-y-1 hover:bg-white/12"
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">{text.flightsLabel}</p>
               <p className="mt-2 text-xl font-bold">{flightsLabel}</p>
               <p className="mt-2 text-sm text-white/70">{text.flightsBody}</p>
-            </Link>
-            <Link
-              href="/planner?mode=standard&q=Lisbon&origin=Warszawa"
+            </LocalizedLink>
+            <LocalizedLink
+              href={buildPlannerHref(text.plannerDestinations.apartments)}
               className="rounded-[1.6rem] border border-white/14 bg-white/8 p-4 transition duration-300 hover:-translate-y-1 hover:bg-white/12"
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">{text.staysAltLabel}</p>
               <p className="mt-2 text-xl font-bold">Vrbo</p>
               <p className="mt-2 text-sm text-white/70">{text.staysAltBody}</p>
-            </Link>
+            </LocalizedLink>
           </div>
         </article>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {featuredDirections.map((item, index) => (
-            <Link
+            <LocalizedLink
               key={item.slug}
               href={`/kierunki/${item.slug}`}
               className={`group relative overflow-hidden rounded-[2rem] border border-emerald-900/10 shadow-[0_20px_60px_rgba(16,84,48,0.1)] ${
@@ -182,7 +202,7 @@ export function HomePageSections({
                   </div>
                 </div>
               </div>
-            </Link>
+            </LocalizedLink>
           ))}
         </div>
       </section>
@@ -192,7 +212,7 @@ export function HomePageSections({
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.moodEyebrow}</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {text.moods.map((card, index) => (
-              <Link
+              <LocalizedLink
                 key={card.href}
                 href={card.href}
                 className={`rounded-[1.5rem] border border-emerald-900/10 px-4 py-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-500/40 ${
@@ -201,7 +221,7 @@ export function HomePageSections({
               >
                 <h3 className="text-xl font-bold">{card.title}</h3>
                 <p className={`mt-2 text-sm leading-6 ${index === 0 ? "text-white/74" : "text-emerald-900/72"}`}>{card.description}</p>
-              </Link>
+              </LocalizedLink>
             ))}
           </div>
         </article>
@@ -213,9 +233,9 @@ export function HomePageSections({
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.howEyebrow}</p>
             <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">{text.howTitle}</h2>
           </div>
-          <Link href="/planner" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+          <LocalizedLink href="/planner" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
             {text.openPlanner}
-          </Link>
+          </LocalizedLink>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -240,7 +260,7 @@ export function HomePageSections({
           <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">{text.categoriesTitle}</h2>
           <div className="mt-6 grid gap-3">
             {editorialCategories.map((category) => (
-              <Link
+              <LocalizedLink
                 key={category.slug}
                 href={`/${category.slug}`}
                 className="rounded-[1.6rem] border border-emerald-900/10 bg-white px-4 py-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-500/40"
@@ -248,7 +268,7 @@ export function HomePageSections({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{category.eyebrow}</p>
                 <h3 className="mt-2 text-2xl font-bold text-emerald-950">{category.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-emerald-900/72">{category.description}</p>
-              </Link>
+              </LocalizedLink>
             ))}
           </div>
         </article>
@@ -259,9 +279,9 @@ export function HomePageSections({
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.articlesEyebrow}</p>
               <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">{text.articlesTitle}</h2>
             </div>
-            <Link href="/inspiracje" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
+            <LocalizedLink href="/inspiracje" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
               {text.libraryCta}
-            </Link>
+            </LocalizedLink>
           </div>
 
           <div className="mt-6 grid gap-4 xl:grid-cols-2">
@@ -282,24 +302,24 @@ export function HomePageSections({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link
+            <LocalizedLink
               href="/planner?mode=standard"
               className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-300"
             >
               {text.chooseDestination}
-            </Link>
-            <Link
+            </LocalizedLink>
+            <LocalizedLink
               href="/planner?mode=discovery"
               className="rounded-full border border-white/14 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/14"
             >
               {text.describeTrip}
-            </Link>
-            <Link
+            </LocalizedLink>
+            <LocalizedLink
               href="/kierunki"
               className="rounded-full border border-white/14 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/14"
             >
               {text.openCatalog}
-            </Link>
+            </LocalizedLink>
           </div>
         </div>
       </section>

@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   startTransition,
@@ -14,6 +13,7 @@ import {
 } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { LocalizedLink } from "@/components/site/localized-link";
 import { defaultTravelStartDate } from "@/lib/mvp/travel-dates";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
@@ -65,6 +65,7 @@ const heroCopy = {
     destinationSearching: "Szukamy kierunkow...",
     originTag: "wylot",
     destinationTag: "kierunek",
+    cityTag: "miasto",
     startDate: "Start podrozy",
     nights: "Liczba nocy",
     travelers: "Podrozni",
@@ -75,6 +76,17 @@ const heroCopy = {
     discoveryButton: "Szukaj po opisie",
     quickSuggestions: "Szybkie wybory",
     suggestionError: "Nie udalo sie pobrac podpowiedzi.",
+    slideActive: "na ekranie",
+    slideInactive: "pokaz",
+    nextScenario: "Scenariusz po kliknieciu",
+    nextScenarioBody: "Najpierw pobyt, potem loty, apartamenty i mobilnosc dla tej samej daty.",
+    resultsBadge: "od razu do wynikow",
+    guideLabel: "przewodnik",
+    openCatalog: "Otworz katalog kierunkow",
+    discoveryPlaceholder: "Np. chce cieply kierunek na 5 dni, z plaza i miastem, bez dlugiej logistyki.",
+    nightsUnit: "noce",
+    travelersUnit: "os.",
+    discoveryFlowHint: "Najpierw ranking kierunkow, potem hotel i lot dla wybranego miasta.",
   },
   en: {
     premiumBadge: "Premium travel planner",
@@ -102,6 +114,7 @@ const heroCopy = {
     destinationSearching: "Searching destinations...",
     originTag: "origin",
     destinationTag: "destination",
+    cityTag: "city",
     startDate: "Start date",
     nights: "Nights",
     travelers: "Travelers",
@@ -112,14 +125,32 @@ const heroCopy = {
     discoveryButton: "Search by brief",
     quickSuggestions: "Quick picks",
     suggestionError: "Could not load suggestions.",
+    slideActive: "live now",
+    slideInactive: "show",
+    nextScenario: "What opens next",
+    nextScenarioBody: "First stays, then flights, apartments and mobility for the same dates.",
+    resultsBadge: "straight to results",
+    guideLabel: "guide",
+    openCatalog: "Open destination catalog",
+    discoveryPlaceholder: "E.g. I want a warm 5-day trip with a beach, a city and easy logistics.",
+    nightsUnit: "nights",
+    travelersUnit: "trav.",
+    discoveryFlowHint: "First destination matches, then the stay and flight flow for the selected city.",
   },
 } as const;
 
-const discoveryPrompts = [
-  "Cieply kierunek na 5 dni, plaza i zwiedzanie, budzet do 2500 zl.",
-  "Krótki city break dla dwojga z dobrym jedzeniem i ladnym centrum.",
-  "Spokojny wyjazd z Polski, malo logistyki, duzo slonca i widokow.",
-];
+const discoveryPrompts = {
+  pl: [
+    "Cieply kierunek na 5 dni, plaza i zwiedzanie, budzet do 2500 zl.",
+    "Krotki city break dla dwojga z dobrym jedzeniem i ladnym centrum.",
+    "Spokojny wyjazd z Polski, malo logistyki, duzo slonca i widokow.",
+  ],
+  en: [
+    "A warm 5-day trip with beach time, sightseeing and a budget up to 2500 PLN.",
+    "A short city break for two with great food and a beautiful center.",
+    "An easy trip from Poland with sun, views and very little logistics.",
+  ],
+} as const;
 
 function buildStandardPlannerHref(params: {
   origin: string;
@@ -151,6 +182,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
   const rootRef = useRef<HTMLDivElement | null>(null);
   const { locale } = useLanguage();
   const text = heroCopy[locale];
+  const localizedDiscoveryPrompts = locale === "en" ? discoveryPrompts.en : discoveryPrompts.pl;
   const suggestionErrorText = text.suggestionError;
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -160,7 +192,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
   const [nights, setNights] = useState(4);
   const [travelers, setTravelers] = useState(2);
   const [activeField, setActiveField] = useState<SearchField | null>(null);
-  const [discoveryQuery, setDiscoveryQuery] = useState(discoveryPrompts[0]);
+  const [discoveryQuery, setDiscoveryQuery] = useState<string>(localizedDiscoveryPrompts[0]);
   const [suggestions, setSuggestions] = useState<DestinationSuggestion[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isSearching, setIsSearching] = useState(false);
@@ -190,11 +222,24 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
   const quickDestinations = safeSlides.slice(0, 6);
   const dropdownVisible = Boolean(activeField) && (isSearching || searchError || suggestions.length > 0);
   const routePreview = destinationQuery.trim() || activeSlide.city;
+  const previewOrigin = originQuery.trim() || text.searchOriginPlaceholder.split(",")[0];
+  const previewSummary = `${previewOrigin} → ${routePreview} · ${nights} ${text.nightsUnit} · ${travelers} ${text.travelersUnit}`;
   const stageCards = [
     { step: "01", label: text.stageDirection, value: routePreview || text.stagePlaceholder },
-    { step: "02", label: text.stageStay, value: locale === "pl" ? `${nights} noce` : `${nights} nights` },
+    { step: "02", label: text.stageStay, value: `${nights} ${text.nightsUnit}` },
     { step: "03", label: text.stageNext, value: text.stageNextValue },
   ];
+
+  useEffect(() => {
+    const allPresetValues: string[] = [...discoveryPrompts.pl, ...discoveryPrompts.en];
+    setDiscoveryQuery((current) => {
+      if (!current.trim() || allPresetValues.includes(current)) {
+        return localizedDiscoveryPrompts[0];
+      }
+
+      return current;
+    });
+  }, [localizedDiscoveryPrompts]);
 
   const rotateSlides = useEffectEvent(() => {
     startTransition(() => {
@@ -469,7 +514,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                     <p className="mt-1 text-xs text-white/64">{slide.country}</p>
                   </div>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
-                    {index === activeSlideIndex ? (locale === "pl" ? "na ekranie" : "live now") : locale === "pl" ? "pokaz" : "show"}
+                    {index === activeSlideIndex ? text.slideActive : text.slideInactive}
                   </span>
                 </button>
               ))}
@@ -605,7 +650,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                                   suggestion.destinationSlug ? "bg-emerald-100 text-emerald-900" : "bg-slate-100 text-slate-700"
                                 }`}
                               >
-                                {suggestion.destinationSlug ? text.destinationTag : locale === "pl" ? "miasto" : "city"}
+                                {suggestion.destinationSlug ? text.destinationTag : text.cityTag}
                               </span>
                             </button>
                           ))}
@@ -676,21 +721,11 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
               <div className="mt-5 rounded-[1.5rem] border border-emerald-900/8 bg-emerald-50/70 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                      {locale === "pl" ? "Scenariusz po kliknieciu" : "What opens next"}
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-emerald-950">
-                      {originQuery.trim() || "Warszawa"} → {routePreview} · {nights} noce · {travelers} os.
-                    </p>
-                    <p className="mt-1 text-sm text-emerald-900/70">
-                      {locale === "pl"
-                        ? "Najpierw pobyt, potem loty, apartamenty i mobilnosc dla tej samej daty."
-                        : "First stays, then flights, apartments and mobility for the same dates."}
-                    </p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.nextScenario}</p>
+                    <p className="mt-2 text-sm font-semibold text-emerald-950">{previewSummary}</p>
+                    <p className="mt-1 text-sm text-emerald-900/70">{text.nextScenarioBody}</p>
                   </div>
-                  <div className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm">
-                    {locale === "pl" ? "od razu do wynikow" : "straight to results"}
-                  </div>
+                  <div className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm">{text.resultsBadge}</div>
                 </div>
               </div>
 
@@ -702,12 +737,12 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                 >
                   {text.button}
                 </button>
-                <Link
+                <LocalizedLink
                   href="/kierunki"
                   className="inline-flex items-center rounded-full border border-emerald-900/10 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
                 >
-                  {locale === "pl" ? "Otworz katalog kierunkow" : "Open destination catalog"}
-                </Link>
+                  {text.openCatalog}
+                </LocalizedLink>
               </div>
             </article>
 
@@ -718,23 +753,23 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                   <h3 className="mt-2 text-2xl font-bold">{text.discoveryTitle}</h3>
                   <p className="mt-2 text-sm leading-6 text-white/72">{text.discoveryDescription}</p>
                 </div>
-                <Link
+                <LocalizedLink
                   href={activeSlide.href}
                   className="rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/90 transition hover:bg-white/14"
                 >
-                  {locale === "pl" ? "przewodnik" : "guide"} {activeSlide.city}
-                </Link>
+                  {text.guideLabel} {activeSlide.city}
+                </LocalizedLink>
               </div>
 
               <textarea
                 value={discoveryQuery}
                 onChange={(event) => setDiscoveryQuery(event.target.value)}
                 className="mt-4 min-h-28 w-full rounded-[1.5rem] border border-white/12 bg-white/10 px-4 py-4 text-sm leading-7 text-white outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-300/25"
-                placeholder={locale === "pl" ? "Np. chce cieply kierunek na 5 dni, z plaza i miastem, bez dlugiej logistyki." : "E.g. I want a warm 5-day trip with a beach, a city and easy logistics."}
+                placeholder={text.discoveryPlaceholder}
               />
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {discoveryPrompts.map((prompt) => (
+                {localizedDiscoveryPrompts.map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
@@ -755,9 +790,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                   {text.discoveryButton}
                 </button>
                 <p className="text-sm text-white/66">
-                  {locale === "pl"
-                    ? "Najpierw ranking kierunkow, potem hotel i lot dla wybranego miasta."
-                    : "First destination matches, then the stay and flight flow for the selected city."}
+                  {text.discoveryFlowHint}
                 </p>
               </div>
             </article>

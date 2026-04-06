@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { startTransition, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { LocalizedLink } from "@/components/site/localized-link";
 import { ActivityOffersPanel } from "@/components/mvp/activity-offers-panel";
 import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
@@ -65,6 +65,7 @@ const plannerCopy = {
     roomFew: "pokoje",
     roomMany: "pokoi",
     loadingPlan: "Ukladamy plan...",
+    planError: "Nie udalo sie przygotowac planu.",
     showStayFlights: "Pokaz pobyt i loty",
     savedPlans: "Zapisane plany",
     savedPlansBody: "Wrocisz do nich jednym kliknieciem.",
@@ -112,6 +113,8 @@ const plannerCopy = {
     discoveryPrompt: "Najlepsze alternatywy",
     whyItFits: "Dlaczego pasuje",
     watchLabel: "Na co uwazac",
+    openCatalog: "Otworz katalog kierunkow",
+    bookingDeckOnSite: "Na miejscu",
   },
   en: {
     heroEyebrow: "HelpTravel Planner",
@@ -140,6 +143,7 @@ const plannerCopy = {
     roomFew: "rooms",
     roomMany: "rooms",
     loadingPlan: "Building your plan...",
+    planError: "Could not build the trip plan.",
     showStayFlights: "Show stays and flights",
     savedPlans: "Saved plans",
     savedPlansBody: "You can return to them in one click.",
@@ -187,6 +191,8 @@ const plannerCopy = {
     discoveryPrompt: "Best alternatives",
     whyItFits: "Why it fits",
     watchLabel: "Watch-outs",
+    openCatalog: "Open destination catalog",
+    bookingDeckOnSite: "On site",
   },
 } as const;
 
@@ -210,7 +216,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(`Zapytanie nie powiodło się (${response.status}).`);
+    throw new Error(`Request failed (${response.status}).`);
   }
   return (await response.json()) as T;
 }
@@ -353,7 +359,7 @@ export function PlannerClient({
         setSelectedOptionId(data.options[0]?.itineraryResultId ?? "");
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nie udało się przygotować planu.");
+      setError(err instanceof Error ? err.message : text.planError);
     } finally {
       setLoading(false);
     }
@@ -442,7 +448,7 @@ export function PlannerClient({
           },
           {
             eyebrow: text.bookingDeckActivities,
-            title: locale === "en" ? "On site" : "Na miejscu",
+            title: text.bookingDeckOnSite,
             description: text.bookingDeckActivitiesBody,
             href: "#aktywnosci-na-miejscu",
             tone: "light" as const,
@@ -465,10 +471,8 @@ export function PlannerClient({
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.heroEyebrow}</p>
-            <h1 className="mt-2 text-3xl font-bold text-emerald-950 sm:text-4xl">Wybierz kierunek i przejdź od razu do konkretów.</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-900/76">
-              Najpierw dopasowanie kierunku, chwilę później pobyt, loty i kolejne kroki wyjazdu w jednym miejscu.
-            </p>
+            <h1 className="mt-2 text-3xl font-bold text-emerald-950 sm:text-4xl">{text.heroTitle}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-900/76">{text.heroBody}</p>
           </div>
 
           <div className="inline-flex rounded-full border border-emerald-900/10 bg-white/84 p-1 shadow-sm">
@@ -488,7 +492,7 @@ export function PlannerClient({
                 mode === "discovery" ? "bg-emerald-700 text-white" : "text-emerald-900 hover:bg-emerald-100"
               }`}
             >
-              Szukam pomysłu
+              {text.modeDiscovery}
             </button>
           </div>
         </div>
@@ -497,11 +501,11 @@ export function PlannerClient({
           <div className="rounded-[1.75rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(247,252,249,0.98),rgba(235,247,239,0.94))] p-4 sm:p-5">
             {mode === "discovery" ? (
               <div className="space-y-4">
-                <Field label="Opisz wyjazd">
+                <Field label={text.describeTrip}>
                   <Textarea
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Np. ciepły kierunek na 5 dni z plażą, zwiedzaniem i budżetem do 2000 zł."
+                    placeholder={text.discoveryPlaceholder}
                   />
                 </Field>
                 <div className="flex flex-wrap gap-2">
@@ -517,10 +521,10 @@ export function PlannerClient({
                   ))}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Budżet">
+                  <Field label={text.budget}>
                     <Input type="number" value={budget} onChange={(event) => setBudget(Number(event.target.value) || 0)} />
                   </Field>
-                  <Field label="Minimum dni">
+                  <Field label={text.minDays}>
                     <Input
                       type="number"
                       min={2}
@@ -529,7 +533,7 @@ export function PlannerClient({
                       onChange={(event) => setDurationMin(Number(event.target.value) || 2)}
                     />
                   </Field>
-                  <Field label="Maksimum dni">
+                  <Field label={text.maxDays}>
                     <Input
                       type="number"
                       min={2}
@@ -643,7 +647,7 @@ export function PlannerClient({
                   </p>
                 ) : (
                   savedTrips.map((trip) => (
-                    <Link
+                    <LocalizedLink
                       key={trip.itineraryResultId}
                       href={`/trips/${trip.itineraryResultId}`}
                       className="flex items-center justify-between rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
@@ -652,7 +656,7 @@ export function PlannerClient({
                         {trip.city}, {trip.country}
                       </span>
                       <span className="text-xs text-emerald-700">{text.scoreWord} {trip.score.toFixed(0)}</span>
-                    </Link>
+                    </LocalizedLink>
                   ))
                 )}
               </div>

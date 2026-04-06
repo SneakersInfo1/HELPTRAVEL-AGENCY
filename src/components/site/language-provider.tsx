@@ -64,6 +64,21 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     syncLocale(locale);
   }, [locale]);
 
+  useEffect(() => {
+    const syncFromEnvironment = () => {
+      const nextLocale = getPreferredLocale();
+      setLocaleState((current) => (current === nextLocale ? current : nextLocale));
+    };
+
+    window.addEventListener("popstate", syncFromEnvironment);
+    window.addEventListener("storage", syncFromEnvironment);
+
+    return () => {
+      window.removeEventListener("popstate", syncFromEnvironment);
+      window.removeEventListener("storage", syncFromEnvironment);
+    };
+  }, []);
+
   const value = useMemo<LanguageContextValue>(
     () => ({
       locale,

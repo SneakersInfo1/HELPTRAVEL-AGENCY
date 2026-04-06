@@ -28,6 +28,11 @@ export const metadata: Metadata = {
     template: "%s | HelpTravel",
   },
   alternates: {
+    canonical: siteUrl,
+    languages: {
+      "pl-PL": siteUrl,
+      "en-US": `${siteUrl}?lang=en`,
+    },
     types: {
       "application/rss+xml": `${siteUrl}/feed.xml`,
     },
@@ -44,6 +49,10 @@ export const metadata: Metadata = {
   ],
   applicationName: "HelpTravel",
   category: "travel",
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: "HelpTravel",
     description:

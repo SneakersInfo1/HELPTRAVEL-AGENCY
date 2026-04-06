@@ -23,6 +23,10 @@ export const metadata: Metadata = {
     "Pelnoekranowy start do planowania wyjazdu. Wybierz kierunek, ustaw termin i przejdz do hoteli, lotow, atrakcji oraz kolejnych krokow w jednym flow.",
   alternates: {
     canonical: "/",
+    languages: {
+      "pl-PL": "/",
+      "en-US": "/?lang=en",
+    },
   },
   openGraph: {
     title: "HelpTravel - wybierz kierunek, hotel i lot w jednym flow",

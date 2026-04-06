@@ -20,7 +20,7 @@ function postJson<T>(url: string, body: unknown): Promise<T> {
   }).then(async (response) => {
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? `Zapytanie nie powiodlo sie (${response.status}).`);
+      throw new Error(payload?.error ?? `Request failed (${response.status}).`);
     }
     return (await response.json()) as T;
   });
@@ -371,7 +371,7 @@ export function StayOffersPanel(props: {
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-4">
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Termin</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.dateLabel}</p>
                         <p className="mt-1 text-sm font-semibold text-emerald-950">
                           {formatShortDate(props.checkInDate, locale === "en" ? "en-GB" : "pl-PL")} - {formatShortDate(checkOutDate, locale === "en" ? "en-GB" : "pl-PL")}
                         </p>
@@ -459,7 +459,7 @@ export function StayOffersPanel(props: {
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-4">
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.stayLabel}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.dateLabel}</p>
                         <p className="mt-1 text-sm font-semibold text-emerald-950">
                           {formatShortDate(props.checkInDate, locale === "en" ? "en-GB" : "pl-PL")} - {formatShortDate(checkOutDate, locale === "en" ? "en-GB" : "pl-PL")}
                         </p>
