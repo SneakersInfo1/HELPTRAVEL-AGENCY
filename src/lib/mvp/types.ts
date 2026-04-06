@@ -303,7 +303,7 @@ export interface DestinationSuggestion {
   region?: string;
   label: string;
   queryValue: string;
-  source: "curated" | "geoapify";
+  source: "curated" | "catalog" | "geoapify";
   destinationSlug?: string;
   airportCode?: string;
 }

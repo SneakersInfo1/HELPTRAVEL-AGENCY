@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildCjStayLinks, getCjDestinationSeed } from "./cj-stays";
+import { buildCjStayLinks, getCjDestinationSeed, getCjSupportedDestinationCount } from "./cj-stays";
 
 test("getCjDestinationSeed returns starter metadata for curated CJ city", () => {
   const seed = getCjDestinationSeed("Malaga", "Spain");
@@ -15,6 +15,11 @@ test("getCjDestinationSeed supports expanded starter list", () => {
 
   assert.ok(seed);
   assert.equal(seed?.destinationLabel, "London, United Kingdom");
+});
+
+test("CJ destination layer scales beyond prototype size", () => {
+  assert.ok(getCjSupportedDestinationCount() >= 200);
+  assert.ok(getCjDestinationSeed("Tokyo", "Japan"));
 });
 
 test("buildCjStayLinks generates wrapped Hotels.com, Expedia and Vrbo links", () => {

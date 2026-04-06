@@ -44,8 +44,8 @@ export default function AffiliateDisclosurePage() {
           <h2 className="text-2xl font-bold text-emerald-950">Co jest wazne dla uzytkownika</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
             <p>Serwis nie obiecuje, ze kazda oferta bedzie dostepna w kazdym momencie. Dane partnerow i ceny moga sie zmieniac.</p>
-            <p>Jesli feed nie jest dostepny, projekt powinien pokazywac pusty stan albo brak danych zamiast wymyslonych ofert.</p>
-            <p>To podejscie jest celowe: stawiamy na przejrzystosc i realne informacje, nie na sztuczne poczucie pelnej dostepnosci.</p>
+            <p>Na stronie pokazujemy tylko wyniki i przejscia, ktore da sie zweryfikowac w realnym flow rezerwacyjnym.</p>
+            <p>To podejscie jest celowe: stawiamy na przejrzystosc i realne informacje, a finalna decyzja zawsze nalezy do uzytkownika.</p>
           </div>
         </article>
       </section>

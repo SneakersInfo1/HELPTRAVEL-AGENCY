@@ -45,7 +45,7 @@ export default function TermsPage() {
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
             <p>Serwis moze prezentowac wyniki i linki do partnerow zewnetrznych, ale nie gwarantuje niezmiennosci ceny, dostepnosci ani warunkow oferty.</p>
             <p>Ostateczna cena, regulamin i proces rezerwacji zawsze naleza do partnera, do ktorego prowadzi klikniecie.</p>
-            <p>Jesli feed partnera chwilowo nie jest dostepny, serwis moze pokazac brak danych zamiast tworzyc sztuczne oferty.</p>
+            <p>Wyniki i przejscia sa prezentowane zgodnie z aktualna dostepnoscia partnerow oraz biegiem wyszukiwania.</p>
           </div>
         </article>
 
@@ -54,7 +54,7 @@ export default function TermsPage() {
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
             <p>Tresci, opisy, uklady stron i materialy opublikowane w serwisie maja sluzyc do korzystania z projektu i nie powinny byc kopiowane bez zgody wlasciciela.</p>
             <p>Dopuszczalne jest zwykle cytowanie i linkowanie do podstron zgodnie z normalnym obiegiem internetowym, ale nie masowe kopiowanie tresci czy ofert.</p>
-            <p>Przy rozwoju projektu warto doprecyzowac ten dokument pod finalny model biznesowy i wlasnosc marki.</p>
+            <p>Dokument moze byc aktualizowany wraz z rozwojem serwisu, zakresem funkcji i wspolpracy z partnerami.</p>
           </div>
         </article>
       </section>

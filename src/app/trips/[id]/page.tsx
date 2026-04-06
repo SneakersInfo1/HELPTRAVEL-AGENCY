@@ -13,6 +13,7 @@ import { getDestinationMedia } from "@/lib/mvp/commercial-assets";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { buildRedirectHref } from "@/lib/mvp/providers";
+import { addDaysToIsoDate, defaultTravelStartDate } from "@/lib/mvp/travel-dates";
 import { getTrip } from "@/lib/mvp/service";
 
 export const metadata: Metadata = {
@@ -80,6 +81,9 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const stayPartner = getAffiliateBrandLabel(trip.affiliateLinks.stays, "Partner hotelowy");
   const attractionPartner = getAffiliateBrandLabel(trip.affiliateLinks.attractions, "Partner atrakcji");
   const carPartner = getAffiliateBrandLabel(trip.affiliateLinks.cars, "Partner aut");
+  const tripStartDate = defaultTravelStartDate();
+  const tripNights = 4;
+  const tripCheckOutDate = addDaysToIsoDate(tripStartDate, tripNights);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -122,13 +126,38 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
       </section>
 
       <div className="grid gap-5">
-        <FlightOffersPanel destinationCity={trip.city} destinationCountry={trip.country} defaultOriginCity="Warszawa" passengers={2} partnerUrl={trip.affiliateLinks.flights} />
-        <StayOffersPanel destinationCity={trip.city} destinationCountry={trip.country} defaultPassengers={2} />
+        <StayOffersPanel
+          destinationCity={trip.city}
+          destinationCountry={trip.country}
+          checkInDate={tripStartDate}
+          nights={tripNights}
+          guests={2}
+          rooms={1}
+        />
+        <FlightOffersPanel
+          destinationCity={trip.city}
+          destinationCountry={trip.country}
+          originCity="Warszawa"
+          departureDate={tripStartDate}
+          passengers={2}
+          partnerUrl={trip.affiliateLinks.flights}
+        />
       </div>
 
       <DestinationAttractionsPanel city={trip.city} country={trip.country} />
-      <ActivityOffersPanel destinationCity={trip.city} destinationCountry={trip.country} defaultTravelers={2} />
-      <TransferOffersPanel destinationCity={trip.city} destinationCountry={trip.country} defaultPassengers={2} />
+      <ActivityOffersPanel
+        destinationCity={trip.city}
+        destinationCountry={trip.country}
+        fromDate={tripStartDate}
+        toDate={tripCheckOutDate}
+        travelers={2}
+      />
+      <TransferOffersPanel
+        destinationCity={trip.city}
+        destinationCountry={trip.country}
+        outboundDate={tripStartDate}
+        adults={2}
+      />
 
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] animate-fade-in-up">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">

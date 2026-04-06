@@ -6,6 +6,12 @@ type AffiliateKind = keyof AffiliateLinks;
 interface AffiliateTemplateInput {
   city: string;
   country: string;
+  originCity?: string;
+  departureDate?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+  passengers?: number;
+  rooms?: number;
 }
 
 const TEMPLATE_BY_KIND: Record<AffiliateKind, string | undefined> = {
@@ -31,15 +37,31 @@ function fallbackLink(kind: AffiliateKind, place: string): string {
 function interpolateTemplate(template: string, input: AffiliateTemplateInput, kind: AffiliateKind): string {
   const city = input.city.trim();
   const country = input.country.trim();
+  const originCity = input.originCity?.trim() || "Warszawa";
   const cityCountry = [city, country].filter(Boolean).join(" ").trim();
+  const departureDate = input.departureDate?.trim() || "";
+  const checkInDate = input.checkInDate?.trim() || departureDate;
+  const checkOutDate = input.checkOutDate?.trim() || "";
+  const passengers = String(input.passengers ?? 2);
+  const rooms = String(input.rooms ?? 1);
 
   const replacements: Record<string, string> = {
     city,
     country,
+    originCity,
     cityCountry,
     cityEncoded: encodeURIComponent(city),
     countryEncoded: encodeURIComponent(country),
+    originEncoded: encodeURIComponent(originCity),
     cityCountryEncoded: encodeURIComponent(cityCountry),
+    departureDate,
+    departureDateEncoded: encodeURIComponent(departureDate),
+    checkInDate,
+    checkInDateEncoded: encodeURIComponent(checkInDate),
+    checkOutDate,
+    checkOutDateEncoded: encodeURIComponent(checkOutDate),
+    passengers,
+    rooms,
     flightsQuery: `loty z Polski do ${cityCountry}`,
     flightsQueryEncoded: encodeURIComponent(`loty z Polski do ${cityCountry}`),
     staysQuery: cityCountry,
@@ -63,13 +85,22 @@ function buildAffiliateLink(kind: AffiliateKind, input: AffiliateTemplateInput):
   return interpolateTemplate(template, input, kind);
 }
 
-export function buildAffiliateLinks(city: string, country: string): AffiliateLinks {
-  const input = { city, country };
-  const cjStayLinks = buildCjStayLinks(city, country);
+export function buildAffiliateLinksWithContext(input: AffiliateTemplateInput): AffiliateLinks {
+  const cjStayLinks = buildCjStayLinks(input.city, input.country, {
+    checkIn: input.checkInDate,
+    checkOut: input.checkOutDate,
+    adults: input.passengers,
+    rooms: input.rooms,
+  });
+
   return {
     flights: buildAffiliateLink("flights", input),
     stays: cjStayLinks?.hotels ?? buildAffiliateLink("stays", input),
     attractions: buildAffiliateLink("attractions", input),
     cars: buildAffiliateLink("cars", input),
   };
+}
+
+export function buildAffiliateLinks(city: string, country: string): AffiliateLinks {
+  return buildAffiliateLinksWithContext({ city, country });
 }

@@ -13,6 +13,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import { defaultTravelStartDate } from "@/lib/mvp/travel-dates";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
 interface HeroSlide {
@@ -31,40 +32,52 @@ interface HeroSlide {
 interface PremiumHomeHeroProps {
   slides: HeroSlide[];
   destinationCount: number;
-  articleCount: number;
+  guideCount: number;
 }
 
 type SearchField = "origin" | "destination";
 
 const discoveryPrompts = [
-  "Cieply kierunek na 5 dni, budzet do 2000 zl, plaza i zwiedzanie, wylot z Polski.",
-  "Romantyczny wyjazd na 4 dni, dobre jedzenie, malo logistyki i ladne centrum.",
-  "Krotki city break z dobrym klimatem, fajnymi widokami i sensownym budzetem.",
+  "Cieply kierunek na 5 dni, plaza i zwiedzanie, budzet do 2500 zl.",
+  "Krótki city break dla dwojga z dobrym jedzeniem i ladnym centrum.",
+  "Spokojny wyjazd z Polski, malo logistyki, duzo slonca i widokow.",
 ];
 
-const servicePills = ["Loty", "Noclegi", "Atrakcje", "Auta", "eSIM i dodatki"];
-
-function plannerHref(mode: "standard" | "discovery", query: string): string {
-  return `/planner?mode=${mode}&q=${encodeURIComponent(query)}`;
-}
-
-function buildStandardPlannerHref(params: { origin: string; destination: string }): string {
+function buildStandardPlannerHref(params: {
+  origin: string;
+  destination: string;
+  startDate: string;
+  nights: number;
+  travelers: number;
+}): string {
   const searchParams = new URLSearchParams({
     mode: "standard",
     q: params.destination,
     origin: params.origin,
     destination: params.destination,
+    startDate: params.startDate,
+    nights: String(params.nights),
+    travelers: String(params.travelers),
+    days: String(params.nights),
   });
+
   return `/planner?${searchParams.toString()}`;
 }
 
-export function PremiumHomeHero({ slides, destinationCount, articleCount }: PremiumHomeHeroProps) {
+function buildDiscoveryPlannerHref(query: string): string {
+  return `/planner?mode=discovery&q=${encodeURIComponent(query)}`;
+}
+
+export function PremiumHomeHero({ slides, destinationCount, guideCount }: PremiumHomeHeroProps) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [originQuery, setOriginQuery] = useState("Warszawa");
   const [destinationQuery, setDestinationQuery] = useState("");
+  const [startDate, setStartDate] = useState(defaultTravelStartDate());
+  const [nights, setNights] = useState(4);
+  const [travelers, setTravelers] = useState(2);
   const [activeField, setActiveField] = useState<SearchField | null>(null);
   const [discoveryQuery, setDiscoveryQuery] = useState(discoveryPrompts[0]);
   const [suggestions, setSuggestions] = useState<DestinationSuggestion[]>([]);
@@ -84,15 +97,23 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
             country: "Spain",
             label: "Malaga, Spain",
             title: "Malaga",
-            description: "Slonce, plaza i bardzo prosty start do planowania wyjazdu.",
+            description: "Plaza, stare miasto i szybki start do pelnego planu wyjazdu.",
             image: "/branding/helptravel-logo.png",
             href: "/planner?mode=standard&q=Malaga",
-            tags: ["plaza", "city break", "latwy start"],
-            meta: "loty, noclegi i atrakcje",
+            tags: ["slonce", "city break", "plaza"],
+            meta: "loty, hotele i dodatki",
           },
         ];
 
   const activeSlide = safeSlides[activeSlideIndex] ?? safeSlides[0];
+  const quickDestinations = safeSlides.slice(0, 6);
+  const dropdownVisible = Boolean(activeField) && (isSearching || searchError || suggestions.length > 0);
+  const routePreview = destinationQuery.trim() || activeSlide.city;
+  const stageCards = [
+    { step: "01", label: "Kierunek", value: routePreview || "Wybierz miasto" },
+    { step: "02", label: "Pobyt", value: `${nights} noce` },
+    { step: "03", label: "Dalej", value: "Loty i dodatki" },
+  ];
 
   const rotateSlides = useEffectEvent(() => {
     startTransition(() => {
@@ -107,7 +128,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
 
     const intervalId = window.setInterval(() => {
       rotateSlides();
-    }, 3800);
+    }, 3200);
 
     return () => {
       window.clearInterval(intervalId);
@@ -148,6 +169,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
         const response = await fetch(`/api/destinations/suggest${queryString}`, {
           signal: controller.signal,
         });
+
         if (!response.ok) {
           throw new Error("Nie udalo sie pobrac podpowiedzi.");
         }
@@ -169,7 +191,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
           setIsSearching(false);
         }
       }
-    }, deferredKnownQuery ? 160 : 0);
+    }, deferredKnownQuery ? 140 : 0);
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -184,7 +206,15 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
       return;
     }
 
-    router.push(buildStandardPlannerHref({ origin: nextOrigin, destination: nextDestination }));
+    router.push(
+      buildStandardPlannerHref({
+        origin: nextOrigin,
+        destination: nextDestination,
+        startDate,
+        nights,
+        travelers,
+      }),
+    );
   };
 
   const submitDiscoverySearch = () => {
@@ -193,7 +223,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
       return;
     }
 
-    router.push(plannerHref("discovery", nextValue));
+    router.push(buildDiscoveryPlannerHref(nextValue));
   };
 
   const applySuggestionToField = (field: SearchField, suggestion?: DestinationSuggestion | null) => {
@@ -220,6 +250,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
         if (suggestions.length === 0) {
           return -1;
         }
+
         return current < suggestions.length - 1 ? current + 1 : 0;
       });
       return;
@@ -231,6 +262,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
         if (suggestions.length === 0) {
           return -1;
         }
+
         return current > 0 ? current - 1 : suggestions.length - 1;
       });
       return;
@@ -259,19 +291,16 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
     }
   };
 
-  const quickDestinations = safeSlides.slice(0, 5);
-  const dropdownVisible = Boolean(activeField) && (isSearching || searchError || suggestions.length > 0);
-
   return (
     <section
       ref={rootRef}
-      className="relative isolate overflow-hidden rounded-[2.5rem] border border-emerald-900/10 bg-emerald-950 text-white shadow-[0_36px_120px_rgba(7,31,18,0.24)]"
+      className="relative isolate overflow-hidden rounded-[2.5rem] border border-emerald-900/10 bg-emerald-950 text-white shadow-[0_42px_140px_rgba(7,31,18,0.3)]"
     >
       <div className="absolute inset-0">
         {safeSlides.map((slide, index) => (
           <div
             key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-[1400ms] ${index === activeSlideIndex ? "opacity-100" : "opacity-0"}`}
+            className={`absolute inset-0 transition-[opacity,transform] duration-[1400ms] ${index === activeSlideIndex ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-[1.04]"}`}
           >
             <Image
               src={slide.image}
@@ -283,115 +312,113 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
             />
           </div>
         ))}
-        <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(3,17,10,0.9)_0%,rgba(4,24,13,0.72)_44%,rgba(6,32,18,0.48)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(110,231,183,0.32),transparent_28%),radial-gradient(circle_at_top_right,rgba(190,242,100,0.16),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.2),transparent_28%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(108deg,rgba(2,13,8,0.88)_0%,rgba(4,23,13,0.62)_48%,rgba(7,31,18,0.28)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(74,222,128,0.28),transparent_22%),radial-gradient(circle_at_top_right,rgba(187,247,208,0.18),transparent_20%),radial-gradient(circle_at_bottom_center,rgba(16,185,129,0.18),transparent_28%)]" />
       </div>
 
-      <div className="relative grid min-h-[46rem] gap-8 px-5 py-6 sm:px-6 sm:py-7 lg:min-h-[48rem] lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-10">
-        <div className="flex flex-col justify-between gap-7">
+      <div className="relative grid min-h-[calc(100svh-2rem)] gap-8 px-5 py-6 sm:px-8 sm:py-8 xl:grid-cols-[1.08fr_0.92fr] xl:px-10 xl:py-10">
+        <div className="flex flex-col justify-between gap-8">
           <div className="max-w-3xl">
-            <span className="inline-flex rounded-full border border-white/16 bg-white/8 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-100/92">
-              Premium planner podrozy
-            </span>
-            <h1 className="mt-5 max-w-4xl text-balance font-display text-5xl leading-[0.92] sm:text-6xl lg:text-7xl">
-              Wpisz kierunek i rusz dalej. Albo opisz wyjazd, ktorego szukasz.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-emerald-50/82 sm:text-lg">
-              HelpTravel prowadzi od pierwszego wyboru do lotow, noclegow, atrakcji i wygodnych dodatkow. Strona glowna
-              ma od razu uruchamiac planowanie, nie tylko wygladac dobrze.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {servicePills.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/92"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <article className="rounded-[1.5rem] border border-white/12 bg-white/8 px-4 py-4 backdrop-blur-xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Kierunki</p>
-              <p className="mt-2 text-3xl font-bold text-white">{destinationCount}+</p>
-              <p className="mt-2 text-sm leading-6 text-white/72">stron i scenariuszy, od city breakow po cieple kierunki.</p>
-            </article>
-            <article className="rounded-[1.5rem] border border-white/12 bg-white/8 px-4 py-4 backdrop-blur-xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Przewodniki</p>
-              <p className="mt-2 text-3xl font-bold text-white">{articleCount}+</p>
-              <p className="mt-2 text-sm leading-6 text-white/72">tresci, ktore pomagaja wybrac miasto i szybciej kliknac dalej.</p>
-            </article>
-            <article className="rounded-[1.5rem] border border-white/12 bg-white/8 px-4 py-4 backdrop-blur-xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Funnel</p>
-              <p className="mt-2 text-3xl font-bold text-white">1 start</p>
-              <p className="mt-2 text-sm leading-6 text-white/72">jedna sciezka od wyboru kierunku do lotow, hoteli i uslug wyjazdowych.</p>
-            </article>
-          </div>
-
-          <div className="rounded-[1.75rem] border border-white/12 bg-black/18 p-4 backdrop-blur-xl">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-200">Aktualny klimat hero</p>
-                <h2 className="mt-2 text-3xl font-bold text-white">
-                  {activeSlide.title}, {activeSlide.country}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-white/78">{activeSlide.description}</p>
-              </div>
-              <Link
-                href={activeSlide.href}
-                className="rounded-full border border-white/14 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/16"
-              >
-                Otworz przewodnik
-              </Link>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {activeSlide.tags.map((tag) => (
-                <span key={tag} className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/88">
-                  {tag}
-                </span>
-              ))}
-              <span className="rounded-full bg-emerald-400/16 px-3 py-1 text-xs font-semibold text-emerald-100">
-                {activeSlide.meta}
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex rounded-full border border-white/14 bg-white/8 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.26em] text-emerald-100/90">
+                Premium travel planner
+              </span>
+              <span className="inline-flex rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
+                hotel-first funnel
               </span>
             </div>
+            <h1 className="mt-5 max-w-4xl text-balance font-display text-5xl leading-[0.9] sm:text-6xl xl:text-7xl">
+              Wybierz kierunek.
+              <br />
+              Reszta uklada sie dalej.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-white/76 sm:text-lg">
+              Jeden ekran do wybrania miasta. Jeden klik do pobytu. Jeden kolejny do lotow i reszty planu.
+            </p>
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/88">
+                {destinationCount}+ kierunkow
+              </span>
+              <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/88">
+                {guideCount}+ przewodnikow
+              </span>
+              <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/88">
+                hotele, loty, atrakcje, auta
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <article className="overflow-hidden rounded-[1.9rem] border border-white/12 bg-white/8 backdrop-blur-xl">
+              <div className="relative h-72">
+                <Image src={activeSlide.image} alt={activeSlide.label} fill sizes="(max-width: 1280px) 100vw, 40vw" className="object-cover" />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,20,11,0.05)_0%,rgba(5,20,11,0.75)_100%)]" />
+                <div className="absolute inset-x-0 bottom-0 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-200">{activeSlide.meta}</p>
+                  <h2 className="mt-2 text-3xl font-bold text-white">
+                    {activeSlide.city}, {activeSlide.country}
+                  </h2>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-white/78">{activeSlide.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {activeSlide.tags.map((tag) => (
+                      <span key={tag} className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/88">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <div className="grid gap-3">
               {safeSlides.map((slide, index) => (
                 <button
                   key={slide.id}
                   type="button"
                   onClick={() => setActiveSlideIndex(index)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  className={`group flex items-center justify-between rounded-[1.4rem] border px-4 py-3 text-left transition duration-300 ${
                     index === activeSlideIndex
-                      ? "bg-white text-emerald-950"
-                      : "border border-white/14 bg-white/8 text-white/88 hover:bg-white/12"
+                      ? "border-white/18 bg-white/12 shadow-[0_18px_40px_rgba(4,19,10,0.18)]"
+                      : "border-white/10 bg-white/[0.06] hover:-translate-y-0.5 hover:border-white/16 hover:bg-white/[0.09]"
                   }`}
                 >
-                  {slide.city}
+                  <div>
+                    <p className="text-sm font-semibold text-white">{slide.city}</p>
+                    <p className="mt-1 text-xs text-white/64">{slide.country}</p>
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+                    {index === activeSlideIndex ? "na ekranie" : "pokaz"}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="flex items-start lg:justify-end">
-          <div className="w-full max-w-2xl rounded-[2rem] border border-white/12 bg-white/10 p-4 shadow-[0_24px_80px_rgba(4,26,14,0.24)] backdrop-blur-2xl sm:p-5">
-            <article className="rounded-[1.75rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(245,251,247,0.94))] p-5 text-emerald-950 shadow-[0_18px_50px_rgba(7,33,18,0.16)]">
+        <div className="flex items-end xl:justify-end">
+          <div className="w-full max-w-2xl space-y-4">
+            <article className="animate-glow-pulse rounded-[2rem] border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,250,246,0.95))] p-5 text-emerald-950 shadow-[0_28px_90px_rgba(4,26,14,0.24)] backdrop-blur-2xl sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Sciezka 1</p>
-                  <h2 className="mt-2 text-3xl font-bold text-emerald-950">Mam kierunek</h2>
-                  <p className="mt-2 max-w-xl text-sm leading-7 text-emerald-900/74">
-                    Ustaw miasto wylotu i kierunek, a dalej pokazujemy konkretny funnel: loty, hotele i wygodne dodatki.
-                  </p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Priorytet</p>
+                  <h2 className="mt-2 text-3xl font-bold text-emerald-950 sm:text-[2.1rem]">Wybierz miasto docelowe</h2>
+                  <p className="mt-2 text-sm leading-6 text-emerald-900/72">To glowna akcja na stronie. Termin i sklad podrozy leca dalej bez zgadywania.</p>
                 </div>
                 <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">
-                  Dominujaca akcja
+                  glowne CTA
                 </span>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {stageCards.map((card) => (
+                  <div key={card.step} className="rounded-[1.4rem] border border-emerald-900/8 bg-white px-4 py-3 shadow-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                      {card.step} · {card.label}
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-emerald-950">{card.value}</p>
+                  </div>
+                ))}
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -405,7 +432,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                     onChange={(event) => setOriginQuery(event.target.value)}
                     onFocus={() => setActiveField("origin")}
                     onKeyDown={(event) => handleKnownKeyDown("origin", event)}
-                    placeholder="Warszawa, Krakow, Gdansk..."
+                    placeholder="Warszawa, Krakow, Wroclaw..."
                     className="mt-2 w-full rounded-[1.6rem] border border-emerald-900/12 bg-white px-5 py-4 text-base font-medium text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
                   />
 
@@ -469,7 +496,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                       {isSearching ? (
                         <div className="flex items-center gap-3 rounded-[1.2rem] bg-emerald-50/80 px-4 py-3 text-sm font-medium text-emerald-900">
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
-                          Szukamy miast i kierunkow...
+                          Szukamy kierunkow...
                         </div>
                       ) : null}
 
@@ -497,7 +524,7 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                                   suggestion.destinationSlug ? "bg-emerald-100 text-emerald-900" : "bg-slate-100 text-slate-700"
                                 }`}
                               >
-                                {suggestion.destinationSlug ? "planner" : "miasto"}
+                                {suggestion.destinationSlug ? "kierunek" : "miasto"}
                               </span>
                             </button>
                           ))}
@@ -510,14 +537,56 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                  Start
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(event) => setStartDate(event.target.value)}
+                    className="mt-2 w-full rounded-[1.4rem] border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
+                  />
+                </label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                  Nocy
+                  <input
+                    type="number"
+                    min={2}
+                    max={21}
+                    value={nights}
+                    onChange={(event) => setNights(Number(event.target.value))}
+                    className="mt-2 w-full rounded-[1.4rem] border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
+                  />
+                </label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                  Osoby
+                  <input
+                    type="number"
+                    min={1}
+                    max={8}
+                    value={travelers}
+                    onChange={(event) => setTravelers(Number(event.target.value))}
+                    className="mt-2 w-full rounded-[1.4rem] border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
                 {quickDestinations.map((slide) => (
                   <button
                     key={slide.id}
                     type="button"
                     onClick={() => {
                       setDestinationQuery(slide.label);
-                      router.push(buildStandardPlannerHref({ origin: originQuery.trim() || "Warszawa", destination: slide.label }));
+                      router.push(
+                        buildStandardPlannerHref({
+                          origin: originQuery.trim() || "Warszawa",
+                          destination: slide.label,
+                          startDate,
+                          nights,
+                          travelers,
+                        }),
+                      );
                     }}
                     className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-500/40 hover:bg-emerald-100"
                   >
@@ -526,39 +595,58 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                 ))}
               </div>
 
+              <div className="mt-5 rounded-[1.5rem] border border-emerald-900/8 bg-emerald-50/70 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Scenariusz po kliknieciu</p>
+                    <p className="mt-2 text-sm font-semibold text-emerald-950">
+                      {originQuery.trim() || "Warszawa"} → {routePreview} · {nights} noce · {travelers} os.
+                    </p>
+                    <p className="mt-1 text-sm text-emerald-900/70">Najpierw pobyt, potem loty, apartamenty i mobilnosc dla tej samej daty.</p>
+                  </div>
+                  <div className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm">
+                    od razu do wynikow
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={() => submitKnownSearch()}
-                  className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-[0_16px_32px_rgba(21,128,61,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-800"
+                  className="inline-flex items-center rounded-full bg-emerald-700 px-6 py-3.5 text-sm font-bold text-white shadow-[0_18px_34px_rgba(21,128,61,0.24)] transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-800"
                 >
-                  Pokaz loty i hotele
+                  Pokaz pobyt i loty
                 </button>
-                <p className="text-sm text-emerald-900/66">
-                  Najpierw konkretne wyniki dla trasy, nizej lokalny kontekst, atrakcje i dodatki.
-                </p>
+                <Link
+                  href="/kierunki"
+                  className="inline-flex items-center rounded-full border border-emerald-900/10 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
+                >
+                  Otworz katalog kierunkow
+                </Link>
               </div>
             </article>
 
-            <article className="mt-4 rounded-[1.75rem] border border-white/12 bg-white/8 p-5 text-white backdrop-blur-xl">
+            <article className="animate-float-gentle rounded-[1.8rem] border border-white/12 bg-white/8 p-5 text-white backdrop-blur-xl">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Sciezka 2</p>
-                  <h3 className="mt-2 text-3xl font-bold">Nie wiem, dokad leciec</h3>
-                  <p className="mt-2 max-w-xl text-sm leading-7 text-white/76">
-                    Opisz budzet, liczbe dni, klimat wyjazdu i to, czy chcesz bardziej plaze, zwiedzanie czy spokoj.
-                  </p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Opcja dla niezdecydowanych</p>
+                  <h3 className="mt-2 text-2xl font-bold">Opisz idealny wyjazd</h3>
+                  <p className="mt-2 text-sm leading-6 text-white/72">Druga sciezka. Wpisz klimat, budzet i liczbe dni, a dopasujemy kierunki.</p>
                 </div>
-                <span className="rounded-full border border-white/14 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/92">
-                  discovery mode
-                </span>
+                <Link
+                  href={activeSlide.href}
+                  className="rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/90 transition hover:bg-white/14"
+                >
+                  przewodnik {activeSlide.city}
+                </Link>
               </div>
 
               <textarea
                 value={discoveryQuery}
                 onChange={(event) => setDiscoveryQuery(event.target.value)}
-                className="mt-5 min-h-32 w-full rounded-[1.6rem] border border-white/12 bg-white/10 px-4 py-4 text-sm leading-7 text-white outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-300/25"
-                placeholder="Np. chce cieply wyjazd na 5 dni, do 2000 zl, plaza + zwiedzanie, wylot z Polski."
+                className="mt-4 min-h-28 w-full rounded-[1.5rem] border border-white/12 bg-white/10 px-4 py-4 text-sm leading-7 text-white outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-300/25"
+                placeholder="Np. chce cieply kierunek na 5 dni, z plaza i miastem, bez dlugiej logistyki."
               />
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -580,9 +668,9 @@ export function PremiumHomeHero({ slides, destinationCount, articleCount }: Prem
                   onClick={submitDiscoverySearch}
                   className="rounded-full bg-white px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
                 >
-                  Pokaz propozycje wyjazdu
+                  Pokaz propozycje
                 </button>
-                <p className="text-sm text-white/68">Dobre dla osob, ktore chca, zeby platforma najpierw podpowiedziala kierunki.</p>
+                <p className="text-sm text-white/66">Najpierw ranking kierunkow, potem hotel i lot dla wybranego miasta.</p>
               </div>
             </article>
           </div>

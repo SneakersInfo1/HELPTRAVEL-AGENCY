@@ -1,3 +1,5 @@
+import { destinationCatalog, getDestinationCatalogCount } from "./destination-catalog";
+
 interface CjDestinationSeed {
   city: string;
   country: string;
@@ -22,33 +24,11 @@ const DEFAULT_NIGHTS = 4;
 const DEFAULT_ADULTS = 2;
 const DEFAULT_ROOMS = 1;
 
-const CJ_DESTINATIONS: CjDestinationSeed[] = [
-  { city: "Malaga", country: "Spain", destinationLabel: "Malaga, Spain" },
-  { city: "Barcelona", country: "Spain", destinationLabel: "Barcelona, Spain" },
-  { city: "Rome", country: "Italy", destinationLabel: "Rome, Italy" },
-  { city: "Lisbon", country: "Portugal", destinationLabel: "Lisbon, Portugal" },
-  { city: "Paris", country: "France", destinationLabel: "Paris, France" },
-  { city: "Budapest", country: "Hungary", destinationLabel: "Budapest, Hungary" },
-  { city: "Athens", country: "Greece", destinationLabel: "Athens, Greece" },
-  { city: "Valencia", country: "Spain", destinationLabel: "Valencia, Spain" },
-  { city: "Valletta", country: "Malta", destinationLabel: "Valletta, Malta" },
-  { city: "Istanbul", country: "Turkey", destinationLabel: "Istanbul, Turkey" },
-  { city: "Naples", country: "Italy", destinationLabel: "Naples, Italy" },
-  { city: "Larnaca", country: "Cyprus", destinationLabel: "Larnaca, Cyprus" },
-  { city: "Tirana", country: "Albania", destinationLabel: "Tirana, Albania" },
-  { city: "Antalya", country: "Turkey", destinationLabel: "Antalya, Turkey" },
-  { city: "Marrakesh", country: "Morocco", destinationLabel: "Marrakesh, Morocco" },
-  { city: "Agadir", country: "Morocco", destinationLabel: "Agadir, Morocco" },
-  { city: "Prague", country: "Czechia", destinationLabel: "Prague, Czechia" },
-  { city: "Berlin", country: "Germany", destinationLabel: "Berlin, Germany" },
-  { city: "Amsterdam", country: "Netherlands", destinationLabel: "Amsterdam, Netherlands" },
-  { city: "Dublin", country: "Ireland", destinationLabel: "Dublin, Ireland" },
-  { city: "London", country: "United Kingdom", destinationLabel: "London, United Kingdom" },
-  { city: "Las Palmas", country: "Spain", destinationLabel: "Las Palmas, Spain" },
-  { city: "Funchal", country: "Portugal", destinationLabel: "Funchal, Portugal" },
-  { city: "Alicante", country: "Spain", destinationLabel: "Alicante, Spain" },
-  { city: "New York", country: "United States of America", destinationLabel: "New York, United States of America" },
-];
+const CJ_DESTINATIONS: CjDestinationSeed[] = destinationCatalog.map((item) => ({
+  city: item.city,
+  country: item.country,
+  destinationLabel: item.label,
+}));
 
 function normalize(value: string): string {
   return value
@@ -171,4 +151,8 @@ export function buildCjStayLinks(city: string, country: string, options?: CjStay
     expedia: wrapCjUrl(process.env.CJ_EXPEDIA_TEMPLATE?.trim(), expediaDestinationUrl),
     vrbo: wrapCjUrl(process.env.CJ_VRBO_TEMPLATE?.trim(), vrboDestinationUrl),
   };
+}
+
+export function getCjSupportedDestinationCount(): number {
+  return getDestinationCatalogCount();
 }

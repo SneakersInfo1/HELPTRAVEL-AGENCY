@@ -25,9 +25,10 @@ body {
   color: var(--foreground);
   font-family: var(--font-ui), sans-serif;
   background-image:
-    radial-gradient(circle at top left, rgba(72, 164, 103, 0.15), transparent 28%),
-    radial-gradient(circle at top right, rgba(190, 232, 205, 0.55), transparent 22%),
-    linear-gradient(180deg, #f7fbf6 0%, #eef6ef 100%);
+    radial-gradient(circle at top left, rgba(72, 164, 103, 0.18), transparent 24%),
+    radial-gradient(circle at 85% 0%, rgba(190, 232, 205, 0.58), transparent 18%),
+    radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.08), transparent 22%),
+    linear-gradient(180deg, #f8fbf7 0%, #eef6ef 48%, #e6f0e8 100%);
 }
 
 .glass-panel {
@@ -52,6 +53,18 @@ body {
   animation: heroPan 18s ease-in-out infinite alternate;
 }
 
+.animate-float-gentle {
+  animation: floatGentle 9s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 4.2s ease-in-out infinite;
+}
+
+.animate-rise-card {
+  animation: riseCard 620ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -60,7 +73,10 @@ body {
   .animate-fade-in,
   .animate-fade-in-up,
   .animate-scale-in,
-  .animate-hero-pan {
+  .animate-hero-pan,
+  .animate-float-gentle,
+  .animate-glow-pulse,
+  .animate-rise-card {
     animation: none;
   }
 }
@@ -104,6 +120,37 @@ body {
   }
   to {
     transform: scale(1.1) translate3d(1.5%, -1.5%, 0);
+  }
+}
+
+@keyframes floatGentle {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(52, 211, 153, 0.16);
+  }
+  50% {
+    box-shadow: 0 16px 60px rgba(52, 211, 153, 0.22);
+  }
+}
+
+@keyframes riseCard {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

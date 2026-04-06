@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { searchHotelbedsHotelOffers } from "@/lib/mvp/hotelbeds-hotels";
 import { searchDuffelStays } from "@/lib/mvp/duffel-stays";
+import { searchHotelbedsHotelOffers } from "@/lib/mvp/hotelbeds-hotels";
 
 const staySearchSchema = z.object({
   city: z.string().trim().min(2),
@@ -65,7 +65,10 @@ export async function POST(request: NextRequest) {
         });
       } catch (fallbackError) {
         const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : "";
-        return buildFallback(input, fallbackMessage ? "W tej chwili nie ma aktywnego feedu noclegów." : "W tej chwili nie ma aktywnego feedu noclegów.");
+        return buildFallback(
+          input,
+          fallbackMessage || "Aktualnie nie udało się pobrać ofert noclegów dla tego kierunku.",
+        );
       }
     });
 
@@ -75,6 +78,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.json({ error: 'Nie udało się pobrać danych.' }, { status: 400 });
+    return NextResponse.json({ error: "Nie udało się pobrać danych." }, { status: 400 });
   }
 }

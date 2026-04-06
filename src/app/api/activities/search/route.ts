@@ -22,7 +22,7 @@ function buildFallback(input: z.infer<typeof activitySearchSchema>, errorMessage
     travelers: input.travelers,
     offers: [],
     fetchedAt: new Date().toISOString(),
-    error: errorMessage ?? "Brak aktywnego feedu atrakcji.",
+    error: errorMessage || "Aktualnie nie udało się pobrać ofert atrakcji dla tego kierunku.",
   };
 }
 
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const input = activitySearchSchema.parse(body);
+
     const result = await searchHotelbedsActivities({
       city: input.city,
       country: input.country,

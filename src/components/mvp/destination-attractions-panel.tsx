@@ -17,6 +17,7 @@ function postJson<T>(url: string, body: unknown): Promise<T> {
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
       throw new Error(payload?.error ?? `Zapytanie nie powiodło się (${response.status}).`);
     }
+
     return (await response.json()) as T;
   });
 }
@@ -47,8 +48,10 @@ function GroupCard(props: { title: string; items: DestinationAttractionsResponse
                 </span>
               ) : null}
             </div>
+
             <p className="mt-2 text-sm leading-6 text-emerald-900/78">{item.description}</p>
             <p className="mt-2 text-xs text-emerald-800">{item.address}</p>
+
             {item.url ? (
               <div className="mt-3">
                 <a
@@ -60,9 +63,9 @@ function GroupCard(props: { title: string; items: DestinationAttractionsResponse
                   })}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100"
+                  className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-100"
                 >
-                  Otwórz
+                  Otwórz miejsce
                 </a>
               </div>
             ) : null}
@@ -80,25 +83,33 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
-    if (!props.city) return;
+    if (!props.city) {
+      return;
+    }
 
     let cancelled = false;
     const run = async () => {
       setLoading(true);
       setError("");
+
       try {
         const result = await postJson<DestinationAttractionsResponse>("/api/places/search", {
           city: props.city,
           country: props.country,
         });
-        if (!cancelled) setData(result);
+
+        if (!cancelled) {
+          setData(result);
+        }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Nie udało się pobrać atrakcji.");
+          setError(err instanceof Error ? err.message : "Nie udało się pobrać lokalnych miejsc.");
           setData(null);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
@@ -112,17 +123,18 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
     <section className="rounded-[1.75rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Lokalne miejsca</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Miejsca na miejscu</p>
           <h3 className="mt-2 text-2xl font-bold text-emerald-950">
-            Atrakcje dla {props.city}, {props.country}
+            Co warto zobaczyć w {props.city}
           </h3>
-          <p className="mt-2 text-sm leading-6 text-emerald-900/72">
-            Geoapify dobiera miejsca warte odwiedzenia, muzea, punkty widokowe, plaże, parki i miejsca na jedzenie.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-900/72">
+            Najważniejsze punkty widokowe, muzea, plaże, parki i miejsca na jedzenie zebrane w jednym widoku.
           </p>
         </div>
+
         <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
           {loading ? <Spinner /> : null}
-          {loading ? "Pobieranie miejsc" : data ? `Źródło: ${data.source === "geoapify" ? "Geoapify" : "fallback"}` : "Gotowe do odświeżenia"}
+          {loading ? "Pobieramy miejsca" : data ? `${data.groups.reduce((sum, group) => sum + group.items.length, 0)} miejsc` : "Gotowe"}
         </div>
       </div>
 
@@ -130,9 +142,9 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
         <button
           type="button"
           onClick={() => setRefreshTick((value) => value + 1)}
-          className="rounded-full border border-emerald-900/12 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
+          className="rounded-full border border-emerald-900/12 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
         >
-          Odśwież miejsca
+          Odśwież propozycje
         </button>
       </div>
 
@@ -153,7 +165,7 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
           data.groups.map((group) => <GroupCard key={group.key} title={group.label} items={group.items} />)
         ) : (
           <div className="rounded-[1.5rem] border border-dashed border-emerald-900/12 bg-emerald-50/60 px-4 py-6 text-sm text-emerald-900/70">
-            Po wybraniu kierunku tutaj pojawią się lokalne atrakcje i miejsca warte odwiedzenia.
+            Po wyborze kierunku pokażemy tutaj miejsca warte odwiedzenia i szybkie przejścia do lokalnych atrakcji.
           </div>
         )}
       </div>

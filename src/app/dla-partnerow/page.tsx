@@ -83,7 +83,7 @@ export default function PartnersPage() {
               Travel publisher z plannerem, contentem i uczciwym flow do partnerow
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-              HelpTravel laczy publiczny serwis travelowy, destination huby i planer wyjazdow. Projekt jest budowany tak, by czytelnik najpierw dostal wartosc redakcyjna, potem porownanie, a na koncu uczciwe przejscie do partnera zewnetrznego. Nie pokazujemy fikcyjnego ruchu ani nie udajemy pelnego booking engine.
+              HelpTravel laczy publiczny serwis travelowy, destination huby i planer wyjazdow. Czytelnik najpierw dostaje wartosc redakcyjna, potem porownanie, a na koncu czytelne przejscie do partnera rezerwacyjnego.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
@@ -189,7 +189,7 @@ export default function PartnersPage() {
           <div className="mt-4 space-y-3 text-sm leading-7 text-white/82">
             <p>1. Dobieramy format kampanii do struktury serwisu i typu intencji uzytkownika.</p>
             <p>2. Ustalamy najlepsze miejsca ekspozycji: content, hub, planner albo kierunek.</p>
-            <p>3. Weryfikujemy feed, deeplinki lub model przekierowania.</p>
+            <p>3. Weryfikujemy deeplinki, modele przekierowania lub integracje produktowe.</p>
             <p>4. Zachowujemy jawne oznaczenia partnerstwa i przejrzysty flow dla czytelnika.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">

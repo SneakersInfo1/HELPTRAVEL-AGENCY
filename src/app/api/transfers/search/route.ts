@@ -25,7 +25,7 @@ function buildFallback(input: z.infer<typeof transferSearchSchema>, errorMessage
     infants: input.infants,
     offers: [],
     fetchedAt: new Date().toISOString(),
-    error: errorMessage ?? "Brak aktywnego feedu transferow.",
+    error: errorMessage || "Aktualnie nie udało się pobrać transferów dla tego kierunku.",
   };
 }
 
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const input = transferSearchSchema.parse(body);
+
     const result = await searchHotelbedsTransfers({
       city: input.city,
       country: input.country,

@@ -1,27 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildRedirectHref } from "@/lib/mvp/providers";
-
-function defaultDepartureDate(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 30);
-  return date.toISOString().slice(0, 10);
-}
+import { formatShortDate } from "@/lib/mvp/travel-dates";
 
 export function FlightOffersPanel(props: {
   destinationCity: string;
   destinationCountry: string;
-  defaultOriginCity?: string;
-  passengers?: number;
+  originCity: string;
+  departureDate: string;
+  passengers: number;
   partnerUrl: string;
 }) {
-  const [originCity, setOriginCity] = useState(props.defaultOriginCity ?? "Warszawa");
-  const [departureDate, setDepartureDate] = useState(defaultDepartureDate());
-  const [passengers, setPassengers] = useState(props.passengers ?? 2);
-
   const partnerLabel = getAffiliateBrandLabel(props.partnerUrl, "Partner lotniczy");
   const redirectHref = useMemo(
     () =>
@@ -31,97 +23,55 @@ export function FlightOffersPanel(props: {
         city: props.destinationCity,
         country: props.destinationCountry,
         source: "flight_panel",
-        query: `${originCity} ${props.destinationCity} ${departureDate} ${passengers}`,
+        query: `${props.originCity} ${props.destinationCity} ${props.departureDate} ${props.passengers}`,
       }),
-    [departureDate, originCity, passengers, props.destinationCity, props.destinationCountry, props.partnerUrl],
+    [props.departureDate, props.destinationCity, props.destinationCountry, props.originCity, props.partnerUrl, props.passengers],
   );
 
   return (
-    <section className="rounded-[1.75rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+    <section className="overflow-hidden rounded-[1.9rem] border border-emerald-900/10 bg-emerald-950 p-5 text-white shadow-[0_20px_60px_rgba(7,31,18,0.18)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Loty dla konkretnej trasy</p>
-          <h3 className="mt-2 text-2xl font-bold text-emerald-950">
-            {originCity} → {props.destinationCity}, {props.destinationCountry}
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">Loty</p>
+          <h3 className="mt-2 text-2xl font-bold text-white">
+            {props.originCity} - {props.destinationCity}
           </h3>
-          <p className="mt-2 text-sm leading-6 text-emerald-900/72">
-            Loty z Duffel zostaly usuniete. Zamiast pseudo-feedow ten blok zbiera trase i prowadzi uzytkownika prosto do aktywnego partnera lotniczego, gdzie moze zobaczyc finalne wyniki i ceny dla tej relacji.
+          <p className="mt-2 text-sm leading-6 text-white/72">
+            Otwierasz gotowe wyniki lotow z ustawiona trasa, terminem i liczba podroznych. Bez wracania do pustego startu.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
+        <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-xs font-semibold text-white">
           Partner: {partnerLabel}
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_1fr_1fr]">
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Skad lecisz
-          <input
-            value={originCity}
-            onChange={(event) => setOriginCity(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-            placeholder="np. Warszawa"
-          />
-        </label>
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Dokad lecisz
-          <input
-            value={props.destinationCity}
-            readOnly
-            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-950 outline-none"
-          />
-        </label>
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Data wylotu
-          <input
-            type="date"
-            value={departureDate}
-            onChange={(event) => setDepartureDate(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-          />
-        </label>
-      </div>
-
-      <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr]">
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Pasazerowie
-          <input
-            type="number"
-            min={1}
-            max={8}
-            value={passengers}
-            onChange={(event) => setPassengers(Number(event.target.value))}
-            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-          />
-        </label>
-        <div className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 px-4 py-4 text-sm leading-6 text-emerald-900/78">
-          Gdy podepniemy drugi realny feed lotniczy z listą cen, ten blok moze znowu pokazywac shortlisty ofert. Teraz najuczciwszy i komercyjnie sensowny flow to szybkie przejscie do partnera dla ustawionej trasy.
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl bg-white/8 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">Trasa</p>
+          <p className="mt-1 text-sm font-semibold text-white">
+            {props.originCity} - {props.destinationCity}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-white/8 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">Wylot</p>
+          <p className="mt-1 text-sm font-semibold text-white">{formatShortDate(props.departureDate)}</p>
+        </div>
+        <div className="rounded-2xl bg-white/8 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">Podrozni</p>
+          <p className="mt-1 text-sm font-semibold text-white">{props.passengers} os.</p>
         </div>
       </div>
 
-      <div className="mt-5 rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Trasa</p>
-            <p className="mt-1 text-sm font-semibold text-emerald-950">
-              {originCity} → {props.destinationCity}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Termin</p>
-            <p className="mt-1 text-sm font-semibold text-emerald-950">{departureDate}</p>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Pasazerowie</p>
-            <p className="mt-1 text-sm font-semibold text-emerald-950">{passengers}</p>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <a href={redirectHref} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800">
-            Szukaj lotow w {partnerLabel}
-          </a>
-        </div>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <a
+          href={redirectHref}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-300"
+        >
+          Otworz loty w {partnerLabel}
+        </a>
+        <span className="text-sm text-white/68">Po kliknieciu lądujesz na wynikach z ustawionym wyszukiwaniem.</span>
       </div>
     </section>
   );

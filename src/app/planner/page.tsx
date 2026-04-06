@@ -20,6 +20,8 @@ interface PlannerPageProps {
     travelers?: string;
     budget?: string;
     days?: string;
+    nights?: string;
+    startDate?: string;
     style?: string;
   }>;
 }
@@ -33,6 +35,8 @@ export default async function PlannerPage({ searchParams }: PlannerPageProps) {
   const travelers = Number(params.travelers ?? 2);
   const budget = Number(params.budget ?? 2500);
   const days = Number(params.days ?? 4);
+  const nights = Number(params.nights ?? params.days ?? 4);
+  const startDate = params.startDate ?? "";
   const style = params.style ?? "city break";
 
   return (
@@ -44,6 +48,8 @@ export default async function PlannerPage({ searchParams }: PlannerPageProps) {
       initialTravelers={Number.isFinite(travelers) ? travelers : 2}
       initialBudget={Number.isFinite(budget) ? budget : 2500}
       initialStandardDays={Number.isFinite(days) ? days : 4}
+      initialStartDate={startDate || undefined}
+      initialNights={Number.isFinite(nights) ? nights : 4}
       initialStyle={style}
       autoRunStandardSearch={mode === "standard" && Boolean(destination || query)}
     />

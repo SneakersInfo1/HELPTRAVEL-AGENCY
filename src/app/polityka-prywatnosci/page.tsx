@@ -31,8 +31,8 @@ export default function PrivacyPolicyPage() {
         <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Polityka prywatnosci</h1>
         <p className="mt-4 text-base leading-8 text-emerald-900/78">
           Ta strona opisuje podstawowe zasady przetwarzania danych w publicznym serwisie HelpTravel. Dokument ma
-          charakter informacyjny i powinien zostac zaktualizowany po wdrozeniu dodatkowych narzedzi, takich jak formularz
-          kontaktowy, newsletter albo rozszerzona analityka marketingowa.
+          charakter informacyjny i obejmuje glownie korzystanie ze strony, planera, zapisanych planow oraz przejsc do
+          partnerow zewnetrznych.
         </p>
       </section>
 
@@ -53,8 +53,8 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-2xl font-bold text-emerald-950">Pliki cookie i sesje</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
             <p>Serwis moze korzystac z plikow cookie lub podobnych mechanizmow do utrzymania sesji i dzialania zapisanych planow.</p>
-            <p>Jesli dodasz kolejne narzedzia, na przyklad analityke zewnetrzna albo widgety partnerow, warto opisac je tutaj osobno i jasno.</p>
-            <p>Na obecnym etapie priorytetem jest przejrzystosc: lepiej komunikowac mniej, ale uczciwie i konkretnie.</p>
+            <p>Zewnetrzne narzedzia i partnerzy sa opisywani oddzielnie wtedy, gdy wchodza w flow uzytkownika lub zbieranie danych.</p>
+            <p>Priorytetem pozostaje przejrzystosc: komunikujemy tylko te mechanizmy, ktore maja realny wplyw na korzystanie z serwisu.</p>
           </div>
         </article>
 
@@ -63,7 +63,7 @@ export default function PrivacyPolicyPage() {
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
             <p>W miare rozwoju serwisu i wdrazania kolejnych partnerow lub narzedzi zakres polityki prywatnosci powinien byc aktualizowany.</p>
             <p>To dotyczy szczegolnie nowych zrodel danych, dodatkowej analityki, mailingow, formularzy i integracji z partnerami zewnetrznymi.</p>
-            <p>Przed wiekszym ruchem publicznym warto tez skonsultowac finalna wersje dokumentu pod katem prawnym i RODO.</p>
+            <p>Dokument jest utrzymywany tak, aby odpowiadal aktualnemu sposobowi dzialania serwisu i modelowi wspolpracy z partnerami.</p>
           </div>
         </article>
       </section>

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { destinationCatalog } from "./destination-catalog";
 import { curatedDestinations } from "./destinations";
 import { normalizeLookup, resolveAirportCode } from "./location";
 import type { DestinationSuggestion } from "./types";
@@ -44,6 +45,25 @@ function curatedSuggestion(destination: (typeof curatedDestinations)[number]): D
     source: "curated",
     destinationSlug: destination.slug,
     airportCode: destination.airportCode ?? resolveAirportCode(destination.city),
+  };
+}
+
+function catalogSuggestion(entry: (typeof destinationCatalog)[number]): DestinationSuggestion {
+  const curatedMatch = curatedDestinations.find(
+    (destination) =>
+      normalizeLookup(destination.city) === normalizeLookup(entry.city) &&
+      normalizeLookup(destination.country) === normalizeLookup(entry.country),
+  );
+
+  return {
+    id: `catalog-${entry.slug}`,
+    city: entry.city,
+    country: entry.country,
+    label: entry.label,
+    queryValue: entry.label,
+    source: curatedMatch ? "curated" : "catalog",
+    destinationSlug: curatedMatch?.slug,
+    airportCode: curatedMatch?.airportCode ?? entry.airportCode ?? resolveAirportCode(entry.city),
   };
 }
 
@@ -112,15 +132,23 @@ export async function getDestinationSuggestions(query: string): Promise<Destinat
     .filter((item) => item.score > 0 || !trimmed)
     .sort((left, right) => right.score - left.score || left.destination.city.localeCompare(right.destination.city))
     .map((item) => curatedSuggestion(item.destination));
+  const catalog = destinationCatalog
+    .map((entry) => ({
+      entry,
+      score: rankCuratedDestination(trimmed, entry.city, entry.country),
+    }))
+    .filter((item) => item.score > 0 || !trimmed)
+    .sort((left, right) => right.score - left.score || left.entry.city.localeCompare(right.entry.city))
+    .map((item) => catalogSuggestion(item.entry));
 
   if (!trimmed) {
-    return curated.slice(0, 7);
+    return [...new Map([...curated, ...catalog].map((item) => [normalizeLookup(`${item.city} ${item.country}`), item])).values()].slice(0, 8);
   }
 
   const live = await fetchGeoapifySuggestions(trimmed);
   const merged = new Map<string, DestinationSuggestion>();
 
-  for (const item of [...curated, ...live]) {
+  for (const item of [...curated, ...catalog, ...live]) {
     const key = normalizeLookup(`${item.city} ${item.country}`);
     if (!merged.has(key)) {
       merged.set(key, item);

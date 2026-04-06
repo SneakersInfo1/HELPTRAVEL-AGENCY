@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { buildRedirectHref } from "@/lib/mvp/providers";
+import { formatShortDate } from "@/lib/mvp/travel-dates";
 import type { ActivitySearchResponse } from "@/lib/mvp/types";
 
 function postJson<T>(url: string, body: unknown): Promise<T> {
@@ -30,12 +31,6 @@ function formatMoney(value: number, currency: string): string {
   }).format(value);
 }
 
-function defaultDate(daysAhead = 30): string {
-  const date = new Date();
-  date.setDate(date.getDate() + daysAhead);
-  return date.toISOString().slice(0, 10);
-}
-
 function Spinner() {
   return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
 }
@@ -43,11 +38,10 @@ function Spinner() {
 export function ActivityOffersPanel(props: {
   destinationCity: string;
   destinationCountry: string;
-  defaultTravelers?: number;
+  fromDate: string;
+  toDate: string;
+  travelers: number;
 }) {
-  const [fromDate, setFromDate] = useState(defaultDate(30));
-  const [toDate, setToDate] = useState(defaultDate(34));
-  const [travelers, setTravelers] = useState(props.defaultTravelers ?? 2);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<ActivitySearchResponse | null>(null);
@@ -64,10 +58,11 @@ export function ActivityOffersPanel(props: {
           const result = await postJson<ActivitySearchResponse>("/api/activities/search", {
             city: props.destinationCity,
             country: props.destinationCountry,
-            fromDate,
-            toDate,
-            travelers,
+            fromDate: props.fromDate,
+            toDate: props.toDate,
+            travelers: props.travelers,
           });
+
           if (!cancelled) setData(result);
         } catch (err) {
           if (!cancelled) {
@@ -78,6 +73,7 @@ export function ActivityOffersPanel(props: {
           if (!cancelled) setLoading(false);
         }
       };
+
       void run();
     }, 250);
 
@@ -85,58 +81,41 @@ export function ActivityOffersPanel(props: {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [props.destinationCity, props.destinationCountry, fromDate, toDate, travelers]);
+  }, [props.destinationCity, props.destinationCountry, props.fromDate, props.toDate, props.travelers]);
 
-  const displayedOffers = useMemo(() => data?.offers.slice(0, 50) ?? [], [data?.offers]);
+  const displayedOffers = useMemo(() => data?.offers.slice(0, 20) ?? [], [data?.offers]);
 
   return (
     <section className="rounded-[1.75rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Realne atrakcje</p>
-          <h3 className="mt-2 text-2xl font-bold text-emerald-950">
-            Atrakcje w {props.destinationCity}, {props.destinationCountry}
-          </h3>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Atrakcje</p>
+          <h3 className="mt-2 text-2xl font-bold text-emerald-950">Co robić na miejscu</h3>
           <p className="mt-2 text-sm leading-6 text-emerald-900/72">
-            Ceny pobierane z Hotelbeds. Pokazujemy tylko realne oferty, bez zgadywania.
+            Pokazujemy wybrane atrakcje dla tego samego terminu wyjazdu, żeby cały plan był spójny od startu do końca.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
           {loading ? <Spinner /> : null}
-          {loading ? "Odświeżanie atrakcji" : data ? `Źródło: ${data.source === "hotelbeds" ? "Hotelbeds" : "brak feedu"}` : "Gotowe do wyszukiwania"}
+          {loading ? "Szukamy atrakcji" : data ? `${data.offers.length} ofert` : "Gotowe"}
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Od
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(event) => setFromDate(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-          />
-        </label>
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Do
-          <input
-            type="date"
-            value={toDate}
-            onChange={(event) => setToDate(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-          />
-        </label>
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Liczba osób
-          <input
-            type="number"
-            min={1}
-            max={8}
-            value={travelers}
-            onChange={(event) => setTravelers(Number(event.target.value))}
-            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-          />
-        </label>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl bg-emerald-50/70 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Zakres dat</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950">
+            {formatShortDate(props.fromDate)} - {formatShortDate(props.toDate)}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-emerald-50/70 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Podróżni</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950">{props.travelers} os.</p>
+        </div>
+        <div className="rounded-2xl bg-emerald-50/70 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Miasto</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950">{props.destinationCity}</p>
+        </div>
       </div>
 
       {error ? <div className="mt-4 rounded-[1.5rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
@@ -161,14 +140,14 @@ export function ActivityOffersPanel(props: {
         ) : displayedOffers.length ? (
           displayedOffers.map((offer, index) => (
             <article key={offer.activityCode} className="overflow-hidden rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70">
-              <div className="grid gap-0 lg:grid-cols-[220px_1fr]">
-                <div className="relative h-48 lg:h-full">
+              <div className="grid gap-0 lg:grid-cols-[200px_1fr]">
+                <div className="relative h-44 lg:h-full">
                   <Image
                     src={offer.imageUrl ?? "https://images.unsplash.com/photo-1505238680356-667803448bb6?auto=format&fit=crop&w=1200&q=80"}
                     alt={offer.name}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 1024px) 100vw, 220px"
+                    sizes="(max-width: 1024px) 100vw, 200px"
                   />
                 </div>
                 <div className="p-4 sm:p-5">
@@ -199,7 +178,7 @@ export function ActivityOffersPanel(props: {
                         rel="noreferrer"
                         className="inline-flex items-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
                       >
-                        Zobacz ofertę
+                        Zobacz atrakcję
                       </a>
                     </div>
                   ) : null}
@@ -209,16 +188,10 @@ export function ActivityOffersPanel(props: {
           ))
         ) : (
           <div className="rounded-[1.5rem] border border-dashed border-emerald-900/12 bg-emerald-50/60 px-4 py-6 text-sm text-emerald-900/70">
-            Brak wyników atrakcji dla tego kierunku. Spróbuj zmienić zakres dat.
+            Na ten termin nie znaleźliśmy jeszcze atrakcji do pokazania. Zmień daty albo wróć za chwilę.
           </div>
         )}
       </div>
-
-      {data?.offers?.length ? (
-        <p className="mt-3 text-xs leading-6 text-emerald-900/60">
-          Pokazano {Math.min(50, data.offers.length)} z {data.offers.length} realnych ofert atrakcji.
-        </p>
-      ) : null}
     </section>
   );
 }
