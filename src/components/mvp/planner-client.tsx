@@ -111,6 +111,8 @@ export function PlannerClient({
   const [selectedOptionId, setSelectedOptionId] = useState("");
   const [savedTrips, setSavedTrips] = useState<SavedTripView[]>([]);
   const autoSearchRef = useRef(false);
+  const shouldFocusOffersRef = useRef(false);
+  const stayOffersRef = useRef<HTMLDivElement | null>(null);
 
   const [query, setQuery] = useState(
     initialQuery || "Chcę polecieć do ciepłego kraju do 2000 zł na 5 dni, bez wizy, z plażą i zwiedzaniem.",
@@ -136,6 +138,7 @@ export function PlannerClient({
   }, []);
 
   const runPlanner = async () => {
+    shouldFocusOffersRef.current = true;
     setLoading(true);
     setError("");
     setResult(null);
@@ -176,6 +179,12 @@ export function PlannerClient({
 
   const triggerInitialStandardSearch = useEffectEvent(() => {
     void runPlanner();
+  });
+
+  const revealOffers = useEffectEvent(() => {
+    window.requestAnimationFrame(() => {
+      stayOffersRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   });
 
   useEffect(() => {
@@ -258,6 +267,15 @@ export function PlannerClient({
           },
         ]
       : [];
+
+  useEffect(() => {
+    if (!result || !selectedOption || !shouldFocusOffersRef.current) {
+      return;
+    }
+
+    shouldFocusOffersRef.current = false;
+    revealOffers();
+  }, [result, selectedOption]);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -650,14 +668,16 @@ export function PlannerClient({
           </section>
 
           <div className="grid gap-5">
-            <StayOffersPanel
-              destinationCity={selectedOption.destination.city}
-              destinationCountry={selectedOption.destination.country}
-              checkInDate={travelStartDate}
-              nights={travelNights}
-              guests={travelers}
-              rooms={rooms}
-            />
+            <div ref={stayOffersRef} className="scroll-mt-24">
+              <StayOffersPanel
+                destinationCity={selectedOption.destination.city}
+                destinationCountry={selectedOption.destination.country}
+                checkInDate={travelStartDate}
+                nights={travelNights}
+                guests={travelers}
+                rooms={rooms}
+              />
+            </div>
             <FlightOffersPanel
               destinationCity={selectedOption.destination.city}
               destinationCountry={selectedOption.destination.country}

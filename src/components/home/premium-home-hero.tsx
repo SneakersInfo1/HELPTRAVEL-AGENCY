@@ -280,7 +280,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
         if (field === "origin") {
           applySuggestionToField(field, suggestions[highlightedIndex]);
         } else {
-          submitKnownSearch(suggestions[highlightedIndex]);
+          applySuggestionToField(field, suggestions[highlightedIndex]);
         }
         return;
       }
@@ -507,7 +507,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                               key={`${suggestion.id}-${suggestion.label}-destination`}
                               type="button"
                               onMouseEnter={() => setHighlightedIndex(index)}
-                              onClick={() => submitKnownSearch(suggestion)}
+                              onClick={() => applySuggestionToField("destination", suggestion)}
                               className={`flex w-full items-start justify-between gap-3 rounded-[1.2rem] px-4 py-3 text-left transition ${
                                 highlightedIndex === index ? "bg-emerald-50 ring-1 ring-emerald-200" : "hover:bg-emerald-50/70"
                               }`}
@@ -572,24 +572,21 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {quickDestinations.map((slide) => (
-                  <button
-                    key={slide.id}
-                    type="button"
-                    onClick={() => {
-                      setDestinationQuery(slide.label);
-                      router.push(
-                        buildStandardPlannerHref({
-                          origin: originQuery.trim() || "Warszawa",
-                          destination: slide.label,
-                          startDate,
-                          nights,
-                          travelers,
-                        }),
-                      );
-                    }}
-                    className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-500/40 hover:bg-emerald-100"
-                  >
+                  {quickDestinations.map((slide) => (
+                    <button
+                      key={slide.id}
+                      type="button"
+                      onClick={() => {
+                        setDestinationQuery(slide.label);
+                        setActiveField(null);
+                        setHighlightedIndex(-1);
+                        const matchingSlideIndex = safeSlides.findIndex((item) => item.id === slide.id);
+                        if (matchingSlideIndex >= 0) {
+                          setActiveSlideIndex(matchingSlideIndex);
+                        }
+                      }}
+                      className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-500/40 hover:bg-emerald-100"
+                    >
                     {slide.city}
                   </button>
                 ))}
