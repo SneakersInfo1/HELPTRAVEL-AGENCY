@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getPrisma } from "./db";
-import { curatedDestinations } from "./destinations";
+import { allDestinationProfiles } from "./destinations";
 import type { DestinationProfile, DiscoveryMode, ScoreBreakdown } from "./types";
 
 interface SessionRow {
@@ -116,11 +116,30 @@ export async function seedDestinationsIfEmpty(): Promise<void> {
   if (!prisma) return;
 
   const total = await prisma.destination.count();
-  if (total > 0) return;
+  if (total >= allDestinationProfiles.length) return;
 
-  for (const destination of curatedDestinations) {
-    await prisma.destination.create({
-      data: {
+  for (const destination of allDestinationProfiles) {
+    await prisma.destination.upsert({
+      where: { id: destination.id },
+      update: {
+        id: destination.id,
+        slug: destination.slug,
+        city: destination.city,
+        country: destination.country,
+        visaForPL: destination.visaForPL,
+        avgTempByMonthJson: destination.avgTempByMonth,
+        costIndex: destination.costIndex,
+        beachScore: destination.beachScore,
+        cityScore: destination.cityScore,
+        sightseeingScore: destination.sightseeingScore,
+        nightlifeScore: destination.nightlifeScore,
+        natureScore: destination.natureScore,
+        safetyScore: destination.safetyScore,
+        accessScore: destination.accessScore,
+        typicalFlightHoursFromPL: destination.typicalFlightHoursFromPL,
+        affiliateLinksJson: destination.affiliateLinks,
+      },
+      create: {
         id: destination.id,
         slug: destination.slug,
         city: destination.city,
@@ -174,7 +193,7 @@ export async function getDestinations(): Promise<DestinationProfile[]> {
     const rows = await prisma.destination.findMany({});
     return rows.map(toDestinationProfile);
   }
-  return curatedDestinations;
+  return allDestinationProfiles;
 }
 
 export async function createTripRequestRecord(args: {
@@ -375,7 +394,7 @@ export async function getItineraryById(
   if (!itinerary) return null;
   const tripRequest = store.tripRequests.get(itinerary.tripRequestId);
   if (!tripRequest) return null;
-  const destination = curatedDestinations.find((item) => item.id === itinerary.destinationId);
+  const destination = allDestinationProfiles.find((item) => item.id === itinerary.destinationId);
   if (!destination) return null;
   const score = [...store.destinationScores.values()].find(
     (item) => item.tripRequestId === itinerary.tripRequestId && item.destinationId === itinerary.destinationId,
@@ -451,7 +470,7 @@ export async function listSavedTripsBySession(sessionId: string): Promise<
       if (!itinerary) return null;
       const tripRequest = store.tripRequests.get(itinerary.tripRequestId);
       if (!tripRequest) return null;
-      const destination = curatedDestinations.find((item) => item.id === itinerary.destinationId);
+      const destination = allDestinationProfiles.find((item) => item.id === itinerary.destinationId);
       if (!destination) return null;
       const score = [...store.destinationScores.values()].find(
         (item) => item.tripRequestId === itinerary.tripRequestId && item.destinationId === itinerary.destinationId,

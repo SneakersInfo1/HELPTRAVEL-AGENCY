@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LocalizedLink } from "@/components/site/localized-link";
 
 export interface BreadcrumbItem {
   label: string;
@@ -14,9 +14,9 @@ export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
         return (
           <span key={key} className="flex items-center gap-2">
             {item.href && !isLast ? (
-              <Link href={item.href} className="transition hover:text-emerald-950">
+              <LocalizedLink href={item.href} className="transition hover:text-emerald-950">
                 {item.label}
-              </Link>
+              </LocalizedLink>
             ) : (
               <span className={isLast ? "text-emerald-950" : ""}>{item.label}</span>
             )}

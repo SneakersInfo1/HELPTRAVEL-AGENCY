@@ -78,45 +78,64 @@ function styleMatch(dest: DestinationProfile, prefs: DiscoveryPreferences): numb
 function buildReasons(
   dest: DestinationProfile,
   breakdown: ScoreBreakdown,
-  budgetMaxPln: number,
+  prefs: DiscoveryPreferences,
   focused: boolean,
 ): string[] {
   const reasons: string[] = [];
+
   if (focused) {
-    reasons.push("To dokładnie kierunek wpisany przez użytkownika.");
+    reasons.push("To dokladnie kierunek wskazany w briefie.");
   }
   if (breakdown.budgetFit >= 0.75) {
-    reasons.push(`Dobrze mieści się w budżecie do ${budgetMaxPln} PLN.`);
+    reasons.push(`Dobrze miesci sie w budzecie do ${prefs.budgetMaxPln} PLN.`);
   }
-  if (dest.beachScore >= 0.8) {
-    reasons.push("Mocny profil pod wypoczynek i plażę.");
+  if ((prefs.niceTags.includes("beach") || prefs.niceTags.includes("beach_and_sightseeing")) && dest.beachScore >= 0.75) {
+    reasons.push("Dobrze laczy wypoczynek z plaza i spokojniejszym rytmem wyjazdu.");
   }
   if (dest.cityScore >= 0.85 || dest.sightseeingScore >= 0.85) {
-    reasons.push("Dobre warunki do zwiedzania i city breaku.");
+    reasons.push("Ma mocny miejski i sightseeingowy rdzen, wiec latwiej podjac konkretna decyzje.");
   }
   if (breakdown.travelEase >= 0.75) {
-    reasons.push("Relatywnie wygodny dojazd z Polski.");
+    reasons.push("Dojazd z Polski jest relatywnie prosty jak na ten typ wyjazdu.");
   }
   if (dest.safetyScore >= 0.82) {
-    reasons.push("Dobry poziom bezpieczeństwa jak na wyjazd miejski.");
+    reasons.push("Daje dobry poziom przewidywalnosci i komfortu na krotki albo sredni pobyt.");
   }
+  if (prefs.temperaturePreference !== "any" && breakdown.weatherFit >= 0.72) {
+    reasons.push("Pogoda wpisuje sie w oczekiwany klimat wyjazdu.");
+  }
+  if (prefs.niceTags.includes("value") && dest.costIndex <= 1.02) {
+    reasons.push("To kierunek z dobrym stosunkiem ceny do jakosci.");
+  }
+  if (prefs.visaPreference === "visa_free" && dest.visaForPL) {
+    reasons.push("Nie doklada dodatkowych formalnosci wizowych do wyjazdu.");
+  }
+
   return reasons.slice(0, 4);
 }
 
-function buildTradeoffs(dest: DestinationProfile, breakdown: ScoreBreakdown): string[] {
+function buildTradeoffs(dest: DestinationProfile, breakdown: ScoreBreakdown, prefs: DiscoveryPreferences): string[] {
   const tradeoffs: string[] = [];
+
   if (dest.typicalFlightHoursFromPL > 4.5) {
-    tradeoffs.push("Dłuższy lot może być mniej wygodny na krótki wyjazd.");
+    tradeoffs.push("Dluzszy lot obniza wygode przy krotszym wyjezdzie.");
   }
   if (dest.costIndex > 1.45) {
-    tradeoffs.push("Na miejscu może być drożej niż w innych opcjach.");
+    tradeoffs.push("Na miejscu moze byc wyraznie drozej niz w najmocniejszych alternatywach.");
   }
-  if (dest.beachScore < 0.4) {
-    tradeoffs.push("To kierunek głównie miejski, mniej pod plażę.");
+  if ((prefs.niceTags.includes("beach") || prefs.niceTags.includes("beach_and_sightseeing")) && dest.beachScore < 0.4) {
+    tradeoffs.push("To bardziej kierunek miejski niz plazowy.");
   }
   if (breakdown.weatherFit < 0.5) {
-    tradeoffs.push("Pogoda w tym okresie może być mniej stabilna.");
+    tradeoffs.push("Pogoda w tym okresie moze byc mniej stabilna niz sugeruje brief.");
   }
+  if (prefs.niceTags.includes("family") && dest.natureScore < 0.45 && dest.beachScore < 0.45) {
+    tradeoffs.push("Mniej oczywisty wybor, jesli priorytetem jest spokojniejszy rodzinny rytm.");
+  }
+  if (prefs.maxTransfers === 0 && breakdown.travelEase < 0.66) {
+    tradeoffs.push("Przy wymaganiu prostszego lotu moze byc trudniej o naprawde wygodna trase.");
+  }
+
   return tradeoffs.slice(0, 3);
 }
 
@@ -180,8 +199,8 @@ export function scoreDestinations(
       breakdown,
       estimatedBudgetMin: budget.min,
       estimatedBudgetMax: budget.max,
-      reasons: buildReasons(destination, breakdown, prefs.budgetMaxPln, focusMatch),
-      tradeoffs: buildTradeoffs(destination, breakdown),
+      reasons: buildReasons(destination, breakdown, prefs, focusMatch),
+      tradeoffs: buildTradeoffs(destination, breakdown, prefs),
     });
   }
 

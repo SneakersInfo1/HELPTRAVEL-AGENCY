@@ -22,9 +22,8 @@ export default function TermsPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Warunki korzystania</p>
         <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Regulamin</h1>
         <p className="mt-4 text-base leading-8 text-emerald-900/78">
-          Ten dokument opisuje podstawowe zasady korzystania z serwisu publicznego HelpTravel. Jego celem jest
-          uczciwe wyjasnienie, czym jest projekt, czego moze oczekiwac uzytkownik i jak rozumiec tresci oraz wyniki
-          prezentowane na stronie.
+          Ten dokument opisuje podstawowe zasady korzystania z serwisu publicznego HelpTravel. Jasno wyjasnia, czym jest
+          projekt, czego moze oczekiwac uzytkownik i jak interpretowac tresci oraz wyniki prezentowane na stronie.
         </p>
       </section>
 

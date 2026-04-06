@@ -17,7 +17,7 @@ type GeoapifyFeature = {
   };
 };
 
-function rankCuratedDestination(query: string, city: string, country: string): number {
+function rankCuratedDestination(query: string, city: string, country: string, aliases: string[] = [], region?: string): number {
   if (!query) {
     return 100;
   }
@@ -25,11 +25,15 @@ function rankCuratedDestination(query: string, city: string, country: string): n
   const normalizedQuery = normalizeLookup(query);
   const cityLookup = normalizeLookup(city);
   const countryLookup = normalizeLookup(country);
-  const haystack = `${cityLookup} ${countryLookup}`;
+  const regionLookup = normalizeLookup(region ?? "");
+  const aliasLookups = aliases.map((alias) => normalizeLookup(alias));
+  const haystack = `${cityLookup} ${countryLookup} ${regionLookup} ${aliasLookups.join(" ")}`.trim();
 
   if (haystack === normalizedQuery) return 120;
   if (cityLookup === normalizedQuery) return 115;
   if (`${cityLookup} ${countryLookup}`.startsWith(normalizedQuery)) return 110;
+  if (aliasLookups.some((alias) => alias === normalizedQuery)) return 109;
+  if (aliasLookups.some((alias) => alias.startsWith(normalizedQuery))) return 103;
   if (cityLookup.startsWith(normalizedQuery)) return 105;
   if (haystack.includes(normalizedQuery)) return 92;
   return 0;
@@ -59,6 +63,7 @@ function catalogSuggestion(entry: (typeof destinationCatalog)[number]): Destinat
     id: `catalog-${entry.slug}`,
     city: entry.city,
     country: entry.country,
+    region: entry.region,
     label: entry.label,
     queryValue: entry.label,
     source: curatedMatch ? "curated" : "catalog",
@@ -127,7 +132,7 @@ export async function getDestinationSuggestions(query: string): Promise<Destinat
   const curated = curatedDestinations
     .map((destination) => ({
       destination,
-      score: rankCuratedDestination(trimmed, destination.city, destination.country),
+      score: rankCuratedDestination(trimmed, destination.city, destination.country, destination.aliases, destination.region),
     }))
     .filter((item) => item.score > 0 || !trimmed)
     .sort((left, right) => right.score - left.score || left.destination.city.localeCompare(right.destination.city))
@@ -135,7 +140,7 @@ export async function getDestinationSuggestions(query: string): Promise<Destinat
   const catalog = destinationCatalog
     .map((entry) => ({
       entry,
-      score: rankCuratedDestination(trimmed, entry.city, entry.country),
+      score: rankCuratedDestination(trimmed, entry.city, entry.country, entry.aliases, entry.region),
     }))
     .filter((item) => item.score > 0 || !trimmed)
     .sort((left, right) => right.score - left.score || left.entry.city.localeCompare(right.entry.city))

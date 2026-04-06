@@ -44,6 +44,8 @@ export interface DestinationProfile {
   slug: string;
   city: string;
   country: string;
+  region?: string;
+  aliases?: string[];
   airportCode?: string;
   visaForPL: boolean;
   avgTempByMonth: number[];

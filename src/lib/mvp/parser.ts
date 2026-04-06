@@ -1,5 +1,5 @@
 import type { DiscoveryPreferences, DiscoveryRequestInput } from "./types";
-import { curatedDestinations } from "./destinations";
+import { allDestinationProfiles } from "./destinations";
 
 const CITY_HINTS = [
   "warszaw",
@@ -89,11 +89,17 @@ function parseOriginCity(query: string, fallback?: string): string | undefined {
 }
 
 function parseDestinationFocus(query: string): string | undefined {
-  for (const destination of curatedDestinations) {
+  for (const destination of allDestinationProfiles) {
     const city = normalizeText(destination.city);
     const country = normalizeText(destination.country);
     const slug = normalizeText(destination.slug);
-    if (query.includes(city) || query.includes(country) || query.includes(slug)) {
+    const aliases = destination.aliases?.map((alias) => normalizeText(alias)) ?? [];
+    if (
+      query.includes(city) ||
+      query.includes(country) ||
+      query.includes(slug) ||
+      aliases.some((alias) => query.includes(alias))
+    ) {
       return destination.slug;
     }
   }
@@ -168,6 +174,13 @@ function parseStyle(query: string): DiscoveryPreferences["styleWeights"] {
     { condition: query.includes("gory"), key: "nature", value: 0.85 },
     { condition: query.includes("jedzen"), key: "food", value: 0.9 },
     { condition: query.includes("food"), key: "food", value: 0.9 },
+    { condition: query.includes("romant"), key: "city", value: 0.78 },
+    { condition: query.includes("romant"), key: "food", value: 0.82 },
+    { condition: query.includes("family"), key: "nature", value: 0.76 },
+    { condition: query.includes("rodzin"), key: "nature", value: 0.76 },
+    { condition: query.includes("solo"), key: "city", value: 0.76 },
+    { condition: query.includes("relax"), key: "beach", value: 0.86 },
+    { condition: query.includes("spokoj"), key: "nature", value: 0.8 },
   ];
 
   for (const bump of bumps) {
@@ -204,6 +217,21 @@ function parseTags(query: string): Pick<DiscoveryPreferences, "mustTags" | "nice
   if (query.includes("tanio") || query.includes("budzet")) {
     niceTags.push("value");
   }
+  if (query.includes("romant")) {
+    niceTags.push("romantic");
+  }
+  if (query.includes("rodzin") || query.includes("family")) {
+    niceTags.push("family");
+  }
+  if (query.includes("solo")) {
+    niceTags.push("solo");
+  }
+  if (query.includes("jedzenie") || query.includes("food")) {
+    niceTags.push("foodie");
+  }
+  if (query.includes("zwiedz") && query.includes("plaza")) {
+    niceTags.push("beach_and_sightseeing");
+  }
 
   return { mustTags, niceTags };
 }
@@ -222,6 +250,10 @@ export function parseDiscoveryInput(input: DiscoveryRequestInput): DiscoveryPref
   if (normalizedQuery.match(/\d/)) confidence += 0.08;
   if (tags.mustTags.length + tags.niceTags.length >= 2) confidence += 0.1;
   if (normalizedQuery.includes("do ")) confidence += 0.08;
+  if (parseDestinationFocus(normalizedQuery)) confidence += 0.12;
+  if (normalizedQuery.includes("rodzin") || normalizedQuery.includes("romant") || normalizedQuery.includes("solo")) {
+    confidence += 0.06;
+  }
 
   return {
     budgetMaxPln: parseBudget(normalizedQuery, input.budgetMaxPln),

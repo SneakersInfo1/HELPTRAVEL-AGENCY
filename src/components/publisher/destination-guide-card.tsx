@@ -1,6 +1,9 @@
-import Image from "next/image";
-import Link from "next/link";
+"use client";
 
+import Image from "next/image";
+
+import { useLanguage } from "@/components/site/language-provider";
+import { LocalizedLink } from "@/components/site/localized-link";
 import type { DestinationProfile } from "@/lib/mvp/types";
 import type { DestinationMedia } from "@/lib/mvp/visuals";
 
@@ -13,9 +16,37 @@ export function DestinationGuideCard({
   media: DestinationMedia;
   summary: string;
 }) {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "en"
+      ? {
+          openGuide: "Open guide",
+          flight: "flight",
+          style: "style",
+          budget: "budget",
+          beach: "beach",
+          city: "city",
+          value: "better value",
+          mid: "mid+",
+          showDestination: "View destination",
+          planner: "Open in planner",
+        }
+      : {
+          openGuide: "Otworz przewodnik",
+          flight: "lot ok.",
+          style: "styl",
+          budget: "budzet",
+          beach: "plaza",
+          city: "miasto",
+          value: "bardziej oplacalny",
+          mid: "sredni+",
+          showDestination: "Zobacz kierunek",
+          planner: "Sprawdz w plannerze",
+        };
+
   return (
     <article className="group overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white shadow-[0_16px_40px_rgba(16,84,48,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(16,84,48,0.14)]">
-      <Link href={`/kierunki/${destination.slug}`} className="relative block h-56">
+      <LocalizedLink href={`/kierunki/${destination.slug}`} className="relative block h-56">
         <Image
           src={media.heroImage}
           alt={`${destination.city}, ${destination.country}`}
@@ -28,37 +59,37 @@ export function DestinationGuideCard({
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">{destination.country}</p>
           <h3 className="mt-2 font-display text-3xl leading-none">{destination.city}</h3>
           <span className="mt-4 inline-flex rounded-full bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
-            Otworz przewodnik
+            {copy.openGuide}
           </span>
         </div>
-      </Link>
+      </LocalizedLink>
 
       <div className="p-5">
         <p className="line-clamp-3 text-sm leading-7 text-emerald-900/78">{summary}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900">
-            lot ok. {destination.typicalFlightHoursFromPL.toFixed(1)} h
+            {copy.flight} {destination.typicalFlightHoursFromPL.toFixed(1)} h
           </span>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900">
-            styl {destination.beachScore >= 0.7 ? "plaza" : "miasto"}
+            {copy.style} {destination.beachScore >= 0.7 ? copy.beach : copy.city}
           </span>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900">
-            budzet {destination.costIndex <= 1 ? "bardziej oplacalny" : "sredni+"}
+            {copy.budget} {destination.costIndex <= 1 ? copy.value : copy.mid}
           </span>
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link
+          <LocalizedLink
             href={`/kierunki/${destination.slug}`}
             className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Zobacz kierunek
-          </Link>
-          <Link
+            {copy.showDestination}
+          </LocalizedLink>
+          <LocalizedLink
             href={`/planner?mode=standard&q=${encodeURIComponent(destination.city)}`}
             className="rounded-full border border-emerald-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
           >
-            Sprawdz w plannerze
-          </Link>
+            {copy.planner}
+          </LocalizedLink>
         </div>
       </div>
     </article>

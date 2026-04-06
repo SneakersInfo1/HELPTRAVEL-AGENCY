@@ -4,11 +4,139 @@ export interface DestinationCatalogEntry {
   slug: string;
   city: string;
   country: string;
+  region: string;
   label: string;
+  aliases: string[];
   airportCode?: string;
 }
 
 type DestinationSeed = readonly [city: string, country: string];
+
+const COUNTRY_REGION_MAP: Record<string, string> = {
+  Spain: "Southern Europe",
+  Portugal: "Southern Europe",
+  Italy: "Southern Europe",
+  Greece: "Southern Europe",
+  Cyprus: "Southern Europe",
+  Malta: "Southern Europe",
+  Albania: "Balkans",
+  Croatia: "Balkans",
+  Montenegro: "Balkans",
+  Slovenia: "Central Europe",
+  Austria: "Central Europe",
+  Germany: "Central Europe",
+  Netherlands: "Western Europe",
+  Belgium: "Western Europe",
+  Ireland: "Western Europe",
+  "United Kingdom": "Western Europe",
+  Hungary: "Central Europe",
+  Czechia: "Central Europe",
+  Poland: "Central Europe",
+  Denmark: "Nordics",
+  Sweden: "Nordics",
+  Norway: "Nordics",
+  Finland: "Nordics",
+  Iceland: "Nordics",
+  Switzerland: "Alpine Europe",
+  Serbia: "Balkans",
+  "Bosnia and Herzegovina": "Balkans",
+  "North Macedonia": "Balkans",
+  Bulgaria: "Balkans",
+  Romania: "Eastern Europe",
+  Latvia: "Baltics",
+  Lithuania: "Baltics",
+  Estonia: "Baltics",
+  Turkey: "Eastern Mediterranean",
+  Morocco: "North Africa",
+  Egypt: "North Africa",
+  Tunisia: "North Africa",
+  "United Arab Emirates": "Middle East",
+  Qatar: "Middle East",
+  Oman: "Middle East",
+  Israel: "Middle East",
+  Jordan: "Middle East",
+  "Saudi Arabia": "Middle East",
+  Thailand: "Southeast Asia",
+  Singapore: "Southeast Asia",
+  Malaysia: "Southeast Asia",
+  Indonesia: "Southeast Asia",
+  Vietnam: "Southeast Asia",
+  Japan: "East Asia",
+  "South Korea": "East Asia",
+  "Hong Kong": "East Asia",
+  Taiwan: "East Asia",
+  "Sri Lanka": "South Asia",
+  Maldives: "Indian Ocean",
+  India: "South Asia",
+  China: "East Asia",
+  "United States of America": "North America",
+  Canada: "North America",
+  Mexico: "North America",
+  "Dominican Republic": "Caribbean",
+  "Puerto Rico": "Caribbean",
+  Brazil: "South America",
+  Argentina: "South America",
+  Peru: "South America",
+  Chile: "South America",
+  Colombia: "South America",
+  "South Africa": "Southern Africa",
+  Tanzania: "East Africa",
+  Kenya: "East Africa",
+  Mauritius: "Indian Ocean",
+  Australia: "Oceania",
+  "New Zealand": "Oceania",
+};
+
+const CITY_ALIAS_MAP: Record<string, string[]> = {
+  "Ibiza Town": ["Ibiza"],
+  "Santa Cruz de Tenerife": ["Tenerife"],
+  Lisbon: ["Lizbona", "Lisboa"],
+  Porto: ["Oporto"],
+  Rome: ["Rzym", "Roma"],
+  Naples: ["Neapol", "Napoli"],
+  Venice: ["Wenecja", "Venezia"],
+  Florence: ["Florencja", "Firenze"],
+  Paris: ["Paryz"],
+  Marseille: ["Marsylia"],
+  Athens: ["Ateny", "Atena"],
+  Thessaloniki: ["Saloniki"],
+  Valletta: ["Valletta Malta"],
+  "St Julian's": ["Saint Julians", "St Julians"],
+  Istanbul: ["Stambul"],
+  "Sharm El Sheikh": ["Sharm el Sheikh", "Szarm el-Szejk"],
+  Tirana: ["Tirana Albania"],
+  Split: ["Split Croatia"],
+  Dubrovnik: ["Dubrownik"],
+  Vienna: ["Wieden", "Wien"],
+  Prague: ["Praga"],
+  Warsaw: ["Warszawa"],
+  Krakow: ["Krakow Poland", "Cracow"],
+  Gdansk: ["Gdansk Poland"],
+  Copenhagen: ["Kopenhaga"],
+  Stockholm: ["Sztokholm"],
+  Gothenburg: ["Goteborg"],
+  Oslo: ["Oslo Norway"],
+  Zurich: ["Zurich Switzerland", "Zurych"],
+  Geneva: ["Genewa"],
+  Riyadh: ["Rijad"],
+  Bangkok: ["Bangkok Thailand"],
+  Denpasar: ["Bali", "Denpasar Bali"],
+  "Ho Chi Minh City": ["Saigon"],
+  Seoul: ["Seul"],
+  Taipei: ["Tajpej"],
+  Male: ["Male Maldives", "Malediwy"],
+  Goa: ["Goa India"],
+  "New York": ["Nowy Jork", "NYC"],
+  "Los Angeles": ["LA", "Los Angeles USA"],
+  Miami: ["Miami Beach"],
+  "Las Vegas": ["Vegas"],
+  "Mexico City": ["Ciudad de Mexico", "Meksyk City"],
+  "Playa del Carmen": ["Playa del Carmen Mexico"],
+  "Rio de Janeiro": ["Rio"],
+  "Cape Town": ["Kapsztad"],
+  "Port Louis": ["Mauritius"],
+  Sydney: ["Sydney Australia"],
+};
 
 const DESTINATION_SEEDS: DestinationSeed[] = [
   ["Malaga", "Spain"],
@@ -256,7 +384,9 @@ export const destinationCatalog: DestinationCatalogEntry[] = DESTINATION_SEEDS.m
   slug: `${slugify(city)}-${slugify(country)}`,
   city,
   country,
+  region: COUNTRY_REGION_MAP[country] ?? "Global",
   label: `${city}, ${country}`,
+  aliases: [...new Set([city, `${city}, ${country}`, ...(CITY_ALIAS_MAP[city] ?? [])])],
   airportCode: resolveAirportCode(city),
 }));
 
@@ -270,6 +400,24 @@ export function getDestinationCatalog(): DestinationCatalogEntry[] {
 
 export function getDestinationCatalogCount(): number {
   return destinationCatalog.length;
+}
+
+export function getDestinationCatalogEntryBySlug(slug: string): DestinationCatalogEntry | undefined {
+  return destinationCatalog.find((item) => item.slug === slug);
+}
+
+export function getDestinationCatalogByRegion(): Array<{ region: string; items: DestinationCatalogEntry[] }> {
+  return [...destinationCatalog.reduce((map, entry) => {
+    const existing = map.get(entry.region) ?? [];
+    existing.push(entry);
+    map.set(entry.region, existing);
+    return map;
+  }, new Map<string, DestinationCatalogEntry[]>()).entries()]
+    .map(([region, items]) => ({
+      region,
+      items: [...items].sort((left, right) => left.city.localeCompare(right.city, "en")),
+    }))
+    .sort((left, right) => right.items.length - left.items.length || left.region.localeCompare(right.region, "en"));
 }
 
 export function getDestinationCatalogEntry(input: { city: string; country?: string }): DestinationCatalogEntry | undefined {

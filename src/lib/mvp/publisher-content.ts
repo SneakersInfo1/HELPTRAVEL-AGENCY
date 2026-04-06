@@ -1,4 +1,5 @@
-﻿import { curatedDestinations } from "./destinations";
+import { getDestinationStory } from "./destination-content";
+import { allDestinationProfiles, getDestinationProfileBySlug } from "./destinations";
 import type { DestinationProfile } from "./types";
 
 export interface EditorialFaq {
@@ -1683,9 +1684,96 @@ const editorialCategories: EditorialCategory[] = [
   },
 ];
 
+function inferDestinationCategorySlugs(destination: DestinationProfile): string[] {
+  const categories = new Set<string>(["przewodniki"]);
+
+  if (destination.cityScore >= 0.76 || destination.sightseeingScore >= 0.76) {
+    categories.add("city-breaki");
+  }
+  if (destination.beachScore >= 0.62 || (destination.avgTempByMonth[4] ?? 0) >= 22) {
+    categories.add("cieple-kierunki");
+  }
+  if (destination.costIndex <= 1.02) {
+    categories.add("tanie-podroze");
+  }
+  if (destination.typicalFlightHoursFromPL <= 3.3) {
+    categories.add("weekendowe-wyjazdy");
+  }
+  if (destination.visaForPL) {
+    categories.add("bez-wizy");
+  }
+
+  return [...categories];
+}
+
+function monthLabel(month: number): string {
+  return ["styczniu", "lutym", "marcu", "kwietniu", "maju", "czerwcu", "lipcu", "sierpniu", "wrzesniu", "pazdzierniku", "listopadzie", "grudniu"][month - 1] ?? "sezonie";
+}
+
+function describeBestMonths(destination: DestinationProfile): string {
+  const comfortableMonths = destination.avgTempByMonth
+    .map((temp, index) => ({ temp, index: index + 1 }))
+    .filter((item) => item.temp >= 18 && item.temp <= 30)
+    .slice(0, 4)
+    .map((item) => monthLabel(item.index));
+
+  if (comfortableMonths.length === 0) {
+    return "Ten kierunek najlepiej traktowac jako elastyczny sezonowo i dopasowywac bardziej do briefu niz do jednego miesiaca.";
+  }
+
+  return `Najwygodniej planowac ten kierunek zwykle w ${comfortableMonths.join(", ")}, kiedy latwiej polaczyc pogode, spacerowy rytm i realna przyjemnosc z pobytu.`;
+}
+
+function describeBudget(destination: DestinationProfile): string {
+  if (destination.costIndex <= 0.95) {
+    return "To kierunek, ktory dobrze broni sie przy rozsadnym budzecie i nie wymaga od razu premium wydatkow, zeby wyjazd mial sens.";
+  }
+
+  if (destination.costIndex >= 1.4) {
+    return "Budzet warto ustawic z lekkim zapasem, bo noclegi i codzienne wydatki moga szybciej rosnac niz w tanszych alternatywach.";
+  }
+
+  return "Najlepiej planowac go jako sredni budzet: z dobra baza noclegowa, sensowna logistyka i marginesem na jedzenie oraz 1-2 platne punkty programu.";
+}
+
+function buildGenericDestinationGuide(destination: DestinationProfile): DestinationGuideContent {
+  const story = getDestinationStory(destination);
+  const lengthHint =
+    destination.typicalFlightHoursFromPL <= 2.5 ? "3-4 dni" : destination.typicalFlightHoursFromPL <= 4.5 ? "4-5 dni" : "5-7 dni";
+
+  return {
+    slug: destination.slug,
+    destination,
+    overview: `${destination.city} to kierunek, ktory HelpTravel traktuje jako praktyczny wybor pod ${lengthHint}, z naciskiem na realne decyzje: czy pasuje do budzetu, jaki ma rytm pobytu i czy daje dobry kolejny krok do hoteli, lotow i atrakcji.`,
+    whyGo: [
+      `${destination.city} daje wyjazdowy scenariusz mocny pod ${story.bestFor.slice(0, 2).join(" i ")}.`,
+      `To kierunek, ktory dobrze skaluje sie od szybkiego city breaku do bardziej dopracowanego pobytu ${lengthHint}.`,
+      "Po stronie produktu latwo przejsc od inspiracji do konkretu: noclegu, lotu i dalszych decyzji wyjazdowych.",
+    ],
+    bestTime: describeBestMonths(destination),
+    budgetNote: describeBudget(destination),
+    whoFor: story.bestFor.slice(0, 4),
+    highlights: story.attractions.slice(0, 5),
+    districts: story.districts.slice(0, 4),
+    faq: [
+      {
+        question: `Na ile dni najlepiej planowac ${destination.city}?`,
+        answer: `Najczesciej najlepiej sprawdza sie scenariusz ${lengthHint}. Taki zakres dobrze rownowazy dojazd, budzet i liczbe rzeczy, ktore da sie zrobic bez przepalania energii.`,
+      },
+      {
+        question: `Czy ${destination.city} lepiej traktowac jako city break czy pelny wypoczynek?`,
+        answer:
+          destination.beachScore >= 0.7
+            ? "To kierunek, ktory dobrze laczy pobyt miejski z oddechem i wypoczynkiem, wiec mozna zbudowac go jako hybryde."
+            : "Najlepiej wypada jako kierunek decyzyjny pod konkretne zwiedzanie, jedzenie i rytm miasta, a nie tylko bierny wypoczynek.",
+      },
+    ],
+  };
+}
+
 export function getPublishedDestinations(): DestinationProfile[] {
   return publishedDestinationSlugs
-    .map((slug) => curatedDestinations.find((destination) => destination.slug === slug))
+    .map((slug) => getDestinationProfileBySlug(slug))
     .filter((destination): destination is DestinationProfile => Boolean(destination));
 }
 
@@ -1695,9 +1783,13 @@ export function getPublishedDestinationSlugs(): string[] {
 
 export function getDestinationGuideBySlug(slug: string): DestinationGuideContent | undefined {
   const override = destinationGuideOverrides.find((item) => item.slug === slug);
-  const destination = curatedDestinations.find((item) => item.slug === slug);
-  if (!override || !destination) {
+  const destination = getDestinationProfileBySlug(slug);
+  if (!destination) {
     return undefined;
+  }
+
+  if (!override) {
+    return buildGenericDestinationGuide(destination);
   }
 
   return {
@@ -1726,12 +1818,35 @@ export function getEditorialCategoryBySlug(slug: string): EditorialCategory | un
   return editorialCategories.find((category) => category.slug === slug);
 }
 
+export function getCategoriesForDestination(slug: string): EditorialCategory[] {
+  const destination = getDestinationProfileBySlug(slug);
+  if (!destination) {
+    return [];
+  }
+
+  const inferredCategories = inferDestinationCategorySlugs(destination);
+  return editorialCategories.filter((category) => inferredCategories.includes(category.slug));
+}
+
 export function getArticlesForCategory(slug: string): EditorialArticle[] {
   return editorialArticles.filter((article) => article.categorySlugs.includes(slug));
 }
 
 export function getArticlesForDestination(slug: string): EditorialArticle[] {
-  return editorialArticles.filter((article) => article.destinationSlugs.includes(slug));
+  const direct = editorialArticles.filter((article) => article.destinationSlugs.includes(slug));
+  if (direct.length > 0) {
+    return direct;
+  }
+
+  const destination = getDestinationProfileBySlug(slug);
+  if (!destination) {
+    return [];
+  }
+
+  const inferredCategories = inferDestinationCategorySlugs(destination);
+  return editorialArticles.filter((article) =>
+    article.categorySlugs.some((categorySlug) => inferredCategories.includes(categorySlug)),
+  );
 }
 
 export function getRelatedArticles(article: EditorialArticle, limit = 3): EditorialArticle[] {
@@ -1751,10 +1866,10 @@ export function getRelatedArticles(article: EditorialArticle, limit = 3): Editor
 }
 
 export function getSimilarDestinations(slug: string, limit = 4): DestinationProfile[] {
-  const current = curatedDestinations.find((destination) => destination.slug === slug);
+  const current = getDestinationProfileBySlug(slug);
   if (!current) return [];
 
-  return getPublishedDestinations()
+  return allDestinationProfiles
     .filter((destination) => destination.slug !== slug)
     .map((destination) => {
       const similarity =
@@ -1762,7 +1877,8 @@ export function getSimilarDestinations(slug: string, limit = 4): DestinationProf
         Math.abs(destination.cityScore - current.cityScore) * 0.2 -
         Math.abs(destination.sightseeingScore - current.sightseeingScore) * 0.2 -
         Math.abs(destination.costIndex - current.costIndex) * 0.14 -
-        Math.abs(destination.typicalFlightHoursFromPL - current.typicalFlightHoursFromPL) * 0.06;
+        Math.abs(destination.typicalFlightHoursFromPL - current.typicalFlightHoursFromPL) * 0.06 +
+        (destination.region === current.region ? 0.06 : 0);
 
       return { destination, similarity };
     })

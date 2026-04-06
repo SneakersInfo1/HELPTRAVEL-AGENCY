@@ -1,11 +1,19 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
+import {
+  getPlannerSnapshot,
+  getSavedDestinations,
+  type PlannerSnapshot,
+  type SavedDestinationMemory,
+} from "@/lib/mvp/planner-memory";
 import type { EditorialArticle, EditorialCategory } from "@/lib/mvp/publisher-content";
+import { addDaysToIsoDate, formatShortDate } from "@/lib/mvp/travel-dates";
 
 interface FeaturedDirection {
   slug: string;
@@ -35,6 +43,25 @@ function buildPlannerHref(destination: string, origin = "Warszawa") {
   return `/planner?${params.toString()}`;
 }
 
+function buildSnapshotPlannerHref(snapshot: PlannerSnapshot) {
+  const params = new URLSearchParams({
+    mode: snapshot.mode,
+    q: snapshot.mode === "discovery" ? snapshot.query : snapshot.destinationHint || snapshot.query,
+    origin: snapshot.originCity,
+    travelers: String(snapshot.travelers),
+    budget: String(snapshot.budget),
+    days: String(snapshot.travelNights),
+    nights: String(snapshot.travelNights),
+    startDate: snapshot.travelStartDate,
+  });
+
+  if (snapshot.mode === "standard") {
+    params.set("destination", snapshot.destinationHint || snapshot.query);
+  }
+
+  return `/planner?${params.toString()}`;
+}
+
 const copy = {
   pl: {
     commerceEyebrow: "Szybki start komercyjny",
@@ -48,6 +75,17 @@ const copy = {
     staysAltLabel: "Apartamenty",
     staysAltBody: "Dla dluzszego pobytu, grupy albo apartamentu zamiast hotelu.",
     moodEyebrow: "Start od nastroju",
+    retentionEyebrow: "Wroc do planowania",
+    retentionTitle: "HelpTravel pamieta ostatni plan i zapisane kierunki.",
+    retentionBody:
+      "Produkt nie powinien konczyc sie na jednej sesji. Wroc do ostatniego scenariusza albo otworz zapisane miasta bez szukania od nowa.",
+    lastPlanLabel: "Ostatni plan",
+    lastPlanEmpty: "Po pierwszym uruchomieniu planera tutaj pojawi sie gotowy punkt powrotu do decyzji i ofert.",
+    reopenPlan: "Wroc do tego planu",
+    savedDirectionsLabel: "Zapisane kierunki",
+    savedDirectionsEmpty: "Zapisane miasta beda tu czekac jako szybka shortlista do porownan i powrotu.",
+    openGuide: "Przewodnik",
+    openPlannerShort: "Planner",
     moods: [
       { title: "City break", description: "Mocne miasta na 3-5 dni.", href: "/city-breaki" },
       { title: "Cieplo i morze", description: "Kierunki pod slonce i lekki reset.", href: "/cieple-kierunki" },
@@ -92,6 +130,17 @@ const copy = {
     staysAltLabel: "Apartments",
     staysAltBody: "For longer stays, larger groups or apartment-first trips.",
     moodEyebrow: "Start from the travel mood",
+    retentionEyebrow: "Come back to planning",
+    retentionTitle: "HelpTravel remembers your latest plan and saved destinations.",
+    retentionBody:
+      "The product should not end after one session. Return to your last scenario or reopen saved cities without rebuilding the search.",
+    lastPlanLabel: "Latest plan",
+    lastPlanEmpty: "Your first planner run will create a clear return point to the last scenario and offer flow.",
+    reopenPlan: "Resume this plan",
+    savedDirectionsLabel: "Saved destinations",
+    savedDirectionsEmpty: "Saved cities will appear here as a shortlist you can compare and revisit quickly.",
+    openGuide: "Guide",
+    openPlannerShort: "Planner",
     moods: [
       { title: "City breaks", description: "Strong short-haul cities for 3-5 days.", href: "/city-breaki" },
       { title: "Warm escapes", description: "Sun, coast and easy reset destinations.", href: "/cieple-kierunki" },
@@ -135,6 +184,20 @@ export function HomePageSections({
 }: HomePageSectionsProps) {
   const { locale } = useLanguage();
   const text = copy[locale];
+  const [lastSnapshot, setLastSnapshot] = useState<PlannerSnapshot | null>(null);
+  const [savedDestinations, setSavedDestinations] = useState<SavedDestinationMemory[]>([]);
+  const dateLocale = locale === "en" ? "en-GB" : "pl-PL";
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setLastSnapshot(getPlannerSnapshot());
+      setSavedDestinations(getSavedDestinations().slice(0, 4));
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, []);
 
   return (
     <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 px-4 sm:px-6 xl:px-8">
@@ -208,6 +271,77 @@ export function HomePageSections({
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_56px_rgba(16,84,48,0.06)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.retentionEyebrow}</p>
+          <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">{text.retentionTitle}</h2>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-900/74">{text.retentionBody}</p>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="rounded-[1.6rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(245,252,247,0.98),rgba(234,247,239,0.92))] p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.lastPlanLabel}</p>
+              {lastSnapshot ? (
+                <>
+                  <h3 className="mt-3 text-2xl font-bold text-emerald-950">
+                    {lastSnapshot.selectedDestinationLabel ??
+                      (lastSnapshot.mode === "discovery" ? lastSnapshot.query : lastSnapshot.destinationHint)}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-emerald-900/72">
+                    {formatShortDate(lastSnapshot.travelStartDate, dateLocale)} -{" "}
+                    {formatShortDate(addDaysToIsoDate(lastSnapshot.travelStartDate, lastSnapshot.travelNights), dateLocale)}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-emerald-900/72">
+                    {lastSnapshot.originCity} / {lastSnapshot.travelers} / {lastSnapshot.travelNights}{" "}
+                    {locale === "en" ? "nights" : "nocy"}
+                  </p>
+                  <LocalizedLink
+                    href={buildSnapshotPlannerHref(lastSnapshot)}
+                    className="mt-4 inline-flex rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
+                  >
+                    {text.reopenPlan}
+                  </LocalizedLink>
+                </>
+              ) : (
+                <p className="mt-3 rounded-[1.4rem] border border-dashed border-emerald-900/10 bg-white/72 px-4 py-4 text-sm leading-6 text-emerald-900/70">
+                  {text.lastPlanEmpty}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/72 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.savedDirectionsLabel}</p>
+              {savedDestinations.length > 0 ? (
+                <div className="mt-4 grid gap-3">
+                  {savedDestinations.map((destination) => (
+                    <div key={destination.slug} className="rounded-[1.25rem] border border-emerald-900/10 bg-white px-4 py-4">
+                      <p className="text-base font-bold text-emerald-950">
+                        {destination.city}, {destination.country}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <LocalizedLink
+                          href={`/kierunki/${destination.slug}`}
+                          className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
+                        >
+                          {text.openGuide}
+                        </LocalizedLink>
+                        <LocalizedLink
+                          href={buildPlannerHref(destination.city)}
+                          className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
+                        >
+                          {text.openPlannerShort}
+                        </LocalizedLink>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 rounded-[1.4rem] border border-dashed border-emerald-900/10 bg-white/72 px-4 py-4 text-sm leading-6 text-emerald-900/70">
+                  {text.savedDirectionsEmpty}
+                </p>
+              )}
+            </div>
+          </div>
+        </article>
+
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_56px_rgba(16,84,48,0.06)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.moodEyebrow}</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

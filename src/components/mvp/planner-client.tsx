@@ -13,6 +13,17 @@ import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
 import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
+import {
+  getPlannerSnapshot,
+  getRecentDiscoveryBriefs,
+  getSavedDestinations,
+  pushRecentDiscoveryBrief,
+  savePlannerSnapshot,
+  toggleSavedDestination,
+  type PlannerSnapshot,
+  type RecentDiscoveryBrief,
+  type SavedDestinationMemory,
+} from "@/lib/mvp/planner-memory";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate, isoDateToMonth } from "@/lib/mvp/travel-dates";
 import type { DiscoveryResponse, SavedTripView } from "@/lib/mvp/types";
@@ -70,6 +81,28 @@ const plannerCopy = {
     savedPlans: "Zapisane plany",
     savedPlansBody: "Wrocisz do nich jednym kliknieciem.",
     savedEmpty: "Po pierwszym wyniku tutaj pojawia sie zapisane scenariusze.",
+    recentBriefs: "Ostatnie briefy",
+    recentBriefsBody: "Najmocniejsze zapytania discovery mozesz odtworzyc bez pisania od nowa.",
+    continuePlanning: "Kontynuuj planowanie",
+    continuePlanningBody: "Ostatnia konfiguracja planera czeka do ponownego uruchomienia.",
+    restoreSettings: "Przywroc ustawienia",
+    savedDestinations: "Zapisane kierunki",
+    savedDestinationsBody: "Wlasna shortlista kierunkow do porownania i powrotu.",
+    noSavedDestinations: "Po zapisaniu kierunku pojawi sie tutaj szybki dostep do jego strony i planera.",
+    saveTrip: "Zapisz plan",
+    savingTrip: "Zapisywanie...",
+    saveTripDone: "Plan zapisany",
+    saveDestination: "Zapisz kierunek",
+    savedDestination: "Kierunek zapisany",
+    interpretedBrief: "Jak system odczytal brief",
+    interpretedBriefBody: "Pokazujemy najwazniejsze sygnaly z briefu, zeby decyzja byla bardziej czytelna i latwiejsza do oceny.",
+    methodologyTitle: "Jak budujemy rekomendacje",
+    methodologyBody: "Ranking laczy klimat, budzet, latwosc dojazdu, sens trip length i dopasowanie do stylu wyjazdu. Nie pokazujemy jednego miasta przypadkiem.",
+    decodedBudget: "Budzet",
+    decodedClimate: "Klimat",
+    decodedTransfer: "Przesiadki",
+    decodedFocus: "Wskazany kierunek",
+    decodedTravelStyle: "Najmocniejsze potrzeby",
     scoreWord: "score",
     selectedRoute: "Wybrana trasa",
     bestForBrief: "Najlepszy kierunek dla tego briefu",
@@ -148,6 +181,28 @@ const plannerCopy = {
     savedPlans: "Saved plans",
     savedPlansBody: "You can return to them in one click.",
     savedEmpty: "Saved scenarios will appear here after the first result.",
+    recentBriefs: "Recent briefs",
+    recentBriefsBody: "Replay your strongest discovery prompts without rewriting them.",
+    continuePlanning: "Continue planning",
+    continuePlanningBody: "Your latest planner setup is ready to reuse.",
+    restoreSettings: "Restore setup",
+    savedDestinations: "Saved destinations",
+    savedDestinationsBody: "A short list of destinations worth revisiting and comparing.",
+    noSavedDestinations: "Saved destinations will appear here once you keep a place for later.",
+    saveTrip: "Save plan",
+    savingTrip: "Saving...",
+    saveTripDone: "Plan saved",
+    saveDestination: "Save destination",
+    savedDestination: "Destination saved",
+    interpretedBrief: "How the brief was interpreted",
+    interpretedBriefBody: "We surface the strongest intent signals so the recommendation feels easier to trust and compare.",
+    methodologyTitle: "How recommendations are built",
+    methodologyBody: "The ranking blends climate, budget, route effort, trip length fit and travel style. The top pick is meant to be explainable, not random.",
+    decodedBudget: "Budget",
+    decodedClimate: "Climate",
+    decodedTransfer: "Transfers",
+    decodedFocus: "Focused destination",
+    decodedTravelStyle: "Strongest needs",
     scoreWord: "score",
     selectedRoute: "Selected route",
     bestForBrief: "Best destination for this brief",
@@ -295,6 +350,10 @@ export function PlannerClient({
   const [result, setResult] = useState<DiscoveryResponse | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState("");
   const [savedTrips, setSavedTrips] = useState<SavedTripView[]>([]);
+  const [recentBriefs, setRecentBriefs] = useState<RecentDiscoveryBrief[]>([]);
+  const [savedDestinations, setSavedDestinations] = useState<SavedDestinationMemory[]>([]);
+  const [lastSnapshot, setLastSnapshot] = useState<PlannerSnapshot | null>(null);
+  const [savingTrip, setSavingTrip] = useState(false);
   const autoSearchRef = useRef(false);
   const shouldFocusOffersRef = useRef(false);
   const stayOffersRef = useRef<HTMLDivElement | null>(null);
@@ -323,32 +382,47 @@ export function PlannerClient({
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => setSavedTrips(data?.items ?? []))
       .catch(() => setSavedTrips([]));
+
+    setRecentBriefs(getRecentDiscoveryBriefs());
+    setSavedDestinations(getSavedDestinations());
+    setLastSnapshot(getPlannerSnapshot());
   }, []);
 
-  const runPlanner = async () => {
-    shouldFocusOffersRef.current = true;
+  const executePlanner = async (input: {
+    mode: Mode;
+    query: string;
+    destinationHint: string;
+    originCity: string;
+    budget: number;
+    travelers: number;
+    rooms: number;
+    durationMin: number;
+    durationMax: number;
+    travelStartDate: string;
+    travelNights: number;
+  }) => {
     setLoading(true);
     setError("");
 
     try {
-      const departureMonth = isoDateToMonth(travelStartDate);
+      const departureMonth = isoDateToMonth(input.travelStartDate);
       const data =
-        mode === "discovery"
+        input.mode === "discovery"
           ? await postJson<DiscoveryResponse>("/api/discovery", {
-              query,
-              originCity,
-              travelers,
-              budgetMaxPln: budget,
-              durationMinDays: durationMin,
-              durationMaxDays: durationMax,
+              query: input.query,
+              originCity: input.originCity,
+              travelers: input.travelers,
+              budgetMaxPln: input.budget,
+              durationMinDays: input.durationMin,
+              durationMaxDays: input.durationMax,
               departureMonth,
             })
           : await postJson<DiscoveryResponse>("/api/standard", {
-              originCity,
-              destinationHint,
-              travelers,
-              budgetMaxPln: budget,
-              durationDays: travelNights,
+              originCity: input.originCity,
+              destinationHint: input.destinationHint,
+              travelers: input.travelers,
+              budgetMaxPln: input.budget,
+              durationDays: input.travelNights,
               departureMonth,
               style: standardStyle,
             });
@@ -357,11 +431,54 @@ export function PlannerClient({
         setResult(data);
         setSelectedOptionId(data.options[0]?.itineraryResultId ?? "");
       });
+
+      const nextSnapshot: PlannerSnapshot = {
+        mode: input.mode,
+        query: input.query,
+        destinationHint: input.destinationHint,
+        originCity: input.originCity,
+        budget: input.budget,
+        travelers: input.travelers,
+        rooms: input.rooms,
+        durationMin: input.durationMin,
+        durationMax: input.durationMax,
+        travelStartDate: input.travelStartDate,
+        travelNights: input.travelNights,
+        selectedDestinationSlug: data.options[0]?.destination.slug,
+        selectedDestinationLabel: data.options[0]
+          ? `${data.options[0].destination.city}, ${data.options[0].destination.country}`
+          : undefined,
+        savedAt: new Date().toISOString(),
+      };
+
+      savePlannerSnapshot(nextSnapshot);
+      setLastSnapshot(nextSnapshot);
+
+      if (input.mode === "discovery" && input.query.trim().length >= 16) {
+        setRecentBriefs(pushRecentDiscoveryBrief(input.query));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : text.planError);
     } finally {
       setLoading(false);
     }
+  };
+
+  const runPlanner = async () => {
+    shouldFocusOffersRef.current = true;
+    await executePlanner({
+      mode,
+      query,
+      destinationHint,
+      originCity,
+      budget,
+      travelers,
+      rooms,
+      durationMin,
+      durationMax,
+      travelStartDate,
+      travelNights,
+    });
   };
 
   const triggerInitialStandardSearch = useEffectEvent(() => {
@@ -401,8 +518,149 @@ export function PlannerClient({
     : null;
   const flightPartner = getAffiliateBrandLabel(activeAffiliateLinks?.flights, "Partner lotniczy");
   const stayPartner = getAffiliateBrandLabel(activeAffiliateLinks?.stays, "Partner noclegowy");
-  const carPartner = getAffiliateBrandLabel(activeAffiliateLinks?.cars, "Partner mobilności");
+  const carPartner = getAffiliateBrandLabel(activeAffiliateLinks?.cars, "Partner mobilnosci");
   const isDirectRouteSearch = mode === "standard" && Boolean(originCity.trim()) && Boolean(destinationHint.trim());
+  const savedDestinationSet = new Set(savedDestinations.map((item) => item.slug));
+  const isSelectedDestinationSaved = selectedOption ? savedDestinationSet.has(selectedOption.destination.slug) : false;
+  const interpretedBriefChips = [
+    `${text.decodedBudget}: ${result?.interpreted.budgetMaxPln ?? budget} PLN`,
+    `${text.term}: ${
+      result
+        ? `${result.interpreted.durationMinDays}-${result.interpreted.durationMaxDays} ${locale === "en" ? "days" : "dni"}`
+        : `${travelNights} ${locale === "en" ? "days" : "dni"}`
+    }`,
+    `${text.decodedClimate}: ${
+      result?.interpreted.temperaturePreference === "hot"
+        ? locale === "en"
+          ? "hot"
+          : "goraco"
+        : result?.interpreted.temperaturePreference === "warm"
+          ? locale === "en"
+            ? "warm"
+            : "cieplo"
+          : locale === "en"
+            ? "flexible"
+            : "elastycznie"
+    }`,
+    `${text.decodedTransfer}: ${
+      result?.interpreted.maxTransfers === 0
+        ? locale === "en"
+          ? "direct only"
+          : "bez przesiadek"
+        : locale === "en"
+          ? `up to ${result?.interpreted.maxTransfers ?? 1}`
+          : `do ${result?.interpreted.maxTransfers ?? 1}`
+    }`,
+  ];
+
+  if (result?.interpreted.destinationFocus && selectedOption) {
+    interpretedBriefChips.push(`${text.decodedFocus}: ${selectedOption.destination.city}`);
+  }
+
+  const strongestNeeds = [
+    result?.interpreted.styleWeights.beach
+      ? { label: locale === "en" ? "beach" : "plaza", score: result.interpreted.styleWeights.beach }
+      : null,
+    result?.interpreted.styleWeights.city
+      ? { label: locale === "en" ? "city" : "miasto", score: result.interpreted.styleWeights.city }
+      : null,
+    result?.interpreted.styleWeights.sightseeing
+      ? { label: locale === "en" ? "sightseeing" : "zwiedzanie", score: result.interpreted.styleWeights.sightseeing }
+      : null,
+    result?.interpreted.styleWeights.food
+      ? { label: locale === "en" ? "food" : "jedzenie", score: result.interpreted.styleWeights.food }
+      : null,
+    result?.interpreted.styleWeights.nature
+      ? { label: locale === "en" ? "nature" : "natura", score: result.interpreted.styleWeights.nature }
+      : null,
+  ]
+    .filter((item): item is { label: string; score: number } => Boolean(item))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 3)
+    .map((item) => item.label);
+  const methodologyPoints =
+    locale === "en"
+      ? [
+          "Weather and travel season for the selected window",
+          "Budget fit against the destination cost profile",
+          "Flight effort from Poland and transfer comfort",
+          "Match with the strongest intent signals in the brief",
+        ]
+      : [
+          "Pogoda i sezon dla wybranego terminu",
+          "Dopasowanie do budzetu i profilu kosztowego kierunku",
+          "Wysilek lotu z Polski i komfort przesiadek",
+          "Zgodnosc z najmocniejszymi potrzebami z briefu",
+        ];
+
+  const applySnapshot = (snapshot: PlannerSnapshot) => {
+    setMode(snapshot.mode);
+    setQuery(snapshot.query);
+    setDestinationHint(snapshot.destinationHint);
+    setOriginCity(snapshot.originCity);
+    setBudget(snapshot.budget);
+    setTravelers(snapshot.travelers);
+    setRooms(snapshot.rooms);
+    setDurationMin(snapshot.durationMin);
+    setDurationMax(snapshot.durationMax);
+    setTravelStartDate(snapshot.travelStartDate);
+    setTravelNights(snapshot.travelNights);
+  };
+
+  const handleRestoreSnapshot = (snapshot: PlannerSnapshot) => {
+    applySnapshot(snapshot);
+    shouldFocusOffersRef.current = true;
+    void executePlanner({
+      mode: snapshot.mode,
+      query: snapshot.query,
+      destinationHint: snapshot.destinationHint,
+      originCity: snapshot.originCity,
+      budget: snapshot.budget,
+      travelers: snapshot.travelers,
+      rooms: snapshot.rooms,
+      durationMin: snapshot.durationMin,
+      durationMax: snapshot.durationMax,
+      travelStartDate: snapshot.travelStartDate,
+      travelNights: snapshot.travelNights,
+    });
+  };
+
+  const handleToggleSavedDestination = () => {
+    if (!selectedOption) {
+      return;
+    }
+
+    setSavedDestinations(
+      toggleSavedDestination({
+        slug: selectedOption.destination.slug,
+        city: selectedOption.destination.city,
+        country: selectedOption.destination.country,
+      }),
+    );
+  };
+
+  const refreshSavedTrips = () => {
+    return fetch("/api/trips/history")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => setSavedTrips(data?.items ?? []))
+      .catch(() => setSavedTrips([]));
+  };
+
+  const handleSaveTrip = async () => {
+    if (!selectedOption || savingTrip) {
+      return;
+    }
+
+    setSavingTrip(true);
+    try {
+      await postJson("/api/trips/save", { itineraryResultId: selectedOption.itineraryResultId });
+      await refreshSavedTrips();
+    } catch {
+      // Keep the main planner flow stable even if saving fails.
+    } finally {
+      setSavingTrip(false);
+    }
+  };
 
   const buildSelectedRedirectHref = (
     providerKey: "flights" | "stays" | "attractions" | "cars",
@@ -519,6 +777,28 @@ export function PlannerClient({
                     </button>
                   ))}
                 </div>
+                {recentBriefs.length > 0 ? (
+                  <div className="rounded-[1.5rem] border border-emerald-900/10 bg-white/78 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.recentBriefs}</p>
+                        <p className="mt-1 text-sm text-emerald-900/70">{text.recentBriefsBody}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {recentBriefs.map((brief) => (
+                        <button
+                          key={brief.id}
+                          type="button"
+                          onClick={() => setQuery(brief.text)}
+                          className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+                        >
+                          {brief.text}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Field label={text.budget}>
                     <Input type="number" value={budget} onChange={(event) => setBudget(Number(event.target.value) || 0)} />
@@ -629,6 +909,23 @@ export function PlannerClient({
             </button>
             {error ? <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
 
+            {lastSnapshot ? (
+              <div className="mt-5 rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/72 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.continuePlanning}</p>
+                <p className="mt-2 text-sm text-emerald-900/72">{text.continuePlanningBody}</p>
+                <p className="mt-2 text-sm font-semibold text-emerald-950">
+                  {lastSnapshot.selectedDestinationLabel ?? (lastSnapshot.mode === "discovery" ? lastSnapshot.query : lastSnapshot.destinationHint)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleRestoreSnapshot(lastSnapshot)}
+                  className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+                >
+                  {text.restoreSettings}
+                </button>
+              </div>
+            ) : null}
+
             <div className="mt-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -655,6 +952,38 @@ export function PlannerClient({
                         {trip.city}, {trip.country}
                       </span>
                       <span className="text-xs text-emerald-700">{text.scoreWord} {trip.score.toFixed(0)}</span>
+                    </LocalizedLink>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedDestinations}</p>
+                  <p className="mt-1 text-sm text-emerald-900/70">{text.savedDestinationsBody}</p>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                  {savedDestinations.length}
+                </span>
+              </div>
+              <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
+                {savedDestinations.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-emerald-900/10 bg-emerald-50/60 px-4 py-4 text-sm text-emerald-900/70">
+                    {text.noSavedDestinations}
+                  </p>
+                ) : (
+                  savedDestinations.map((destination) => (
+                    <LocalizedLink
+                      key={destination.slug}
+                      href={`/kierunki/${destination.slug}`}
+                      className="flex items-center justify-between rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
+                    >
+                      <span>
+                        {destination.city}, {destination.country}
+                      </span>
+                      <span className="text-xs text-emerald-700">{locale === "en" ? "guide" : "przewodnik"}</span>
                     </LocalizedLink>
                   ))
                 )}
@@ -768,9 +1097,83 @@ export function PlannerClient({
                   >
                     {text.openCars} {carPartner}
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSaveTrip();
+                    }}
+                    disabled={savingTrip}
+                    className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50 disabled:opacity-70"
+                  >
+                    {savingTrip ? text.savingTrip : text.saveTrip}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSavedDestination()}
+                    className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+                      isSelectedDestinationSaved
+                        ? "bg-emerald-950 text-white hover:bg-emerald-900"
+                        : "border border-emerald-900/12 bg-white text-emerald-950 hover:bg-emerald-50"
+                    }`}
+                  >
+                    {isSelectedDestinationSaved ? text.savedDestination : text.saveDestination}
+                  </button>
                 </div>
               </div>
             </div>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+            <article className="rounded-[1.7rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.interpretedBrief}</p>
+              <p className="mt-2 text-sm leading-7 text-emerald-900/76">{text.interpretedBriefBody}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {interpretedBriefChips.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-4 rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.methodologyTitle}</p>
+                <p className="mt-2 text-sm leading-6 text-emerald-900/76">{text.methodologyBody}</p>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-emerald-900/82">
+                  {methodologyPoints.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+              {strongestNeeds.length > 0 ? (
+                <div className="mt-4 rounded-2xl bg-emerald-50/70 px-4 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.decodedTravelStyle}</p>
+                  <p className="mt-2 text-sm text-emerald-950">{strongestNeeds.join(" • ")}</p>
+                </div>
+              ) : null}
+            </article>
+
+            <article className="rounded-[1.7rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(237,250,241,0.98),rgba(229,245,234,0.94))] p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.whyFits}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {selectedOption.reasons.slice(0, 4).map((reason) => (
+                  <div key={reason} className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-emerald-950">
+                    {reason}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 rounded-2xl border border-emerald-900/10 bg-white px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.watchLabel}</p>
+                <div className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/76">
+                  {selectedOption.tradeoffs.length > 0 ? (
+                    selectedOption.tradeoffs.map((tradeoff) => <p key={tradeoff}>{tradeoff}</p>)
+                  ) : (
+                    <p>{text.noTradeoffs}</p>
+                  )}
+                </div>
+              </div>
+            </article>
           </section>
 
           <section className="grid gap-3 xl:grid-cols-4">

@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
+import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
+import { LocalizedLink } from "@/components/site/localized-link";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
+import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import {
   getArticlesForDestination,
+  getCategoriesForDestination,
   getDestinationGuideBySlug,
-  getPublishedDestinationSlugs,
   getSimilarDestinations,
 } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -54,8 +56,20 @@ function monthLabel(month: number) {
   return monthFormatter.format(new Date(Date.UTC(2026, month - 1, 1)));
 }
 
+function idealTripLength(flightHours: number) {
+  if (flightHours <= 3.5) {
+    return "3-4 dni";
+  }
+
+  if (flightHours <= 5.5) {
+    return "4-5 dni";
+  }
+
+  return "5-7 dni";
+}
+
 export async function generateStaticParams() {
-  return getPublishedDestinationSlugs().map((slug) => ({ slug }));
+  return getAllDestinationProfiles().map((destination) => ({ slug: destination.slug }));
 }
 
 export async function generateMetadata({ params }: DestinationGuidePageProps): Promise<Metadata> {
@@ -91,6 +105,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
   const media = await resolveDestinationMedia(guide.destination);
   const story = getDestinationStory({ ...guide.destination, media });
   const relatedArticles = getArticlesForDestination(slug).slice(0, 4);
+  const relatedCategories = getCategoriesForDestination(slug).slice(0, 4);
   const similarDestinations = await Promise.all(
     getSimilarDestinations(slug, 4).map(async (destination) => ({
       destination,
@@ -100,6 +115,22 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
   );
   const budget = estimateBudget(guide.destination.costIndex, guide.destination.typicalFlightHoursFromPL);
   const bestMonths = bestMonthsFromTemperatures(guide.destination.avgTempByMonth);
+  const tripLength = idealTripLength(guide.destination.typicalFlightHoursFromPL);
+  const tripProfile =
+    guide.destination.beachScore >= 0.75
+      ? "plaza i reset"
+      : guide.destination.cityScore >= 0.8
+        ? "city break"
+        : guide.destination.natureScore >= 0.75
+          ? "widoki i spokoj"
+          : "wyjazd mieszany";
+  const routeComfort =
+    guide.destination.accessScore >= 0.82
+      ? "latwy dolot z Polski"
+      : guide.destination.accessScore >= 0.65
+        ? "warto dobrze ustawic trase"
+        : "najlepiej planowac z wyprzedzeniem";
+  const visaNote = guide.destination.visaForPL ? "bez wizy dla polskiego paszportu" : "sprawdz formalnosci przed rezerwacja";
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -165,6 +196,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                   {item}
                 </span>
               ))}
+            </div>
+            <div className="mt-5">
+              <SaveDestinationButton slug={guide.destination.slug} city={guide.destination.city} country={guide.destination.country} />
             </div>
           </div>
         </div>
@@ -258,18 +292,100 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         </article>
       </section>
 
+      <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Szybka ocena kierunku</p>
+          <h2 className="mt-2 font-display text-4xl text-emerald-950">Najwazniejsze sygnaly przed decyzja o wyjezdzie</h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Najlepszy format</p>
+              <p className="mt-2 text-lg font-bold text-emerald-950">{tripProfile}</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-900/78">
+                To kierunek, ktory najmocniej pracuje wtedy, gdy planujesz {tripLength} i chcesz sensownego balansu
+                wysilku do efektu.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Dojazd z Polski</p>
+              <p className="mt-2 text-lg font-bold text-emerald-950">{routeComfort}</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-900/78">
+                Lot zwykle zajmuje okolo {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h, wiec latwiej ocenic
+                czy to kierunek na szybki wypad, czy na troche dluzszy pobyt.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Najlepsza dlugosc</p>
+              <p className="mt-2 text-lg font-bold text-emerald-950">{tripLength}</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-900/78">
+                Ten scenariusz zwykle daje najlepszy stosunek kosztu do wygody, bez poczucia, ze wyjazd jest za krotki
+                albo niepotrzebnie rozciagniety.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Formalnosci i sezon</p>
+              <p className="mt-2 text-lg font-bold text-emerald-950">{visaNote}</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-900/78">
+                Najmocniejsze miesiace dla tego kierunku to zwykle {bestMonths.slice(0, 3).map(monthLabel).join(", ")}.
+              </p>
+            </div>
+          </div>
+        </article>
+
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Scenariusze i dalsze kroki</p>
+          <h2 className="mt-2 font-display text-4xl text-emerald-950">Ten kierunek dobrze laczy sie z tymi potrzebami i kolejnymi klikami.</h2>
+          {relatedCategories.length > 0 ? (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {relatedCategories.map((category) => (
+                <LocalizedLink
+                  key={category.slug}
+                  href={`/${category.slug}`}
+                  className="rounded-full border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-950 transition hover:bg-emerald-100"
+                >
+                  {category.title}
+                </LocalizedLink>
+              ))}
+            </div>
+          ) : null}
+          <div className="mt-5 space-y-3 text-sm leading-7 text-emerald-900/78">
+            <p>
+              HelpTravel nie konczy sie na inspiracji. Ta strona ma pomoc zdecydowac, czy kierunek pasuje do stylu
+              wyjazdu, budzetu i realnej logistyki z Polski.
+            </p>
+            <p>
+              Jesli miasto wyglada dobrze, przechodzisz dalej do planera i gotowych przejsc do pobytu, lotu, atrakcji
+              i kolejnych krokow dla tego samego terminu.
+            </p>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <LocalizedLink
+              href={`/planner?mode=standard&q=${encodeURIComponent(guide.destination.city)}`}
+              className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+            >
+              Otworz planner dla tego miasta
+            </LocalizedLink>
+            <LocalizedLink
+              href="/planner?mode=discovery"
+              className="rounded-full border border-emerald-900/10 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+            >
+              Porownaj z innymi pomyslami
+            </LocalizedLink>
+          </div>
+        </article>
+      </section>
+
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pomysl na 3-5 dni</p>
             <h2 className="mt-2 font-display text-4xl text-emerald-950">Przykladowy rytm wyjazdu</h2>
           </div>
-          <Link
+          <LocalizedLink
             href={`/planner?mode=standard&q=${encodeURIComponent(guide.destination.city)}`}
             className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
             Sprawdz ten kierunek w plannerze
-          </Link>
+          </LocalizedLink>
         </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           {story.miniPlan.map((item) => (
@@ -299,22 +415,22 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Powiazane oferty i planner</p>
           <h2 className="mt-3 font-display text-4xl">Przejdz z przewodnika do konkretnego planu wyjazdu.</h2>
           <p className="mt-4 text-sm leading-7 text-white/82">
-            To miejsce ma juz warstwe tresciowa, ale kolejny krok to realny wynik: loty, noclegi, atrakcje i kontekst
-            pod ten konkretny kierunek.
+            Ten przewodnik nie konczy sie na inspiracji. Od razu przechodzisz dalej do noclegow, lotow, atrakcji i
+            kolejnych decyzji dopasowanych do tego konkretnego kierunku.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
+            <LocalizedLink
               href={`/planner?mode=standard&q=${encodeURIComponent(guide.destination.city)}`}
               className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
             >
               Uruchom planner dla {guide.destination.city}
-            </Link>
-            <Link
+            </LocalizedLink>
+            <LocalizedLink
               href="/planner?mode=discovery"
               className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
             >
               Nie wiem dokad leciec
-            </Link>
+            </LocalizedLink>
           </div>
         </article>
       </section>
@@ -326,9 +442,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiazane artykuly</p>
               <h2 className="mt-2 font-display text-4xl text-emerald-950">Przydatne tresci wokol tego kierunku</h2>
             </div>
-            <Link href="/inspiracje" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+            <LocalizedLink href="/inspiracje" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
               Wszystkie inspiracje
-            </Link>
+            </LocalizedLink>
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             {relatedArticles.map((article) => (

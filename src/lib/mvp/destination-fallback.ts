@@ -1,5 +1,5 @@
 import { buildAffiliateLinks } from "./affiliate-links";
-import { curatedDestinations } from "./destinations";
+import { findDestinationProfile } from "./destinations";
 import { normalizeLookup, resolveAirportCode } from "./location";
 import type { DestinationProfile } from "./types";
 
@@ -38,21 +38,9 @@ export function findCuratedDestination(input: {
   const normalizedCity = normalizeLookup(input.city);
   const normalizedCountry = normalizeLookup(input.country ?? "");
 
-  return curatedDestinations.find((destination) => {
-    const cityMatch =
-      normalizeLookup(destination.city) === normalizedCity ||
-      normalizeLookup(destination.city).includes(normalizedCity) ||
-      normalizedCity.includes(normalizeLookup(destination.city));
-
-    if (!cityMatch) {
-      return false;
-    }
-
-    if (!normalizedCountry) {
-      return true;
-    }
-
-    return normalizeLookup(destination.country) === normalizedCountry;
+  return findDestinationProfile({
+    city: normalizedCity || input.city,
+    country: normalizedCountry || input.country,
   });
 }
 

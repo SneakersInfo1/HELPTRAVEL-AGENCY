@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
+import { LocalizedLink } from "@/components/site/localized-link";
 import { getEditorialArticles, getEditorialCategories, getPublishedDestinations } from "@/lib/mvp/publisher-content";
 
 const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
@@ -63,7 +63,7 @@ const reviewSignals = [
 const partnerBenefits = [
   "serwis jest zbudowany jako publisher i planer jednoczesnie",
   "uzytkownik dostaje kontekst przed kliknieciem w oferte",
-  "linki partnerskie sa opisane publicznie i uczciwie",
+  "linki partnerskie sa oznaczane publicznie i transparentnie",
   "content jest po polsku i dopasowany do polskiego rynku",
 ];
 
@@ -80,24 +80,24 @@ export default function PartnersPage() {
           <div className="p-6 sm:p-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Media kit</p>
             <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[0.95] text-emerald-950">
-              Travel publisher z plannerem, contentem i uczciwym flow do partnerow
+              Travel publisher z plannerem, contentem i czytelnym flow do partnerow
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
               HelpTravel laczy publiczny serwis travelowy, destination huby i planer wyjazdow. Czytelnik najpierw dostaje wartosc redakcyjna, potem porownanie, a na koncu czytelne przejscie do partnera rezerwacyjnego.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link
+              <LocalizedLink
                 href={emailHref}
                 className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
               >
                 Napisz w sprawie wspolpracy
-              </Link>
-              <Link
+              </LocalizedLink>
+              <LocalizedLink
                 href="/standard-redakcyjny"
                 className="rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
               >
                 Standard redakcyjny
-              </Link>
+              </LocalizedLink>
             </div>
           </div>
 
@@ -193,18 +193,18 @@ export default function PartnersPage() {
             <p>4. Zachowujemy jawne oznaczenia partnerstwa i przejrzysty flow dla czytelnika.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
+            <LocalizedLink
               href={emailHref}
               className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
             >
               Napisz do nas
-            </Link>
-            <Link
+            </LocalizedLink>
+            <LocalizedLink
               href="/kontakt"
               className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
             >
               Kontakt i szczegoly
-            </Link>
+            </LocalizedLink>
           </div>
         </article>
       </section>
@@ -217,18 +217,18 @@ export default function PartnersPage() {
           </div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/mapa-serwisu" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <LocalizedLink href="/mapa-serwisu" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
             Mapa serwisu
-          </Link>
-          <Link href="/standard-redakcyjny" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          </LocalizedLink>
+          <LocalizedLink href="/standard-redakcyjny" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
             Standard redakcyjny
-          </Link>
-          <Link href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          </LocalizedLink>
+          <LocalizedLink href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
             Jak pracujemy
-          </Link>
-          <Link href="/linki-partnerskie" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          </LocalizedLink>
+          <LocalizedLink href="/linki-partnerskie" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
             Linki partnerskie
-          </Link>
+          </LocalizedLink>
         </div>
       </section>
     </main>

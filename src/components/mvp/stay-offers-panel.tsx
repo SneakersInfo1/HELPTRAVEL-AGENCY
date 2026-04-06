@@ -79,9 +79,9 @@ const copy = {
     checkStay: "Sprawdz pobyt",
     compareIn: "Porownaj w",
     emptyState: "Nie znalezlismy dostepnych noclegow dla tego ukladu dat. Zmien termin albo otworz wyniki partnerow.",
-    feedFallbackTitle: "Gotowe wyniki partnerow dla tego pobytu",
+    feedFallbackTitle: "Wiecej wynikow dla tego pobytu",
     feedFallbackBody:
-      "Jesli bezposredni feed nie odda pelnej listy dla tego miasta, nadal mozesz od razu przejsc do gotowych wynikow hoteli i apartamentow dla tych samych dat.",
+      "Mozesz od razu przejsc do pelnych wynikow hoteli i apartamentow dla tych samych dat, nawet jesli na stronie porownujesz tylko najsilniejsza shortlist.",
   },
   en: {
     requestError: "Could not load stay offers.",
@@ -118,9 +118,9 @@ const copy = {
     checkStay: "Check stay",
     compareIn: "Compare on",
     emptyState: "We could not find available stays for these dates. Change the dates or open partner results.",
-    feedFallbackTitle: "Partner results are ready for this stay window",
+    feedFallbackTitle: "More results for this stay window",
     feedFallbackBody:
-      "If the direct feed does not return a full list for this city, you can still jump straight into ready hotel and apartment results for the same dates.",
+      "You can jump straight into full hotel and apartment results for the same dates, even if this page is showing only the strongest shortlist first.",
   },
 } as const;
 
