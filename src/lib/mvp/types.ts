@@ -232,6 +232,7 @@ export interface StaySearchResponse {
   sortBy: StaySortMode;
   offers: NormalizedStayOffer[];
   fetchedAt: string;
+  error?: string;
 }
 
 export interface ActivitySearchResponse {

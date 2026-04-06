@@ -329,7 +329,6 @@ export function PlannerClient({
     shouldFocusOffersRef.current = true;
     setLoading(true);
     setError("");
-    setResult(null);
 
     try {
       const departureMonth = isoDateToMonth(travelStartDate);
@@ -686,7 +685,7 @@ export function PlannerClient({
         </section>
       ) : null}
 
-      {result && selectedOption && selectedStory && activeAffiliateLinks ? (
+      {selectedOption && selectedStory && activeAffiliateLinks ? (
         <>
           <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_18px_55px_rgba(16,84,48,0.08)]">
             <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
@@ -997,6 +996,12 @@ export function PlannerClient({
               );
             })}
           </div>
+        </section>
+      ) : null}
+
+      {result && !selectedOption ? (
+        <section className="rounded-[1.75rem] border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-900 shadow-sm">
+          Nie udało się zbudować pełnego rankingu kierunków dla tego zapytania. Spróbuj zmienić termin lub kierunek i uruchomić wyszukiwanie ponownie.
         </section>
       ) : null}
     </div>

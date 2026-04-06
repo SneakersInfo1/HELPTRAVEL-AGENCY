@@ -5,10 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
+import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { buildCjStayLinks } from "@/lib/mvp/cj-stays";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { addDaysToIsoDate, formatShortDate } from "@/lib/mvp/travel-dates";
 import type { StaySearchResponse, StaySortMode } from "@/lib/mvp/types";
+
+const INITIAL_VISIBLE_OFFERS = 24;
+const VISIBLE_OFFERS_STEP = 24;
+const MAX_VISIBLE_OFFERS = 500;
 
 function postJson<T>(url: string, body: unknown): Promise<T> {
   return fetch(url, {
@@ -74,6 +79,9 @@ const copy = {
     checkStay: "Sprawdz pobyt",
     compareIn: "Porownaj w",
     emptyState: "Nie znalezlismy dostepnych noclegow dla tego ukladu dat. Zmien termin albo otworz wyniki partnerow.",
+    feedFallbackTitle: "Gotowe wyniki partnerow dla tego pobytu",
+    feedFallbackBody:
+      "Jesli bezposredni feed nie odda pelnej listy dla tego miasta, nadal mozesz od razu przejsc do gotowych wynikow hoteli i apartamentow dla tych samych dat.",
   },
   en: {
     requestError: "Could not load stay offers.",
@@ -110,6 +118,9 @@ const copy = {
     checkStay: "Check stay",
     compareIn: "Compare on",
     emptyState: "We could not find available stays for these dates. Change the dates or open partner results.",
+    feedFallbackTitle: "Partner results are ready for this stay window",
+    feedFallbackBody:
+      "If the direct feed does not return a full list for this city, you can still jump straight into ready hotel and apartment results for the same dates.",
   },
 } as const;
 
@@ -128,7 +139,7 @@ export function StayOffersPanel(props: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<StaySearchResponse | null>(null);
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_OFFERS);
 
   useEffect(() => {
     if (!props.destinationCity) return;
@@ -151,7 +162,7 @@ export function StayOffersPanel(props: {
 
           if (!cancelled) {
             setData(result);
-            setVisibleCount(20);
+            setVisibleCount(INITIAL_VISIBLE_OFFERS);
           }
         } catch (err) {
           if (!cancelled) {
@@ -172,7 +183,8 @@ export function StayOffersPanel(props: {
     };
   }, [props.checkInDate, props.destinationCity, props.destinationCountry, props.guests, props.nights, props.rooms, requestErrorText, sortBy]);
 
-  const displayedOffers = useMemo(() => data?.offers.slice(0, visibleCount) ?? [], [data?.offers, visibleCount]);
+  const availableOffers = useMemo(() => data?.offers.slice(0, MAX_VISIBLE_OFFERS) ?? [], [data?.offers]);
+  const displayedOffers = useMemo(() => availableOffers.slice(0, visibleCount), [availableOffers, visibleCount]);
   const topOffer = displayedOffers[0] ?? null;
   const remainingOffers = topOffer ? displayedOffers.slice(1) : displayedOffers;
   const checkOutDate = useMemo(() => addDaysToIsoDate(props.checkInDate, props.nights), [props.checkInDate, props.nights]);
@@ -187,23 +199,36 @@ export function StayOffersPanel(props: {
       }),
     [checkOutDate, props.checkInDate, props.destinationCity, props.destinationCountry, props.guests, props.rooms],
   );
+  const genericAffiliateLinks = useMemo(
+    () =>
+      buildAffiliateLinksWithContext({
+        city: props.destinationCity,
+        country: props.destinationCountry,
+        checkInDate: props.checkInDate,
+        checkOutDate,
+        passengers: props.guests,
+        rooms: props.rooms,
+      }),
+    [checkOutDate, props.checkInDate, props.destinationCity, props.destinationCountry, props.guests, props.rooms],
+  );
 
   const partnerButtons = useMemo(
     () =>
-      partnerLinks
-        ? [
+      [
             {
               eyebrow: text.hotelEyebrow,
-              label: getAffiliateBrandLabel(partnerLinks.hotels, "Hotels.com"),
+              label: getAffiliateBrandLabel(partnerLinks?.hotels ?? genericAffiliateLinks.stays, "Hotels.com"),
               href: buildRedirectHref({
                 providerKey: "stays",
-                targetUrl: partnerLinks.hotels,
+                targetUrl: partnerLinks?.hotels ?? genericAffiliateLinks.stays,
                 city: props.destinationCity,
                 country: props.destinationCountry,
                 source: "stay_panel_hotels",
               }),
             },
-            {
+            ...(partnerLinks
+              ? [
+                  {
               eyebrow: text.compareEyebrow,
               label: getAffiliateBrandLabel(partnerLinks.expedia, "Expedia"),
               href: buildRedirectHref({
@@ -225,9 +250,10 @@ export function StayOffersPanel(props: {
                 source: "stay_panel_vrbo",
               }),
             },
-          ]
-        : [],
-    [partnerLinks, props.destinationCity, props.destinationCountry, text.apartmentsEyebrow, text.compareEyebrow, text.hotelEyebrow],
+                ]
+              : []),
+          ],
+    [genericAffiliateLinks.stays, partnerLinks, props.destinationCity, props.destinationCountry, text.apartmentsEyebrow, text.compareEyebrow, text.hotelEyebrow],
   );
 
   return (
@@ -244,7 +270,7 @@ export function StayOffersPanel(props: {
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm ring-1 ring-emerald-900/8">
           {loading ? <Spinner /> : null}
-          {loading ? text.loadingState : data ? `${data.offers.length} ${text.offersState}` : text.readyState}
+          {loading ? text.loadingState : data ? `${availableOffers.length} ${text.offersState}` : text.readyState}
         </div>
       </div>
 
@@ -288,10 +314,10 @@ export function StayOffersPanel(props: {
             {label}
           </button>
         ))}
-        {displayedOffers.length >= 20 && displayedOffers.length < 50 ? (
+        {displayedOffers.length >= INITIAL_VISIBLE_OFFERS && displayedOffers.length < availableOffers.length ? (
           <button
             type="button"
-            onClick={() => setVisibleCount((value) => Math.min(50, value + 12))}
+            onClick={() => setVisibleCount((value) => Math.min(MAX_VISIBLE_OFFERS, value + VISIBLE_OFFERS_STEP))}
             className="rounded-full border border-emerald-900/12 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
           >
             {text.showMore}
@@ -320,6 +346,11 @@ export function StayOffersPanel(props: {
       ) : null}
 
       {error ? <div className="mt-4 rounded-[1.5rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+      {data?.error ? (
+        <div className="mt-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {text.feedFallbackBody}
+        </div>
+      ) : null}
 
       <div className="mt-5 space-y-3">
         {loading ? (
@@ -515,6 +546,28 @@ export function StayOffersPanel(props: {
               </article>
             ))}
           </>
+        ) : partnerButtons.length ? (
+          <div className="rounded-[1.75rem] border border-dashed border-emerald-900/12 bg-white/88 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.feedFallbackTitle}</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-900/76">{text.feedFallbackBody}</p>
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {partnerButtons.map((partner) => (
+                <a
+                  key={`fallback-${partner.label}`}
+                  href={partner.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-[1.35rem] border border-emerald-900/10 bg-emerald-950 px-4 py-4 text-white transition hover:-translate-y-0.5 hover:bg-emerald-900"
+                >
+                  <span className="block text-[11px] uppercase tracking-[0.16em] text-emerald-200">{partner.eyebrow}</span>
+                  <span className="mt-2 block text-base font-semibold">{partner.label}</span>
+                  <span className="mt-2 block text-sm text-white/72">
+                    {formatShortDate(props.checkInDate, locale === "en" ? "en-GB" : "pl-PL")} - {formatShortDate(checkOutDate, locale === "en" ? "en-GB" : "pl-PL")}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="rounded-[1.5rem] border border-dashed border-emerald-900/12 bg-white/88 px-4 py-6 text-sm text-emerald-900/72">
             {text.emptyState}

@@ -3,6 +3,8 @@ import "server-only";
 import { resolveCityCoordinates } from "./geoapify";
 import type { NormalizedStayOffer, StaySortMode } from "./types";
 
+const MAX_STAY_RESULTS = 500;
+
 export interface DuffelStaySearchInput {
   city: string;
   country: string;
@@ -217,7 +219,7 @@ export async function searchDuffelStays(input: DuffelStaySearchInput): Promise<{
   };
 
   const results = payload.data?.results ?? [];
-  const offers = rankResults(results.map((result) => normalizeStay(result, input.city, input.country)), input.sortBy ?? "cheap").slice(0, 50);
+  const offers = rankResults(results.map((result) => normalizeStay(result, input.city, input.country)), input.sortBy ?? "cheap").slice(0, MAX_STAY_RESULTS);
 
   return {
     city: input.city,

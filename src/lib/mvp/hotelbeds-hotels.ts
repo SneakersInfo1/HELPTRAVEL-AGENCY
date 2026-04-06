@@ -5,6 +5,9 @@ import { createHash } from "node:crypto";
 import { resolveAirportCode } from "./location";
 import type { NormalizedStayOffer, StaySortMode } from "./types";
 
+const MAX_STAY_RESULTS = 500;
+const HOTELBEDS_CHUNK_SIZE = 75;
+
 export interface HotelbedsHotelSearchInput {
   city: string;
   country: string;
@@ -139,6 +142,14 @@ function rankResults(results: NormalizedStayOffer[], sortBy: StaySortMode): Norm
   return [...results].sort((a, b) => a.total_amount - b.total_amount || (b.reviewScore ?? b.rating ?? 0) - (a.reviewScore ?? a.rating ?? 0));
 }
 
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
 export async function searchHotelbedsHotelOffers(input: HotelbedsHotelSearchInput): Promise<{
   city: string;
   country: string;
@@ -173,7 +184,7 @@ export async function searchHotelbedsHotelOffers(input: HotelbedsHotelSearchInpu
   contentUrl.searchParams.set("destinationCode", destinationCode);
   contentUrl.searchParams.set("language", "ENG");
   contentUrl.searchParams.set("from", "1");
-  contentUrl.searchParams.set("to", "50");
+  contentUrl.searchParams.set("to", String(MAX_STAY_RESULTS));
   contentUrl.searchParams.set("useSecondaryLanguage", "false");
 
   const contentResponse = await fetch(contentUrl, {
@@ -190,7 +201,7 @@ export async function searchHotelbedsHotelOffers(input: HotelbedsHotelSearchInpu
   };
 
   const hotels = contentPayload.hotels ?? contentPayload.data?.hotels ?? [];
-  const hotelCodes = hotels.map((hotel) => hotel.code).filter((code): code is string => Boolean(code)).slice(0, 20);
+  const hotelCodes = hotels.map((hotel) => hotel.code).filter((code): code is string => Boolean(code)).slice(0, MAX_STAY_RESULTS);
 
   if (hotelCodes.length === 0) {
     return {
@@ -207,44 +218,50 @@ export async function searchHotelbedsHotelOffers(input: HotelbedsHotelSearchInpu
     };
   }
 
-  const availabilityUrl = new URL(`${apiUrl.replace(/\/$/, "")}/hotel-api/1.0/hotels`);
-  availabilityUrl.searchParams.set("destinationCode", destinationCode);
-  availabilityUrl.searchParams.set("language", "ENG");
-  availabilityUrl.searchParams.set("from", "1");
-  availabilityUrl.searchParams.set("to", "20");
-  availabilityUrl.searchParams.set("useSecondaryLanguage", "false");
-  availabilityUrl.searchParams.set("checkIn", checkInDate);
-  availabilityUrl.searchParams.set("checkOut", checkOutDate);
-  availabilityUrl.searchParams.set("adults", String(guests));
-  availabilityUrl.searchParams.set("rooms", String(rooms));
-  availabilityUrl.searchParams.set("hotels", hotelCodes.join(","));
+  const availabilityRows = await Promise.all(
+    chunkArray(hotelCodes, HOTELBEDS_CHUNK_SIZE).map(async (hotelCodeChunk) => {
+      const availabilityUrl = new URL(`${apiUrl.replace(/\/$/, "")}/hotel-api/1.0/hotels`);
+      availabilityUrl.searchParams.set("destinationCode", destinationCode);
+      availabilityUrl.searchParams.set("language", "ENG");
+      availabilityUrl.searchParams.set("from", "1");
+      availabilityUrl.searchParams.set("to", String(Math.min(MAX_STAY_RESULTS, hotelCodeChunk.length)));
+      availabilityUrl.searchParams.set("useSecondaryLanguage", "false");
+      availabilityUrl.searchParams.set("checkIn", checkInDate);
+      availabilityUrl.searchParams.set("checkOut", checkOutDate);
+      availabilityUrl.searchParams.set("adults", String(guests));
+      availabilityUrl.searchParams.set("rooms", String(rooms));
+      availabilityUrl.searchParams.set("hotels", hotelCodeChunk.join(","));
 
-  const availabilityResponse = await fetch(availabilityUrl, {
-    headers: getAuthHeaders(apiKey, apiSecret),
-  });
-  if (!availabilityResponse.ok) {
-    const text = await availabilityResponse.text().catch(() => "");
-    throw new Error(`Hotelbeds availability error (${availabilityResponse.status}). ${text.slice(0, 220)}`);
-  }
+      const availabilityResponse = await fetch(availabilityUrl, {
+        headers: getAuthHeaders(apiKey, apiSecret),
+      });
+      if (!availabilityResponse.ok) {
+        const text = await availabilityResponse.text().catch(() => "");
+        throw new Error(`Hotelbeds availability error (${availabilityResponse.status}). ${text.slice(0, 220)}`);
+      }
 
-  const availabilityPayload = (await availabilityResponse.json()) as {
-    hotels?: Array<{
-      hotel?: HotelbedsHotelRate["hotel"];
-      rates?: HotelbedsHotelRate[];
-    }>;
-    data?: Array<{
-      hotel?: HotelbedsHotelRate["hotel"];
-      rates?: HotelbedsHotelRate[];
-    }>;
-  };
+      const availabilityPayload = (await availabilityResponse.json()) as {
+        hotels?: Array<{
+          hotel?: HotelbedsHotelRate["hotel"];
+          rates?: HotelbedsHotelRate[];
+        }>;
+        data?: Array<{
+          hotel?: HotelbedsHotelRate["hotel"];
+          rates?: HotelbedsHotelRate[];
+        }>;
+      };
 
-  const rows = availabilityPayload.hotels ?? availabilityPayload.data ?? [];
+      return availabilityPayload.hotels ?? availabilityPayload.data ?? [];
+    }),
+  );
+
   const offers = rankResults(
-    rows
+    availabilityRows
+      .flat()
       .flatMap((item) => (item.rates ?? []).map((rate) => normalizeRate({ ...rate, hotel: rate.hotel ?? item.hotel }, input.city, input.country)))
       .filter((item): item is NormalizedStayOffer => Boolean(item)),
     input.sortBy ?? "cheap",
-  ).slice(0, 50);
+  ).slice(0, MAX_STAY_RESULTS);
 
   return {
     city: input.city,
