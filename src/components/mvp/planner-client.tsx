@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
+import { useLanguage } from "@/components/site/language-provider";
 import { ActivityOffersPanel } from "@/components/mvp/activity-offers-panel";
 import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
@@ -18,13 +19,153 @@ import type { DiscoveryResponse, SavedTripView } from "@/lib/mvp/types";
 
 type Mode = "discovery" | "standard";
 
-const discoveryPresets = [
-  "Ciepły kierunek na 5 dni z plażą i zwiedzaniem do 2000 zł.",
-  "Krótki city break z dobrym jedzeniem i lekkim lotem z Polski.",
-  "Romantyczny wyjazd z widokami i spokojnym rytmem.",
-];
+const discoveryPresets = {
+  pl: [
+    "Cieply kierunek na 5 dni z plaza i zwiedzaniem do 2000 zl.",
+    "Krotki city break z dobrym jedzeniem i lekkim lotem z Polski.",
+    "Romantyczny wyjazd z widokami i spokojnym rytmem.",
+  ],
+  en: [
+    "A warm 5-day destination with beach time and sightseeing under 2000 PLN.",
+    "A short city break with great food and an easy flight from Poland.",
+    "A romantic trip with views and a slower pace.",
+  ],
+} as const;
 
 const standardPresets = ["Malaga", "Barcelona", "Lizbona", "Walencja"];
+
+const plannerCopy = {
+  pl: {
+    heroEyebrow: "HelpTravel Planner",
+    heroTitle: "Wybierz kierunek i przejdz od razu do konkretow.",
+    heroBody: "Najpierw dopasowanie kierunku, chwile pozniej pobyt, loty i kolejne kroki wyjazdu w jednym miejscu.",
+    modeStandard: "Mam kierunek",
+    modeDiscovery: "Szukam pomyslu",
+    describeTrip: "Opisz wyjazd",
+    discoveryPlaceholder: "Np. cieply kierunek na 5 dni z plaza, zwiedzaniem i budzetem do 2000 zl.",
+    budget: "Budzet",
+    minDays: "Minimum dni",
+    maxDays: "Maksimum dni",
+    direction: "Kierunek",
+    mainPath: "Sciezka glowna",
+    mainPathBody: "Po wskazaniu kierunku pokazujemy najpierw pobyt, a zaraz potem loty i dalsze kroki podrozy.",
+    sharedParams: "Parametry wspolne",
+    sharedTitle: "Termin i sklad podrozy",
+    origin: "Skad lecisz",
+    travelStart: "Start podrozy",
+    nights: "Liczba nocy",
+    travelers: "Podrozni",
+    rooms: "Pokoje",
+    quickPreview: "Szybki podglad",
+    travelersShort: "os.",
+    roomSingle: "pokoj",
+    roomFew: "pokoje",
+    roomMany: "pokoi",
+    loadingPlan: "Ukladamy plan...",
+    showStayFlights: "Pokaz pobyt i loty",
+    savedPlans: "Zapisane plany",
+    savedPlansBody: "Wrocisz do nich jednym kliknieciem.",
+    savedEmpty: "Po pierwszym wyniku tutaj pojawia sie zapisane scenariusze.",
+    scoreWord: "score",
+    selectedRoute: "Wybrana trasa",
+    bestForBrief: "Najlepszy kierunek dla tego briefu",
+    score: "Wynik",
+    term: "Termin",
+    travelParty: "Sklad podrozy",
+    whyNow: "Dlaczego teraz",
+    exactMatch: "Kierunek dokladnie odpowiada wskazanemu miastu.",
+    openStay: "Zobacz pobyt w",
+    openFlights: "Sprawdz loty w",
+    openCars: "Auta w",
+    bookingSettings: "Ustawienia komercyjne",
+    bookingSettingsBody: "Zmien termin raz, a caly flow odswiezy sie spojnie.",
+    remainingOptions: "Pozostale propozycje",
+    similarDirections: "Podobne kierunki obok glownego wyboru",
+    bestAlternatives: "Najlepsze alternatywy",
+    remainingBody: "Szybko porownasz klimat, argumenty dopasowania i przelaczysz sie na inny kierunek bez wracania do poczatku.",
+    position: "Pozycja",
+    whyFits: "Dlaczego pasuje",
+    watchOut: "Na co uwazac",
+    noTradeoffs: "Brak wyraznych minusow przy tym briefie.",
+    bookingDeckStay: "Pobyt",
+    bookingDeckFlights: "Loty",
+    bookingDeckCars: "Auta",
+    bookingDeckActivities: "Atrakcje",
+    bookingDeckStayBody: "Najwazniejszy klik po wyborze miasta. Otwiera gotowy pobyt dla tego terminu.",
+    bookingDeckFlightsBody: "Przechodzisz do wynikow lotow z ustawiona trasa i data.",
+    bookingDeckCarsBody: "Mobilnosc na miejscu bez ponownego wpisywania kierunku.",
+    bookingDeckActivitiesBody: "Przejdz dalej do atrakcji i transferow dla tego samego pobytu.",
+    showStay: "Pokaz pobyt",
+    showFlights: "Pokaz loty",
+    showCars: "Pokaz auta",
+    showOnSite: "Pokaz na miejscu",
+  },
+  en: {
+    heroEyebrow: "HelpTravel Planner",
+    heroTitle: "Choose a destination and move straight into real options.",
+    heroBody: "Start with destination fit, then move into stays, flights and the next travel steps in one place.",
+    modeStandard: "I know the destination",
+    modeDiscovery: "I need ideas",
+    describeTrip: "Describe the trip",
+    discoveryPlaceholder: "E.g. a warm 5-day trip with a beach, sightseeing and a budget under 2000 PLN.",
+    budget: "Budget",
+    minDays: "Minimum days",
+    maxDays: "Maximum days",
+    direction: "Destination",
+    mainPath: "Primary flow",
+    mainPathBody: "Once the destination is set, we lead with stays first and then move into flights and the rest of the trip.",
+    sharedParams: "Shared settings",
+    sharedTitle: "Dates and travel party",
+    origin: "Flying from",
+    travelStart: "Trip start",
+    nights: "Nights",
+    travelers: "Travelers",
+    rooms: "Rooms",
+    quickPreview: "Quick preview",
+    travelersShort: "trav.",
+    roomSingle: "room",
+    roomFew: "rooms",
+    roomMany: "rooms",
+    loadingPlan: "Building your plan...",
+    showStayFlights: "Show stays and flights",
+    savedPlans: "Saved plans",
+    savedPlansBody: "You can return to them in one click.",
+    savedEmpty: "Saved scenarios will appear here after the first result.",
+    scoreWord: "score",
+    selectedRoute: "Selected route",
+    bestForBrief: "Best destination for this brief",
+    score: "Score",
+    term: "Dates",
+    travelParty: "Travel party",
+    whyNow: "Why now",
+    exactMatch: "This destination exactly matches the selected city.",
+    openStay: "Open stay on",
+    openFlights: "Check flights on",
+    openCars: "Cars on",
+    bookingSettings: "Commercial settings",
+    bookingSettingsBody: "Change the dates once and the whole flow refreshes consistently.",
+    remainingOptions: "More options",
+    similarDirections: "Similar destinations next to the main pick",
+    bestAlternatives: "Best alternatives",
+    remainingBody: "Quickly compare the vibe, fit arguments and switch to another destination without starting over.",
+    position: "Position",
+    whyFits: "Why it fits",
+    watchOut: "What to watch",
+    noTradeoffs: "No clear downsides for this brief.",
+    bookingDeckStay: "Stays",
+    bookingDeckFlights: "Flights",
+    bookingDeckCars: "Cars",
+    bookingDeckActivities: "Activities",
+    bookingDeckStayBody: "The most important click after picking the city. Opens ready stay results for these dates.",
+    bookingDeckFlightsBody: "You move straight to flight results with the route and dates already set.",
+    bookingDeckCarsBody: "On-the-ground mobility without re-entering the destination.",
+    bookingDeckActivitiesBody: "Continue into activities and transfers for the same stay window.",
+    showStay: "Show stays",
+    showFlights: "Show flights",
+    showCars: "Show cars",
+    showOnSite: "Show on-site",
+  },
+} as const;
 
 const scoreLabel = (score: number) =>
   score >= 82 ? "Bardzo mocne dopasowanie" : score >= 70 ? "Dobre dopasowanie" : "Warto sprawdzić";
@@ -104,6 +245,10 @@ export function PlannerClient({
   initialNights,
   autoRunStandardSearch = false,
 }: PlannerClientProps) {
+  const { locale } = useLanguage();
+  const text = plannerCopy[locale];
+  const dateLocale = locale === "en" ? "en-GB" : "pl-PL";
+  const localizedDiscoveryPresets = locale === "en" ? discoveryPresets.en : discoveryPresets.pl;
   const [mode, setMode] = useState<Mode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -238,30 +383,30 @@ export function PlannerClient({
     selectedOption && activeAffiliateLinks
       ? [
           {
-            eyebrow: "Pobyt",
+            eyebrow: text.bookingDeckStay,
             title: stayPartner,
-            description: "Najwazniejszy klik po wyborze miasta. Otwiera gotowy pobyt dla tego terminu.",
+            description: text.bookingDeckStayBody,
             href: buildSelectedRedirectHref("stays", activeAffiliateLinks.stays),
             tone: "primary" as const,
           },
           {
-            eyebrow: "Loty",
+            eyebrow: text.bookingDeckFlights,
             title: flightPartner,
-            description: "Przechodzisz do wynikow lotow z ustawiona trasa i data.",
+            description: text.bookingDeckFlightsBody,
             href: buildSelectedRedirectHref("flights", activeAffiliateLinks.flights),
             tone: "dark" as const,
           },
           {
-            eyebrow: "Auta",
+            eyebrow: text.bookingDeckCars,
             title: carPartner,
-            description: "Mobilnosc na miejscu bez ponownego wpisywania kierunku.",
+            description: text.bookingDeckCarsBody,
             href: buildSelectedRedirectHref("cars", activeAffiliateLinks.cars),
             tone: "light" as const,
           },
           {
-            eyebrow: "Atrakcje",
+            eyebrow: text.bookingDeckActivities,
             title: "Na miejscu",
-            description: "Przejdz dalej do atrakcji i transferow dla tego samego pobytu.",
+            description: text.bookingDeckActivitiesBody,
             href: "#aktywnosci-na-miejscu",
             tone: "light" as const,
           },
@@ -282,7 +427,7 @@ export function PlannerClient({
       <section className="glass-panel rounded-[2rem] border border-emerald-900/10 p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">HelpTravel Planner</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.heroEyebrow}</p>
             <h1 className="mt-2 text-3xl font-bold text-emerald-950 sm:text-4xl">Wybierz kierunek i przejdź od razu do konkretów.</h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-900/76">
               Najpierw dopasowanie kierunku, chwilę później pobyt, loty i kolejne kroki wyjazdu w jednym miejscu.
@@ -297,7 +442,7 @@ export function PlannerClient({
                 mode === "standard" ? "bg-emerald-700 text-white" : "text-emerald-900 hover:bg-emerald-100"
               }`}
             >
-              Mam kierunek
+              {text.modeStandard}
             </button>
             <button
               type="button"
@@ -323,7 +468,7 @@ export function PlannerClient({
                   />
                 </Field>
                 <div className="flex flex-wrap gap-2">
-                  {discoveryPresets.map((preset) => (
+                  {localizedDiscoveryPresets.map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -424,7 +569,7 @@ export function PlannerClient({
               <div className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Szybki podgląd</p>
                 <p className="mt-2 text-sm font-semibold text-emerald-950">
-                  {formatShortDate(travelStartDate)} - {formatShortDate(checkOutDate)}
+                  {formatShortDate(travelStartDate, dateLocale)} - {formatShortDate(checkOutDate, dateLocale)}
                 </p>
                 <p className="mt-1 text-sm text-emerald-900/76">
                   {travelers} os. · {rooms} {rooms === 1 ? "pokój" : rooms < 5 ? "pokoje" : "pokoi"}
@@ -526,7 +671,7 @@ export function PlannerClient({
               <div className="space-y-4 p-5 sm:p-6">
                 <div className="flex flex-wrap gap-3">
                   <SummaryPill label="Wynik" value={`${selectedOption.score.toFixed(0)} · ${scoreLabel(selectedOption.score)}`} />
-                  <SummaryPill label="Termin" value={`${formatShortDate(travelStartDate)} - ${formatShortDate(checkOutDate)}`} />
+                  <SummaryPill label="Termin" value={`${formatShortDate(travelStartDate, dateLocale)} - ${formatShortDate(checkOutDate, dateLocale)}`} />
                   <SummaryPill label="Skład podróży" value={`${travelers} os. · ${travelNights} noce`} />
                 </div>
 

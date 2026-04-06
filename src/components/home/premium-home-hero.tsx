@@ -13,6 +13,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import { useLanguage } from "@/components/site/language-provider";
 import { defaultTravelStartDate } from "@/lib/mvp/travel-dates";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
@@ -36,6 +37,83 @@ interface PremiumHomeHeroProps {
 }
 
 type SearchField = "origin" | "destination";
+
+const heroCopy = {
+  pl: {
+    premiumBadge: "Premium travel planner",
+    funnelBadge: "hotel-first funnel",
+    titleTop: "Wybierz kierunek.",
+    titleBottom: "Reszta uklada sie dalej.",
+    description: "Jeden ekran do wybrania miasta. Jeden klik do pobytu. Jeden kolejny do lotow i reszty planu.",
+    destinationCount: "kierunkow",
+    guidesCount: "przewodnikow",
+    inventoryBadge: "hotele, loty, atrakcje, auta",
+    priority: "Priorytet",
+    primaryTitle: "Wybierz miasto docelowe",
+    primaryDescription: "To glowna akcja na stronie. Termin i sklad podrozy leca dalej bez zgadywania.",
+    primaryTag: "glowne CTA",
+    stageDirection: "Kierunek",
+    stageStay: "Pobyt",
+    stageNext: "Dalej",
+    stagePlaceholder: "Wybierz miasto",
+    stageNextValue: "Loty i dodatki",
+    originLabel: "Skad lecisz",
+    destinationLabel: "Dokad lecisz",
+    searchOriginPlaceholder: "Warszawa, Krakow, Wroclaw...",
+    searchDestinationPlaceholder: "Malaga, Rzym, Barcelona, Paryz, Bali...",
+    originSearching: "Szukamy miasta wylotu...",
+    destinationSearching: "Szukamy kierunkow...",
+    originTag: "wylot",
+    destinationTag: "kierunek",
+    startDate: "Start podrozy",
+    nights: "Liczba nocy",
+    travelers: "Podrozni",
+    button: "Pokaz pobyt i loty",
+    discoveryEyebrow: "Druga sciezka",
+    discoveryTitle: "Nie znasz miasta? Opisz typ wyjazdu.",
+    discoveryDescription: "Ten tryb jest widoczny, ale dalej drugi. Najpierw kierunek, potem brief dla niezdecydowanych.",
+    discoveryButton: "Szukaj po opisie",
+    quickSuggestions: "Szybkie wybory",
+    suggestionError: "Nie udalo sie pobrac podpowiedzi.",
+  },
+  en: {
+    premiumBadge: "Premium travel planner",
+    funnelBadge: "hotel-first funnel",
+    titleTop: "Choose a destination.",
+    titleBottom: "Everything else follows.",
+    description: "One screen to pick the city. One click to stays. One more to flights and the next travel step.",
+    destinationCount: "destinations",
+    guidesCount: "guides",
+    inventoryBadge: "stays, flights, activities, cars",
+    priority: "Priority",
+    primaryTitle: "Choose your destination city",
+    primaryDescription: "This is the main action on the homepage. Dates and traveler details move forward without extra friction.",
+    primaryTag: "main CTA",
+    stageDirection: "Destination",
+    stageStay: "Stay",
+    stageNext: "Next",
+    stagePlaceholder: "Choose a city",
+    stageNextValue: "Flights and extras",
+    originLabel: "Flying from",
+    destinationLabel: "Flying to",
+    searchOriginPlaceholder: "Warsaw, Krakow, Wroclaw...",
+    searchDestinationPlaceholder: "Malaga, Rome, Barcelona, Paris, Bali...",
+    originSearching: "Searching departure cities...",
+    destinationSearching: "Searching destinations...",
+    originTag: "origin",
+    destinationTag: "destination",
+    startDate: "Start date",
+    nights: "Nights",
+    travelers: "Travelers",
+    button: "Show stays and flights",
+    discoveryEyebrow: "Secondary path",
+    discoveryTitle: "Not sure where to go? Describe the trip.",
+    discoveryDescription: "This mode stays visible but secondary. The homepage still leads with destination choice.",
+    discoveryButton: "Search by brief",
+    quickSuggestions: "Quick picks",
+    suggestionError: "Could not load suggestions.",
+  },
+} as const;
 
 const discoveryPrompts = [
   "Cieply kierunek na 5 dni, plaza i zwiedzanie, budzet do 2500 zl.",
@@ -71,6 +149,9 @@ function buildDiscoveryPlannerHref(query: string): string {
 export function PremiumHomeHero({ slides, destinationCount, guideCount }: PremiumHomeHeroProps) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const { locale } = useLanguage();
+  const text = heroCopy[locale];
+  const suggestionErrorText = text.suggestionError;
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [originQuery, setOriginQuery] = useState("Warszawa");
@@ -110,9 +191,9 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
   const dropdownVisible = Boolean(activeField) && (isSearching || searchError || suggestions.length > 0);
   const routePreview = destinationQuery.trim() || activeSlide.city;
   const stageCards = [
-    { step: "01", label: "Kierunek", value: routePreview || "Wybierz miasto" },
-    { step: "02", label: "Pobyt", value: `${nights} noce` },
-    { step: "03", label: "Dalej", value: "Loty i dodatki" },
+    { step: "01", label: text.stageDirection, value: routePreview || text.stagePlaceholder },
+    { step: "02", label: text.stageStay, value: locale === "pl" ? `${nights} noce` : `${nights} nights` },
+    { step: "03", label: text.stageNext, value: text.stageNextValue },
   ];
 
   const rotateSlides = useEffectEvent(() => {
@@ -171,7 +252,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
         });
 
         if (!response.ok) {
-          throw new Error("Nie udalo sie pobrac podpowiedzi.");
+          throw new Error(suggestionErrorText);
         }
 
         const payload = (await response.json()) as { items?: DestinationSuggestion[] };
@@ -184,7 +265,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
         if (!controller.signal.aborted) {
           setSuggestions([]);
           setHighlightedIndex(-1);
-          setSearchError(error instanceof Error ? error.message : "Nie udalo sie pobrac podpowiedzi.");
+          setSearchError(error instanceof Error ? error.message : suggestionErrorText);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -197,7 +278,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [activeField, deferredKnownQuery]);
+  }, [activeField, deferredKnownQuery, suggestionErrorText]);
 
   const submitKnownSearch = (suggestion?: DestinationSuggestion | null) => {
     const nextDestination = suggestion?.queryValue ?? destinationQuery.trim();
@@ -321,30 +402,30 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex rounded-full border border-white/14 bg-white/8 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.26em] text-emerald-100/90">
-                Premium travel planner
+                {text.premiumBadge}
               </span>
               <span className="inline-flex rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-                hotel-first funnel
+                {text.funnelBadge}
               </span>
             </div>
             <h1 className="mt-5 max-w-4xl text-balance font-display text-5xl leading-[0.9] sm:text-6xl xl:text-7xl">
-              Wybierz kierunek.
+              {text.titleTop}
               <br />
-              Reszta uklada sie dalej.
+              {text.titleBottom}
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/76 sm:text-lg">
-              Jeden ekran do wybrania miasta. Jeden klik do pobytu. Jeden kolejny do lotow i reszty planu.
+              {text.description}
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/88">
-                {destinationCount}+ kierunkow
+                {destinationCount}+ {text.destinationCount}
               </span>
               <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/88">
-                {guideCount}+ przewodnikow
+                {guideCount}+ {text.guidesCount}
               </span>
               <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/88">
-                hotele, loty, atrakcje, auta
+                {text.inventoryBadge}
               </span>
             </div>
           </div>
@@ -388,7 +469,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                     <p className="mt-1 text-xs text-white/64">{slide.country}</p>
                   </div>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
-                    {index === activeSlideIndex ? "na ekranie" : "pokaz"}
+                    {index === activeSlideIndex ? (locale === "pl" ? "na ekranie" : "live now") : locale === "pl" ? "pokaz" : "show"}
                   </span>
                 </button>
               ))}
@@ -401,12 +482,12 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
             <article className="animate-glow-pulse rounded-[2rem] border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,250,246,0.95))] p-5 text-emerald-950 shadow-[0_28px_90px_rgba(4,26,14,0.24)] backdrop-blur-2xl sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Priorytet</p>
-                  <h2 className="mt-2 text-3xl font-bold text-emerald-950 sm:text-[2.1rem]">Wybierz miasto docelowe</h2>
-                  <p className="mt-2 text-sm leading-6 text-emerald-900/72">To glowna akcja na stronie. Termin i sklad podrozy leca dalej bez zgadywania.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.priority}</p>
+                  <h2 className="mt-2 text-3xl font-bold text-emerald-950 sm:text-[2.1rem]">{text.primaryTitle}</h2>
+                  <p className="mt-2 text-sm leading-6 text-emerald-900/72">{text.primaryDescription}</p>
                 </div>
                 <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">
-                  glowne CTA
+                  {text.primaryTag}
                 </span>
               </div>
 
@@ -424,7 +505,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <div className="relative">
                   <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700" htmlFor="hero-origin-search">
-                    Skad lecisz
+                    {text.originLabel}
                   </label>
                   <input
                     id="hero-origin-search"
@@ -432,7 +513,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                     onChange={(event) => setOriginQuery(event.target.value)}
                     onFocus={() => setActiveField("origin")}
                     onKeyDown={(event) => handleKnownKeyDown("origin", event)}
-                    placeholder="Warszawa, Krakow, Wroclaw..."
+                    placeholder={text.searchOriginPlaceholder}
                     className="mt-2 w-full rounded-[1.6rem] border border-emerald-900/12 bg-white px-5 py-4 text-base font-medium text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
                   />
 
@@ -441,7 +522,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                       {isSearching ? (
                         <div className="flex items-center gap-3 rounded-[1.2rem] bg-emerald-50/80 px-4 py-3 text-sm font-medium text-emerald-900">
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
-                          Szukamy miasta wylotu...
+                          {text.originSearching}
                         </div>
                       ) : null}
 
@@ -465,7 +546,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                                 </p>
                               </div>
                               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700">
-                                wylot
+                                {text.originTag}
                               </span>
                             </button>
                           ))}
@@ -479,7 +560,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
 
                 <div className="relative">
                   <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700" htmlFor="hero-destination-search">
-                    Dokad lecisz
+                    {text.destinationLabel}
                   </label>
                   <input
                     id="hero-destination-search"
@@ -487,7 +568,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                     onChange={(event) => setDestinationQuery(event.target.value)}
                     onFocus={() => setActiveField("destination")}
                     onKeyDown={(event) => handleKnownKeyDown("destination", event)}
-                    placeholder="Malaga, Rzym, Barcelona, Paryz, Bali..."
+                    placeholder={text.searchDestinationPlaceholder}
                     className="mt-2 w-full rounded-[1.6rem] border border-emerald-900/12 bg-white px-5 py-4 text-base font-medium text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
                   />
 
@@ -496,7 +577,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                       {isSearching ? (
                         <div className="flex items-center gap-3 rounded-[1.2rem] bg-emerald-50/80 px-4 py-3 text-sm font-medium text-emerald-900">
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
-                          Szukamy kierunkow...
+                          {text.destinationSearching}
                         </div>
                       ) : null}
 
@@ -524,7 +605,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                                   suggestion.destinationSlug ? "bg-emerald-100 text-emerald-900" : "bg-slate-100 text-slate-700"
                                 }`}
                               >
-                                {suggestion.destinationSlug ? "kierunek" : "miasto"}
+                                {suggestion.destinationSlug ? text.destinationTag : locale === "pl" ? "miasto" : "city"}
                               </span>
                             </button>
                           ))}
@@ -539,7 +620,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                  Start
+                  {text.startDate}
                   <input
                     type="date"
                     value={startDate}
@@ -548,7 +629,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                   />
                 </label>
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                  Nocy
+                  {text.nights}
                   <input
                     type="number"
                     min={2}
@@ -559,7 +640,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                   />
                 </label>
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                  Osoby
+                  {text.travelers}
                   <input
                     type="number"
                     min={1}
@@ -595,14 +676,20 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
               <div className="mt-5 rounded-[1.5rem] border border-emerald-900/8 bg-emerald-50/70 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Scenariusz po kliknieciu</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                      {locale === "pl" ? "Scenariusz po kliknieciu" : "What opens next"}
+                    </p>
                     <p className="mt-2 text-sm font-semibold text-emerald-950">
                       {originQuery.trim() || "Warszawa"} → {routePreview} · {nights} noce · {travelers} os.
                     </p>
-                    <p className="mt-1 text-sm text-emerald-900/70">Najpierw pobyt, potem loty, apartamenty i mobilnosc dla tej samej daty.</p>
+                    <p className="mt-1 text-sm text-emerald-900/70">
+                      {locale === "pl"
+                        ? "Najpierw pobyt, potem loty, apartamenty i mobilnosc dla tej samej daty."
+                        : "First stays, then flights, apartments and mobility for the same dates."}
+                    </p>
                   </div>
                   <div className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm">
-                    od razu do wynikow
+                    {locale === "pl" ? "od razu do wynikow" : "straight to results"}
                   </div>
                 </div>
               </div>
@@ -613,13 +700,13 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                   onClick={() => submitKnownSearch()}
                   className="inline-flex items-center rounded-full bg-emerald-700 px-6 py-3.5 text-sm font-bold text-white shadow-[0_18px_34px_rgba(21,128,61,0.24)] transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-800"
                 >
-                  Pokaz pobyt i loty
+                  {text.button}
                 </button>
                 <Link
                   href="/kierunki"
                   className="inline-flex items-center rounded-full border border-emerald-900/10 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
                 >
-                  Otworz katalog kierunkow
+                  {locale === "pl" ? "Otworz katalog kierunkow" : "Open destination catalog"}
                 </Link>
               </div>
             </article>
@@ -627,15 +714,15 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
             <article className="animate-float-gentle rounded-[1.8rem] border border-white/12 bg-white/8 p-5 text-white backdrop-blur-xl">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Opcja dla niezdecydowanych</p>
-                  <h3 className="mt-2 text-2xl font-bold">Opisz idealny wyjazd</h3>
-                  <p className="mt-2 text-sm leading-6 text-white/72">Druga sciezka. Wpisz klimat, budzet i liczbe dni, a dopasujemy kierunki.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">{text.discoveryEyebrow}</p>
+                  <h3 className="mt-2 text-2xl font-bold">{text.discoveryTitle}</h3>
+                  <p className="mt-2 text-sm leading-6 text-white/72">{text.discoveryDescription}</p>
                 </div>
                 <Link
                   href={activeSlide.href}
                   className="rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/90 transition hover:bg-white/14"
                 >
-                  przewodnik {activeSlide.city}
+                  {locale === "pl" ? "przewodnik" : "guide"} {activeSlide.city}
                 </Link>
               </div>
 
@@ -643,7 +730,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                 value={discoveryQuery}
                 onChange={(event) => setDiscoveryQuery(event.target.value)}
                 className="mt-4 min-h-28 w-full rounded-[1.5rem] border border-white/12 bg-white/10 px-4 py-4 text-sm leading-7 text-white outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-300/25"
-                placeholder="Np. chce cieply kierunek na 5 dni, z plaza i miastem, bez dlugiej logistyki."
+                placeholder={locale === "pl" ? "Np. chce cieply kierunek na 5 dni, z plaza i miastem, bez dlugiej logistyki." : "E.g. I want a warm 5-day trip with a beach, a city and easy logistics."}
               />
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -665,9 +752,13 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                   onClick={submitDiscoverySearch}
                   className="rounded-full bg-white px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
                 >
-                  Pokaz propozycje
+                  {text.discoveryButton}
                 </button>
-                <p className="text-sm text-white/66">Najpierw ranking kierunkow, potem hotel i lot dla wybranego miasta.</p>
+                <p className="text-sm text-white/66">
+                  {locale === "pl"
+                    ? "Najpierw ranking kierunkow, potem hotel i lot dla wybranego miasta."
+                    : "First destination matches, then the stay and flight flow for the selected city."}
+                </p>
               </div>
             </article>
           </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useLanguage } from "@/components/site/language-provider";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { formatShortDate } from "@/lib/mvp/travel-dates";
 import type { TransferSearchResponse } from "@/lib/mvp/types";
@@ -16,15 +17,15 @@ function postJson<T>(url: string, body: unknown): Promise<T> {
   }).then(async (response) => {
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? `Zapytanie nie powiodło się (${response.status}).`);
+      throw new Error(payload?.error ?? `Request failed (${response.status}).`);
     }
 
     return (await response.json()) as T;
   });
 }
 
-function formatMoney(value: number, currency: string): string {
-  return new Intl.NumberFormat("pl-PL", {
+function formatMoney(value: number, currency: string, locale: "pl" | "en"): string {
+  return new Intl.NumberFormat(locale === "en" ? "en-GB" : "pl-PL", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
@@ -35,12 +36,52 @@ function Spinner() {
   return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
 }
 
+const copy = {
+  pl: {
+    requestError: "Nie udalo sie pobrac transferow.",
+    eyebrow: "Transfer po przylocie",
+    title: "Dojazd z lotniska bez zgadywania",
+    body: "Ten sam termin podrozy, ten sam kierunek i szybkie porownanie dojazdu do miasta. Wybierasz godzine i od razu widzisz najbardziej praktyczne opcje.",
+    loading: "Odswiezamy transfery",
+    options: "opcji",
+    ready: "Gotowe do wyszukania",
+    date: "Data",
+    arrivalTime: "Godzina przylotu",
+    adults: "Dorozli",
+    children: "Dzieci / niemowleta",
+    option: "Opcja",
+    price: "Cena",
+    open: "Zobacz transfer",
+    empty: "Nie znalezlismy jeszcze transferow dla tej konfiguracji. Zmien godzine przylotu albo sprawdz ponownie za chwile.",
+  },
+  en: {
+    requestError: "Could not load transfers.",
+    eyebrow: "Arrival transfer",
+    title: "Airport to city without the guesswork",
+    body: "The same travel dates, the same destination and a quick comparison of transfer options into town. Pick the arrival time and see the practical options right away.",
+    loading: "Refreshing transfers",
+    options: "options",
+    ready: "Ready to search",
+    date: "Date",
+    arrivalTime: "Arrival time",
+    adults: "Adults",
+    children: "Children / infants",
+    option: "Option",
+    price: "Price",
+    open: "View transfer",
+    empty: "We could not find transfers for this setup yet. Change the arrival time or check again in a moment.",
+  },
+} as const;
+
 export function TransferOffersPanel(props: {
   destinationCity: string;
   destinationCountry: string;
   outboundDate: string;
   adults: number;
 }) {
+  const { locale } = useLanguage();
+  const text = copy[locale];
+  const dateLocale = locale === "en" ? "en-GB" : "pl-PL";
   const [departureHour, setDepartureHour] = useState("12:00");
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
@@ -72,7 +113,7 @@ export function TransferOffersPanel(props: {
           }
         } catch (err) {
           if (!cancelled) {
-            setError(err instanceof Error ? err.message : "Nie udało się pobrać transferów.");
+            setError(err instanceof Error ? err.message : text.requestError);
             setData(null);
           }
         } finally {
@@ -89,7 +130,7 @@ export function TransferOffersPanel(props: {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [children, departureHour, infants, props.adults, props.destinationCity, props.destinationCountry, props.outboundDate]);
+  }, [children, departureHour, infants, props.adults, props.destinationCity, props.destinationCountry, props.outboundDate, text.requestError]);
 
   const displayedOffers = useMemo(() => data?.offers.slice(0, 20) ?? [], [data?.offers]);
 
@@ -97,28 +138,25 @@ export function TransferOffersPanel(props: {
     <section className="rounded-[1.75rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Transfer po przylocie</p>
-          <h3 className="mt-2 text-2xl font-bold text-emerald-950">Dojazd z lotniska bez zgadywania</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-900/72">
-            Ten sam termin podróży, ten sam kierunek i szybkie porównanie dojazdu do miasta. Wybierasz godzinę i
-            od razu widzisz najbardziej praktyczne opcje.
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.eyebrow}</p>
+          <h3 className="mt-2 text-2xl font-bold text-emerald-950">{text.title}</h3>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-900/72">{text.body}</p>
         </div>
 
         <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
           {loading ? <Spinner /> : null}
-          {loading ? "Odświeżamy transfery" : data ? `${data.offers.length} opcji` : "Gotowe do wyszukania"}
+          {loading ? text.loading : data ? `${data.offers.length} ${text.options}` : text.ready}
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <div className="rounded-2xl bg-emerald-50/70 px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Data</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-950">{formatShortDate(props.outboundDate)}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.date}</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950">{formatShortDate(props.outboundDate, dateLocale)}</p>
         </div>
 
         <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Godzina przylotu
+          {text.arrivalTime}
           <input
             type="time"
             value={departureHour}
@@ -128,12 +166,12 @@ export function TransferOffersPanel(props: {
         </label>
 
         <div className="rounded-2xl bg-emerald-50/70 px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Dorośli</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.adults}</p>
           <p className="mt-1 text-sm font-semibold text-emerald-950">{props.adults}</p>
         </div>
 
         <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Dzieci / niemowlęta
+          {text.children}
           <div className="mt-2 grid grid-cols-2 gap-2">
             <input
               type="number"
@@ -174,15 +212,15 @@ export function TransferOffersPanel(props: {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                    Opcja #{index + 1}
+                    {text.option} #{index + 1}
                   </p>
                   <h4 className="mt-1 text-lg font-bold text-emerald-950">{offer.name}</h4>
                   <p className="mt-1 text-sm text-emerald-900/72">{offer.vehicle}</p>
                 </div>
 
                 <div className="rounded-2xl bg-white px-3 py-2 text-right shadow-sm">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Cena</p>
-                  <p className="mt-1 text-lg font-bold text-emerald-950">{formatMoney(offer.price, offer.currency)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.price}</p>
+                  <p className="mt-1 text-lg font-bold text-emerald-950">{formatMoney(offer.price, offer.currency, locale)}</p>
                 </div>
               </div>
 
@@ -205,7 +243,7 @@ export function TransferOffersPanel(props: {
                     rel="noreferrer"
                     className="inline-flex items-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-800"
                   >
-                    Zobacz transfer
+                    {text.open}
                   </a>
                 </div>
               ) : null}
@@ -213,8 +251,7 @@ export function TransferOffersPanel(props: {
           ))
         ) : (
           <div className="rounded-[1.5rem] border border-dashed border-emerald-900/12 bg-emerald-50/60 px-4 py-6 text-sm text-emerald-900/70">
-            Nie znaleźliśmy jeszcze transferów dla tej konfiguracji. Zmień godzinę przylotu albo sprawdź ponownie za
-            chwilę.
+            {text.empty}
           </div>
         )}
       </div>

@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 import type { EditorialArticle } from "@/lib/mvp/publisher-content";
@@ -5,9 +7,11 @@ import type { EditorialArticle } from "@/lib/mvp/publisher-content";
 export function EditorialArticleCard({
   article,
   compact = false,
+  readLabel = "Czytaj artykul",
 }: {
   article: EditorialArticle;
   compact?: boolean;
+  readLabel?: string;
 }) {
   return (
     <article className="group rounded-[1.75rem] border border-emerald-900/10 bg-white/95 p-5 shadow-[0_16px_40px_rgba(16,84,48,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(16,84,48,0.12)]">
@@ -33,7 +37,7 @@ export function EditorialArticleCard({
         href={`/inspiracje/${article.slug}`}
         className="mt-5 inline-flex rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
       >
-        Czytaj artykul
+        {readLabel}
       </Link>
     </article>
   );

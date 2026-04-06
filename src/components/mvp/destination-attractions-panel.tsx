@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { useLanguage } from "@/components/site/language-provider";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import type { DestinationAttractionsResponse } from "@/lib/mvp/types";
 
@@ -15,7 +16,7 @@ function postJson<T>(url: string, body: unknown): Promise<T> {
   }).then(async (response) => {
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? `Zapytanie nie powiodło się (${response.status}).`);
+      throw new Error(payload?.error ?? `Request failed (${response.status}).`);
     }
 
     return (await response.json()) as T;
@@ -26,7 +27,38 @@ function Spinner() {
   return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
 }
 
-function GroupCard(props: { title: string; items: DestinationAttractionsResponse["groups"][number]["items"] }) {
+const copy = {
+  pl: {
+    requestError: "Nie udalo sie pobrac lokalnych miejsc.",
+    openPlace: "Otworz miejsce",
+    eyebrow: "Miejsca na miejscu",
+    title: "Co warto zobaczyc w",
+    body: "Najwazniejsze punkty widokowe, muzea, plaze, parki i miejsca na jedzenie zebrane w jednym widoku.",
+    loading: "Pobieramy miejsca",
+    places: "miejsc",
+    ready: "Gotowe",
+    refresh: "Odswiez propozycje",
+    empty: "Po wyborze kierunku pokazemy tutaj miejsca warte odwiedzenia i szybkie przejscia do lokalnych atrakcji.",
+  },
+  en: {
+    requestError: "Could not load local places.",
+    openPlace: "Open place",
+    eyebrow: "On-the-ground places",
+    title: "What to see in",
+    body: "Key viewpoints, museums, beaches, parks and food spots collected in one fast overview.",
+    loading: "Loading places",
+    places: "places",
+    ready: "Ready",
+    refresh: "Refresh places",
+    empty: "Once a destination is chosen, this area will show worthwhile places and quick jumps to local attractions.",
+  },
+} as const;
+
+function GroupCard(props: {
+  title: string;
+  items: DestinationAttractionsResponse["groups"][number]["items"];
+  openLabel: string;
+}) {
   if (props.items.length === 0) {
     return null;
   }
@@ -65,7 +97,7 @@ function GroupCard(props: { title: string; items: DestinationAttractionsResponse
                   rel="noreferrer"
                   className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-100"
                 >
-                  Otwórz miejsce
+                  {props.openLabel}
                 </a>
               </div>
             ) : null}
@@ -77,6 +109,8 @@ function GroupCard(props: { title: string; items: DestinationAttractionsResponse
 }
 
 export function DestinationAttractionsPanel(props: { city: string; country: string }) {
+  const { locale } = useLanguage();
+  const text = copy[locale];
   const [data, setData] = useState<DestinationAttractionsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -103,7 +137,7 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Nie udało się pobrać lokalnych miejsc.");
+          setError(err instanceof Error ? err.message : text.requestError);
           setData(null);
         }
       } finally {
@@ -117,24 +151,22 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
     return () => {
       cancelled = true;
     };
-  }, [props.city, props.country, refreshTick]);
+  }, [props.city, props.country, refreshTick, text.requestError]);
 
   return (
     <section className="rounded-[1.75rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Miejsca na miejscu</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.eyebrow}</p>
           <h3 className="mt-2 text-2xl font-bold text-emerald-950">
-            Co warto zobaczyć w {props.city}
+            {text.title} {props.city}
           </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-900/72">
-            Najważniejsze punkty widokowe, muzea, plaże, parki i miejsca na jedzenie zebrane w jednym widoku.
-          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-900/72">{text.body}</p>
         </div>
 
         <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
           {loading ? <Spinner /> : null}
-          {loading ? "Pobieramy miejsca" : data ? `${data.groups.reduce((sum, group) => sum + group.items.length, 0)} miejsc` : "Gotowe"}
+          {loading ? text.loading : data ? `${data.groups.reduce((sum, group) => sum + group.items.length, 0)} ${text.places}` : text.ready}
         </div>
       </div>
 
@@ -144,7 +176,7 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
           onClick={() => setRefreshTick((value) => value + 1)}
           className="rounded-full border border-emerald-900/12 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
         >
-          Odśwież propozycje
+          {text.refresh}
         </button>
       </div>
 
@@ -162,10 +194,10 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
             </div>
           ))
         ) : data ? (
-          data.groups.map((group) => <GroupCard key={group.key} title={group.label} items={group.items} />)
+          data.groups.map((group) => <GroupCard key={group.key} title={group.label} items={group.items} openLabel={text.openPlace} />)
         ) : (
           <div className="rounded-[1.5rem] border border-dashed border-emerald-900/12 bg-emerald-50/60 px-4 py-6 text-sm text-emerald-900/70">
-            Po wyborze kierunku pokażemy tutaj miejsca warte odwiedzenia i szybkie przejścia do lokalnych atrakcji.
+            {text.empty}
           </div>
         )}
       </div>

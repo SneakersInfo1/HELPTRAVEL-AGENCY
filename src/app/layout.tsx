@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 
 import "./globals.css";
+import { LanguageProvider } from "@/components/site/language-provider";
+import { SiteShell } from "@/components/site/site-shell";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 const siteUrl = getSiteUrl();
@@ -32,13 +32,26 @@ export const metadata: Metadata = {
       "application/rss+xml": `${siteUrl}/feed.xml`,
     },
   },
-  description: "Planer podrozy, kierunki, inspiracje i przewodniki dla city breakow oraz krotkich wyjazdow z Polski.",
+  description:
+    "HelpTravel laczy discovery kierunkow, planner wyjazdu i przejscia do hoteli, lotow oraz dodatkow dla city breakow i krotkich wyjazdow z Polski.",
+  keywords: [
+    "planer podrozy",
+    "kierunki",
+    "city break",
+    "loty i hotele",
+    "krotkie wyjazdy z Polski",
+    "travel planner",
+  ],
+  applicationName: "HelpTravel",
+  category: "travel",
   openGraph: {
     title: "HelpTravel",
-    description: "Planer podrozy, kierunki, inspiracje i przewodniki dla city breakow oraz krotkich wyjazdow z Polski.",
+    description:
+      "Wybieraj kierunki szybciej i przechodz do hoteli, lotow oraz dodatkow w jednym komercyjnym flow.",
     url: siteUrl,
     siteName: "HelpTravel",
     locale: "pl_PL",
+    alternateLocale: ["en_US"],
     type: "website",
     images: [
       {
@@ -52,7 +65,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "HelpTravel",
-    description: "Planer podrozy, kierunki, inspiracje i przewodniki dla city breakow oraz krotkich wyjazdow z Polski.",
+    description: "Travel planner, destination discovery and booking-ready flow for short trips from Poland.",
     images: ["/branding/helptravel-logo.png"],
   },
   icons: {
@@ -62,54 +75,6 @@ export const metadata: Metadata = {
   },
   verification: googleVerification ? { google: googleVerification } : undefined,
 };
-
-const navItems = [
-  { href: "/", label: "Start" },
-  { href: "/planner", label: "Planer" },
-  { href: "/kierunki", label: "Kierunki" },
-  { href: "/inspiracje", label: "Inspiracje" },
-  { href: "/przewodniki", label: "Przewodniki" },
-  { href: "/city-breaki", label: "City breaki" },
-  { href: "/bez-wizy", label: "Bez wizy" },
-  { href: "/jak-pracujemy", label: "Jak pracujemy" },
-];
-
-const footerColumns = [
-  {
-    title: "Odkrywaj",
-    links: [
-      { href: "/kierunki", label: "Kierunki" },
-      { href: "/inspiracje", label: "Inspiracje" },
-      { href: "/przewodniki", label: "Przewodniki" },
-      { href: "/planner?mode=discovery", label: "Nie wiem dokad leciec" },
-      { href: "/mapa-serwisu", label: "Mapa serwisu" },
-      { href: "/jak-pracujemy", label: "Jak pracujemy" },
-      { href: "/standard-redakcyjny", label: "Standard redakcyjny" },
-    ],
-  },
-  {
-    title: "Tematy",
-    links: [
-      { href: "/city-breaki", label: "City breaki" },
-      { href: "/cieple-kierunki", label: "Cieple kierunki" },
-      { href: "/tanie-podroze", label: "Tanie podroze" },
-      { href: "/weekendowe-wyjazdy", label: "Weekendowe wyjazdy" },
-    ],
-  },
-  {
-    title: "Zaufanie",
-    links: [
-      { href: "/o-nas", label: "O nas" },
-      { href: "/kontakt", label: "Kontakt" },
-      { href: "/polityka-prywatnosci", label: "Polityka prywatnosci" },
-      { href: "/regulamin", label: "Regulamin" },
-      { href: "/linki-partnerskie", label: "Linki partnerskie" },
-      { href: "/jak-pracujemy", label: "Jak pracujemy" },
-      { href: "/dla-partnerow", label: "Dla partnerow" },
-      { href: "/standard-redakcyjny", label: "Standard redakcyjny" },
-    ],
-  },
-];
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -144,83 +109,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pl" className={`${displayFont.variable} ${uiFont.variable} h-full antialiased`}>
+    <html lang="pl" suppressHydrationWarning className={`${displayFont.variable} ${uiFont.variable} h-full antialiased`}>
       <body className="min-h-full">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
-        <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-4 sm:px-6 lg:px-8">
-          <header className="sticky top-0 z-30 mt-3 rounded-[1.75rem] border border-emerald-900/10 bg-white/75 px-4 py-3 shadow-[0_14px_40px_rgba(12,58,34,0.06)] backdrop-blur-xl">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Link href="/" className="flex items-center">
-                <Image
-                  src="/branding/helptravel-logo.png"
-                  alt="HelpTravel"
-                  width={320}
-                  height={240}
-                  className="h-auto w-[118px] sm:w-[148px]"
-                  priority
-                />
-              </Link>
-
-              <nav className="flex flex-wrap items-center gap-2">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-full border border-emerald-900/10 bg-white/70 px-4 py-2 text-sm font-semibold text-emerald-900 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/50 hover:bg-emerald-50"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-          </header>
-
-          <div className="flex flex-1 flex-col">{children}</div>
-
-          <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/92 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-            <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr]">
-              <div>
-                <Image
-                  src="/branding/helptravel-logo.png"
-                  alt="HelpTravel"
-                  width={220}
-                  height={136}
-                  className="h-auto w-[180px] sm:w-[220px]"
-                />
-                <h2 className="mt-3 font-display text-4xl leading-none text-emerald-950">
-                  Planer podrozy i serwis z przewodnikami pod realne decyzje wyjazdowe.
-                </h2>
-                <p className="mt-4 text-sm leading-7 text-emerald-900/76">
-                  Strona laczy tresci wydawnicze, katalog kierunkow i planer, ktory prowadzi do partnerow zewnetrznych.
-                  Budujemy uzyteczny projekt dla osob planujacych city breaki, krotkie urlopy i wyjazdy bez konkretnego
-                  kierunku na starcie.
-                </p>
-              </div>
-
-              {footerColumns.map((column) => (
-                <div key={column.title}>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{column.title}</p>
-                  <div className="mt-4 flex flex-col gap-3">
-                    {column.links.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className="text-sm font-medium text-emerald-900/78 transition hover:text-emerald-700"
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/10 pt-4 text-xs text-emerald-900/62">
-              <p>HelpTravel - planer podrozy, inspiracje, kierunki i linki partnerskie.</p>
-              <p>Serwis informacyjny i afiliacyjny. Finalne warunki oferty zawsze sprawdzaj u partnera.</p>
-            </div>
-          </footer>
-        </div>
+        <LanguageProvider>
+          <SiteShell>{children}</SiteShell>
+        </LanguageProvider>
       </body>
     </html>
   );

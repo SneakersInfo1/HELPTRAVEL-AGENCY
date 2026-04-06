@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
+import { useLanguage } from "@/components/site/language-provider";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildCjStayLinks } from "@/lib/mvp/cj-stays";
 import { buildRedirectHref } from "@/lib/mvp/providers";
@@ -37,6 +38,81 @@ function Spinner() {
   return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
 }
 
+const copy = {
+  pl: {
+    requestError: "Nie udalo sie pobrac noclegow.",
+    hotelEyebrow: "Hotele",
+    compareEyebrow: "Porownaj tez",
+    apartmentsEyebrow: "Apartamenty",
+    sectionEyebrow: "Pobyt",
+    sectionTitle: "Tutaj zaczyna sie booking flow dla",
+    sectionBody: "Najpierw top pobyt, potem porownanie partnerow i reszta ofert dla tego samego terminu.",
+    loadingState: "Szukamy dostepnosci",
+    offersState: "ofert",
+    readyState: "Gotowe",
+    dateLabel: "Termin",
+    guestsLabel: "Podrozni",
+    guestsShort: "os.",
+    roomsLabel: "Pokoje",
+    priorityLabel: "Priorytet",
+    priorityValue: "Hotele najpierw",
+    sortCheap: "Najtansze",
+    sortQuality: "Najlepszy standard",
+    sortValue: "Najlepsza relacja ceny do jakosci",
+    showMore: "Pokaz wiecej",
+    partnersTitle: "Porownanie partnerow",
+    topStayBadge: "Top pobyt",
+    featuredOfferEyebrow: "Najmocniejsza oferta na start",
+    stayPriceLabel: "Cena pobytu",
+    ratingLabel: "Ocena",
+    noData: "Brak danych",
+    ratingStars: "gw.",
+    showThisStay: "Zobacz ten pobyt",
+    compareAlso: "Porownaj tez w",
+    position: "Pozycja",
+    stayLabel: "Pobyt",
+    checkStay: "Sprawdz pobyt",
+    compareIn: "Porownaj w",
+    emptyState: "Nie znalezlismy dostepnych noclegow dla tego ukladu dat. Zmien termin albo otworz wyniki partnerow.",
+  },
+  en: {
+    requestError: "Could not load stay offers.",
+    hotelEyebrow: "Hotels",
+    compareEyebrow: "Also compare",
+    apartmentsEyebrow: "Apartments",
+    sectionEyebrow: "Stays",
+    sectionTitle: "This is where the booking flow starts for",
+    sectionBody: "Lead with the strongest stay, then compare partners and browse more options for the same dates.",
+    loadingState: "Checking availability",
+    offersState: "offers",
+    readyState: "Ready",
+    dateLabel: "Dates",
+    guestsLabel: "Travelers",
+    guestsShort: "trav.",
+    roomsLabel: "Rooms",
+    priorityLabel: "Priority",
+    priorityValue: "Hotels first",
+    sortCheap: "Lowest price",
+    sortQuality: "Best quality",
+    sortValue: "Best value",
+    showMore: "Show more",
+    partnersTitle: "Compare partners",
+    topStayBadge: "Top stay",
+    featuredOfferEyebrow: "Strongest opening offer",
+    stayPriceLabel: "Stay price",
+    ratingLabel: "Rating",
+    noData: "No data",
+    ratingStars: "stars",
+    showThisStay: "Open this stay",
+    compareAlso: "Also compare on",
+    position: "Position",
+    stayLabel: "Stay",
+    checkStay: "Check stay",
+    compareIn: "Compare on",
+    emptyState: "We could not find available stays for these dates. Change the dates or open partner results.",
+  },
+} as const;
+
 export function StayOffersPanel(props: {
   destinationCity: string;
   destinationCountry: string;
@@ -45,6 +121,9 @@ export function StayOffersPanel(props: {
   guests: number;
   rooms: number;
 }) {
+  const { locale } = useLanguage();
+  const text = copy[locale];
+  const requestErrorText = text.requestError;
   const [sortBy, setSortBy] = useState<StaySortMode>("value");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -76,7 +155,7 @@ export function StayOffersPanel(props: {
           }
         } catch (err) {
           if (!cancelled) {
-            setError(err instanceof Error ? err.message : "Nie udalo sie pobrac noclegow.");
+            setError(err instanceof Error ? err.message : requestErrorText);
             setData(null);
           }
         } finally {
@@ -91,7 +170,7 @@ export function StayOffersPanel(props: {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [props.checkInDate, props.destinationCity, props.destinationCountry, props.guests, props.nights, props.rooms, sortBy]);
+  }, [props.checkInDate, props.destinationCity, props.destinationCountry, props.guests, props.nights, props.rooms, requestErrorText, sortBy]);
 
   const displayedOffers = useMemo(() => data?.offers.slice(0, visibleCount) ?? [], [data?.offers, visibleCount]);
   const topOffer = displayedOffers[0] ?? null;
@@ -114,7 +193,7 @@ export function StayOffersPanel(props: {
       partnerLinks
         ? [
             {
-              eyebrow: "Hotele",
+              eyebrow: text.hotelEyebrow,
               label: getAffiliateBrandLabel(partnerLinks.hotels, "Hotels.com"),
               href: buildRedirectHref({
                 providerKey: "stays",
@@ -125,7 +204,7 @@ export function StayOffersPanel(props: {
               }),
             },
             {
-              eyebrow: "Porownaj tez",
+              eyebrow: text.compareEyebrow,
               label: getAffiliateBrandLabel(partnerLinks.expedia, "Expedia"),
               href: buildRedirectHref({
                 providerKey: "stays",
@@ -136,7 +215,7 @@ export function StayOffersPanel(props: {
               }),
             },
             {
-              eyebrow: "Apartamenty",
+              eyebrow: text.apartmentsEyebrow,
               label: getAffiliateBrandLabel(partnerLinks.vrbo, "Vrbo"),
               href: buildRedirectHref({
                 providerKey: "stays",
@@ -148,52 +227,54 @@ export function StayOffersPanel(props: {
             },
           ]
         : [],
-    [partnerLinks, props.destinationCity, props.destinationCountry],
+    [partnerLinks, props.destinationCity, props.destinationCountry, text.apartmentsEyebrow, text.compareEyebrow, text.hotelEyebrow],
   );
 
   return (
     <section className="rounded-[1.9rem] border border-emerald-500/18 bg-[linear-gradient(180deg,rgba(247,252,249,0.98),rgba(235,247,239,0.96))] p-5 shadow-[0_18px_50px_rgba(16,84,48,0.08)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Pobyt</p>
-          <h3 className="mt-2 text-3xl font-bold text-emerald-950">Tutaj zaczyna sie booking flow dla {props.destinationCity}</h3>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.sectionEyebrow}</p>
+          <h3 className="mt-2 text-3xl font-bold text-emerald-950">
+            {text.sectionTitle} {props.destinationCity}
+          </h3>
           <p className="mt-2 text-sm leading-6 text-emerald-900/76">
-            Najpierw top pobyt, potem porownanie partnerow i reszta ofert dla tego samego terminu.
+            {text.sectionBody}
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm ring-1 ring-emerald-900/8">
           {loading ? <Spinner /> : null}
-          {loading ? "Szukamy dostepnosci" : data ? `${data.offers.length} ofert` : "Gotowe"}
+          {loading ? text.loadingState : data ? `${data.offers.length} ${text.offersState}` : text.readyState}
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-emerald-900/8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Termin</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.dateLabel}</p>
           <p className="mt-1 text-sm font-semibold text-emerald-950">
-            {formatShortDate(props.checkInDate)} - {formatShortDate(checkOutDate)}
+            {formatShortDate(props.checkInDate, locale === "en" ? "en-GB" : "pl-PL")} - {formatShortDate(checkOutDate, locale === "en" ? "en-GB" : "pl-PL")}
           </p>
         </div>
         <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-emerald-900/8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Podrozni</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-950">{props.guests} os.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.guestsLabel}</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950">{props.guests} {text.guestsShort}</p>
         </div>
         <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-emerald-900/8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Pokoje</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.roomsLabel}</p>
           <p className="mt-1 text-sm font-semibold text-emerald-950">{props.rooms}</p>
         </div>
         <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-emerald-900/8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Priorytet</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-950">Hotele najpierw</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.priorityLabel}</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950">{text.priorityValue}</p>
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {(
           [
-            ["cheap", "Najtansze"],
-            ["quality", "Najlepszy standard"],
-            ["value", "Najlepsza relacja ceny do jakosci"],
+            ["cheap", text.sortCheap],
+            ["quality", text.sortQuality],
+            ["value", text.sortValue],
           ] as Array<[StaySortMode, string]>
         ).map(([key, label]) => (
           <button
@@ -213,14 +294,14 @@ export function StayOffersPanel(props: {
             onClick={() => setVisibleCount((value) => Math.min(50, value + 12))}
             className="rounded-full border border-emerald-900/12 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
           >
-            Pokaz wiecej
+            {text.showMore}
           </button>
         ) : null}
       </div>
 
       {partnerButtons.length ? (
         <div className="mt-4 rounded-[1.5rem] border border-emerald-900/10 bg-white/88 p-4 shadow-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Porownanie partnerow</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.partnersTitle}</p>
           <div className="mt-3 grid gap-2 lg:grid-cols-3">
             {partnerButtons.map((partner) => (
               <a
@@ -271,19 +352,19 @@ export function StayOffersPanel(props: {
                       sizes="(max-width: 1024px) 100vw, 320px"
                     />
                     <div className="absolute left-4 top-4 rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-950 shadow-sm">
-                      Top pobyt
+                      {text.topStayBadge}
                     </div>
                   </div>
 
                   <div className="p-5 sm:p-6">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="max-w-2xl">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Najmocniejsza oferta na start</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.featuredOfferEyebrow}</p>
                         <h4 className="mt-2 text-3xl font-bold text-emerald-950">{topOffer.name}</h4>
                         <p className="mt-2 text-sm text-emerald-900/72">{topOffer.address || topOffer.city}</p>
                       </div>
                       <div className="rounded-[1.4rem] bg-emerald-950 px-4 py-3 text-right text-white">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">Cena pobytu</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.stayPriceLabel}</p>
                         <p className="mt-1 text-2xl font-bold">{formatMoney(topOffer.total_amount, topOffer.currency)}</p>
                       </div>
                     </div>
@@ -292,25 +373,25 @@ export function StayOffersPanel(props: {
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Termin</p>
                         <p className="mt-1 text-sm font-semibold text-emerald-950">
-                          {formatShortDate(props.checkInDate)} - {formatShortDate(checkOutDate)}
+                          {formatShortDate(props.checkInDate, locale === "en" ? "en-GB" : "pl-PL")} - {formatShortDate(checkOutDate, locale === "en" ? "en-GB" : "pl-PL")}
                         </p>
                       </div>
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Ocena</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.ratingLabel}</p>
                         <p className="mt-1 text-sm font-semibold text-emerald-950">
                           {topOffer.reviewScore
                             ? `${topOffer.reviewScore.toFixed(1)}/10`
                             : topOffer.rating
-                              ? `${topOffer.rating.toFixed(1)} gw.`
-                              : "Brak danych"}
+                              ? `${topOffer.rating.toFixed(1)} ${text.ratingStars}`
+                              : text.noData}
                         </p>
                       </div>
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Goscie</p>
-                        <p className="mt-1 text-sm font-semibold text-emerald-950">{props.guests} os.</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.guestsLabel}</p>
+                        <p className="mt-1 text-sm font-semibold text-emerald-950">{props.guests} {text.guestsShort}</p>
                       </div>
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Pokoje</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.roomsLabel}</p>
                         <p className="mt-1 text-sm font-semibold text-emerald-950">{props.rooms}</p>
                       </div>
                     </div>
@@ -331,7 +412,7 @@ export function StayOffersPanel(props: {
                           rel="noreferrer"
                           className="inline-flex items-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-800"
                         >
-                          Zobacz ten pobyt
+                          {text.showThisStay}
                         </a>
                       ) : null}
                       {partnerButtons[0] ? (
@@ -341,7 +422,7 @@ export function StayOffersPanel(props: {
                           rel="noreferrer"
                           className="inline-flex items-center rounded-full border border-emerald-900/12 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:-translate-y-0.5 hover:bg-emerald-50"
                         >
-                          Porownaj tez w {partnerButtons[0].label}
+                          {text.compareAlso} {partnerButtons[0].label}
                         </a>
                       ) : null}
                     </div>
@@ -366,35 +447,35 @@ export function StayOffersPanel(props: {
                   <div className="p-4 sm:p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Pozycja #{index + 2}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.position} #{index + 2}</p>
                         <h4 className="mt-1 text-lg font-bold text-emerald-950">{offer.name}</h4>
                         <p className="mt-1 text-sm text-emerald-900/72">{offer.address || offer.city}</p>
                       </div>
                       <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-right">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Cena pobytu</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.stayPriceLabel}</p>
                         <p className="mt-1 text-lg font-bold text-emerald-950">{formatMoney(offer.total_amount, offer.currency)}</p>
                       </div>
                     </div>
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-4">
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Pobyt</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.stayLabel}</p>
                         <p className="mt-1 text-sm font-semibold text-emerald-950">
-                          {formatShortDate(props.checkInDate)} - {formatShortDate(checkOutDate)}
+                          {formatShortDate(props.checkInDate, locale === "en" ? "en-GB" : "pl-PL")} - {formatShortDate(checkOutDate, locale === "en" ? "en-GB" : "pl-PL")}
                         </p>
                       </div>
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Ocena</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.ratingLabel}</p>
                         <p className="mt-1 text-sm font-semibold text-emerald-950">
-                          {offer.reviewScore ? `${offer.reviewScore.toFixed(1)}/10` : offer.rating ? `${offer.rating.toFixed(1)} gw.` : "Brak danych"}
+                          {offer.reviewScore ? `${offer.reviewScore.toFixed(1)}/10` : offer.rating ? `${offer.rating.toFixed(1)} ${text.ratingStars}` : text.noData}
                         </p>
                       </div>
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Goscie</p>
-                        <p className="mt-1 text-sm font-semibold text-emerald-950">{props.guests} os.</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.guestsLabel}</p>
+                        <p className="mt-1 text-sm font-semibold text-emerald-950">{props.guests} {text.guestsShort}</p>
                       </div>
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Pokoje</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.roomsLabel}</p>
                         <p className="mt-1 text-sm font-semibold text-emerald-950">{props.rooms}</p>
                       </div>
                     </div>
@@ -415,7 +496,7 @@ export function StayOffersPanel(props: {
                           rel="noreferrer"
                           className="inline-flex items-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
                         >
-                          Sprawdz pobyt
+                          {text.checkStay}
                         </a>
                       ) : null}
                       {partnerButtons[0] ? (
@@ -425,7 +506,7 @@ export function StayOffersPanel(props: {
                           rel="noreferrer"
                           className="inline-flex items-center rounded-full border border-emerald-900/12 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
                         >
-                          Porownaj w {partnerButtons[0].label}
+                          {text.compareIn} {partnerButtons[0].label}
                         </a>
                       ) : null}
                     </div>
@@ -436,7 +517,7 @@ export function StayOffersPanel(props: {
           </>
         ) : (
           <div className="rounded-[1.5rem] border border-dashed border-emerald-900/12 bg-white/88 px-4 py-6 text-sm text-emerald-900/72">
-            Nie znalezlismy dostepnych noclegow dla tego ukladu dat. Zmien termin albo otworz wyniki partnerow.
+            {text.emptyState}
           </div>
         )}
       </div>

@@ -29,13 +29,13 @@ export function isoDateToMonth(value: string): number | undefined {
   return date.getMonth() + 1;
 }
 
-export function formatShortDate(value: string): string {
+export function formatShortDate(value: string, locale = "pl-PL"): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("pl-PL", {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "short",
   }).format(date);
