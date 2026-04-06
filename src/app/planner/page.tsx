@@ -3,11 +3,18 @@ import type { Metadata } from "next";
 import { PlannerClient } from "@/components/mvp/planner-client";
 
 export const metadata: Metadata = {
-  title: "Planer wyjazdu",
+  title: "Planer wyjazdu - hotel, lot i kolejne kroki w jednym flow",
   description:
-    "Wyszukaj kierunek po potrzebie albo wpisz konkretne miasto. Planer porzadkuje scenariusz i prowadzi do realnych wynikow.",
+    "Wyszukaj kierunek po potrzebie albo wpisz konkretne miasto. HelpTravel prowadzi od wyboru dat i miasta do pobytu, lotow i dalszych krokow w jednym flow.",
   alternates: {
     canonical: "/planner",
+  },
+  openGraph: {
+    title: "Planer wyjazdu - hotel, lot i kolejne kroki w jednym flow",
+    description:
+      "Ustaw miasto, termin i sklad podrozy. Potem przejdz od razu do pobytu, lotow, atrakcji i transportu.",
+    url: "/planner",
+    type: "website",
   },
 };
 

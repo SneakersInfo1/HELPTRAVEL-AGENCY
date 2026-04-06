@@ -26,8 +26,8 @@ function postJson<T>(url: string, body: unknown): Promise<T> {
   });
 }
 
-function formatMoney(value: number, currency: string): string {
-  return new Intl.NumberFormat("pl-PL", {
+function formatMoney(value: number, currency: string, locale: "pl" | "en"): string {
+  return new Intl.NumberFormat(locale === "en" ? "en-GB" : "pl-PL", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
@@ -365,7 +365,7 @@ export function StayOffersPanel(props: {
                       </div>
                       <div className="rounded-[1.4rem] bg-emerald-950 px-4 py-3 text-right text-white">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.stayPriceLabel}</p>
-                        <p className="mt-1 text-2xl font-bold">{formatMoney(topOffer.total_amount, topOffer.currency)}</p>
+                        <p className="mt-1 text-2xl font-bold">{formatMoney(topOffer.total_amount, topOffer.currency, locale)}</p>
                       </div>
                     </div>
 
@@ -453,7 +453,7 @@ export function StayOffersPanel(props: {
                       </div>
                       <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-right">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.stayPriceLabel}</p>
-                        <p className="mt-1 text-lg font-bold text-emerald-950">{formatMoney(offer.total_amount, offer.currency)}</p>
+                        <p className="mt-1 text-lg font-bold text-emerald-950">{formatMoney(offer.total_amount, offer.currency, locale)}</p>
                       </div>
                     </div>
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Jak pracujemy",
-  description: "Jak HelpTravel buduje przewodniki, strony kierunkowe i publiczna warstwe travel contentu.",
+  description: "Jak HelpTravel buduje przewodniki, strony kierunkowe i planner w modelu premium travel publishera.",
   alternates: {
     canonical: "/jak-pracujemy",
   },
@@ -19,8 +19,8 @@ const principles = [
     body: "Nie stawiamy na dziesiatki pustych landingow. Kazda strona ma miec intro, sekcje praktyczne, FAQ, linkowanie i jasny powod istnienia.",
   },
   {
-    title: "Najpierw wiarygodnosc, potem obietnice",
-    body: "Nie dodajemy fikcyjnych liczb, partnerstw, ruchu czy nagrod. Wolimy pokazywac mniej, ale uczciwie i z naciskiem na przydatnosc.",
+    title: "Najpierw wiarygodnosc, potem skala",
+    body: "Rozwijamy serwis tak, aby kolejne sekcje i partnerstwa wzmacnialy produkt, a nie tylko zwiekszaly liczbe stron. Priorytetem jest jakosc i uzytecznosc dla czytelnika.",
   },
 ];
 
@@ -72,8 +72,8 @@ export default function HowWeWorkPage() {
           <h2 className="text-2xl font-bold text-emerald-950">Co oznacza to dla czytelnika i partnera</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
             <p>Czytelnik ma dostac konkret: nie tylko ladny landing, ale rzeczywiscie przydatny przewodnik lub porownanie.</p>
-            <p>Partner afiliacyjny ma widziec projekt, ktory ma architekture contentowa, strony zaufania, indeksowalne huby i prawdziwa logike przejscia do oferty.</p>
-            <p>Produkt ma rozwijac sie jak marka travel contentowa, a nie jak samotny widget lub jednorazowy eksperyment.</p>
+            <p>Partner afiliacyjny ma widziec projekt z realna architektura contentowa, stronami zaufania, indeksowalnymi hubami i jasna logika przejscia do oferty.</p>
+            <p>Produkt rozwijamy jako travel brand z potencjalem redakcyjnym, partnerskim i komercyjnym, a nie jednorazowy eksperyment.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link

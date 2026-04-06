@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
+const primaryContactHref = contactEmail ? `mailto:${contactEmail}` : "/dla-partnerow";
+const primaryContactLabel = contactEmail ? contactEmail : "Przejdz do strony dla partnerow";
 
 export const metadata: Metadata = {
   title: "Kontakt",
-  description: "Kontakt w sprawie serwisu HelpTravel, tresci, wspolpracy i uwag do dzialania strony.",
+  description: "Kontakt w sprawie serwisu HelpTravel, tresci, wspolpracy, partnerstw i uwag do dzialania strony.",
   alternates: {
     canonical: "/kontakt",
   },
@@ -33,19 +36,24 @@ export default function ContactPage() {
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <h2 className="text-2xl font-bold text-emerald-950">Dane kontaktowe</h2>
-          {contactEmail ? (
-            <p className="mt-3 text-sm leading-7 text-emerald-900/78">
-              Napisz na:{" "}
-              <a className="font-semibold text-emerald-800 underline-offset-4 hover:underline" href={`mailto:${contactEmail}`}>
-                {contactEmail}
-              </a>
-            </p>
-          ) : (
-            <p className="mt-3 text-sm leading-7 text-emerald-900/78">
-              Adres kontaktowy nie jest jeszcze ustawiony w konfiguracji publicznej. Przed docelowa publikacja warto uzupelnic
-              zmienna <code>NEXT_PUBLIC_CONTACT_EMAIL</code>, zeby ta strona byla kompletna biznesowo.
-            </p>
-          )}
+          <p className="mt-3 text-sm leading-7 text-emerald-900/78">
+            Najszybszy kanal kontaktu obsluguje tematy redakcyjne, produktowe i partnerskie w jednym miejscu.
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a
+              className="inline-flex rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
+              href={primaryContactHref}
+            >
+              {primaryContactLabel}
+            </a>
+            <Link
+              className="inline-flex rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+              href="/dla-partnerow"
+            >
+              Dla partnerow
+            </Link>
+          </div>
 
           <div className="mt-5 space-y-3 text-sm leading-7 text-emerald-900/78">
             <p>Najlatwiej opisac temat konkretnie: link do strony, miasto, scenariusz wyjazdu albo przyklad problemu.</p>
@@ -83,7 +91,7 @@ export default function ContactPage() {
           <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Wspolpraca</p>
             <p className="mt-2 text-sm leading-7 text-emerald-900/78">
-              Strona jest przygotowana pod partnerstwa afiliacyjne i rozwoj wydawniczy bez fikcyjnych deklaracji.
+              HelpTravel rozwijamy jako serwis gotowy pod partnerstwa afiliacyjne, contentowe i direct outreach.
             </p>
           </div>
         </div>

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "O nas",
-  description: "Poznaj HelpTravel - polski serwis do odkrywania kierunkow, planowania wyjazdow i przechodzenia do ofert partnerow.",
+  description: "Poznaj HelpTravel - travelowy serwis i planner, ktory pomaga szybciej wybrac kierunek, pobyt i kolejne kroki wyjazdu.",
   alternates: {
     canonical: "/o-nas",
   },
@@ -19,8 +19,8 @@ const pillars = [
     body: "Planer ma pomagac przejsc od potrzeby do konkretnego kierunku. W efekcie projekt nie jest tylko blogiem ani tylko narzedziem, ale hybryda obu tych swiatow.",
   },
   {
-    title: "Warstwa publiczna",
-    body: "Nie dodajemy fikcyjnych rankingow, ruchu ani opinii. Zamiast tego budujemy serwis stopniowo, opierajac sie na realnych integracjach, praktycznych tresciach i otwartym modelu afiliacyjnym.",
+    title: "Warstwa marki",
+    body: "Projekt rozwijamy jako rozpoznawalny travel brand: z wlasnym contentem, przejrzystym modelem partnerskim i doswiadczeniem, ktore prowadzi uzytkownika do sensownego kolejnego kroku.",
   },
 ];
 
@@ -42,8 +42,8 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold text-emerald-950">Jak dziala serwis</h2>
           <p className="mt-3 text-sm leading-7 text-emerald-900/78">
             Na stronie znajdziesz katalog kierunkow, praktyczne inspiracje, podstrony z opisami wyjazdow oraz planer,
-            ktory pomaga przejsc od ogolnej potrzeby do konkretnego scenariusza. W glownym flow nie pokazujemy
-            wymyslonych cen jako realnych ofert.
+            ktory pomaga przejsc od ogolnej potrzeby do konkretnego scenariusza. To ma byc szybki, czytelny i wiarygodny
+            flow od pierwszej inspiracji do wynikow partnera.
           </p>
           <p className="mt-3 text-sm leading-7 text-emerald-900/78">
             Chcemy, zeby serwis byl jednoczesnie uzyteczny dla czytelnika i wiarygodny dla partnerow. Dlatego warstwa
@@ -82,7 +82,7 @@ export default function AboutPage() {
           <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Jawny model</p>
             <p className="mt-2 text-sm leading-7 text-emerald-900/78">
-              Strona otwarcie komunikuje, ze korzysta z partnerow zewnetrznych i nie udaje pelnego booking engine.
+              Strona otwarcie komunikuje wspolprace z partnerami zewnetrznymi i prowadzi do jasnego kolejnego kroku rezerwacyjnego.
             </p>
           </div>
           <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">

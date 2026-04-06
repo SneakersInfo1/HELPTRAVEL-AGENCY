@@ -32,7 +32,10 @@ const discoveryPresets = {
   ],
 } as const;
 
-const standardPresets = ["Malaga", "Barcelona", "Lizbona", "Walencja"];
+const standardPresets = {
+  pl: ["Malaga", "Barcelona", "Lizbona", "Walencja"],
+  en: ["Malaga", "Barcelona", "Lisbon", "Valencia"],
+} as const;
 
 const plannerCopy = {
   pl: {
@@ -99,6 +102,16 @@ const plannerCopy = {
     showFlights: "Pokaz loty",
     showCars: "Pokaz auta",
     showOnSite: "Pokaz na miejscu",
+    destinationPlaceholder: "Np. Malaga",
+    originPlaceholder: "Warszawa",
+    primaryFlow: "Sciezka glowna",
+    hotelFirst: "Najpierw pobyt, potem lot i kolejne kroki.",
+    selectedDatesValue: "noce",
+    resultRank: "Pozycja",
+    directPrompt: "Podobne kierunki obok glownego wyboru",
+    discoveryPrompt: "Najlepsze alternatywy",
+    whyItFits: "Dlaczego pasuje",
+    watchLabel: "Na co uwazac",
   },
   en: {
     heroEyebrow: "HelpTravel Planner",
@@ -164,11 +177,31 @@ const plannerCopy = {
     showFlights: "Show flights",
     showCars: "Show cars",
     showOnSite: "Show on-site",
+    destinationPlaceholder: "E.g. Malaga",
+    originPlaceholder: "Warsaw",
+    primaryFlow: "Primary route",
+    hotelFirst: "Lead with stays first, then flights and the next trip steps.",
+    selectedDatesValue: "nights",
+    resultRank: "Position",
+    directPrompt: "Similar destinations next to your main pick",
+    discoveryPrompt: "Best alternatives",
+    whyItFits: "Why it fits",
+    watchLabel: "Watch-outs",
   },
 } as const;
 
-const scoreLabel = (score: number) =>
-  score >= 82 ? "Bardzo mocne dopasowanie" : score >= 70 ? "Dobre dopasowanie" : "Warto sprawdzić";
+const scoreLabel = (score: number, locale: "pl" | "en") =>
+  locale === "pl"
+    ? score >= 82
+      ? "Bardzo mocne dopasowanie"
+      : score >= 70
+        ? "Dobre dopasowanie"
+        : "Warto sprawdzic"
+    : score >= 82
+      ? "Very strong match"
+      : score >= 70
+        ? "Good match"
+        : "Worth checking";
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
@@ -249,6 +282,7 @@ export function PlannerClient({
   const text = plannerCopy[locale];
   const dateLocale = locale === "en" ? "en-GB" : "pl-PL";
   const localizedDiscoveryPresets = locale === "en" ? discoveryPresets.en : discoveryPresets.pl;
+  const localizedStandardPresets = locale === "en" ? standardPresets.en : standardPresets.pl;
   const [mode, setMode] = useState<Mode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -260,7 +294,10 @@ export function PlannerClient({
   const stayOffersRef = useRef<HTMLDivElement | null>(null);
 
   const [query, setQuery] = useState(
-    initialQuery || "Chcę polecieć do ciepłego kraju do 2000 zł na 5 dni, bez wizy, z plażą i zwiedzaniem.",
+    initialQuery ||
+      (locale === "en"
+        ? "I want a warm destination for 5 days with a beach, sightseeing and a budget under 2000 PLN."
+        : "Chcę polecieć do ciepłego kraju do 2000 zł na 5 dni, bez wizy, z plażą i zwiedzaniem."),
   );
   const [budget, setBudget] = useState(initialBudget);
   const [travelers, setTravelers] = useState(initialTravelers);
@@ -405,7 +442,7 @@ export function PlannerClient({
           },
           {
             eyebrow: text.bookingDeckActivities,
-            title: "Na miejscu",
+            title: locale === "en" ? "On site" : "Na miejscu",
             description: text.bookingDeckActivitiesBody,
             href: "#aktywnosci-na-miejscu",
             tone: "light" as const,
@@ -506,7 +543,7 @@ export function PlannerClient({
             ) : (
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
-                  {standardPresets.map((preset) => (
+                  {localizedStandardPresets.map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -518,17 +555,19 @@ export function PlannerClient({
                   ))}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Kierunek">
-                    <Input value={destinationHint} onChange={(event) => setDestinationHint(event.target.value)} placeholder="Np. Malaga" />
+                  <Field label={text.direction}>
+                    <Input
+                      value={destinationHint}
+                      onChange={(event) => setDestinationHint(event.target.value)}
+                      placeholder={text.destinationPlaceholder}
+                    />
                   </Field>
-                  <Field label="Budżet">
+                  <Field label={text.budget}>
                     <Input type="number" value={budget} onChange={(event) => setBudget(Number(event.target.value) || 0)} />
                   </Field>
                   <div className="rounded-[1.5rem] border border-emerald-900/10 bg-white/80 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Ścieżka główna</p>
-                    <p className="mt-2 text-sm leading-6 text-emerald-900/80">
-                      Po wskazaniu kierunku pokazujemy najpierw pobyt, a zaraz potem loty i dalsze kroki podróży.
-                    </p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.primaryFlow}</p>
+                    <p className="mt-2 text-sm leading-6 text-emerald-900/80">{text.hotelFirst}</p>
                   </div>
                 </div>
               </div>
@@ -536,16 +575,16 @@ export function PlannerClient({
           </div>
 
           <aside className="rounded-[1.75rem] border border-emerald-900/10 bg-white p-4 sm:p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Parametry wspólne</p>
-            <h2 className="mt-2 text-2xl font-bold text-emerald-950">Termin i skład podróży</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.sharedParams}</p>
+            <h2 className="mt-2 text-2xl font-bold text-emerald-950">{text.sharedTitle}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Field label="Skąd lecisz">
-                <Input value={originCity} onChange={(event) => setOriginCity(event.target.value)} placeholder="Warszawa" />
+              <Field label={text.origin}>
+                <Input value={originCity} onChange={(event) => setOriginCity(event.target.value)} placeholder={text.originPlaceholder} />
               </Field>
-              <Field label="Start podróży">
+              <Field label={text.travelStart}>
                 <Input type="date" value={travelStartDate} onChange={(event) => setTravelStartDate(event.target.value)} />
               </Field>
-              <Field label="Liczba nocy">
+              <Field label={text.nights}>
                 <Input
                   type="number"
                   min={1}
@@ -554,7 +593,7 @@ export function PlannerClient({
                   onChange={(event) => setTravelNights(Number(event.target.value) || 1)}
                 />
               </Field>
-              <Field label="Podróżni">
+              <Field label={text.travelers}>
                 <Input
                   type="number"
                   min={1}
@@ -563,16 +602,16 @@ export function PlannerClient({
                   onChange={(event) => setTravelers(Number(event.target.value) || 1)}
                 />
               </Field>
-              <Field label="Pokoje">
+              <Field label={text.rooms}>
                 <Input type="number" min={1} max={5} value={rooms} onChange={(event) => setRooms(Number(event.target.value) || 1)} />
               </Field>
               <div className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Szybki podgląd</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.quickPreview}</p>
                 <p className="mt-2 text-sm font-semibold text-emerald-950">
                   {formatShortDate(travelStartDate, dateLocale)} - {formatShortDate(checkOutDate, dateLocale)}
                 </p>
                 <p className="mt-1 text-sm text-emerald-900/76">
-                  {travelers} os. · {rooms} {rooms === 1 ? "pokój" : rooms < 5 ? "pokoje" : "pokoi"}
+                  {travelers} {text.travelersShort} · {rooms} {rooms === 1 ? text.roomSingle : rooms < 5 ? text.roomFew : text.roomMany}
                 </p>
               </div>
             </div>
@@ -583,15 +622,15 @@ export function PlannerClient({
               disabled={loading}
               className="mt-5 w-full rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(21,128,61,0.22)] transition hover:bg-emerald-800 disabled:opacity-70"
             >
-              {loading ? "Układamy plan..." : "Pokaż pobyt i loty"}
+              {loading ? text.loadingPlan : text.showStayFlights}
             </button>
             {error ? <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
 
             <div className="mt-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Zapisane plany</p>
-                  <p className="mt-1 text-sm text-emerald-900/70">Wrócisz do nich jednym kliknięciem.</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedPlans}</p>
+                  <p className="mt-1 text-sm text-emerald-900/70">{text.savedPlansBody}</p>
                 </div>
                 <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
                   {savedTrips.length}
@@ -600,7 +639,7 @@ export function PlannerClient({
               <div className="mt-3 max-h-44 space-y-2 overflow-y-auto pr-1">
                 {savedTrips.length === 0 ? (
                   <p className="rounded-2xl border border-dashed border-emerald-900/10 bg-emerald-50/60 px-4 py-4 text-sm text-emerald-900/70">
-                    Po pierwszym wyniku tutaj pojawią się zapisane scenariusze.
+                    {text.savedEmpty}
                   </p>
                 ) : (
                   savedTrips.map((trip) => (
@@ -612,7 +651,7 @@ export function PlannerClient({
                       <span>
                         {trip.city}, {trip.country}
                       </span>
-                      <span className="text-xs text-emerald-700">score {trip.score.toFixed(0)}</span>
+                      <span className="text-xs text-emerald-700">{text.scoreWord} {trip.score.toFixed(0)}</span>
                     </Link>
                   ))
                 )}
@@ -659,7 +698,7 @@ export function PlannerClient({
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,16,10,0.08)_0%,rgba(6,16,10,0.72)_100%)]" />
                 <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                    {isDirectRouteSearch ? "Wybrana trasa" : "Najlepszy kierunek dla tego briefu"}
+                    {isDirectRouteSearch ? text.selectedRoute : text.bestForBrief}
                   </p>
                   <h2 className="mt-2 text-3xl font-bold sm:text-4xl">
                     {selectedOption.destination.city}, {selectedOption.destination.country}
@@ -670,17 +709,17 @@ export function PlannerClient({
 
               <div className="space-y-4 p-5 sm:p-6">
                 <div className="flex flex-wrap gap-3">
-                  <SummaryPill label="Wynik" value={`${selectedOption.score.toFixed(0)} · ${scoreLabel(selectedOption.score)}`} />
-                  <SummaryPill label="Termin" value={`${formatShortDate(travelStartDate, dateLocale)} - ${formatShortDate(checkOutDate, dateLocale)}`} />
-                  <SummaryPill label="Skład podróży" value={`${travelers} os. · ${travelNights} noce`} />
+                  <SummaryPill label={text.score} value={`${selectedOption.score.toFixed(0)} · ${scoreLabel(selectedOption.score, locale)}`} />
+                  <SummaryPill label={text.term} value={`${formatShortDate(travelStartDate, dateLocale)} - ${formatShortDate(checkOutDate, dateLocale)}`} />
+                  <SummaryPill label={text.travelParty} value={`${travelers} ${text.travelersShort} · ${travelNights} ${text.selectedDatesValue}`} />
                 </div>
 
                 <div className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Dlaczego teraz</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.whyNow}</p>
                   <p className="mt-2 text-sm leading-7 text-emerald-900/82">{selectedStory.summary}</p>
                   {localFocus ? (
                     <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-emerald-950 shadow-sm">
-                      Kierunek dokładnie odpowiada wskazanemu miastu.
+                      {text.exactMatch}
                     </p>
                   ) : null}
                 </div>
@@ -708,7 +747,7 @@ export function PlannerClient({
                     rel="noreferrer"
                     className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800"
                   >
-                    Zobacz pobyt w {stayPartner}
+                    {text.openStay} {stayPartner}
                   </a>
                   <a
                     href={buildSelectedRedirectHref("flights", activeAffiliateLinks.flights)}
@@ -716,7 +755,7 @@ export function PlannerClient({
                     rel="noreferrer"
                     className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
                   >
-                    Sprawdź loty w {flightPartner}
+                    {text.openFlights} {flightPartner}
                   </a>
                   <a
                     href={buildSelectedRedirectHref("cars", activeAffiliateLinks.cars)}
@@ -724,7 +763,7 @@ export function PlannerClient({
                     rel="noreferrer"
                     className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
                   >
-                    Auta w {carPartner}
+                    {text.openCars} {carPartner}
                   </a>
                 </div>
               </div>
@@ -760,7 +799,7 @@ export function PlannerClient({
                   <h3 className="mt-3 text-2xl font-bold">{card.title}</h3>
                   <p className={`mt-3 text-sm leading-6 ${descriptionClassName}`}>{card.description}</p>
                   <span className={`mt-5 inline-flex rounded-full px-4 py-2 text-sm font-bold transition ${buttonClassName}`}>
-                    {index === 0 ? "Pokaz pobyt" : index === 1 ? "Pokaz loty" : index === 2 ? "Pokaz auta" : "Pokaz na miejscu"}
+                    {index === 0 ? text.showStay : index === 1 ? text.showFlights : index === 2 ? text.showCars : text.showOnSite}
                   </span>
                 </a>
               );
@@ -770,8 +809,8 @@ export function PlannerClient({
           <section className="rounded-[1.9rem] border border-emerald-900/10 bg-white p-4 shadow-[0_16px_45px_rgba(16,84,48,0.06)] sm:p-5">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Ustawienia komercyjne</p>
-                <h3 className="mt-2 text-2xl font-bold text-emerald-950">Zmień termin raz, a cały flow odświeży się spójnie.</h3>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.bookingSettings}</p>
+                <h3 className="mt-2 text-2xl font-bold text-emerald-950">{text.bookingSettingsBody}</h3>
               </div>
               <div className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
                 {originCity} → {selectedOption.destination.city}
@@ -779,13 +818,13 @@ export function PlannerClient({
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <Field label="Skąd lecisz">
+              <Field label={text.origin}>
                 <Input value={originCity} onChange={(event) => setOriginCity(event.target.value)} />
               </Field>
-              <Field label="Start podróży">
+              <Field label={text.travelStart}>
                 <Input type="date" value={travelStartDate} onChange={(event) => setTravelStartDate(event.target.value)} />
               </Field>
-              <Field label="Nocy">
+              <Field label={text.nights}>
                 <Input
                   type="number"
                   min={1}
@@ -794,7 +833,7 @@ export function PlannerClient({
                   onChange={(event) => setTravelNights(Number(event.target.value) || 1)}
                 />
               </Field>
-              <Field label="Podróżni">
+              <Field label={text.travelers}>
                 <Input
                   type="number"
                   min={1}
@@ -803,7 +842,7 @@ export function PlannerClient({
                   onChange={(event) => setTravelers(Number(event.target.value) || 1)}
                 />
               </Field>
-              <Field label="Pokoje">
+              <Field label={text.rooms}>
                 <Input type="number" min={1} max={5} value={rooms} onChange={(event) => setRooms(Number(event.target.value) || 1)} />
               </Field>
             </div>
@@ -852,13 +891,13 @@ export function PlannerClient({
         <section className="grid gap-4">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Pozostałe propozycje</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.remainingOptions}</p>
               <h2 className="mt-1 text-2xl font-bold text-emerald-950">
-                {mode === "standard" ? "Podobne kierunki obok głównego wyboru" : "Najlepsze alternatywy"}
+                {mode === "standard" ? text.directPrompt : text.discoveryPrompt}
               </h2>
             </div>
             <p className="max-w-xl text-sm leading-7 text-emerald-900/72">
-              Szybko porównasz klimat, argumenty dopasowania i przełączysz się na inny kierunek bez wracania do początku.
+              {text.remainingBody}
             </p>
           </div>
 
@@ -897,11 +936,11 @@ export function PlannerClient({
                     <div className="p-5 sm:p-6">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Pozycja #{option.rank}</p>
-                          <p className="mt-2 text-2xl font-bold text-emerald-950">{scoreLabel(option.score)}</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.resultRank} #{option.rank}</p>
+                          <p className="mt-2 text-2xl font-bold text-emerald-950">{scoreLabel(option.score, locale)}</p>
                         </div>
                         <div className="rounded-2xl bg-emerald-700 px-4 py-2 text-right text-white">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-100">Wynik</p>
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-100">{text.score}</p>
                           <p className="text-2xl font-bold">{option.score.toFixed(0)}</p>
                         </div>
                       </div>
@@ -932,7 +971,7 @@ export function PlannerClient({
 
                       <div className="mt-5 grid gap-4 md:grid-cols-2">
                         <div className="rounded-[1.25rem] bg-emerald-50/70 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Dlaczego pasuje</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.whyItFits}</p>
                           <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/82">
                             {option.reasons.slice(0, 3).map((reason) => (
                               <li key={reason}>• {reason}</li>
@@ -940,9 +979,9 @@ export function PlannerClient({
                           </ul>
                         </div>
                         <div className="rounded-[1.25rem] bg-emerald-50/70 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Na co uważać</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.watchLabel}</p>
                           <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/82">
-                            {(option.tradeoffs.length > 0 ? option.tradeoffs : ["Brak wyraźnych minusów przy tym briefie."]).map((tradeoff) => (
+                            {(option.tradeoffs.length > 0 ? option.tradeoffs : [text.noTradeoffs]).map((tradeoff) => (
                               <li key={tradeoff}>• {tradeoff}</li>
                             ))}
                           </ul>

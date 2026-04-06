@@ -24,8 +24,8 @@ export default function AffiliateDisclosurePage() {
             wplywa na cene oferty, ale moze oznaczac, ze serwis otrzyma prowizje, jesli partner przewiduje taki model.
           </p>
           <p>
-            HelpTravel nie deklaruje fikcyjnych partnerstw, ruchu ani wynikow. Linki partnerskie sa traktowane jako
-            jeden z modeli monetyzacji serwisu i sa opisywane otwarcie.
+            Linki partnerskie sa jednym z modeli monetyzacji serwisu i dlatego oznaczamy je w sposob przejrzysty,
+            bez ukrywania roli partnera w finalnym etapie rezerwacji.
           </p>
         </div>
       </section>
@@ -43,9 +43,9 @@ export default function AffiliateDisclosurePage() {
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <h2 className="text-2xl font-bold text-emerald-950">Co jest wazne dla uzytkownika</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
-            <p>Serwis nie obiecuje, ze kazda oferta bedzie dostepna w kazdym momencie. Dane partnerow i ceny moga sie zmieniac.</p>
-            <p>Na stronie pokazujemy tylko wyniki i przejscia, ktore da sie zweryfikowac w realnym flow rezerwacyjnym.</p>
-            <p>To podejscie jest celowe: stawiamy na przejrzystosc i realne informacje, a finalna decyzja zawsze nalezy do uzytkownika.</p>
+            <p>Oferty, ceny i dostepnosc moga zmieniac sie po stronie partnera, dlatego finalne warunki zawsze warto sprawdzic przed zakupem.</p>
+            <p>Nasza rola polega na uporzadkowaniu wyboru kierunku i przekazaniu uzytkownika do kolejnego kroku w czytelnym flow.</p>
+            <p>Finalna decyzja, warunki i obsluga transakcji zawsze naleza do zewnetrznego partnera rezerwacyjnego.</p>
           </div>
         </article>
       </section>
