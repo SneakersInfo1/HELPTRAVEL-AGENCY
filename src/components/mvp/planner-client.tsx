@@ -128,7 +128,7 @@ export function PlannerClient({
   );
   const [travelStartDate, setTravelStartDate] = useState(initialStartDate || defaultTravelStartDate());
   const [travelNights, setTravelNights] = useState(initialNights ?? initialStandardDays);
-  const [standardStyle, setStandardStyle] = useState(initialStyle);
+  const [standardStyle] = useState(initialStyle);
 
   useEffect(() => {
     fetch("/api/trips/history")
@@ -375,9 +375,6 @@ export function PlannerClient({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Kierunek">
                     <Input value={destinationHint} onChange={(event) => setDestinationHint(event.target.value)} placeholder="Np. Malaga" />
-                  </Field>
-                  <Field label="Styl wyjazdu">
-                    <Input value={standardStyle} onChange={(event) => setStandardStyle(event.target.value)} placeholder="Np. city break" />
                   </Field>
                   <Field label="Budżet">
                     <Input type="number" value={budget} onChange={(event) => setBudget(Number(event.target.value) || 0)} />
