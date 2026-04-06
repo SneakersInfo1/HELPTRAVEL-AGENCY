@@ -27,7 +27,7 @@ export default async function AnalyticsPage() {
         </p>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-5">
         <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
           <p className="text-xs uppercase tracking-[0.13em] text-emerald-700">Starty planera</p>
           <p className="mt-2 text-3xl font-bold text-emerald-950">{summary.plannerRuns}</p>
@@ -39,6 +39,14 @@ export default async function AnalyticsPage() {
         <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
           <p className="text-xs uppercase tracking-[0.13em] text-emerald-700">Klikniecia afiliacyjne</p>
           <p className="mt-2 text-3xl font-bold text-emerald-950">{summary.affiliateClicks}</p>
+        </article>
+        <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.13em] text-emerald-700">Akcje retencyjne</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-950">{summary.retentionActions}</p>
+        </article>
+        <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.13em] text-emerald-700">Porownania kierunkow</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-950">{summary.comparisonEvents}</p>
         </article>
       </section>
 

@@ -11,6 +11,10 @@ const EventBodySchema = z.object({
     "standard_generated",
     "affiliate_clicked",
     "trip_saved",
+    "planner_restored",
+    "destination_saved",
+    "comparison_selected",
+    "search_saved",
   ]),
   payload: z.record(z.string(), z.unknown()).default({}),
 });
@@ -30,4 +34,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
-

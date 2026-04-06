@@ -75,6 +75,31 @@ function styleMatch(dest: DestinationProfile, prefs: DiscoveryPreferences): numb
   return clamp(weighted / Math.max(0.01, totalWeight));
 }
 
+function moodMatch(dest: DestinationProfile, prefs: DiscoveryPreferences): number {
+  const foodProxy = clamp((dest.cityScore + dest.sightseeingScore + dest.nightlifeScore) / 3);
+
+  switch (prefs.tripMood) {
+    case "romantic":
+      return clamp(dest.cityScore * 0.28 + dest.beachScore * 0.2 + foodProxy * 0.28 + dest.sightseeingScore * 0.14 + dest.safetyScore * 0.1);
+    case "family":
+      return clamp(dest.safetyScore * 0.32 + dest.beachScore * 0.18 + dest.natureScore * 0.22 + dest.accessScore * 0.18 + clamp(1 - dest.nightlifeScore * 0.35) * 0.1);
+    case "solo":
+      return clamp(dest.safetyScore * 0.34 + dest.cityScore * 0.22 + dest.sightseeingScore * 0.18 + dest.accessScore * 0.18 + foodProxy * 0.08);
+    case "foodie":
+      return clamp(foodProxy * 0.48 + dest.cityScore * 0.22 + dest.sightseeingScore * 0.18 + dest.safetyScore * 0.12);
+    default:
+      return clamp((dest.cityScore + dest.beachScore + dest.sightseeingScore) / 3);
+  }
+}
+
+function logisticsFit(dest: DestinationProfile): number {
+  return clamp(dest.accessScore * 0.62 + (1 - dest.typicalFlightHoursFromPL / 8) * 0.38);
+}
+
+function valueFit(budgetFit: number, travelEase: number, style: number): number {
+  return clamp(budgetFit * 0.7 + travelEase * 0.15 + style * 0.15);
+}
+
 function buildReasons(
   dest: DestinationProfile,
   breakdown: ScoreBreakdown,
@@ -110,6 +135,24 @@ function buildReasons(
   if (prefs.visaPreference === "visa_free" && dest.visaForPL) {
     reasons.push("Nie doklada dodatkowych formalnosci wizowych do wyjazdu.");
   }
+  if ((prefs.wantsShortFlight || prefs.logisticsPreference === "easy") && breakdown.logisticsFit >= 0.74) {
+    reasons.push("Logistyka z Polski jest tu wyjatkowo prosta jak na ten typ wyjazdu.");
+  }
+  if (prefs.tripMood === "romantic" && breakdown.moodFit >= 0.72) {
+    reasons.push("Laczy klimat, jedzenie i rytm miasta dobrze pasujacy do romantycznego wyjazdu.");
+  }
+  if (prefs.tripMood === "family" && breakdown.moodFit >= 0.72) {
+    reasons.push("Dobrze uklada bezpieczenstwo, prosty dojazd i spokojniejszy rytm pod wyjazd rodzinny.");
+  }
+  if (prefs.tripMood === "solo" && breakdown.moodFit >= 0.7) {
+    reasons.push("Sprawdza sie przy samodzielnym wyjezdzie dzieki prostocie, bezpieczenstwu i czytelnemu planowi miasta.");
+  }
+  if (prefs.tripMood === "foodie" && breakdown.moodFit >= 0.7) {
+    reasons.push("Mocno broni sie kulinarnie, wiec latwiej uzasadnic wyjazd jedzeniem i miejskim klimatem.");
+  }
+  if (prefs.wantsBeachSightseeingMix && dest.beachScore >= 0.7 && dest.sightseeingScore >= 0.7) {
+    reasons.push("Naprawde domyka miks plazy i zwiedzania bez rozjechanego planu.");
+  }
 
   return reasons.slice(0, 4);
 }
@@ -134,6 +177,18 @@ function buildTradeoffs(dest: DestinationProfile, breakdown: ScoreBreakdown, pre
   }
   if (prefs.maxTransfers === 0 && breakdown.travelEase < 0.66) {
     tradeoffs.push("Przy wymaganiu prostszego lotu moze byc trudniej o naprawde wygodna trase.");
+  }
+  if ((prefs.wantsShortFlight || prefs.logisticsPreference === "easy") && dest.typicalFlightHoursFromPL > 4.2) {
+    tradeoffs.push("To nie jest najmocniejszy wybor, jesli priorytetem ma byc bardzo lekki dolot.");
+  }
+  if (prefs.tripMood === "family" && dest.nightlifeScore > 0.7) {
+    tradeoffs.push("Bardziej zywe dzielnice moga dawac mniej spokojny rodzinny rytm.");
+  }
+  if (prefs.tripMood === "romantic" && dest.cityScore < 0.55 && dest.beachScore < 0.55) {
+    tradeoffs.push("Mniej oczywisty wybor, jesli zalezy Ci na bardziej nastrojowym albo widokowym klimacie.");
+  }
+  if (prefs.wantsWeatherReliability && breakdown.weatherFit < 0.62) {
+    tradeoffs.push("Przy nacisku na pewniejsza pogode inne kierunki beda bardziej przewidywalne.");
   }
 
   return tradeoffs.slice(0, 3);
@@ -163,6 +218,9 @@ export function scoreDestinations(
       destination.accessScore * 0.75 + (1 - destination.typicalFlightHoursFromPL / 8) * 0.25,
     );
     const style = styleMatch(destination, prefs);
+    const logistics = logisticsFit(destination);
+    const mood = moodMatch(destination, prefs);
+    const value = valueFit(budgetFit, travelEase, style);
     const attractions = clamp((destination.cityScore + destination.sightseeingScore + destination.natureScore) / 3);
     const safety = destination.safetyScore;
     const focusMatch = Boolean(prefs.destinationFocus && destination.slug === prefs.destinationFocus);
@@ -171,17 +229,35 @@ export function scoreDestinations(
     let penalties = 0;
     if (prefs.maxTransfers === 0 && destination.typicalFlightHoursFromPL > 4.2) penalties += 0.08;
     if (prefs.durationMaxDays <= 4 && destination.typicalFlightHoursFromPL > 5) penalties += 0.12;
+    if ((prefs.wantsShortFlight || prefs.logisticsPreference === "easy") && destination.typicalFlightHoursFromPL > 4.5) penalties += 0.08;
+    if (prefs.wantsWeatherReliability && weather < 0.62) penalties += 0.06;
     penalties = clamp(penalties, 0, 0.25);
 
-    const total =
-      budgetFit * 0.3 +
-      weather * 0.16 +
-      travelEase * 0.18 +
-      style * 0.2 +
-      attractions * 0.1 +
-      safety * 0.06 -
+    let total =
+      budgetFit * 0.24 +
+      weather * 0.14 +
+      travelEase * 0.16 +
+      style * 0.18 +
+      attractions * 0.08 +
+      safety * 0.06 +
+      value * 0.07 +
+      logistics * 0.04 +
+      mood * 0.03 -
       penalties +
       focusBonus;
+
+    if (prefs.tripMood !== "any") {
+      total += (mood - 0.5) * 0.14;
+    }
+    if (prefs.wantsShortFlight || prefs.logisticsPreference === "easy") {
+      total += (logistics - 0.5) * 0.12;
+    }
+    if (prefs.wantsWeatherReliability) {
+      total += (weather - 0.5) * 0.08;
+    }
+    if (prefs.wantsBeachSightseeingMix && destination.beachScore >= 0.68 && destination.sightseeingScore >= 0.7) {
+      total += 0.06;
+    }
 
     const breakdown: ScoreBreakdown = {
       budgetFit: round(budgetFit),
@@ -190,6 +266,9 @@ export function scoreDestinations(
       styleMatch: round(style),
       attractionPotential: round(attractions),
       safetyQuality: round(safety),
+      valueFit: round(value),
+      logisticsFit: round(logistics),
+      moodFit: round(mood),
       penalties: round(penalties),
     };
 

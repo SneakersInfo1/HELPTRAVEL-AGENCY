@@ -124,13 +124,16 @@ async function runVirtualStandard(input: StandardRequestInput, sessionId: string
     "Pelny ranking redakcyjny dla tego miasta moze byc jeszcze bardziej ograniczony niz dla glownych hubow serwisu.",
   ];
   const breakdown = {
-    budgetFit: 78,
-    weatherFit: 74,
-    travelEase: 72,
-    styleMatch: 84,
-    attractionPotential: 76,
-    safetyQuality: 72,
-    penalties: 6,
+    budgetFit: 0.78,
+    weatherFit: 0.74,
+    travelEase: 0.72,
+    styleMatch: 0.84,
+    attractionPotential: 0.76,
+    safetyQuality: 0.72,
+    valueFit: 0.79,
+    logisticsFit: 0.73,
+    moodFit: 0.81,
+    penalties: 0.06,
   };
 
   const generated = await generateSummaryAndPlan({

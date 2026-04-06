@@ -3,6 +3,8 @@ import type { DestinationMedia } from "./visuals";
 export type DiscoveryMode = "discovery" | "standard";
 export type TemperaturePreference = "any" | "warm" | "hot";
 export type VisaPreference = "any" | "visa_free";
+export type LogisticsPreference = "any" | "easy";
+export type TripMood = "any" | "romantic" | "family" | "solo" | "foodie";
 export type CabinClass = "economy" | "premium_economy" | "business" | "first";
 export type FlightSortMode = "cheap" | "balance" | "direct";
 export type StaySortMode = "cheap" | "quality" | "value";
@@ -18,6 +20,11 @@ export interface DiscoveryPreferences {
   departureMonth?: number;
   temperaturePreference: TemperaturePreference;
   visaPreference: VisaPreference;
+  logisticsPreference: LogisticsPreference;
+  tripMood: TripMood;
+  wantsShortFlight: boolean;
+  wantsWeatherReliability: boolean;
+  wantsBeachSightseeingMix: boolean;
   maxTransfers: number;
   mustTags: string[];
   niceTags: string[];
@@ -69,6 +76,9 @@ export interface ScoreBreakdown {
   styleMatch: number;
   attractionPotential: number;
   safetyQuality: number;
+  valueFit: number;
+  logisticsFit: number;
+  moodFit: number;
   penalties: number;
 }
 
@@ -144,7 +154,11 @@ export interface EventPayload {
     | "discovery_generated"
     | "standard_generated"
     | "affiliate_clicked"
-    | "trip_saved";
+    | "trip_saved"
+    | "planner_restored"
+    | "destination_saved"
+    | "comparison_selected"
+    | "search_saved";
   payload: Record<string, unknown>;
 }
 

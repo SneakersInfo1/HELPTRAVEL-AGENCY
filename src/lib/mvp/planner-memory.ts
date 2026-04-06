@@ -30,9 +30,37 @@ export interface SavedDestinationMemory {
   savedAt: string;
 }
 
+export interface SavedSearchMemory {
+  id: string;
+  mode: "discovery" | "standard";
+  label: string;
+  query: string;
+  destinationHint: string;
+  originCity: string;
+  budget: number;
+  travelers: number;
+  rooms: number;
+  travelStartDate: string;
+  travelNights: number;
+  topDestinationSlug?: string;
+  topDestinationLabel?: string;
+  savedAt: string;
+}
+
+export interface ComparedDestinationMemory {
+  slug: string;
+  city: string;
+  country: string;
+  score?: number;
+  rationale?: string;
+  savedAt: string;
+}
+
 const LAST_PLAN_KEY = "helptravel:last-plan";
 const RECENT_BRIEFS_KEY = "helptravel:recent-briefs";
 const SAVED_DESTINATIONS_KEY = "helptravel:saved-destinations";
+const SAVED_SEARCHES_KEY = "helptravel:saved-searches";
+const COMPARED_DESTINATIONS_KEY = "helptravel:compared-destinations";
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") {
@@ -110,5 +138,47 @@ export function toggleSavedDestination(destination: Omit<SavedDestinationMemory,
     : [{ ...destination, savedAt: new Date().toISOString() }, ...current].slice(0, 12);
 
   writeJson(SAVED_DESTINATIONS_KEY, next);
+  return next;
+}
+
+export function getSavedSearches(limit = 6): SavedSearchMemory[] {
+  return readJson<SavedSearchMemory[]>(SAVED_SEARCHES_KEY, [])
+    .sort((left, right) => right.savedAt.localeCompare(left.savedAt))
+    .slice(0, limit);
+}
+
+export function pushSavedSearch(search: Omit<SavedSearchMemory, "id" | "savedAt">): SavedSearchMemory[] {
+  const baseId = [search.mode, search.label, search.originCity, search.travelStartDate, search.travelNights].join("|").toLowerCase();
+  const next: SavedSearchMemory[] = [
+    {
+      ...search,
+      id: baseId,
+      savedAt: new Date().toISOString(),
+    },
+    ...getSavedSearches(12).filter((item) => item.id !== baseId),
+  ].slice(0, 8);
+
+  writeJson(SAVED_SEARCHES_KEY, next);
+  return next;
+}
+
+export function getComparedDestinations(limit = 6): ComparedDestinationMemory[] {
+  return readJson<ComparedDestinationMemory[]>(COMPARED_DESTINATIONS_KEY, [])
+    .sort((left, right) => right.savedAt.localeCompare(left.savedAt))
+    .slice(0, limit);
+}
+
+export function pushComparedDestination(
+  destination: Omit<ComparedDestinationMemory, "savedAt">,
+): ComparedDestinationMemory[] {
+  const next: ComparedDestinationMemory[] = [
+    {
+      ...destination,
+      savedAt: new Date().toISOString(),
+    },
+    ...getComparedDestinations(10).filter((item) => item.slug !== destination.slug),
+  ].slice(0, 8);
+
+  writeJson(COMPARED_DESTINATIONS_KEY, next);
   return next;
 }

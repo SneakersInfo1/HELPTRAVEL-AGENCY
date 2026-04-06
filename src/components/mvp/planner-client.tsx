@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { startTransition, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
@@ -16,14 +16,20 @@ import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
   getPlannerSnapshot,
+  getComparedDestinations,
+  getSavedSearches,
   getRecentDiscoveryBriefs,
   getSavedDestinations,
+  pushComparedDestination,
   pushRecentDiscoveryBrief,
+  pushSavedSearch,
   savePlannerSnapshot,
   toggleSavedDestination,
+  type ComparedDestinationMemory,
   type PlannerSnapshot,
   type RecentDiscoveryBrief,
   type SavedDestinationMemory,
+  type SavedSearchMemory,
 } from "@/lib/mvp/planner-memory";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate, isoDateToMonth } from "@/lib/mvp/travel-dates";
@@ -82,6 +88,10 @@ const plannerCopy = {
     savedPlans: "Zapisane plany",
     savedPlansBody: "Wrocisz do nich jednym kliknieciem.",
     savedEmpty: "Po pierwszym wyniku tutaj pojawia sie zapisane scenariusze.",
+    savedSearches: "Zapisane wyszukiwania",
+    savedSearchesBody: "Najmocniejsze briefy i gotowe wyszukiwania wracaja bez ponownego ustawiania formularza.",
+    savedSearchesEmpty: "Po pierwszym uruchomieniu planera zapisze sie tutaj najnowszy brief albo gotowe wyszukiwanie.",
+    reopenSearch: "Otworz wyszukiwanie",
     recentBriefs: "Ostatnie briefy",
     recentBriefsBody: "Najmocniejsze zapytania discovery mozesz odtworzyc bez pisania od nowa.",
     continuePlanning: "Kontynuuj planowanie",
@@ -90,6 +100,10 @@ const plannerCopy = {
     savedDestinations: "Zapisane kierunki",
     savedDestinationsBody: "Wlasna shortlista kierunkow do porownania i powrotu.",
     noSavedDestinations: "Po zapisaniu kierunku pojawi sie tutaj szybki dostep do jego strony i planera.",
+    comparisonMemory: "Pamiec porownan",
+    comparisonMemoryBody: "Planner zapamietuje kierunki, ktore porownywales obok glownego wyboru.",
+    comparisonMemoryEmpty: "Kiedy zaczniesz przelaczac alternatywy, pojawia sie tutaj ostatnio porownywane miasta.",
+    compareAgain: "Porownaj ponownie",
     saveTrip: "Zapisz plan",
     savingTrip: "Zapisywanie...",
     saveTripDone: "Plan zapisany",
@@ -149,6 +163,17 @@ const plannerCopy = {
     watchLabel: "Na co uwazac",
     openCatalog: "Otworz katalog kierunkow",
     bookingDeckOnSite: "Na miejscu",
+    decisionLenses: "Lupy decyzyjne",
+    decisionLensesBody: "Zamiast jednego rankingu pokazujemy tez, ktory kierunek wygrywa wartoscia, prostota dolotu i ogolnym dopasowaniem.",
+    lensBestFit: "Najlepszy fit",
+    lensBestValue: "Najlepsza wartosc",
+    lensEasiest: "Najlatwiejszy dolot",
+    lensWarmest: "Najpewniejsza pogoda",
+    lensOpen: "Ustaw ten kierunek",
+    lensTagBestFit: "fit",
+    lensTagBestValue: "value",
+    lensTagEasiest: "easy",
+    lensTagWarmest: "weather",
   },
   en: {
     heroEyebrow: "HelpTravel Planner",
@@ -182,6 +207,10 @@ const plannerCopy = {
     savedPlans: "Saved plans",
     savedPlansBody: "You can return to them in one click.",
     savedEmpty: "Saved scenarios will appear here after the first result.",
+    savedSearches: "Saved searches",
+    savedSearchesBody: "Strong briefs and ready searches are kept so you can reopen them without rebuilding the form.",
+    savedSearchesEmpty: "Your first planner run will save the latest brief or direct search here.",
+    reopenSearch: "Open search",
     recentBriefs: "Recent briefs",
     recentBriefsBody: "Replay your strongest discovery prompts without rewriting them.",
     continuePlanning: "Continue planning",
@@ -190,6 +219,10 @@ const plannerCopy = {
     savedDestinations: "Saved destinations",
     savedDestinationsBody: "A short list of destinations worth revisiting and comparing.",
     noSavedDestinations: "Saved destinations will appear here once you keep a place for later.",
+    comparisonMemory: "Comparison memory",
+    comparisonMemoryBody: "The planner remembers destinations you compared next to the top pick.",
+    comparisonMemoryEmpty: "As soon as you switch between alternatives, your recent comparisons will appear here.",
+    compareAgain: "Compare again",
     saveTrip: "Save plan",
     savingTrip: "Saving...",
     saveTripDone: "Plan saved",
@@ -249,6 +282,17 @@ const plannerCopy = {
     watchLabel: "Watch-outs",
     openCatalog: "Open destination catalog",
     bookingDeckOnSite: "On site",
+    decisionLenses: "Decision lenses",
+    decisionLensesBody: "Instead of a single ranking, we also surface which destination wins on fit, value, easier routing and weather confidence.",
+    lensBestFit: "Best fit",
+    lensBestValue: "Best value",
+    lensEasiest: "Easiest route",
+    lensWarmest: "Best weather",
+    lensOpen: "Set this destination",
+    lensTagBestFit: "fit",
+    lensTagBestValue: "value",
+    lensTagEasiest: "easy",
+    lensTagWarmest: "weather",
   },
 } as const;
 
@@ -275,6 +319,15 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     throw new Error(`Request failed (${response.status}).`);
   }
   return (await response.json()) as T;
+}
+
+function trackClientEvent(eventType: "planner_restored" | "destination_saved" | "comparison_selected" | "search_saved", payload: Record<string, unknown>) {
+  void fetch("/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ eventType, payload }),
+    keepalive: true,
+  }).catch(() => undefined);
 }
 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -353,6 +406,8 @@ export function PlannerClient({
   const [savedTrips, setSavedTrips] = useState<SavedTripView[]>([]);
   const [recentBriefs, setRecentBriefs] = useState<RecentDiscoveryBrief[]>([]);
   const [savedDestinations, setSavedDestinations] = useState<SavedDestinationMemory[]>([]);
+  const [savedSearches, setSavedSearches] = useState<SavedSearchMemory[]>([]);
+  const [comparedDestinations, setComparedDestinations] = useState<ComparedDestinationMemory[]>([]);
   const [lastSnapshot, setLastSnapshot] = useState<PlannerSnapshot | null>(null);
   const [savingTrip, setSavingTrip] = useState(false);
   const autoSearchRef = useRef(false);
@@ -386,6 +441,8 @@ export function PlannerClient({
 
     setRecentBriefs(getRecentDiscoveryBriefs());
     setSavedDestinations(getSavedDestinations());
+    setSavedSearches(getSavedSearches());
+    setComparedDestinations(getComparedDestinations());
     setLastSnapshot(getPlannerSnapshot());
   }, []);
 
@@ -454,6 +511,45 @@ export function PlannerClient({
 
       savePlannerSnapshot(nextSnapshot);
       setLastSnapshot(nextSnapshot);
+
+      const nextSavedSearches = pushSavedSearch({
+        mode: input.mode,
+        label:
+          input.mode === "discovery"
+            ? input.query.slice(0, 82)
+            : `${input.originCity} - ${input.destinationHint}`,
+        query: input.query,
+        destinationHint: input.destinationHint,
+        originCity: input.originCity,
+        budget: input.budget,
+        travelers: input.travelers,
+        rooms: input.rooms,
+        travelStartDate: input.travelStartDate,
+        travelNights: input.travelNights,
+        topDestinationSlug: data.options[0]?.destination.slug,
+        topDestinationLabel: data.options[0]
+          ? `${data.options[0].destination.city}, ${data.options[0].destination.country}`
+          : undefined,
+      });
+      setSavedSearches(nextSavedSearches);
+      trackClientEvent("search_saved", {
+        mode: input.mode,
+        destinationHint: input.destinationHint,
+        query: input.mode === "discovery" ? input.query : input.destinationHint,
+        topDestinationSlug: data.options[0]?.destination.slug,
+      });
+
+      if (data.options[0]) {
+        setComparedDestinations(
+          pushComparedDestination({
+            slug: data.options[0].destination.slug,
+            city: data.options[0].destination.city,
+            country: data.options[0].destination.country,
+            score: data.options[0].score,
+            rationale: data.options[0].reasons[0],
+          }),
+        );
+      }
 
       if (input.mode === "discovery" && input.query.trim().length >= 16) {
         setRecentBriefs(pushRecentDiscoveryBrief(input.query));
@@ -594,6 +690,101 @@ export function PlannerClient({
           "Zgodnosc z najmocniejszymi potrzebami z briefu",
         ];
 
+  const decisionLenses = useMemo<DecisionLensCard[]>(() => {
+    if (!result?.options.length) {
+      return [];
+    }
+
+    const byScore = [...result.options].sort((left, right) => right.score - left.score)[0];
+    const byValue = [...result.options].sort(
+      (left, right) =>
+        right.breakdown.valueFit + right.breakdown.budgetFit * 0.6 - right.breakdown.penalties * 0.4 -
+        (left.breakdown.valueFit + left.breakdown.budgetFit * 0.6 - left.breakdown.penalties * 0.4),
+    )[0];
+    const byEasy = [...result.options].sort(
+      (left, right) =>
+        right.breakdown.logisticsFit + right.breakdown.travelEase * 0.5 - right.breakdown.penalties * 0.5 -
+        (left.breakdown.logisticsFit + left.breakdown.travelEase * 0.5 - left.breakdown.penalties * 0.5),
+    )[0];
+    const byWeather = [...result.options].sort(
+      (left, right) => right.breakdown.weatherFit - left.breakdown.weatherFit,
+    )[0];
+
+    const lensCandidates: DecisionLensCard[] = [
+      {
+        key: "fit",
+        title: text.lensBestFit,
+        body:
+          locale === "en"
+            ? `${byScore.destination.city} wins the broadest match across budget, intent and trip shape.`
+            : `${byScore.destination.city} wygrywa najbardziej pelnym dopasowaniem do briefu, budzetu i rytmu wyjazdu.`,
+        optionId: byScore.itineraryResultId,
+        city: byScore.destination.city,
+        country: byScore.destination.country,
+      },
+      {
+        key: "value",
+        title: text.lensBestValue,
+        body:
+          locale === "en"
+            ? `${byValue.destination.city} keeps the strongest price-to-fit ratio in the current shortlist.`
+            : `${byValue.destination.city} ma najmocniejsza relacje kosztu do sensu wyjazdu w tej shortliscie.`,
+        optionId: byValue.itineraryResultId,
+        city: byValue.destination.city,
+        country: byValue.destination.country,
+      },
+      {
+        key: "easy",
+        title: text.lensEasiest,
+        body:
+          locale === "en"
+            ? `${byEasy.destination.city} looks easiest from Poland when route comfort matters more than pure inspiration.`
+            : `${byEasy.destination.city} wyglada najlatwiej z Polski, gdy liczy sie prostszy dolot i mniej logistyki.`,
+        optionId: byEasy.itineraryResultId,
+        city: byEasy.destination.city,
+        country: byEasy.destination.country,
+      },
+      {
+        key: "weather",
+        title: text.lensWarmest,
+        body:
+          locale === "en"
+            ? `${byWeather.destination.city} gives the strongest weather confidence for the selected window.`
+            : `${byWeather.destination.city} daje najpewniejszy klimat pogodowy dla wybranego terminu.`,
+        optionId: byWeather.itineraryResultId,
+        city: byWeather.destination.city,
+        country: byWeather.destination.country,
+      },
+    ];
+
+    const used = new Set<string>();
+    return lensCandidates.filter((item) => {
+      if (used.has(item.optionId)) {
+        return false;
+      }
+      used.add(item.optionId);
+      return true;
+    });
+  }, [locale, result?.options, text.lensBestFit, text.lensBestValue, text.lensEasiest, text.lensWarmest]);
+
+  const optionLensBadges = useMemo(() => {
+    const map = new Map<string, string[]>();
+
+    for (const lens of decisionLenses) {
+      const label =
+        lens.key === "fit"
+          ? text.lensTagBestFit
+          : lens.key === "value"
+            ? text.lensTagBestValue
+            : lens.key === "easy"
+              ? text.lensTagEasiest
+              : text.lensTagWarmest;
+      map.set(lens.optionId, [...(map.get(lens.optionId) ?? []), label]);
+    }
+
+    return map;
+  }, [decisionLenses, text.lensTagBestFit, text.lensTagBestValue, text.lensTagEasiest, text.lensTagWarmest]);
+
   const applySnapshot = (snapshot: PlannerSnapshot) => {
     setMode(snapshot.mode);
     setQuery(snapshot.query);
@@ -611,6 +802,12 @@ export function PlannerClient({
   const handleRestoreSnapshot = (snapshot: PlannerSnapshot) => {
     applySnapshot(snapshot);
     shouldFocusOffersRef.current = true;
+    trackClientEvent("planner_restored", {
+      mode: snapshot.mode,
+      destinationHint: snapshot.destinationHint,
+      query: snapshot.query,
+      selectedDestinationSlug: snapshot.selectedDestinationSlug,
+    });
     void executePlanner({
       mode: snapshot.mode,
       query: snapshot.query,
@@ -631,13 +828,44 @@ export function PlannerClient({
       return;
     }
 
-    setSavedDestinations(
-      toggleSavedDestination({
+    const nextSavedDestinations = toggleSavedDestination({
         slug: selectedOption.destination.slug,
         city: selectedOption.destination.city,
         country: selectedOption.destination.country,
+      });
+    setSavedDestinations(nextSavedDestinations);
+    trackClientEvent("destination_saved", {
+      slug: selectedOption.destination.slug,
+      city: selectedOption.destination.city,
+      country: selectedOption.destination.country,
+      saved: nextSavedDestinations.some((item) => item.slug === selectedOption.destination.slug),
+    });
+  };
+
+  const handleSelectOption = (optionId: string) => {
+    const chosenOption = result?.options.find((option) => option.itineraryResultId === optionId);
+    setSelectedOptionId(optionId);
+
+    if (!chosenOption) {
+      return;
+    }
+
+    setComparedDestinations(
+      pushComparedDestination({
+        slug: chosenOption.destination.slug,
+        city: chosenOption.destination.city,
+        country: chosenOption.destination.country,
+        score: chosenOption.score,
+        rationale: chosenOption.reasons[0],
       }),
     );
+    trackClientEvent("comparison_selected", {
+      slug: chosenOption.destination.slug,
+      city: chosenOption.destination.city,
+      rank: chosenOption.rank,
+      score: chosenOption.score,
+      mode,
+    });
   };
 
   const refreshSavedTrips = () => {
@@ -966,6 +1194,59 @@ export function PlannerClient({
             <div className="mt-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedSearches}</p>
+                  <p className="mt-1 text-sm text-emerald-900/70">{text.savedSearchesBody}</p>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                  {savedSearches.length}
+                </span>
+              </div>
+              <div className="mt-3 max-h-44 space-y-2 overflow-y-auto pr-1">
+                {savedSearches.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-emerald-900/10 bg-emerald-50/60 px-4 py-4 text-sm text-emerald-900/70">
+                    {text.savedSearchesEmpty}
+                  </p>
+                ) : (
+                  savedSearches.map((search) => (
+                    <button
+                      key={search.id}
+                      type="button"
+                      onClick={() =>
+                        handleRestoreSnapshot({
+                          mode: search.mode,
+                          query: search.query,
+                          destinationHint: search.destinationHint,
+                          originCity: search.originCity,
+                          budget: search.budget,
+                          travelers: search.travelers,
+                          rooms: search.rooms,
+                          durationMin: search.travelNights,
+                          durationMax: search.travelNights,
+                          travelStartDate: search.travelStartDate,
+                          travelNights: search.travelNights,
+                          selectedDestinationSlug: search.topDestinationSlug,
+                          selectedDestinationLabel: search.topDestinationLabel,
+                          savedAt: search.savedAt,
+                        })
+                      }
+                      className="w-full rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-left text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
+                    >
+                      <span className="block font-semibold">{search.topDestinationLabel ?? search.label}</span>
+                      <span className="mt-1 block text-xs text-emerald-700">
+                        {formatShortDate(search.travelStartDate, dateLocale)} / {search.originCity} / {search.travelNights} {text.selectedDatesValue}
+                      </span>
+                      <span className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900">
+                        {text.reopenSearch}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedDestinations}</p>
                   <p className="mt-1 text-sm text-emerald-900/70">{text.savedDestinationsBody}</p>
                 </div>
@@ -989,6 +1270,38 @@ export function PlannerClient({
                         {destination.city}, {destination.country}
                       </span>
                       <span className="text-xs text-emerald-700">{locale === "en" ? "guide" : "przewodnik"}</span>
+                    </LocalizedLink>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.comparisonMemory}</p>
+                  <p className="mt-1 text-sm text-emerald-900/70">{text.comparisonMemoryBody}</p>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                  {comparedDestinations.length}
+                </span>
+              </div>
+              <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
+                {comparedDestinations.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-emerald-900/10 bg-emerald-50/60 px-4 py-4 text-sm text-emerald-900/70">
+                    {text.comparisonMemoryEmpty}
+                  </p>
+                ) : (
+                  comparedDestinations.map((destination) => (
+                    <LocalizedLink
+                      key={`${destination.slug}-${destination.savedAt}`}
+                      href={`/kierunki/${destination.slug}`}
+                      className="flex items-center justify-between rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
+                    >
+                      <span>
+                        {destination.city}, {destination.country}
+                      </span>
+                      <span className="text-xs text-emerald-700">{text.compareAgain}</span>
                     </LocalizedLink>
                   ))
                 )}
@@ -1184,6 +1497,43 @@ export function PlannerClient({
             </article>
           </section>
 
+          {decisionLenses.length > 0 ? (
+            <section className="rounded-[1.9rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div className="max-w-3xl">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.decisionLenses}</p>
+                  <p className="mt-2 text-sm leading-7 text-emerald-900/76">{text.decisionLensesBody}</p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 xl:grid-cols-4">
+                {decisionLenses.map((lens) => {
+                  const activeLens = lens.optionId === selectedOption.itineraryResultId;
+                  return (
+                    <button
+                      key={lens.key}
+                      type="button"
+                      onClick={() => handleSelectOption(lens.optionId)}
+                      className={`rounded-[1.5rem] border p-4 text-left transition ${
+                        activeLens
+                          ? "border-emerald-500/60 bg-emerald-50 shadow-sm"
+                          : "border-emerald-900/10 bg-white hover:-translate-y-0.5 hover:border-emerald-500/40"
+                      }`}
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{lens.title}</p>
+                      <h3 className="mt-2 text-xl font-bold text-emerald-950">
+                        {lens.city}, {lens.country}
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-emerald-900/74">{lens.body}</p>
+                      <span className="mt-4 inline-flex rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white">
+                        {text.lensOpen}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           <section className="grid gap-3 xl:grid-cols-4">
             {bookingDeck.map((card, index) => {
               const cardClassName =
@@ -1330,7 +1680,7 @@ export function PlannerClient({
               return (
                 <article
                   key={option.itineraryResultId}
-                  onClick={() => setSelectedOptionId(option.itineraryResultId)}
+                  onClick={() => handleSelectOption(option.itineraryResultId)}
                   className={`group cursor-pointer overflow-hidden rounded-[1.75rem] border bg-white shadow-[0_16px_40px_rgba(16,84,48,0.07)] transition-all duration-300 ${
                     active
                       ? "border-emerald-500/70 ring-1 ring-emerald-300"
@@ -1357,10 +1707,22 @@ export function PlannerClient({
 
                     <div className="p-5 sm:p-6">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.resultRank} #{option.rank}</p>
-                          <p className="mt-2 text-2xl font-bold text-emerald-950">{scoreLabel(option.score, locale)}</p>
-                        </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.resultRank} #{option.rank}</p>
+                        <p className="mt-2 text-2xl font-bold text-emerald-950">{scoreLabel(option.score, locale)}</p>
+                        {optionLensBadges.get(option.itineraryResultId)?.length ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {optionLensBadges.get(option.itineraryResultId)?.map((badge) => (
+                              <span
+                                key={`${option.itineraryResultId}-${badge}`}
+                                className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900"
+                              >
+                                {badge}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                         <div className="rounded-2xl bg-emerald-700 px-4 py-2 text-right text-white">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-100">{text.score}</p>
                           <p className="text-2xl font-bold">{option.score.toFixed(0)}</p>
@@ -1426,3 +1788,12 @@ export function PlannerClient({
     </div>
   );
 }
+
+type DecisionLensCard = {
+  key: "fit" | "value" | "easy" | "weather";
+  title: string;
+  body: string;
+  optionId: string;
+  city: string;
+  country: string;
+};
