@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { PartnerLogoMark } from "@/components/site/partner-logo";
+import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { formatShortDate } from "@/lib/mvp/travel-dates";
 import type { TransferSearchResponse } from "@/lib/mvp/types";
@@ -231,6 +233,12 @@ export function TransferOffersPanel(props: {
 
               {offer.bookingUrl ? (
                 <div className="mt-4">
+                  {(() => {
+                    const transferPartnerLabel = getAffiliateBrandLabel(
+                      offer.bookingUrl,
+                      locale === "en" ? "Transfer partner" : "Partner transferu",
+                    );
+                    return (
                   <a
                     href={buildRedirectHref({
                       providerKey: "cars",
@@ -241,10 +249,13 @@ export function TransferOffersPanel(props: {
                     })}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-800"
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-800"
                   >
+                    <PartnerLogoMark brand={transferPartnerLabel} size="sm" variant="contrast" />
                     {text.open}
                   </a>
+                    );
+                  })()}
                 </div>
               ) : null}
             </article>

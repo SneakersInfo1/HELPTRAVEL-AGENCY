@@ -5,6 +5,7 @@ import { startTransition, useEffect, useEffectEvent, useRef, useState, type Reac
 
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
+import { PartnerLogoMark } from "@/components/site/partner-logo";
 import { ActivityOffersPanel } from "@/components/mvp/activity-offers-panel";
 import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
@@ -685,6 +686,7 @@ export function PlannerClient({
           {
             eyebrow: text.bookingDeckStay,
             title: stayPartner,
+            brand: stayPartner,
             description: text.bookingDeckStayBody,
             href: buildSelectedRedirectHref("stays", activeAffiliateLinks.stays),
             tone: "primary" as const,
@@ -692,6 +694,7 @@ export function PlannerClient({
           {
             eyebrow: text.bookingDeckFlights,
             title: flightPartner,
+            brand: flightPartner,
             description: text.bookingDeckFlightsBody,
             href: buildSelectedRedirectHref("flights", activeAffiliateLinks.flights),
             tone: "dark" as const,
@@ -699,6 +702,7 @@ export function PlannerClient({
           {
             eyebrow: text.bookingDeckCars,
             title: carPartner,
+            brand: carPartner,
             description: text.bookingDeckCarsBody,
             href: buildSelectedRedirectHref("cars", activeAffiliateLinks.cars),
             tone: "light" as const,
@@ -706,6 +710,7 @@ export function PlannerClient({
           {
             eyebrow: text.bookingDeckActivities,
             title: text.bookingDeckOnSite,
+            brand: locale === "en" ? "Activity partner" : "Partner atrakcji",
             description: text.bookingDeckActivitiesBody,
             href: "#aktywnosci-na-miejscu",
             tone: "light" as const,
@@ -1077,24 +1082,27 @@ export function PlannerClient({
                     href={buildSelectedRedirectHref("stays", activeAffiliateLinks.stays)}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800"
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800"
                   >
+                    <PartnerLogoMark brand={stayPartner} size="sm" variant="contrast" />
                     {text.openStay} {stayPartner}
                   </a>
                   <a
                     href={buildSelectedRedirectHref("flights", activeAffiliateLinks.flights)}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
                   >
+                    <PartnerLogoMark brand={flightPartner} size="sm" />
                     {text.openFlights} {flightPartner}
                   </a>
                   <a
                     href={buildSelectedRedirectHref("cars", activeAffiliateLinks.cars)}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
                   >
+                    <PartnerLogoMark brand={carPartner} size="sm" />
                     {text.openCars} {carPartner}
                   </a>
                   <button
@@ -1202,9 +1210,17 @@ export function PlannerClient({
                   className={`animate-rise-card rounded-[1.7rem] border p-5 transition duration-300 hover:-translate-y-1 ${cardClassName}`}
                 >
                   <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${eyebrowClassName}`}>{card.eyebrow}</p>
-                  <h3 className="mt-3 text-2xl font-bold">{card.title}</h3>
+                  <div className="mt-3 flex items-center gap-3">
+                    <PartnerLogoMark
+                      brand={card.brand}
+                      size="md"
+                      variant={card.tone === "light" ? "brand" : "contrast"}
+                    />
+                    <h3 className="text-2xl font-bold">{card.title}</h3>
+                  </div>
                   <p className={`mt-3 text-sm leading-6 ${descriptionClassName}`}>{card.description}</p>
-                  <span className={`mt-5 inline-flex rounded-full px-4 py-2 text-sm font-bold transition ${buttonClassName}`}>
+                  <span className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${buttonClassName}`}>
+                    <PartnerLogoMark brand={card.brand} size="sm" variant={card.tone === "light" ? "brand" : "neutral"} />
                     {index === 0 ? text.showStay : index === 1 ? text.showFlights : index === 2 ? text.showCars : text.showOnSite}
                   </span>
                 </a>

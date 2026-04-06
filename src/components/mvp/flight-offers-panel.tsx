@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { PartnerLogoMark } from "@/components/site/partner-logo";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { formatShortDate } from "@/lib/mvp/travel-dates";
@@ -68,6 +69,7 @@ export function FlightOffersPanel(props: {
           <p className="mt-2 text-sm leading-6 text-white/72">{text.body}</p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-xs font-semibold text-white">
+          <PartnerLogoMark brand={partnerLabel} size="sm" variant="contrast" />
           {text.partner}: {partnerLabel}
         </div>
       </div>
@@ -96,8 +98,9 @@ export function FlightOffersPanel(props: {
           href={redirectHref}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-300"
+          className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-300"
         >
+          <PartnerLogoMark brand={partnerLabel} size="sm" variant="neutral" />
           {text.openFlights} {partnerLabel}
         </a>
         <span className="text-sm text-white/68">{text.resultsHint}</span>

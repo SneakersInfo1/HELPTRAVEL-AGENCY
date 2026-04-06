@@ -1,3 +1,17 @@
+export type AffiliateBrandId =
+  | "booking"
+  | "cheapoair"
+  | "expedia"
+  | "getrentacar"
+  | "google"
+  | "hotels"
+  | "klook"
+  | "localrent"
+  | "tiqets"
+  | "travelpayouts"
+  | "vrbo"
+  | "generic";
+
 function extractComparableUrl(input: string): string {
   try {
     const parsed = new URL(input);
@@ -22,19 +36,54 @@ function normalizeHostname(url: string): string {
   }
 }
 
-export function getAffiliateBrandLabel(url?: string, fallback = "Partner"): string {
-  const hostname = normalizeHostname(url ?? "");
+function identifyBrandId(source?: string): AffiliateBrandId | null {
+  const hostname = normalizeHostname(source ?? "");
+  const normalizedSource = source?.toLowerCase() ?? "";
 
-  if (hostname.includes("cheapoair")) return "CheapOair";
-  if (hostname.includes("booking")) return "Booking.com";
-  if (hostname.includes("hotels.com")) return "Hotels.com";
-  if (hostname.includes("expedia")) return "Expedia";
-  if (hostname.includes("vrbo")) return "Vrbo";
-  if (hostname.includes("klook")) return "Klook";
-  if (hostname.includes("tiqets")) return "Tiqets";
-  if (hostname.includes("localrent")) return "Localrent";
-  if (hostname.includes("google")) return "Partner discovery";
-  if (hostname.includes("travelpayouts")) return "Travelpayouts";
+  if (hostname.includes("cheapoair") || normalizedSource.includes("cheapoair")) return "cheapoair";
+  if (hostname.includes("booking") || normalizedSource.includes("booking.com")) return "booking";
+  if (hostname.includes("hotels.com") || normalizedSource.includes("hotels.com")) return "hotels";
+  if (hostname.includes("expedia") || normalizedSource.includes("expedia")) return "expedia";
+  if (hostname.includes("vrbo") || normalizedSource.includes("vrbo")) return "vrbo";
+  if (hostname.includes("klook") || normalizedSource.includes("klook")) return "klook";
+  if (hostname.includes("tiqets") || normalizedSource.includes("tiqets")) return "tiqets";
+  if (hostname.includes("localrent") || normalizedSource.includes("localrent")) return "localrent";
+  if (hostname.includes("getrentacar") || normalizedSource.includes("getrentacar")) return "getrentacar";
+  if (hostname.includes("google") || normalizedSource.includes("google")) return "google";
+  if (hostname.includes("travelpayouts") || normalizedSource.includes("travelpayouts")) return "travelpayouts";
 
-  return fallback;
+  return null;
+}
+
+export function getAffiliateBrandId(source?: string, fallback: AffiliateBrandId = "generic"): AffiliateBrandId {
+  return identifyBrandId(source) ?? fallback;
+}
+
+export function getAffiliateBrandLabel(source?: string, fallback = "Partner"): string {
+  switch (getAffiliateBrandId(source)) {
+    case "cheapoair":
+      return "CheapOair";
+    case "booking":
+      return "Booking.com";
+    case "hotels":
+      return "Hotels.com";
+    case "expedia":
+      return "Expedia";
+    case "vrbo":
+      return "Vrbo";
+    case "klook":
+      return "Klook";
+    case "tiqets":
+      return "Tiqets";
+    case "localrent":
+      return "Localrent";
+    case "getrentacar":
+      return "GetRentacar";
+    case "google":
+      return "Partner discovery";
+    case "travelpayouts":
+      return "Travelpayouts";
+    default:
+      return fallback;
+  }
 }

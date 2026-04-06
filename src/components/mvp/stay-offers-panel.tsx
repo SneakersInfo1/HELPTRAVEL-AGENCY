@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { PartnerLogoMark } from "@/components/site/partner-logo";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { buildCjStayLinks } from "@/lib/mvp/cj-stays";
@@ -338,7 +339,10 @@ export function StayOffersPanel(props: {
                 className="rounded-[1.2rem] border border-emerald-900/10 bg-emerald-950 px-4 py-3 text-white transition hover:-translate-y-0.5 hover:bg-emerald-900"
               >
                 <span className="block text-[11px] uppercase tracking-[0.16em] text-emerald-200">{partner.eyebrow}</span>
-                <span className="mt-1 block text-sm font-semibold">{partner.label}</span>
+                <span className="mt-2 flex items-center gap-2 text-sm font-semibold">
+                  <PartnerLogoMark brand={partner.label} size="sm" />
+                  <span>{partner.label}</span>
+                </span>
               </a>
             ))}
           </div>
@@ -431,6 +435,9 @@ export function StayOffersPanel(props: {
 
                     <div className="mt-5 flex flex-wrap gap-2">
                       {topOffer.bookingUrl ? (
+                        (() => {
+                          const topOfferPartnerLabel = getAffiliateBrandLabel(topOffer.bookingUrl, partnerButtons[0]?.label ?? "Partner");
+                          return (
                         <a
                           href={buildRedirectHref({
                             providerKey: "stays",
@@ -441,18 +448,22 @@ export function StayOffersPanel(props: {
                           })}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-800"
+                          className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-800"
                         >
+                          <PartnerLogoMark brand={topOfferPartnerLabel} size="sm" variant="contrast" />
                           {text.showThisStay}
                         </a>
+                          );
+                        })()
                       ) : null}
                       {partnerButtons[0] ? (
                         <a
                           href={partnerButtons[0].href}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center rounded-full border border-emerald-900/12 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:-translate-y-0.5 hover:bg-emerald-50"
+                          className="inline-flex items-center gap-2 rounded-full border border-emerald-900/12 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:-translate-y-0.5 hover:bg-emerald-50"
                         >
+                          <PartnerLogoMark brand={partnerButtons[0].label} size="sm" />
                           {text.compareAlso} {partnerButtons[0].label}
                         </a>
                       ) : null}
@@ -515,6 +526,9 @@ export function StayOffersPanel(props: {
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {offer.bookingUrl ? (
+                        (() => {
+                          const offerPartnerLabel = getAffiliateBrandLabel(offer.bookingUrl, partnerButtons[0]?.label ?? "Partner");
+                          return (
                         <a
                           href={buildRedirectHref({
                             providerKey: "stays",
@@ -525,18 +539,22 @@ export function StayOffersPanel(props: {
                           })}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+                          className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
                         >
+                          <PartnerLogoMark brand={offerPartnerLabel} size="sm" variant="contrast" />
                           {text.checkStay}
                         </a>
+                          );
+                        })()
                       ) : null}
                       {partnerButtons[0] ? (
                         <a
                           href={partnerButtons[0].href}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center rounded-full border border-emerald-900/12 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
+                          className="inline-flex items-center gap-2 rounded-full border border-emerald-900/12 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
                         >
+                          <PartnerLogoMark brand={partnerButtons[0].label} size="sm" />
                           {text.compareIn} {partnerButtons[0].label}
                         </a>
                       ) : null}
@@ -560,7 +578,10 @@ export function StayOffersPanel(props: {
                   className="rounded-[1.35rem] border border-emerald-900/10 bg-emerald-950 px-4 py-4 text-white transition hover:-translate-y-0.5 hover:bg-emerald-900"
                 >
                   <span className="block text-[11px] uppercase tracking-[0.16em] text-emerald-200">{partner.eyebrow}</span>
-                  <span className="mt-2 block text-base font-semibold">{partner.label}</span>
+                  <span className="mt-2 flex items-center gap-2 text-base font-semibold">
+                    <PartnerLogoMark brand={partner.label} size="sm" />
+                    <span>{partner.label}</span>
+                  </span>
                   <span className="mt-2 block text-sm text-white/72">
                     {formatShortDate(props.checkInDate, locale === "en" ? "en-GB" : "pl-PL")} - {formatShortDate(checkOutDate, locale === "en" ? "en-GB" : "pl-PL")}
                   </span>

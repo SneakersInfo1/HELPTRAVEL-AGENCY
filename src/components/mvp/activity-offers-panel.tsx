@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { PartnerLogoMark } from "@/components/site/partner-logo";
+import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { formatShortDate } from "@/lib/mvp/travel-dates";
 import type { ActivitySearchResponse } from "@/lib/mvp/types";
@@ -209,6 +211,12 @@ export function ActivityOffersPanel(props: {
                   {offer.duration ? <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">{offer.duration}</p> : null}
                   {offer.bookingUrl ? (
                     <div className="mt-4">
+                      {(() => {
+                        const activityPartnerLabel = getAffiliateBrandLabel(
+                          offer.bookingUrl,
+                          locale === "en" ? "Activity partner" : "Partner atrakcji",
+                        );
+                        return (
                       <a
                         href={buildRedirectHref({
                           providerKey: "attractions",
@@ -219,10 +227,13 @@ export function ActivityOffersPanel(props: {
                         })}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+                        className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
                       >
+                        <PartnerLogoMark brand={activityPartnerLabel} size="sm" variant="contrast" />
                         {text.open}
                       </a>
+                        );
+                      })()}
                     </div>
                   ) : null}
                 </div>

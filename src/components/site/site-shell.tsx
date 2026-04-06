@@ -6,6 +6,7 @@ import { useMemo, useState, type ReactNode } from "react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { LanguageSwitcher } from "@/components/site/language-switcher";
+import { PartnerLogoWordmark, TRUSTED_PARTNERS } from "@/components/site/partner-logo";
 import { useLanguage } from "@/components/site/language-provider";
 
 const copy = {
@@ -31,6 +32,8 @@ const copy = {
     footerLead: "Planer podrozy i serwis z przewodnikami pod realne decyzje wyjazdowe.",
     footerBody:
       "Laczymy inspiracje, katalog kierunkow i planner, ktory prowadzi do hoteli, lotow i kolejnych krokow wyjazdu.",
+    partnerStripEyebrow: "Partnerzy, z ktorymi pracujemy",
+    partnerStripBody: "Najmocniejsze przejscia komercyjne prowadzimy do sprawdzonych marek w noclegach, lotach i atrakcjach.",
     footerColumns: [
       {
         title: "Odkrywaj",
@@ -88,6 +91,8 @@ const copy = {
     footerLead: "Trip planner and travel content built for real booking decisions.",
     footerBody:
       "We combine destination discovery, editorial guidance and a planner that moves users toward stays, flights and next travel steps.",
+    partnerStripEyebrow: "Trusted commercial partners",
+    partnerStripBody: "Our strongest outbound actions lead into established brands across stays, flights and in-destination services.",
     footerColumns: [
       {
         title: "Discover",
@@ -252,7 +257,21 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <div className="flex flex-1 flex-col">{children}</div>
 
       <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/92 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr]">
+        <div className="rounded-[1.7rem] border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(234,247,239,0.78),rgba(255,255,255,0.96))] p-5 shadow-sm">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.partnerStripEyebrow}</p>
+              <p className="mt-2 text-sm leading-7 text-emerald-900/74">{text.partnerStripBody}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {TRUSTED_PARTNERS.map((partner) => (
+              <PartnerLogoWordmark key={partner} brand={partner} />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr]">
           <div>
             <Image
               src="/branding/helptravel-logo.png"
