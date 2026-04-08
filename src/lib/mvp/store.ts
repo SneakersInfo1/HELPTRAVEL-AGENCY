@@ -331,37 +331,41 @@ export async function saveTripRecord(args: {
 }): Promise<SavedTripRow> {
   const prisma = await getPrisma();
   if (prisma) {
-    const existing = await prisma.savedTrip.findFirst({
-      where: {
-        sessionId: args.sessionId,
-        itineraryResultId: args.itineraryResultId,
-      },
-    });
+    try {
+      const existing = await prisma.savedTrip.findFirst({
+        where: {
+          sessionId: args.sessionId,
+          itineraryResultId: args.itineraryResultId,
+        },
+      });
 
-    if (existing) {
-      if (typeof args.snapshotJson !== "undefined") {
-        await prisma.savedTrip.update({
-          where: { id: existing.id },
-          data: {
+      if (existing) {
+        if (typeof args.snapshotJson !== "undefined") {
+          await prisma.savedTrip.update({
+            where: { id: existing.id },
+            data: {
+              snapshotJson: args.snapshotJson,
+            },
+          });
+          return {
+            ...(existing as SavedTripRow),
             snapshotJson: args.snapshotJson,
-          },
-        });
-        return {
-          ...(existing as SavedTripRow),
-          snapshotJson: args.snapshotJson,
-        };
+          };
+        }
+        return existing as SavedTripRow;
       }
-      return existing as SavedTripRow;
-    }
 
-    return (await prisma.savedTrip.create({
-      data: {
-        id: args.id,
-        sessionId: args.sessionId,
-        itineraryResultId: args.itineraryResultId,
-        snapshotJson: args.snapshotJson,
-      },
-    })) as SavedTripRow;
+      return (await prisma.savedTrip.create({
+        data: {
+          id: args.id,
+          sessionId: args.sessionId,
+          itineraryResultId: args.itineraryResultId,
+          snapshotJson: args.snapshotJson,
+        },
+      })) as SavedTripRow;
+    } catch (error) {
+      console.warn("SavedTrip persistence fell back to memory store.", error);
+    }
   }
 
   const store = getMemoryStore();
@@ -438,34 +442,62 @@ export async function getItineraryById(
 > {
   const prisma = await getPrisma();
   if (prisma) {
-    const itinerary = await prisma.itineraryResult.findUnique({
-      where: { id: itineraryResultId },
-      include: {
-        tripRequest: true,
-        destination: true,
-        savedTrips: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
+    try {
+      const itinerary = await prisma.itineraryResult.findUnique({
+        where: { id: itineraryResultId },
+        include: {
+          tripRequest: true,
+          destination: true,
+          savedTrips: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
         },
-      },
-    });
+      });
 
-    if (!itinerary) return null;
+      if (!itinerary) return null;
 
-    const score = await prisma.destinationScore.findFirst({
-      where: {
-        tripRequestId: itinerary.tripRequestId,
-        destinationId: itinerary.destinationId,
-      },
-    });
+      const score = await prisma.destinationScore.findFirst({
+        where: {
+          tripRequestId: itinerary.tripRequestId,
+          destinationId: itinerary.destinationId,
+        },
+      });
 
-    return {
-      itinerary: itinerary as ItineraryRow,
-      tripRequest: itinerary.tripRequest as TripRequestRow,
-      destination: toDestinationProfile(itinerary.destination),
-      score: (score as DestinationScoreRow | null) ?? undefined,
-      savedTrip: (itinerary.savedTrips?.[0] as SavedTripRow | undefined) ?? undefined,
-    };
+      return {
+        itinerary: itinerary as ItineraryRow,
+        tripRequest: itinerary.tripRequest as TripRequestRow,
+        destination: toDestinationProfile(itinerary.destination),
+        score: (score as DestinationScoreRow | null) ?? undefined,
+        savedTrip: (itinerary.savedTrips?.[0] as SavedTripRow | undefined) ?? undefined,
+      };
+    } catch (error) {
+      console.warn("SavedTrip relation lookup fell back to itinerary-only query.", error);
+      const itinerary = await prisma.itineraryResult.findUnique({
+        where: { id: itineraryResultId },
+        include: {
+          tripRequest: true,
+          destination: true,
+        },
+      });
+
+      if (!itinerary) return null;
+
+      const score = await prisma.destinationScore.findFirst({
+        where: {
+          tripRequestId: itinerary.tripRequestId,
+          destinationId: itinerary.destinationId,
+        },
+      });
+
+      return {
+        itinerary: itinerary as ItineraryRow,
+        tripRequest: itinerary.tripRequest as TripRequestRow,
+        destination: toDestinationProfile(itinerary.destination),
+        score: (score as DestinationScoreRow | null) ?? undefined,
+        savedTrip: undefined,
+      };
+    }
   }
 
   const store = getMemoryStore();
@@ -502,44 +534,48 @@ export async function listSavedTripsBySession(sessionId: string): Promise<
 > {
   const prisma = await getPrisma();
   if (prisma) {
-    const rows = await prisma.savedTrip.findMany({
-      where: { sessionId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        itineraryResult: {
-          include: {
-            tripRequest: true,
-            destination: true,
+    try {
+      const rows = await prisma.savedTrip.findMany({
+        where: { sessionId },
+        orderBy: { createdAt: "desc" },
+        include: {
+          itineraryResult: {
+            include: {
+              tripRequest: true,
+              destination: true,
+            },
           },
         },
-      },
-    });
-
-    const output: Array<{
-      savedTrip: SavedTripRow;
-      itinerary: ItineraryRow;
-      tripRequest: TripRequestRow;
-      destination: DestinationProfile;
-      score?: DestinationScoreRow;
-    }> = [];
-
-    for (const row of rows) {
-      const score = await prisma.destinationScore.findFirst({
-        where: {
-          tripRequestId: row.itineraryResult.tripRequestId,
-          destinationId: row.itineraryResult.destinationId,
-        },
       });
 
-      output.push({
-        savedTrip: row as SavedTripRow,
-        itinerary: row.itineraryResult as ItineraryRow,
-        tripRequest: row.itineraryResult.tripRequest as TripRequestRow,
-        destination: toDestinationProfile(row.itineraryResult.destination),
-        score: (score as DestinationScoreRow | null) ?? undefined,
-      });
+      const output: Array<{
+        savedTrip: SavedTripRow;
+        itinerary: ItineraryRow;
+        tripRequest: TripRequestRow;
+        destination: DestinationProfile;
+        score?: DestinationScoreRow;
+      }> = [];
+
+      for (const row of rows) {
+        const score = await prisma.destinationScore.findFirst({
+          where: {
+            tripRequestId: row.itineraryResult.tripRequestId,
+            destinationId: row.itineraryResult.destinationId,
+          },
+        });
+
+        output.push({
+          savedTrip: row as SavedTripRow,
+          itinerary: row.itineraryResult as ItineraryRow,
+          tripRequest: row.itineraryResult.tripRequest as TripRequestRow,
+          destination: toDestinationProfile(row.itineraryResult.destination),
+          score: (score as DestinationScoreRow | null) ?? undefined,
+        });
+      }
+      return output;
+    } catch (error) {
+      console.warn("SavedTrip history fell back to memory store.", error);
     }
-    return output;
   }
 
   const store = getMemoryStore();
