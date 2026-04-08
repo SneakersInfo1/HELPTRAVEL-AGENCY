@@ -200,6 +200,10 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
     description: `${guide.overview} Idealnie na ${tripLength}. Orientacyjny budzet dla 2 osob: ${budget.min}-${budget.max} PLN.`,
     alternates: {
       canonical: `/kierunki/${guide.destination.slug}`,
+      languages: {
+        "pl-PL": `/kierunki/${guide.destination.slug}`,
+        "en-US": `/en/kierunki/${guide.destination.slug}`,
+      },
     },
     openGraph: {
       title: `${guide.destination.city} - przewodnik HelpTravel pod realna decyzje wyjazdowa`,
@@ -357,6 +361,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.12)_0%,rgba(5,18,11,0.72)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
             <Breadcrumbs
+              locale="pl"
               items={[
                 { label: "Start", href: "/" },
                 { label: "Kierunki", href: "/kierunki" },
@@ -376,7 +381,12 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               ))}
             </div>
             <div className="mt-5">
-              <SaveDestinationButton slug={guide.destination.slug} city={guide.destination.city} country={guide.destination.country} />
+              <SaveDestinationButton
+                slug={guide.destination.slug}
+                city={guide.destination.city}
+                country={guide.destination.country}
+                locale="pl"
+              />
             </div>
           </div>
         </div>
@@ -777,7 +787,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             {relatedArticles.map((article) => (
-              <EditorialArticleCard key={article.slug} article={article} compact />
+              <EditorialArticleCard key={article.slug} article={article} compact locale="pl" />
             ))}
           </div>
         </section>
@@ -798,6 +808,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                 destination={item.destination}
                 media={item.media}
                 summary={item.guide.overview}
+                locale="pl"
               />
             ) : null,
           )}

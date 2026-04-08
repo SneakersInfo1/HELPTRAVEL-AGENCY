@@ -13,6 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/planner",
     "/en/planner",
     "/kierunki",
+    "/en/kierunki",
     "/inspiracje",
     "/mapa-serwisu",
     "/jak-pracujemy",
@@ -27,21 +28,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const categoryRoutes = getEditorialCategories().map((category) => `/${category.slug}`);
   const destinationRoutes = getAllDestinationProfiles().map((destination) => `/kierunki/${destination.slug}`);
+  const englishDestinationRoutes = getAllDestinationProfiles().map((destination) => `/en/kierunki/${destination.slug}`);
   const articleRoutes = getEditorialArticles().map((article) => `/inspiracje/${article.slug}`);
 
-  return [...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...articleRoutes].map((route) => ({
+  return [...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...englishDestinationRoutes, ...articleRoutes].map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified: baseLastModified,
     changeFrequency:
       route === "" || route === "/en"
         ? "daily"
-        : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/")
+        : route.startsWith("/kierunki/") || route.startsWith("/en/kierunki/") || route.startsWith("/inspiracje/")
           ? "weekly"
           : "monthly",
     priority:
       route === "" || route === "/en"
         ? 1
-        : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/")
+        : route.startsWith("/kierunki/") || route.startsWith("/en/kierunki/") || route.startsWith("/inspiracje/")
           ? 0.8
           : 0.65,
   }));

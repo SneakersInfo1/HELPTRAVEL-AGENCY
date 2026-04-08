@@ -39,7 +39,7 @@ export function stripLocalePrefix(pathname: string): string {
 }
 
 function supportsLocalePrefix(pathname: string): boolean {
-  return pathname === "/" || pathname === "/planner";
+  return pathname === "/" || pathname === "/planner" || pathname === "/kierunki" || pathname.startsWith("/kierunki/");
 }
 
 function ensureLeadingSlash(pathname: string): string {

@@ -5,6 +5,8 @@ import { DestinationGuideCard } from "@/components/publisher/destination-guide-c
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { getDestinationCatalogByRegion } from "@/lib/mvp/destination-catalog";
+import { getDestinationStory } from "@/lib/mvp/destination-content";
+import { getLocalizedCategoryTitle, getLocalizedDestinationGuide } from "@/lib/mvp/destination-localization";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { getDestinationGuideBySlug, getEditorialCategories, getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -94,11 +96,18 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
     allDestinations.map((destination) => [`${destination.city}|${destination.country}`, destination.slug]),
   );
   const cards = await Promise.all(
-    destinations.map(async (destination) => ({
-      destination,
-      guide: getDestinationGuideBySlug(destination.slug),
-      media: await resolveDestinationMedia(destination),
-    })),
+    destinations.map(async (destination) => {
+      const guide = getDestinationGuideBySlug(destination.slug);
+      const story = getDestinationStory(destination);
+
+      return {
+        destination,
+        guide,
+        story,
+        localizedGuide: guide ? getLocalizedDestinationGuide(guide, story, locale) : null,
+        media: await resolveDestinationMedia(destination),
+      };
+    }),
   );
   const structuredData = {
     "@context": "https://schema.org",
@@ -117,7 +126,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
           .map((item, index) => ({
             "@type": "ListItem",
             position: index + 1,
-            url: `${getSiteUrl()}/kierunki/${item.destination.slug}`,
+            url: `${getSiteUrl()}${locale === "en" ? "/en" : ""}/kierunki/${item.destination.slug}`,
             name: item.destination.city,
           })),
       },
@@ -148,7 +157,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
               locale={locale}
               className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900 transition hover:bg-emerald-100"
             >
-              {category.title}
+              {getLocalizedCategoryTitle(category.slug, category.title, locale)}
             </LocalizedLink>
           ))}
         </div>
@@ -167,7 +176,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
               key={item.destination.slug}
               destination={item.destination}
               media={item.media}
-              summary={item.guide.overview}
+              summary={item.localizedGuide?.overview ?? item.guide.overview}
               locale={locale}
             />
           ) : null,
