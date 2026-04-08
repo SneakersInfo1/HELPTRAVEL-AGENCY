@@ -85,6 +85,7 @@ model SavedTrip {
   id                String   @id
   sessionId         String
   itineraryResultId String
+  snapshotJson      Json?
   createdAt         DateTime @default(now())
 
   session         AnonymousSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)

@@ -129,6 +129,22 @@ export interface StandardRequestInput {
   style?: string;
 }
 
+export interface SavedTripSnapshot {
+  mode: DiscoveryMode;
+  query: string;
+  destinationHint: string;
+  originCity: string;
+  budget: number;
+  travelers: number;
+  rooms: number;
+  durationMin: number;
+  durationMax: number;
+  travelStartDate: string;
+  travelNights: number;
+  selectedDestinationSlug?: string;
+  selectedDestinationLabel?: string;
+}
+
 export interface SavedTripView {
   savedTripId: string;
   requestId: string;
@@ -146,6 +162,7 @@ export interface SavedTripView {
   tradeoffs: string[];
   affiliateLinks: AffiliateLinks;
   createdAt: string;
+  snapshot?: SavedTripSnapshot;
 }
 
 export interface EventPayload {

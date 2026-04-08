@@ -20,6 +20,8 @@ export async function getAnalyticsSummary(): Promise<{
   affiliateClicks: number;
   retentionActions: number;
   comparisonEvents: number;
+  topClickProviders: Array<{ key: string; count: number }>;
+  topClickSources: Array<{ key: string; count: number }>;
   topQueries: Array<{ key: string; count: number }>;
   topDestinations: Array<{ key: string; count: number }>;
   topEventTypes: Array<{ key: string; count: number }>;
@@ -35,6 +37,18 @@ export async function getAnalyticsSummary(): Promise<{
     ["trip_saved", "planner_restored", "destination_saved", "search_saved"].includes(event.eventType),
   ).length;
   const comparisonEvents = base.events.filter((event) => event.eventType === "comparison_selected").length;
+  const topClickProviders = topEntries(base.clicks.map((click) => click.provider), 6);
+  const topClickSources = topEntries(
+    base.clicks.map((click) => {
+      if (!click.contextJson || typeof click.contextJson !== "object") {
+        return "";
+      }
+
+      const source = (click.contextJson as Record<string, unknown>).source;
+      return typeof source === "string" ? source : "";
+    }),
+    6,
+  );
 
   const topQueries = topEntries(base.tripRequests.map((request) => request.rawQuery), 6);
 
@@ -54,6 +68,8 @@ export async function getAnalyticsSummary(): Promise<{
     affiliateClicks,
     retentionActions,
     comparisonEvents,
+    topClickProviders,
+    topClickSources,
     topQueries,
     topDestinations,
     topEventTypes,

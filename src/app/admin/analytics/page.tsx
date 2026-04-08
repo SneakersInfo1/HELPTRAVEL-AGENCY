@@ -82,6 +82,29 @@ export default async function AnalyticsPage() {
           </ul>
         </article>
       </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
+          <h2 className="text-lg font-bold text-emerald-950">Klikniecia po partnerach</h2>
+          <ul className="mt-3 space-y-2 text-sm text-emerald-900/85">
+            {summary.topClickProviders.map((item) => (
+              <li key={item.key} className="rounded-lg bg-emerald-50/70 px-3 py-2">
+                {item.key} <span className="font-semibold">({item.count})</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+        <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
+          <h2 className="text-lg font-bold text-emerald-950">Klikniecia po zrodle</h2>
+          <ul className="mt-3 space-y-2 text-sm text-emerald-900/85">
+            {summary.topClickSources.map((item) => (
+              <li key={item.key} className="rounded-lg bg-emerald-50/70 px-3 py-2">
+                {item.key} <span className="font-semibold">({item.count})</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+      </section>
     </main>
   );
 }

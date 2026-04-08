@@ -9,11 +9,12 @@ import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
 import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
+import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { getDestinationMedia } from "@/lib/mvp/commercial-assets";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { buildRedirectHref } from "@/lib/mvp/providers";
-import { addDaysToIsoDate, defaultTravelStartDate } from "@/lib/mvp/travel-dates";
+import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib/mvp/travel-dates";
 import { getTrip } from "@/lib/mvp/service";
 
 export const metadata: Metadata = {
@@ -60,6 +61,37 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const destinationWithMedia = { ...fallbackDestination, media };
   const story = getDestinationStory(destinationWithMedia);
   const resolvedMedia = getDestinationMedia(destinationWithMedia);
+  const snapshot = trip.snapshot;
+  const tripOriginCity = snapshot?.originCity || "Warszawa";
+  const tripTravelers = snapshot?.travelers ?? 2;
+  const tripRooms = snapshot?.rooms ?? 1;
+  const tripStartDate = snapshot?.travelStartDate || defaultTravelStartDate();
+  const tripNights = snapshot?.travelNights ?? 4;
+  const tripCheckOutDate = addDaysToIsoDate(tripStartDate, tripNights);
+  const plannerParams = new URLSearchParams({
+    mode: snapshot?.mode ?? trip.mode,
+    q: snapshot?.mode === "discovery" ? snapshot.query : snapshot?.destinationHint || trip.city,
+    origin: tripOriginCity,
+    destination: snapshot?.destinationHint || trip.city,
+    startDate: tripStartDate,
+    nights: String(tripNights),
+    travelers: String(tripTravelers),
+    budget: String(snapshot?.budget ?? trip.estimatedBudgetMax),
+    days: String(snapshot?.travelNights ?? tripNights),
+  });
+  const plannerHref = `/planner?${plannerParams.toString()}`;
+  const destinationGuideHref = `/kierunki/${trip.destinationSlug}`;
+  const decisionBrief = snapshot?.mode === "discovery" ? snapshot.query : snapshot?.destinationHint || trip.city;
+  const contextualAffiliateLinks = buildAffiliateLinksWithContext({
+    city: trip.city,
+    country: trip.country,
+    originCity: tripOriginCity,
+    departureDate: tripStartDate,
+    checkInDate: tripStartDate,
+    checkOutDate: tripCheckOutDate,
+    passengers: tripTravelers,
+    rooms: tripRooms,
+  });
 
   const buildTripRedirectHref = (providerKey: "flights" | "stays" | "attractions" | "cars", targetUrl: string) =>
     buildRedirectHref({
@@ -73,17 +105,14 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
       source: "trip",
     });
 
-  const flightLink = buildTripRedirectHref("flights", trip.affiliateLinks.flights);
-  const stayLink = buildTripRedirectHref("stays", trip.affiliateLinks.stays);
-  const attractionLink = buildTripRedirectHref("attractions", trip.affiliateLinks.attractions);
-  const carLink = buildTripRedirectHref("cars", trip.affiliateLinks.cars);
-  const flightPartner = getAffiliateBrandLabel(trip.affiliateLinks.flights, "Partner lotniczy");
-  const stayPartner = getAffiliateBrandLabel(trip.affiliateLinks.stays, "Partner hotelowy");
-  const attractionPartner = getAffiliateBrandLabel(trip.affiliateLinks.attractions, "Partner atrakcji");
-  const carPartner = getAffiliateBrandLabel(trip.affiliateLinks.cars, "Partner aut");
-  const tripStartDate = defaultTravelStartDate();
-  const tripNights = 4;
-  const tripCheckOutDate = addDaysToIsoDate(tripStartDate, tripNights);
+  const flightLink = buildTripRedirectHref("flights", contextualAffiliateLinks.flights);
+  const stayLink = buildTripRedirectHref("stays", contextualAffiliateLinks.stays);
+  const attractionLink = buildTripRedirectHref("attractions", contextualAffiliateLinks.attractions);
+  const carLink = buildTripRedirectHref("cars", contextualAffiliateLinks.cars);
+  const flightPartner = getAffiliateBrandLabel(contextualAffiliateLinks.flights, "Partner lotniczy");
+  const stayPartner = getAffiliateBrandLabel(contextualAffiliateLinks.stays, "Partner hotelowy");
+  const attractionPartner = getAffiliateBrandLabel(contextualAffiliateLinks.attractions, "Partner atrakcji");
+  const carPartner = getAffiliateBrandLabel(contextualAffiliateLinks.cars, "Partner aut");
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -99,7 +128,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/84">{trip.summary}</p>
           </div>
         </div>
-        <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
+        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4 sm:p-6">
           <div className="rounded-2xl bg-emerald-50/75 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Wynik</p>
             <p className="mt-1 text-2xl font-bold text-emerald-950">{trip.score.toFixed(0)}</p>
@@ -107,6 +136,18 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           <div className="rounded-2xl bg-emerald-50/75 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Klimat miejsca</p>
             <p className="mt-1 text-sm font-semibold text-emerald-950">{story.vibe}</p>
+          </div>
+          <div className="rounded-2xl bg-emerald-50/75 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Termin</p>
+            <p className="mt-1 text-sm font-semibold text-emerald-950">
+              {formatShortDate(tripStartDate, "pl-PL")} - {formatShortDate(tripCheckOutDate, "pl-PL")}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-emerald-50/75 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Sklad podrozy</p>
+            <p className="mt-1 text-sm font-semibold text-emerald-950">
+              {tripOriginCity} / {tripTravelers} os. / {tripRooms} {tripRooms === 1 ? "pokoj" : tripRooms < 5 ? "pokoje" : "pokoi"}
+            </p>
           </div>
         </div>
       </section>
@@ -131,16 +172,16 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           destinationCountry={trip.country}
           checkInDate={tripStartDate}
           nights={tripNights}
-          guests={2}
-          rooms={1}
+          guests={tripTravelers}
+          rooms={tripRooms}
         />
         <FlightOffersPanel
           destinationCity={trip.city}
           destinationCountry={trip.country}
-          originCity="Warszawa"
+          originCity={tripOriginCity}
           departureDate={tripStartDate}
-          passengers={2}
-          partnerUrl={trip.affiliateLinks.flights}
+          passengers={tripTravelers}
+          partnerUrl={contextualAffiliateLinks.flights}
         />
       </div>
 
@@ -150,14 +191,77 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
         destinationCountry={trip.country}
         fromDate={tripStartDate}
         toDate={tripCheckOutDate}
-        travelers={2}
+        travelers={tripTravelers}
       />
       <TransferOffersPanel
         destinationCity={trip.city}
         destinationCountry={trip.country}
         outboundDate={tripStartDate}
-        adults={2}
+        adults={tripTravelers}
       />
+
+      <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] animate-fade-in-up">
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Jak zapadl wybor</p>
+          <h2 className="mt-2 text-2xl font-bold text-emerald-950">Ten zapisany plan trzyma realny kontekst decyzji.</h2>
+          <p className="mt-3 text-sm leading-7 text-emerald-900/78">
+            {snapshot?.mode === "discovery"
+              ? `Brief startowy: ${decisionBrief}`
+              : `Wybrany kierunek startowy: ${decisionBrief}.`}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950">
+              {formatShortDate(tripStartDate, "pl-PL")} - {formatShortDate(tripCheckOutDate, "pl-PL")}
+            </span>
+            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950">
+              {tripOriginCity} / {tripTravelers} os. / {tripRooms} {tripRooms === 1 ? "pokoj" : tripRooms < 5 ? "pokoje" : "pokoi"}
+            </span>
+            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950">
+              Budzet do ok. {trip.estimatedBudgetMax} PLN
+            </span>
+          </div>
+          <div className="mt-5 space-y-3">
+            {trip.reasons.length > 0 ? (
+              trip.reasons.map((reason) => (
+                <div key={reason} className="rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm leading-6 text-emerald-900/82">
+                  {reason}
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm leading-6 text-emerald-900/82">
+                To miasto wygralo glownie przez ogolne dopasowanie do terminu, budzetu i logistyki wyjazdu.
+              </div>
+            )}
+          </div>
+        </article>
+
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Co dalej</p>
+          <h2 className="mt-2 text-2xl font-bold text-emerald-950">Mozesz wrocic do decyzji albo od razu przejsc dalej do rezerwacji.</h2>
+          <p className="mt-3 text-sm leading-7 text-emerald-900/78">
+            Ranking nie jest przypadkowy. HelpTravel laczy klimat, budzet, latwosc dojazdu i sens dlugosci wyjazdu,
+            a dopiero potem prowadzi do partnerow z zachowaniem tego samego kontekstu podrozy.
+          </p>
+          <div className="mt-4 rounded-2xl bg-white px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Na co uwazac</p>
+            <div className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/78">
+              {trip.tradeoffs.length > 0 ? (
+                trip.tradeoffs.map((tradeoff) => <p key={tradeoff}>{tradeoff}</p>)
+              ) : (
+                <p>Najwieksze ryzyko na tym etapie to juz nie wybor kierunku, tylko ustawienie dobrego terminu i partnera pod ten sam plan.</p>
+              )}
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link href={plannerHref} className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+              Edytuj ten plan
+            </Link>
+            <Link href={destinationGuideHref} className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50">
+              Otworz przewodnik kierunku
+            </Link>
+          </div>
+        </article>
+      </section>
 
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] animate-fade-in-up">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
@@ -217,7 +321,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           <a href={carLink} target="_blank" rel="noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
             Auta w {carPartner}
           </a>
-          <Link href="/planner" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
+          <Link href={plannerHref} className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
             Wroc do planera
           </Link>
         </div>

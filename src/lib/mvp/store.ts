@@ -42,6 +42,7 @@ interface SavedTripRow {
   id: string;
   sessionId: string;
   itineraryResultId: string;
+  snapshotJson?: unknown;
   createdAt: Date;
 }
 
@@ -68,6 +69,7 @@ interface MemoryStore {
   tripRequests: Map<string, TripRequestRow>;
   destinationScores: Map<string, DestinationScoreRow>;
   itineraryResults: Map<string, ItineraryRow>;
+  extraDestinations: Map<string, DestinationProfile>;
   savedTrips: Map<string, SavedTripRow>;
   events: Map<string, EventRow>;
   affiliateClicks: Map<string, AffiliateClickRow>;
@@ -82,6 +84,7 @@ function getMemoryStore(): MemoryStore {
       tripRequests: new Map(),
       destinationScores: new Map(),
       itineraryResults: new Map(),
+      extraDestinations: new Map(),
       savedTrips: new Map(),
       events: new Map(),
       affiliateClicks: new Map(),
@@ -193,7 +196,57 @@ export async function getDestinations(): Promise<DestinationProfile[]> {
     const rows = await prisma.destination.findMany({});
     return rows.map(toDestinationProfile);
   }
-  return allDestinationProfiles;
+
+  const store = getMemoryStore();
+  return [...allDestinationProfiles, ...store.extraDestinations.values()];
+}
+
+export async function ensureDestinationProfile(destination: DestinationProfile): Promise<void> {
+  const prisma = await getPrisma();
+  if (prisma) {
+    await prisma.destination.upsert({
+      where: { id: destination.id },
+      update: {
+        slug: destination.slug,
+        city: destination.city,
+        country: destination.country,
+        visaForPL: destination.visaForPL,
+        avgTempByMonthJson: destination.avgTempByMonth,
+        costIndex: destination.costIndex,
+        beachScore: destination.beachScore,
+        cityScore: destination.cityScore,
+        sightseeingScore: destination.sightseeingScore,
+        nightlifeScore: destination.nightlifeScore,
+        natureScore: destination.natureScore,
+        safetyScore: destination.safetyScore,
+        accessScore: destination.accessScore,
+        typicalFlightHoursFromPL: destination.typicalFlightHoursFromPL,
+        affiliateLinksJson: destination.affiliateLinks,
+      },
+      create: {
+        id: destination.id,
+        slug: destination.slug,
+        city: destination.city,
+        country: destination.country,
+        visaForPL: destination.visaForPL,
+        avgTempByMonthJson: destination.avgTempByMonth,
+        costIndex: destination.costIndex,
+        beachScore: destination.beachScore,
+        cityScore: destination.cityScore,
+        sightseeingScore: destination.sightseeingScore,
+        nightlifeScore: destination.nightlifeScore,
+        natureScore: destination.natureScore,
+        safetyScore: destination.safetyScore,
+        accessScore: destination.accessScore,
+        typicalFlightHoursFromPL: destination.typicalFlightHoursFromPL,
+        affiliateLinksJson: destination.affiliateLinks,
+      },
+    });
+    return;
+  }
+
+  const store = getMemoryStore();
+  store.extraDestinations.set(destination.id, destination);
 }
 
 export async function createTripRequestRecord(args: {
@@ -274,6 +327,7 @@ export async function saveTripRecord(args: {
   id: string;
   sessionId: string;
   itineraryResultId: string;
+  snapshotJson?: unknown;
 }): Promise<SavedTripRow> {
   const prisma = await getPrisma();
   if (prisma) {
@@ -285,6 +339,18 @@ export async function saveTripRecord(args: {
     });
 
     if (existing) {
+      if (typeof args.snapshotJson !== "undefined") {
+        await prisma.savedTrip.update({
+          where: { id: existing.id },
+          data: {
+            snapshotJson: args.snapshotJson,
+          },
+        });
+        return {
+          ...(existing as SavedTripRow),
+          snapshotJson: args.snapshotJson,
+        };
+      }
       return existing as SavedTripRow;
     }
 
@@ -293,6 +359,7 @@ export async function saveTripRecord(args: {
         id: args.id,
         sessionId: args.sessionId,
         itineraryResultId: args.itineraryResultId,
+        snapshotJson: args.snapshotJson,
       },
     })) as SavedTripRow;
   }
@@ -301,12 +368,18 @@ export async function saveTripRecord(args: {
   const duplicate = [...store.savedTrips.values()].find(
     (entry) => entry.sessionId === args.sessionId && entry.itineraryResultId === args.itineraryResultId,
   );
-  if (duplicate) return duplicate;
+  if (duplicate) {
+    if (typeof args.snapshotJson !== "undefined") {
+      duplicate.snapshotJson = args.snapshotJson;
+    }
+    return duplicate;
+  }
 
   const row: SavedTripRow = {
     id: args.id,
     sessionId: args.sessionId,
     itineraryResultId: args.itineraryResultId,
+    snapshotJson: args.snapshotJson,
     createdAt: new Date(),
   };
   store.savedTrips.set(row.id, row);
@@ -359,6 +432,7 @@ export async function getItineraryById(
       tripRequest: TripRequestRow;
       destination: DestinationProfile;
       score?: DestinationScoreRow;
+      savedTrip?: SavedTripRow;
     }
   | null
 > {
@@ -369,6 +443,10 @@ export async function getItineraryById(
       include: {
         tripRequest: true,
         destination: true,
+        savedTrips: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
     });
 
@@ -386,6 +464,7 @@ export async function getItineraryById(
       tripRequest: itinerary.tripRequest as TripRequestRow,
       destination: toDestinationProfile(itinerary.destination),
       score: (score as DestinationScoreRow | null) ?? undefined,
+      savedTrip: (itinerary.savedTrips?.[0] as SavedTripRow | undefined) ?? undefined,
     };
   }
 
@@ -394,17 +473,21 @@ export async function getItineraryById(
   if (!itinerary) return null;
   const tripRequest = store.tripRequests.get(itinerary.tripRequestId);
   if (!tripRequest) return null;
-  const destination = allDestinationProfiles.find((item) => item.id === itinerary.destinationId);
+  const destination = allDestinationProfiles.find((item) => item.id === itinerary.destinationId) ?? store.extraDestinations.get(itinerary.destinationId);
   if (!destination) return null;
   const score = [...store.destinationScores.values()].find(
     (item) => item.tripRequestId === itinerary.tripRequestId && item.destinationId === itinerary.destinationId,
   );
+  const savedTrip = [...store.savedTrips.values()]
+    .filter((item) => item.itineraryResultId === itineraryResultId)
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0];
 
   return {
     itinerary,
     tripRequest,
     destination,
     score,
+    savedTrip,
   };
 }
 
@@ -470,7 +553,7 @@ export async function listSavedTripsBySession(sessionId: string): Promise<
       if (!itinerary) return null;
       const tripRequest = store.tripRequests.get(itinerary.tripRequestId);
       if (!tripRequest) return null;
-      const destination = allDestinationProfiles.find((item) => item.id === itinerary.destinationId);
+      const destination = allDestinationProfiles.find((item) => item.id === itinerary.destinationId) ?? store.extraDestinations.get(itinerary.destinationId);
       if (!destination) return null;
       const score = [...store.destinationScores.values()].find(
         (item) => item.tripRequestId === itinerary.tripRequestId && item.destinationId === itinerary.destinationId,

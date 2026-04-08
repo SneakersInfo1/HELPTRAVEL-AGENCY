@@ -33,7 +33,7 @@ import {
 } from "@/lib/mvp/planner-memory";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate, isoDateToMonth } from "@/lib/mvp/travel-dates";
-import type { DiscoveryResponse, SavedTripView } from "@/lib/mvp/types";
+import type { DiscoveryResponse, SavedTripSnapshot, SavedTripView } from "@/lib/mvp/types";
 
 type Mode = "discovery" | "standard";
 
@@ -151,6 +151,9 @@ const plannerCopy = {
     showFlights: "Pokaz loty",
     showCars: "Pokaz auta",
     showOnSite: "Pokaz na miejscu",
+    openPlan: "Otworz plan",
+    mobileBarEyebrow: "Gotowe do dalszego ruchu",
+    mobileBarBody: "Najpierw pobyt, potem loty i zapis planu bez gubienia ustawien.",
     destinationPlaceholder: "Np. Malaga",
     originPlaceholder: "Warszawa",
     primaryFlow: "Sciezka glowna",
@@ -270,6 +273,9 @@ const plannerCopy = {
     showFlights: "Show flights",
     showCars: "Show cars",
     showOnSite: "Show on-site",
+    openPlan: "Open plan",
+    mobileBarEyebrow: "Ready for the next move",
+    mobileBarBody: "Lead with stays, then flights, and keep the plan saved without losing the setup.",
     destinationPlaceholder: "E.g. Malaga",
     originPlaceholder: "Warsaw",
     primaryFlow: "Primary route",
@@ -799,6 +805,29 @@ export function PlannerClient({
     setTravelNights(snapshot.travelNights);
   };
 
+  const buildCurrentTripSnapshot = (): SavedTripSnapshot => ({
+    mode,
+    query,
+    destinationHint,
+    originCity,
+    budget,
+    travelers,
+    rooms,
+    durationMin,
+    durationMax,
+    travelStartDate,
+    travelNights,
+    selectedDestinationSlug: selectedOption?.destination.slug,
+    selectedDestinationLabel: selectedOption
+      ? `${selectedOption.destination.city}, ${selectedOption.destination.country}`
+      : undefined,
+  });
+
+  const toPlannerSnapshot = (snapshot: SavedTripSnapshot, savedAt?: string): PlannerSnapshot => ({
+    ...snapshot,
+    savedAt: savedAt ?? new Date().toISOString(),
+  });
+
   const handleRestoreSnapshot = (snapshot: PlannerSnapshot) => {
     applySnapshot(snapshot);
     shouldFocusOffersRef.current = true;
@@ -821,6 +850,14 @@ export function PlannerClient({
       travelStartDate: snapshot.travelStartDate,
       travelNights: snapshot.travelNights,
     });
+  };
+
+  const handleRestoreSavedTrip = (trip: SavedTripView) => {
+    if (!trip.snapshot) {
+      return;
+    }
+
+    handleRestoreSnapshot(toPlannerSnapshot(trip.snapshot, trip.createdAt));
   };
 
   const handleToggleSavedDestination = () => {
@@ -882,7 +919,10 @@ export function PlannerClient({
 
     setSavingTrip(true);
     try {
-      await postJson("/api/trips/save", { itineraryResultId: selectedOption.itineraryResultId });
+      await postJson("/api/trips/save", {
+        itineraryResultId: selectedOption.itineraryResultId,
+        snapshot: buildCurrentTripSnapshot(),
+      });
       await refreshSavedTrips();
     } catch {
       // Keep the main planner flow stable even if saving fails.
@@ -956,7 +996,11 @@ export function PlannerClient({
   }, [result, selectedOption]);
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div
+      className={`mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 ${
+        bookingDeck.length > 0 ? "pb-32 lg:pb-8" : ""
+      }`}
+    >
       <section className="glass-panel rounded-[2rem] border border-emerald-900/10 p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-3xl">
@@ -1176,16 +1220,44 @@ export function PlannerClient({
                   </p>
                 ) : (
                   savedTrips.map((trip) => (
-                    <LocalizedLink
+                    <div
                       key={trip.itineraryResultId}
-                      href={`/trips/${trip.itineraryResultId}`}
-                      className="flex items-center justify-between rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
+                      className="rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
                     >
-                      <span>
-                        {trip.city}, {trip.country}
-                      </span>
-                      <span className="text-xs text-emerald-700">{text.scoreWord} {trip.score.toFixed(0)}</span>
-                    </LocalizedLink>
+                      <div className="flex items-start justify-between gap-3">
+                        <span>
+                          <span className="block">
+                            {trip.city}, {trip.country}
+                          </span>
+                          {trip.snapshot ? (
+                            <span className="mt-1 block text-xs text-emerald-700">
+                              {formatShortDate(trip.snapshot.travelStartDate, dateLocale)} / {trip.snapshot.originCity} /{" "}
+                              {trip.snapshot.travelNights} {text.selectedDatesValue}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="text-xs text-emerald-700">
+                          {text.scoreWord} {trip.score.toFixed(0)}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <LocalizedLink
+                          href={`/trips/${trip.itineraryResultId}`}
+                          className="rounded-full border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
+                        >
+                          {text.openPlan}
+                        </LocalizedLink>
+                        {trip.snapshot ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreSavedTrip(trip)}
+                            className="rounded-full bg-emerald-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-800"
+                          >
+                            {text.restoreSettings}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
                   ))
                 )}
               </div>
@@ -1778,6 +1850,53 @@ export function PlannerClient({
             })}
           </div>
         </section>
+      ) : null}
+
+      {selectedOption && bookingDeck.length >= 2 ? (
+        <div className="fixed inset-x-4 bottom-4 z-40 lg:hidden">
+          <div className="rounded-[1.7rem] border border-emerald-900/12 bg-emerald-950/96 p-4 text-white shadow-[0_24px_60px_rgba(7,31,18,0.3)] backdrop-blur">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">{text.mobileBarEyebrow}</p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  {selectedOption.destination.city}, {selectedOption.destination.country}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-white/72">
+                  {formatShortDate(travelStartDate, dateLocale)} - {formatShortDate(checkOutDate, dateLocale)} / {originCity}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSaveTrip()}
+                disabled={savingTrip}
+                className="rounded-full bg-white px-3 py-2 text-xs font-bold text-emerald-950 transition hover:bg-emerald-50 disabled:opacity-70"
+              >
+                {savingTrip ? text.savingTrip : text.saveTrip}
+              </button>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-white/68">{text.mobileBarBody}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <a
+                href={bookingDeck[0].href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-400 px-4 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
+              >
+                <PartnerLogoMark brand={bookingDeck[0].brand} size="sm" variant="neutral" />
+                {text.showStay}
+              </a>
+              <a
+                href={bookingDeck[1].href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/14"
+              >
+                <PartnerLogoMark brand={bookingDeck[1].brand} size="sm" variant="contrast" />
+                {text.showFlights}
+              </a>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {result && !selectedOption ? (

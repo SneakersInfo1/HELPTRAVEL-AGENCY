@@ -8,6 +8,7 @@ import type {
   DiscoveryRequestInput,
   DiscoveryResponse,
   EventPayload,
+  SavedTripSnapshot,
   SavedTripView,
   StandardRequestInput,
 } from "./types";
@@ -18,6 +19,7 @@ import {
   createEventRecord,
   createItineraryResultRecord,
   createTripRequestRecord,
+  ensureDestinationProfile,
   ensureSession,
   getDestinations,
   getItineraryById,
@@ -105,6 +107,7 @@ async function runVirtualStandard(input: StandardRequestInput, sessionId: string
   };
 
   const requestId = createId("req");
+  const itineraryResultId = createId("itn");
   await createTripRequestRecord({
     id: requestId,
     sessionId,
@@ -145,9 +148,28 @@ async function runVirtualStandard(input: StandardRequestInput, sessionId: string
     estimatedBudgetMin,
     estimatedBudgetMax,
   });
+  await ensureDestinationProfile(destination);
+  await createDestinationScoreRecord({
+    id: createId("scr"),
+    tripRequestId: requestId,
+    destinationId: destination.id,
+    totalScore: 84,
+    breakdownJson: breakdown,
+    reasonsJson: reasons,
+    rank: 1,
+  });
+  await createItineraryResultRecord({
+    id: itineraryResultId,
+    tripRequestId: requestId,
+    destinationId: destination.id,
+    estimatedBudgetMin,
+    estimatedBudgetMax,
+    aiSummary: generated.summary,
+    aiPlanJson: generated.plan,
+  });
 
   const virtualOption = toOptionView({
-    itineraryResultId: `virtual_${createId("itn")}`,
+    itineraryResultId,
     destination,
     rank: 1,
     score: 84,
@@ -340,18 +362,29 @@ export async function runStandard(input: StandardRequestInput, sessionId: string
   };
 }
 
-export async function saveTrip(sessionId: string, itineraryResultId: string): Promise<{ savedTripId: string }> {
+export async function saveTrip(
+  sessionId: string,
+  itineraryResultId: string,
+  snapshot?: SavedTripSnapshot,
+): Promise<{ savedTripId: string }> {
   await ensureSession(sessionId);
 
   const saved = await saveTripRecord({
     id: createId("save"),
     sessionId,
     itineraryResultId,
+    snapshotJson: snapshot,
   });
 
   await trackEvent(sessionId, {
     eventType: "trip_saved",
-    payload: { itineraryResultId, savedTripId: saved.id },
+    payload: {
+      itineraryResultId,
+      savedTripId: saved.id,
+      originCity: snapshot?.originCity,
+      travelStartDate: snapshot?.travelStartDate,
+      travelNights: snapshot?.travelNights,
+    },
   });
 
   return { savedTripId: saved.id };
@@ -381,6 +414,7 @@ function toSavedTripView(record: {
     tradeoffs: [],
     affiliateLinks: record.destination.affiliateLinks,
     createdAt: new Date(record.savedTrip.createdAt).toISOString(),
+    snapshot: (record.savedTrip.snapshotJson ?? undefined) as SavedTripSnapshot | undefined,
   };
 }
 
@@ -389,7 +423,7 @@ export async function getTrip(itineraryResultId: string): Promise<SavedTripView 
   if (!row) return null;
 
   return {
-    savedTripId: "",
+    savedTripId: row.savedTrip?.id ?? "",
     requestId: row.tripRequest.id,
     itineraryResultId: row.itinerary.id,
     mode: row.tripRequest.mode,
@@ -405,6 +439,7 @@ export async function getTrip(itineraryResultId: string): Promise<SavedTripView 
     tradeoffs: [],
     affiliateLinks: row.destination.affiliateLinks,
     createdAt: "",
+    snapshot: (row.savedTrip?.snapshotJson ?? undefined) as SavedTripSnapshot | undefined,
   };
 }
 

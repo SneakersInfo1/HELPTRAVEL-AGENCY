@@ -8,6 +8,8 @@ import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
+import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
+import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import {
@@ -17,7 +19,9 @@ import {
   getSimilarDestinations,
 } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
+import { buildRedirectHref } from "@/lib/mvp/providers";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib/mvp/travel-dates";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 interface DestinationGuidePageProps {
@@ -67,6 +71,18 @@ function idealTripLength(flightHours: number) {
   }
 
   return "5-7 dni";
+}
+
+function recommendedNights(flightHours: number) {
+  if (flightHours <= 3.5) {
+    return 4;
+  }
+
+  if (flightHours <= 5.5) {
+    return 5;
+  }
+
+  return 6;
 }
 
 function buildAvoidNotes(guide: NonNullable<ReturnType<typeof getDestinationGuideBySlug>>) {
@@ -183,6 +199,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
   const budget = estimateBudget(guide.destination.costIndex, guide.destination.typicalFlightHoursFromPL);
   const bestMonths = bestMonthsFromTemperatures(guide.destination.avgTempByMonth);
   const tripLength = idealTripLength(guide.destination.typicalFlightHoursFromPL);
+  const defaultStartDate = defaultTravelStartDate();
+  const defaultNights = recommendedNights(guide.destination.typicalFlightHoursFromPL);
+  const defaultCheckOutDate = addDaysToIsoDate(defaultStartDate, defaultNights);
   const tripProfile =
     guide.destination.beachScore >= 0.75
       ? "plaza i reset"
@@ -204,6 +223,50 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     guide.destination,
     similarDestinations.map((item) => item.destination),
   );
+  const commercialLinks = buildAffiliateLinksWithContext({
+    city: guide.destination.city,
+    country: guide.destination.country,
+    originCity: "Warszawa",
+    departureDate: defaultStartDate,
+    checkInDate: defaultStartDate,
+    checkOutDate: defaultCheckOutDate,
+    passengers: 2,
+    rooms: 1,
+  });
+  const stayPartner = getAffiliateBrandLabel(commercialLinks.stays, "Hotels.com");
+  const flightPartner = getAffiliateBrandLabel(commercialLinks.flights, "Partner lotniczy");
+  const carPartner = getAffiliateBrandLabel(commercialLinks.cars, "Partner aut");
+  const destinationPlannerHref = `/planner?${new URLSearchParams({
+    mode: "standard",
+    q: guide.destination.city,
+    destination: guide.destination.city,
+    origin: "Warszawa",
+    startDate: defaultStartDate,
+    nights: String(defaultNights),
+    travelers: "2",
+    budget: String(budget.max),
+  }).toString()}`;
+  const stayRedirectHref = buildRedirectHref({
+    providerKey: "stays",
+    targetUrl: commercialLinks.stays,
+    city: guide.destination.city,
+    country: guide.destination.country,
+    source: "destination_page_stays",
+  });
+  const flightRedirectHref = buildRedirectHref({
+    providerKey: "flights",
+    targetUrl: commercialLinks.flights,
+    city: guide.destination.city,
+    country: guide.destination.country,
+    source: "destination_page_flights",
+  });
+  const carRedirectHref = buildRedirectHref({
+    providerKey: "cars",
+    targetUrl: commercialLinks.cars,
+    city: guide.destination.city,
+    country: guide.destination.country,
+    source: "destination_page_cars",
+  });
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -376,6 +439,66 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         </article>
       </section>
 
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Gotowe nastepne kroki</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Mozesz od razu przejsc do pobytu, lotow i dalszego planowania.</h2>
+            <p className="mt-3 text-sm leading-7 text-emerald-900/78">
+              Startowo ustawiamy Warszawa, 2 osoby i {defaultNights} {defaultNights < 5 ? "noce" : "nocy"}:
+              {" "}
+              {formatShortDate(defaultStartDate, "pl-PL")} - {formatShortDate(defaultCheckOutDate, "pl-PL")}. To tylko punkt
+              wyjscia, ktory potem zmienisz w plannerze jednym kliknieciem.
+            </p>
+          </div>
+          <LocalizedLink
+            href={destinationPlannerHref}
+            className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            Otworz planner z gotowym setupem
+          </LocalizedLink>
+        </div>
+
+        <div className="mt-6 grid gap-4 xl:grid-cols-4">
+          <a href={stayRedirectHref} target="_blank" rel="noreferrer" className="rounded-[1.6rem] border border-emerald-700 bg-emerald-700 p-5 text-white shadow-[0_20px_52px_rgba(21,128,61,0.18)] transition hover:-translate-y-1 hover:bg-emerald-800">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100">Pobyt</p>
+            <h3 className="mt-2 text-2xl font-bold">{stayPartner}</h3>
+            <p className="mt-3 text-sm leading-6 text-white/82">Gotowe wyniki noclegow dla tego kierunku i tego samego okna pobytu.</p>
+          </a>
+          <a href={flightRedirectHref} target="_blank" rel="noreferrer" className="rounded-[1.6rem] border border-emerald-950 bg-emerald-950 p-5 text-white shadow-[0_20px_52px_rgba(7,31,18,0.18)] transition hover:-translate-y-1 hover:bg-emerald-900">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Loty</p>
+            <h3 className="mt-2 text-2xl font-bold">{flightPartner}</h3>
+            <p className="mt-3 text-sm leading-6 text-white/78">Trasa i termin sa juz ustawione, wiec nie wracasz do pustego startu.</p>
+          </a>
+          <a href={carRedirectHref} target="_blank" rel="noreferrer" className="rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/75 p-5 text-emerald-950 transition hover:-translate-y-1 hover:bg-emerald-100">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Mobilnosc</p>
+            <h3 className="mt-2 text-2xl font-bold">{carPartner}</h3>
+            <p className="mt-3 text-sm leading-6 text-emerald-900/78">Jesli ten kierunek wymaga auta na miejscu, przechodzisz dalej bez ponownego wpisywania miasta.</p>
+          </a>
+          <article className="rounded-[1.6rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-5 text-emerald-950">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Jak czytac ta strone</p>
+            <h3 className="mt-2 text-2xl font-bold">Decyzja najpierw, booking chwilę pozniej.</h3>
+            <p className="mt-3 text-sm leading-6 text-emerald-900/78">
+              Ten przewodnik laczy sygnaly redakcyjne, klimat, koszt i logistyke z Polski. Dopiero potem kieruje do partnerow.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <LocalizedLink
+                href="/jak-pracujemy"
+                className="rounded-full border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
+              >
+                Jak pracujemy
+              </LocalizedLink>
+              <LocalizedLink
+                href="/standard-redakcyjny"
+                className="rounded-full border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
+              >
+                Standard redakcyjny
+              </LocalizedLink>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Szybka ocena kierunku</p>
@@ -443,7 +566,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <LocalizedLink
-              href={`/planner?mode=standard&q=${encodeURIComponent(guide.destination.city)}`}
+              href={destinationPlannerHref}
               className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
               Otworz planner dla tego miasta
@@ -498,7 +621,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <h2 className="mt-2 font-display text-4xl text-emerald-950">Przykladowy rytm wyjazdu</h2>
           </div>
           <LocalizedLink
-            href={`/planner?mode=standard&q=${encodeURIComponent(guide.destination.city)}`}
+            href={destinationPlannerHref}
             className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
             Sprawdz ten kierunek w plannerze
@@ -569,7 +692,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <LocalizedLink
-              href={`/planner?mode=standard&q=${encodeURIComponent(guide.destination.city)}`}
+              href={destinationPlannerHref}
               className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
             >
               Uruchom planner dla {guide.destination.city}

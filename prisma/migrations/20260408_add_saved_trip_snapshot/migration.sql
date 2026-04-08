@@ -1,0 +1,2 @@
+ALTER TABLE "SavedTrip"
+ADD COLUMN IF NOT EXISTS "snapshotJson" JSONB;
