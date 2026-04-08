@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     canonical: siteUrl,
     languages: {
       "pl-PL": siteUrl,
-      "en-US": `${siteUrl}?lang=en`,
+      "en-US": `${siteUrl}/en`,
     },
     types: {
       "application/rss+xml": `${siteUrl}/feed.xml`,

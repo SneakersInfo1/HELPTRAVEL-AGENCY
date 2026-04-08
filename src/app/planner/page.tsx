@@ -1,22 +1,39 @@
 import type { Metadata } from "next";
 
 import { PlannerClient } from "@/components/mvp/planner-client";
+import { type SiteLocale } from "@/lib/mvp/locale";
 
-export const metadata: Metadata = {
-  title: "Planer wyjazdu - hotel, lot i kolejne kroki w jednym flow",
-  description:
-    "Wyszukaj kierunek po potrzebie albo wpisz konkretne miasto. HelpTravel prowadzi od wyboru dat i miasta do pobytu, lotow i dalszych krokow w jednym flow.",
-  alternates: {
-    canonical: "/planner",
-  },
-  openGraph: {
-    title: "Planer wyjazdu - hotel, lot i kolejne kroki w jednym flow",
-    description:
-      "Ustaw miasto, termin i sklad podrozy. Potem przejdz od razu do pobytu, lotow, atrakcji i transportu.",
-    url: "/planner",
-    type: "website",
-  },
-};
+export function getPlannerMetadata(locale: SiteLocale): Metadata {
+  const isEnglish = locale === "en";
+
+  return {
+    title: isEnglish
+      ? "Trip planner - stays, flights and next steps in one flow"
+      : "Planer wyjazdu - hotel, lot i kolejne kroki w jednym flow",
+    description: isEnglish
+      ? "Search by travel need or enter a destination directly. HelpTravel moves from dates and route setup into stays, flights and the next travel actions."
+      : "Wyszukaj kierunek po potrzebie albo wpisz konkretne miasto. HelpTravel prowadzi od wyboru dat i miasta do pobytu, lotow i dalszych krokow w jednym flow.",
+    alternates: {
+      canonical: locale === "en" ? "/en/planner" : "/planner",
+      languages: {
+        "pl-PL": "/planner",
+        "en-US": "/en/planner",
+      },
+    },
+    openGraph: {
+      title: isEnglish
+        ? "Trip planner - stays, flights and next steps in one flow"
+        : "Planer wyjazdu - hotel, lot i kolejne kroki w jednym flow",
+      description: isEnglish
+        ? "Set the city, dates and travel party, then move straight into stays, flights, attractions and transport."
+        : "Ustaw miasto, termin i sklad podrozy. Potem przejdz od razu do pobytu, lotow, atrakcji i transportu.",
+      url: locale === "en" ? "/en/planner" : "/planner",
+      type: "website",
+    },
+  };
+}
+
+export const metadata: Metadata = getPlannerMetadata("pl");
 
 interface PlannerPageProps {
   searchParams: Promise<{
@@ -33,7 +50,7 @@ interface PlannerPageProps {
   }>;
 }
 
-export default async function PlannerPage({ searchParams }: PlannerPageProps) {
+export async function PlannerPageView({ searchParams, locale }: PlannerPageProps & { locale: SiteLocale }) {
   const params = await searchParams;
   const mode = params.mode === "standard" ? "standard" : "discovery";
   const query = params.q ?? "";
@@ -59,6 +76,11 @@ export default async function PlannerPage({ searchParams }: PlannerPageProps) {
       initialNights={Number.isFinite(nights) ? nights : 4}
       initialStyle={style}
       autoRunStandardSearch={mode === "standard" && Boolean(destination || query)}
+      locale={locale}
     />
   );
+}
+
+export default async function PlannerPage({ searchParams }: PlannerPageProps) {
+  return PlannerPageView({ searchParams, locale: "pl" });
 }

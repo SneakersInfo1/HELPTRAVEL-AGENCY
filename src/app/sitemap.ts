@@ -9,7 +9,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseLastModified = new Date("2026-03-29T00:00:00.000Z");
   const staticRoutes = [
     "",
+    "/en",
     "/planner",
+    "/en/planner",
     "/kierunki",
     "/inspiracje",
     "/mapa-serwisu",
@@ -30,7 +32,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...articleRoutes].map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified: baseLastModified,
-    changeFrequency: route === "" ? "daily" : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/") ? "weekly" : "monthly",
-    priority: route === "" ? 1 : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/") ? 0.8 : 0.65,
+    changeFrequency:
+      route === "" || route === "/en"
+        ? "daily"
+        : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/")
+          ? "weekly"
+          : "monthly",
+    priority:
+      route === "" || route === "/en"
+        ? 1
+        : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/")
+          ? 0.8
+          : 0.65,
   }));
 }

@@ -9,33 +9,45 @@ import {
   type ReactNode,
 } from "react";
 
-export type SiteLocale = "pl" | "en";
+import {
+  DEFAULT_SITE_LOCALE,
+  LOCALE_COOKIE_KEY,
+  LOCALE_STORAGE_KEY,
+  getDocumentLang,
+  localeFromPathname,
+  resolveSiteLocale,
+  stripLocalePrefix,
+  type SiteLocale,
+} from "@/lib/mvp/locale";
 
 interface LanguageContextValue {
   locale: SiteLocale;
   setLocale: (locale: SiteLocale) => void;
 }
 
-const STORAGE_KEY = "helptravel-locale";
-
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 function getPreferredLocale(): SiteLocale {
   if (typeof window === "undefined") {
-    return "pl";
+    return DEFAULT_SITE_LOCALE;
+  }
+
+  const pathLocale = localeFromPathname(window.location.pathname);
+  if (pathLocale) {
+    return pathLocale;
   }
 
   const urlLocale = new URLSearchParams(window.location.search).get("lang");
-  if (urlLocale === "pl" || urlLocale === "en") {
-    return urlLocale;
+  if (urlLocale) {
+    return resolveSiteLocale(urlLocale);
   }
 
-  const storedLocale = window.localStorage.getItem(STORAGE_KEY);
-  if (storedLocale === "pl" || storedLocale === "en") {
-    return storedLocale;
+  const storedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+  if (storedLocale) {
+    return resolveSiteLocale(storedLocale);
   }
 
-  return window.navigator.language.toLowerCase().startsWith("en") ? "en" : "pl";
+  return resolveSiteLocale(window.navigator.language);
 }
 
 function syncLocale(locale: SiteLocale) {
@@ -43,12 +55,19 @@ function syncLocale(locale: SiteLocale) {
     return;
   }
 
-  document.documentElement.lang = locale;
-  window.localStorage.setItem(STORAGE_KEY, locale);
-  document.cookie = `${STORAGE_KEY}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+  document.documentElement.lang = getDocumentLang(locale);
+  window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  document.cookie = `${LOCALE_COOKIE_KEY}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
 
   const url = new URL(window.location.href);
-  if (locale === "en") {
+  const normalizedPathname = stripLocalePrefix(url.pathname);
+  url.pathname = locale === "en" && (normalizedPathname === "/" || normalizedPathname === "/planner")
+    ? normalizedPathname === "/"
+      ? "/en"
+      : `/en${normalizedPathname}`
+    : normalizedPathname;
+
+  if (locale === "en" && !(normalizedPathname === "/" || normalizedPathname === "/planner")) {
     url.searchParams.set("lang", "en");
   } else {
     url.searchParams.delete("lang");

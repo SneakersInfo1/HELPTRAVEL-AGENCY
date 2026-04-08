@@ -3,16 +3,19 @@
 import { useState } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import type { SiteLocale } from "@/lib/mvp/locale";
 import { getSavedDestinations, toggleSavedDestination } from "@/lib/mvp/planner-memory";
 
 interface SaveDestinationButtonProps {
   slug: string;
   city: string;
   country: string;
+  locale?: SiteLocale;
 }
 
-export function SaveDestinationButton({ slug, city, country }: SaveDestinationButtonProps) {
-  const { locale } = useLanguage();
+export function SaveDestinationButton({ slug, city, country, locale: localeOverride }: SaveDestinationButtonProps) {
+  const { locale: contextLocale } = useLanguage();
+  const locale = localeOverride ?? contextLocale;
   const [saved, setSaved] = useState(() => getSavedDestinations().some((item) => item.slug === slug));
 
   return (

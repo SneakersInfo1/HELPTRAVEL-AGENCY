@@ -8,6 +8,7 @@ import { LocalizedLink } from "@/components/site/localized-link";
 import { LanguageSwitcher } from "@/components/site/language-switcher";
 import { PartnerLogoWordmark, TRUSTED_PARTNERS } from "@/components/site/partner-logo";
 import { useLanguage } from "@/components/site/language-provider";
+import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
 
 const copy = {
   pl: {
@@ -131,17 +132,19 @@ const copy = {
 } as const;
 
 function isActivePath(pathname: string, href: string) {
+  const normalizedPathname = stripLocalePrefix(pathname);
   if (href === "/") {
-    return pathname === "/";
+    return normalizedPathname === "/";
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return normalizedPathname === href || normalizedPathname.startsWith(`${href}/`);
 }
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const { locale } = useLanguage();
   const pathname = usePathname();
-  const text = copy[locale];
+  const effectiveLocale = localeFromPathname(pathname) ?? locale;
+  const text = copy[effectiveLocale];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const mobileMenuButtonLabel = mobileMenuOpen ? text.menuClose : text.menuOpen;

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   startTransition,
   useDeferredValue,
@@ -14,6 +14,7 @@ import {
 
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
+import { localizeHref, localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import { defaultTravelStartDate } from "@/lib/mvp/travel-dates";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
@@ -34,6 +35,7 @@ interface PremiumHomeHeroProps {
   slides: HeroSlide[];
   destinationCount: number;
   guideCount: number;
+  locale?: SiteLocale;
 }
 
 type SearchField = "origin" | "destination";
@@ -158,6 +160,7 @@ function buildStandardPlannerHref(params: {
   startDate: string;
   nights: number;
   travelers: number;
+  locale: SiteLocale;
 }): string {
   const searchParams = new URLSearchParams({
     mode: "standard",
@@ -170,17 +173,19 @@ function buildStandardPlannerHref(params: {
     days: String(params.nights),
   });
 
-  return `/planner?${searchParams.toString()}`;
+  return localizeHref(`/planner?${searchParams.toString()}`, params.locale);
 }
 
-function buildDiscoveryPlannerHref(query: string): string {
-  return `/planner?mode=discovery&q=${encodeURIComponent(query)}`;
+function buildDiscoveryPlannerHref(query: string, locale: SiteLocale): string {
+  return localizeHref(`/planner?mode=discovery&q=${encodeURIComponent(query)}`, locale);
 }
 
-export function PremiumHomeHero({ slides, destinationCount, guideCount }: PremiumHomeHeroProps) {
+export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: localeOverride }: PremiumHomeHeroProps) {
+  const pathname = usePathname();
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const { locale } = useLanguage();
+  const { locale: contextLocale } = useLanguage();
+  const locale = localeOverride ?? localeFromPathname(pathname) ?? contextLocale;
   const text = heroCopy[locale];
   const localizedDiscoveryPrompts = locale === "en" ? discoveryPrompts.en : discoveryPrompts.pl;
   const suggestionErrorText = text.suggestionError;
@@ -339,6 +344,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
         startDate,
         nights,
         travelers,
+        locale,
       }),
     );
   };
@@ -349,7 +355,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
       return;
     }
 
-    router.push(buildDiscoveryPlannerHref(nextValue));
+    router.push(buildDiscoveryPlannerHref(nextValue, locale));
   };
 
   const applySuggestionToField = (field: SearchField, suggestion?: DestinationSuggestion | null) => {
@@ -739,6 +745,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                 </button>
                 <LocalizedLink
                   href="/kierunki"
+                  locale={locale}
                   className="inline-flex items-center rounded-full border border-emerald-900/10 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
                 >
                   {text.openCatalog}
@@ -755,6 +762,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount }: Premiu
                 </div>
                 <LocalizedLink
                   href={activeSlide.href}
+                  locale={locale}
                   className="rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/90 transition hover:bg-white/14"
                 >
                   {text.guideLabel} {activeSlide.city}

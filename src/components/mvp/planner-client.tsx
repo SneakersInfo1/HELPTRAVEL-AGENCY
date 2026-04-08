@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
@@ -32,6 +33,7 @@ import {
   type SavedSearchMemory,
 } from "@/lib/mvp/planner-memory";
 import { buildRedirectHref } from "@/lib/mvp/providers";
+import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate, isoDateToMonth } from "@/lib/mvp/travel-dates";
 import type { DiscoveryResponse, SavedTripSnapshot, SavedTripView } from "@/lib/mvp/types";
 
@@ -384,6 +386,7 @@ interface PlannerClientProps {
   initialStartDate?: string;
   initialNights?: number;
   autoRunStandardSearch?: boolean;
+  locale?: SiteLocale;
 }
 
 export function PlannerClient({
@@ -398,8 +401,11 @@ export function PlannerClient({
   initialStartDate,
   initialNights,
   autoRunStandardSearch = false,
+  locale: localeOverride,
 }: PlannerClientProps) {
-  const { locale } = useLanguage();
+  const pathname = usePathname();
+  const { locale: contextLocale } = useLanguage();
+  const locale = localeOverride ?? localeFromPathname(pathname) ?? contextLocale;
   const text = plannerCopy[locale];
   const dateLocale = locale === "en" ? "en-GB" : "pl-PL";
   const localizedDiscoveryPresets = locale === "en" ? discoveryPresets.en : discoveryPresets.pl;
@@ -1243,6 +1249,7 @@ export function PlannerClient({
                       <div className="mt-3 flex flex-wrap gap-2">
                         <LocalizedLink
                           href={`/trips/${trip.itineraryResultId}`}
+                          locale={locale}
                           className="rounded-full border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
                         >
                           {text.openPlan}
@@ -1336,6 +1343,7 @@ export function PlannerClient({
                     <LocalizedLink
                       key={destination.slug}
                       href={`/kierunki/${destination.slug}`}
+                      locale={locale}
                       className="flex items-center justify-between rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
                     >
                       <span>
@@ -1368,6 +1376,7 @@ export function PlannerClient({
                     <LocalizedLink
                       key={`${destination.slug}-${destination.savedAt}`}
                       href={`/kierunki/${destination.slug}`}
+                      locale={locale}
                       className="flex items-center justify-between rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
                     >
                       <span>

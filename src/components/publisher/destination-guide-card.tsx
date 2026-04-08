@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
+import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import type { DestinationProfile } from "@/lib/mvp/types";
 import type { DestinationMedia } from "@/lib/mvp/visuals";
 
@@ -11,12 +13,16 @@ export function DestinationGuideCard({
   destination,
   media,
   summary,
+  locale: localeOverride,
 }: {
   destination: DestinationProfile;
   media: DestinationMedia;
   summary: string;
+  locale?: SiteLocale;
 }) {
-  const { locale } = useLanguage();
+  const pathname = usePathname();
+  const { locale: contextLocale } = useLanguage();
+  const locale = localeOverride ?? localeFromPathname(pathname) ?? contextLocale;
   const copy =
     locale === "en"
       ? {
@@ -46,7 +52,7 @@ export function DestinationGuideCard({
 
   return (
     <article className="group overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white shadow-[0_16px_40px_rgba(16,84,48,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(16,84,48,0.14)]">
-      <LocalizedLink href={`/kierunki/${destination.slug}`} className="relative block h-56">
+      <LocalizedLink href={`/kierunki/${destination.slug}`} locale={locale} className="relative block h-56">
         <Image
           src={media.heroImage}
           alt={`${destination.city}, ${destination.country}`}
@@ -80,12 +86,14 @@ export function DestinationGuideCard({
         <div className="mt-5 flex flex-wrap gap-3">
           <LocalizedLink
             href={`/kierunki/${destination.slug}`}
+            locale={locale}
             className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
             {copy.showDestination}
           </LocalizedLink>
           <LocalizedLink
             href={`/planner?mode=standard&q=${encodeURIComponent(destination.city)}`}
+            locale={locale}
             className="rounded-full border border-emerald-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
           >
             {copy.planner}

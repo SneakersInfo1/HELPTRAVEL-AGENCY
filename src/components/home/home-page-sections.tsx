@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
@@ -12,6 +13,7 @@ import {
   type PlannerSnapshot,
   type SavedDestinationMemory,
 } from "@/lib/mvp/planner-memory";
+import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import type { EditorialArticle, EditorialCategory } from "@/lib/mvp/publisher-content";
 import { addDaysToIsoDate, formatShortDate } from "@/lib/mvp/travel-dates";
 
@@ -31,6 +33,7 @@ interface HomePageSectionsProps {
   editorialCategories: EditorialCategory[];
   staysLabel: string;
   flightsLabel: string;
+  locale?: SiteLocale;
 }
 
 function buildPlannerHref(destination: string, origin = "Warszawa") {
@@ -181,8 +184,11 @@ export function HomePageSections({
   editorialCategories,
   staysLabel,
   flightsLabel,
+  locale: localeOverride,
 }: HomePageSectionsProps) {
-  const { locale } = useLanguage();
+  const pathname = usePathname();
+  const { locale: contextLocale } = useLanguage();
+  const locale = localeOverride ?? localeFromPathname(pathname) ?? contextLocale;
   const text = copy[locale];
   const [lastSnapshot, setLastSnapshot] = useState<PlannerSnapshot | null>(null);
   const [savedDestinations, setSavedDestinations] = useState<SavedDestinationMemory[]>([]);
@@ -209,6 +215,7 @@ export function HomePageSections({
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <LocalizedLink
               href={buildPlannerHref(text.plannerDestinations.hotel)}
+              locale={locale}
               className="rounded-[1.6rem] bg-white p-4 text-emerald-950 transition duration-300 hover:-translate-y-1 hover:bg-emerald-50"
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.hotelLabel}</p>
@@ -217,6 +224,7 @@ export function HomePageSections({
             </LocalizedLink>
             <LocalizedLink
               href={buildPlannerHref(text.plannerDestinations.flights)}
+              locale={locale}
               className="rounded-[1.6rem] border border-white/14 bg-white/8 p-4 transition duration-300 hover:-translate-y-1 hover:bg-white/12"
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">{text.flightsLabel}</p>
@@ -225,6 +233,7 @@ export function HomePageSections({
             </LocalizedLink>
             <LocalizedLink
               href={buildPlannerHref(text.plannerDestinations.apartments)}
+              locale={locale}
               className="rounded-[1.6rem] border border-white/14 bg-white/8 p-4 transition duration-300 hover:-translate-y-1 hover:bg-white/12"
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">{text.staysAltLabel}</p>
@@ -239,6 +248,7 @@ export function HomePageSections({
             <LocalizedLink
               key={item.slug}
               href={`/kierunki/${item.slug}`}
+              locale={locale}
               className={`group relative overflow-hidden rounded-[2rem] border border-emerald-900/10 shadow-[0_20px_60px_rgba(16,84,48,0.1)] ${
                 index === 0 ? "md:col-span-2 xl:col-span-2" : ""
               }`}
@@ -295,6 +305,7 @@ export function HomePageSections({
                   </p>
                   <LocalizedLink
                     href={buildSnapshotPlannerHref(lastSnapshot)}
+                    locale={locale}
                     className="mt-4 inline-flex rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
                   >
                     {text.reopenPlan}
@@ -319,12 +330,14 @@ export function HomePageSections({
                       <div className="mt-3 flex flex-wrap gap-2">
                         <LocalizedLink
                           href={`/kierunki/${destination.slug}`}
+                          locale={locale}
                           className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
                         >
                           {text.openGuide}
                         </LocalizedLink>
                         <LocalizedLink
                           href={buildPlannerHref(destination.city)}
+                          locale={locale}
                           className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
                         >
                           {text.openPlannerShort}
@@ -349,6 +362,7 @@ export function HomePageSections({
               <LocalizedLink
                 key={card.href}
                 href={card.href}
+                locale={locale}
                 className={`rounded-[1.5rem] border border-emerald-900/10 px-4 py-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-500/40 ${
                   index === 0 ? "bg-emerald-900 text-white" : "bg-emerald-50/75 text-emerald-950"
                 }`}
@@ -367,7 +381,7 @@ export function HomePageSections({
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.howEyebrow}</p>
             <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">{text.howTitle}</h2>
           </div>
-          <LocalizedLink href="/planner" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+          <LocalizedLink href="/planner" locale={locale} className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
             {text.openPlanner}
           </LocalizedLink>
         </div>
@@ -397,6 +411,7 @@ export function HomePageSections({
               <LocalizedLink
                 key={category.slug}
                 href={`/${category.slug}`}
+                locale={locale}
                 className="rounded-[1.6rem] border border-emerald-900/10 bg-white px-4 py-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-500/40"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{category.eyebrow}</p>
@@ -413,14 +428,14 @@ export function HomePageSections({
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.articlesEyebrow}</p>
               <h2 className="mt-2 font-display text-4xl text-emerald-950 sm:text-5xl">{text.articlesTitle}</h2>
             </div>
-            <LocalizedLink href="/inspiracje" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
+            <LocalizedLink href="/inspiracje" locale={locale} className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
               {text.libraryCta}
             </LocalizedLink>
           </div>
 
           <div className="mt-6 grid gap-4 xl:grid-cols-2">
             {latestArticles.map((article) => (
-              <EditorialArticleCard key={article.slug} article={article} compact readLabel={text.readArticle} />
+              <EditorialArticleCard key={article.slug} article={article} compact readLabel={text.readArticle} locale={locale} />
             ))}
           </div>
         </article>
@@ -438,18 +453,21 @@ export function HomePageSections({
           <div className="flex flex-wrap gap-3">
             <LocalizedLink
               href="/planner?mode=standard"
+              locale={locale}
               className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-300"
             >
               {text.chooseDestination}
             </LocalizedLink>
             <LocalizedLink
               href="/planner?mode=discovery"
+              locale={locale}
               className="rounded-full border border-white/14 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/14"
             >
               {text.describeTrip}
             </LocalizedLink>
             <LocalizedLink
               href="/kierunki"
+              locale={locale}
               className="rounded-full border border-white/14 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/14"
             >
               {text.openCatalog}

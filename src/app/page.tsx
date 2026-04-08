@@ -11,31 +11,46 @@ import {
   getLatestEditorialArticles,
   getPublishedDestinations,
 } from "@/lib/mvp/publisher-content";
+import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 const siteUrl = getSiteUrl();
 
-export const metadata: Metadata = {
-  title: "HelpTravel - wybierz kierunek, hotel i lot w jednym flow",
-  description:
-    "Pelnoekranowy start do planowania wyjazdu. Wybierz kierunek, ustaw termin i przejdz do hoteli, lotow, atrakcji oraz kolejnych krokow w jednym flow.",
-  alternates: {
-    canonical: "/",
-    languages: {
-      "pl-PL": "/",
-      "en-US": "/?lang=en",
+export function getHomeMetadata(locale: SiteLocale): Metadata {
+  const isEnglish = locale === "en";
+
+  return {
+    title: isEnglish
+      ? "HelpTravel - choose a destination, stay and flight in one flow"
+      : "HelpTravel - wybierz kierunek, hotel i lot w jednym flow",
+    description: isEnglish
+      ? "A high-impact trip planning start. Pick a destination, set dates and move straight into stays, flights and the next travel steps."
+      : "Pelnoekranowy start do planowania wyjazdu. Wybierz kierunek, ustaw termin i przejdz do hoteli, lotow, atrakcji oraz kolejnych krokow w jednym flow.",
+    alternates: {
+      canonical: locale === "en" ? "/en" : "/",
+      languages: {
+        "pl-PL": "/",
+        "en-US": "/en",
+      },
     },
-  },
-  openGraph: {
-    title: "HelpTravel - wybierz kierunek, hotel i lot w jednym flow",
-    description:
-      "Premium start do wyboru kierunku, hotelu i lotu z jednego travelowego ekranu.",
-    url: siteUrl,
-    type: "website",
-  },
-};
+    openGraph: {
+      title: isEnglish
+        ? "HelpTravel - choose a destination, stay and flight in one flow"
+        : "HelpTravel - wybierz kierunek, hotel i lot w jednym flow",
+      description: isEnglish
+        ? "A premium starting point for destination choice, stays and flights in one travel flow."
+        : "Premium start do wyboru kierunku, hotelu i lotu z jednego travelowego ekranu.",
+      url: locale === "en" ? `${siteUrl}/en` : siteUrl,
+      locale: locale === "en" ? "en_US" : "pl_PL",
+      alternateLocale: locale === "en" ? ["pl_PL"] : ["en_US"],
+      type: "website",
+    },
+  };
+}
+
+export const metadata: Metadata = getHomeMetadata("pl");
 
 const heroDestinationSlugs = [
   "malaga-spain",
@@ -48,7 +63,7 @@ const heroDestinationSlugs = [
   "funchal-portugal",
 ] as const;
 
-export default async function Home() {
+export async function HomePageView({ locale }: { locale: SiteLocale }) {
   const publishedDestinations = getPublishedDestinations();
   const latestArticles = getLatestEditorialArticles(4);
   const editorialCategories = getEditorialCategories().slice(0, 4);
@@ -95,7 +110,7 @@ export default async function Home() {
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-8">
       <div className="w-full px-4 pt-4 sm:px-6 sm:pt-6 xl:px-8">
-        <PremiumHomeHero slides={heroSlides} destinationCount={destinationCount} guideCount={guideCount} />
+        <PremiumHomeHero slides={heroSlides} destinationCount={destinationCount} guideCount={guideCount} locale={locale} />
       </div>
       <HomePageSections
         featuredDirections={featuredDirectionCards}
@@ -103,7 +118,12 @@ export default async function Home() {
         editorialCategories={editorialCategories}
         staysLabel={getAffiliateBrandLabel(previewLinks.stays, "Hotels.com")}
         flightsLabel={getAffiliateBrandLabel(previewLinks.flights, "Partner lotniczy")}
+        locale={locale}
       />
     </main>
   );
+}
+
+export default async function Home() {
+  return HomePageView({ locale: "pl" });
 }

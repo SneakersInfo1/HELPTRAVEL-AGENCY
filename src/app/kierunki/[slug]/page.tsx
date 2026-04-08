@@ -149,6 +149,36 @@ function buildComparisonSignals(current: DestinationProfile, alternatives: Desti
   });
 }
 
+function buildWinningScenarios(guide: NonNullable<ReturnType<typeof getDestinationGuideBySlug>>) {
+  const destination = guide.destination;
+
+  return [
+    {
+      title: "Wygrywa, gdy liczysz na sprawny wyjazd",
+      body:
+        destination.accessScore >= 0.8
+          ? "Dolot z Polski jest relatywnie prosty, wiec latwiej obronic ten kierunek nawet przy krotkim oknie wyjazdu."
+          : "Najlepiej broni sie wtedy, gdy mozesz zaplanowac trase odrobine wczesniej i nie oczekujesz najkrotszej logistyki.",
+    },
+    {
+      title: "Wygrywa, gdy brief jest dobrze ustawiony",
+      body:
+        destination.beachScore >= 0.68
+          ? "To dobry wybor, jesli chcesz polaczyc klimat miejski z resetem nad morzem, zamiast jechac w skrajnie plazowy albo skrajnie miejski scenariusz."
+          : destination.cityScore >= 0.75
+            ? "Najmocniej pracuje, gdy priorytetem jest miasto, zwiedzanie i czytelny plan na 3-5 dni bez rozlewania wyjazdu."
+            : "Najlepiej wypada przy spokojniejszym briefie, gdzie licza sie widoki, rytm miejsca i bardziej zbalansowany plan.",
+    },
+    {
+      title: "Wygrywa, gdy budzet ma byc sensowny",
+      body:
+        destination.costIndex <= 1.05
+          ? "Latwiej utrzymac tu dobry stosunek kosztu do efektu niz w wielu glosniejszych kierunkach o podobnym klimacie."
+          : "To nie jest kierunek ultrabudzetowy, ale nadal moze byc bardzo sensowny, jesli nie przepalasz budzetu na zla lokalizacje noclegu.",
+    },
+  ];
+}
+
 export async function generateStaticParams() {
   return getAllDestinationProfiles().map((destination) => ({ slug: destination.slug }));
 }
@@ -223,6 +253,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     guide.destination,
     similarDestinations.map((item) => item.destination),
   );
+  const winningScenarios = buildWinningScenarios(guide);
   const commercialLinks = buildAffiliateLinksWithContext({
     city: guide.destination.city,
     country: guide.destination.country,
@@ -579,6 +610,32 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             </LocalizedLink>
           </div>
         </article>
+      </section>
+
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kiedy ten kierunek wygrywa</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Trzy sytuacje, w ktorych {guide.destination.city} najczesciej broni decyzje.</h2>
+            <p className="mt-3 text-sm leading-7 text-emerald-900/78">
+              Ten blok nie ma tylko inspirowac. Ma pomoc ocenic, czy brief pasuje do kierunku zanim klikniesz w hotel lub lot.
+            </p>
+          </div>
+          <LocalizedLink
+            href="/planner?mode=discovery"
+            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            Porownaj z innym briefem
+          </LocalizedLink>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          {winningScenarios.map((scenario) => (
+            <article key={scenario.title} className="rounded-[1.75rem] border border-emerald-900/8 bg-emerald-50/75 p-5">
+              <h3 className="text-xl font-bold text-emerald-950">{scenario.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-emerald-900/78">{scenario.body}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
