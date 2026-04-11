@@ -9,7 +9,7 @@ import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { buildCjStayLinks } from "@/lib/mvp/cj-stays";
 import { buildRedirectHref } from "@/lib/mvp/providers";
-import { addDaysToIsoDate, formatShortDate } from "@/lib/mvp/travel-dates";
+import { countNightsBetweenIsoDates, formatShortDate } from "@/lib/mvp/travel-dates";
 import type { StaySearchResponse, StaySortMode } from "@/lib/mvp/types";
 
 const INITIAL_VISIBLE_OFFERS = 24;
@@ -40,6 +40,15 @@ function formatMoney(value: number, currency: string, locale: "pl" | "en"): stri
   }).format(value);
 }
 
+function getDiscountPercent(totalAmount: number, publicAmount?: number | null) {
+  if (!publicAmount || publicAmount <= totalAmount) {
+    return null;
+  }
+
+  const percent = Math.round(((publicAmount - totalAmount) / publicAmount) * 100);
+  return percent >= 5 ? percent : null;
+}
+
 function Spinner() {
   return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
 }
@@ -57,11 +66,19 @@ const copy = {
     offersState: "ofert",
     readyState: "Gotowe",
     dateLabel: "Termin",
+    dateRangeLabel: "Zakres dat",
     guestsLabel: "Podrozni",
     guestsShort: "os.",
     roomsLabel: "Pokoje",
     priorityLabel: "Priorytet",
     priorityValue: "Hotele najpierw",
+    currencyHint: "Ceny i linki ustawione pod PLN",
+    promoBadge: "Hotel-first pick",
+    promoFlash: "Deal alert",
+    promoDiscountPrefix: "do",
+    discountCompared: "Cena spadla wzgledem ceny bazowej",
+    savingsLabel: "Oszczedzasz",
+    topValueLabel: "Najmocniejszy klik na start",
     sortCheap: "Najtansze",
     sortQuality: "Najlepszy standard",
     sortValue: "Najlepsza relacja ceny do jakosci",
@@ -96,11 +113,19 @@ const copy = {
     offersState: "offers",
     readyState: "Ready",
     dateLabel: "Dates",
+    dateRangeLabel: "Date range",
     guestsLabel: "Travelers",
     guestsShort: "trav.",
     roomsLabel: "Rooms",
     priorityLabel: "Priority",
     priorityValue: "Hotels first",
+    currencyHint: "Prices and partner links tuned for PLN",
+    promoBadge: "Hotel-first pick",
+    promoFlash: "Deal alert",
+    promoDiscountPrefix: "up to",
+    discountCompared: "Lower than the public price",
+    savingsLabel: "You save",
+    topValueLabel: "Strongest opening click",
     sortCheap: "Lowest price",
     sortQuality: "Best quality",
     sortValue: "Best value",
@@ -129,7 +154,7 @@ export function StayOffersPanel(props: {
   destinationCity: string;
   destinationCountry: string;
   checkInDate: string;
-  nights: number;
+  checkOutDate: string;
   guests: number;
   rooms: number;
 }) {
@@ -141,6 +166,11 @@ export function StayOffersPanel(props: {
   const [error, setError] = useState("");
   const [data, setData] = useState<StaySearchResponse | null>(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_OFFERS);
+
+  const nights = useMemo(
+    () => countNightsBetweenIsoDates(props.checkInDate, props.checkOutDate, 4),
+    [props.checkInDate, props.checkOutDate],
+  );
 
   useEffect(() => {
     if (!props.destinationCity) return;
@@ -155,7 +185,7 @@ export function StayOffersPanel(props: {
             city: props.destinationCity,
             country: props.destinationCountry,
             checkInDate: props.checkInDate,
-            nights: props.nights,
+            nights,
             guests: props.guests,
             rooms: props.rooms,
             sortBy,
@@ -182,13 +212,13 @@ export function StayOffersPanel(props: {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [props.checkInDate, props.destinationCity, props.destinationCountry, props.guests, props.nights, props.rooms, requestErrorText, sortBy]);
+  }, [nights, props.checkInDate, props.destinationCity, props.destinationCountry, props.guests, props.rooms, requestErrorText, sortBy]);
 
   const availableOffers = useMemo(() => data?.offers.slice(0, MAX_VISIBLE_OFFERS) ?? [], [data?.offers]);
   const displayedOffers = useMemo(() => availableOffers.slice(0, visibleCount), [availableOffers, visibleCount]);
   const topOffer = displayedOffers[0] ?? null;
   const remainingOffers = topOffer ? displayedOffers.slice(1) : displayedOffers;
-  const checkOutDate = useMemo(() => addDaysToIsoDate(props.checkInDate, props.nights), [props.checkInDate, props.nights]);
+  const checkOutDate = props.checkOutDate;
 
   const partnerLinks = useMemo(
     () =>
@@ -271,7 +301,38 @@ export function StayOffersPanel(props: {
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm ring-1 ring-emerald-900/8">
           {loading ? <Spinner /> : null}
-          {loading ? text.loadingState : data ? `${availableOffers.length} ${text.offersState}` : text.readyState}
+            {loading ? text.loadingState : data ? `${availableOffers.length} ${text.offersState}` : text.readyState}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-950 px-4 py-4 text-white shadow-[0_14px_40px_rgba(16,84,48,0.14)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-amber-300 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-950">
+              {text.promoFlash}
+            </span>
+            <span className="rounded-full bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+              {text.promoBadge}
+            </span>
+          </div>
+          <p className="mt-3 text-lg font-bold">{text.topValueLabel}</p>
+          <p className="mt-1 text-sm leading-6 text-white/78">
+            {text.currencyHint}
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-emerald-900/8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.dateRangeLabel}</p>
+            <p className="mt-1 text-sm font-semibold text-emerald-950">
+              {formatShortDate(props.checkInDate, locale === "en" ? "en-GB" : "pl-PL")} - {formatShortDate(checkOutDate, locale === "en" ? "en-GB" : "pl-PL")}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-emerald-900/8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.priorityLabel}</p>
+            <p className="mt-1 text-sm font-semibold text-emerald-950">
+              {text.priorityValue} · {nights} {locale === "en" ? "nights" : "nocy"}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -389,6 +450,11 @@ export function StayOffersPanel(props: {
                     <div className="absolute left-4 top-4 rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-950 shadow-sm">
                       {text.topStayBadge}
                     </div>
+                    {getDiscountPercent(topOffer.total_amount, topOffer.public_amount) ? (
+                      <div className="absolute right-4 top-4 rounded-full bg-rose-500 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white shadow-sm">
+                        -{getDiscountPercent(topOffer.total_amount, topOffer.public_amount)}%
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="p-5 sm:p-6">
@@ -401,8 +467,19 @@ export function StayOffersPanel(props: {
                       <div className="rounded-[1.4rem] bg-emerald-950 px-4 py-3 text-right text-white">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.stayPriceLabel}</p>
                         <p className="mt-1 text-2xl font-bold">{formatMoney(topOffer.total_amount, topOffer.currency, locale)}</p>
+                        {topOffer.public_amount && topOffer.public_amount > topOffer.total_amount ? (
+                          <p className="mt-1 text-xs text-emerald-100/80">
+                            {text.savingsLabel} {formatMoney(topOffer.public_amount - topOffer.total_amount, topOffer.currency, locale)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
+
+                    {getDiscountPercent(topOffer.total_amount, topOffer.public_amount) ? (
+                      <div className="mt-4 inline-flex rounded-full bg-rose-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-rose-600">
+                        {text.promoDiscountPrefix} -{getDiscountPercent(topOffer.total_amount, topOffer.public_amount)}% · {text.discountCompared}
+                      </div>
+                    ) : null}
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-4">
                       <div className="rounded-2xl bg-emerald-50/70 px-3 py-2">
@@ -492,10 +569,20 @@ export function StayOffersPanel(props: {
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.position} #{index + 2}</p>
                         <h4 className="mt-1 text-lg font-bold text-emerald-950">{offer.name}</h4>
                         <p className="mt-1 text-sm text-emerald-900/72">{offer.address || offer.city}</p>
+                        {getDiscountPercent(offer.total_amount, offer.public_amount) ? (
+                          <span className="mt-3 inline-flex rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-rose-600">
+                            -{getDiscountPercent(offer.total_amount, offer.public_amount)}%
+                          </span>
+                        ) : null}
                       </div>
                       <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-right">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.stayPriceLabel}</p>
                         <p className="mt-1 text-lg font-bold text-emerald-950">{formatMoney(offer.total_amount, offer.currency, locale)}</p>
+                        {offer.public_amount && offer.public_amount > offer.total_amount ? (
+                          <p className="mt-1 text-[11px] text-emerald-800/72">
+                            {text.savingsLabel} {formatMoney(offer.public_amount - offer.total_amount, offer.currency, locale)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 

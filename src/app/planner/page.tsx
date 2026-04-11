@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PlannerClient } from "@/components/mvp/planner-client";
 import { type SiteLocale } from "@/lib/mvp/locale";
+import { countNightsBetweenIsoDates } from "@/lib/mvp/travel-dates";
 
 export function getPlannerMetadata(locale: SiteLocale): Metadata {
   const isEnglish = locale === "en";
@@ -46,6 +47,7 @@ interface PlannerPageProps {
     days?: string;
     nights?: string;
     startDate?: string;
+    endDate?: string;
     style?: string;
   }>;
 }
@@ -59,8 +61,12 @@ export async function PlannerPageView({ searchParams, locale }: PlannerPageProps
   const travelers = Number(params.travelers ?? 2);
   const budget = Number(params.budget ?? 2500);
   const days = Number(params.days ?? 4);
-  const nights = Number(params.nights ?? params.days ?? 4);
   const startDate = params.startDate ?? "";
+  const derivedNightsFromRange = startDate && params.endDate ? countNightsBetweenIsoDates(startDate, params.endDate, 4) : Number.NaN;
+  const nights = Number.isFinite(derivedNightsFromRange)
+    ? derivedNightsFromRange
+    : Number(params.nights ?? params.days ?? 4);
+  const endDate = params.endDate ?? "";
   const style = params.style ?? "city break";
 
   return (
@@ -73,6 +79,7 @@ export async function PlannerPageView({ searchParams, locale }: PlannerPageProps
       initialBudget={Number.isFinite(budget) ? budget : 2500}
       initialStandardDays={Number.isFinite(days) ? days : 4}
       initialStartDate={startDate || undefined}
+      initialEndDate={endDate || undefined}
       initialNights={Number.isFinite(nights) ? nights : 4}
       initialStyle={style}
       autoRunStandardSearch={mode === "standard" && Boolean(destination || query)}

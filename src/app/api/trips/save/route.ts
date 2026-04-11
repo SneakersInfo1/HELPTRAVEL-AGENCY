@@ -18,6 +18,7 @@ const SaveBodySchema = z.object({
       durationMin: z.number().min(2).max(14),
       durationMax: z.number().min(2).max(14),
       travelStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      travelEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       travelNights: z.number().min(1).max(21),
       selectedDestinationSlug: z.string().max(160).optional(),
       selectedDestinationLabel: z.string().max(160).optional(),

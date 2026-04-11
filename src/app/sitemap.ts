@@ -15,6 +15,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/kierunki",
     "/en/kierunki",
     "/inspiracje",
+    "/przewodniki",
+    "/oferta",
+    "/faq",
+    "/cennik",
+    "/city-breaki",
+    "/cieple-kierunki",
+    "/bez-wizy",
+    "/tanie-podroze",
+    "/weekendowe-wyjazdy",
     "/mapa-serwisu",
     "/jak-pracujemy",
     "/dla-partnerow",
@@ -24,6 +33,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/polityka-prywatnosci",
     "/regulamin",
     "/linki-partnerskie",
+    "/feed.xml",
   ];
 
   const categoryRoutes = getEditorialCategories().map((category) => `/${category.slug}`);
@@ -31,19 +41,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const englishDestinationRoutes = getAllDestinationProfiles().map((destination) => `/en/kierunki/${destination.slug}`);
   const articleRoutes = getEditorialArticles().map((article) => `/inspiracje/${article.slug}`);
 
-  return [...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...englishDestinationRoutes, ...articleRoutes].map((route) => ({
+  return [...new Set([...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...englishDestinationRoutes, ...articleRoutes])].map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified: baseLastModified,
     changeFrequency:
       route === "" || route === "/en"
         ? "daily"
-        : route.startsWith("/kierunki/") || route.startsWith("/en/kierunki/") || route.startsWith("/inspiracje/")
+        : route === "/kierunki" || route === "/en/kierunki" || route === "/inspiracje" || categoryRoutes.includes(route)
+          ? "daily"
+          : route.startsWith("/kierunki/") || route.startsWith("/en/kierunki/") || route.startsWith("/inspiracje/")
           ? "weekly"
           : "monthly",
     priority:
       route === "" || route === "/en"
         ? 1
-        : route.startsWith("/kierunki/") || route.startsWith("/en/kierunki/") || route.startsWith("/inspiracje/")
+        : route === "/kierunki" || route === "/en/kierunki" || route === "/inspiracje" || categoryRoutes.includes(route)
+          ? 0.9
+          : route.startsWith("/kierunki/") || route.startsWith("/en/kierunki/") || route.startsWith("/inspiracje/")
           ? 0.8
           : 0.65,
   }));

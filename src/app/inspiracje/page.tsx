@@ -8,13 +8,13 @@ import { getEditorialArticles, getEditorialCategories, getLatestEditorialArticle
 import { getSiteUrl } from "@/lib/mvp/site";
 
 export const metadata: Metadata = {
-  title: "Inspiracje",
-  description: "Przewodniki, pomysly na wyjazdy, city breaki i praktyczne scenariusze dla polskiego odbiorcy.",
+  title: "Inspiracje i blog podrozniczy",
+  description: "Przewodniki, pomysly na wyjazdy, city breaki i praktyczne scenariusze w blogu travelowym dla polskiego odbiorcy.",
   alternates: {
     canonical: "/inspiracje",
   },
   openGraph: {
-    title: "Inspiracje i przewodniki - HelpTravel",
+    title: "Inspiracje i blog podrozniczy - HelpTravel",
     description:
       "Praktyczne scenariusze wyjazdow, porownania kierunkow i artykuly pomagajace przejsc do konkretnego planu.",
     url: `${getSiteUrl()}/inspiracje`,
@@ -54,9 +54,9 @@ export default function InspirationsIndexPage() {
         {JSON.stringify(structuredData)}
       </Script>
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Warstwa wydawnicza</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Warstwa wydawnicza i blog</p>
         <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] text-emerald-950">
-          Inspiracje, przewodniki i praktyczne tresci, ktore prowadza do realnego planu wyjazdu.
+          Inspiracje, przewodniki i blog travelowy, ktory prowadzi do realnego planu wyjazdu.
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
           Serwis nie konczy sie na samym plannerze. Tutaj zbieramy konkretne scenariusze wyjazdow, porownania kierunkow i

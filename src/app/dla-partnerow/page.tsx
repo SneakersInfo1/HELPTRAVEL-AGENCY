@@ -220,6 +220,12 @@ export default function PartnersPage() {
           <LocalizedLink href="/mapa-serwisu" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
             Mapa serwisu
           </LocalizedLink>
+          <LocalizedLink href="/oferta" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+            Oferta
+          </LocalizedLink>
+          <LocalizedLink href="/faq" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+            FAQ
+          </LocalizedLink>
           <LocalizedLink href="/standard-redakcyjny" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
             Standard redakcyjny
           </LocalizedLink>

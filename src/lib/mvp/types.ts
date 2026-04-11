@@ -140,6 +140,7 @@ export interface SavedTripSnapshot {
   durationMin: number;
   durationMax: number;
   travelStartDate: string;
+  travelEndDate?: string;
   travelNights: number;
   selectedDestinationSlug?: string;
   selectedDestinationLabel?: string;

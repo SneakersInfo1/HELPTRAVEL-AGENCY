@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -71,6 +72,24 @@ export default function AffiliateDisclosurePage() {
               Po kliknieciu mozliwe jest zapisanie kontekstu wyjazdu i przejscie do partnera zewnetrznego, gdzie odbywa sie finalny etap.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <h2 className="text-2xl font-bold text-emerald-950">Powiazane strony</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Link href="/faq" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+            FAQ
+          </Link>
+          <Link href="/cennik" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+            Cennik
+          </Link>
+          <Link href="/oferta" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+            Oferta
+          </Link>
+          <Link href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+            Jak pracujemy
+          </Link>
         </div>
       </section>
     </main>

@@ -11,6 +11,7 @@ export interface PlannerSnapshot {
   durationMin: number;
   durationMax: number;
   travelStartDate: string;
+  travelEndDate?: string;
   travelNights: number;
   selectedDestinationSlug?: string;
   selectedDestinationLabel?: string;
@@ -41,6 +42,7 @@ export interface SavedSearchMemory {
   travelers: number;
   rooms: number;
   travelStartDate: string;
+  travelEndDate?: string;
   travelNights: number;
   topDestinationSlug?: string;
   topDestinationLabel?: string;
@@ -148,7 +150,7 @@ export function getSavedSearches(limit = 6): SavedSearchMemory[] {
 }
 
 export function pushSavedSearch(search: Omit<SavedSearchMemory, "id" | "savedAt">): SavedSearchMemory[] {
-  const baseId = [search.mode, search.label, search.originCity, search.travelStartDate, search.travelNights].join("|").toLowerCase();
+  const baseId = [search.mode, search.label, search.originCity, search.travelStartDate, search.travelEndDate ?? search.travelNights].join("|").toLowerCase();
   const next: SavedSearchMemory[] = [
     {
       ...search,

@@ -13,6 +13,7 @@ interface EnglishPlannerPageProps {
     days?: string;
     nights?: string;
     startDate?: string;
+    endDate?: string;
     style?: string;
   }>;
 }

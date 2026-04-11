@@ -98,6 +98,9 @@ function buildHotelsDestinationUrl(seed: CjDestinationSeed, options?: CjStayBuil
     rooms: String(rooms),
     sort: "RECOMMENDED",
     useRewards: "false",
+    currency: "PLN",
+    locale: "pl_PL",
+    langid: "1045",
   });
 
   return `https://www.hotels.com/Hotel-Search?${params.toString()}`;
@@ -115,6 +118,9 @@ function buildExpediaDestinationUrl(seed: CjDestinationSeed, options?: CjStayBui
     rooms: String(rooms),
     sort: "RECOMMENDED",
     useRewards: "false",
+    currency: "PLN",
+    locale: "pl_PL",
+    langid: "1045",
   });
 
   return `https://www.expedia.com/Hotel-Search?${params.toString()}`;
@@ -129,6 +135,8 @@ function buildVrboDestinationUrl(seed: CjDestinationSeed, options?: CjStayBuildO
     d2: checkOut,
     endDate: checkOut,
     adults: String(adults),
+    currency: "PLN",
+    locale: "pl_PL",
   });
 
   return `https://www.vrbo.com/search?${params.toString()}`;

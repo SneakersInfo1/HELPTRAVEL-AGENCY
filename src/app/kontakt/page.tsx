@@ -95,6 +95,26 @@ export default function ContactPage() {
             </p>
           </div>
         </div>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/faq"
+            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            FAQ
+          </Link>
+          <Link
+            href="/oferta"
+            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            Oferta
+          </Link>
+          <Link
+            href="/jak-pracujemy"
+            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            Jak pracujemy
+          </Link>
+        </div>
       </section>
     </main>
   );

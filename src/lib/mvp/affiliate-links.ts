@@ -26,7 +26,7 @@ function fallbackLink(kind: AffiliateKind, place: string): string {
     return `https://www.google.com/search?q=${encodeURIComponent(`loty z Polski do ${place}`)}`;
   }
   if (kind === "stays") {
-    return `https://www.booking.com/searchresults.pl.html?ss=${encodeURIComponent(place)}`;
+    return `https://www.booking.com/searchresults.pl.html?ss=${encodeURIComponent(place)}&selected_currency=PLN&lang=pl`;
   }
   if (kind === "cars") {
     return `https://www.google.com/search?q=${encodeURIComponent(`wynajem samochodu ${place}`)}`;

@@ -34,8 +34,14 @@ import {
 } from "@/lib/mvp/planner-memory";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
-import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate, isoDateToMonth } from "@/lib/mvp/travel-dates";
-import type { DiscoveryResponse, SavedTripSnapshot, SavedTripView } from "@/lib/mvp/types";
+import {
+  countNightsBetweenIsoDates,
+  defaultTravelStartDate,
+  formatShortDate,
+  isoDateToMonth,
+  normalizeTravelEndDate,
+} from "@/lib/mvp/travel-dates";
+import type { DestinationSuggestion, DiscoveryResponse, SavedTripSnapshot, SavedTripView } from "@/lib/mvp/types";
 
 type Mode = "discovery" | "standard";
 
@@ -76,7 +82,7 @@ const plannerCopy = {
     sharedTitle: "Termin i sklad podrozy",
     origin: "Skad lecisz",
     travelStart: "Start podrozy",
-    nights: "Liczba nocy",
+    nights: "Powrot",
     travelers: "Podrozni",
     rooms: "Pokoje",
     quickPreview: "Szybki podglad",
@@ -157,6 +163,10 @@ const plannerCopy = {
     mobileBarEyebrow: "Gotowe do dalszego ruchu",
     mobileBarBody: "Najpierw pobyt, potem loty i zapis planu bez gubienia ustawien.",
     destinationPlaceholder: "Np. Malaga",
+    destinationSearching: "Szukamy kierunkow...",
+    destinationEmpty: "Brak dopasowan. Sprobuj wpisac inne miasto lub kraj.",
+    refreshFlow: "Odswiez pobyt i loty",
+    bookingSettingsHint: "Ten panel jest aktywny: zmien kierunek lub daty i kliknij odswiez, aby przebudowac wyniki.",
     originPlaceholder: "Warszawa",
     primaryFlow: "Sciezka glowna",
     hotelFirst: "Najpierw pobyt, potem lot i kolejne kroki.",
@@ -198,7 +208,7 @@ const plannerCopy = {
     sharedTitle: "Dates and travel party",
     origin: "Flying from",
     travelStart: "Trip start",
-    nights: "Nights",
+    nights: "Return",
     travelers: "Travelers",
     rooms: "Rooms",
     quickPreview: "Quick preview",
@@ -279,6 +289,10 @@ const plannerCopy = {
     mobileBarEyebrow: "Ready for the next move",
     mobileBarBody: "Lead with stays, then flights, and keep the plan saved without losing the setup.",
     destinationPlaceholder: "E.g. Malaga",
+    destinationSearching: "Looking for destinations...",
+    destinationEmpty: "No matches yet. Try another city or country.",
+    refreshFlow: "Refresh stays and flights",
+    bookingSettingsHint: "This panel is active: change the destination or dates, then refresh the flow to rebuild results.",
     originPlaceholder: "Warsaw",
     primaryFlow: "Primary route",
     hotelFirst: "Lead with stays first, then flights and the next trip steps.",
@@ -365,6 +379,82 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function DestinationAutocompleteField({
+  label,
+  value,
+  onChange,
+  onFocus,
+  onSelect,
+  suggestions,
+  isLoading,
+  isOpen,
+  placeholder,
+  loadingLabel,
+  emptyLabel,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onFocus: () => void;
+  onSelect: (suggestion: DestinationSuggestion) => void;
+  suggestions: DestinationSuggestion[];
+  isLoading: boolean;
+  isOpen: boolean;
+  placeholder?: string;
+  loadingLabel: string;
+  emptyLabel: string;
+}) {
+  const showDropdown = isOpen && (isLoading || suggestions.length > 0 || value.trim().length >= 2);
+
+  return (
+    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+      {label}
+      <div className="relative mt-2">
+        <Input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onFocus={onFocus}
+          placeholder={placeholder}
+          autoComplete="off"
+        />
+        {showDropdown ? (
+          <div className="absolute left-0 right-0 top-[calc(100%+0.45rem)] z-30 overflow-hidden rounded-[1.3rem] border border-emerald-900/10 bg-white shadow-[0_18px_40px_rgba(16,84,48,0.12)]">
+            {isLoading ? (
+              <div className="px-4 py-3 text-sm text-emerald-900/70">{loadingLabel}</div>
+            ) : suggestions.length > 0 ? (
+              <div className="max-h-64 overflow-y-auto py-2">
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.id}
+                    type="button"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      onSelect(suggestion);
+                    }}
+                    className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition hover:bg-emerald-50"
+                  >
+                    <span>
+                      <span className="block text-sm font-semibold text-emerald-950">{suggestion.city}</span>
+                      <span className="mt-1 block text-xs text-emerald-900/68">
+                        {[suggestion.country, suggestion.region].filter(Boolean).join(" · ")}
+                      </span>
+                    </span>
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                      {suggestion.source}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-3 text-sm text-emerald-900/70">{emptyLabel}</div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </label>
+  );
+}
+
 function SummaryPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-emerald-900/10 bg-white/92 px-4 py-3 shadow-sm">
@@ -384,6 +474,7 @@ interface PlannerClientProps {
   initialStandardDays?: number;
   initialStyle?: string;
   initialStartDate?: string;
+  initialEndDate?: string;
   initialNights?: number;
   autoRunStandardSearch?: boolean;
   locale?: SiteLocale;
@@ -399,6 +490,7 @@ export function PlannerClient({
   initialStandardDays = 4,
   initialStyle = "city break",
   initialStartDate,
+  initialEndDate,
   initialNights,
   autoRunStandardSearch = false,
   locale: localeOverride,
@@ -422,6 +514,9 @@ export function PlannerClient({
   const [comparedDestinations, setComparedDestinations] = useState<ComparedDestinationMemory[]>([]);
   const [lastSnapshot, setLastSnapshot] = useState<PlannerSnapshot | null>(null);
   const [savingTrip, setSavingTrip] = useState(false);
+  const [destinationSuggestions, setDestinationSuggestions] = useState<DestinationSuggestion[]>([]);
+  const [isSuggestingDestinations, setIsSuggestingDestinations] = useState(false);
+  const [destinationSuggestionsOpen, setDestinationSuggestionsOpen] = useState(false);
   const autoSearchRef = useRef(false);
   const shouldFocusOffersRef = useRef(false);
   const stayOffersRef = useRef<HTMLDivElement | null>(null);
@@ -430,7 +525,7 @@ export function PlannerClient({
     initialQuery ||
       (locale === "en"
         ? "I want a warm destination for 5 days with a beach, sightseeing and a budget under 2000 PLN."
-        : "Chcę polecieć do ciepłego kraju do 2000 zł na 5 dni, bez wizy, z plażą i zwiedzaniem."),
+        : "Chce poleciec do cieplego kraju do 2000 zl na 5 dni, bez wizy, z plaza i zwiedzaniem."),
   );
   const [budget, setBudget] = useState(initialBudget);
   const [travelers, setTravelers] = useState(initialTravelers);
@@ -442,8 +537,24 @@ export function PlannerClient({
     initialDestinationHint || (initialMode === "standard" && initialQuery ? initialQuery : "Malaga"),
   );
   const [travelStartDate, setTravelStartDate] = useState(initialStartDate || defaultTravelStartDate());
+  const [travelEndDate, setTravelEndDate] = useState(
+    normalizeTravelEndDate(
+      initialStartDate || defaultTravelStartDate(),
+      initialEndDate,
+      initialNights ?? initialStandardDays,
+    ),
+  );
   const [travelNights, setTravelNights] = useState(initialNights ?? initialStandardDays);
   const [standardStyle] = useState(initialStyle);
+
+  useEffect(() => {
+    setTravelEndDate((current) => normalizeTravelEndDate(travelStartDate, current, travelNights));
+  }, [travelStartDate, travelNights]);
+
+  useEffect(() => {
+    const nextNights = countNightsBetweenIsoDates(travelStartDate, travelEndDate, travelNights);
+    setTravelNights((current) => (current === nextNights ? current : nextNights));
+  }, [travelEndDate, travelStartDate, travelNights]);
 
   useEffect(() => {
     fetch("/api/trips/history")
@@ -458,6 +569,35 @@ export function PlannerClient({
     setLastSnapshot(getPlannerSnapshot());
   }, []);
 
+  useEffect(() => {
+    if (mode !== "standard" || destinationHint.trim().length < 2) {
+      setDestinationSuggestions([]);
+      setIsSuggestingDestinations(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setIsSuggestingDestinations(true);
+        const response = await fetch(`/api/destinations/suggest?q=${encodeURIComponent(destinationHint.trim())}`, {
+          signal: controller.signal,
+        });
+        const payload = (await response.json().catch(() => ({ items: [] }))) as { items?: DestinationSuggestion[] };
+        setDestinationSuggestions(payload.items ?? []);
+      } catch {
+        setDestinationSuggestions([]);
+      } finally {
+        setIsSuggestingDestinations(false);
+      }
+    }, 120);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [destinationHint, mode]);
+
   const executePlanner = async (input: {
     mode: Mode;
     query: string;
@@ -469,6 +609,7 @@ export function PlannerClient({
     durationMin: number;
     durationMax: number;
     travelStartDate: string;
+    travelEndDate: string;
     travelNights: number;
   }) => {
     setLoading(true);
@@ -513,6 +654,7 @@ export function PlannerClient({
         durationMin: input.durationMin,
         durationMax: input.durationMax,
         travelStartDate: input.travelStartDate,
+        travelEndDate: input.travelEndDate,
         travelNights: input.travelNights,
         selectedDestinationSlug: data.options[0]?.destination.slug,
         selectedDestinationLabel: data.options[0]
@@ -537,6 +679,7 @@ export function PlannerClient({
         travelers: input.travelers,
         rooms: input.rooms,
         travelStartDate: input.travelStartDate,
+        travelEndDate: input.travelEndDate,
         travelNights: input.travelNights,
         topDestinationSlug: data.options[0]?.destination.slug,
         topDestinationLabel: data.options[0]
@@ -575,6 +718,7 @@ export function PlannerClient({
 
   const runPlanner = async () => {
     shouldFocusOffersRef.current = true;
+    setDestinationSuggestionsOpen(false);
     await executePlanner({
       mode,
       query,
@@ -586,6 +730,7 @@ export function PlannerClient({
       durationMin,
       durationMax,
       travelStartDate,
+      travelEndDate: checkOutDate,
       travelNights,
     });
   };
@@ -612,7 +757,7 @@ export function PlannerClient({
   const selectedStory = selectedOption ? getDestinationStory(selectedOption.destination) : null;
   const destinationFocus = result?.interpreted.destinationFocus;
   const localFocus = Boolean(destinationFocus && selectedOption && selectedOption.destination.slug === destinationFocus);
-  const checkOutDate = addDaysToIsoDate(travelStartDate, travelNights);
+  const checkOutDate = normalizeTravelEndDate(travelStartDate, travelEndDate, travelNights);
   const activeAffiliateLinks = selectedOption
     ? buildAffiliateLinksWithContext({
         city: selectedOption.destination.city,
@@ -701,6 +846,22 @@ export function PlannerClient({
           "Wysilek lotu z Polski i komfort przesiadek",
           "Zgodnosc z najmocniejszymi potrzebami z briefu",
         ];
+
+  const handleDestinationInputFocus = () => {
+    if (mode === "standard") {
+      setDestinationSuggestionsOpen(true);
+    }
+  };
+
+  const handleDestinationInputChange = (value: string) => {
+    setDestinationHint(value);
+    setDestinationSuggestionsOpen(true);
+  };
+
+  const handleDestinationSuggestionSelect = (suggestion: DestinationSuggestion) => {
+    setDestinationHint(suggestion.queryValue);
+    setDestinationSuggestionsOpen(false);
+  };
 
   const decisionLenses = useMemo<DecisionLensCard[]>(() => {
     if (!result?.options.length) {
@@ -808,6 +969,7 @@ export function PlannerClient({
     setDurationMin(snapshot.durationMin);
     setDurationMax(snapshot.durationMax);
     setTravelStartDate(snapshot.travelStartDate);
+    setTravelEndDate(normalizeTravelEndDate(snapshot.travelStartDate, snapshot.travelEndDate, snapshot.travelNights));
     setTravelNights(snapshot.travelNights);
   };
 
@@ -822,6 +984,7 @@ export function PlannerClient({
     durationMin,
     durationMax,
     travelStartDate,
+    travelEndDate: checkOutDate,
     travelNights,
     selectedDestinationSlug: selectedOption?.destination.slug,
     selectedDestinationLabel: selectedOption
@@ -854,6 +1017,7 @@ export function PlannerClient({
       durationMin: snapshot.durationMin,
       durationMax: snapshot.durationMax,
       travelStartDate: snapshot.travelStartDate,
+      travelEndDate: normalizeTravelEndDate(snapshot.travelStartDate, snapshot.travelEndDate, snapshot.travelNights),
       travelNights: snapshot.travelNights,
     });
   };
@@ -1121,13 +1285,19 @@ export function PlannerClient({
                   ))}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label={text.direction}>
-                    <Input
-                      value={destinationHint}
-                      onChange={(event) => setDestinationHint(event.target.value)}
-                      placeholder={text.destinationPlaceholder}
-                    />
-                  </Field>
+                  <DestinationAutocompleteField
+                    label={text.direction}
+                    value={destinationHint}
+                    onChange={handleDestinationInputChange}
+                    onFocus={handleDestinationInputFocus}
+                    onSelect={handleDestinationSuggestionSelect}
+                    suggestions={destinationSuggestions}
+                    isLoading={isSuggestingDestinations}
+                    isOpen={destinationSuggestionsOpen}
+                    placeholder={text.destinationPlaceholder}
+                    loadingLabel={text.destinationSearching}
+                    emptyLabel={text.destinationEmpty}
+                  />
                   <Field label={text.budget}>
                     <Input type="number" value={budget} onChange={(event) => setBudget(Number(event.target.value) || 0)} />
                   </Field>
@@ -1152,11 +1322,10 @@ export function PlannerClient({
               </Field>
               <Field label={text.nights}>
                 <Input
-                  type="number"
-                  min={1}
-                  max={21}
-                  value={travelNights}
-                  onChange={(event) => setTravelNights(Number(event.target.value) || 1)}
+                  type="date"
+                  value={checkOutDate}
+                  min={travelStartDate}
+                  onChange={(event) => setTravelEndDate(event.target.value)}
                 />
               </Field>
               <Field label={text.travelers}>
@@ -1237,8 +1406,15 @@ export function PlannerClient({
                           </span>
                           {trip.snapshot ? (
                             <span className="mt-1 block text-xs text-emerald-700">
-                              {formatShortDate(trip.snapshot.travelStartDate, dateLocale)} / {trip.snapshot.originCity} /{" "}
-                              {trip.snapshot.travelNights} {text.selectedDatesValue}
+                              {formatShortDate(trip.snapshot.travelStartDate, dateLocale)} - {formatShortDate(
+                                normalizeTravelEndDate(
+                                  trip.snapshot.travelStartDate,
+                                  trip.snapshot.travelEndDate,
+                                  trip.snapshot.travelNights,
+                                ),
+                                dateLocale,
+                              )}{" "}
+                              / {trip.snapshot.originCity}
                             </span>
                           ) : null}
                         </span>
@@ -1302,6 +1478,7 @@ export function PlannerClient({
                           durationMin: search.travelNights,
                           durationMax: search.travelNights,
                           travelStartDate: search.travelStartDate,
+                          travelEndDate: search.travelEndDate,
                           travelNights: search.travelNights,
                           selectedDestinationSlug: search.topDestinationSlug,
                           selectedDestinationLabel: search.topDestinationLabel,
@@ -1312,7 +1489,10 @@ export function PlannerClient({
                     >
                       <span className="block font-semibold">{search.topDestinationLabel ?? search.label}</span>
                       <span className="mt-1 block text-xs text-emerald-700">
-                        {formatShortDate(search.travelStartDate, dateLocale)} / {search.originCity} / {search.travelNights} {text.selectedDatesValue}
+                        {formatShortDate(search.travelStartDate, dateLocale)} - {formatShortDate(
+                          normalizeTravelEndDate(search.travelStartDate, search.travelEndDate, search.travelNights),
+                          dateLocale,
+                        )} / {search.originCity}
                       </span>
                       <span className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900">
                         {text.reopenSearch}
@@ -1664,13 +1844,27 @@ export function PlannerClient({
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.bookingSettings}</p>
                 <h3 className="mt-2 text-2xl font-bold text-emerald-950">{text.bookingSettingsBody}</h3>
+                <p className="mt-2 text-sm text-emerald-900/70">{text.bookingSettingsHint}</p>
               </div>
               <div className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
                 {originCity} → {selectedOption.destination.city}
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <DestinationAutocompleteField
+                label={text.direction}
+                value={destinationHint}
+                onChange={handleDestinationInputChange}
+                onFocus={handleDestinationInputFocus}
+                onSelect={handleDestinationSuggestionSelect}
+                suggestions={destinationSuggestions}
+                isLoading={isSuggestingDestinations}
+                isOpen={destinationSuggestionsOpen}
+                placeholder={text.destinationPlaceholder}
+                loadingLabel={text.destinationSearching}
+                emptyLabel={text.destinationEmpty}
+              />
               <Field label={text.origin}>
                 <Input value={originCity} onChange={(event) => setOriginCity(event.target.value)} />
               </Field>
@@ -1679,11 +1873,10 @@ export function PlannerClient({
               </Field>
               <Field label={text.nights}>
                 <Input
-                  type="number"
-                  min={1}
-                  max={21}
-                  value={travelNights}
-                  onChange={(event) => setTravelNights(Number(event.target.value) || 1)}
+                  type="date"
+                  value={checkOutDate}
+                  min={travelStartDate}
+                  onChange={(event) => setTravelEndDate(event.target.value)}
                 />
               </Field>
               <Field label={text.travelers}>
@@ -1699,6 +1892,16 @@ export function PlannerClient({
                 <Input type="number" min={1} max={5} value={rooms} onChange={(event) => setRooms(Number(event.target.value) || 1)} />
               </Field>
             </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={runPlanner}
+                disabled={loading}
+                className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(21,128,61,0.18)] transition hover:bg-emerald-800 disabled:opacity-70"
+              >
+                {loading ? text.loadingPlan : text.refreshFlow}
+              </button>
+            </div>
           </section>
 
           <div className="grid gap-5">
@@ -1707,7 +1910,7 @@ export function PlannerClient({
                 destinationCity={selectedOption.destination.city}
                 destinationCountry={selectedOption.destination.country}
                 checkInDate={travelStartDate}
-                nights={travelNights}
+                checkOutDate={checkOutDate}
                 guests={travelers}
                 rooms={rooms}
               />

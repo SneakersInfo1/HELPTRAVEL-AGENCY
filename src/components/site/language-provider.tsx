@@ -5,18 +5,20 @@ import {
   useContext,
   useEffect,
   useMemo,
+  startTransition,
   useState,
   type ReactNode,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
   DEFAULT_SITE_LOCALE,
   LOCALE_COOKIE_KEY,
   LOCALE_STORAGE_KEY,
   getDocumentLang,
+  localizeHref,
   localeFromPathname,
   resolveSiteLocale,
-  stripLocalePrefix,
   type SiteLocale,
 } from "@/lib/mvp/locale";
 
@@ -50,7 +52,7 @@ function getPreferredLocale(): SiteLocale {
   return resolveSiteLocale(window.navigator.language);
 }
 
-function syncLocale(locale: SiteLocale) {
+function persistLocale(locale: SiteLocale) {
   if (typeof window === "undefined") {
     return;
   }
@@ -58,29 +60,15 @@ function syncLocale(locale: SiteLocale) {
   document.documentElement.lang = getDocumentLang(locale);
   window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
   document.cookie = `${LOCALE_COOKIE_KEY}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
-
-  const url = new URL(window.location.href);
-  const normalizedPathname = stripLocalePrefix(url.pathname);
-  url.pathname = locale === "en" && (normalizedPathname === "/" || normalizedPathname === "/planner")
-    ? normalizedPathname === "/"
-      ? "/en"
-      : `/en${normalizedPathname}`
-    : normalizedPathname;
-
-  if (locale === "en" && !(normalizedPathname === "/" || normalizedPathname === "/planner")) {
-    url.searchParams.set("lang", "en");
-  } else {
-    url.searchParams.delete("lang");
-  }
-
-  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [locale, setLocaleState] = useState<SiteLocale>(() => getPreferredLocale());
 
   useEffect(() => {
-    syncLocale(locale);
+    persistLocale(locale);
   }, [locale]);
 
   useEffect(() => {
@@ -103,10 +91,22 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       locale,
       setLocale: (nextLocale) => {
         setLocaleState(nextLocale);
-        syncLocale(nextLocale);
+        persistLocale(nextLocale);
+
+        const currentPath = pathname ?? (typeof window === "undefined" ? "/" : window.location.pathname);
+        const currentSearch = typeof window === "undefined" ? "" : window.location.search.replace(/^\?/, "");
+        const currentHash = typeof window === "undefined" ? "" : window.location.hash;
+        const currentHref = `${currentPath}${currentSearch ? `?${currentSearch}` : ""}${currentHash}`;
+        const nextHref = localizeHref(currentHref, nextLocale);
+
+        if (typeof window !== "undefined" && nextHref !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+          startTransition(() => {
+            router.replace(nextHref, { scroll: false });
+          });
+        }
       },
     }),
-    [locale],
+    [locale, pathname, router],
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

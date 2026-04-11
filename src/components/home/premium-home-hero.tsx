@@ -15,7 +15,13 @@ import {
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { localizeHref, localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
-import { defaultTravelStartDate } from "@/lib/mvp/travel-dates";
+import {
+  countNightsBetweenIsoDates,
+  defaultTravelEndDate,
+  defaultTravelStartDate,
+  formatShortDate,
+  normalizeTravelEndDate,
+} from "@/lib/mvp/travel-dates";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
 interface HeroSlide {
@@ -69,7 +75,7 @@ const heroCopy = {
     destinationTag: "kierunek",
     cityTag: "miasto",
     startDate: "Start podrozy",
-    nights: "Liczba nocy",
+    nights: "Powrot",
     travelers: "Podrozni",
     button: "Pokaz pobyt i loty",
     discoveryEyebrow: "Druga sciezka",
@@ -86,7 +92,7 @@ const heroCopy = {
     guideLabel: "przewodnik",
     openCatalog: "Otworz katalog kierunkow",
     discoveryPlaceholder: "Np. chce cieply kierunek na 5 dni, z plaza i miastem, bez dlugiej logistyki.",
-    nightsUnit: "noce",
+    nightsUnit: "powrot",
     travelersUnit: "os.",
     discoveryFlowHint: "Najpierw ranking kierunkow, potem hotel i lot dla wybranego miasta.",
   },
@@ -118,7 +124,7 @@ const heroCopy = {
     destinationTag: "destination",
     cityTag: "city",
     startDate: "Start date",
-    nights: "Nights",
+    nights: "Return",
     travelers: "Travelers",
     button: "Show stays and flights",
     discoveryEyebrow: "Secondary path",
@@ -135,7 +141,7 @@ const heroCopy = {
     guideLabel: "guide",
     openCatalog: "Open destination catalog",
     discoveryPlaceholder: "E.g. I want a warm 5-day trip with a beach, a city and easy logistics.",
-    nightsUnit: "nights",
+    nightsUnit: "return",
     travelersUnit: "trav.",
     discoveryFlowHint: "First destination matches, then the stay and flight flow for the selected city.",
   },
@@ -158,19 +164,21 @@ function buildStandardPlannerHref(params: {
   origin: string;
   destination: string;
   startDate: string;
-  nights: number;
+  endDate: string;
   travelers: number;
   locale: SiteLocale;
 }): string {
+  const nights = countNightsBetweenIsoDates(params.startDate, params.endDate, 4);
   const searchParams = new URLSearchParams({
     mode: "standard",
     q: params.destination,
     origin: params.origin,
     destination: params.destination,
     startDate: params.startDate,
-    nights: String(params.nights),
+    endDate: params.endDate,
+    nights: String(nights),
     travelers: String(params.travelers),
-    days: String(params.nights),
+    days: String(nights),
   });
 
   return localizeHref(`/planner?${searchParams.toString()}`, params.locale);
@@ -194,7 +202,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
   const [originQuery, setOriginQuery] = useState("Warszawa");
   const [destinationQuery, setDestinationQuery] = useState("");
   const [startDate, setStartDate] = useState(defaultTravelStartDate());
-  const [nights, setNights] = useState(4);
+  const [endDate, setEndDate] = useState(defaultTravelEndDate());
   const [travelers, setTravelers] = useState(2);
   const [activeField, setActiveField] = useState<SearchField | null>(null);
   const [discoveryQuery, setDiscoveryQuery] = useState<string>(localizedDiscoveryPrompts[0]);
@@ -228,12 +236,21 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
   const dropdownVisible = Boolean(activeField) && (isSearching || searchError || suggestions.length > 0);
   const routePreview = destinationQuery.trim() || activeSlide.city;
   const previewOrigin = originQuery.trim() || text.searchOriginPlaceholder.split(",")[0];
-  const previewSummary = `${previewOrigin} → ${routePreview} · ${nights} ${text.nightsUnit} · ${travelers} ${text.travelersUnit}`;
+  const localizedDate = locale === "en" ? "en-GB" : "pl-PL";
+  const normalizedEndDate = normalizeTravelEndDate(startDate, endDate, 4);
+  const previewSummary = `${previewOrigin} → ${routePreview} · ${formatShortDate(startDate, localizedDate)}-${formatShortDate(
+    normalizedEndDate,
+    localizedDate,
+  )} · ${travelers} ${text.travelersUnit}`;
   const stageCards = [
     { step: "01", label: text.stageDirection, value: routePreview || text.stagePlaceholder },
-    { step: "02", label: text.stageStay, value: `${nights} ${text.nightsUnit}` },
+    { step: "02", label: text.stageStay, value: `${formatShortDate(startDate, localizedDate)} - ${formatShortDate(normalizedEndDate, localizedDate)}` },
     { step: "03", label: text.stageNext, value: text.stageNextValue },
   ];
+
+  useEffect(() => {
+    setEndDate((current) => normalizeTravelEndDate(startDate, current, countNightsBetweenIsoDates(startDate, current, 4)));
+  }, [startDate]);
 
   useEffect(() => {
     const allPresetValues: string[] = [...discoveryPrompts.pl, ...discoveryPrompts.en];
@@ -342,7 +359,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
         origin: nextOrigin,
         destination: nextDestination,
         startDate,
-        nights,
+        endDate: normalizedEndDate,
         travelers,
         locale,
       }),
@@ -682,11 +699,10 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                   {text.nights}
                   <input
-                    type="number"
-                    min={2}
-                    max={21}
-                    value={nights}
-                    onChange={(event) => setNights(Number(event.target.value))}
+                    type="date"
+                    value={normalizedEndDate}
+                    min={startDate}
+                    onChange={(event) => setEndDate(event.target.value)}
                     className="mt-2 w-full rounded-[1.4rem] border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
                   />
                 </label>

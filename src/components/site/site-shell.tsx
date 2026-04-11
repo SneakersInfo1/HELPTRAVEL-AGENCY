@@ -9,6 +9,7 @@ import { LanguageSwitcher } from "@/components/site/language-switcher";
 import { PartnerLogoWordmark, TRUSTED_PARTNERS } from "@/components/site/partner-logo";
 import { useLanguage } from "@/components/site/language-provider";
 import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
+import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
 
 const copy = {
   pl: {
@@ -41,6 +42,7 @@ const copy = {
         links: [
           { href: "/kierunki", label: "Kierunki" },
           { href: "/inspiracje", label: "Inspiracje" },
+          { href: "/oferta", label: "Oferta" },
           { href: "/przewodniki", label: "Przewodniki" },
           { href: "/planner?mode=discovery", label: "Nie wiem dokad leciec" },
           { href: "/mapa-serwisu", label: "Mapa serwisu" },
@@ -60,6 +62,8 @@ const copy = {
         links: [
           { href: "/o-nas", label: "O nas" },
           { href: "/kontakt", label: "Kontakt" },
+          { href: "/faq", label: "FAQ" },
+          { href: "/cennik", label: "Cennik" },
           { href: "/polityka-prywatnosci", label: "Polityka prywatnosci" },
           { href: "/regulamin", label: "Regulamin" },
           { href: "/linki-partnerskie", label: "Linki partnerskie" },
@@ -67,6 +71,8 @@ const copy = {
         ],
       },
     ],
+    resourcesEyebrow: "Oficjalne zrodla",
+    resourcesTitle: "Przydatne strony zewnetrzne, ktore wzmacniaja decyzje przed wyjazdem.",
     footerMetaLeft: "HelpTravel - planner podrozy, kierunki, inspiracje i przejscia do partnerow.",
     footerMetaRight: "Serwis informacyjny i afiliacyjny. Finalne warunki oferty sprawdzaj zawsze u partnera.",
   },
@@ -100,6 +106,7 @@ const copy = {
         links: [
           { href: "/kierunki", label: "Destinations" },
           { href: "/inspiracje", label: "Inspiration" },
+          { href: "/oferta", label: "Offer" },
           { href: "/przewodniki", label: "Guides" },
           { href: "/planner?mode=discovery", label: "I need ideas" },
           { href: "/mapa-serwisu", label: "Site map" },
@@ -119,6 +126,8 @@ const copy = {
         links: [
           { href: "/o-nas", label: "About" },
           { href: "/kontakt", label: "Contact" },
+          { href: "/faq", label: "FAQ" },
+          { href: "/cennik", label: "Pricing" },
           { href: "/polityka-prywatnosci", label: "Privacy policy" },
           { href: "/regulamin", label: "Terms" },
           { href: "/linki-partnerskie", label: "Affiliate disclosure" },
@@ -126,6 +135,8 @@ const copy = {
         ],
       },
     ],
+    resourcesEyebrow: "Official resources",
+    resourcesTitle: "Useful external references that support trip decisions before booking.",
     footerMetaLeft: "HelpTravel - trip planner, destinations, inspiration and partner outbound flow.",
     footerMetaRight: "Informational and affiliate-based website. Always check final conditions with the external partner.",
   },
@@ -304,6 +315,29 @@ export function SiteShell({ children }: { children: ReactNode }) {
             </div>
           ))}
         </div>
+
+        <section className="mt-8 border-t border-emerald-900/10 pt-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.resourcesEyebrow}</p>
+              <h2 className="mt-2 text-2xl font-bold text-emerald-950">{text.resourcesTitle}</h2>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {TRUSTED_TRAVEL_RESOURCES.map((resource) => (
+              <a
+                key={resource.href}
+                href={resource.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-[1.4rem] border border-emerald-900/10 bg-emerald-50/70 px-4 py-4 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+              >
+                <p className="text-sm font-semibold text-emerald-950">{resource.label[effectiveLocale]}</p>
+                <p className="mt-2 text-sm leading-6 text-emerald-900/74">{resource.description[effectiveLocale]}</p>
+              </a>
+            ))}
+          </div>
+        </section>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/10 pt-4 text-xs text-emerald-900/62">
           <p>{text.footerMetaLeft}</p>

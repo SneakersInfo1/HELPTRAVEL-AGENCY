@@ -14,7 +14,7 @@ import { getDestinationMedia } from "@/lib/mvp/commercial-assets";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { buildRedirectHref } from "@/lib/mvp/providers";
-import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib/mvp/travel-dates";
+import { defaultTravelStartDate, formatShortDate, normalizeTravelEndDate } from "@/lib/mvp/travel-dates";
 import { getTrip } from "@/lib/mvp/service";
 
 export const metadata: Metadata = {
@@ -67,13 +67,14 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const tripRooms = snapshot?.rooms ?? 1;
   const tripStartDate = snapshot?.travelStartDate || defaultTravelStartDate();
   const tripNights = snapshot?.travelNights ?? 4;
-  const tripCheckOutDate = addDaysToIsoDate(tripStartDate, tripNights);
+  const tripCheckOutDate = normalizeTravelEndDate(tripStartDate, snapshot?.travelEndDate, tripNights);
   const plannerParams = new URLSearchParams({
     mode: snapshot?.mode ?? trip.mode,
     q: snapshot?.mode === "discovery" ? snapshot.query : snapshot?.destinationHint || trip.city,
     origin: tripOriginCity,
     destination: snapshot?.destinationHint || trip.city,
     startDate: tripStartDate,
+    endDate: tripCheckOutDate,
     nights: String(tripNights),
     travelers: String(tripTravelers),
     budget: String(snapshot?.budget ?? trip.estimatedBudgetMax),
@@ -171,7 +172,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           destinationCity={trip.city}
           destinationCountry={trip.country}
           checkInDate={tripStartDate}
-          nights={tripNights}
+          checkOutDate={tripCheckOutDate}
           guests={tripTravelers}
           rooms={tripRooms}
         />

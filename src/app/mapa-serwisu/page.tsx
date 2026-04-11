@@ -6,6 +6,7 @@ import {
   getEditorialCategories,
   getPublishedDestinations,
 } from "@/lib/mvp/publisher-content";
+import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 
 export const metadata: Metadata = {
   title: "Mapa serwisu",
@@ -13,11 +14,18 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/mapa-serwisu",
   },
+  openGraph: {
+    title: "Mapa serwisu - HelpTravel",
+    description: "Najwazniejsze sekcje, katalog kierunkow, przewodniki i strony zaufania w jednym indeksowalnym miejscu.",
+    url: "/mapa-serwisu",
+    type: "website",
+  },
 };
 
 export default function SiteMapPage() {
   const categories = getEditorialCategories();
-  const destinations = getPublishedDestinations();
+  const featuredDestinations = getPublishedDestinations();
+  const destinations = getAllDestinationProfiles();
   const articles = getEditorialArticles();
 
   return (
@@ -40,6 +48,8 @@ export default function SiteMapPage() {
             <Link href="/planner" className="hover:text-emerald-700">Planer</Link>
             <Link href="/planner?mode=discovery" className="hover:text-emerald-700">Nie wiem dokad leciec</Link>
             <Link href="/planner?mode=standard" className="hover:text-emerald-700">Mam kierunek</Link>
+            <Link href="/kierunki" className="hover:text-emerald-700">Katalog kierunkow</Link>
+            <Link href="/inspiracje" className="hover:text-emerald-700">Biblioteka inspiracji</Link>
           </div>
         </article>
 
@@ -59,6 +69,9 @@ export default function SiteMapPage() {
           <div className="mt-4 flex flex-col gap-3 text-sm text-emerald-900/78">
             <Link href="/o-nas" className="hover:text-emerald-700">O nas</Link>
             <Link href="/kontakt" className="hover:text-emerald-700">Kontakt</Link>
+            <Link href="/oferta" className="hover:text-emerald-700">Oferta</Link>
+            <Link href="/faq" className="hover:text-emerald-700">FAQ</Link>
+            <Link href="/cennik" className="hover:text-emerald-700">Cennik</Link>
             <Link href="/polityka-prywatnosci" className="hover:text-emerald-700">Polityka prywatnosci</Link>
             <Link href="/regulamin" className="hover:text-emerald-700">Regulamin</Link>
             <Link href="/linki-partnerskie" className="hover:text-emerald-700">Linki partnerskie</Link>
@@ -77,7 +90,7 @@ export default function SiteMapPage() {
           <p className="text-sm text-emerald-900/68">{destinations.length} kierunkow</p>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {destinations.map((destination) => (
+          {featuredDestinations.map((destination) => (
             <Link
               key={destination.slug}
               href={`/kierunki/${destination.slug}`}
@@ -86,6 +99,28 @@ export default function SiteMapPage() {
               {destination.city}, {destination.country}
             </Link>
           ))}
+        </div>
+        <div className="mt-6 rounded-[1.5rem] border border-emerald-900/10 bg-white/80 p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Pelny katalog</p>
+              <h3 className="mt-2 text-2xl font-bold text-emerald-950">Dodatkowe strony kierunkowe do crawl i odkrywania</h3>
+            </div>
+            <Link href="/kierunki" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+              Otworz katalog 200+
+            </Link>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {destinations.map((destination) => (
+              <Link
+                key={`all-${destination.slug}`}
+                href={`/kierunki/${destination.slug}`}
+                className="rounded-full border border-emerald-900/10 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+              >
+                {destination.city}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

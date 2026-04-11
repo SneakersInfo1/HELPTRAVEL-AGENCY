@@ -9,6 +9,7 @@ import {
   getArticlesForCategory,
   getDestinationGuideBySlug,
   getEditorialCategoryBySlug,
+  getEditorialCategories,
 } from "@/lib/mvp/publisher-content";
 import { curatedDestinations } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -21,6 +22,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
   }
 
   const articles = getArticlesForCategory(slug);
+  const allCategories = getEditorialCategories().filter((item) => item.slug !== slug);
   const destinations = await Promise.all(
     category.destinationSlugs.map(async (destinationSlug) => {
       const destination = curatedDestinations.find((item) => item.slug === destinationSlug);
@@ -122,6 +124,29 @@ export async function CategoryPage({ slug }: { slug: string }) {
               />
             ) : null,
           )}
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Dalsze odkrywanie</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Powiazane huby, ktore pomagaja przejsc dalej po serwisie</h2>
+          </div>
+          <Link href="/mapa-serwisu" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
+            Pelna mapa serwisu
+          </Link>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-2">
+          {allCategories.map((item) => (
+            <Link
+              key={item.slug}
+              href={`/${item.slug}`}
+              className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+            >
+              {item.title}
+            </Link>
+          ))}
         </div>
       </section>
     </main>

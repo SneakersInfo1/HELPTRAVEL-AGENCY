@@ -15,7 +15,7 @@ import {
 } from "@/lib/mvp/planner-memory";
 import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import type { EditorialArticle, EditorialCategory } from "@/lib/mvp/publisher-content";
-import { addDaysToIsoDate, formatShortDate } from "@/lib/mvp/travel-dates";
+import { addDaysToIsoDate, formatShortDate, normalizeTravelEndDate } from "@/lib/mvp/travel-dates";
 
 interface FeaturedDirection {
   slug: string;
@@ -56,6 +56,7 @@ function buildSnapshotPlannerHref(snapshot: PlannerSnapshot) {
     days: String(snapshot.travelNights),
     nights: String(snapshot.travelNights),
     startDate: snapshot.travelStartDate,
+    endDate: snapshot.travelEndDate ?? addDaysToIsoDate(snapshot.travelStartDate, snapshot.travelNights),
   });
 
   if (snapshot.mode === "standard") {
@@ -71,6 +72,7 @@ const copy = {
     commerceTitle: "Jeden klik do pobytu, drugi do lotu. Bez martwych ekranow.",
     commerceBody:
       "Kierunek prowadzi od razu do wyszukiwania pobytu, lotow i noclegow alternatywnych. Hero ma prowadzic do ruchu dalej, a nie tylko opowiadac.",
+    commercePromos: ["PLN-ready partner links", "hotel-first flow", "city break picks"],
     hotelLabel: "Hotele",
     hotelBody: "Najmocniej eksponowany pierwszy klik po wyborze miasta.",
     flightsLabel: "Loty",
@@ -126,6 +128,7 @@ const copy = {
     commerceTitle: "One click to stays, the next one to flights. No dead-end screens.",
     commerceBody:
       "A chosen destination should move users straight into stay search, flights and alternative lodging options. The homepage should push action, not just explain itself.",
+    commercePromos: ["PLN-ready partner links", "hotel-first flow", "city-break picks"],
     hotelLabel: "Stays",
     hotelBody: "The strongest first click after choosing a destination.",
     flightsLabel: "Flights",
@@ -212,6 +215,16 @@ export function HomePageSections({
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200">{text.commerceEyebrow}</p>
           <h2 className="mt-3 font-display text-4xl leading-[0.94] sm:text-5xl">{text.commerceTitle}</h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-white/72">{text.commerceBody}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {text.commercePromos.map((promo) => (
+              <span
+                key={promo}
+                className="rounded-full border border-white/14 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100"
+              >
+                {promo}
+              </span>
+            ))}
+          </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <LocalizedLink
               href={buildPlannerHref(text.plannerDestinations.hotel)}
@@ -297,7 +310,14 @@ export function HomePageSections({
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-emerald-900/72">
                     {formatShortDate(lastSnapshot.travelStartDate, dateLocale)} -{" "}
-                    {formatShortDate(addDaysToIsoDate(lastSnapshot.travelStartDate, lastSnapshot.travelNights), dateLocale)}
+                    {formatShortDate(
+                      normalizeTravelEndDate(
+                        lastSnapshot.travelStartDate,
+                        lastSnapshot.travelEndDate,
+                        lastSnapshot.travelNights,
+                      ),
+                      dateLocale,
+                    )}
                   </p>
                   <p className="mt-1 text-sm leading-6 text-emerald-900/72">
                     {lastSnapshot.originCity} / {lastSnapshot.travelers} / {lastSnapshot.travelNights}{" "}
