@@ -181,6 +181,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           destinationCountry={trip.country}
           originCity={tripOriginCity}
           departureDate={tripStartDate}
+          returnDate={tripCheckOutDate}
           passengers={tripTravelers}
           partnerUrl={contextualAffiliateLinks.flights}
         />

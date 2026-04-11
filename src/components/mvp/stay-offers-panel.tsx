@@ -10,7 +10,7 @@ import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { buildCjStayLinks } from "@/lib/mvp/cj-stays";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { countNightsBetweenIsoDates, formatShortDate } from "@/lib/mvp/travel-dates";
-import type { StaySearchResponse, StaySortMode } from "@/lib/mvp/types";
+import type { NormalizedStayOffer, StaySearchResponse, StaySortMode } from "@/lib/mvp/types";
 
 const INITIAL_VISIBLE_OFFERS = 24;
 const VISIBLE_OFFERS_STEP = 24;
@@ -49,6 +49,58 @@ function getDiscountPercent(totalAmount: number, publicAmount?: number | null) {
   return percent >= 5 ? percent : null;
 }
 
+function buildTopStayReasons(
+  offer: NormalizedStayOffer | null,
+  locale: "pl" | "en",
+): string[] {
+  if (!offer) {
+    return [];
+  }
+
+  const reasons: string[] = [];
+  const discount = getDiscountPercent(offer.total_amount, offer.public_amount);
+
+  if (discount) {
+    reasons.push(
+      locale === "en"
+        ? `A real discount signal is visible against the public price (${discount}% lower).`
+        : `Widac realny sygnal rabatu wzgledem ceny bazowej (${discount}% mniej).`,
+    );
+  }
+
+  if (offer.reviewScore && offer.reviewScore >= 8) {
+    reasons.push(
+      locale === "en"
+        ? `Strong review score (${offer.reviewScore.toFixed(1)}/10) makes this a safer first click.`
+        : `Mocna ocena (${offer.reviewScore.toFixed(1)}/10) robi z tego bezpieczny pierwszy klik.`,
+    );
+  } else if (offer.rating && offer.rating >= 4) {
+    reasons.push(
+      locale === "en"
+        ? `Solid rating suggests a dependable standard for this stay window.`
+        : `Dobra ocena sugeruje stabilny standard na ten pobyt.`,
+    );
+  }
+
+  if (offer.address || offer.city) {
+    reasons.push(
+      locale === "en"
+        ? `The offer is already aligned with ${offer.city || "the selected destination"} and your current dates.`
+        : `Ta oferta jest juz osadzona w ${offer.city || "wybranym kierunku"} i tym samym terminie.`,
+    );
+  }
+
+  if (reasons.length < 3) {
+    reasons.push(
+      locale === "en"
+        ? "It keeps the hotel-first flow clean before comparing more partner results."
+        : "Pomaga zaczac od hotel-first flow, zanim przejdziesz do dalszego porownania.",
+    );
+  }
+
+  return reasons.slice(0, 3);
+}
+
 function Spinner() {
   return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
 }
@@ -82,10 +134,17 @@ const copy = {
     sortCheap: "Najtansze",
     sortQuality: "Najlepszy standard",
     sortValue: "Najlepsza relacja ceny do jakosci",
+    quickShortlist: "Szybka shortlist",
+    quickShortlistBody: "Trzy najmocniejsze opcje na ten termin, zanim wejdziesz w pelny przeglad.",
+    shortlistOpen: "Otworz",
     showMore: "Pokaz wiecej",
     partnersTitle: "Porownanie partnerow",
+    partnerHotelsBody: "Pelne wyniki hoteli dla tego samego terminu i skladu podrozy.",
+    partnerCompareBody: "Drugie zrodlo do szybkiego porownania cen i standardu.",
+    partnerApartmentsBody: "Apartamenty i domy, jesli chcesz sprawdzic bardziej elastyczny pobyt.",
     topStayBadge: "Top pobyt",
     featuredOfferEyebrow: "Najmocniejsza oferta na start",
+    whyTopOffer: "Dlaczego ten pobyt warto sprawdzic najpierw",
     stayPriceLabel: "Cena pobytu",
     ratingLabel: "Ocena",
     noData: "Brak danych",
@@ -129,10 +188,17 @@ const copy = {
     sortCheap: "Lowest price",
     sortQuality: "Best quality",
     sortValue: "Best value",
+    quickShortlist: "Quick shortlist",
+    quickShortlistBody: "Three strongest options for this stay window before you open the full comparison.",
+    shortlistOpen: "Open",
     showMore: "Show more",
     partnersTitle: "Compare partners",
+    partnerHotelsBody: "Full hotel results for the same dates and traveler setup.",
+    partnerCompareBody: "A second source for checking price and standard quickly.",
+    partnerApartmentsBody: "Apartments and homes if you want a more flexible stay format.",
     topStayBadge: "Top stay",
     featuredOfferEyebrow: "Strongest opening offer",
+    whyTopOffer: "Why this stay is worth checking first",
     stayPriceLabel: "Stay price",
     ratingLabel: "Rating",
     noData: "No data",
@@ -218,6 +284,8 @@ export function StayOffersPanel(props: {
   const displayedOffers = useMemo(() => availableOffers.slice(0, visibleCount), [availableOffers, visibleCount]);
   const topOffer = displayedOffers[0] ?? null;
   const remainingOffers = topOffer ? displayedOffers.slice(1) : displayedOffers;
+  const quickShortlist = displayedOffers.slice(0, 3);
+  const topOfferReasons = useMemo(() => buildTopStayReasons(topOffer, locale), [locale, topOffer]);
   const checkOutDate = props.checkOutDate;
 
   const partnerLinks = useMemo(
@@ -249,6 +317,7 @@ export function StayOffersPanel(props: {
             {
               eyebrow: text.hotelEyebrow,
               label: getAffiliateBrandLabel(partnerLinks?.hotels ?? genericAffiliateLinks.stays, "Hotels.com"),
+              description: text.partnerHotelsBody,
               href: buildRedirectHref({
                 providerKey: "stays",
                 targetUrl: partnerLinks?.hotels ?? genericAffiliateLinks.stays,
@@ -262,6 +331,7 @@ export function StayOffersPanel(props: {
                   {
               eyebrow: text.compareEyebrow,
               label: getAffiliateBrandLabel(partnerLinks.expedia, "Expedia"),
+              description: text.partnerCompareBody,
               href: buildRedirectHref({
                 providerKey: "stays",
                 targetUrl: partnerLinks.expedia,
@@ -273,6 +343,7 @@ export function StayOffersPanel(props: {
             {
               eyebrow: text.apartmentsEyebrow,
               label: getAffiliateBrandLabel(partnerLinks.vrbo, "Vrbo"),
+              description: text.partnerApartmentsBody,
               href: buildRedirectHref({
                 providerKey: "stays",
                 targetUrl: partnerLinks.vrbo,
@@ -284,7 +355,18 @@ export function StayOffersPanel(props: {
                 ]
               : []),
           ],
-    [genericAffiliateLinks.stays, partnerLinks, props.destinationCity, props.destinationCountry, text.apartmentsEyebrow, text.compareEyebrow, text.hotelEyebrow],
+    [
+      genericAffiliateLinks.stays,
+      partnerLinks,
+      props.destinationCity,
+      props.destinationCountry,
+      text.apartmentsEyebrow,
+      text.compareEyebrow,
+      text.hotelEyebrow,
+      text.partnerApartmentsBody,
+      text.partnerCompareBody,
+      text.partnerHotelsBody,
+    ],
   );
 
   return (
@@ -404,8 +486,63 @@ export function StayOffersPanel(props: {
                   <PartnerLogoMark brand={partner.label} size="sm" />
                   <span>{partner.label}</span>
                 </span>
+                <span className="mt-2 block text-sm leading-6 text-white/72">{partner.description}</span>
               </a>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {quickShortlist.length ? (
+        <div className="mt-4 rounded-[1.5rem] border border-emerald-900/10 bg-white/88 p-4 shadow-sm">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.quickShortlist}</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-900/76">{text.quickShortlistBody}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {quickShortlist.map((offer, index) => {
+              const shortlistHref = offer.bookingUrl
+                ? buildRedirectHref({
+                    providerKey: "stays",
+                    targetUrl: offer.bookingUrl,
+                    city: props.destinationCity,
+                    country: props.destinationCountry,
+                    source: index === 0 ? "stay_panel_shortlist_top" : "stay_panel_shortlist_offer",
+                  })
+                : partnerButtons[0]?.href;
+
+              return (
+                <article key={`shortlist-${offer.searchResultId}`} className="rounded-[1.35rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                    {index === 0 ? text.topStayBadge : `${text.position} #${index + 1}`}
+                  </p>
+                  <h4 className="mt-2 text-lg font-bold text-emerald-950">{offer.name}</h4>
+                  <p className="mt-1 text-sm text-emerald-900/72">{offer.address || offer.city}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-950">
+                      {formatMoney(offer.total_amount, offer.currency, locale)}
+                    </span>
+                    {(offer.reviewScore || offer.rating) ? (
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-950">
+                        {offer.reviewScore ? `${offer.reviewScore.toFixed(1)}/10` : `${offer.rating?.toFixed(1)} ${text.ratingStars}`}
+                      </span>
+                    ) : null}
+                  </div>
+                  {shortlistHref ? (
+                    <a
+                      href={shortlistHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex items-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
+                    >
+                      {text.shortlistOpen}
+                    </a>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -509,6 +646,17 @@ export function StayOffersPanel(props: {
                     </div>
 
                     {topOffer.description ? <p className="mt-4 text-sm leading-6 text-emerald-900/80">{topOffer.description}</p> : null}
+
+                    {topOfferReasons.length ? (
+                      <div className="mt-4 rounded-[1.35rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.whyTopOffer}</p>
+                        <div className="mt-3 space-y-2 text-sm leading-6 text-emerald-900/82">
+                          {topOfferReasons.map((reason) => (
+                            <p key={reason}>{reason}</p>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
 
                     <div className="mt-5 flex flex-wrap gap-2">
                       {topOffer.bookingUrl ? (

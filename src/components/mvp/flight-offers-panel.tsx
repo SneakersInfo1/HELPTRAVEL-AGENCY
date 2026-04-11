@@ -6,7 +6,7 @@ import { useLanguage } from "@/components/site/language-provider";
 import { PartnerLogoMark } from "@/components/site/partner-logo";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildRedirectHref } from "@/lib/mvp/providers";
-import { formatShortDate } from "@/lib/mvp/travel-dates";
+import { countNightsBetweenIsoDates, formatShortDate } from "@/lib/mvp/travel-dates";
 
 const copy = {
   pl: {
@@ -15,6 +15,8 @@ const copy = {
     partner: "Partner",
     route: "Trasa",
     departure: "Wylot",
+    return: "Powrot",
+    tripWindow: "Zakres podrozy",
     travelers: "Podrozni",
     travelersShort: "os.",
     openFlights: "Otworz loty w",
@@ -26,6 +28,8 @@ const copy = {
     partner: "Partner",
     route: "Route",
     departure: "Departure",
+    return: "Return",
+    tripWindow: "Trip window",
     travelers: "Travelers",
     travelersShort: "trav.",
     openFlights: "Open flights on",
@@ -38,12 +42,14 @@ export function FlightOffersPanel(props: {
   destinationCountry: string;
   originCity: string;
   departureDate: string;
+  returnDate: string;
   passengers: number;
   partnerUrl: string;
 }) {
   const { locale } = useLanguage();
   const text = copy[locale];
   const dateLocale = locale === "en" ? "en-GB" : "pl-PL";
+  const tripNights = countNightsBetweenIsoDates(props.departureDate, props.returnDate, 4);
   const partnerLabel = getAffiliateBrandLabel(props.partnerUrl, locale === "en" ? "Flight partner" : "Partner lotniczy");
   const redirectHref = useMemo(
     () =>
@@ -86,9 +92,26 @@ export function FlightOffersPanel(props: {
           <p className="mt-1 text-sm font-semibold text-white">{formatShortDate(props.departureDate, dateLocale)}</p>
         </div>
         <div className="rounded-2xl bg-white/8 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.return}</p>
+          <p className="mt-1 text-sm font-semibold text-white">{formatShortDate(props.returnDate, dateLocale)}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl bg-white/8 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.tripWindow}</p>
+          <p className="mt-1 text-sm font-semibold text-white">{tripNights} {locale === "en" ? "nights" : "nocy"}</p>
+        </div>
+        <div className="rounded-2xl bg-white/8 px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.travelers}</p>
           <p className="mt-1 text-sm font-semibold text-white">
             {props.passengers} {text.travelersShort}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-emerald-400/12 px-4 py-3 ring-1 ring-emerald-300/20">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.partner}</p>
+          <p className="mt-1 text-sm font-semibold text-white">
+            {locale === "en" ? "Route and dates are already set" : "Trasa i daty sa juz gotowe"}
           </p>
         </div>
       </div>

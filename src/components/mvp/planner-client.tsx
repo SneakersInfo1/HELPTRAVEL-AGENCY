@@ -162,6 +162,14 @@ const plannerCopy = {
     openPlan: "Otworz plan",
     mobileBarEyebrow: "Gotowe do dalszego ruchu",
     mobileBarBody: "Najpierw pobyt, potem loty i zapis planu bez gubienia ustawien.",
+    topChoiceSummary: "Dlaczego ten kierunek wygrywa",
+    topChoiceSummaryBody: "Masz juz gotowy kierunek, termin i pierwsze CTA. Najmocniejszy kolejny ruch to szybkie wejscie w pobyt i porownanie najblizszych alternatyw.",
+    resultsNavigator: "Kolejne kroki",
+    resultsNavigatorBody: "Przejdz od razu do najwazniejszej sekcji bez przewijania calego ekranu wynikow.",
+    jumpToStays: "Do pobytu",
+    jumpToFlights: "Do lotow",
+    jumpToGuide: "Do przewodnika",
+    jumpToOnSite: "Na miejscu",
     destinationPlaceholder: "Np. Malaga",
     destinationSearching: "Szukamy kierunkow...",
     destinationEmpty: "Brak dopasowan. Sprobuj wpisac inne miasto lub kraj.",
@@ -288,6 +296,14 @@ const plannerCopy = {
     openPlan: "Open plan",
     mobileBarEyebrow: "Ready for the next move",
     mobileBarBody: "Lead with stays, then flights, and keep the plan saved without losing the setup.",
+    topChoiceSummary: "Why this destination wins",
+    topChoiceSummaryBody: "You already have the destination, dates and first CTAs. The strongest next move is opening the stay view and checking the closest alternatives.",
+    resultsNavigator: "Next steps",
+    resultsNavigatorBody: "Jump straight into the most important section without scanning the whole results screen first.",
+    jumpToStays: "Go to stays",
+    jumpToFlights: "Go to flights",
+    jumpToGuide: "Go to guide",
+    jumpToOnSite: "On site",
     destinationPlaceholder: "E.g. Malaga",
     destinationSearching: "Looking for destinations...",
     destinationEmpty: "No matches yet. Try another city or country.",
@@ -1705,6 +1721,51 @@ export function PlannerClient({
             </div>
           </section>
 
+          <section className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr]">
+            <article className="rounded-[1.7rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.topChoiceSummary}</p>
+              <p className="mt-2 text-sm leading-7 text-emerald-900/76">{text.topChoiceSummaryBody}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {selectedOption.reasons.slice(0, 3).map((reason) => (
+                  <div key={reason} className="rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm leading-6 text-emerald-950">
+                    {reason}
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="rounded-[1.7rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(237,250,241,0.98),rgba(229,245,234,0.94))] p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.resultsNavigator}</p>
+              <p className="mt-2 text-sm leading-7 text-emerald-900/76">{text.resultsNavigatorBody}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a
+                  href="#planner-stays"
+                  className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
+                >
+                  {text.jumpToStays}
+                </a>
+                <a
+                  href="#planner-flights"
+                  className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                >
+                  {text.jumpToFlights}
+                </a>
+                <a
+                  href="#planner-guide"
+                  className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                >
+                  {text.jumpToGuide}
+                </a>
+                <a
+                  href="#planner-on-site"
+                  className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                >
+                  {text.jumpToOnSite}
+                </a>
+              </div>
+            </article>
+          </section>
+
           <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
             <article className="rounded-[1.7rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.interpretedBrief}</p>
@@ -1905,7 +1966,7 @@ export function PlannerClient({
           </section>
 
           <div className="grid gap-5">
-            <div ref={stayOffersRef} className="scroll-mt-24">
+            <div id="planner-stays" ref={stayOffersRef} className="scroll-mt-24">
               <StayOffersPanel
                 destinationCity={selectedOption.destination.city}
                 destinationCountry={selectedOption.destination.country}
@@ -1915,29 +1976,38 @@ export function PlannerClient({
                 rooms={rooms}
               />
             </div>
-            <FlightOffersPanel
-              destinationCity={selectedOption.destination.city}
-              destinationCountry={selectedOption.destination.country}
-              originCity={originCity}
-              departureDate={travelStartDate}
-              passengers={travelers}
-              partnerUrl={activeAffiliateLinks.flights}
-            />
-            <DestinationAttractionsPanel city={selectedOption.destination.city} country={selectedOption.destination.country} />
+            <div id="planner-flights" className="scroll-mt-24">
+              <FlightOffersPanel
+                destinationCity={selectedOption.destination.city}
+                destinationCountry={selectedOption.destination.country}
+                originCity={originCity}
+                departureDate={travelStartDate}
+                returnDate={checkOutDate}
+                passengers={travelers}
+                partnerUrl={activeAffiliateLinks.flights}
+              />
+            </div>
+            <div id="planner-guide" className="scroll-mt-24">
+              <DestinationAttractionsPanel city={selectedOption.destination.city} country={selectedOption.destination.country} />
+            </div>
             <div id="aktywnosci-na-miejscu" className="grid gap-5 xl:grid-cols-2">
-              <ActivityOffersPanel
-                destinationCity={selectedOption.destination.city}
-                destinationCountry={selectedOption.destination.country}
-                fromDate={travelStartDate}
-                toDate={checkOutDate}
-                travelers={travelers}
-              />
-              <TransferOffersPanel
-                destinationCity={selectedOption.destination.city}
-                destinationCountry={selectedOption.destination.country}
-                outboundDate={travelStartDate}
-                adults={travelers}
-              />
+              <div id="planner-on-site" className="scroll-mt-24">
+                <ActivityOffersPanel
+                  destinationCity={selectedOption.destination.city}
+                  destinationCountry={selectedOption.destination.country}
+                  fromDate={travelStartDate}
+                  toDate={checkOutDate}
+                  travelers={travelers}
+                />
+              </div>
+              <div id="planner-transfers" className="scroll-mt-24">
+                <TransferOffersPanel
+                  destinationCity={selectedOption.destination.city}
+                  destinationCountry={selectedOption.destination.country}
+                  outboundDate={travelStartDate}
+                  adults={travelers}
+                />
+              </div>
             </div>
           </div>
         </>
