@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -412,7 +412,7 @@ export function StayOffersPanel(props: {
           <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-emerald-900/8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.priorityLabel}</p>
             <p className="mt-1 text-sm font-semibold text-emerald-950">
-              {text.priorityValue} · {nights} {locale === "en" ? "nights" : "nocy"}
+              {text.priorityValue} / {nights} {locale === "en" ? "nights" : "nocy"}
             </p>
           </div>
         </div>
@@ -614,7 +614,7 @@ export function StayOffersPanel(props: {
 
                     {getDiscountPercent(topOffer.total_amount, topOffer.public_amount) ? (
                       <div className="mt-4 inline-flex rounded-full bg-rose-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-rose-600">
-                        {text.promoDiscountPrefix} -{getDiscountPercent(topOffer.total_amount, topOffer.public_amount)}% · {text.discountCompared}
+                        {text.promoDiscountPrefix} -{getDiscountPercent(topOffer.total_amount, topOffer.public_amount)}% / {text.discountCompared}
                       </div>
                     ) : null}
 
@@ -833,3 +833,4 @@ export function StayOffersPanel(props: {
     </section>
   );
 }
+

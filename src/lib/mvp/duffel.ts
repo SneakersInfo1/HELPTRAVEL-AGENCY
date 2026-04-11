@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 import { resolveAirportCode } from "./location";
 import type { CabinClass, FlightSortMode, NormalizedFlightOffer } from "./types";
@@ -159,14 +159,14 @@ export async function searchDuffelFlights(input: DuffelFlightSearchInput): Promi
   const version = process.env.DUFFEL_VERSION?.trim() || "v2";
 
   if (!accessToken) {
-    throw new Error("Brak DUFFEL_ACCESS_TOKEN w zmiennych środowiskowych.");
+    throw new Error("Brak DUFFEL_ACCESS_TOKEN w zmiennych srodowiskowych.");
   }
 
   const resolvedOrigin = resolveAirportCode(input.origin);
   const resolvedDestination = resolveAirportCode(input.destination);
 
   if (!resolvedOrigin || !resolvedDestination) {
-    throw new Error("Nie udało się zamienić miasta na kod lotniska.");
+    throw new Error("Nie udalo sie zamienic miasta na kod lotniska.");
   }
 
   const passengers = Math.max(1, Math.min(8, Math.round(input.passengers || 1)));
@@ -198,7 +198,7 @@ export async function searchDuffelFlights(input: DuffelFlightSearchInput): Promi
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Duffel zwrócił błąd (${response.status}). ${text.slice(0, 220)}`);
+    throw new Error(`Duffel zwrocil blad (${response.status}). ${text.slice(0, 220)}`);
   }
 
   const payload = (await response.json()) as {
@@ -222,3 +222,5 @@ export async function searchDuffelFlights(input: DuffelFlightSearchInput): Promi
     fetchedAt: new Date().toISOString(),
   };
 }
+
+

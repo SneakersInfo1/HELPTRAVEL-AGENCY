@@ -56,6 +56,8 @@ function interpolateTemplate(template: string, input: AffiliateTemplateInput, ki
     cityCountryEncoded: encodeURIComponent(cityCountry),
     departureDate,
     departureDateEncoded: encodeURIComponent(departureDate),
+    returnDate: checkOutDate,
+    returnDateEncoded: encodeURIComponent(checkOutDate),
     checkInDate,
     checkInDateEncoded: encodeURIComponent(checkInDate),
     checkOutDate,

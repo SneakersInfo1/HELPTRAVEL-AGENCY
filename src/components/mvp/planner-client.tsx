@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -162,6 +162,10 @@ const plannerCopy = {
     openPlan: "Otworz plan",
     mobileBarEyebrow: "Gotowe do dalszego ruchu",
     mobileBarBody: "Najpierw pobyt, potem loty i zapis planu bez gubienia ustawien.",
+    mobileQuickActions: "Szybkie sterowanie",
+    mobileQuickBody: "Skocz do sekcji albo popraw trase bez skanowania calej strony wynikow.",
+    editTrip: "Edytuj plan",
+    closeTripEditor: "Schowaj edycje",
     topChoiceSummary: "Dlaczego ten kierunek wygrywa",
     topChoiceSummaryBody: "Masz juz gotowy kierunek, termin i pierwsze CTA. Najmocniejszy kolejny ruch to szybkie wejscie w pobyt i porownanie najblizszych alternatyw.",
     resultsNavigator: "Kolejne kroki",
@@ -296,6 +300,10 @@ const plannerCopy = {
     openPlan: "Open plan",
     mobileBarEyebrow: "Ready for the next move",
     mobileBarBody: "Lead with stays, then flights, and keep the plan saved without losing the setup.",
+    mobileQuickActions: "Quick controls",
+    mobileQuickBody: "Jump between sections or reopen the route editor without scanning the whole results page.",
+    editTrip: "Edit plan",
+    closeTripEditor: "Hide editor",
     topChoiceSummary: "Why this destination wins",
     topChoiceSummaryBody: "You already have the destination, dates and first CTAs. The strongest next move is opening the stay view and checking the closest alternatives.",
     resultsNavigator: "Next steps",
@@ -452,7 +460,7 @@ function DestinationAutocompleteField({
                     <span>
                       <span className="block text-sm font-semibold text-emerald-950">{suggestion.city}</span>
                       <span className="mt-1 block text-xs text-emerald-900/68">
-                        {[suggestion.country, suggestion.region].filter(Boolean).join(" · ")}
+                        {[suggestion.country, suggestion.region].filter(Boolean).join(" / ")}
                       </span>
                     </span>
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
@@ -536,6 +544,8 @@ export function PlannerClient({
   const autoSearchRef = useRef(false);
   const shouldFocusOffersRef = useRef(false);
   const stayOffersRef = useRef<HTMLDivElement | null>(null);
+  const settingsPanelRef = useRef<HTMLDivElement | null>(null);
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
 
   const [query, setQuery] = useState(
     initialQuery ||
@@ -761,12 +771,25 @@ export function PlannerClient({
     });
   });
 
+  const openMobileSettings = () => {
+    setMobileSettingsOpen(true);
+    window.requestAnimationFrame(() => {
+      settingsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   useEffect(() => {
     if (!autoRunStandardSearch || autoSearchRef.current) return;
     if (mode !== "standard" || !destinationHint.trim()) return;
     autoSearchRef.current = true;
     triggerInitialStandardSearch();
   }, [autoRunStandardSearch, destinationHint, mode]);
+
+  useEffect(() => {
+    if (selectedOptionId) {
+      setMobileSettingsOpen(false);
+    }
+  }, [selectedOptionId]);
 
   const selectedOption =
     result?.options.find((option) => option.itineraryResultId === selectedOptionId) ?? result?.options[0] ?? null;
@@ -1362,7 +1385,7 @@ export function PlannerClient({
                   {formatShortDate(travelStartDate, dateLocale)} - {formatShortDate(checkOutDate, dateLocale)}
                 </p>
                 <p className="mt-1 text-sm text-emerald-900/76">
-                  {travelers} {text.travelersShort} · {rooms} {rooms === 1 ? text.roomSingle : rooms < 5 ? text.roomFew : text.roomMany}
+                  {travelers} {text.travelersShort} / {rooms} {rooms === 1 ? text.roomSingle : rooms < 5 ? text.roomFew : text.roomMany}
                 </p>
               </div>
             </div>
@@ -1636,9 +1659,9 @@ export function PlannerClient({
 
               <div className="space-y-4 p-5 sm:p-6">
                 <div className="flex flex-wrap gap-3">
-                  <SummaryPill label={text.score} value={`${selectedOption.score.toFixed(0)} · ${scoreLabel(selectedOption.score, locale)}`} />
+                  <SummaryPill label={text.score} value={`${selectedOption.score.toFixed(0)} / ${scoreLabel(selectedOption.score, locale)}`} />
                   <SummaryPill label={text.term} value={`${formatShortDate(travelStartDate, dateLocale)} - ${formatShortDate(checkOutDate, dateLocale)}`} />
-                  <SummaryPill label={text.travelParty} value={`${travelers} ${text.travelersShort} · ${travelNights} ${text.selectedDatesValue}`} />
+                  <SummaryPill label={text.travelParty} value={`${travelers} ${text.travelersShort} / ${travelNights} ${text.selectedDatesValue}`} />
                 </div>
 
                 <div className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
@@ -1785,14 +1808,14 @@ export function PlannerClient({
                 <p className="mt-2 text-sm leading-6 text-emerald-900/76">{text.methodologyBody}</p>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-emerald-900/82">
                   {methodologyPoints.map((item) => (
-                    <li key={item}>• {item}</li>
+                    <li key={item} className="ml-5 list-disc">{item}</li>
                   ))}
                 </ul>
               </div>
               {strongestNeeds.length > 0 ? (
                 <div className="mt-4 rounded-2xl bg-emerald-50/70 px-4 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.decodedTravelStyle}</p>
-                  <p className="mt-2 text-sm text-emerald-950">{strongestNeeds.join(" • ")}</p>
+                  <p className="mt-2 text-sm text-emerald-950">{strongestNeeds.join(" / ")}</p>
                 </div>
               ) : null}
             </article>
@@ -1900,73 +1923,141 @@ export function PlannerClient({
             })}
           </section>
 
-          <section className="rounded-[1.9rem] border border-emerald-900/10 bg-white p-4 shadow-[0_16px_45px_rgba(16,84,48,0.06)] sm:p-5">
+          <section className="sticky top-20 z-20 -mx-1 lg:hidden">
+            <div className="rounded-[1.5rem] border border-emerald-900/12 bg-white/94 p-4 shadow-[0_18px_40px_rgba(16,84,48,0.12)] backdrop-blur">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.mobileQuickActions}</p>
+                  <p className="mt-1 text-sm font-semibold text-emerald-950">
+                    {selectedOption.destination.city}, {selectedOption.destination.country}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-emerald-900/68">{text.mobileQuickBody}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mobileSettingsOpen) {
+                      setMobileSettingsOpen(false);
+                    } else {
+                      openMobileSettings();
+                    }
+                  }}
+                  className="rounded-full border border-emerald-900/12 bg-white px-3 py-2 text-xs font-bold text-emerald-950 transition hover:bg-emerald-50"
+                >
+                  {mobileSettingsOpen ? text.closeTripEditor : text.editTrip}
+                </button>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <a
+                  href="#planner-stays"
+                  className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+                >
+                  {text.jumpToStays}
+                </a>
+                <a
+                  href="#planner-flights"
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                >
+                  {text.jumpToFlights}
+                </a>
+                <a
+                  href="#planner-guide"
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                >
+                  {text.jumpToGuide}
+                </a>
+                <a
+                  href="#planner-on-site"
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                >
+                  {text.jumpToOnSite}
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <section
+            ref={settingsPanelRef}
+            id="planner-settings"
+            className="rounded-[1.9rem] border border-emerald-900/10 bg-white p-4 shadow-[0_16px_45px_rgba(16,84,48,0.06)] sm:p-5"
+          >
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.bookingSettings}</p>
                 <h3 className="mt-2 text-2xl font-bold text-emerald-950">{text.bookingSettingsBody}</h3>
                 <p className="mt-2 text-sm text-emerald-900/70">{text.bookingSettingsHint}</p>
               </div>
-              <div className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
-                {originCity} → {selectedOption.destination.city}
+              <div className="flex items-center gap-2">
+                <div className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
+                  {originCity} -&gt; {selectedOption.destination.city}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileSettingsOpen((current) => !current)}
+                  className="rounded-full border border-emerald-900/12 bg-white px-3 py-2 text-xs font-bold text-emerald-950 transition hover:bg-emerald-50 lg:hidden"
+                >
+                  {mobileSettingsOpen ? text.closeTripEditor : text.editTrip}
+                </button>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-              <DestinationAutocompleteField
-                label={text.direction}
-                value={destinationHint}
-                onChange={handleDestinationInputChange}
-                onFocus={handleDestinationInputFocus}
-                onSelect={handleDestinationSuggestionSelect}
-                suggestions={destinationSuggestions}
-                isLoading={isSuggestingDestinations}
-                isOpen={destinationSuggestionsOpen}
-                placeholder={text.destinationPlaceholder}
-                loadingLabel={text.destinationSearching}
-                emptyLabel={text.destinationEmpty}
-              />
-              <Field label={text.origin}>
-                <Input value={originCity} onChange={(event) => setOriginCity(event.target.value)} />
-              </Field>
-              <Field label={text.travelStart}>
-                <Input type="date" value={travelStartDate} onChange={(event) => setTravelStartDate(event.target.value)} />
-              </Field>
-              <Field label={text.nights}>
-                <Input
-                  type="date"
-                  value={checkOutDate}
-                  min={travelStartDate}
-                  onChange={(event) => setTravelEndDate(event.target.value)}
+            <div className={`${mobileSettingsOpen ? "mt-4 block" : "mt-4 hidden"} lg:block`}>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                <DestinationAutocompleteField
+                  label={text.direction}
+                  value={destinationHint}
+                  onChange={handleDestinationInputChange}
+                  onFocus={handleDestinationInputFocus}
+                  onSelect={handleDestinationSuggestionSelect}
+                  suggestions={destinationSuggestions}
+                  isLoading={isSuggestingDestinations}
+                  isOpen={destinationSuggestionsOpen}
+                  placeholder={text.destinationPlaceholder}
+                  loadingLabel={text.destinationSearching}
+                  emptyLabel={text.destinationEmpty}
                 />
-              </Field>
-              <Field label={text.travelers}>
-                <Input
-                  type="number"
-                  min={1}
-                  max={8}
-                  value={travelers}
-                  onChange={(event) => setTravelers(Number(event.target.value) || 1)}
-                />
-              </Field>
-              <Field label={text.rooms}>
-                <Input type="number" min={1} max={5} value={rooms} onChange={(event) => setRooms(Number(event.target.value) || 1)} />
-              </Field>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={runPlanner}
-                disabled={loading}
-                className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(21,128,61,0.18)] transition hover:bg-emerald-800 disabled:opacity-70"
-              >
-                {loading ? text.loadingPlan : text.refreshFlow}
-              </button>
+                <Field label={text.origin}>
+                  <Input value={originCity} onChange={(event) => setOriginCity(event.target.value)} />
+                </Field>
+                <Field label={text.travelStart}>
+                  <Input type="date" value={travelStartDate} onChange={(event) => setTravelStartDate(event.target.value)} />
+                </Field>
+                <Field label={text.nights}>
+                  <Input
+                    type="date"
+                    value={checkOutDate}
+                    min={travelStartDate}
+                    onChange={(event) => setTravelEndDate(event.target.value)}
+                  />
+                </Field>
+                <Field label={text.travelers}>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={8}
+                    value={travelers}
+                    onChange={(event) => setTravelers(Number(event.target.value) || 1)}
+                  />
+                </Field>
+                <Field label={text.rooms}>
+                  <Input type="number" min={1} max={5} value={rooms} onChange={(event) => setRooms(Number(event.target.value) || 1)} />
+                </Field>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={runPlanner}
+                  disabled={loading}
+                  className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(21,128,61,0.18)] transition hover:bg-emerald-800 disabled:opacity-70"
+                >
+                  {loading ? text.loadingPlan : text.refreshFlow}
+                </button>
+              </div>
             </div>
           </section>
 
           <div className="grid gap-5">
-            <div id="planner-stays" ref={stayOffersRef} className="scroll-mt-24">
+            <div id="planner-stays" ref={stayOffersRef} className="scroll-mt-36">
               <StayOffersPanel
                 destinationCity={selectedOption.destination.city}
                 destinationCountry={selectedOption.destination.country}
@@ -1976,7 +2067,7 @@ export function PlannerClient({
                 rooms={rooms}
               />
             </div>
-            <div id="planner-flights" className="scroll-mt-24">
+            <div id="planner-flights" className="scroll-mt-36">
               <FlightOffersPanel
                 destinationCity={selectedOption.destination.city}
                 destinationCountry={selectedOption.destination.country}
@@ -1987,11 +2078,11 @@ export function PlannerClient({
                 partnerUrl={activeAffiliateLinks.flights}
               />
             </div>
-            <div id="planner-guide" className="scroll-mt-24">
+            <div id="planner-guide" className="scroll-mt-36">
               <DestinationAttractionsPanel city={selectedOption.destination.city} country={selectedOption.destination.country} />
             </div>
             <div id="aktywnosci-na-miejscu" className="grid gap-5 xl:grid-cols-2">
-              <div id="planner-on-site" className="scroll-mt-24">
+              <div id="planner-on-site" className="scroll-mt-36">
                 <ActivityOffersPanel
                   destinationCity={selectedOption.destination.city}
                   destinationCountry={selectedOption.destination.country}
@@ -2000,7 +2091,7 @@ export function PlannerClient({
                   travelers={travelers}
                 />
               </div>
-              <div id="planner-transfers" className="scroll-mt-24">
+              <div id="planner-transfers" className="scroll-mt-36">
                 <TransferOffersPanel
                   destinationCity={selectedOption.destination.city}
                   destinationCountry={selectedOption.destination.country}
@@ -2098,7 +2189,7 @@ export function PlannerClient({
                           <div key={`${option.itineraryResultId}-${imageUrl}`} className="relative h-20 overflow-hidden rounded-2xl border border-emerald-900/10">
                             <Image
                               src={imageUrl}
-                              alt={`${story.name} zdjęcie ${index + 1}`}
+                              alt={`${story.name} image ${index + 1}`}
                               fill
                               sizes="(max-width: 640px) 100vw, 11vw"
                               className="object-cover transition duration-500 group-hover:scale-105"
@@ -2112,7 +2203,7 @@ export function PlannerClient({
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.whyItFits}</p>
                           <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/82">
                             {option.reasons.slice(0, 3).map((reason) => (
-                              <li key={reason}>• {reason}</li>
+                              <li key={reason} className="ml-5 list-disc">{reason}</li>
                             ))}
                           </ul>
                         </div>
@@ -2120,7 +2211,7 @@ export function PlannerClient({
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.watchLabel}</p>
                           <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/82">
                             {(option.tradeoffs.length > 0 ? option.tradeoffs : [text.noTradeoffs]).map((tradeoff) => (
-                              <li key={tradeoff}>• {tradeoff}</li>
+                              <li key={tradeoff} className="ml-5 list-disc">{tradeoff}</li>
                             ))}
                           </ul>
                         </div>
@@ -2157,7 +2248,7 @@ export function PlannerClient({
               </button>
             </div>
             <p className="mt-3 text-xs leading-5 text-white/68">{text.mobileBarBody}</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-3 grid grid-cols-3 gap-2">
               <a
                 href={bookingDeck[0].href}
                 target="_blank"
@@ -2176,6 +2267,13 @@ export function PlannerClient({
                 <PartnerLogoMark brand={bookingDeck[1].brand} size="sm" variant="contrast" />
                 {text.showFlights}
               </a>
+              <button
+                type="button"
+                onClick={openMobileSettings}
+                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/14"
+              >
+                {text.editTrip}
+              </button>
             </div>
           </div>
         </div>
@@ -2183,7 +2281,7 @@ export function PlannerClient({
 
       {result && !selectedOption ? (
         <section className="rounded-[1.75rem] border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-900 shadow-sm">
-          Nie udało się zbudować pełnego rankingu kierunków dla tego zapytania. Spróbuj zmienić termin lub kierunek i uruchomić wyszukiwanie ponownie.
+          Nie udalo sie zbudowac pelnego rankingu kierunkow dla tego zapytania. Sprobuj zmienic termin lub kierunek i uruchomic wyszukiwanie ponownie.
         </section>
       ) : null}
     </div>
@@ -2198,3 +2296,5 @@ type DecisionLensCard = {
   city: string;
   country: string;
 };
+
+

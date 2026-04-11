@@ -253,6 +253,8 @@ export interface FlightSearchResponse {
   sortBy: FlightSortMode;
   offers: NormalizedFlightOffer[];
   fetchedAt: string;
+  source?: "duffel" | "partner_fallback";
+  error?: string;
 }
 
 export interface StaySearchResponse {
