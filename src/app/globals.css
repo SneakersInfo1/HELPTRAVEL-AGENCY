@@ -25,10 +25,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-ui), sans-serif;
   background-image:
-    radial-gradient(circle at top left, rgba(72, 164, 103, 0.18), transparent 24%),
-    radial-gradient(circle at 85% 0%, rgba(190, 232, 205, 0.58), transparent 18%),
-    radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.08), transparent 22%),
+    radial-gradient(circle at top left, rgba(72, 164, 103, 0.14), transparent 22%),
     linear-gradient(180deg, #f8fbf7 0%, #eef6ef 48%, #e6f0e8 100%);
+  background-attachment: fixed;
 }
 
 .glass-panel {
@@ -202,6 +201,20 @@ video {
 
   .animate-hero-pan {
     animation: none;
+  }
+
+  /* Sticky elementy z blurem (np. globalny header) sa przewijane na kazdej
+   * stronie -- backdrop-filter na desktopie kosztuje przy kazdej klatce
+   * scrolla. Wymieniamy blur na bardziej nieprzezroczyste tlo i promujemy
+   * element do wlasnej warstwy kompozytora. */
+  .sticky.backdrop-blur-xl,
+  .sticky.backdrop-blur-2xl,
+  .sticky.backdrop-blur-3xl {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: rgba(255, 255, 255, 0.94) !important;
+    will-change: transform;
+    transform: translateZ(0);
   }
 }
 
