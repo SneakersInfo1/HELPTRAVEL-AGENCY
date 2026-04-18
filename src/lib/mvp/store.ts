@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getPrisma } from "./db";
 import { allDestinationProfiles } from "./destinations";
 import type { DestinationProfile, DiscoveryMode, ScoreBreakdown } from "./types";
@@ -93,14 +92,37 @@ function getMemoryStore(): MemoryStore {
   return globalForMvp.__helpTravelMemoryStore;
 }
 
-function toDestinationProfile(row: any): DestinationProfile {
+interface DestinationRow {
+  id: string;
+  slug: string;
+  city: string;
+  country: string;
+  visaForPL: boolean;
+  avgTempByMonthJson?: unknown;
+  avgTempByMonth?: number[];
+  costIndex: number;
+  beachScore: number;
+  cityScore: number;
+  sightseeingScore: number;
+  nightlifeScore: number;
+  natureScore: number;
+  safetyScore: number;
+  accessScore: number;
+  typicalFlightHoursFromPL: number;
+  affiliateLinksJson?: unknown;
+  affiliateLinks?: DestinationProfile["affiliateLinks"];
+}
+
+function toDestinationProfile(row: DestinationRow): DestinationProfile {
   return {
     id: row.id,
     slug: row.slug,
     city: row.city,
     country: row.country,
     visaForPL: Boolean(row.visaForPL),
-    avgTempByMonth: Array.isArray(row.avgTempByMonthJson) ? row.avgTempByMonthJson : row.avgTempByMonth ?? [],
+    avgTempByMonth: Array.isArray(row.avgTempByMonthJson)
+      ? (row.avgTempByMonthJson as number[])
+      : row.avgTempByMonth ?? [],
     costIndex: Number(row.costIndex),
     beachScore: Number(row.beachScore),
     cityScore: Number(row.cityScore),
