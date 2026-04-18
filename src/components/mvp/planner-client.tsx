@@ -1,17 +1,41 @@
 ﻿"use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { PartnerLogoMark } from "@/components/site/partner-logo";
-import { ActivityOffersPanel } from "@/components/mvp/activity-offers-panel";
-import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
-import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
-import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
-import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
+
+const PanelSkeleton = () => (
+  <div className="glass-panel rounded-[2rem] border border-emerald-900/10 p-6">
+    <div className="h-4 w-32 animate-pulse rounded bg-emerald-100" />
+    <div className="mt-4 h-24 animate-pulse rounded-2xl bg-emerald-50" />
+  </div>
+);
+
+const ActivityOffersPanel = dynamic(
+  () => import("@/components/mvp/activity-offers-panel").then((m) => m.ActivityOffersPanel),
+  { loading: PanelSkeleton, ssr: false },
+);
+const DestinationAttractionsPanel = dynamic(
+  () => import("@/components/mvp/destination-attractions-panel").then((m) => m.DestinationAttractionsPanel),
+  { loading: PanelSkeleton, ssr: false },
+);
+const FlightOffersPanel = dynamic(
+  () => import("@/components/mvp/flight-offers-panel").then((m) => m.FlightOffersPanel),
+  { loading: PanelSkeleton, ssr: false },
+);
+const StayOffersPanel = dynamic(
+  () => import("@/components/mvp/stay-offers-panel").then((m) => m.StayOffersPanel),
+  { loading: PanelSkeleton, ssr: false },
+);
+const TransferOffersPanel = dynamic(
+  () => import("@/components/mvp/transfer-offers-panel").then((m) => m.TransferOffersPanel),
+  { loading: PanelSkeleton, ssr: false },
+);
 import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
