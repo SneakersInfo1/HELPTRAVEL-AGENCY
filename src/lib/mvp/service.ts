@@ -1,15 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createId } from "./db";
 import { buildFallbackDestinationProfile, findCuratedDestination, parseDestinationHint } from "./destination-fallback";
 import { parseDiscoveryInput } from "./parser";
 import { scoreDestinations } from "./scoring";
 import type {
+  DestinationProfile,
   DiscoveryOption,
   DiscoveryRequestInput,
   DiscoveryResponse,
   EventPayload,
   SavedTripSnapshot,
   SavedTripView,
+  ScoreBreakdown,
   StandardRequestInput,
 } from "./types";
 import { generateSummaryAndPlan, refinePreferencesWithAI } from "./ai";
@@ -45,12 +46,12 @@ export async function trackEvent(sessionId: string, payload: EventPayload): Prom
 
 function toOptionView(args: {
   itineraryResultId: string;
-  destination: any;
+  destination: DestinationProfile;
   rank: number;
   score: number;
   estimatedBudgetMin: number;
   estimatedBudgetMax: number;
-  breakdown: any;
+  breakdown: ScoreBreakdown;
   reasons: string[];
   tradeoffs: string[];
   aiSummary: string;
@@ -390,13 +391,15 @@ export async function saveTrip(
   return { savedTripId: saved.id };
 }
 
-function toSavedTripView(record: {
-  savedTrip: any;
-  itinerary: any;
-  tripRequest: any;
-  destination: any;
-  score?: any;
-}): SavedTripView {
+interface SavedTripRecord {
+  savedTrip: { id: string; createdAt: Date | string; snapshotJson?: unknown };
+  itinerary: { id: string; aiSummary: string; aiPlanJson?: unknown; estimatedBudgetMin: number; estimatedBudgetMax: number };
+  tripRequest: { id: string; mode: SavedTripView["mode"] };
+  destination: DestinationProfile;
+  score?: { totalScore?: number; reasonsJson?: unknown };
+}
+
+function toSavedTripView(record: SavedTripRecord): SavedTripView {
   return {
     savedTripId: record.savedTrip.id,
     requestId: record.tripRequest.id,
