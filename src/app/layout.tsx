@@ -4,6 +4,7 @@ import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/components/site/language-provider";
 import { SiteShell } from "@/components/site/site-shell";
+import { WebVitalsReporter } from "@/components/site/web-vitals-reporter";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 const siteUrl = getSiteUrl();
@@ -122,6 +123,7 @@ export default function RootLayout({
       <body className="min-h-full">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         <LanguageProvider>
+          <WebVitalsReporter />
           <SiteShell>{children}</SiteShell>
         </LanguageProvider>
       </body>
