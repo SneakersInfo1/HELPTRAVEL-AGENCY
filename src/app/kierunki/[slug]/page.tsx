@@ -24,6 +24,8 @@ import { getSiteUrl } from "@/lib/mvp/site";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib/mvp/travel-dates";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
+export const revalidate = 86400;
+
 interface DestinationGuidePageProps {
   params: Promise<{ slug: string }>;
 }

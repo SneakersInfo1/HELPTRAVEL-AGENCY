@@ -13,6 +13,8 @@ import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { type SiteLocale } from "@/lib/mvp/locale";
 
+export const revalidate = 86400;
+
 const pageCopy = {
   pl: {
     title: "Kierunki",
