@@ -25,6 +25,8 @@ import { buildRedirectHref } from "@/lib/mvp/providers";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib/mvp/travel-dates";
 
+export const revalidate = 86400;
+
 interface DestinationGuidePageProps {
   params: Promise<{ slug: string }>;
 }
