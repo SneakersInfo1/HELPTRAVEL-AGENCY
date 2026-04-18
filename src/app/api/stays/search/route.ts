@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { searchDuffelStays } from "@/lib/mvp/duffel-stays";
 import { searchHotelbedsHotelOffers } from "@/lib/mvp/hotelbeds-hotels";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const staySearchSchema = z.object({
   city: z.string().trim().min(2),
@@ -34,6 +35,9 @@ function buildFallback(input: z.infer<typeof staySearchSchema>, errorMessage: st
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "stays-search");
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const input = staySearchSchema.parse(body);
