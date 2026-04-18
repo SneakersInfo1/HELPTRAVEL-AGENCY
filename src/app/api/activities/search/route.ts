@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { searchHotelbedsActivities } from "@/lib/mvp/hotelbeds-activities";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const activitySearchSchema = z.object({
   city: z.string().trim().min(2),
@@ -27,6 +28,9 @@ function buildFallback(input: z.infer<typeof activitySearchSchema>, errorMessage
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "activities-search");
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const input = activitySearchSchema.parse(body);
