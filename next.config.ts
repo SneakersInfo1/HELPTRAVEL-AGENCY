@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const cspReportOnly = [
+const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -36,7 +36,7 @@ const securityHeaders = [
     value: "max-age=63072000; includeSubDomains; preload",
   },
   { key: "Permissions-Policy", value: permissionsPolicy },
-  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+  { key: "Content-Security-Policy", value: csp },
 ];
 
 const nextConfig: NextConfig = {
