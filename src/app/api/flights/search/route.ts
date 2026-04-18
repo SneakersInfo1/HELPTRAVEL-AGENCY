@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { searchDuffelFlights } from "@/lib/mvp/duffel";
 import type { CabinClass, FlightSearchResponse, FlightSortMode } from "@/lib/mvp/types";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const flightSearchSchema = z.object({
   origin: z.string().trim().min(2),
@@ -41,6 +42,9 @@ function buildFallback(
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "flights-search");
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const input = flightSearchSchema.parse(body);

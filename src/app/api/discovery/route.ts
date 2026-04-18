@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { runDiscovery } from "@/lib/mvp/service";
 import { attachSessionCookie, resolveSessionId, SESSION_COOKIE_NAME } from "@/lib/mvp/session";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const DiscoveryBodySchema = z.object({
   query: z.string().min(4).max(600),
@@ -15,6 +16,9 @@ const DiscoveryBodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const limited = await enforceRateLimit(request, "discovery");
+  if (limited) return limited;
+
   try {
     const payload = DiscoveryBodySchema.parse(await request.json());
     const resolved = resolveSessionId(request.cookies.get(SESSION_COOKIE_NAME)?.value);
