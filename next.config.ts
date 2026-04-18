@@ -1,5 +1,44 @@
 import type { NextConfig } from "next";
 
+const cspReportOnly = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://photos.hotelbeds.com https://*.geoapify.com https://maps.geoapify.com",
+  "media-src 'self' https://videos.pexels.com",
+  "connect-src 'self' https://*.upstash.io https://api.duffel.com https://*.hotelbeds.com https://api.geoapify.com https://api.openai.com https://vitals.vercel-insights.com https://vercel.live",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
+const permissionsPolicy = [
+  "camera=()",
+  "microphone=()",
+  "geolocation=()",
+  "payment=()",
+  "usb=()",
+  "magnetometer=()",
+  "gyroscope=()",
+  "accelerometer=()",
+  "interest-cohort=()",
+].join(", ");
+
+const securityHeaders = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+  { key: "Permissions-Policy", value: permissionsPolicy },
+  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+];
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
   images: {
@@ -21,6 +60,14 @@ const nextConfig: NextConfig = {
         hostname: "photos.hotelbeds.com",
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders,
+      },
+    ];
   },
 };
 
