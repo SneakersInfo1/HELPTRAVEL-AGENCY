@@ -168,3 +168,44 @@ img,
 video {
   backface-visibility: hidden;
 }
+
+/* -----------------------------------------------------------------------------
+ * Desktop performance overrides
+ *
+ * Chrome on desktop rasterizes heavy `backdrop-filter: blur()` through the CPU,
+ * which tanks scroll/paint performance on large surfaces. Mobile browsers
+ * throttle or GPU-accelerate the same effects, so we only downscale on >=1024px
+ * where the problem manifests. Visually the delta is subtle; the GPU savings
+ * are large. The `animate-hero-pan` loop is the single most expensive looping
+ * animation (scale+translate on a full-bleed image), so we disable it on
+ * desktop while keeping it on mobile where throttling makes it cheap.
+ * --------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .glass-panel {
+    backdrop-filter: blur(10px);
+  }
+
+  .backdrop-blur-xl {
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+
+  .backdrop-blur-2xl {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  .backdrop-blur-3xl {
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  .animate-hero-pan {
+    animation: none;
+  }
+}
+
+.glass-panel {
+  contain: paint;
+}
+
