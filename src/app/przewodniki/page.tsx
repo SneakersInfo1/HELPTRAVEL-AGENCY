@@ -4,6 +4,8 @@ import { CategoryPage } from "@/components/publisher/category-page";
 import { getEditorialCategoryBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 
+export const revalidate = 86400;
+
 const category = getEditorialCategoryBySlug("przewodniki");
 
 export const metadata: Metadata = {

@@ -18,6 +18,8 @@ import { curatedDestinations } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 
+export const revalidate = 86400;
+
 interface InspirationPageProps {
   params: Promise<{ slug: string }>;
 }

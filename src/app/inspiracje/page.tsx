@@ -7,6 +7,8 @@ import { EditorialArticleCard } from "@/components/publisher/editorial-article-c
 import { getEditorialArticles, getEditorialCategories, getLatestEditorialArticles } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 
+export const revalidate = 86400;
+
 export const metadata: Metadata = {
   title: "Inspiracje i blog podrozniczy",
   description: "Przewodniki, pomysly na wyjazdy, city breaki i praktyczne scenariusze w blogu travelowym dla polskiego odbiorcy.",
