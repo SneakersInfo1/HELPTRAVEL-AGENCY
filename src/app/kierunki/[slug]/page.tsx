@@ -13,6 +13,7 @@ import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { polishMonthInflected, polishMonthSlugs } from "@/lib/mvp/months";
+import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import {
   getArticlesForDestination,
   getCategoriesForDestination,
@@ -346,6 +347,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         description: guide.overview,
         touristType: guide.whoFor,
         url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
+        image: media.heroImage,
         address: {
           "@type": "PostalAddress",
           addressCountry: guide.destination.country,
@@ -443,6 +445,36 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
         </article>
       </section>
+
+      {(() => {
+        const relatedComparisons = getComparisonsForDestination(guide.destination.slug);
+        if (relatedComparisons.length === 0) return null;
+        return (
+          <section className="rounded-[2rem] border border-emerald-900/10 bg-emerald-50/72 p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Porownania</p>
+            <h2 className="mt-2 font-display text-3xl text-emerald-950">{guide.destination.city} kontra inne kierunki</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-emerald-900/72">
+              Konkretne porownania pod decyzje wyjazdowa: pogoda, koszty, charakter wyjazdu.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {relatedComparisons.map((pair) => {
+                const otherSlug = pair.a === guide.destination.slug ? pair.b : pair.a;
+                const otherGuide = getDestinationGuideBySlug(otherSlug);
+                if (!otherGuide) return null;
+                return (
+                  <LocalizedLink
+                    key={pair.slug}
+                    href={`/porownanie/${pair.slug}`}
+                    className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+                  >
+                    {guide.destination.city} vs {otherGuide.destination.city}
+                  </LocalizedLink>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Wyjazd miesiac po miesiacu</p>
