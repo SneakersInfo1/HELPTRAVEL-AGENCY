@@ -7,6 +7,9 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { comparisonPairs, getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 import { getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { getAffiliateConfig } from "@/lib/mvp/affiliate-config";
+import { Stay22Widget } from "@/components/affiliate/stay22-widget";
+import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 export const revalidate = 86400;
@@ -125,6 +128,7 @@ export default async function ComparisonPage({ params }: PageProps) {
   const b = gb.destination;
   const verdicts = buildVerdict(a, b);
   const baseUrl = getSiteUrl();
+  const config = getAffiliateConfig();
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -269,6 +273,29 @@ export default async function ComparisonPage({ params }: PageProps) {
               </Link>
             </div>
           </article>
+        ))}
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        {[
+          { dest: a, campaign: `compare-${pair.slug}-a` },
+          { dest: b, campaign: `compare-${pair.slug}-b` },
+        ].map(({ dest, campaign }) => (
+          <div key={dest.slug} className="flex flex-col gap-4">
+            <Stay22Widget
+              city={dest.city}
+              country={dest.country}
+              aid={config.stay22Aid}
+              campaign={campaign}
+              height={360}
+            />
+            <AviasalesCta
+              city={dest.city}
+              country={dest.country}
+              campaign={campaign}
+              flightHours={dest.typicalFlightHoursFromPL}
+            />
+          </div>
         ))}
       </section>
 
