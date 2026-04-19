@@ -121,6 +121,9 @@ export default function RootLayout({
   return (
     <html lang="pl" suppressHydrationWarning className={`${displayFont.variable} ${uiFont.variable} h-full antialiased`}>
       <body className="min-h-full">
+        <a href="#main-content" className="skip-to-content">
+          Przejdz do glownej tresci
+        </a>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         <LanguageProvider>
           <WebVitalsReporter />

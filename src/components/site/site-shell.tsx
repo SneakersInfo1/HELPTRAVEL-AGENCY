@@ -268,7 +268,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         ) : null}
       </header>
 
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div id="main-content" tabIndex={-1} className="flex flex-1 flex-col">{children}</div>
 
       <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/92 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
         <div className="rounded-[1.7rem] border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(234,247,239,0.78),rgba(255,255,255,0.96))] p-5 shadow-sm">
