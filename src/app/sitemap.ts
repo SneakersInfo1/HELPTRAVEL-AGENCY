@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
+import { polishMonthSlugs, seasonSlugs } from "@/lib/mvp/months";
 import { getEditorialArticles, getEditorialCategories } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 
@@ -37,11 +38,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   const categoryRoutes = getEditorialCategories().map((category) => `/${category.slug}`);
-  const destinationRoutes = getAllDestinationProfiles().map((destination) => `/kierunki/${destination.slug}`);
-  const englishDestinationRoutes = getAllDestinationProfiles().map((destination) => `/en/kierunki/${destination.slug}`);
+  const destinations = getAllDestinationProfiles();
+  const destinationRoutes = destinations.map((destination) => `/kierunki/${destination.slug}`);
+  const englishDestinationRoutes = destinations.map((destination) => `/en/kierunki/${destination.slug}`);
+  const monthlyDestinationRoutes = destinations.flatMap((destination) =>
+    polishMonthSlugs.map((month) => `/kierunki/${destination.slug}/${month}`),
+  );
+  const seasonRankingRoutes = seasonSlugs.map((season) => `/najlepsze-kierunki/${season}`);
   const articleRoutes = getEditorialArticles().map((article) => `/inspiracje/${article.slug}`);
 
-  return [...new Set([...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...englishDestinationRoutes, ...articleRoutes])].map((route) => ({
+  return [...new Set([...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...englishDestinationRoutes, ...monthlyDestinationRoutes, ...seasonRankingRoutes, ...articleRoutes])].map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified: baseLastModified,
     changeFrequency:
