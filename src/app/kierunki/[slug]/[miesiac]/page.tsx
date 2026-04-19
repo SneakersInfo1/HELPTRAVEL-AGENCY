@@ -15,6 +15,11 @@ import {
   type PolishMonthSlug,
 } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { getAffiliateConfig } from "@/lib/mvp/affiliate-config";
+import { isEuRoamingFree } from "@/lib/mvp/eu-roaming";
+import { Stay22Widget } from "@/components/affiliate/stay22-widget";
+import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
+import { YesimCta } from "@/components/affiliate/yesim-cta";
 
 export const revalidate = 86400;
 
@@ -110,6 +115,9 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
   const verdict = suitabilityVerdict(temp, guide.destination.beachScore);
   const weather = describeWeather(temp);
   const baseUrl = getSiteUrl();
+  const config = getAffiliateConfig();
+  const affiliateCampaign = `month-${slug}-${monthSlug}`;
+  const showYesim = !isEuRoamingFree(guide.destination.country);
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -245,6 +253,26 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <Stay22Widget
+          city={guide.destination.city}
+          country={guide.destination.country}
+          aid={config.stay22Aid}
+          campaign={affiliateCampaign}
+        />
+        <div className="flex flex-col gap-4">
+          <AviasalesCta
+            city={guide.destination.city}
+            country={guide.destination.country}
+            campaign={affiliateCampaign}
+            flightHours={guide.destination.typicalFlightHoursFromPL}
+          />
+          {showYesim ? (
+            <YesimCta country={guide.destination.country} campaign={affiliateCampaign} />
+          ) : null}
         </div>
       </section>
 

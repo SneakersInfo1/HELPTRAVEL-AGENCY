@@ -14,6 +14,11 @@ import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { polishMonthInflected, polishMonthSlugs } from "@/lib/mvp/months";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
+import { getAffiliateConfig } from "@/lib/mvp/affiliate-config";
+import { isEuRoamingFree } from "@/lib/mvp/eu-roaming";
+import { Stay22Widget } from "@/components/affiliate/stay22-widget";
+import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
+import { YesimCta } from "@/components/affiliate/yesim-cta";
 import {
   getArticlesForDestination,
   getCategoriesForDestination,
@@ -262,6 +267,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     similarDestinations.map((item) => item.destination),
   );
   const winningScenarios = buildWinningScenarios(guide);
+  const config = getAffiliateConfig();
+  const affiliateCampaign = `destination-${guide.destination.slug}`;
+  const showYesim = !isEuRoamingFree(guide.destination.country);
   const commercialLinks = buildAffiliateLinksWithContext({
     city: guide.destination.city,
     country: guide.destination.country,
@@ -592,6 +600,28 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               </LocalizedLink>
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <Stay22Widget
+          city={guide.destination.city}
+          country={guide.destination.country}
+          aid={config.stay22Aid}
+          campaign={affiliateCampaign}
+          checkin={defaultStartDate}
+          checkout={defaultCheckOutDate}
+        />
+        <div className="flex flex-col gap-4">
+          <AviasalesCta
+            city={guide.destination.city}
+            country={guide.destination.country}
+            campaign={affiliateCampaign}
+            flightHours={guide.destination.typicalFlightHoursFromPL}
+          />
+          {showYesim ? (
+            <YesimCta country={guide.destination.country} campaign={affiliateCampaign} />
+          ) : null}
         </div>
       </section>
 
