@@ -173,6 +173,23 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
         </div>
       </section>
 
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-emerald-50/72 p-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Rankingi sezonowe</p>
+        <h2 className="mt-2 font-display text-2xl text-emerald-950">Najlepsze kierunki na konkretny sezon</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(["wiosna", "lato", "jesien", "zima"] as const).map((s) => (
+            <LocalizedLink
+              key={s}
+              href={`/najlepsze-kierunki/${s}`}
+              locale={locale}
+              className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+            >
+              Na {s === "wiosna" ? "wiosne" : s === "lato" ? "lato" : s === "jesien" ? "jesien" : "zime"}
+            </LocalizedLink>
+          ))}
+        </div>
+      </section>
+
       <EditorialMetaBar
         eyebrow={text.metaEyebrow}
         title={text.metaTitle}
