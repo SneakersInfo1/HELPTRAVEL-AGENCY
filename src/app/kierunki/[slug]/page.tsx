@@ -12,6 +12,7 @@ import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
+import { polishMonthInflected, polishMonthSlugs } from "@/lib/mvp/months";
 import {
   getArticlesForDestination,
   getCategoriesForDestination,
@@ -441,6 +442,26 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             </div>
           </div>
         </article>
+      </section>
+
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Wyjazd miesiac po miesiacu</p>
+        <h2 className="mt-3 font-display text-3xl text-emerald-950">{guide.destination.city} w kazdym miesiacu — pogoda, koszty, decyzja</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-7 text-emerald-900/72">
+          Kazdy miesiac ma osobny przewodnik z konkretami: srednia temperatura, sezon kosztowy, czy warto leciec.
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {polishMonthSlugs.map((monthSlug, idx) => (
+            <LocalizedLink
+              key={monthSlug}
+              href={`/kierunki/${guide.destination.slug}/${monthSlug}`}
+              className="flex items-center justify-between rounded-xl border border-emerald-900/10 bg-emerald-50/72 px-3 py-2 text-sm text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-50"
+            >
+              <span>{guide.destination.city} w {polishMonthInflected[monthSlug]}</span>
+              <span className="font-semibold">{guide.destination.avgTempByMonth[idx]}°C</span>
+            </LocalizedLink>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-3">
