@@ -39,6 +39,13 @@ export default function InspirationsIndexPage() {
         inLanguage: "pl-PL",
       },
       {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Start", item: `${getSiteUrl()}/` },
+          { "@type": "ListItem", position: 2, name: "Inspiracje", item: `${getSiteUrl()}/inspiracje` },
+        ],
+      },
+      {
         "@type": "ItemList",
         itemListElement: articles.map((article, index) => ({
           "@type": "ListItem",

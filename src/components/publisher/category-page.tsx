@@ -35,6 +35,9 @@ export async function CategoryPage({ slug }: { slug: string }) {
       };
     }),
   );
+  const validDestinations = destinations.filter(
+    (item): item is NonNullable<typeof item> => item !== null,
+  );
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -46,7 +49,30 @@ export async function CategoryPage({ slug }: { slug: string }) {
         inLanguage: "pl-PL",
       },
       {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Start", item: `${getSiteUrl()}/` },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: category.title,
+            item: `${getSiteUrl()}/${category.slug}`,
+          },
+        ],
+      },
+      {
         "@type": "ItemList",
+        name: `${category.title} - kierunki`,
+        itemListElement: validDestinations.map((item, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          url: `${getSiteUrl()}/kierunki/${item.destination.slug}`,
+          name: `${item.destination.city}, ${item.destination.country}`,
+        })),
+      },
+      {
+        "@type": "ItemList",
+        name: `${category.title} - artykuly`,
         itemListElement: articles.map((article, index) => ({
           "@type": "ListItem",
           position: index + 1,

@@ -111,6 +111,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
       };
     }),
   );
+  const baseUrl = `${getSiteUrl()}${locale === "en" ? "/en" : ""}`;
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -118,8 +119,15 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
         "@type": "CollectionPage",
         name: text.title,
         description: text.description,
-        url: `${getSiteUrl()}${locale === "en" ? "/en/kierunki" : "/kierunki"}`,
+        url: `${baseUrl}/kierunki`,
         inLanguage: locale === "en" ? "en-US" : "pl-PL",
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: locale === "en" ? "Home" : "Start", item: `${baseUrl}/` },
+          { "@type": "ListItem", position: 2, name: text.title, item: `${baseUrl}/kierunki` },
+        ],
       },
       {
         "@type": "ItemList",
@@ -128,7 +136,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
           .map((item, index) => ({
             "@type": "ListItem",
             position: index + 1,
-            url: `${getSiteUrl()}${locale === "en" ? "/en" : ""}/kierunki/${item.destination.slug}`,
+            url: `${baseUrl}/kierunki/${item.destination.slug}`,
             name: item.destination.city,
           })),
       },
