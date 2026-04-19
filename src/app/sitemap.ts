@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { comparisonPairs } from "@/lib/mvp/comparisons";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { polishMonthSlugs, seasonSlugs } from "@/lib/mvp/months";
 import { getEditorialArticles, getEditorialCategories } from "@/lib/mvp/publisher-content";
@@ -45,9 +46,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     polishMonthSlugs.map((month) => `/kierunki/${destination.slug}/${month}`),
   );
   const seasonRankingRoutes = seasonSlugs.map((season) => `/najlepsze-kierunki/${season}`);
+  const comparisonRoutes = comparisonPairs.map((pair) => `/porownanie/${pair.slug}`);
   const articleRoutes = getEditorialArticles().map((article) => `/inspiracje/${article.slug}`);
 
-  return [...new Set([...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...englishDestinationRoutes, ...monthlyDestinationRoutes, ...seasonRankingRoutes, ...articleRoutes])].map((route) => ({
+  return [...new Set([...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...englishDestinationRoutes, ...monthlyDestinationRoutes, ...seasonRankingRoutes, ...comparisonRoutes, ...articleRoutes])].map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified: baseLastModified,
     changeFrequency:
