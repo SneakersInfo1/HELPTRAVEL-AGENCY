@@ -15,7 +15,6 @@ import { polishMonthInflected, polishMonthSlugs } from "@/lib/mvp/months";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { getAffiliateConfig } from "@/lib/mvp/affiliate-config";
 import { isEuRoamingFree } from "@/lib/mvp/eu-roaming";
-import { Stay22Widget } from "@/components/affiliate/stay22-widget";
 import { KierunkiHeroCta } from "@/components/kierunki/kierunki-hero-cta";
 import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
 import { YesimCta } from "@/components/affiliate/yesim-cta";
@@ -622,26 +621,18 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        <Stay22Widget
+      {/* Stay22 przeniesiony do KierunkiHeroCta powyzej. Tutaj zostaja Aviasales + Yesim
+          w osobnej wezszej sekcji zeby nadal byly widoczne na stronie. */}
+      <section className="grid gap-4 sm:grid-cols-2">
+        <AviasalesCta
           city={guide.destination.city}
           country={guide.destination.country}
-          aid={config.stay22Aid}
           campaign={affiliateCampaign}
-          checkin={defaultStartDate}
-          checkout={defaultCheckOutDate}
+          flightHours={guide.destination.typicalFlightHoursFromPL}
         />
-        <div className="flex flex-col gap-4">
-          <AviasalesCta
-            city={guide.destination.city}
-            country={guide.destination.country}
-            campaign={affiliateCampaign}
-            flightHours={guide.destination.typicalFlightHoursFromPL}
-          />
-          {showYesim ? (
-            <YesimCta country={guide.destination.country} campaign={affiliateCampaign} />
-          ) : null}
-        </div>
+        {showYesim ? (
+          <YesimCta country={guide.destination.country} campaign={affiliateCampaign} />
+        ) : null}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
