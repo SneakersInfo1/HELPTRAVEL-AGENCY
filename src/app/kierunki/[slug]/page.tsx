@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
@@ -17,6 +16,7 @@ import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { getAffiliateConfig } from "@/lib/mvp/affiliate-config";
 import { isEuRoamingFree } from "@/lib/mvp/eu-roaming";
 import { Stay22Widget } from "@/components/affiliate/stay22-widget";
+import { KierunkiHeroCta } from "@/components/kierunki/kierunki-hero-cta";
 import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
 import { YesimCta } from "@/components/affiliate/yesim-cta";
 import {
@@ -368,42 +368,61 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
-        <div className="relative h-[26rem]">
-          <Image src={media.heroImage} alt={`${guide.destination.city}, ${guide.destination.country}`} fill priority className="object-cover" sizes="100vw" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.12)_0%,rgba(5,18,11,0.72)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
-            <Breadcrumbs
-              locale="pl"
-              items={[
-                { label: "Start", href: "/" },
-                { label: "Kierunki", href: "/kierunki" },
-                { label: guide.destination.city },
-              ]}
-            />
-            <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
-              Kierunek dla polskiego odbiorcy
-            </p>
-            <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] sm:text-6xl">{guide.destination.city}</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-white/86">{guide.overview}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {story.bestFor.slice(0, 4).map((item) => (
-                <span key={item} className="rounded-full bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white">
-                  {item}
-                </span>
-              ))}
-            </div>
-            <div className="mt-5">
-              <SaveDestinationButton
-                slug={guide.destination.slug}
-                city={guide.destination.city}
-                country={guide.destination.country}
-                locale="pl"
-              />
-            </div>
-          </div>
+      {/* Slim hero — breadcrumb + naglowek + 4 quick-fact chipsy + opis. Ciezki 2-kolumnowy hero
+          z hero image zostal usuniety — obrazek nadal jest w Graph structured data + OG image. */}
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <Breadcrumbs
+          locale="pl"
+          items={[
+            { label: "Start", href: "/" },
+            { label: "Kierunki", href: "/kierunki" },
+            { label: guide.destination.city },
+          ]}
+        />
+        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
+          {guide.destination.country} · {tripProfile}
+        </p>
+        <h1 className="mt-2 font-display text-4xl leading-[1.05] text-emerald-950 sm:text-5xl">
+          {guide.destination.city}
+        </h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/78 sm:text-base">
+          {guide.overview}
+        </p>
+        <ul className="mt-5 flex flex-wrap gap-2 text-xs font-semibold text-emerald-950">
+          <li className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5">
+            ~{guide.destination.typicalFlightHoursFromPL.toFixed(1)} h z PL
+          </li>
+          <li className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5">
+            Najlepiej: {bestMonths.slice(0, 3).map(monthLabel).join(", ")}
+          </li>
+          <li className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5">
+            {routeComfort}
+          </li>
+          <li className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5">
+            {visaNote}
+          </li>
+        </ul>
+        <div className="mt-4">
+          <SaveDestinationButton
+            slug={guide.destination.slug}
+            city={guide.destination.city}
+            country={guide.destination.country}
+            locale="pl"
+          />
         </div>
       </section>
+
+      <KierunkiHeroCta
+        city={guide.destination.city}
+        country={guide.destination.country}
+        campaign={affiliateCampaign}
+        stay22Aid={config.stay22Aid}
+        startDate={defaultStartDate}
+        checkOutDate={defaultCheckOutDate}
+        nights={defaultNights}
+        travelers={2}
+        budget={budget.max}
+      />
 
       <EditorialMetaBar
         eyebrow="Sygnal redakcyjny"
