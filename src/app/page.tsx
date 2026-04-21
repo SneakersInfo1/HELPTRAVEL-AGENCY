@@ -100,7 +100,7 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
 
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-8">
-      <div className="w-full px-4 pt-4 sm:px-6 sm:pt-6 xl:px-8">
+      <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} destinationOptions={destinationOptions} />
       </div>
       <HomePageSections
