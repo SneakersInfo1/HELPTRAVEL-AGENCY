@@ -253,3 +253,24 @@ video {
   contain: paint;
 }
 
+/* Ken-burns effect dla cinematic hero backdrop */
+@keyframes ht-kenburns-zoom {
+  0% {
+    transform: scale(1.05) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.18) translate(-1.5%, -1%);
+  }
+}
+
+.ht-kenburns {
+  animation: ht-kenburns-zoom 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ht-kenburns {
+    animation: none;
+  }
+}
+
