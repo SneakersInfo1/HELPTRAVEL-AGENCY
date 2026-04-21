@@ -5,7 +5,6 @@ import { HomePageSections } from "@/components/home/home-page-sections";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
-import { getDestinationCatalogCount } from "@/lib/mvp/destination-catalog";
 import {
   getEditorialCategories,
   getLatestEditorialArticles,
