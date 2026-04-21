@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
+import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { HomePageSections } from "@/components/home/home-page-sections";
-import { PremiumHomeHero } from "@/components/home/premium-home-hero";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
@@ -67,8 +67,6 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
   const publishedDestinations = getPublishedDestinations();
   const latestArticles = getLatestEditorialArticles(4);
   const editorialCategories = getEditorialCategories().slice(0, 4);
-  const destinationCount = getDestinationCatalogCount();
-  const guideCount = publishedDestinations.length + latestArticles.length;
 
   const selectedHeroDestinations = heroDestinationSlugs
     .map((slug) => publishedDestinations.find((destination) => destination.slug === slug))
@@ -82,18 +80,12 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
     })),
   );
 
-  const heroSlides = resolvedHeroDestinations.slice(0, 6).map((item) => ({
-    id: item.destination.slug,
-    city: item.destination.city,
-    country: item.destination.country,
-    label: `${item.destination.city}, ${item.destination.country}`,
-    title: item.destination.city,
-    description: item.story.tagline,
-    image: item.media.heroImage,
-    href: `/kierunki/${item.destination.slug}`,
-    tags: item.story.bestFor.slice(0, 3),
-    meta: `lot ok. ${item.destination.typicalFlightHoursFromPL.toFixed(1)} h z Polski`,
+  const featuredTiles = resolvedHeroDestinations.slice(0, 6).map((item) => ({
+    destination: item.destination,
+    heroImage: item.media.heroImage,
   }));
+
+  const destinationOptions = publishedDestinations.map((d) => ({ city: d.city, country: d.country }));
 
   const featuredDirections = resolvedHeroDestinations.slice(0, 6);
   const previewLinks = buildAffiliateLinks("Malaga", "Spain");
@@ -110,7 +102,7 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-8">
       <div className="w-full px-4 pt-4 sm:px-6 sm:pt-6 xl:px-8">
-        <PremiumHomeHero slides={heroSlides} destinationCount={destinationCount} guideCount={guideCount} locale={locale} />
+        <HomeHybridHero featured={featuredTiles} destinationOptions={destinationOptions} />
       </div>
       <HomePageSections
         featuredDirections={featuredDirectionCards}
