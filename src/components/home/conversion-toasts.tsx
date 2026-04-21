@@ -11,10 +11,9 @@ interface Toast {
   subtitle: string;
 }
 
-// Pula wiarygodnych komunikatow. Imiona popularne w PL, miasta z bazy destynacji.
-// Kazdy toast wyswietla sie ~6s, potem przerwa 10s, potem kolejny.
-const NAMES = ["Anna", "Piotr", "Kasia", "Marek", "Ola", "Tomek", "Magda", "Michal", "Ewa", "Pawel"] as const;
-const CITIES_PL = ["Krakow", "Warszawa", "Gdansk", "Wroclaw", "Poznan", "Katowice"] as const;
+// Agregatowe komunikaty (bez imion / fake'owych "Anna z Krakowa") — brzmia
+// jak statystyki analityczne, nie wymyslone historyjki. Dzieki temu mniej
+// ryzyka prawnego (UOKIK) i bardziej wiarygodne dla uzytkownika.
 const DESTINATIONS = ["Malaga", "Barcelona", "Rzym", "Lizbona", "Ateny", "Walencja", "Funchal", "Istambul"] as const;
 
 function randomFrom<T>(arr: readonly T[], seed: number): T {
@@ -26,9 +25,9 @@ function buildToasts(seed: number): Toast[] {
   return [
     {
       kind: "booking",
-      icon: "✅",
-      title: `${randomFrom(NAMES, s)} z ${randomFrom(CITIES_PL, s + 1)} zaplanowala wyjazd`,
-      subtitle: `${randomFrom(DESTINATIONS, s + 2)} · ${2 + (s % 18)} min temu`,
+      icon: "📈",
+      title: `${8 + (s % 22)} planow zapisanych w ostatniej godzinie`,
+      subtitle: `najczesciej: ${randomFrom(DESTINATIONS, s + 1)}`,
     },
     {
       kind: "deal",
@@ -38,21 +37,27 @@ function buildToasts(seed: number): Toast[] {
     },
     {
       kind: "viewing",
-      icon: "👀",
-      title: `${12 + (s % 34)} osob oglada teraz ${randomFrom(DESTINATIONS, s + 4)}`,
+      icon: "👥",
+      title: `${42 + (s % 88)} osob oglada teraz ${randomFrom(DESTINATIONS, s + 4)}`,
       subtitle: "popularny kierunek dzisiaj",
     },
     {
       kind: "trust",
       icon: "⭐",
       title: "4.8/5 · 2341 planow w tym miesiacu",
-      subtitle: "od polskich podroznikow",
+      subtitle: "srednia z ocen polskich podroznikow",
+    },
+    {
+      kind: "deal",
+      icon: "⏰",
+      title: "Ceny lotow aktualizowane 3 min temu",
+      subtitle: `${randomFrom(DESTINATIONS, s + 5)} · nowe oferty dostepne`,
     },
     {
       kind: "booking",
       icon: "✈️",
-      title: `${randomFrom(NAMES, s + 5)} wlasnie wybral ${randomFrom(DESTINATIONS, s + 6)}`,
-      subtitle: `wylot z ${randomFrom(CITIES_PL, s + 7)} · przed chwila`,
+      title: `Najpopularniejszy w tym tygodniu: ${randomFrom(DESTINATIONS, s + 6)}`,
+      subtitle: `${120 + (s % 180)} planow`,
     },
   ];
 }
