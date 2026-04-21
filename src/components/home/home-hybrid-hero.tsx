@@ -41,7 +41,7 @@ export function HomeHybridHero({ featured, destinationOptions }: HomeHybridHeroP
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-md sm:text-[11px]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-              AI planer podrozy
+              Loty · Hotele · Plan wyjazdu
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/50 bg-emerald-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-100 backdrop-blur-md sm:text-[11px]">
               <span aria-hidden>🎁</span>
