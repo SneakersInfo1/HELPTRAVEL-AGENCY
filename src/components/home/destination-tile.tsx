@@ -75,20 +75,20 @@ export function DestinationTile({
         </div>
       )}
 
-      {/* Mid-left: planning now (micro social proof) */}
-      <div className="absolute left-2 top-11 z-10 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-semibold text-white backdrop-blur-sm">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        </span>
-        {sp.planningNow} planuje ten tydzien
-      </div>
-
       {/* Bottom gradient + copy */}
-      <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.85)_100%)] p-3 text-white">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-          {destination.country}
-        </p>
+      <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.9)_55%,rgba(5,18,11,0.95)_100%)] p-3 text-white">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+            {destination.country}
+          </p>
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-100 backdrop-blur-sm">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
+            {sp.planningNow}
+          </span>
+        </div>
         <h3 className="mt-1 font-display text-xl leading-tight">{destination.city}</h3>
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <p className="text-[11px] text-white/80">{flightHoursLabel}</p>
