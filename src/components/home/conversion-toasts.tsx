@@ -24,22 +24,10 @@ function buildToasts(seed: number): Toast[] {
   const s = seed;
   return [
     {
-      kind: "booking",
-      icon: "📈",
-      title: `${8 + (s % 22)} planow zapisanych w ostatniej godzinie`,
-      subtitle: `najczesciej: ${randomFrom(DESTINATIONS, s + 1)}`,
-    },
-    {
       kind: "deal",
       icon: "🔥",
       title: `${randomFrom(DESTINATIONS, s + 3)} — ceny spadly o ${18 + (s % 24)}%`,
       subtitle: "sprawdz zanim wroca w gore",
-    },
-    {
-      kind: "viewing",
-      icon: "👥",
-      title: `${42 + (s % 88)} osob oglada teraz ${randomFrom(DESTINATIONS, s + 4)}`,
-      subtitle: "popularny kierunek dzisiaj",
     },
     {
       kind: "trust",
@@ -52,12 +40,6 @@ function buildToasts(seed: number): Toast[] {
       icon: "⏰",
       title: "Ceny lotow aktualizowane 3 min temu",
       subtitle: `${randomFrom(DESTINATIONS, s + 5)} · nowe oferty dostepne`,
-    },
-    {
-      kind: "booking",
-      icon: "✈️",
-      title: `Najpopularniejszy w tym tygodniu: ${randomFrom(DESTINATIONS, s + 6)}`,
-      subtitle: `${120 + (s % 180)} planow`,
     },
   ];
 }
