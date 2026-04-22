@@ -2,9 +2,6 @@ import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { HomePageSections } from "@/components/home/home-page-sections";
-import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
-import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
-import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
   getEditorialCategories,
   getLatestEditorialArticles,
@@ -74,7 +71,6 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
   const resolvedHeroDestinations = await Promise.all(
     selectedHeroDestinations.map(async (destination) => ({
       destination,
-      story: getDestinationStory(destination),
       media: await resolveDestinationMedia(destination),
     })),
   );
@@ -86,29 +82,14 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
 
   const destinationOptions = publishedDestinations.map((d) => ({ city: d.city, country: d.country }));
 
-  const featuredDirections = resolvedHeroDestinations.slice(0, 6);
-  const previewLinks = buildAffiliateLinks("Malaga", "Spain");
-  const featuredDirectionCards = featuredDirections.map((item) => ({
-    slug: item.destination.slug,
-    city: item.destination.city,
-    country: item.destination.country,
-    heroImage: item.media.heroImage,
-    vibe: item.story.vibe,
-    tagline: item.story.tagline,
-    bestFor: item.story.bestFor,
-  }));
-
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-8">
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} destinationOptions={destinationOptions} />
       </div>
       <HomePageSections
-        featuredDirections={featuredDirectionCards}
         latestArticles={latestArticles}
         editorialCategories={editorialCategories}
-        staysLabel={getAffiliateBrandLabel(previewLinks.stays, "Hotels.com")}
-        flightsLabel={getAffiliateBrandLabel(previewLinks.flights, "Partner lotniczy")}
         locale={locale}
       />
     </main>
