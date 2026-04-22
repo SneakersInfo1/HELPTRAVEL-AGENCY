@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { HomePageSections } from "@/components/home/home-page-sections";
-import {
-  getEditorialCategories,
-  getLatestEditorialArticles,
-  getPublishedDestinations,
-} from "@/lib/mvp/publisher-content";
+import { getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -61,8 +57,6 @@ const heroDestinationSlugs = [
 
 export async function HomePageView({ locale }: { locale: SiteLocale }) {
   const publishedDestinations = getPublishedDestinations();
-  const latestArticles = getLatestEditorialArticles(4);
-  const editorialCategories = getEditorialCategories().slice(0, 4);
 
   const selectedHeroDestinations = heroDestinationSlugs
     .map((slug) => publishedDestinations.find((destination) => destination.slug === slug))
@@ -87,11 +81,7 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} destinationOptions={destinationOptions} />
       </div>
-      <HomePageSections
-        latestArticles={latestArticles}
-        editorialCategories={editorialCategories}
-        locale={locale}
-      />
+      <HomePageSections locale={locale} />
     </main>
   );
 }
