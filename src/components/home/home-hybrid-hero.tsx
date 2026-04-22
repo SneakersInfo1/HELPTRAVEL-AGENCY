@@ -66,7 +66,7 @@ export function HomeHybridHero({ featured, destinationOptions }: HomeHybridHeroP
               tym razem?
             </h1>
             <p className="mx-auto mt-2 max-w-xl text-xs leading-6 text-white/85 drop-shadow-md sm:mt-3 sm:text-sm sm:leading-7">
-              Kierunek, daty, pasazerowie — w 3 minut gotowy plan z lotem i hotelem.
+              Kierunek, daty, pasazerowie — w 3 minuty gotowy plan z lotem i hotelem.
               Z Polski albo z calej Europy.
             </p>
           </div>
