@@ -67,25 +67,22 @@ export const metadata: Metadata = {
     locale: "pl_PL",
     alternateLocale: ["en_US"],
     type: "website",
-    images: [
-      {
-        url: "/branding/helptravel-logo.png",
-        width: 900,
-        height: 560,
-        alt: "HelpTravel - planer podrozy z lotem i hotelem",
-      },
-    ],
+    // images są generowane dynamicznie przez src/app/opengraph-image.tsx
+    // (1200x630 PNG ze spojnym brandingiem) - nie definiuj ich tu, zeby nie nadpisac.
   },
   twitter: {
     card: "summary_large_image",
     title: "HelpTravel - Loty + hotel i plan w 3 minuty",
     description: "Zaplanuj wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 0 zl.",
-    images: ["/branding/helptravel-logo.png"],
+    // images: generowane przez src/app/twitter-image.tsx (fallback do opengraph-image)
   },
   icons: {
-    icon: [{ url: "/branding/helptravel-mark.png", type: "image/png" }],
-    shortcut: ["/branding/helptravel-mark.png"],
-    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/branding/helptravel-mark.svg", type: "image/svg+xml" },
+    ],
+    shortcut: ["/icon.svg"],
+    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
   },
   verification: googleVerification ? { google: googleVerification } : undefined,
 };
@@ -120,7 +117,7 @@ const structuredData = {
       url: siteUrl,
       logo: {
         "@type": "ImageObject",
-        url: `${siteUrl}/branding/helptravel-mark.png`,
+        url: `${siteUrl}/branding/helptravel-mark.svg`,
         width: 512,
         height: 512,
       },
