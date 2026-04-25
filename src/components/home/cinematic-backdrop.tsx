@@ -26,27 +26,35 @@ export function CinematicBackdrop({ images, intervalMs = 7000 }: CinematicBackdr
 
   if (images.length === 0) return null;
 
+  // Render only current slide + the next one to avoid preloading all 6 hero images on mobile.
+  const nextIndex = (index + 1) % images.length;
   return (
     <div aria-hidden className="absolute inset-0 overflow-hidden">
-      {images.map((img, i) => (
-        <div
-          key={img.src}
-          className={`absolute inset-0 transition-opacity duration-[1400ms] ease-in-out ${
-            i === index ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <div className="ht-kenburns absolute inset-0">
-            <Image
-              src={img.src}
-              alt={img.alt}
-              fill
-              priority={i === 0}
-              sizes="100vw"
-              className="object-cover"
-            />
+      {images.map((img, i) => {
+        const isVisible = i === index;
+        const shouldRender = isVisible || i === nextIndex || i === 0;
+        if (!shouldRender) return null;
+        return (
+          <div
+            key={img.src}
+            className={`absolute inset-0 transition-opacity duration-[1400ms] ease-in-out ${
+              isVisible ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <div className="ht-kenburns absolute inset-0">
+              <Image
+                src={img.src}
+                alt={img.alt}
+                fill
+                priority={i === 0}
+                loading={i === 0 ? "eager" : "lazy"}
+                sizes="100vw"
+                className="object-cover"
+              />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       {/* Ciemny gradient na dole zeby tekst byl czytelny */}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.15)_0%,rgba(5,18,11,0.55)_55%,rgba(5,18,11,0.85)_100%)]" />
       {/* Lekki vignette na bokach */}
