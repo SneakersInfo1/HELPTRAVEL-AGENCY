@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, type FormEvent } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { sendClientEvent } from "@/lib/mvp/client-events";
 import {
   DEFAULT_ORIGIN_CITY,
   EUROPEAN_ORIGIN_CITIES,
@@ -75,6 +76,13 @@ export function MiniPlannerForm({ destinationOptions, compact = false }: MiniPla
     if (trimmedDestination.length > 0) {
       params.set("destination", trimmedDestination);
     }
+    sendClientEvent("mini_planner_submitted", {
+      origin: origin || DEFAULT_ORIGIN_CITY,
+      destination: trimmedDestination || null,
+      nights,
+      travelers,
+      hasDestination: trimmedDestination.length > 0,
+    });
     const prefix = locale === "en" ? "/en" : "";
     router.push(`${prefix}/planner?${params.toString()}`);
   }

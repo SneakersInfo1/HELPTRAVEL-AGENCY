@@ -183,7 +183,8 @@ export interface EventPayload {
     | "planner_submitted"
     | "destination_card_clicked"
     | "content_card_clicked"
-    | "contact_submit";
+    | "contact_submit"
+    | "mini_planner_submitted";
   payload: Record<string, unknown>;
 }
 

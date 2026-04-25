@@ -22,6 +22,7 @@ const EventBodySchema = z.object({
     "destination_card_clicked",
     "content_card_clicked",
     "contact_submit",
+    "mini_planner_submitted",
   ]),
   payload: z.record(z.string(), z.unknown()).default({}),
 });
