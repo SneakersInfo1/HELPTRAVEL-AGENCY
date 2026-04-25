@@ -2,30 +2,11 @@
 
 import { useEffect, useState } from "react";
 
+import { Spinner } from "@/components/ui/spinner";
 import { useLanguage } from "@/components/site/language-provider";
+import { postJson } from "@/lib/fetch-json";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import type { DestinationAttractionsResponse } from "@/lib/mvp/types";
-
-function postJson<T>(url: string, body: unknown): Promise<T> {
-  return fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  }).then(async (response) => {
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? `Request failed (${response.status}).`);
-    }
-
-    return (await response.json()) as T;
-  });
-}
-
-function Spinner() {
-  return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
-}
 
 const copy = {
   pl: {

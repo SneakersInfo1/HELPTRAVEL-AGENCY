@@ -3,8 +3,11 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
+import { Spinner } from "@/components/ui/spinner";
 import { useLanguage } from "@/components/site/language-provider";
 import { PartnerLogoMark } from "@/components/site/partner-logo";
+import { postJson } from "@/lib/fetch-json";
+import { formatMoney } from "@/lib/format";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { buildCjStayLinks } from "@/lib/mvp/cj-stays";
@@ -15,30 +18,6 @@ import type { NormalizedStayOffer, StaySearchResponse, StaySortMode } from "@/li
 const INITIAL_VISIBLE_OFFERS = 24;
 const VISIBLE_OFFERS_STEP = 24;
 const MAX_VISIBLE_OFFERS = 500;
-
-function postJson<T>(url: string, body: unknown): Promise<T> {
-  return fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  }).then(async (response) => {
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? `Request failed (${response.status}).`);
-    }
-    return (await response.json()) as T;
-  });
-}
-
-function formatMoney(value: number, currency: string, locale: "pl" | "en"): string {
-  return new Intl.NumberFormat(locale === "en" ? "en-GB" : "pl-PL", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 function getDiscountPercent(totalAmount: number, publicAmount?: number | null) {
   if (!publicAmount || publicAmount <= totalAmount) {
@@ -99,10 +78,6 @@ function buildTopStayReasons(
   }
 
   return reasons.slice(0, 3);
-}
-
-function Spinner() {
-  return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
 }
 
 const copy = {
