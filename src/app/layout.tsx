@@ -77,12 +77,9 @@ export const metadata: Metadata = {
     // images: generowane przez src/app/twitter-image.tsx (fallback do opengraph-image)
   },
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/branding/helptravel-mark.svg", type: "image/svg+xml" },
-    ],
-    shortcut: ["/icon.svg"],
-    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
+    icon: [{ url: "/branding/helptravel-mark.png", type: "image/png" }],
+    shortcut: ["/branding/helptravel-mark.png"],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
   },
   verification: googleVerification ? { google: googleVerification } : undefined,
 };
@@ -117,7 +114,7 @@ const structuredData = {
       url: siteUrl,
       logo: {
         "@type": "ImageObject",
-        url: `${siteUrl}/branding/helptravel-mark.svg`,
+        url: `${siteUrl}/branding/helptravel-mark.png`,
         width: 512,
         height: 512,
       },
