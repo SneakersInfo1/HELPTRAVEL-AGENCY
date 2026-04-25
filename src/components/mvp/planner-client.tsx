@@ -891,42 +891,6 @@ export function PlannerClient({
     interpretedBriefChips.push(`${text.decodedFocus}: ${selectedOption.destination.city}`);
   }
 
-  const strongestNeeds = [
-    result?.interpreted.styleWeights.beach
-      ? { label: locale === "en" ? "beach" : "plażą", score: result.interpreted.styleWeights.beach }
-      : null,
-    result?.interpreted.styleWeights.city
-      ? { label: locale === "en" ? "city" : "miasto", score: result.interpreted.styleWeights.city }
-      : null,
-    result?.interpreted.styleWeights.sightseeing
-      ? { label: locale === "en" ? "sightseeing" : "zwiedzanie", score: result.interpreted.styleWeights.sightseeing }
-      : null,
-    result?.interpreted.styleWeights.food
-      ? { label: locale === "en" ? "food" : "jedzenie", score: result.interpreted.styleWeights.food }
-      : null,
-    result?.interpreted.styleWeights.nature
-      ? { label: locale === "en" ? "nature" : "natura", score: result.interpreted.styleWeights.nature }
-      : null,
-  ]
-    .filter((item): item is { label: string; score: number } => Boolean(item))
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 3)
-    .map((item) => item.label);
-  const methodologyPoints =
-    locale === "en"
-      ? [
-          "Weather and travel season for the selected window",
-          "Budget fit against the destination cost profile",
-          "Flight effort from Poland and transfer comfort",
-          "Match with the strongest intent signals in the brief",
-        ]
-      : [
-          "Pogoda i sezon dla wybranego terminu",
-          "Dopasowanie do budżetu i profilu kosztowego kierunku",
-          "Wysilek lotu z Polski i komfort przesiadek",
-          "Zgodność z najmocniejszymi potrzebami z briefu",
-        ];
-
   const handleDestinationInputFocus = () => {
     if (mode === "standard") {
       setDestinationSuggestionsOpen(true);
@@ -1266,12 +1230,8 @@ export function PlannerClient({
       }`}
     >
       <section className="glass-panel rounded-[2rem] border border-emerald-900/10 p-4 sm:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">{text.heroEyebrow}</p>
-            <h1 className="mt-2 text-3xl font-bold text-emerald-950 sm:text-4xl">{text.heroTitle}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-900/76">{text.heroBody}</p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-emerald-950 sm:text-3xl">{text.heroTitle}</h1>
 
           <div className="inline-flex rounded-full border border-emerald-900/10 bg-white/84 p-1 shadow-sm">
             <button
@@ -1379,18 +1339,13 @@ export function PlannerClient({
                   <Field label={text.budget}>
                     <Input type="number" value={budget} onChange={(event) => setBudget(Number(event.target.value) || 0)} />
                   </Field>
-                  <div className="rounded-[1.5rem] border border-emerald-900/10 bg-white/80 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.primaryFlow}</p>
-                    <p className="mt-2 text-sm leading-6 text-emerald-900/80">{text.hotelFirst}</p>
-                  </div>
                 </div>
               </div>
             )}
           </div>
 
           <aside className="rounded-[1.75rem] border border-emerald-900/10 bg-white p-4 sm:p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.sharedParams}</p>
-            <h2 className="mt-2 text-2xl font-bold text-emerald-950">{text.sharedTitle}</h2>
+            <h2 className="text-lg font-bold text-emerald-950">{text.sharedTitle}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <Field label={text.origin}>
                 <Input value={originCity} onChange={(event) => setOriginCity(event.target.value)} placeholder={text.originPlaceholder} />
@@ -1857,141 +1812,6 @@ export function PlannerClient({
             </div>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr]">
-            <article className="rounded-[1.7rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.topChoiceSummary}</p>
-              <p className="mt-2 text-sm leading-7 text-emerald-900/76">{text.topChoiceSummaryBody}</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {selectedOption.reasons.slice(0, 3).map((reason) => (
-                  <div key={reason} className="rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm leading-6 text-emerald-950">
-                    {reason}
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className="rounded-[1.7rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(237,250,241,0.98),rgba(229,245,234,0.94))] p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.resultsNavigator}</p>
-              <p className="mt-2 text-sm leading-7 text-emerald-900/76">{text.resultsNavigatorBody}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <a
-                  href="#planner-stays"
-                  className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
-                >
-                  {text.jumpToStays}
-                </a>
-                <a
-                  href="#planner-flights"
-                  className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToFlights}
-                </a>
-                <a
-                  href="#planner-guide"
-                  className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToGuide}
-                </a>
-                <a
-                  href="#planner-on-site"
-                  className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToOnSite}
-                </a>
-              </div>
-            </article>
-          </section>
-
-          <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-            <article className="rounded-[1.7rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.interpretedBrief}</p>
-              <p className="mt-2 text-sm leading-7 text-emerald-900/76">{text.interpretedBriefBody}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {interpretedBriefChips.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-4 rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.methodologyTitle}</p>
-                <p className="mt-2 text-sm leading-6 text-emerald-900/76">{text.methodologyBody}</p>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-emerald-900/82">
-                  {methodologyPoints.map((item) => (
-                    <li key={item} className="ml-5 list-disc">{item}</li>
-                  ))}
-                </ul>
-              </div>
-              {strongestNeeds.length > 0 ? (
-                <div className="mt-4 rounded-2xl bg-emerald-50/70 px-4 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.decodedTravelStyle}</p>
-                  <p className="mt-2 text-sm text-emerald-950">{strongestNeeds.join(" / ")}</p>
-                </div>
-              ) : null}
-            </article>
-
-            <article className="rounded-[1.7rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(237,250,241,0.98),rgba(229,245,234,0.94))] p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.whyFits}</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {selectedOption.reasons.slice(0, 4).map((reason) => (
-                  <div key={reason} className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-emerald-950">
-                    {reason}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 rounded-2xl border border-emerald-900/10 bg-white px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.watchLabel}</p>
-                <div className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/76">
-                  {selectedOption.tradeoffs.length > 0 ? (
-                    selectedOption.tradeoffs.map((tradeoff) => <p key={tradeoff}>{tradeoff}</p>)
-                  ) : (
-                    <p>{text.noTradeoffs}</p>
-                  )}
-                </div>
-              </div>
-            </article>
-          </section>
-
-          {decisionLenses.length > 0 ? (
-            <section className="rounded-[1.9rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="max-w-3xl">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.decisionLenses}</p>
-                  <p className="mt-2 text-sm leading-7 text-emerald-900/76">{text.decisionLensesBody}</p>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-3 xl:grid-cols-4">
-                {decisionLenses.map((lens) => {
-                  const activeLens = lens.optionId === selectedOption.itineraryResultId;
-                  return (
-                    <button
-                      key={lens.key}
-                      type="button"
-                      onClick={() => handleSelectOption(lens.optionId)}
-                      className={`rounded-[1.5rem] border p-4 text-left transition ${
-                        activeLens
-                          ? "border-emerald-500/60 bg-emerald-50 shadow-sm"
-                          : "border-emerald-900/10 bg-white hover:-translate-y-0.5 hover:border-emerald-500/40"
-                      }`}
-                    >
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{lens.title}</p>
-                      <h3 className="mt-2 text-xl font-bold text-emerald-950">
-                        {lens.city}, {lens.country}
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-emerald-900/74">{lens.body}</p>
-                      <span className="mt-4 inline-flex rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white">
-                        {text.lensOpen}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          ) : null}
-
           <section className="grid gap-3 xl:grid-cols-4">
             {bookingDeck.map((card, index) => {
               const cardClassName =
@@ -2039,13 +1859,9 @@ export function PlannerClient({
           <section className="sticky top-20 z-20 -mx-1 lg:hidden">
             <div className="rounded-[1.5rem] border border-emerald-900/12 bg-white/94 p-4 shadow-[0_18px_40px_rgba(16,84,48,0.12)] backdrop-blur">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.mobileQuickActions}</p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-950">
-                    {selectedOption.destination.city}, {selectedOption.destination.country}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-emerald-900/68">{text.mobileQuickBody}</p>
-                </div>
+                <p className="text-sm font-semibold text-emerald-950">
+                  {selectedOption.destination.city}, {selectedOption.destination.country}
+                </p>
                 <button
                   type="button"
                   onClick={() => {
@@ -2095,11 +1911,7 @@ export function PlannerClient({
             className="rounded-[1.9rem] border border-emerald-900/10 bg-white p-4 shadow-[0_16px_45px_rgba(16,84,48,0.06)] sm:p-5"
           >
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.bookingSettings}</p>
-                <h3 className="mt-2 text-2xl font-bold text-emerald-950">{text.bookingSettingsBody}</h3>
-                <p className="mt-2 text-sm text-emerald-900/70">{text.bookingSettingsHint}</p>
-              </div>
+              <h3 className="text-lg font-bold text-emerald-950">{text.bookingSettings}</h3>
               <div className="flex items-center gap-2">
                 <div className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
                   {originCity} -&gt; {selectedOption.destination.city}
@@ -2219,17 +2031,9 @@ export function PlannerClient({
 
       {result ? (
         <section className="grid gap-4">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.remainingOptions}</p>
-              <h2 className="mt-1 text-2xl font-bold text-emerald-950">
-                {mode === "standard" ? text.directPrompt : text.discoveryPrompt}
-              </h2>
-            </div>
-            <p className="max-w-xl text-sm leading-7 text-emerald-900/72">
-              {text.remainingBody}
-            </p>
-          </div>
+          <h2 className="text-xl font-bold text-emerald-950">
+            {mode === "standard" ? text.directPrompt : text.discoveryPrompt}
+          </h2>
 
           <div className="grid gap-4">
             {result.options.map((option) => {
@@ -2343,8 +2147,7 @@ export function PlannerClient({
           <div className="rounded-[1.7rem] border border-emerald-900/12 bg-emerald-950/96 p-4 text-white shadow-[0_24px_60px_rgba(7,31,18,0.3)] backdrop-blur">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">{text.mobileBarEyebrow}</p>
-                <p className="mt-1 text-sm font-semibold text-white">
+                <p className="text-sm font-semibold text-white">
                   {selectedOption.destination.city}, {selectedOption.destination.country}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-white/72">
@@ -2360,7 +2163,6 @@ export function PlannerClient({
                 {savingTrip ? text.savingTrip : text.saveTrip}
               </button>
             </div>
-            <p className="mt-3 text-xs leading-5 text-white/68">{text.mobileBarBody}</p>
             <div className="mt-3 grid grid-cols-3 gap-2">
               <a
                 href={bookingDeck[0].href}
