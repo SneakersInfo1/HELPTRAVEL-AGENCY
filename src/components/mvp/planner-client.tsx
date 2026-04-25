@@ -1763,6 +1763,7 @@ export function PlannerClient({
                     href={buildSelectedRedirectHref("stays", activeAffiliateLinks.stays)}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => sendClientEvent("affiliate_clicked", { type: "stays", partner: stayPartner, source: "planner_hero", city: selectedOption.destination.city })}
                     className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800"
                   >
                     <PartnerLogoMark brand={stayPartner} size="sm" variant="contrast" />
@@ -1772,6 +1773,7 @@ export function PlannerClient({
                     href={buildSelectedRedirectHref("flights", activeAffiliateLinks.flights)}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => sendClientEvent("affiliate_clicked", { type: "flights", partner: flightPartner, source: "planner_hero", city: selectedOption.destination.city })}
                     className="inline-flex items-center gap-2 rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
                   >
                     <PartnerLogoMark brand={flightPartner} size="sm" />
@@ -1781,6 +1783,7 @@ export function PlannerClient({
                     href={buildSelectedRedirectHref("cars", activeAffiliateLinks.cars)}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => sendClientEvent("affiliate_clicked", { type: "cars", partner: carPartner, source: "planner_hero", city: selectedOption.destination.city })}
                     className="inline-flex items-center gap-2 rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
                   >
                     <PartnerLogoMark brand={carPartner} size="sm" />
@@ -1829,12 +1832,23 @@ export function PlannerClient({
                     ? "bg-emerald-400 text-emerald-950 hover:bg-emerald-300"
                     : "bg-emerald-700 text-white hover:bg-emerald-800";
 
+              const isExternal = !card.href.startsWith("#");
               return (
                 <a
                   key={card.title + index}
                   href={card.href}
-                  target={card.href.startsWith("#") ? undefined : "_blank"}
-                  rel={card.href.startsWith("#") ? undefined : "noreferrer"}
+                  target={isExternal ? "_blank" : undefined}
+                  rel={isExternal ? "noreferrer" : undefined}
+                  onClick={() => {
+                    if (isExternal) {
+                      sendClientEvent("affiliate_clicked", {
+                        type: index === 0 ? "stays" : index === 1 ? "flights" : index === 2 ? "cars" : "activities",
+                        partner: card.brand,
+                        source: "planner_booking_deck",
+                        city: selectedOption.destination.city,
+                      });
+                    }
+                  }}
                   className={`animate-rise-card rounded-[1.7rem] border p-5 transition duration-300 hover:-translate-y-1 ${cardClassName}`}
                 >
                   <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${eyebrowClassName}`}>{card.eyebrow}</p>
