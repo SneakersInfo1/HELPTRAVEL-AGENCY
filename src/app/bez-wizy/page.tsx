@@ -8,13 +8,13 @@ const category = getEditorialCategoryBySlug("bez-wizy");
 
 export const metadata: Metadata = {
   title: category?.title ?? "Bez wizy",
-  description: category?.description ?? "Kierunki i inspiracje dla osob szukajacych prostszych formalnosci.",
+  description: category?.description ?? "Kierunki i inspiracje dla osób szukających prostszych formalności.",
   alternates: {
     canonical: "/bez-wizy",
   },
   openGraph: {
     title: `${category?.title ?? "Bez wizy"} - HelpTravel`,
-    description: category?.description ?? "Kierunki i inspiracje dla osob szukajacych prostszych formalnosci.",
+    description: category?.description ?? "Kierunki i inspiracje dla osób szukających prostszych formalności.",
     url: `${getSiteUrl()}/bez-wizy`,
     type: "website",
   },

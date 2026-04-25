@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 
 import "./globals.css";
@@ -30,23 +30,19 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: siteUrl,
-    languages: {
-      "pl-PL": siteUrl,
-      "en-US": `${siteUrl}/en`,
-    },
     types: {
       "application/rss+xml": `${siteUrl}/feed.xml`,
     },
   },
   description:
-    "HelpTravel laczy discovery kierunkow, planner wyjazdu i przejscia do hoteli, lotow oraz dodatkow dla city breakow i krotkich wyjazdow z Polski.",
+    "HelpTravel pomaga szybko wybrać kierunek, ustawić termin i przejść do noclegów, lotów oraz dalszych kroków wyjazdu.",
   keywords: [
-    "planer podrozy",
+    "planer podróży",
     "kierunki",
     "city break",
     "loty i hotele",
-    "krotkie wyjazdy z Polski",
-    "travel planner",
+    "krótkie wyjazdy z Polski",
+    "planowanie wyjazdu",
   ],
   applicationName: "HelpTravel",
   category: "travel",
@@ -57,11 +53,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: "HelpTravel",
     description:
-      "Wybieraj kierunki szybciej i przechodz do hoteli, lotow oraz dodatkow w jednym komercyjnym flow.",
+      "Wybierz kierunek, ustaw termin i przejdź dalej do noclegów, lotów i kolejnych kroków wyjazdu.",
     url: siteUrl,
     siteName: "HelpTravel",
     locale: "pl_PL",
-    alternateLocale: ["en_US"],
     type: "website",
     images: [
       {
@@ -75,7 +70,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "HelpTravel",
-    description: "Travel planner, destination discovery and booking-ready flow for short trips from Poland.",
+    description: "Wybierz kierunek albo opisz wyjazd, a potem przejdź do noclegów, lotów i kolejnych kroków.",
     images: ["/branding/helptravel-logo.png"],
   },
   icons: {
@@ -95,7 +90,7 @@ const structuredData = {
       url: siteUrl,
       inLanguage: "pl-PL",
       description:
-        "Planer podrozy, katalog kierunkow, inspiracje i przewodniki dla osob planujacych city breaki i krotkie wyjazdy z Polski.",
+        "Planer podróży, katalog kierunków i pomysły na krótkie wyjazdy z Polski.",
       potentialAction: {
         "@type": "SearchAction",
         target: `${siteUrl}/planner?mode=standard&q={search_term_string}`,
@@ -108,7 +103,7 @@ const structuredData = {
       url: siteUrl,
       logo: `${siteUrl}/branding/helptravel-mark.png`,
       description:
-        "Niezalezny serwis travelowy laczacy warstwe contentowa i planer wyjazdow z przekierowaniami do partnerow zewnetrznych.",
+        "Niezależny serwis travelowy pomagający wybrać kierunek i przejść do partnera rezerwacyjnego.",
     },
   ],
 };
@@ -133,3 +128,4 @@ export default function RootLayout({
     </html>
   );
 }
+

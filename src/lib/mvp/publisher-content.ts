@@ -751,7 +751,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
     bestTime:
       "Dublin najlepiej planowac od maja do wrzesnia, kiedy pogoda bardziej sprzyja spacerom. Poza tym okresem nadal ma sens, ale trzeba liczyc sie z bardziej zmiennymi warunkami.",
     budgetNote:
-      "Dublin nie jest kierunkiem niskobudzetowym, dlatego najwazniejsze jest uczciwe ustawienie oczekiwan. Najlepiej traktowac go jako city break premium-light, a nie tania ucieczke na weekend.",
+      "Dublin nie jest kierunkiem niskobudzetowym, dlatego najwazniejsze jest uczciwe ustawienie oczekiwan. Najlepiej traktowac go jako city break z wyzszym standardem, a nie tania ucieczke na weekend.",
     whoFor: [
       "dla osob szukajacych klimatu miasta i wieczornego zycia",
       "dla wyjazdow 2-4 dni",
@@ -778,7 +778,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "Londyn to kierunek dla osob, ktore chca duzego, wielowarstwowego miasta z muzeami, dzielnicami i bardzo mocnym powodem do wyjazdu. To nie jest tani city break, ale nadal jest jednym z najmocniejszych kierunkow dla odbiorcy szukajacego duzego europejskiego miasta.",
     whyGo: [
       "Daje bardzo szeroki wachlarz scenariuszy: kultura, muzea, zakupy, gastronomia i klasyczne ikony miasta.",
-      "To kierunek, ktory dobrze dziala w tresciach porownawczych i scenariuszach premium-light.",
+      "To kierunek, ktory dobrze dziala w tresciach porownawczych i scenariuszach z wyzszym standardem.",
       "Bardzo mocno pracuje na rozpoznawalnosc marki i publiczny charakter serwisu.",
     ],
     bestTime:
@@ -1726,7 +1726,7 @@ function describeBestMonths(destination: DestinationProfile): string {
 
 function describeBudget(destination: DestinationProfile): string {
   if (destination.costIndex <= 0.95) {
-    return "To kierunek, ktory dobrze broni sie przy rozsadnym budzecie i nie wymaga od razu premium wydatkow, zeby wyjazd mial sens.";
+    return "To kierunek, ktory dobrze broni sie przy rozsadnym budzecie i nie wymaga od razu wysokich wydatkow, zeby wyjazd mial sens.";
   }
 
   if (destination.costIndex >= 1.4) {

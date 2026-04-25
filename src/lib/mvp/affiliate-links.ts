@@ -1,5 +1,6 @@
 import type { AffiliateLinks } from "./types";
 import { buildCjStayLinks } from "./cj-stays";
+import { getStay22OverrideLink } from "./stay22-link-overrides";
 
 type AffiliateKind = keyof AffiliateLinks;
 
@@ -82,6 +83,10 @@ function interpolateTemplate(template: string, input: AffiliateTemplateInput, ki
 
 function buildAffiliateLink(kind: AffiliateKind, input: AffiliateTemplateInput): string {
   const place = [input.city, input.country].filter(Boolean).join(" ").trim();
+  const override = getStay22OverrideLink(kind, input.city, input.country);
+  if (override) {
+    return override;
+  }
   const template = TEMPLATE_BY_KIND[kind];
   if (!template) return fallbackLink(kind, place);
   return interpolateTemplate(template, input, kind);

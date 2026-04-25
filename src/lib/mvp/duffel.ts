@@ -198,7 +198,7 @@ export async function searchDuffelFlights(input: DuffelFlightSearchInput): Promi
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Duffel zwrocil blad (${response.status}). ${text.slice(0, 220)}`);
+    throw new Error(`Duffel zwróćil blad (${response.status}). ${text.slice(0, 220)}`);
   }
 
   const payload = (await response.json()) as {
@@ -222,5 +222,6 @@ export async function searchDuffelFlights(input: DuffelFlightSearchInput): Promi
     fetchedAt: new Date().toISOString(),
   };
 }
+
 
 

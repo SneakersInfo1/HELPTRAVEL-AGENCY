@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Polityka prywatnosci",
-  description: "Informacje o danych, analityce, plikach cookie i partnerach zewnetrznych w HelpTravel.",
+  title: "Polityka prywatności",
+  description: "Informacje o danych, analityce, plikach cookie i partnerach zewnętrznych w HelpTravel.",
   alternates: {
     canonical: "/polityka-prywatnosci",
   },
@@ -10,16 +10,16 @@ export const metadata: Metadata = {
 
 const privacySections = [
   {
-    title: "Jakie dane moga byc przetwarzane",
-    body: "Serwis moze przetwarzac podstawowe dane techniczne niezbedne do dzialania strony, zapisu sesji, zapisanych planow oraz podstawowej analityki ruchu i klikniec afiliacyjnych. W praktyce chodzi glownie o dane potrzebne do utrzymania ciaglosci korzystania z produktu i bezpiecznej obslugi publicznej wersji strony.",
+    title: "Jakie dane mogą być przetwarzane",
+    body: "Serwis może przetwarzać podstawowe dane techniczne niezbędne do działania strony, zapisu sesji, zapisanych planów oraz podstawowej analityki ruchu i kliknięć afiliacyjnych. W praktyce chodzi głównie o dane potrzebne do utrzymania ciągłości korzystania z produktu i bezpiecznej obsługi publicznej wersji strony.",
   },
   {
     title: "Cele przetwarzania",
-    body: "Zapytania do planera, klikniecia w oferty partnerow i historia zapisanych planow moga byc przetwarzane po to, aby ulepszac dzialanie serwisu, mierzyc zainteresowanie tresciami, analizowac skutecznosc poszczegolnych sekcji i zachowac ciaglosc korzystania z produktu.",
+    body: "Zapytania do planera, kliknięcia w oferty partnerów i historia zapisanych planów mogą być przetwarzane po to, aby ulepszać działanie serwisu, mierzyć zainteresowanie treściami, analizować skuteczność poszczególnych sekcji i zachować ciągłość korzystania z produktu.",
   },
   {
-    title: "Podmioty zewnetrzne",
-    body: "Serwis moze korzystac z zewnetrznych uslug i partnerow, w tym dostawcow obrazow, danych geolokalizacyjnych, wyszukiwarki lotow, narzedzi analitycznych oraz partnerow afiliacyjnych. Po przejsciu do partnera obowiazuja takze jego zasady prywatnosci i regulaminy.",
+    title: "Podmioty zewnętrzne",
+    body: "Serwis może korzystać z zewnętrznych usług i partnerów, w tym dostawców obrazów, danych geolokalizacyjnych, wyszukiwarki lotów, narzędzi analitycznych oraz partnerów afiliacyjnych. Po przejściu do partnera obowiązują także jego zasady prywatności i regulaminy.",
   },
 ];
 
@@ -27,12 +27,12 @@ export default function PrivacyPolicyPage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Prywatnosc</p>
-        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Polityka prywatnosci</h1>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Prywatność</p>
+        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Polityka prywatności</h1>
         <p className="mt-4 text-base leading-8 text-emerald-900/78">
           Ta strona opisuje podstawowe zasady przetwarzania danych w publicznym serwisie HelpTravel. Dokument ma
-          charakter informacyjny i obejmuje glownie korzystanie ze strony, planera, zapisanych planow oraz przejsc do
-          partnerow zewnetrznych.
+          charakter informacyjny i obejmuje głównie korzystanie ze strony, planera, zapisanych planów oraz przejścia do
+          partnerów zewnętrznych.
         </p>
       </section>
 
@@ -52,21 +52,23 @@ export default function PrivacyPolicyPage() {
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <h2 className="text-2xl font-bold text-emerald-950">Pliki cookie i sesje</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
-            <p>Serwis moze korzystac z plikow cookie lub podobnych mechanizmow do utrzymania sesji i dzialania zapisanych planow.</p>
-            <p>Zewnetrzne narzedzia i partnerzy sa opisywani oddzielnie wtedy, gdy wchodza w flow uzytkownika lub zbieranie danych.</p>
-            <p>Priorytetem pozostaje przejrzystosc: komunikujemy tylko te mechanizmy, ktore maja realny wplyw na korzystanie z serwisu.</p>
+            <p>Serwis może korzystać z plików cookie lub podobnych mechanizmów do utrzymania sesji i działania zapisanych planów.</p>
+            <p>Zewnętrzne narzędzia i partnerzy są opisywani oddzielnie wtedy, gdy wchodzą w ścieżkę użytkownika lub zbieranie danych.</p>
+            <p>Priorytetem pozostaje przejrzystość: komunikujemy tylko te mechanizmy, które mają realny wpływ na korzystanie z serwisu.</p>
           </div>
         </article>
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <h2 className="text-2xl font-bold text-emerald-950">Aktualizacje dokumentu</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
-            <p>W miare rozwoju serwisu i wdrazania kolejnych partnerow lub narzedzi zakres polityki prywatnosci powinien byc aktualizowany.</p>
-            <p>To dotyczy szczegolnie nowych zrodel danych, dodatkowej analityki, mailingow, formularzy i integracji z partnerami zewnetrznymi.</p>
-            <p>Dokument jest utrzymywany tak, aby odpowiadal aktualnemu sposobowi dzialania serwisu i modelowi wspolpracy z partnerami.</p>
+            <p>W miarę rozwoju serwisu i wdrażania kolejnych partnerów lub narzędzi zakres polityki prywatności powinien być aktualizowany.</p>
+            <p>To dotyczy szczególnie nowych źródeł danych, dodatkowej analityki, mailingów, formularzy i integracji z partnerami zewnętrznymi.</p>
+            <p>Dokument jest utrzymywany tak, aby odpowiadał aktualnemu sposobówi działania serwisu i modelowi współpracy z partnerami.</p>
           </div>
         </article>
       </section>
     </main>
   );
 }
+
+

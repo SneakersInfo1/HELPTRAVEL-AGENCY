@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 import { resolveCityCoordinates } from "./geoapify";
 import type { NormalizedStayOffer, StaySortMode } from "./types";
@@ -172,7 +172,7 @@ export async function searchDuffelStays(input: DuffelStaySearchInput): Promise<{
 
   const center = await resolveCityCoordinates(input.city, input.country);
   if (!center) {
-    throw new Error("Nie udalo sie ustalic lokalizacji miasta dla noclegow.");
+    throw new Error("Nie udalo sie ustalic lokalizacji miasta dla noclegów.");
   }
 
   const checkInDate = input.checkInDate;
@@ -233,3 +233,4 @@ export async function searchDuffelStays(input: DuffelStaySearchInput): Promise<{
     fetchedAt: new Date().toISOString(),
   };
 }
+

@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 
-import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { HomePageSections } from "@/components/home/home-page-sections";
-import { getPublishedDestinations } from "@/lib/mvp/publisher-content";
+import { PremiumHomeHero } from "@/components/home/premium-home-hero";
+import { getDestinationStory } from "@/lib/mvp/destination-content";
+import { getDestinationCatalogCount } from "@/lib/mvp/destination-catalog";
+import {
+  getLatestEditorialArticles,
+  getPublishedDestinations,
+} from "@/lib/mvp/publisher-content";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -12,31 +17,33 @@ const siteUrl = getSiteUrl();
 
 export function getHomeMetadata(locale: SiteLocale): Metadata {
   const isEnglish = locale === "en";
+  const canonicalPath = "/";
 
   return {
     title: isEnglish
-      ? "HelpTravel - choose a destination, stay and flight in one flow"
-      : "HelpTravel - wybierz kierunek, hotel i lot w jednym flow",
+      ? "HelpTravel - short trip planner for people who want a clear start"
+      : "HelpTravel - planer krótkich wyjazdów bez chaosu",
     description: isEnglish
-      ? "A high-impact trip planning start. Pick a destination, set dates and move straight into stays, flights and the next travel steps."
-      : "Pelnoekranowy start do planowania wyjazdu. Wybierz kierunek, ustaw termin i przejdz do hoteli, lotow, atrakcji oraz kolejnych krokow w jednym flow.",
+      ? "Pick a destination or describe the trip you want. Then move into stays, flights and the next travel steps."
+      : "Wybierz kierunek albo opisz, jakiego wyjazdu szukasz. Potem przejdź do noclegów, lotów i dalszych kroków.",
     alternates: {
-      canonical: locale === "en" ? "/en" : "/",
-      languages: {
-        "pl-PL": "/",
-        "en-US": "/en",
-      },
+      canonical: canonicalPath,
     },
+    robots: isEnglish
+      ? {
+          index: false,
+          follow: true,
+        }
+      : undefined,
     openGraph: {
       title: isEnglish
-        ? "HelpTravel - choose a destination, stay and flight in one flow"
-        : "HelpTravel - wybierz kierunek, hotel i lot w jednym flow",
+        ? "HelpTravel - short trip planner with a clear start"
+        : "HelpTravel - planer krótkich wyjazdów z prostym startem",
       description: isEnglish
-        ? "A premium starting point for destination choice, stays and flights in one travel flow."
-        : "Premium start do wyboru kierunku, hotelu i lotu z jednego travelowego ekranu.",
+        ? "Choose a destination or describe the trip you want, then move into stays and flights."
+        : "Wybierz kierunek albo opisz wyjazd, a potem przejdź do noclegów i lotów.",
       url: locale === "en" ? `${siteUrl}/en` : siteUrl,
       locale: locale === "en" ? "en_US" : "pl_PL",
-      alternateLocale: locale === "en" ? ["pl_PL"] : ["en_US"],
       type: "website",
     },
   };
@@ -57,6 +64,9 @@ const heroDestinationSlugs = [
 
 export async function HomePageView({ locale }: { locale: SiteLocale }) {
   const publishedDestinations = getPublishedDestinations();
+  const latestArticles = getLatestEditorialArticles(4);
+  const destinationCount = getDestinationCatalogCount();
+  const guideCount = publishedDestinations.length;
 
   const selectedHeroDestinations = heroDestinationSlugs
     .map((slug) => publishedDestinations.find((destination) => destination.slug === slug))
@@ -65,23 +75,45 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
   const resolvedHeroDestinations = await Promise.all(
     selectedHeroDestinations.map(async (destination) => ({
       destination,
+      story: getDestinationStory(destination),
       media: await resolveDestinationMedia(destination),
     })),
   );
 
-  const featuredTiles = resolvedHeroDestinations.slice(0, 6).map((item) => ({
-    destination: item.destination,
-    heroImage: item.media.heroImage,
+  const heroSlides = resolvedHeroDestinations.slice(0, 6).map((item) => ({
+    id: item.destination.slug,
+    city: item.destination.city,
+    country: item.destination.country,
+    label: `${item.destination.city}, ${item.destination.country}`,
+    title: item.destination.city,
+    description: item.story.tagline,
+    image: item.media.heroImage,
+    href: `/kierunki/${item.destination.slug}`,
+    tags: item.story.bestFor.slice(0, 3),
+    meta: `lot ok. ${item.destination.typicalFlightHoursFromPL.toFixed(1)} h z Polski`,
   }));
 
-  const destinationOptions = publishedDestinations.map((d) => ({ city: d.city, country: d.country }));
+  const featuredDirections = resolvedHeroDestinations.slice(0, 6);
+  const featuredDirectionCards = featuredDirections.map((item) => ({
+    slug: item.destination.slug,
+    city: item.destination.city,
+    country: item.destination.country,
+    heroImage: item.media.heroImage,
+    vibe: item.story.vibe,
+    tagline: item.story.tagline,
+    bestFor: item.story.bestFor,
+  }));
 
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-8">
-      <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
-        <HomeHybridHero featured={featuredTiles} destinationOptions={destinationOptions} />
+      <div className="w-full px-4 pt-4 sm:px-6 sm:pt-6 xl:px-8">
+        <PremiumHomeHero slides={heroSlides} destinationCount={destinationCount} guideCount={guideCount} locale={locale} />
       </div>
-      <HomePageSections locale={locale} />
+      <HomePageSections
+        featuredDirections={featuredDirectionCards}
+        latestArticles={latestArticles}
+        locale={locale}
+      />
     </main>
   );
 }
@@ -89,3 +121,4 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
 export default async function Home() {
   return HomePageView({ locale: "pl" });
 }
+

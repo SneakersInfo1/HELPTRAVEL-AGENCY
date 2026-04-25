@@ -6,58 +6,58 @@ import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
 
 const faqItems = [
   {
-    question: "Czy korzystanie z HelpTravel jest platne?",
+    question: "Czy korzystanie z HelpTravel jest płatne?",
     answer:
-      "Nie. Korzystanie z katalogu kierunkow, tresci i planera jest bezplatne. Finalne ceny i warunki rezerwacji sa zawsze pokazywane i obslugiwane przez zewnetrznego partnera.",
+      "Nie. Korzystanie z katalogu kierunków, treści i planera jest bezpłatne. Finalne ceny i warunki rezerwacji są zawsze pokazywane i obsługiwane przez zewnętrznego partnera.",
   },
   {
-    question: "Czy rezerwacja odbywa sie bezposrednio na HelpTravel?",
+    question: "Czy rezerwacja odbywa się bezpośrednio na HelpTravel?",
     answer:
-      "Nie zawsze. HelpTravel pomaga wybrac kierunek, uporzadkowac plan i przejsc do kolejnego kroku. Finalna rezerwacja moze odbywac sie po stronie zewnetrznego partnera.",
+      "Nie zawsze. HelpTravel pomaga wybrać kierunek, uporządkować plan i przejść do kolejnego kroku. Finalna rezerwacja może odbywać się po stronie zewnętrznego partnera.",
   },
   {
-    question: "Skad biora sie ceny i dostepnosc ofert?",
+    question: "Skąd biorą się ceny i dostępność ofert?",
     answer:
-      "Ceny, dostepnosc i finalne warunki pochodza od partnerow rezerwacyjnych. Dlatego zawsze warto sprawdzic ostatni krok u partnera przed platnoscia.",
+      "Ceny, dostępność i finalne warunki pochodzą od partnerów rezerwacyjnych. Dlatego zawsze warto sprawdzić ostatni krok u partnera przed płatnością.",
   },
   {
-    question: "Czy moge zapisac plan i wrocic do niego pozniej?",
+    question: "Czy mogę zapisać plan i wrócić do niego później?",
     answer:
-      "Tak. HelpTravel zapisuje plan, kontekst podrozy i wybrane kierunki, aby latwiej bylo wrocic do porownania lub kontynuacji planowania.",
+      "Tak. HelpTravel zapisuje plan, kontekst podróży i wybrane kierunki, aby łatwiej było wrócić do porównania albo dalszego planowania.",
   },
   {
-    question: "Czy planner pomaga, jesli nie wiem jeszcze dokad poleciec?",
+    question: "Czy planner pomaga, jeśli nie wiem jeszcze dokąd polecieć?",
     answer:
-      "Tak. To jedna z glownych funkcji produktu. Mozesz opisac styl wyjazdu, budzet lub potrzebe, a planer przygotuje shortlist kierunkow i przejscie do kolejnych krokow.",
+      "Tak. Możesz opisać styl wyjazdu, budżet albo potrzebę, a planner przygotuje shortlistę kierunków i przejście do kolejnych kroków.",
   },
   {
     question: "Czy HelpTravel pokazuje fikcyjne opinie albo sztuczne rankingi?",
     answer:
-      "Nie. Serwis nie publikuje fikcyjnych recenzji, nagrod ani partnerstw. Stawiamy na jawny model afiliacyjny, metodologie i praktyczne guidance.",
+      "Nie. Serwis nie publikuje fikcyjnych recenzji, nagród ani partnerstw. Stawiamy na jawny model afiliacyjny, metodę pracy i praktyczne odpowiedzi.",
   },
   {
     question: "Dla kogo jest ten serwis?",
     answer:
-      "Glownie dla osob z Polski planujacych krotkie i srednie wyjazdy wypoczynkowe: city breaki, cieple wypady, weekendy i praktyczne wyjazdy 3-7 dni.",
+      "Głównie dla osób z Polski planujących krótkie i średnie wyjazdy wypoczynkowe: city breaki, ciepłe wypady, weekendy i praktyczne wyjazdy 3-7 dni.",
   },
   {
-    question: "Gdzie znalezc wiecej informacji o warunkach podrozy i prawach pasazera?",
+    question: "Gdzie znaleźć oficjalne informacje o warunkach podróży?",
     answer:
-      "Na dole tej strony znajdziesz oficjalne zrodla dotyczace komunikatow podroznych, EKUZ i praw pasazera w Unii Europejskiej.",
+      "Na dole tej strony znajdziesz oficjalne źródła dotyczące komunikatów podróżnych, EKUZ i praw pasażera w Unii Europejskiej.",
   },
 ];
 
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Najczestsze pytania o HelpTravel, planer, linki partnerskie, ceny, zapisywanie planow i sposob dzialania serwisu.",
+    "Najczęstsze pytania o HelpTravel, planner, linki partnerskie, ceny, zapisywanie planów i sposób działania serwisu.",
   alternates: {
     canonical: "/faq",
   },
   openGraph: {
     title: "FAQ - HelpTravel",
     description:
-      "Odpowiedzi na najczestsze pytania o planner, partnerow rezerwacyjnych, zapis planow i korzystanie z HelpTravel.",
+      "Odpowiedzi na najczęstsze pytania o planner, partnerów rezerwacyjnych, zapis planów i korzystanie z HelpTravel.",
     url: "/faq",
     type: "website",
   },
@@ -84,12 +84,11 @@ export default function FaqPage() {
       </Script>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pomoc i przejrzystosc</p>
-        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Najczestsze pytania o HelpTravel</h1>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pomoc i przejrzystość</p>
+        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Najczęstsze pytania o HelpTravel</h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-          Ta strona zbiera odpowiedzi na pytania o planer, linki partnerskie, zapisywanie planow, ceny, jezyki i
-          sposob dzialania serwisu. To punkt startowy dla czytelnika, partnera i robota wyszukiwarki, ktory chce
-          zrozumiec jak dziala produkt.
+          To miejsce dla osób, które chcą szybko sprawdzić, jak działa planner, gdzie trafia finalna rezerwacja i co
+          warto wiedzieć przed kliknięciem w ofertę.
         </p>
       </section>
 
@@ -107,13 +106,13 @@ export default function FaqPage() {
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiazane strony</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane strony</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Link href="/oferta" className="rounded-2xl bg-white px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
-              Oferta i glowne funkcje
+              Oferta i główne funkcje
             </Link>
             <Link href="/cennik" className="rounded-2xl bg-white px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
-              Cennik i model platnosci
+              Cennik i model płatności
             </Link>
             <Link href="/linki-partnerskie" className="rounded-2xl bg-white px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
               Linki partnerskie
@@ -125,7 +124,7 @@ export default function FaqPage() {
         </article>
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Oficjalne zrodla</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Oficjalne źródła</p>
           <div className="mt-4 grid gap-3">
             {TRUSTED_TRAVEL_RESOURCES.map((resource) => (
               <a
@@ -145,3 +144,4 @@ export default function FaqPage() {
     </main>
   );
 }
+

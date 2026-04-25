@@ -10,15 +10,15 @@ import { getSiteUrl } from "@/lib/mvp/site";
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: "Inspiracje i blog podrozniczy",
-  description: "Przewodniki, pomysly na wyjazdy, city breaki i praktyczne scenariusze w blogu travelowym dla polskiego odbiorcy.",
+  title: "Pomysły na wyjazd i poradniki",
+  description: "Pomysły na city breaki, ciepłe wyjazdy i praktyczne poradniki, które pomagają przejść do konkretnego planu.",
   alternates: {
     canonical: "/inspiracje",
   },
   openGraph: {
-    title: "Inspiracje i blog podrozniczy - HelpTravel",
+    title: "Pomysły na wyjazd i poradniki - HelpTravel",
     description:
-      "Praktyczne scenariusze wyjazdow, porownania kierunkow i artykuly pomagajace przejsc do konkretnego planu.",
+      "Praktyczne scenariusze wyjazdów, porównania kierunków i artykuły pomagające przejść do konkretnego planu.",
     url: `${getSiteUrl()}/inspiracje`,
     type: "website",
   },
@@ -33,8 +33,8 @@ export default function InspirationsIndexPage() {
     "@graph": [
       {
         "@type": "CollectionPage",
-        name: "Inspiracje",
-        description: "Przewodniki, pomysly na wyjazdy, city breaki i praktyczne scenariusze dla polskiego odbiorcy.",
+        name: "Pomysły na wyjazd",
+        description: "Przewodniki, pomysły na wyjazdy, city breaki i praktyczne scenariusze dla polskiego odbiorcy.",
         url: `${getSiteUrl()}/inspiracje`,
         inLanguage: "pl-PL",
       },
@@ -63,17 +63,17 @@ export default function InspirationsIndexPage() {
         {JSON.stringify(structuredData)}
       </Script>
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Warstwa wydawnicza i blog</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pomysły na wyjazd</p>
         <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] text-emerald-950">
-          Inspiracje, przewodniki i blog travelowy, ktory prowadzi do realnego planu wyjazdu.
+          Poradniki i scenariusze, z których łatwo przejść do konkretnego planu.
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-          Serwis nie konczy sie na samym plannerze. Tutaj zbieramy konkretne scenariusze wyjazdow, porownania kierunkow i
-          tresci z wysoka intencja, ktore mozna czytac jak dojrzaly serwis travelowy, a potem od razu przejsc do planowania.
+          Znajdziesz tu praktyczne scenariusze wyjazdów, porównania kierunków i poradniki dla osób, które chcą
+          najpierw przeczytać i porównać, a dopiero potem kliknąć w planner albo ofertę.
         </p>
         <div className="mt-6 flex flex-wrap gap-3 text-sm text-emerald-900/70">
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5">{articles.length} artykulow praktycznych</span>
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5">{categories.length} glowne kategorie tematyczne</span>
+          <span className="rounded-full bg-emerald-50 px-3 py-1.5">{articles.length} artykułów praktycznych</span>
+          <span className="rounded-full bg-emerald-50 px-3 py-1.5">{categories.length} główne kategorie tematyczne</span>
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
           {categories.map((category) => (
@@ -89,9 +89,9 @@ export default function InspirationsIndexPage() {
       </section>
 
       <EditorialMetaBar
-        eyebrow="Biblioteka tresci"
-        title="Publiczna warstwa travel contentu przygotowana pod discovery, SEO i dalsze planowanie"
-        items={[`${articles.length} artykulow`, `${categories.length} kategorii`, "praktyczne scenariusze wyjazdow"]}
+        eyebrow="Biblioteka treści"
+        title="Artykuły, które odpowiadają na konkretne pytania przed planowaniem wyjazdu"
+        items={[`${articles.length} artykułów`, `${categories.length} kategorii`, "prosty start do planera"]}
       />
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -102,3 +102,4 @@ export default function InspirationsIndexPage() {
     </main>
   );
 }
+

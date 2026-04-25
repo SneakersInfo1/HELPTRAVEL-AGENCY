@@ -37,7 +37,7 @@ function buildFallback(
     source: "partner_fallback",
     error:
       errorMessage ||
-      "Na stronie pokazujemy teraz partner-first flight flow. Klik otwiera gotowe wyniki z ustawiona trasa i data.",
+      "Jeśli nie mamy jeszcze własnej shortlisty lotów, otwieramy gotowe wyniki partnera z ustawiona trasa i data.",
   };
 }
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       const message = error instanceof Error ? error.message : "";
       const friendlyMessage =
         message.includes("DUFFEL_ACCESS_TOKEN") || message.includes("kod lotniska")
-          ? "Na stronie pokazujemy teraz partner-first flight flow. Klik nadal otwiera gotowe wyniki z zachowanym kierunkiem i data."
+          ? "Jeśli nie mamy jeszcze własnej shortlisty lotów, otwieramy gotowe wyniki partnera z zachowanym kierunkiem i data."
           : message;
 
       return buildFallback(input, friendlyMessage);
@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.json({ error: "Nie udalo sie pobrac danych lotow." }, { status: 400 });
+    return NextResponse.json({ error: "Nie udalo sie pobrac danych lotów." }, { status: 400 });
   }
 }
+

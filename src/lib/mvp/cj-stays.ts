@@ -1,4 +1,5 @@
 import { destinationCatalog, getDestinationCatalogCount } from "./destination-catalog";
+import { getStay22OverrideLink } from "./stay22-link-overrides";
 
 interface CjDestinationSeed {
   city: string;
@@ -153,9 +154,10 @@ export function buildCjStayLinks(city: string, country: string, options?: CjStay
   const hotelsDestinationUrl = buildHotelsDestinationUrl(seed, options);
   const expediaDestinationUrl = buildExpediaDestinationUrl(seed, options);
   const vrboDestinationUrl = buildVrboDestinationUrl(seed, options);
+  const stayOverride = getStay22OverrideLink("stays", city, country);
 
   return {
-    hotels: wrapCjUrl(process.env.CJ_HOTELS_COM_TEMPLATE?.trim(), hotelsDestinationUrl),
+    hotels: stayOverride ?? wrapCjUrl(process.env.CJ_HOTELS_COM_TEMPLATE?.trim(), hotelsDestinationUrl),
     expedia: wrapCjUrl(process.env.CJ_EXPEDIA_TEMPLATE?.trim(), expediaDestinationUrl),
     vrbo: wrapCjUrl(process.env.CJ_VRBO_TEMPLATE?.trim(), vrboDestinationUrl),
   };

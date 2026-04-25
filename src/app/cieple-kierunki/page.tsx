@@ -7,14 +7,14 @@ import { getSiteUrl } from "@/lib/mvp/site";
 const category = getEditorialCategoryBySlug("cieple-kierunki");
 
 export const metadata: Metadata = {
-  title: category?.title ?? "Cieple kierunki",
-  description: category?.description ?? "Cieple kierunki z Polski na 4-7 dni.",
+  title: category?.title ?? "Ciepłe kierunki",
+  description: category?.description ?? "Ciepłe kierunki z Polski na 4-7 dni.",
   alternates: {
     canonical: "/cieple-kierunki",
   },
   openGraph: {
-    title: `${category?.title ?? "Cieple kierunki"} - HelpTravel`,
-    description: category?.description ?? "Cieple kierunki z Polski na 4-7 dni.",
+    title: `${category?.title ?? "Ciepłe kierunki"} - HelpTravel`,
+    description: category?.description ?? "Ciepłe kierunki z Polski na 4-7 dni.",
     url: `${getSiteUrl()}/cieple-kierunki`,
     type: "website",
   },
@@ -23,3 +23,4 @@ export const metadata: Metadata = {
 export default function WarmDestinationsCategoryPage() {
   return <CategoryPage slug="cieple-kierunki" />;
 }
+

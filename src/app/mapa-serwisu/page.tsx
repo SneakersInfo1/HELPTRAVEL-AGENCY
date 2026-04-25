@@ -10,13 +10,13 @@ import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 
 export const metadata: Metadata = {
   title: "Mapa serwisu",
-  description: "Przeglad najwazniejszych sekcji, kierunkow, przewodnikow i stron zaufania w HelpTravel.",
+  description: "Przeglad najwazniejszych sekcji, kierunków, przewodników i stron zaufania w HelpTravel.",
   alternates: {
     canonical: "/mapa-serwisu",
   },
   openGraph: {
     title: "Mapa serwisu - HelpTravel",
-    description: "Najwazniejsze sekcje, katalog kierunkow, przewodniki i strony zaufania w jednym indeksowalnym miejscu.",
+    description: "Najważniejsze sekcje, katalog kierunków, przewodniki i strony zaufania w jednym miejscu.",
     url: "/mapa-serwisu",
     type: "website",
   },
@@ -32,24 +32,23 @@ export default function SiteMapPage() {
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Mapa serwisu</p>
-        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Wszystkie najwazniejsze sekcje w jednym miejscu</h1>
+        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Wszystkie najważniejsze sekcje w jednym miejscu</h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-          Ta strona pomaga przejsc przez glowna architekture serwisu: planer, kierunki, przewodniki, strony tematyczne
-          oraz publiczne dokumenty. Jest przydatna dla czytelnikow, robotow wyszukiwarek i partnerow sprawdzajacych, czy
-          projekt ma realna warstwe tresciowa.
+          Ta strona pomaga szybko znaleźć planner, katalog kierunków, poradniki i strony zaufania. Przydaje się wtedy,
+          gdy chcesz przejść do konkretnej sekcji bez szukania po całym serwisie.
         </p>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-3">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="text-2xl font-bold text-emerald-950">Start i planer</h2>
+          <h2 className="text-2xl font-bold text-emerald-950">Start i planner</h2>
           <div className="mt-4 flex flex-col gap-3 text-sm text-emerald-900/78">
             <Link href="/" className="hover:text-emerald-700">Start</Link>
-            <Link href="/planner" className="hover:text-emerald-700">Planer</Link>
-            <Link href="/planner?mode=discovery" className="hover:text-emerald-700">Nie wiem dokad leciec</Link>
+            <Link href="/planner" className="hover:text-emerald-700">Planner</Link>
+            <Link href="/planner?mode=discovery" className="hover:text-emerald-700">Pomóż mi wybrać</Link>
             <Link href="/planner?mode=standard" className="hover:text-emerald-700">Mam kierunek</Link>
-            <Link href="/kierunki" className="hover:text-emerald-700">Katalog kierunkow</Link>
-            <Link href="/inspiracje" className="hover:text-emerald-700">Biblioteka inspiracji</Link>
+            <Link href="/kierunki" className="hover:text-emerald-700">Katalog kierunków</Link>
+            <Link href="/inspiracje" className="hover:text-emerald-700">Pomysły na wyjazd</Link>
           </div>
         </article>
 
@@ -67,7 +66,7 @@ export default function SiteMapPage() {
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <h2 className="text-2xl font-bold text-emerald-950">Zaufanie</h2>
           <div className="mt-4 flex flex-col gap-3 text-sm text-emerald-900/78">
-            <Link href="/o-nas" className="hover:text-emerald-700">O nas</Link>
+            <Link href="/o-nas" className="hover:text-emerald-700">O serwisie</Link>
             <Link href="/kontakt" className="hover:text-emerald-700">Kontakt</Link>
             <Link href="/oferta" className="hover:text-emerald-700">Oferta</Link>
             <Link href="/faq" className="hover:text-emerald-700">FAQ</Link>
@@ -75,7 +74,7 @@ export default function SiteMapPage() {
             <Link href="/polityka-prywatnosci" className="hover:text-emerald-700">Polityka prywatnosci</Link>
             <Link href="/regulamin" className="hover:text-emerald-700">Regulamin</Link>
             <Link href="/linki-partnerskie" className="hover:text-emerald-700">Linki partnerskie</Link>
-            <Link href="/dla-partnerow" className="hover:text-emerald-700">Dla partnerow</Link>
+            <Link href="/dla-partnerow" className="hover:text-emerald-700">Dla partnerów</Link>
             <Link href="/standard-redakcyjny" className="hover:text-emerald-700">Standard redakcyjny</Link>
           </div>
         </article>
@@ -87,7 +86,7 @@ export default function SiteMapPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kierunki</p>
             <h2 className="mt-2 font-display text-4xl text-emerald-950">Strony kierunkowe</h2>
           </div>
-          <p className="text-sm text-emerald-900/68">{destinations.length} kierunkow</p>
+          <p className="text-sm text-emerald-900/68">{destinations.length} kierunków</p>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {featuredDestinations.map((destination) => (
@@ -103,11 +102,11 @@ export default function SiteMapPage() {
         <div className="mt-6 rounded-[1.5rem] border border-emerald-900/10 bg-white/80 p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Pelny katalog</p>
-              <h3 className="mt-2 text-2xl font-bold text-emerald-950">Dodatkowe strony kierunkowe do crawl i odkrywania</h3>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Pełny katalog</p>
+              <h3 className="mt-2 text-2xl font-bold text-emerald-950">Dodatkowe strony kierunkowe do odkrywania i porównywania</h3>
             </div>
             <Link href="/kierunki" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-              Otworz katalog 200+
+              Otwórz katalog 200+
             </Link>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -128,9 +127,9 @@ export default function SiteMapPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Inspiracje</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Artykuly i scenariusze wyjazdow</h2>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Artykuły i scenariusze wyjazdów</h2>
           </div>
-          <p className="text-sm text-emerald-900/68">{articles.length} artykulow</p>
+          <p className="text-sm text-emerald-900/68">{articles.length} artykułów</p>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {articles.map((article) => (
@@ -147,3 +146,4 @@ export default function SiteMapPage() {
     </main>
   );
 }
+

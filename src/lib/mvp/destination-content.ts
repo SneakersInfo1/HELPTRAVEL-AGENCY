@@ -1,4 +1,4 @@
-import type { DestinationProfile } from "./types";
+﻿import type { DestinationProfile } from "./types";
 
 import { getDestinationMedia, getDestinationMediaBySlug } from "./commercial-assets";
 
@@ -42,10 +42,10 @@ const destinationStories: Record<string, DestinationStory> = {
   "malaga-spain": buildStory({
     slug: "malaga-spain",
     name: "Malaga",
-    tagline: "Sloneczny city break z plaza, jedzeniem i latwym rytmem wyjazdu.",
+    tagline: "Słoneczny city break z plażą, jedzeniem i łatwym rytmem wyjazdu.",
     summary:
-      "Malaga laczy nadmorski odpoczynek z wygodnym centrum, kultura i bardzo prostym planowaniem. To jeden z najmocniejszych kierunkow, gdy chcesz miec plaze, zwiedzanie i dobry standard wyjazdu bez zbednej logistyki.",
-    vibe: "slonecznie, lekko i bez pospiechu",
+      "Malaga łączy nadmorski odpoczynek z wygodnym centrum, kultura i bardzo prostym planowaniem. To jeden z najmocniejszych kierunków, gdy chcesz mieć plażę, zwiedzanie i dobry standard wyjazdu bez zbędnej logistyki.",
+    vibe: "słonecznie, lekko i bez pospiechu",
     heroImage: malagaMedia.heroImage,
     gallery: malagaMedia.gallery,
     heroVideoPoster: malagaMedia.poster,
@@ -62,7 +62,7 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 1,
         title: "Przylot i lekki start",
-        description: "Check-in, spacer promenada, plaza i spokojna kolacja z widokiem na port.",
+        description: "Check-in, spacer promenada, plażą i spokojna kolacja z widokiem na port.",
       },
       {
         day: 2,
@@ -75,21 +75,21 @@ const destinationStories: Record<string, DestinationStory> = {
         description: "Picasso, targ, spokojniejsze dzielnice i bardziej lokalna Malaga poza glowna trasa.",
       },
     ],
-    bestFor: ["plaza + zwiedzanie", "city break premium-light", "krotki urlop z Polski", "dobre jedzenie"],
+    bestFor: ["plażą + zwiedzanie", "wygodniejszy city break", "krótki urlop z Polski", "dobre jedzenie"],
   }),
   "barcelona-spain": buildStory({
     slug: "barcelona-spain",
     name: "Barcelona",
     tagline: "Miasto, architektura i morze w jednym mocnym city breaku.",
     summary:
-      "Barcelona daje bardzo silny miks architektury, energii duzego miasta i nadmorskiego klimatu. To dobry wybor, gdy chcesz miec mocne first impression, wiecej tempa i duzo opcji na wieczor.",
+      "Barcelona daje bardzo silny miks architektury, energii duzego miasta i nadmorskiego klimatu. To dobry wybór, gdy chcesz mieć mocne first impression, więcej tempa i dużo opcji na wieczor.",
     vibe: "dynamicznie, stylowo i bardzo miejsko",
     heroImage: barcelonaMedia.heroImage,
     gallery: barcelonaMedia.gallery,
     heroVideoPoster: barcelonaMedia.poster,
     highlights: [
       "ikony Gaudiego i rozpoznawalna architektura",
-      "Barceloneta oraz nadmorski reset po miescie",
+      "Barceloneta oraz nadmorski reset po mieście",
       "El Born i gotyckie uliczki na wieczor",
       "silny klimat dla par i grup",
     ],
@@ -105,7 +105,7 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 2,
         title: "Architektura i glowna trasa",
-        description: "Gaudi, Passeig de Gracia i najmocniejsze miejsca, ktore buduja efekt wow.",
+        description: "Gaudi, Passeig de Gracia i najmocniejsze miejsca, które buduja efekt wow.",
       },
       {
         day: 3,
@@ -120,7 +120,7 @@ const destinationStories: Record<string, DestinationStory> = {
     name: "Lizbona",
     tagline: "Wzgorza, widoki i miejski rytm z charakterem.",
     summary:
-      "Lizbona wypada mocno, gdy szukasz klimatu, spacerow, punktow widokowych i spokojniejszego rytmu niz w najbardziej intensywnych stolicach. To kierunek, ktory zostaje w pamieci i dobrze dziala na 4-5 dni.",
+      "Lizbona wypada mocno, gdy szukasz klimatu, spacerów, punktow widokowych i spokojniejszego rytmu niż w najbardziej intensywnych stolicach. To kierunek, który zostaje w pamieći i dobrze działa na 4-5 dni.",
     vibe: "widokowo, klimatycznie i z oddechem",
     heroImage: lisbonMedia.heroImage,
     gallery: lisbonMedia.gallery,
@@ -128,7 +128,7 @@ const destinationStories: Record<string, DestinationStory> = {
     highlights: [
       "tramwaj 28 i pocztowkowe wzgorza",
       "Alfama z lokalnym klimatem",
-      "Belém i spacery nad Tagiem",
+      "Belém i spacer nad Tagiem",
       "mocny food + city break mix",
     ],
     attractions: ["Alfama", "Belém", "LX Factory", "Time Out Market", "miradouros", "tramwaj 28"],
@@ -138,7 +138,7 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 1,
         title: "Wzgorza i punkty widokowe",
-        description: "Pierwszy spacer po miescie, miradouros i wejscie w rytm Lizbony bez pospiechu.",
+        description: "Pierwszy spacer po mieście, miradouros i wejscie w rytm Lizbony bez pospiechu.",
       },
       {
         day: 2,
@@ -147,8 +147,8 @@ const destinationStories: Record<string, DestinationStory> = {
       },
       {
         day: 3,
-        title: "Belém i dobry final",
-        description: "Rzeka, lokalne smaki i wieczor, ktory zamyka wyjazd bardziej klimatem niz odhaczaniem punktow.",
+        title: "Belém i dobry finał",
+        description: "Rzeka, lokalne smaki i wieczor, który zamyka wyjazd bardziej klimatem niż odhaczaniem punktow.",
       },
     ],
     bestFor: ["widoki", "spacery", "kierunek z charakterem", "dobre jedzenie"],
@@ -156,9 +156,9 @@ const destinationStories: Record<string, DestinationStory> = {
   "valencia-spain": buildStory({
     slug: "valencia-spain",
     name: "Walencja",
-    tagline: "Najbardziej zbalansowany miks plazy, miasta i oplacalnosci.",
+    tagline: "Najbardziej zbalansowany miks plaży, miasta i oplacalnosci.",
     summary:
-      "Walencja jest mocna, gdy chcesz miec plaze, dobre jedzenie, miasto i sensowny koszt wyjazdu bez takiego tloku jak w Barcelonie. To jeden z najlepszych kierunkow dla osob szukajacych bardzo dobrego balansu.",
+      "Walencja jest mocna, gdy chcesz mieć plażę, dobre jedzenie, miasto i sensowny koszt wyjazdu bez takiego tloku jak w Barcelonie. To jeden z najlepszych kierunków dla osób szukających bardzo dobrego balansu.",
     vibe: "jasno, wygodnie i bez przesadnego tloku",
     heroImage: valenciaMedia.heroImage,
     gallery: valenciaMedia.gallery,
@@ -167,10 +167,10 @@ const destinationStories: Record<string, DestinationStory> = {
       "Miasto Sztuki i Nauki",
       "Malvarrosa i promenada",
       "park Turia jako naturalna os miasta",
-      "bardzo dobry stosunek ceny do jakosci",
+      "bardzo dobry stosunek ceny do jakości",
     ],
     attractions: ["Ciudad de las Artes y las Ciencias", "Malvarrosa", "Mercado Central", "Jardin del Turia", "La Lonja", "El Carmen"],
-    foodSpots: ["paella w lokalnych restauracjach", "tapas w centrum", "spokojne lunche przy plazy"],
+    foodSpots: ["paella w lokalnych restauracjach", "tapas w centrum", "spokojne lunche przy plaży"],
     districts: ["Ciutat Vella", "Eixample", "Ruzafa", "Cabanyal"],
     miniPlan: [
       {
@@ -181,15 +181,15 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 2,
         title: "Architektura i park",
-        description: "Mocna warstwa nowoczesna, Turia i najbardziej charakterystyczne przestrzenie miasta.",
+        description: "Mocna warstwa nowoczesna, Turia i najbardziej charakterystyczne przestrzeńie miasta.",
       },
       {
         day: 3,
         title: "Morze i oddech",
-        description: "Promenada, plaze i plan, ktory nie meczy nawet przy krotkim wyjezdzie.",
+        description: "Promenada, plażę i plan, który nie meczy nawet przy krótkim wyjezdzie.",
       },
     ],
-    bestFor: ["plaza + miasto", "optymalny city break", "spokojny rytm", "bardzo dobra relacja ceny do jakosci"],
+    bestFor: ["plażą + miasto", "optymalny city break", "spokojny rytm", "bardzo dobra relacja ceny do jakości"],
   }),
 };
 
@@ -201,45 +201,45 @@ function genericStory(destination: DestinationProfile): DestinationStory {
   return {
     slug: destination.slug,
     name: destination.city,
-    tagline: `Kierunek przygotowany pod krotki lub sredni wyjazd do ${destination.city}.`,
-    summary: `${destination.city} w ${destination.country} dobrze sprawdza sie wtedy, gdy chcesz polaczyc wygodny dojazd, sensowny budzet i jasny plan wyjazdu bez przeciazenia logistyka.`,
+    tagline: `Kierunek przygotowany pod krótki lub średni wyjazd do ${destination.city}.`,
+    summary: `${destination.city} w ${destination.country} dobrze sprawdza się wtedy, gdy chcesz połączyć wygodny dojazd, sensowny budżet i jasny plan wyjazdu bez przeciazenia logistyka.`,
     vibe: isCoastal ? "nadmorski i relaksujacy" : isNature ? "spokojny i krajobrazowy" : "miejski i zdecydowany",
     heroImage: media.heroImage,
     gallery: media.gallery,
     heroVideoPoster: media.poster,
     highlights: [
-      isCoastal ? "dobre warunki na pobyt blisko wody" : "mocne punkty w centrum miasta",
-      destination.sightseeingScore > 0.8 ? "duzo miejsc do zwiedzania" : "czytelny city break bez nadmiaru logistyki",
-      destination.accessScore > 0.8 ? "latwy dojazd z Polski" : "troche spokojniejszy rytm podrozy",
+      isCoastal ? "dobre warunki na pobyt blisko wody" : "glowna strefa zwiedzania i spacerów",
+      destination.sightseeingScore > 0.8 ? "dużo miejsc do zwiedzania" : "czytelny city break bez nadmiaru logistyki",
+      destination.accessScore > 0.8 ? "łatwy dojazd z Polski" : "troche spokojniejszy rytm podróży",
     ],
     attractions: [
-      `${destination.city} centrum`,
-      destination.beachScore > 0.6 ? "plaza i promenada" : "punkty widokowe",
-      destination.sightseeingScore > 0.8 ? "najmocniejsze zabytki i muzea" : "lokalne dzielnice i spacery",
+      destination.sightseeingScore > 0.8 ? "stare miasto i glowna dzielnica spacerówa" : "centralna czesc miasta i okolice na pierwszy spacer",
+      destination.beachScore > 0.6 ? "plażą i promenada" : "punkty widokowe",
+      destination.sightseeingScore > 0.8 ? "najmocniejsze zabytki i muzea" : "lokalne dzielnice i spokojniejsze trasy",
     ],
     foodSpots: ["lokalne restauracje", "kawiarnie na sniadanie lub lunch", "miejsca z regionalna kuchnia"],
-    districts: ["centrum", "dzielnica spacerowa", "okolica z lokalnym klimatem"],
+    districts: [],
     miniPlan: [
       {
         day: 1,
         title: "Przyjazd i orientacja",
-        description: `Pierwszy spacer po ${destination.city}, lekki plan na wieczor i poznanie glownej osi miasta.`,
+        description: `Pierwszy spacer po ${destination.city}, lekki plan na wieczor i poznanie głównej osi miasta.`,
       },
       {
         day: 2,
         title: "Najmocniejsze miejsca",
-        description: "Zwiedzanie kluczowych punktow, dobra przerwa na lunch i bardziej swiadomy wybor kolejnych krokow.",
+        description: "Zwiedzanie kluczowych punktow, dobra przerwa na lunch i bardziej swiadomy wybór kolejnych kroków.",
       },
       {
         day: 3,
         title: "Lokalny rytm",
-        description: "Dzielnice, jedzenie i mniej oczywiste miejsca, ktore buduja pelniejszy obraz kierunku.",
+        description: "Dzielnice, jedzenie i mniej oczywiste miejsca, które buduja pelniejszy obraz kierunku.",
       },
     ],
     bestFor: [
-      destination.beachScore > 0.7 ? "plaza" : "zwiedzanie",
+      destination.beachScore > 0.7 ? "plażą" : "zwiedzanie",
       destination.cityScore > 0.8 ? "city break" : "spokojniejszy pobyt",
-      destination.safetyScore > 0.8 ? "komfortowy wyjazd" : "bardziej budzetowy scenariusz",
+      destination.safetyScore > 0.8 ? "komfortowy wyjazd" : "bardziej budżetowy scenariusz",
     ],
   };
 }
@@ -276,3 +276,11 @@ export function getVideoHeroSource(): {
 export function getFeaturedStorySlugs(): string[] {
   return ["malaga-spain", "barcelona-spain", "lisbon-portugal", "valencia-spain"];
 }
+
+
+
+
+
+
+
+

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
+import { sendClientEvent } from "@/lib/mvp/client-events";
 import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import type { DestinationProfile } from "@/lib/mvp/types";
 import type { DestinationMedia } from "@/lib/mvp/visuals";
@@ -23,6 +24,14 @@ export function DestinationGuideCard({
   const pathname = usePathname();
   const { locale: contextLocale } = useLanguage();
   const locale = localeOverride ?? localeFromPathname(pathname) ?? contextLocale;
+  const source =
+    pathname?.startsWith("/kierunki")
+      ? "destinations_index"
+      : pathname?.startsWith("/inspiracje") || pathname?.startsWith("/city-breaki") || pathname?.startsWith("/cieple-kierunki")
+        ? "content_hub"
+        : pathname?.startsWith("/planner")
+          ? "planner"
+          : "homepage";
   const copy =
     locale === "en"
       ? {
@@ -38,21 +47,34 @@ export function DestinationGuideCard({
           planner: "Open in planner",
         }
       : {
-          openGuide: "Otworz przewodnik",
+          openGuide: "Otwórz przewodnik",
           flight: "lot ok.",
           style: "styl",
-          budget: "budzet",
-          beach: "plaza",
+          budget: "budżet",
+          beach: "plażą",
           city: "miasto",
           value: "bardziej oplacalny",
-          mid: "sredni+",
+          mid: "średni+",
           showDestination: "Zobacz kierunek",
-          planner: "Sprawdz w plannerze",
+          planner: "Sprawdź w plannerze",
         };
 
   return (
     <article className="group overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white shadow-[0_16px_40px_rgba(16,84,48,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(16,84,48,0.14)]">
-      <LocalizedLink href={`/kierunki/${destination.slug}`} locale={locale} className="relative block h-56">
+      <LocalizedLink
+        href={`/kierunki/${destination.slug}`}
+        locale={locale}
+        onClick={() =>
+          sendClientEvent("destination_card_clicked", {
+            slug: destination.slug,
+            city: destination.city,
+            action: "guide",
+            source,
+            locale,
+          })
+        }
+        className="relative block h-56"
+      >
         <Image
           src={media.heroImage}
           alt={`${destination.city}, ${destination.country}`}
@@ -87,6 +109,15 @@ export function DestinationGuideCard({
           <LocalizedLink
             href={`/kierunki/${destination.slug}`}
             locale={locale}
+            onClick={() =>
+              sendClientEvent("destination_card_clicked", {
+                slug: destination.slug,
+                city: destination.city,
+                action: "guide",
+                source,
+                locale,
+              })
+            }
             className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
             {copy.showDestination}
@@ -94,6 +125,15 @@ export function DestinationGuideCard({
           <LocalizedLink
             href={`/planner?mode=standard&q=${encodeURIComponent(destination.city)}`}
             locale={locale}
+            onClick={() =>
+              sendClientEvent("destination_card_clicked", {
+                slug: destination.slug,
+                city: destination.city,
+                action: "planner",
+                source,
+                locale,
+              })
+            }
             className="rounded-full border border-emerald-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
           >
             {copy.planner}
@@ -103,3 +143,4 @@ export function DestinationGuideCard({
     </article>
   );
 }
+

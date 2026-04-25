@@ -30,15 +30,15 @@ function Spinner() {
 const copy = {
   pl: {
     requestError: "Nie udalo sie pobrac lokalnych miejsc.",
-    openPlace: "Otworz miejsce",
+    openPlace: "Otwórz miejsce",
     eyebrow: "Miejsca na miejscu",
     title: "Co warto zobaczyc w",
-    body: "Najwazniejsze punkty widokowe, muzea, plaze, parki i miejsca na jedzenie zebrane w jednym widoku.",
+    body: "Najważniejsze punkty widokowe, muzea, plażę, parki i miejsca na jedzenie zebrane w jednym widoku.",
     loading: "Pobieramy miejsca",
     places: "miejsc",
     ready: "Gotowe",
     refresh: "Odswiez propozycje",
-    empty: "Po wyborze kierunku pokazemy tutaj miejsca warte odwiedzenia i szybkie przejscia do lokalnych atrakcji.",
+    empty: "Po wyborze kierunku pokazujemy tutaj miejsca warte odwiedzenia i szybkie przejścia do lokalnych atrakcji.",
   },
   en: {
     requestError: "Could not load local places.",
@@ -204,3 +204,4 @@ export function DestinationAttractionsPanel(props: { city: string; country: stri
     </section>
   );
 }
+

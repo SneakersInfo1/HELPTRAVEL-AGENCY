@@ -1,124 +1,86 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "O nas",
-  description: "Poznaj HelpTravel - travelowy serwis i planner, ktory pomaga szybciej wybrac kierunek, pobyt i kolejne kroki wyjazdu.",
+  title: "O serwisie",
+  description: "Czym jest HelpTravel, dla kogo powstał i czego nie udaje.",
   alternates: {
     canonical: "/o-nas",
   },
+  openGraph: {
+    title: "O serwisie | HelpTravel",
+    description: "Poznaj HelpTravel: prosty planner krótkich wyjazdów dla osób z Polski.",
+    url: "/o-nas",
+  },
 };
 
-const pillars = [
+const facts = [
   {
-    title: "Warstwa tresciowa",
-    body: "Serwis publikuje destination huby, przewodniki i scenariusze wyjazdow dla polskiego odbiorcy. Tresci maja pomagac w realnej decyzji, a nie tylko wspierac SEO.",
+    title: "Dla kogo jest HelpTravel",
+    body: "Głównie dla osób z Polski, które planują krótkie lub średnie wyjazdy: city break, ciepły wypad, weekend we dwoje albo prosty urlop 3-7 dni.",
   },
   {
-    title: "Warstwa produktowa",
-    body: "Planer ma pomagac przejsc od potrzeby do konkretnego kierunku. W efekcie projekt nie jest tylko blogiem ani tylko narzedziem, ale hybryda obu tych swiatow.",
+    title: "Co robimy",
+    body: "Pomagamy wybrać kierunek, ustawić podstawy wyjazdu i przejść do noclegów, lotów oraz kolejnych kroków bez skakania po wielu zakładkach.",
   },
   {
-    title: "Warstwa marki",
-    body: "Projekt rozwijamy jako rozpoznawalny travel brand: z wlasnym contentem, przejrzystym modelem partnerskim i doswiadczeniem, ktore prowadzi uzytkownika do sensownego kolejnego kroku.",
+    title: "Czego nie udajemy",
+    body: "Nie jesteśmy biurem podróży, nie wystawiamy fikcyjnych opinii i nie udajemy, że finalna rezerwacja odbywa się u nas.",
   },
 ];
 
 export default function AboutPage() {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">O marce</p>
-        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">HelpTravel</h1>
-        <p className="mt-4 text-base leading-8 text-emerald-900/78">
-          HelpTravel laczy dwie warstwy: praktyczny planer wyjazdow i publiczny serwis travelowy z tresciami o
-          kierunkach, scenariuszach wyjazdow i city breakach. Celem projektu jest pomagac w szybszym wyborze kierunku i
-          prowadzeniu do sensownych, partnerskich ofert rezerwacyjnych.
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">O serwisie</p>
+        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">HelpTravel ma pomagać szybciej wybrać wyjazd i nie komplikować go od pierwszej minuty.</h1>
+        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
+          Łączymy planner, katalog kierunków i praktyczne treści po to, żeby nowy użytkownik mógł szybko zrozumieć, dokąd warto lecieć, na ile dni i od czego zacząć dalsze planowanie.
         </p>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="text-2xl font-bold text-emerald-950">Jak dziala serwis</h2>
-          <p className="mt-3 text-sm leading-7 text-emerald-900/78">
-            Na stronie znajdziesz katalog kierunkow, praktyczne inspiracje, podstrony z opisami wyjazdow oraz planer,
-            ktory pomaga przejsc od ogolnej potrzeby do konkretnego scenariusza. To ma byc szybki, czytelny i wiarygodny
-            flow od pierwszej inspiracji do wynikow partnera.
-          </p>
-          <p className="mt-3 text-sm leading-7 text-emerald-900/78">
-            Chcemy, zeby serwis byl jednoczesnie uzyteczny dla czytelnika i wiarygodny dla partnerow. Dlatego warstwa
-            tresciowa i planer pracuja razem, a nie osobno.
-          </p>
-        </article>
-
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="text-2xl font-bold text-emerald-950">Jak zarabia projekt</h2>
-          <p className="mt-3 text-sm leading-7 text-emerald-900/78">
-            Serwis moze korzystac z linkow partnerskich i przekierowan do zewnetrznych partnerow. Oznacza to, ze po
-            kliknieciu w oferte uzytkownik moze przejsc do zewnetrznego serwisu rezerwacyjnego. Szczegoly sa opisane na
-            stronie o linkach partnerskich.
-          </p>
-          <Link href="/linki-partnerskie" className="mt-4 inline-flex text-sm font-semibold text-emerald-800 hover:text-emerald-700">
-            Zobacz informacje o linkach partnerskich
-          </Link>
-        </article>
-      </section>
-
-      <section className="grid gap-5 lg:grid-cols-3">
-        {pillars.map((pillar) => (
+      <section className="grid gap-4 lg:grid-cols-3">
+        {facts.map((item) => (
           <article
-            key={pillar.title}
-            className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
+            key={item.title}
+            className="rounded-[1.8rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-5 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{pillar.title}</p>
-            <p className="mt-3 text-sm leading-7 text-emerald-900/78">{pillar.body}</p>
+            <h2 className="text-2xl font-bold text-emerald-950">{item.title}</h2>
+            <p className="mt-3 text-sm leading-7 text-emerald-900/78">{item.body}</p>
           </article>
         ))}
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="text-2xl font-bold text-emerald-950">Co ma budowac wiarygodnosc tej strony</h2>
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Jawny model</p>
-            <p className="mt-2 text-sm leading-7 text-emerald-900/78">
-              Strona otwarcie komunikuje wspolprace z partnerami zewnetrznymi i prowadzi do jasnego kolejnego kroku rezerwacyjnego.
-            </p>
+      <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+          <h2 className="text-2xl font-bold text-emerald-950">Jak wygląda typowa ścieżka</h2>
+          <ol className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
+            <li className="rounded-2xl bg-emerald-50/75 px-4 py-3">1. Wybierasz kierunek albo prosisz o pomysł na wyjazd.</li>
+            <li className="rounded-2xl bg-emerald-50/75 px-4 py-3">2. Ustawiasz termin, wylot i liczbę osób.</li>
+            <li className="rounded-2xl bg-emerald-50/75 px-4 py-3">3. Przechodzisz do noclegów, lotów i kolejnych kroków.</li>
+          </ol>
+        </article>
+
+        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+          <h2 className="text-2xl font-bold text-emerald-950">Uczciwy model serwisu</h2>
+          <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
+            <p>Korzystanie z HelpTravel jest darmowe.</p>
+            <p>Gdy przechodzisz do oferty, finalna rezerwacja może odbywać się u partnera.</p>
+            <p>Ceny i warunki zawsze warto sprawdzić w ostatnim kroku po stronie partnera.</p>
           </div>
-          <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Prawdziwy content</p>
-            <p className="mt-2 text-sm leading-7 text-emerald-900/78">
-              Kierunki, przewodniki, FAQ i strony kategorii sa publiczne, indeksowalne i przydatne same w sobie.
-            </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/linki-partnerskie" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+              Jak działają linki partnerskie
+            </Link>
+            <Link href="/faq" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
+              FAQ
+            </Link>
           </div>
-          <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Bez fikcji</p>
-            <p className="mt-2 text-sm leading-7 text-emerald-900/78">
-              Nie ma tu fikcyjnych liczb, nagrod, partnerstw ani sztucznej warstwy social proof.
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/faq"
-            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
-          >
-            FAQ
-          </Link>
-          <Link
-            href="/cennik"
-            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
-          >
-            Cennik
-          </Link>
-          <Link
-            href="/oferta"
-            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
-          >
-            Oferta
-          </Link>
-        </div>
+        </article>
       </section>
     </main>
   );
 }
+
+

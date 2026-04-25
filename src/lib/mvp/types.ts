@@ -174,9 +174,16 @@ export interface EventPayload {
     | "affiliate_clicked"
     | "trip_saved"
     | "planner_restored"
+    | "saved_plan_clicked"
     | "destination_saved"
     | "comparison_selected"
-    | "search_saved";
+    | "search_saved"
+    | "hero_cta_clicked"
+    | "planner_mode_selected"
+    | "planner_submitted"
+    | "destination_card_clicked"
+    | "content_card_clicked"
+    | "contact_submit";
   payload: Record<string, unknown>;
 }
 

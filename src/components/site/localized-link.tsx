@@ -1,15 +1,13 @@
 "use client";
 
-import Link, { type LinkProps } from "next/link";
-import type { ReactNode } from "react";
+import Link from "next/link";
+import type { ComponentProps } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { localizeHref, type SiteLocale } from "@/lib/mvp/locale";
 
-type LocalizedLinkProps = Omit<LinkProps, "href"> & {
+type LocalizedLinkProps = Omit<ComponentProps<typeof Link>, "href"> & {
   href: string;
-  className?: string;
-  children: ReactNode;
   locale?: SiteLocale;
 };
 

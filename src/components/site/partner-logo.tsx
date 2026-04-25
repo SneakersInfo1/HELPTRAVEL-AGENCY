@@ -15,6 +15,14 @@ type BrandMeta = {
 };
 
 const BRAND_META: Record<AffiliateBrandId, BrandMeta> = {
+  aviasales: {
+    id: "aviasales",
+    label: "Aviasales",
+    short: "A",
+    chipClassName: "bg-[#0d6efd] text-white",
+    textClassName: "text-[#0d6efd]",
+    ringClassName: "ring-[#0d6efd]/18",
+  },
   booking: {
     id: "booking",
     label: "Booking.com",
@@ -71,6 +79,22 @@ const BRAND_META: Record<AffiliateBrandId, BrandMeta> = {
     textClassName: "text-[#ff5b00]",
     ringClassName: "ring-[#ff5b00]/18",
   },
+  kiwi: {
+    id: "kiwi",
+    label: "Kiwi.com",
+    short: "K",
+    chipClassName: "bg-[#24d000] text-slate-950",
+    textClassName: "text-[#1a7d15]",
+    ringClassName: "ring-[#24d000]/18",
+  },
+  kiwitaxi: {
+    id: "kiwitaxi",
+    label: "Kiwitaxi",
+    short: "K",
+    chipClassName: "bg-[#ffb000] text-slate-950",
+    textClassName: "text-[#9b6a00]",
+    ringClassName: "ring-[#ffb000]/18",
+  },
   localrent: {
     id: "localrent",
     label: "Localrent",
@@ -78,6 +102,14 @@ const BRAND_META: Record<AffiliateBrandId, BrandMeta> = {
     chipClassName: "bg-[#11a46f] text-white",
     textClassName: "text-[#0d6e4b]",
     ringClassName: "ring-[#11a46f]/18",
+  },
+  lot: {
+    id: "lot",
+    label: "LOT Global",
+    short: "L",
+    chipClassName: "bg-[#153a8a] text-white",
+    textClassName: "text-[#153a8a]",
+    ringClassName: "ring-[#153a8a]/18",
   },
   tiqets: {
     id: "tiqets",
@@ -94,6 +126,14 @@ const BRAND_META: Record<AffiliateBrandId, BrandMeta> = {
     chipClassName: "bg-[#1b3df0] text-white",
     textClassName: "text-[#1b3df0]",
     ringClassName: "ring-[#1b3df0]/18",
+  },
+  yesim: {
+    id: "yesim",
+    label: "Yesim",
+    short: "Y",
+    chipClassName: "bg-[#10b981] text-white",
+    textClassName: "text-[#0f766e]",
+    ringClassName: "ring-[#10b981]/18",
   },
   vrbo: {
     id: "vrbo",
@@ -194,11 +234,16 @@ export function PartnerLogoWordmark(props: {
 }
 
 export const TRUSTED_PARTNERS = [
+  "Aviasales",
   "Hotels.com",
   "Expedia",
   "Vrbo",
   "CheapOair",
   "Klook",
   "Tiqets",
+  "Kiwi.com",
+  "Kiwitaxi",
   "Localrent",
+  "LOT Global",
+  "Yesim",
 ] as const;

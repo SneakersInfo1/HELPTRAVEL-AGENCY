@@ -3,13 +3,14 @@ import { z } from "zod";
 
 import { runStandard } from "@/lib/mvp/service";
 import { attachSessionCookie, resolveSessionId, SESSION_COOKIE_NAME } from "@/lib/mvp/session";
+import { MAX_TRIP_DAYS, MIN_TRIP_DAYS } from "@/lib/mvp/trip-limits";
 
 const StandardBodySchema = z.object({
   originCity: z.string().min(2).max(100),
   destinationHint: z.string().min(2).max(120),
   travelers: z.number().min(1).max(8).default(2),
   budgetMaxPln: z.number().min(600).max(20000),
-  durationDays: z.number().min(2).max(14),
+  durationDays: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS),
   departureMonth: z.number().min(1).max(12).optional(),
   style: z.string().max(120).optional(),
 });
@@ -30,4 +31,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
-

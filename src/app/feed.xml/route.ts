@@ -1,4 +1,4 @@
-import { getEditorialArticles } from "@/lib/mvp/publisher-content";
+﻿import { getEditorialArticles } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 function escapeXml(value: string) {
@@ -32,7 +32,7 @@ export async function GET() {
 <channel>
   <title>HelpTravel - Inspiracje</title>
   <link>${escapeXml(siteUrl)}</link>
-  <description>Praktyczne inspiracje i przewodniki podroznicze dla polskiego odbiorcy.</description>
+  <description>Praktyczne inspiracje i przewodniki podróżnicze dla polskiego odbiorcy.</description>
   <language>pl-PL</language>
   <lastBuildDate>${now}</lastBuildDate>
 ${items}
@@ -46,3 +46,4 @@ ${items}
     },
   });
 }
+

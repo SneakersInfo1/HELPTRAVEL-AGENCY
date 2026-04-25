@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { saveTrip } from "@/lib/mvp/service";
 import { attachSessionCookie, resolveSessionId, SESSION_COOKIE_NAME } from "@/lib/mvp/session";
+import { MAX_TRIP_DAYS, MIN_TRIP_DAYS } from "@/lib/mvp/trip-limits";
 
 const SaveBodySchema = z.object({
   itineraryResultId: z.string().min(8).max(120),
@@ -15,11 +16,11 @@ const SaveBodySchema = z.object({
       budget: z.number().min(600).max(20000),
       travelers: z.number().min(1).max(8),
       rooms: z.number().min(1).max(8),
-      durationMin: z.number().min(2).max(14),
-      durationMax: z.number().min(2).max(14),
+      durationMin: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS),
+      durationMax: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS),
       travelStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       travelEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-      travelNights: z.number().min(1).max(21),
+      travelNights: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS),
       selectedDestinationSlug: z.string().max(160).optional(),
       selectedDestinationLabel: z.string().max(160).optional(),
     })

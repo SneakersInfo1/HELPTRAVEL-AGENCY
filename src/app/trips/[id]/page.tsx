@@ -8,17 +8,19 @@ import { DestinationAttractionsPanel } from "@/components/mvp/destination-attrac
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
 import { TransferOffersPanel } from "@/components/mvp/transfer-offers-panel";
+import { PartnerPlacementSection } from "@/components/site/partner-placement-section";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { getDestinationMedia } from "@/lib/mvp/commercial-assets";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
+import { buildPartnerPlacementCards } from "@/lib/mvp/partner-placements";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { defaultTravelStartDate, formatShortDate, normalizeTravelEndDate } from "@/lib/mvp/travel-dates";
 import { getTrip } from "@/lib/mvp/service";
 
 export const metadata: Metadata = {
-  title: "Plan podrozy",
+  title: "Plan podróży",
   robots: {
     index: false,
     follow: false,
@@ -114,6 +116,25 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const stayPartner = getAffiliateBrandLabel(contextualAffiliateLinks.stays, "Partner hotelowy");
   const attractionPartner = getAffiliateBrandLabel(contextualAffiliateLinks.attractions, "Partner atrakcji");
   const carPartner = getAffiliateBrandLabel(contextualAffiliateLinks.cars, "Partner aut");
+  const partnerPlacementCards = buildPartnerPlacementCards({
+    city: trip.city,
+    country: trip.country,
+    originCity: tripOriginCity,
+    departureDate: tripStartDate,
+    checkInDate: tripStartDate,
+    checkOutDate: tripCheckOutDate,
+    passengers: tripTravelers,
+    rooms: tripRooms,
+    locale: "pl",
+  }).map((card, index) =>
+    index === 0
+      ? { ...card, href: stayLink }
+      : index === 1
+        ? { ...card, href: flightLink }
+        : index === 2
+          ? { ...card, href: attractionLink }
+          : { ...card, href: carLink },
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -145,7 +166,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
             </p>
           </div>
           <div className="rounded-2xl bg-emerald-50/75 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Sklad podrozy</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Sklad podróży</p>
             <p className="mt-1 text-sm font-semibold text-emerald-950">
               {tripOriginCity} / {tripTravelers} os. / {tripRooms} {tripRooms === 1 ? "pokoj" : tripRooms < 5 ? "pokoje" : "pokoi"}
             </p>
@@ -202,9 +223,17 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
         adults={tripTravelers}
       />
 
+      <PartnerPlacementSection
+        eyebrow="Partnerzy dla tego planu"
+        title="Masz już wybrany kierunek, więc pokazujemy właściwy zestaw partnerów."
+        body="W tym planie najpierw otwierasz noclegi albo loty, a dopiero potem dodatki na miejscu. Każda karta pokazuje marki, które najlepiej pasują do danego kroku."
+        cards={partnerPlacementCards}
+        footerNote="To tylko skrót do odpowiednich partnerów dla tego planu. Finalna rezerwacja nadal odbywa się po stronie partnera, z tym samym kontekstem podróży."
+      />
+
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] animate-fade-in-up">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Jak zapadl wybor</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Jak zapadl wybór</p>
           <h2 className="mt-2 text-2xl font-bold text-emerald-950">Ten zapisany plan trzyma realny kontekst decyzji.</h2>
           <p className="mt-3 text-sm leading-7 text-emerald-900/78">
             {snapshot?.mode === "discovery"
@@ -219,7 +248,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
               {tripOriginCity} / {tripTravelers} os. / {tripRooms} {tripRooms === 1 ? "pokoj" : tripRooms < 5 ? "pokoje" : "pokoi"}
             </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950">
-              Budzet do ok. {trip.estimatedBudgetMax} PLN
+              Budżet do ok. {trip.estimatedBudgetMax} PLN
             </span>
           </div>
           <div className="mt-5 space-y-3">
@@ -231,7 +260,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
               ))
             ) : (
               <div className="rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm leading-6 text-emerald-900/82">
-                To miasto wygralo glownie przez ogolne dopasowanie do terminu, budzetu i logistyki wyjazdu.
+                To miasto wygralo głównie przez ogolne dopasowanie do terminu, budżetu i logistyki wyjazdu.
               </div>
             )}
           </div>
@@ -239,10 +268,10 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Co dalej</p>
-          <h2 className="mt-2 text-2xl font-bold text-emerald-950">Mozesz wrocic do decyzji albo od razu przejsc dalej do rezerwacji.</h2>
+          <h2 className="mt-2 text-2xl font-bold text-emerald-950">Możesz wróćic do decyzji albo od razu przejść dalej do rezerwacji.</h2>
           <p className="mt-3 text-sm leading-7 text-emerald-900/78">
-            Ranking nie jest przypadkowy. HelpTravel laczy klimat, budzet, latwosc dojazdu i sens dlugosci wyjazdu,
-            a dopiero potem prowadzi do partnerow z zachowaniem tego samego kontekstu podrozy.
+            Ranking nie jest przypadkowy. HelpTravel łączy klimat, budżet, łatwość dojazdu i sens długości wyjazdu,
+            a dopiero potem prowadzi do partnerów z zachowaniem tego samego kontekstu podróży.
           </p>
           <div className="mt-4 rounded-2xl bg-white px-4 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Na co uwazac</p>
@@ -250,7 +279,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
               {trip.tradeoffs.length > 0 ? (
                 trip.tradeoffs.map((tradeoff) => <p key={tradeoff}>{tradeoff}</p>)
               ) : (
-                <p>Najwieksze ryzyko na tym etapie to juz nie wybor kierunku, tylko ustawienie dobrego terminu i partnera pod ten sam plan.</p>
+                <p>Najwieksze ryzyko na tym etapie to już nie wybór kierunku, tylko ustawienie dobrego terminu i partnera pod ten sam plan.</p>
               )}
             </div>
           </div>
@@ -259,7 +288,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
               Edytuj ten plan
             </Link>
             <Link href={destinationGuideHref} className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50">
-              Otworz przewodnik kierunku
+              Otwórz przewodnik kierunku
             </Link>
           </div>
         </article>
@@ -309,7 +338,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
       </section>
 
       <section className="animate-fade-in-up rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-        <h2 className="text-xl font-bold text-emerald-950">Przejdz do partnerow</h2>
+        <h2 className="text-xl font-bold text-emerald-950">Przejdź do partnerów</h2>
         <div className="mt-4 flex flex-wrap gap-2">
           <a href={flightLink} target="_blank" rel="noreferrer" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800">
             Loty w {flightPartner}
@@ -324,10 +353,11 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
             Auta w {carPartner}
           </a>
           <Link href={plannerHref} className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-            Wroc do planera
+            Wróć do planera
           </Link>
         </div>
       </section>
     </main>
   );
 }
+

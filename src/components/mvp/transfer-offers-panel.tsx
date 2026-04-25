@@ -40,21 +40,21 @@ function Spinner() {
 
 const copy = {
   pl: {
-    requestError: "Nie udalo sie pobrac transferow.",
+    requestError: "Nie udalo sie pobrac transferów.",
     eyebrow: "Transfer po przylocie",
     title: "Dojazd z lotniska bez zgadywania",
-    body: "Ten sam termin podrozy, ten sam kierunek i szybkie porownanie dojazdu do miasta. Wybierasz godzine i od razu widzisz najbardziej praktyczne opcje.",
+    body: "Ten sam termin podróży, ten sam kierunek i szybkie porównańie dojazdu do miasta. Wybierasz godzine i od razu widzisz najbardziej praktyczne opcje.",
     loading: "Odswiezamy transfery",
     options: "opcji",
     ready: "Gotowe do wyszukania",
     date: "Data",
     arrivalTime: "Godzina przylotu",
-    adults: "Dorozli",
+    adults: "Dorośli",
     children: "Dzieci / niemowleta",
     option: "Opcja",
     price: "Cena",
     open: "Zobacz transfer",
-    empty: "Nie znalezlismy jeszcze transferow dla tej konfiguracji. Zmien godzine przylotu albo sprawdz ponownie za chwile.",
+    empty: "Nie znaleźliśmy jeszcze transferów dla tej konfiguracji. Zmień godzinę przylotu albo sprawdź ponownie za chwilę.",
   },
   en: {
     requestError: "Could not load transfers.",
@@ -269,3 +269,4 @@ export function TransferOffersPanel(props: {
     </section>
   );
 }
+

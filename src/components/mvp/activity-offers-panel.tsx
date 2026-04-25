@@ -43,18 +43,18 @@ const copy = {
     requestError: "Nie udalo sie pobrac atrakcji.",
     eyebrow: "Atrakcje",
     title: "Co robic na miejscu",
-    body: "Pokazujemy wybrane atrakcje dla tego samego terminu wyjazdu, zeby caly plan byl spojny od startu do konca.",
+    body: "Pokazujemy wybrane atrakcje dla tego samego terminu wyjazdu, żeby caly plan byl spójny od startu do konca.",
     loading: "Szukamy atrakcji",
     offers: "ofert",
     ready: "Gotowe",
     dates: "Zakres dat",
-    travelers: "Podrozni",
+    travelers: "Podróżni",
     travelersShort: "os.",
     city: "Miasto",
     position: "Pozycja",
     price: "Cena",
     open: "Zobacz atrakcje",
-    empty: "Na ten termin nie znalezlismy jeszcze atrakcji do pokazania. Zmien daty albo wroc za chwile.",
+    empty: "Na ten termin nie znaleźliśmy jeszcze atrakcji do pokazania. Zmień daty albo wróć za chwilę.",
   },
   en: {
     requestError: "Could not load activities.",
@@ -249,3 +249,5 @@ export function ActivityOffersPanel(props: {
     </section>
   );
 }
+
+

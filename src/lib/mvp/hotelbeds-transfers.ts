@@ -119,7 +119,7 @@ export async function searchHotelbedsTransfers(input: HotelbedsTransferSearchInp
   const airportCode = resolveAirportCode(input.city);
   const center = await resolveCityCoordinates(input.city, input.country);
   if (!airportCode || !center) {
-    throw new Error("Nie udalo sie ustalic lotniska lub lokalizacji dla transferow.");
+    throw new Error("Nie udalo sie ustalic lotniska lub lokalizacji dla transferów.");
   }
 
   const toCode = `${center.lat.toFixed(6)},${center.lon.toFixed(6)}`;
