@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 
 import "./globals.css";
@@ -25,24 +25,32 @@ const uiFont = Manrope({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "HelpTravel",
+    default: "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zl",
     template: "%s | HelpTravel",
   },
   alternates: {
     canonical: siteUrl,
+    languages: {
+      "pl-PL": siteUrl,
+      "en-US": `${siteUrl}/en`,
+    },
     types: {
       "application/rss+xml": `${siteUrl}/feed.xml`,
     },
   },
   description:
-    "HelpTravel pomaga szybko wybrać kierunek, ustawić termin i przejść do noclegów, lotów oraz dalszych kroków wyjazdu.",
+    "Zaplanuj wyjazd w 3 minuty: lot + hotel + gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe — placisz tylko za rezerwacje u partnerow.",
   keywords: [
-    "planer podróży",
-    "kierunki",
+    "tani lot i hotel",
+    "planer podrozy",
+    "porownywarka lotow",
     "city break",
-    "loty i hotele",
-    "krótkie wyjazdy z Polski",
-    "planowanie wyjazdu",
+    "krotkie wyjazdy z Polski",
+    "wakacje last minute",
+    "loty z Krakowa",
+    "loty z Warszawy",
+    "tanie wakacje",
+    "travel planner",
   ],
   applicationName: "HelpTravel",
   category: "travel",
@@ -51,26 +59,27 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: "HelpTravel",
+    title: "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty",
     description:
-      "Wybierz kierunek, ustaw termin i przejdź dalej do noclegów, lotów i kolejnych kroków wyjazdu.",
+      "Zaplanuj caly wyjazd w 3 minuty: lot, hotel i plan dnia w jednym kliku. 22 lotniska PL + EU. Bez rejestracji. 100% darmowe.",
     url: siteUrl,
     siteName: "HelpTravel",
     locale: "pl_PL",
+    alternateLocale: ["en_US"],
     type: "website",
     images: [
       {
         url: "/branding/helptravel-logo.png",
         width: 900,
         height: 560,
-        alt: "HelpTravel",
+        alt: "HelpTravel - planer podrozy z lotem i hotelem",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "HelpTravel",
-    description: "Wybierz kierunek albo opisz wyjazd, a potem przejdź do noclegów, lotów i kolejnych kroków.",
+    title: "HelpTravel - Loty + hotel i plan w 3 minuty",
+    description: "Zaplanuj wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 0 zl.",
     images: ["/branding/helptravel-logo.png"],
   },
   icons: {
@@ -86,24 +95,61 @@ const structuredData = {
   "@graph": [
     {
       "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
       name: "HelpTravel",
+      alternateName: "HelpTravel.pl",
       url: siteUrl,
-      inLanguage: "pl-PL",
+      inLanguage: ["pl-PL", "en-US"],
       description:
-        "Planer podróży, katalog kierunków i pomysły na krótkie wyjazdy z Polski.",
+        "Planer podrozy, ktory laczy lot, hotel i gotowy plan dnia w jednym kliku. 22 lotniska PL+EU. Bez rejestracji.",
+      publisher: { "@id": `${siteUrl}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
-        target: `${siteUrl}/planner?mode=standard&q={search_term_string}`,
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${siteUrl}/planner?mode=standard&q={search_term_string}`,
+        },
         "query-input": "required name=search_term_string",
       },
     },
     {
       "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
       name: "HelpTravel",
+      legalName: "HelpTravel",
       url: siteUrl,
-      logo: `${siteUrl}/branding/helptravel-mark.png`,
+      logo: {
+        "@type": "ImageObject",
+        url: `${siteUrl}/branding/helptravel-mark.png`,
+        width: 512,
+        height: 512,
+      },
+      slogan: "Lot + hotel i plan wyjazdu w 3 minuty",
       description:
-        "Niezależny serwis travelowy pomagający wybrać kierunek i przejść do partnera rezerwacyjnego.",
+        "Niezalezny polski serwis travelowy: planer wyjazdow z lotem, hotelem i planem dnia w jednym kliku, oparty o sprawdzonych partnerow rezerwacyjnych.",
+      areaServed: [
+        { "@type": "Country", name: "Poland" },
+        { "@type": "Place", name: "Europe" },
+      ],
+      knowsLanguage: ["pl", "en"],
+      sameAs: [
+        "https://helptravel.pl",
+      ],
+    },
+    {
+      "@type": "Service",
+      "@id": `${siteUrl}/#service`,
+      serviceType: "Trip planning and booking comparison",
+      name: "Planer wyjazdow HelpTravel",
+      provider: { "@id": `${siteUrl}/#organization` },
+      areaServed: { "@type": "Place", name: "Europe" },
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "PLN",
+        description: "Korzystanie z plannera jest darmowe. Platnosc nastepuje wylacznie u partnera rezerwacyjnego.",
+      },
+      audience: { "@type": "Audience", audienceType: "Polish travelers and Polish diaspora in Europe" },
     },
   ],
 };
@@ -128,4 +174,3 @@ export default function RootLayout({
     </html>
   );
 }
-
