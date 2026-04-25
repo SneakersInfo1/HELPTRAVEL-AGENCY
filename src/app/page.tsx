@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { HomePageSections } from "@/components/home/home-page-sections";
-import { getDestinationStory } from "@/lib/mvp/destination-content";
-import {
-  getLatestEditorialArticles,
-  getPublishedDestinations,
-} from "@/lib/mvp/publisher-content";
+import { getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -16,33 +12,31 @@ const siteUrl = getSiteUrl();
 
 export function getHomeMetadata(locale: SiteLocale): Metadata {
   const isEnglish = locale === "en";
-  const canonicalPath = "/";
 
   return {
     title: isEnglish
-      ? "HelpTravel - short trip planner for people who want a clear start"
-      : "HelpTravel - planer krótkich wyjazdów bez chaosu",
+      ? "HelpTravel - Flight + hotel and full trip plan in 3 minutes | Free"
+      : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zl",
     description: isEnglish
-      ? "Pick a destination or describe the trip you want. Then move into stays, flights and the next travel steps."
-      : "Wybierz kierunek albo opisz, jakiego wyjazdu szukasz. Potem przejdź do noclegów, lotów i dalszych kroków.",
+      ? "Plan a full trip in 3 minutes: flight, hotel and a real day-by-day plan. 22 airports across Poland and Europe. No signup. Free to use - you only pay partners when you book."
+      : "Zaplanuj wyjazd w 3 minuty: lot, hotel i gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe - placisz tylko za rezerwacje u partnerow.",
     alternates: {
-      canonical: canonicalPath,
+      canonical: locale === "en" ? "/en" : "/",
+      languages: {
+        "pl-PL": "/",
+        "en-US": "/en",
+      },
     },
-    robots: isEnglish
-      ? {
-          index: false,
-          follow: true,
-        }
-      : undefined,
     openGraph: {
       title: isEnglish
-        ? "HelpTravel - short trip planner with a clear start"
-        : "HelpTravel - planer krótkich wyjazdów z prostym startem",
+        ? "HelpTravel - Flight + hotel and full trip plan in 3 minutes"
+        : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty",
       description: isEnglish
-        ? "Choose a destination or describe the trip you want, then move into stays and flights."
-        : "Wybierz kierunek albo opisz wyjazd, a potem przejdź do noclegów i lotów.",
+        ? "Plan a full trip in 3 minutes: flight, hotel and a real day-by-day plan. 22 airports PL+EU. No signup. 100% free."
+        : "Zaplanuj caly wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 100% darmowe.",
       url: locale === "en" ? `${siteUrl}/en` : siteUrl,
       locale: locale === "en" ? "en_US" : "pl_PL",
+      alternateLocale: locale === "en" ? ["pl_PL"] : ["en_US"],
       type: "website",
     },
   };
@@ -63,7 +57,6 @@ const heroDestinationSlugs = [
 
 export async function HomePageView({ locale }: { locale: SiteLocale }) {
   const publishedDestinations = getPublishedDestinations();
-  const latestArticles = getLatestEditorialArticles(4);
 
   const selectedHeroDestinations = heroDestinationSlugs
     .map((slug) => publishedDestinations.find((destination) => destination.slug === slug))
@@ -72,7 +65,6 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
   const resolvedHeroDestinations = await Promise.all(
     selectedHeroDestinations.map(async (destination) => ({
       destination,
-      story: getDestinationStory(destination),
       media: await resolveDestinationMedia(destination),
     })),
   );
@@ -82,31 +74,14 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
     heroImage: item.media.heroImage,
   }));
 
-  const featuredDirections = resolvedHeroDestinations.slice(0, 6);
-  const featuredDirectionCards = featuredDirections.map((item) => ({
-    slug: item.destination.slug,
-    city: item.destination.city,
-    country: item.destination.country,
-    heroImage: item.media.heroImage,
-    vibe: item.story.vibe,
-    tagline: item.story.tagline,
-    bestFor: item.story.bestFor,
-  }));
-  const destinationOptions = publishedDestinations.map((destination) => ({
-    city: destination.city,
-    country: destination.country,
-  }));
+  const destinationOptions = publishedDestinations.map((d) => ({ city: d.city, country: d.country }));
 
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-8">
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} destinationOptions={destinationOptions} />
       </div>
-      <HomePageSections
-        featuredDirections={featuredDirectionCards}
-        latestArticles={latestArticles}
-        locale={locale}
-      />
+      <HomePageSections locale={locale} />
     </main>
   );
 }
@@ -114,4 +89,3 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
 export default async function Home() {
   return HomePageView({ locale: "pl" });
 }
-
