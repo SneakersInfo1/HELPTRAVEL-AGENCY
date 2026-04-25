@@ -175,7 +175,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <div className="flex min-w-0 items-center gap-3">
             <LocalizedLink href="/" className="flex items-center">
               <Image
-                src="/branding/helptravel-logo.png"
+                src="/branding/helptravel-logo.svg"
                 alt="HelpTravel"
                 width={320}
                 height={240}
@@ -274,7 +274,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr]">
           <div>
             <Image
-              src="/branding/helptravel-logo.png"
+              src="/branding/helptravel-logo.svg"
               alt="HelpTravel"
               width={220}
               height={136}

@@ -57,6 +57,11 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Logo serwisu jest SVG (helptravel-logo.svg / helptravel-mark.svg) -
+    // wymagane, by next/image mogl je serwowac. CSP blokuje skrypty wewnatrz SVG.
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "attachment",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: "https",
