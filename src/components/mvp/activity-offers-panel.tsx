@@ -3,40 +3,15 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
+import { Spinner } from "@/components/ui/spinner";
 import { useLanguage } from "@/components/site/language-provider";
 import { PartnerLogoMark } from "@/components/site/partner-logo";
+import { postJson } from "@/lib/fetch-json";
+import { formatMoney } from "@/lib/format";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import { formatShortDate } from "@/lib/mvp/travel-dates";
 import type { ActivitySearchResponse } from "@/lib/mvp/types";
-
-function postJson<T>(url: string, body: unknown): Promise<T> {
-  return fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  }).then(async (response) => {
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? `Request failed (${response.status}).`);
-    }
-    return (await response.json()) as T;
-  });
-}
-
-function formatMoney(value: number, currency: string, locale: "pl" | "en"): string {
-  return new Intl.NumberFormat(locale === "en" ? "en-GB" : "pl-PL", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function Spinner() {
-  return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
-}
 
 const copy = {
   pl: {

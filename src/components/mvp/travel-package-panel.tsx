@@ -3,32 +3,11 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
+import { Spinner } from "@/components/ui/spinner";
+import { postJson } from "@/lib/fetch-json";
+import { formatMoney } from "@/lib/format";
 import { buildRedirectHref } from "@/lib/mvp/providers";
 import type { FlightSearchResponse, NormalizedFlightOffer, NormalizedStayOffer, StaySearchResponse, TravelPackageOffer } from "@/lib/mvp/types";
-
-function postJson<T>(url: string, body: unknown): Promise<T> {
-  return fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  }).then(async (response) => {
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? `Zapytanie nie powiodlo sie (${response.status}).`);
-    }
-    return (await response.json()) as T;
-  });
-}
-
-function formatMoney(value: number, currency: string): string {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 function defaultDepartureDate(): string {
   const date = new Date();
@@ -47,10 +26,6 @@ function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "short" }).format(date);
-}
-
-function Spinner() {
-  return <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />;
 }
 
 function combinePackages(flights: NormalizedFlightOffer[], stays: NormalizedStayOffer[]): TravelPackageOffer[] {

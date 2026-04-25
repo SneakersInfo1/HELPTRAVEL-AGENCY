@@ -8,6 +8,7 @@ import { startTransition, useEffect, useEffectEvent, useId, useMemo, useRef, use
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { PartnerLogoMark } from "@/components/site/partner-logo";
+import { postJson } from "@/lib/fetch-json";
 
 const PanelSkeleton = () => (
   <div className="glass-panel rounded-[2rem] border border-emerald-900/10 p-6">
@@ -139,6 +140,7 @@ const plannerCopy = {
     compareAgain: "Porównaj ponownie",
     saveTrip: "Zapisz plan",
     savingTrip: "Zapisywanie...",
+    bookNow: "Zarezerwuj",
     saveTripDone: "Plan zapisany",
     saveDestination: "Zapisz kierunek",
     savedDestination: "Kierunek zapisany",
@@ -277,6 +279,7 @@ const plannerCopy = {
     compareAgain: "Compare again",
     saveTrip: "Save plan",
     savingTrip: "Saving...",
+    bookNow: "Book now",
     saveTripDone: "Plan saved",
     saveDestination: "Save destination",
     savedDestination: "Destination saved",
@@ -379,18 +382,6 @@ const scoreLabel = (score: number, locale: "pl" | "en") =>
       : score >= 70
         ? "Good match"
         : "Worth checking";
-
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}).`);
-  }
-  return (await response.json()) as T;
-}
 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -1870,55 +1861,6 @@ export function PlannerClient({
             })}
           </section>
 
-          <section className="sticky top-20 z-20 -mx-1 lg:hidden">
-            <div className="rounded-[1.5rem] border border-emerald-900/12 bg-white/94 p-4 shadow-[0_18px_40px_rgba(16,84,48,0.12)] backdrop-blur">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold text-emerald-950">
-                  {selectedOption.destination.city}, {selectedOption.destination.country}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (mobileSettingsOpen) {
-                      setMobileSettingsOpen(false);
-                    } else {
-                      openMobileSettings();
-                    }
-                  }}
-                  className="rounded-full border border-emerald-900/12 bg-white px-3 py-2 text-xs font-bold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {mobileSettingsOpen ? text.closeTripEditor : text.editTrip}
-                </button>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <a
-                  href="#planner-stays"
-                  className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
-                >
-                  {text.jumpToStays}
-                </a>
-                <a
-                  href="#planner-flights"
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToFlights}
-                </a>
-                <a
-                  href="#planner-guide"
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToGuide}
-                </a>
-                <a
-                  href="#planner-on-site"
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToOnSite}
-                </a>
-              </div>
-            </div>
-          </section>
-
           <section
             ref={settingsPanelRef}
             id="planner-settings"
@@ -1996,7 +1938,7 @@ export function PlannerClient({
           </section>
 
           <div className="grid gap-5">
-            <div id="planner-stays" ref={stayOffersRef} className="scroll-mt-36">
+            <div id="planner-stays" ref={stayOffersRef}>
               <StayOffersPanel
                 destinationCity={selectedOption.destination.city}
                 destinationCountry={selectedOption.destination.country}
@@ -2006,7 +1948,7 @@ export function PlannerClient({
                 rooms={rooms}
               />
             </div>
-            <div id="planner-flights" className="scroll-mt-36">
+            <div id="planner-flights">
               <FlightOffersPanel
                 destinationCity={selectedOption.destination.city}
                 destinationCountry={selectedOption.destination.country}
@@ -2017,11 +1959,11 @@ export function PlannerClient({
                 partnerUrl={activeAffiliateLinks.flights}
               />
             </div>
-            <div id="planner-guide" className="scroll-mt-36">
+            <div id="planner-guide">
               <DestinationAttractionsPanel city={selectedOption.destination.city} country={selectedOption.destination.country} />
             </div>
             <div id="aktywnosci-na-miejscu" className="grid gap-5 xl:grid-cols-2">
-              <div id="planner-on-site" className="scroll-mt-36">
+              <div id="planner-on-site">
                 <ActivityOffersPanel
                   destinationCity={selectedOption.destination.city}
                   destinationCountry={selectedOption.destination.country}
@@ -2030,7 +1972,7 @@ export function PlannerClient({
                   travelers={travelers}
                 />
               </div>
-              <div id="planner-transfers" className="scroll-mt-36">
+              <div id="planner-transfers">
                 <TransferOffersPanel
                   destinationCity={selectedOption.destination.city}
                   destinationCountry={selectedOption.destination.country}
@@ -2156,54 +2098,29 @@ export function PlannerClient({
         </section>
       ) : null}
 
-      {selectedOption && bookingDeck.length >= 2 ? (
+      {selectedOption && bookingDeck.length >= 1 ? (
         <div className="fixed inset-x-4 bottom-4 z-40 lg:hidden">
-          <div className="rounded-[1.7rem] border border-emerald-900/12 bg-emerald-950/96 p-4 text-white shadow-[0_24px_60px_rgba(7,31,18,0.3)] backdrop-blur">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  {selectedOption.destination.city}, {selectedOption.destination.country}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-white/72">
-                  {formatShortDate(travelStartDate, dateLocale)} - {formatShortDate(checkOutDate, dateLocale)} / {originCity}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleSaveTrip()}
-                disabled={savingTrip}
-                className="rounded-full bg-white px-3 py-2 text-xs font-bold text-emerald-950 transition hover:bg-emerald-50 disabled:opacity-70"
-              >
-                {savingTrip ? text.savingTrip : text.saveTrip}
-              </button>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <a
-                href={bookingDeck[0].href}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-400 px-4 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
-              >
-                <PartnerLogoMark brand={bookingDeck[0].brand} size="sm" variant="neutral" />
-                {text.showStay}
-              </a>
-              <a
-                href={bookingDeck[1].href}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/14"
-              >
-                <PartnerLogoMark brand={bookingDeck[1].brand} size="sm" variant="contrast" />
-                {text.showFlights}
-              </a>
-              <button
-                type="button"
-                onClick={openMobileSettings}
-                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/14"
-              >
-                {text.editTrip}
-              </button>
-            </div>
+          <div className="flex items-center gap-2 rounded-full border border-emerald-900/12 bg-emerald-950/96 p-2 text-white shadow-[0_24px_60px_rgba(7,31,18,0.3)] backdrop-blur">
+            <a
+              href={bookingDeck[0].href}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:brightness-105"
+            >
+              <PartnerLogoMark brand={bookingDeck[0].brand} size="sm" variant="neutral" />
+              {text.bookNow}
+            </a>
+            <button
+              type="button"
+              onClick={openMobileSettings}
+              aria-label={text.editTrip}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/14 bg-white/10 text-white transition hover:bg-white/16"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+              </svg>
+            </button>
           </div>
         </div>
       ) : null}
