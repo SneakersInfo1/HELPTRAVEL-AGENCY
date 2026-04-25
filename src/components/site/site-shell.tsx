@@ -170,18 +170,21 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {text.skipToContent}
       </a>
 
-      <header className="sticky top-0 z-30 mt-2 overflow-hidden rounded-[1.45rem] border border-emerald-900/10 bg-white/92 px-3 py-1.5 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-4">
+      <header className="sticky top-0 z-30 mt-2 overflow-hidden rounded-[1.2rem] border border-emerald-900/10 bg-white/92 px-3 py-1 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <LocalizedLink href="/" className="flex items-center">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <LocalizedLink href="/" className="flex items-center gap-2">
               <Image
-                src="/branding/helptravel-logo.png"
-                alt="HelpTravel"
-                width={320}
-                height={240}
-                className="h-auto w-[82px] sm:w-[96px]"
+                src="/branding/helptravel-mark.png"
+                alt=""
+                width={96}
+                height={96}
+                className="h-9 w-9 sm:h-10 sm:w-10"
                 priority
               />
+              <span aria-label="HelpTravel" className="hidden text-base font-extrabold tracking-tight sm:inline-flex">
+                <span className="text-blue-700">HELP</span><span className="text-emerald-600">TRAVEL</span>
+              </span>
             </LocalizedLink>
           </div>
 
