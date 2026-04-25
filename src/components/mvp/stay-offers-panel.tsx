@@ -15,8 +15,8 @@ import { buildRedirectHref } from "@/lib/mvp/providers";
 import { countNightsBetweenIsoDates, formatShortDate } from "@/lib/mvp/travel-dates";
 import type { NormalizedStayOffer, StaySearchResponse, StaySortMode } from "@/lib/mvp/types";
 
-const INITIAL_VISIBLE_OFFERS = 24;
-const VISIBLE_OFFERS_STEP = 24;
+const INITIAL_VISIBLE_OFFERS = 6;
+const VISIBLE_OFFERS_STEP = 12;
 const MAX_VISIBLE_OFFERS = 500;
 
 function getDiscountPercent(totalAmount: number, publicAmount?: number | null) {
