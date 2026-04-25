@@ -203,7 +203,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
             label: "Malaga, Spain",
             title: "Malaga",
             description: "Słońce, miasto i prosty start do planera.",
-            image: "/branding/helptravel-logo.png",
+            image: "/branding/helptravel-logo.svg",
             href: "/planner?mode=standard&q=Malaga",
             tags: ["słońce", "city break", "plażą"],
             meta: "łatwy start",
