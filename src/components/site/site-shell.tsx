@@ -162,7 +162,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {text.skipToContent}
       </a>
 
-      <header className="sticky top-0 z-30 mt-3 overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white/92 px-4 py-3 shadow-[0_14px_40px_rgba(12,58,34,0.06)] backdrop-blur-xl">
+      <header className="sticky top-0 z-30 mt-2 overflow-hidden rounded-[1.45rem] border border-emerald-900/10 bg-white/92 px-3 py-1.5 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <LocalizedLink href="/" className="flex items-center">
@@ -171,13 +171,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 alt="HelpTravel"
                 width={320}
                 height={240}
-                className="h-auto w-[118px] sm:w-[148px]"
+                className="h-auto w-[82px] sm:w-[96px]"
                 priority
               />
             </LocalizedLink>
-          <p className="hidden max-w-xs text-xs font-medium leading-5 text-emerald-900/62 min-[920px]:block">
-              {text.headerNote}
-            </p>
           </div>
 
           <nav aria-label="Główne menu" className="hidden items-center gap-2 lg:flex">
@@ -209,7 +206,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((value) => !value)}
-            className="inline-flex min-h-11 items-center rounded-full border border-emerald-900/10 bg-white px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-50 lg:hidden"
+            className="inline-flex min-h-10 items-center rounded-full border border-emerald-900/10 bg-white px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-50 lg:hidden"
             aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuOpen ? text.menuClose : text.menuOpen}
           >
