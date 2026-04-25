@@ -8,6 +8,7 @@ import { startTransition, useEffect, useEffectEvent, useId, useMemo, useRef, use
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { PartnerLogoMark } from "@/components/site/partner-logo";
+import { postJson } from "@/lib/fetch-json";
 
 const PanelSkeleton = () => (
   <div className="glass-panel rounded-[2rem] border border-emerald-900/10 p-6">
@@ -379,18 +380,6 @@ const scoreLabel = (score: number, locale: "pl" | "en") =>
       : score >= 70
         ? "Good match"
         : "Worth checking";
-
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}).`);
-  }
-  return (await response.json()) as T;
-}
 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
