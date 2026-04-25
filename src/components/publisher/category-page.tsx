@@ -3,7 +3,6 @@ import Script from "next/script";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
-import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import {
   getArticlesForCategory,
@@ -93,11 +92,13 @@ export async function CategoryPage({ slug }: { slug: string }) {
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{category.eyebrow}</p>
         <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] text-emerald-950">{category.title}</h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{category.description}</p>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-900/72">{category.hero}</p>
+        <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-900/72">
+          To szybki skrot do najlepszych materialow i kierunków dla jednego scenariusza wyjazdu. Nie musisz przeklikiwac calego serwisu, żeby zacząć.
+        </p>
         <div className="mt-5 flex flex-wrap gap-3 text-sm text-emerald-900/70">
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5">{articles.length} artykulow w tej kategorii</span>
+          <span className="rounded-full bg-emerald-50 px-3 py-1.5">{articles.length} artykułów w tej kategorii</span>
           <span className="rounded-full bg-emerald-50 px-3 py-1.5">
-            {destinations.filter(Boolean).length} powiazanych kierunkow
+            {destinations.filter(Boolean).length} powiazanych kierunków
           </span>
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
@@ -105,22 +106,16 @@ export async function CategoryPage({ slug }: { slug: string }) {
             href="/planner?mode=discovery"
             className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Uruchom planner dla tego scenariusza
+            Pokaż kierunki dla tego scenariusza
           </Link>
           <Link
             href="/inspiracje"
-            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+            className="inline-flex items-center text-sm font-semibold text-emerald-900 transition hover:text-emerald-700"
           >
-            Zobacz wszystkie inspiracje
+            Wszystkie pomysły na wyjazd
           </Link>
         </div>
       </section>
-
-      <EditorialMetaBar
-        eyebrow="Kolekcja redakcyjna"
-        title="Tematyczny hub laczacy artykuly, kierunki i przejscie do planera"
-        items={[`${articles.length} artykulow`, `${destinations.filter(Boolean).length} kierunkow`, "aktualizowany hub tematyczny"]}
-      />
 
       <section className="grid gap-4 lg:grid-cols-2">
         {articles.map((article) => (
@@ -131,8 +126,8 @@ export async function CategoryPage({ slug }: { slug: string }) {
       <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiazane kierunki</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Miejsca, ktore najmocniej pasuja do tej kategorii.</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane kierunki</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Kierunki, od których najłatwiej zacząć.</h2>
           </div>
           <Link href="/kierunki" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
             Zobacz wszystkie kierunki
@@ -156,8 +151,8 @@ export async function CategoryPage({ slug }: { slug: string }) {
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Dalsze odkrywanie</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Powiazane huby, ktore pomagaja przejsc dalej po serwisie</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane tematy</p>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Jeśli to jest dobry trop, sprawdź tez te strony.</h2>
           </div>
           <Link href="/mapa-serwisu" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
             Pelna mapa serwisu
@@ -178,4 +173,5 @@ export async function CategoryPage({ slug }: { slug: string }) {
     </main>
   );
 }
+
 

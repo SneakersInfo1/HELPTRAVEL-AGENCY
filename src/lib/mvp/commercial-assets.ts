@@ -45,7 +45,7 @@ const mediaBySlug: Record<string, DestinationMedia> = {
       image("https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b"),
     ],
     poster: image("https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d"),
-    credit: "Walencja, plaża i nowoczesna architektura",
+    credit: "Walencja, plażą i nowoczesna architektura",
   },
   "rome-italy": {
     heroImage: image("https://images.unsplash.com/photo-1552832230-c0197dd311b5"),

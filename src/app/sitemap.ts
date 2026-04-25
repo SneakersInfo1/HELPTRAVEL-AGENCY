@@ -1,8 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { comparisonPairs } from "@/lib/mvp/comparisons";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
-import { polishMonthSlugs, seasonSlugs } from "@/lib/mvp/months";
 import { getEditorialArticles, getEditorialCategories } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 
@@ -11,11 +9,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseLastModified = new Date("2026-03-29T00:00:00.000Z");
   const staticRoutes = [
     "",
-    "/en",
     "/planner",
-    "/en/planner",
     "/kierunki",
-    "/en/kierunki",
     "/inspiracje",
     "/przewodniki",
     "/oferta",
@@ -28,7 +23,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/weekendowe-wyjazdy",
     "/mapa-serwisu",
     "/jak-pracujemy",
-    "/dla-partnerow",
     "/standard-redakcyjny",
     "/o-nas",
     "/kontakt",
@@ -39,34 +33,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   const categoryRoutes = getEditorialCategories().map((category) => `/${category.slug}`);
-  const destinations = getAllDestinationProfiles();
-  const destinationRoutes = destinations.map((destination) => `/kierunki/${destination.slug}`);
-  const englishDestinationRoutes = destinations.map((destination) => `/en/kierunki/${destination.slug}`);
-  const monthlyDestinationRoutes = destinations.flatMap((destination) =>
-    polishMonthSlugs.map((month) => `/kierunki/${destination.slug}/${month}`),
-  );
-  const seasonRankingRoutes = seasonSlugs.map((season) => `/najlepsze-kierunki/${season}`);
-  const comparisonRoutes = comparisonPairs.map((pair) => `/porownanie/${pair.slug}`);
+  const destinationRoutes = getAllDestinationProfiles().map((destination) => `/kierunki/${destination.slug}`);
   const articleRoutes = getEditorialArticles().map((article) => `/inspiracje/${article.slug}`);
 
-  return [...new Set([...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...englishDestinationRoutes, ...monthlyDestinationRoutes, ...seasonRankingRoutes, ...comparisonRoutes, ...articleRoutes])].map((route) => ({
+  return [...new Set([...staticRoutes, ...categoryRoutes, ...destinationRoutes, ...articleRoutes])].map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified: baseLastModified,
     changeFrequency:
-      route === "" || route === "/en"
+      route === ""
         ? "daily"
-        : route === "/kierunki" || route === "/en/kierunki" || route === "/inspiracje" || categoryRoutes.includes(route)
+        : route === "/kierunki" || route === "/inspiracje" || categoryRoutes.includes(route)
           ? "daily"
-          : route.startsWith("/kierunki/") || route.startsWith("/en/kierunki/") || route.startsWith("/inspiracje/")
+          : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/")
           ? "weekly"
           : "monthly",
     priority:
-      route === "" || route === "/en"
+      route === ""
         ? 1
-        : route === "/kierunki" || route === "/en/kierunki" || route === "/inspiracje" || categoryRoutes.includes(route)
+        : route === "/kierunki" || route === "/inspiracje" || categoryRoutes.includes(route)
           ? 0.9
-          : route.startsWith("/kierunki/") || route.startsWith("/en/kierunki/") || route.startsWith("/inspiracje/")
+          : route.startsWith("/kierunki/") || route.startsWith("/inspiracje/")
           ? 0.8
           : 0.65,
   }));
 }
+

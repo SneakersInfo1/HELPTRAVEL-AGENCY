@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 };
 
 const rules = [
-  "Serwis ma charakter informacyjny, wydawniczy i pomocniczy. Nie jest samodzielnym biurem podrozy ani pelnym systemem rezerwacyjnym.",
-  "Wyniki planera, przewodniki i artykuly maja pomagac w podjeciu decyzji, ale finalne warunki oferty zawsze nalezy sprawdzic u partnera, do ktorego prowadzi link zewnetrzny.",
-  "Korzystanie z serwisu oznacza akceptacje zasad zgodnego i legalnego korzystania z publikowanych tresci, interfejsu i narzedzi.",
-  "Wlasciciel serwisu moze aktualizowac tresci, strukture strony i zakres dostepnych partnerow, gdy jest to potrzebne dla rozwoju projektu lub poprawnosci informacji.",
+  "Serwis ma charakter informacyjny, wydawniczy i pomocniczy. Nie jest samodzielnym biurem podróży ani pełnym systemem rezerwacyjnym.",
+  "Wyniki planera, przewodniki i artykuły mają pomagac w podjeciu decyzji, ale finalne warunki oferty zawsze nalezy sprawdzić u partnera, do którego prowadzi link zewnętrzny.",
+  "Korzystanie z serwisu oznacza akceptacje zasad zgodnego i legalnego korzystania z publikowanych treści, interfejsu i narzedzi.",
+  "Właściciel serwisu może aktualizowac treści, strukture strony i zakres dostępnych partnerów, gdy jest to potrzebne dla rozwoju projektu lub poprawnosci informacji.",
 ];
 
 export default function TermsPage() {
@@ -23,12 +23,12 @@ export default function TermsPage() {
         <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Regulamin</h1>
         <p className="mt-4 text-base leading-8 text-emerald-900/78">
           Ten dokument opisuje podstawowe zasady korzystania z serwisu publicznego HelpTravel. Jasno wyjasnia, czym jest
-          projekt, czego moze oczekiwac uzytkownik i jak interpretowac tresci oraz wyniki prezentowane na stronie.
+          projekt, czego może oczekiwac użytkownik i jak interpretowac treści oraz wyniki prezentowane na stronie.
         </p>
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="text-2xl font-bold text-emerald-950">Najwazniejsze zasady</h2>
+        <h2 className="text-2xl font-bold text-emerald-950">Najważniejsze zasady</h2>
         <div className="mt-4 space-y-3">
           {rules.map((rule) => (
             <div key={rule} className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm leading-7 text-emerald-900/78">
@@ -42,21 +42,23 @@ export default function TermsPage() {
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <h2 className="text-2xl font-bold text-emerald-950">Odpowiedzialnosc za oferty i ceny</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
-            <p>Serwis moze prezentowac wyniki i linki do partnerow zewnetrznych, ale nie gwarantuje niezmiennosci ceny, dostepnosci ani warunkow oferty.</p>
-            <p>Ostateczna cena, regulamin i proces rezerwacji zawsze naleza do partnera, do ktorego prowadzi klikniecie.</p>
-            <p>Wyniki i przejscia sa prezentowane zgodnie z aktualna dostepnoscia partnerow oraz biegiem wyszukiwania.</p>
+            <p>Serwis może prezentowac wyniki i linki do partnerów zewnętrznych, ale nie gwarantuje niezmiennosci ceny, dostępnośći ani warunkow oferty.</p>
+            <p>Ostateczna cena, regulamin i proces rezerwacji zawsze naleza do partnera, do którego prowadzi klikniecie.</p>
+            <p>Wyniki i przejścia sa prezentowane zgodnie z aktualna dostępnośćia partnerów oraz biegiem wyszukiwania.</p>
           </div>
         </article>
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="text-2xl font-bold text-emerald-950">Tresci i prawa do korzystania</h2>
+          <h2 className="text-2xl font-bold text-emerald-950">Treści i prawa do korzystania</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
-            <p>Tresci, opisy, uklady stron i materialy opublikowane w serwisie maja sluzyc do korzystania z projektu i nie powinny byc kopiowane bez zgody wlasciciela.</p>
-            <p>Dopuszczalne jest zwykle cytowanie i linkowanie do podstron zgodnie z normalnym obiegiem internetowym, ale nie masowe kopiowanie tresci czy ofert.</p>
-            <p>Dokument moze byc aktualizowany wraz z rozwojem serwisu, zakresem funkcji i wspolpracy z partnerami.</p>
+            <p>Treści, opisy, uklady stron i materialy opublikowane w serwisie mają sluzyc do korzystania z projektu i nie powinny byc kopiowane bez zgody właściciela.</p>
+            <p>Dopuszczalne jest zwykle cytowanie i linkowanie do podstron zgodnie z normalnym obiegiem internetowym, ale nie masowe kopiowanie treści czy ofert.</p>
+            <p>Dokument może byc aktualizowany wraz z rozwojem serwisu, zakresem funkcji i współpracy z partnerami.</p>
           </div>
         </article>
       </section>
     </main>
   );
 }
+
+

@@ -1,4 +1,4 @@
-const countryCodes: Record<string, string> = {
+﻿const countryCodes: Record<string, string> = {
   spain: "ES",
   portugal: "PT",
   italy: "IT",
@@ -24,7 +24,7 @@ const airportCodesByKey: Record<string, string> = {
   warszawa: "WAW",
   krakow: "KRK",
   gdansk: "GDN",
-  wroclaw: "WRO",
+  wróćlaw: "WRO",
   poznan: "POZ",
   katowice: "KTW",
   rzeszow: "RZE",
@@ -95,3 +95,4 @@ export function resolveAirportCode(value?: string): string | undefined {
   const match = Object.entries(airportCodesByKey).find(([key]) => normalized.includes(key));
   return match?.[1];
 }
+

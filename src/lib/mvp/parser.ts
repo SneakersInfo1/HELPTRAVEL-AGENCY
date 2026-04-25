@@ -1,15 +1,16 @@
 import type { DiscoveryPreferences, DiscoveryRequestInput } from "./types";
 import { allDestinationProfiles } from "./destinations";
+import { MAX_TRIP_DAYS, MIN_TRIP_DAYS } from "./trip-limits";
 
 const CITY_HINTS: Array<{ hint: string; label: string }> = [
   { hint: "warszaw", label: "Warszawa" },
-  { hint: "krakow", label: "Krakow" },
-  { hint: "gdansk", label: "Gdansk" },
-  { hint: "wroclaw", label: "Wroclaw" },
-  { hint: "poznan", label: "Poznan" },
+  { hint: "krakow", label: "Kraków" },
+  { hint: "gdansk", label: "Gdańsk" },
+  { hint: "wroclaw", label: "Wrocław" },
+  { hint: "poznan", label: "Poznań" },
   { hint: "katowic", label: "Katowice" },
-  { hint: "lodz", label: "Lodz" },
-  { hint: "rzeszow", label: "Rzeszow" },
+  { hint: "lodz", label: "Łódź" },
+  { hint: "rzeszow", label: "Rzeszów" },
   { hint: "szczecin", label: "Szczecin" },
 ];
 
@@ -46,14 +47,14 @@ function parseDuration(
   const rangeMatch = query.match(/(\d{1,2})\s*[-–—]\s*(\d{1,2})\s*dni/);
   if (rangeMatch) {
     return {
-      durationMinDays: Math.max(2, Number.parseInt(rangeMatch[1], 10)),
-      durationMaxDays: Math.min(14, Number.parseInt(rangeMatch[2], 10)),
+      durationMinDays: Math.max(MIN_TRIP_DAYS, Number.parseInt(rangeMatch[1], 10)),
+      durationMaxDays: Math.min(MAX_TRIP_DAYS, Number.parseInt(rangeMatch[2], 10)),
     };
   }
 
   const singleMatch = query.match(/(\d{1,2})\s*dni/);
   if (singleMatch) {
-    const value = Math.max(2, Number.parseInt(singleMatch[1], 10));
+    const value = Math.max(MIN_TRIP_DAYS, Math.min(MAX_TRIP_DAYS, Number.parseInt(singleMatch[1], 10)));
     return {
       durationMinDays: value,
       durationMaxDays: value,
@@ -66,8 +67,8 @@ function parseDuration(
 
   if (typeof fallbackMin === "number" && typeof fallbackMax === "number") {
     return {
-      durationMinDays: Math.max(2, fallbackMin),
-      durationMaxDays: Math.min(14, fallbackMax),
+      durationMinDays: Math.max(MIN_TRIP_DAYS, fallbackMin),
+      durationMaxDays: Math.min(MAX_TRIP_DAYS, fallbackMax),
     };
   }
 
@@ -117,7 +118,7 @@ function parseTemperaturePreference(query: string): DiscoveryPreferences["temper
     return "hot";
   }
 
-  if (query.includes("ciepl") || query.includes("slonce") || query.includes("plaza") || query.includes("warm")) {
+  if (query.includes("ciepl") || query.includes("slonc") || query.includes("plaz") || query.includes("warm")) {
     return "warm";
   }
 
@@ -200,7 +201,7 @@ function parseStyle(query: string): DiscoveryPreferences["styleWeights"] {
   };
 
   const bumps: Array<{ condition: boolean; key: keyof typeof style; value: number }> = [
-    { condition: query.includes("plaza") || query.includes("beach"), key: "beach", value: 0.95 },
+    { condition: query.includes("plaz") || query.includes("beach"), key: "beach", value: 0.95 },
     { condition: query.includes("miasto") || query.includes("city break"), key: "city", value: 0.9 },
     { condition: query.includes("zwiedz") || query.includes("sightseeing"), key: "sightseeing", value: 0.95 },
     { condition: query.includes("zabyt"), key: "sightseeing", value: 0.9 },
@@ -237,7 +238,7 @@ function parseTags(query: string): Pick<DiscoveryPreferences, "mustTags" | "nice
   if (query.includes("bez przesiadek")) {
     mustTags.push("direct_flight");
   }
-  if (query.includes("plaza") || query.includes("beach")) {
+  if (query.includes("plaz") || query.includes("beach")) {
     niceTags.push("beach");
   }
   if (query.includes("miasto") || query.includes("city break")) {
@@ -264,10 +265,7 @@ function parseTags(query: string): Pick<DiscoveryPreferences, "mustTags" | "nice
   if (query.includes("jedzenie") || query.includes("food")) {
     niceTags.push("foodie");
   }
-  if (
-    (query.includes("zwiedz") && query.includes("plaza")) ||
-    (query.includes("sightseeing") && query.includes("beach"))
-  ) {
+  if ((query.includes("zwiedz") && query.includes("plaz")) || (query.includes("sightseeing") && query.includes("beach"))) {
     niceTags.push("beach_and_sightseeing");
   }
 
@@ -309,7 +307,7 @@ export function parseDiscoveryInput(input: DiscoveryRequestInput): DiscoveryPref
     wantsShortFlight: parseShortFlightPreference(normalizedQuery),
     wantsWeatherReliability: parseWeatherReliability(normalizedQuery),
     wantsBeachSightseeingMix:
-      (normalizedQuery.includes("plaza") && normalizedQuery.includes("zwiedz")) ||
+      (normalizedQuery.includes("plaz") && normalizedQuery.includes("zwiedz")) ||
       (normalizedQuery.includes("beach") && normalizedQuery.includes("sightseeing")),
     maxTransfers: parseMaxTransfers(normalizedQuery),
     mustTags: tags.mustTags,

@@ -3,8 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Standard redakcyjny",
-  description:
-    "Publiczny standard redakcyjny HelpTravel: jak budowane sa przewodniki, artykuly, destination huby i tresci praktyczne.",
+  description: "Jak przygotowujemy opisy kierunków, artykuły i treści praktyczne w HelpTravel.",
   alternates: {
     canonical: "/standard-redakcyjny",
   },
@@ -14,26 +13,26 @@ const standards = [
   {
     title: "Kazda strona musi miec realny powod istnienia",
     body:
-      "Nie budujemy pustych landingow tylko po to, by zwiekszyc liczbe URL-i. Kazda strona ma odpowiadac na konkretna potrzebe: wybor kierunku, porownanie formatu wyjazdu, przewodnik po miescie albo przejscie do planera.",
+      "Nie budujemy pustych landingow tylko po to, by zwiekszyc liczbę URL-i. Kazda strona ma odpowiadac na konkretna potrzebę: wybór kierunku, porównańie formatu wyjazdu, przewodnik po miescie albo przejście do planera.",
   },
   {
-    title: "Tresci maja byc praktyczne i czytelne",
+    title: "Treści mają byc praktyczne i czytelne",
     body:
-      "Kazdy material powinien miec wprowadzenie, sekcje tematyczne, FAQ, sensowne linkowanie wewnetrzne i jasny kolejny krok. Chodzi o uzytecznosc, nie o sztuczne napompowanie tekstu.",
+      "Kazdy material powinien miec krótkie wprowadzenie, sekcje tematyczne, FAQ, sensowne linkowanie wewnetrzne i jasny kolejny krok. Chodzi o uzytecznosc, nie o sztuczne napompowanie tekstu.",
   },
   {
     title: "Nie pokazujemy fikcyjnej wiarygodnosci",
     body:
-      "Nie dodajemy fikcyjnych partnerstw, ruchu, recenzji, nagrod ani liczb. W warstwie publicznej stawiamy na przejrzystosc, praktyczne informacje i otwarty model afiliacyjny.",
+      "Nie dodajemy fikcyjnych partnerstw, ruchu, recenzji, nagrod ani liczb. W publicznej warstwie serwisu stawiamy na przejrzystosc, praktyczne informacje i jawny model afiliacyjny.",
   },
 ];
 
 const editorialChecklist = [
-  "czy strona odpowiada na konkretna potrzebe podroznicza",
-  "czy czytelnik dostaje praktyczne sekcje, a nie sam naglowek i krotki akapit",
-  "czy istnieje logiczne przejscie do powiazanych kierunkow, artykulow albo planera",
-  "czy copy nie udaje autorytetu, ktorego projekt jeszcze nie ma",
-  "czy w warstwie publicznej nie ma fikcyjnych cen ani fikcyjnych partnerstw",
+  "czy strona odpowiada na konkretne pytanie użytkownika",
+  "czy czytelnik dostaje praktyczne sekcje, a nie tylko ogolny opis",
+  "czy jest jasny kolejny krok do planera, kierunku albo powiazanych treści",
+  "czy copy nie udaje autorytetu, którego projekt jeszcze nie ma",
+  "czy w publicznej warstwie nie ma fikcyjnych cen ani fikcyjnych partnerstw",
 ];
 
 export default function EditorialStandardPage() {
@@ -42,12 +41,11 @@ export default function EditorialStandardPage() {
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Standard redakcyjny</p>
         <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">
-          Jak budujemy publiczna warstwe tresci i przewodnikow
+          Jak przygotowujemy przewodniki, artykuły i praktyczne opisy kierunków
         </h1>
         <p className="mt-4 max-w-4xl text-base leading-8 text-emerald-900/78">
-          To publiczna informacja o tym, jak powstaja destination huby, artykuly, kategorie i tresci praktyczne w
-          HelpTravel. Strona ma pokazywac, ze projekt rozwija sie jak prawdziwy travel publisher: z intencja, procesem i
-          odpowiedzialnoscia za jakosc publicznych tresci.
+          To proste wyjasnienie, jak przygotowujemy treści w HelpTravel. Zalezy nam, żeby użytkownik wiedzial, skąd
+          biorą sie opisy kierunków, jak podchodzimy do porównań i dlaczego nie wypełniamy serwisu pustymi stronami.
         </p>
       </section>
 
@@ -76,22 +74,22 @@ export default function EditorialStandardPage() {
         </article>
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiazane strony</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane strony</p>
           <div className="mt-4 grid gap-3 text-sm">
             <Link href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              Jak pracujemy
+              Jak to działa
             </Link>
             <Link href="/o-nas" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              O nas
+              O serwisie
             </Link>
             <Link href="/kierunki" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
               Kierunki
             </Link>
             <Link href="/inspiracje" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              Inspiracje
+              Pomysły na wyjazd
             </Link>
-            <Link href="/dla-partnerow" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              Dla partnerow
+            <Link href="/kontakt" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
+              Kontakt
             </Link>
           </div>
         </article>
@@ -117,3 +115,5 @@ export default function EditorialStandardPage() {
     </main>
   );
 }
+
+

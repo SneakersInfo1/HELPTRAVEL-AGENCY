@@ -45,14 +45,14 @@ export default async function AnalyticsPage() {
           <p className="mt-2 text-3xl font-bold text-emerald-950">{summary.retentionActions}</p>
         </article>
         <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
-          <p className="text-xs uppercase tracking-[0.13em] text-emerald-700">Porownania kierunkow</p>
+          <p className="text-xs uppercase tracking-[0.13em] text-emerald-700">Porównania kierunków</p>
           <p className="mt-2 text-3xl font-bold text-emerald-950">{summary.comparisonEvents}</p>
         </article>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
         <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
-          <h2 className="text-lg font-bold text-emerald-950">Najczestsze zapytania</h2>
+          <h2 className="text-lg font-bold text-emerald-950">Najczęstsze zapytania</h2>
           <ul className="mt-3 space-y-2 text-sm text-emerald-900/85">
             {summary.topQueries.map((item) => (
               <li key={item.key} className="rounded-lg bg-emerald-50/70 px-3 py-2">
@@ -62,7 +62,7 @@ export default async function AnalyticsPage() {
           </ul>
         </article>
         <article className="rounded-2xl border border-emerald-900/10 bg-white p-4">
-          <h2 className="text-lg font-bold text-emerald-950">Najczesciej wybierane kierunki</h2>
+          <h2 className="text-lg font-bold text-emerald-950">Najczęściej wybierane kierunki</h2>
           <ul className="mt-3 space-y-2 text-sm text-emerald-900/85">
             {summary.topDestinations.map((item) => (
               <li key={item.key} className="rounded-lg bg-emerald-50/70 px-3 py-2">
@@ -108,3 +108,5 @@ export default async function AnalyticsPage() {
     </main>
   );
 }
+
+

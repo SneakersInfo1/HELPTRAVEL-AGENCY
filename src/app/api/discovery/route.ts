@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { runDiscovery } from "@/lib/mvp/service";
 import { attachSessionCookie, resolveSessionId, SESSION_COOKIE_NAME } from "@/lib/mvp/session";
-import { enforceRateLimit } from "@/lib/rate-limit";
+import { MAX_TRIP_DAYS, MIN_TRIP_DAYS } from "@/lib/mvp/trip-limits";
 
 const DiscoveryBodySchema = z.object({
   query: z.string().min(4).max(600),
@@ -11,14 +11,11 @@ const DiscoveryBodySchema = z.object({
   departureMonth: z.number().min(1).max(12).optional(),
   travelers: z.number().min(1).max(8).optional(),
   budgetMaxPln: z.number().min(600).max(20000).optional(),
-  durationMinDays: z.number().min(2).max(14).optional(),
-  durationMaxDays: z.number().min(2).max(14).optional(),
+  durationMinDays: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS).optional(),
+  durationMaxDays: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS).optional(),
 });
 
 export async function POST(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "discovery");
-  if (limited) return limited;
-
   try {
     const payload = DiscoveryBodySchema.parse(await request.json());
     const resolved = resolveSessionId(request.cookies.get(SESSION_COOKIE_NAME)?.value);
@@ -34,4 +31,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
-

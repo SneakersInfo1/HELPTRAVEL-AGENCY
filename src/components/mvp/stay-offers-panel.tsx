@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -86,15 +86,15 @@ function buildTopStayReasons(
     reasons.push(
       locale === "en"
         ? `The offer is already aligned with ${offer.city || "the selected destination"} and your current dates.`
-        : `Ta oferta jest juz osadzona w ${offer.city || "wybranym kierunku"} i tym samym terminie.`,
+        : `Ta oferta jest już osadzona w ${offer.city || "wybranym kierunku"} i tym samym terminie.`,
     );
   }
 
   if (reasons.length < 3) {
     reasons.push(
       locale === "en"
-        ? "It keeps the hotel-first flow clean before comparing more partner results."
-        : "Pomaga zaczac od hotel-first flow, zanim przejdziesz do dalszego porownania.",
+        ? "It gives you a strong first reference point before you open the wider partner comparison."
+        : "Daje dobry punkt odniesienia, zanim otwórzysz szersze porównańie u partnerów.",
     );
   }
 
@@ -107,58 +107,58 @@ function Spinner() {
 
 const copy = {
   pl: {
-    requestError: "Nie udalo sie pobrac noclegow.",
+    requestError: "Nie udalo sie pobrac noclegów.",
     hotelEyebrow: "Hotele",
-    compareEyebrow: "Porownaj tez",
+    compareEyebrow: "Porównaj tez",
     apartmentsEyebrow: "Apartamenty",
     sectionEyebrow: "Pobyt",
-    sectionTitle: "Tutaj zaczyna sie booking flow dla",
-    sectionBody: "Najpierw top pobyt, potem porownanie partnerow i reszta ofert dla tego samego terminu.",
-    loadingState: "Szukamy dostepnosci",
+    sectionTitle: "Noclegi dla",
+    sectionBody: "Najpierw pokazujemy najmocniejsze opcje na ten sam termin, a potem pełne wyniki partnerów.",
+    loadingState: "Szukamy dostępnośći",
     offersState: "ofert",
     readyState: "Gotowe",
     dateLabel: "Termin",
     dateRangeLabel: "Zakres dat",
-    guestsLabel: "Podrozni",
+    guestsLabel: "Podróżni",
     guestsShort: "os.",
     roomsLabel: "Pokoje",
     priorityLabel: "Priorytet",
-    priorityValue: "Hotele najpierw",
-    currencyHint: "Ceny i linki ustawione pod PLN",
-    promoBadge: "Hotel-first pick",
-    promoFlash: "Deal alert",
+    priorityValue: "Noclegi na start",
+    currencyHint: "Linki partnerów ustawiamy pod polski rynek i PLN. Finalna walute zawsze potwierdza partner.",
+    promoBadge: "Mocna opcja",
+    promoFlash: "Warto sprawdzić",
     promoDiscountPrefix: "do",
     discountCompared: "Cena spadla wzgledem ceny bazowej",
     savingsLabel: "Oszczedzasz",
-    topValueLabel: "Najmocniejszy klik na start",
+    topValueLabel: "Najlepszy punkt startu",
     sortCheap: "Najtansze",
     sortQuality: "Najlepszy standard",
     sortValue: "Najlepsza relacja ceny do jakosci",
     quickShortlist: "Szybka shortlist",
-    quickShortlistBody: "Trzy najmocniejsze opcje na ten termin, zanim wejdziesz w pelny przeglad.",
-    shortlistOpen: "Otworz",
-    showMore: "Pokaz wiecej",
-    partnersTitle: "Porownanie partnerow",
-    partnerHotelsBody: "Pelne wyniki hoteli dla tego samego terminu i skladu podrozy.",
-    partnerCompareBody: "Drugie zrodlo do szybkiego porownania cen i standardu.",
-    partnerApartmentsBody: "Apartamenty i domy, jesli chcesz sprawdzic bardziej elastyczny pobyt.",
-    topStayBadge: "Top pobyt",
-    featuredOfferEyebrow: "Najmocniejsza oferta na start",
-    whyTopOffer: "Dlaczego ten pobyt warto sprawdzic najpierw",
+    quickShortlistBody: "Trzy opcje, od których najłatwiej zacząć porównańie tego pobytu.",
+    shortlistOpen: "Otwórz",
+    showMore: "Pokaż więcej",
+    partnersTitle: "Sprawdź tez u innych partnerów",
+    partnerHotelsBody: "Pełne wyniki hoteli dla tego samego terminu i składu podróży.",
+    partnerCompareBody: "Drugie źródło do szybkiego porównania cen i standardu.",
+    partnerApartmentsBody: "Apartamenty i domy, jeśli chcesz sprawdzić bardziej elastyczny pobyt.",
+    topStayBadge: "Najmocniejsza opcja",
+    featuredOfferEyebrow: "Od tego warto zacząć",
+    whyTopOffer: "Dlaczego ten pobyt warto sprawdzić najpierw",
     stayPriceLabel: "Cena pobytu",
     ratingLabel: "Ocena",
     noData: "Brak danych",
     ratingStars: "gw.",
     showThisStay: "Zobacz ten pobyt",
-    compareAlso: "Porownaj tez w",
+    compareAlso: "Sprawdź tez w",
     position: "Pozycja",
     stayLabel: "Pobyt",
-    checkStay: "Sprawdz pobyt",
-    compareIn: "Porownaj w",
-    emptyState: "Nie znalezlismy dostepnych noclegow dla tego ukladu dat. Zmien termin albo otworz wyniki partnerow.",
-    feedFallbackTitle: "Wiecej wynikow dla tego pobytu",
+    checkStay: "Sprawdź pobyt",
+    compareIn: "Porównaj w",
+    emptyState: "Nie znaleźliśmy dostępnych noclegów dla tego układu dat. Zmień termin albo otwórz wyniki partnerów.",
+    feedFallbackTitle: "Pelniejsze wyniki dla tego pobytu",
     feedFallbackBody:
-      "Mozesz od razu przejsc do pelnych wynikow hoteli i apartamentow dla tych samych dat, nawet jesli na stronie porownujesz tylko najsilniejsza shortlist.",
+      "Możesz od razu przejść do pełnych wynikow hoteli i apartamentow dla tych samych dat, nawet jeśli tutaj pokazujemy tylko krotsza shortlist.",
   },
   en: {
     requestError: "Could not load stay offers.",
@@ -166,8 +166,8 @@ const copy = {
     compareEyebrow: "Also compare",
     apartmentsEyebrow: "Apartments",
     sectionEyebrow: "Stays",
-    sectionTitle: "This is where the booking flow starts for",
-    sectionBody: "Lead with the strongest stay, then compare partners and browse more options for the same dates.",
+    sectionTitle: "Stays for",
+    sectionBody: "We start with the strongest options for the same dates and then open the wider partner comparison.",
     loadingState: "Checking availability",
     offersState: "offers",
     readyState: "Ready",
@@ -177,42 +177,42 @@ const copy = {
     guestsShort: "trav.",
     roomsLabel: "Rooms",
     priorityLabel: "Priority",
-    priorityValue: "Hotels first",
-    currencyHint: "Prices and partner links tuned for PLN",
-    promoBadge: "Hotel-first pick",
-    promoFlash: "Deal alert",
+    priorityValue: "Stays first",
+    currencyHint: "Partner links are tuned for the Polish market and PLN. The final currency is confirmed by the partner.",
+    promoBadge: "Strong option",
+    promoFlash: "Worth checking",
     promoDiscountPrefix: "up to",
     discountCompared: "Lower than the public price",
     savingsLabel: "You save",
-    topValueLabel: "Strongest opening click",
+    topValueLabel: "Best place to start",
     sortCheap: "Lowest price",
     sortQuality: "Best quality",
     sortValue: "Best value",
     quickShortlist: "Quick shortlist",
-    quickShortlistBody: "Three strongest options for this stay window before you open the full comparison.",
+    quickShortlistBody: "Three options that make it easier to start comparing this stay window.",
     shortlistOpen: "Open",
     showMore: "Show more",
-    partnersTitle: "Compare partners",
+    partnersTitle: "Also check other partners",
     partnerHotelsBody: "Full hotel results for the same dates and traveler setup.",
     partnerCompareBody: "A second source for checking price and standard quickly.",
     partnerApartmentsBody: "Apartments and homes if you want a more flexible stay format.",
-    topStayBadge: "Top stay",
-    featuredOfferEyebrow: "Strongest opening offer",
+    topStayBadge: "Strongest option",
+    featuredOfferEyebrow: "A good first click",
     whyTopOffer: "Why this stay is worth checking first",
     stayPriceLabel: "Stay price",
     ratingLabel: "Rating",
     noData: "No data",
     ratingStars: "stars",
     showThisStay: "Open this stay",
-    compareAlso: "Also compare on",
+    compareAlso: "Also check on",
     position: "Position",
     stayLabel: "Stay",
     checkStay: "Check stay",
     compareIn: "Compare on",
     emptyState: "We could not find available stays for these dates. Change the dates or open partner results.",
-    feedFallbackTitle: "More results for this stay window",
+    feedFallbackTitle: "More complete results for this stay window",
     feedFallbackBody:
-      "You can jump straight into full hotel and apartment results for the same dates, even if this page is showing only the strongest shortlist first.",
+      "You can jump straight into full hotel and apartment results for the same dates, even if this page shows only a shorter shortlist first.",
   },
 } as const;
 
@@ -833,4 +833,6 @@ export function StayOffersPanel(props: {
     </section>
   );
 }
+
+
 

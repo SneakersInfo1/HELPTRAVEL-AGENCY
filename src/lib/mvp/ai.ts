@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 import type { DestinationProfile, DiscoveryPreferences } from "./types";
+import { MAX_TRIP_DAYS, MIN_TRIP_DAYS } from "./trip-limits";
 
 const AiPreferencesSchema = z.object({
   budgetMaxPln: z.number().min(600).max(20000).optional(),
-  durationMinDays: z.number().min(2).max(14).optional(),
-  durationMaxDays: z.number().min(2).max(14).optional(),
+  durationMinDays: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS).optional(),
+  durationMaxDays: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS).optional(),
   travelers: z.number().min(1).max(8).optional(),
   temperaturePreference: z.enum(["any", "warm", "hot"]).optional(),
   visaPreference: z.enum(["any", "visa_free"]).optional(),
@@ -120,7 +121,7 @@ export function fallbackSummary(
   reasons: string[],
   tradeoffs: string[],
 ): string {
-  const coreReasons = reasons.length > 0 ? reasons.join(" ") : "Dobrze laczy koszt, atrakcje i wygodny dojazd.";
+  const coreReasons = reasons.length > 0 ? reasons.join(" ") : "Dobrze łączy koszt, atrakcje i wygodny dojazd.";
   const tradeoffNote = tradeoffs[0] ? ` Uwaga: ${tradeoffs[0]}` : "";
   return `${destination.city} to mocna opcja na city break. ${coreReasons}${tradeoffNote}`;
 }
@@ -135,12 +136,12 @@ export function fallbackPlan(
 
   const templates = [
     {
-      title: "Przylot i pierwszy spacer",
-      description: `Przylot do ${destination.city}, check-in, wieczorny spacer i lokalna kolacja w centrum.`,
+      title: "Przylot i pierwszy spaćer",
+      description: `Przylot do ${destination.city}, check-in, wieczorny spaćer i lokalna kolacja w centrum.`,
     },
     {
       title: "Glowny dzien zwiedzania",
-      description: "Najwazniejsze atrakcje, punkt widokowy i wieczor w dzielnicy z klimatem.",
+      description: "Najważniejsze atrakcje, punkt widokowy i wieczor w dzielnicy z klimatem.",
     },
     {
       title: "Dzien lokalny",
@@ -148,7 +149,7 @@ export function fallbackPlan(
     },
     {
       title: "Wycieczka tematyczna",
-      description: "Opcjonalny wypad poza centrum lub plaza i aktywnosci dopasowane do stylu wyjazdu.",
+      description: "Opcjonalny wypad poza centrum lub plażą i aktywnosci dopasowane do stylu wyjazdu.",
     },
     {
       title: "Final i powrot",
@@ -220,4 +221,3 @@ export async function generateSummaryAndPlan(input: {
     return fallback;
   }
 }
-

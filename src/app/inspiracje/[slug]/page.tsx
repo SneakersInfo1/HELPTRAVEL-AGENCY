@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: InspirationPageProps): Promis
   if (!article) {
     return {
       title: "Inspiracje",
-      description: "Praktyczne tresci o kierunkach i wyjazdach.",
+      description: "Praktyczne treści o kierunkach i wyjazdach.",
     };
   }
 
@@ -121,7 +121,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
               ]}
             />
             <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
-              Artykul praktyczny
+              Artykuł praktyczny
             </p>
             <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] sm:text-6xl">{article.title}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/86">{article.hero}</p>
@@ -130,9 +130,9 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
       </section>
 
       <EditorialMetaBar
-        eyebrow="Artykul redakcyjny"
-        title="Scenariusz wyjazdu przygotowany jako tresc wydawnicza i punkt wejscia do planera"
-        items={[...categoryLabels, `${article.destinationSlugs.length} powiazanych kierunkow`]}
+        eyebrow="Artykuł redakcyjny"
+        title="Scenariusz wyjazdu przygotowany jako treść wydawnicza i punkt wejscia do planera"
+        items={[...categoryLabels, `${article.destinationSlugs.length} powiazanych kierunków`]}
       />
 
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
@@ -195,7 +195,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Polecane kierunki</p>
             <h2 className="mt-2 font-display text-4xl text-emerald-950">
-              Miejsca, ktore najlepiej pasuja do tego tematu.
+              Miejsca, które najlepiej pasuja do tego tematu.
             </h2>
           </div>
           <Link href="/kierunki" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
@@ -231,10 +231,10 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(7,30,18,0.96),rgba(8,40,24,0.92))] p-6 text-white shadow-[0_20px_54px_rgba(8,40,24,0.18)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Nastepny krok</p>
-          <h2 className="mt-3 font-display text-4xl">Przejdz z artykulu do konkretnego wyszukiwania.</h2>
+          <h2 className="mt-3 font-display text-4xl">Przejdź z artykułu do konkretnego wyszukiwania.</h2>
           <p className="mt-4 text-sm leading-7 text-white/82">
-            Artykul daje kontekst i porzadkuje scenariusz, ale finalnie najwazniejsze jest przejscie do realnego planu:
-            wybranych kierunkow, lotow, noclegow i linkow partnerskich.
+            Artykuł daje kontekst i porzadkuje scenariusz, ale finalnie najważniejsze jest przejście do realnego planu:
+            wybranych kierunków, lotów, noclegów i linkow partnerskich.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -247,7 +247,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
               href="/planner?mode=standard"
               className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
             >
-              Mam juz kierunek
+              Mam już kierunek
             </Link>
           </div>
         </article>
@@ -257,7 +257,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
         <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiazane artykuly</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane artykuły</p>
               <h2 className="mt-2 font-display text-4xl text-emerald-950">Czytaj dalej w podobnym temacie.</h2>
             </div>
           </div>
@@ -271,4 +271,5 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
     </main>
   );
 }
+
 

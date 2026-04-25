@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { startTransition, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
@@ -38,6 +38,7 @@ const TransferOffersPanel = dynamic(
 );
 import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
 import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
+import { sendClientEvent } from "@/lib/mvp/client-events";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
   getPlannerSnapshot,
@@ -71,8 +72,8 @@ type Mode = "discovery" | "standard";
 
 const discoveryPresets = {
   pl: [
-    "Cieply kierunek na 5 dni z plaza i zwiedzaniem do 2000 zl.",
-    "Krotki city break z dobrym jedzeniem i lekkim lotem z Polski.",
+    "Ciepły kierunek na 5 dni z plażą i zwiedzaniem do 2000 zł.",
+    "Krótki city break z dobrym jedzeniem i lekkim lotem z Polski.",
     "Romantyczny wyjazd z widokami i spokojnym rytmem.",
   ],
   en: [
@@ -89,25 +90,25 @@ const standardPresets = {
 
 const plannerCopy = {
   pl: {
-    heroEyebrow: "HelpTravel Planner",
-    heroTitle: "Wybierz kierunek i przejdz od razu do konkretow.",
-    heroBody: "Najpierw dopasowanie kierunku, chwile pozniej pobyt, loty i kolejne kroki wyjazdu w jednym miejscu.",
+    heroEyebrow: "Planner",
+    heroTitle: "Zaplanuj wyjazd w kilku prostych krokach.",
+    heroBody: "Wybierz kierunek albo opisz, jakiego wyjazdu szukasz. Potem ustaw termin i przejdź do noclegów, lotów oraz dalszych kroków.",
     modeStandard: "Mam kierunek",
-    modeDiscovery: "Szukam pomyslu",
-    describeTrip: "Opisz wyjazd",
-    discoveryPlaceholder: "Np. cieply kierunek na 5 dni z plaza, zwiedzaniem i budzetem do 2000 zl.",
-    budget: "Budzet",
+    modeDiscovery: "Pomóż mi wybrać",
+    describeTrip: "Powiedz, jakiego wyjazdu szukasz",
+    discoveryPlaceholder: "Np. ciepły kierunek na 5 dni z plażą, zwiedzaniem i budżetem do 2000 zł.",
+    budget: "Budżet",
     minDays: "Minimum dni",
     maxDays: "Maksimum dni",
     direction: "Kierunek",
-    mainPath: "Sciezka glowna",
-    mainPathBody: "Po wskazaniu kierunku pokazujemy najpierw pobyt, a zaraz potem loty i dalsze kroki podrozy.",
-    sharedParams: "Parametry wspolne",
-    sharedTitle: "Termin i sklad podrozy",
-    origin: "Skad lecisz",
-    travelStart: "Start podrozy",
-    nights: "Powrot",
-    travelers: "Podrozni",
+    mainPath: "Co zobaczysz dalej",
+    mainPathBody: "Po wybraniu kierunku pokazujemy najpierw noclegi, a potem loty i rzeczy do ogarnięcia na miejscu.",
+    sharedParams: "Dane wyjazdu",
+    sharedTitle: "Termin i skład",
+    origin: "Skąd lecisz",
+    travelStart: "Data wyjazdu",
+    nights: "Data powrotu",
+    travelers: "Podróżni",
     rooms: "Pokoje",
     quickPreview: "Szybki podglad",
     travelersShort: "os.",
@@ -116,109 +117,109 @@ const plannerCopy = {
     roomMany: "pokoi",
     loadingPlan: "Ukladamy plan...",
     planError: "Nie udalo sie przygotowac planu.",
-    showStayFlights: "Pokaz pobyt i loty",
-    savedPlans: "Zapisane plany",
-    savedPlansBody: "Wrocisz do nich jednym kliknieciem.",
+    showStayFlights: "Pokaż noclegi i loty",
+    savedPlans: "Twoje plany",
+    savedPlansBody: "Zapisane wyjazdy, do których możesz wróćic.",
     savedEmpty: "Po pierwszym wyniku tutaj pojawia sie zapisane scenariusze.",
-    savedSearches: "Zapisane wyszukiwania",
-    savedSearchesBody: "Najmocniejsze briefy i gotowe wyszukiwania wracaja bez ponownego ustawiania formularza.",
+    savedSearches: "Ostatnie wyszukiwania",
+    savedSearchesBody: "Wrócisz do poprzednich ustawień bez wpisywania wszystkiego od nowa.",
     savedSearchesEmpty: "Po pierwszym uruchomieniu planera zapisze sie tutaj najnowszy brief albo gotowe wyszukiwanie.",
-    reopenSearch: "Otworz wyszukiwanie",
-    recentBriefs: "Ostatnie briefy",
-    recentBriefsBody: "Najmocniejsze zapytania discovery mozesz odtworzyc bez pisania od nowa.",
-    continuePlanning: "Kontynuuj planowanie",
-    continuePlanningBody: "Ostatnia konfiguracja planera czeka do ponownego uruchomienia.",
-    restoreSettings: "Przywroc ustawienia",
+    reopenSearch: "Otwórz wyszukiwanie",
+    recentBriefs: "Ostatnie opisy wyjazdu",
+    recentBriefsBody: "Możesz szybko wrzucic znowu jeden z ostatnich opisow.",
+    continuePlanning: "Ostatni plan",
+    continuePlanningBody: "Masz już zapisane ostatnie ustawienia planera.",
+    restoreSettings: "Przywróć ustawienia",
     savedDestinations: "Zapisane kierunki",
-    savedDestinationsBody: "Wlasna shortlista kierunkow do porownania i powrotu.",
-    noSavedDestinations: "Po zapisaniu kierunku pojawi sie tutaj szybki dostep do jego strony i planera.",
-    comparisonMemory: "Pamiec porownan",
-    comparisonMemoryBody: "Planner zapamietuje kierunki, ktore porownywales obok glownego wyboru.",
-    comparisonMemoryEmpty: "Kiedy zaczniesz przelaczac alternatywy, pojawia sie tutaj ostatnio porownywane miasta.",
-    compareAgain: "Porownaj ponownie",
+    savedDestinationsBody: "Własna shortlista kierunków do porównania i powrotu.",
+    noSavedDestinations: "Po zapisaniu kierunku pojawi sie tutaj szybki dostęp do jego strony i planera.",
+    comparisonMemory: "Ostatnio porównywane",
+    comparisonMemoryBody: "Tutaj wracaja kierunki, które porównywałeś obok głównej propozycji.",
+  comparisonMemoryEmpty: "Kiedy zaczniesz przełączać alternatywy, pojawi się tutaj ostatnio porównywane miasta.",
+    compareAgain: "Porównaj ponownie",
     saveTrip: "Zapisz plan",
     savingTrip: "Zapisywanie...",
     saveTripDone: "Plan zapisany",
     saveDestination: "Zapisz kierunek",
     savedDestination: "Kierunek zapisany",
-    interpretedBrief: "Jak system odczytal brief",
-    interpretedBriefBody: "Pokazujemy najwazniejsze sygnaly z briefu, zeby decyzja byla bardziej czytelna i latwiejsza do oceny.",
-    methodologyTitle: "Jak budujemy rekomendacje",
-    methodologyBody: "Ranking laczy klimat, budzet, latwosc dojazdu, sens trip length i dopasowanie do stylu wyjazdu. Nie pokazujemy jednego miasta przypadkiem.",
-    decodedBudget: "Budzet",
+    interpretedBrief: "Jak zrozumielismy ten opis",
+    interpretedBriefBody: "Pokazujemy, co wzięliśmy pod uwage przy wyborze kierunków.",
+    methodologyTitle: "Co bierzemy pod uwage",
+    methodologyBody: "Patrzymy na pogode, budżet, wygodę dolotu i to, czy kierunek pasuje do stylu wyjazdu.",
+    decodedBudget: "Budżet",
     decodedClimate: "Klimat",
     decodedTransfer: "Przesiadki",
     decodedFocus: "Wskazany kierunek",
     decodedTravelStyle: "Najmocniejsze potrzeby",
-    scoreWord: "score",
+    scoreWord: "dopasowanie",
     selectedRoute: "Wybrana trasa",
     bestForBrief: "Najlepszy kierunek dla tego briefu",
     score: "Wynik",
     term: "Termin",
-    travelParty: "Sklad podrozy",
+    travelParty: "Sklad podróży",
     whyNow: "Dlaczego teraz",
-    exactMatch: "Kierunek dokladnie odpowiada wskazanemu miastu.",
+    exactMatch: "Kierunek dokładnie odpowiada wskazanemu miastu.",
     openStay: "Zobacz pobyt w",
-    openFlights: "Sprawdz loty w",
+    openFlights: "Sprawdź loty w",
     openCars: "Auta w",
-    bookingSettings: "Ustawienia komercyjne",
-    bookingSettingsBody: "Zmien termin raz, a caly flow odswiezy sie spojnie.",
-    remainingOptions: "Pozostale propozycje",
-    similarDirections: "Podobne kierunki obok glownego wyboru",
+    bookingSettings: "Zmień trasę lub daty",
+    bookingSettingsBody: "Ten panel odświeża cały plan.",
+    remainingOptions: "Pozostałe propozycje",
+    similarDirections: "Podobne kierunki obok głównego wybóru",
     bestAlternatives: "Najlepsze alternatywy",
-    remainingBody: "Szybko porownasz klimat, argumenty dopasowania i przelaczysz sie na inny kierunek bez wracania do poczatku.",
+  remainingBody: "Szybko porównasz klimat, argumenty dopasowania i przełączysz się na inny kierunek bez wracania do początku.",
     position: "Pozycja",
     whyFits: "Dlaczego pasuje",
-    watchOut: "Na co uwazac",
-    noTradeoffs: "Brak wyraznych minusow przy tym briefie.",
+    watchOut: "Na co uważać",
+    noTradeoffs: "Brak wyraźnych minusów przy tym opisie.",
     bookingDeckStay: "Pobyt",
     bookingDeckFlights: "Loty",
     bookingDeckCars: "Auta",
     bookingDeckActivities: "Atrakcje",
-    bookingDeckStayBody: "Najwazniejszy klik po wyborze miasta. Otwiera gotowy pobyt dla tego terminu.",
-    bookingDeckFlightsBody: "Przechodzisz do wynikow lotow z ustawiona trasa i data.",
+    bookingDeckStayBody: "Zacznij od noclegów dla tego samego terminu i liczby osób.",
+    bookingDeckFlightsBody: "Masz już ustawioną trasę i termin, więc nie wracasz do pustego startu.",
     bookingDeckCarsBody: "Mobilnosc na miejscu bez ponownego wpisywania kierunku.",
-    bookingDeckActivitiesBody: "Przejdz dalej do atrakcji i transferow dla tego samego pobytu.",
-    showStay: "Pokaz pobyt",
-    showFlights: "Pokaz loty",
-    showCars: "Pokaz auta",
-    showOnSite: "Pokaz na miejscu",
-    openPlan: "Otworz plan",
+    bookingDeckActivitiesBody: "Przejdź dalej do atrakcji i transferów dla tego samego pobytu.",
+    showStay: "Pokaż pobyt",
+    showFlights: "Pokaż loty",
+    showCars: "Pokaż auta",
+    showOnSite: "Pokaż na miejscu",
+    openPlan: "Otwórz plan",
     mobileBarEyebrow: "Gotowe do dalszego ruchu",
-    mobileBarBody: "Najpierw pobyt, potem loty i zapis planu bez gubienia ustawien.",
+    mobileBarBody: "Najpierw pobyt, potem loty i zapis planu bez gubienia ustawień.",
     mobileQuickActions: "Szybkie sterowanie",
-    mobileQuickBody: "Skocz do sekcji albo popraw trase bez skanowania calej strony wynikow.",
+    mobileQuickBody: "Skocz do sekcji albo popraw trasę bez skanowania całej strony wyników.",
     editTrip: "Edytuj plan",
     closeTripEditor: "Schowaj edycje",
-    topChoiceSummary: "Dlaczego ten kierunek wygrywa",
-    topChoiceSummaryBody: "Masz juz gotowy kierunek, termin i pierwsze CTA. Najmocniejszy kolejny ruch to szybkie wejscie w pobyt i porownanie najblizszych alternatyw.",
-    resultsNavigator: "Kolejne kroki",
-    resultsNavigatorBody: "Przejdz od razu do najwazniejszej sekcji bez przewijania calego ekranu wynikow.",
+    topChoiceSummary: "Dlaczego to dobry wybór",
+    topChoiceSummaryBody: "Najpierw sprawdź noclegi, potem loty i najblizsze alternatywy.",
+    resultsNavigator: "Przejdź dalej",
+    resultsNavigatorBody: "Skocz od razu do najważniejszej sekcji bez skanowania całej strony wyników.",
     jumpToStays: "Do pobytu",
-    jumpToFlights: "Do lotow",
+    jumpToFlights: "Do lotów",
     jumpToGuide: "Do przewodnika",
     jumpToOnSite: "Na miejscu",
     destinationPlaceholder: "Np. Malaga",
-    destinationSearching: "Szukamy kierunkow...",
-    destinationEmpty: "Brak dopasowan. Sprobuj wpisac inne miasto lub kraj.",
-    refreshFlow: "Odswiez pobyt i loty",
-    bookingSettingsHint: "Ten panel jest aktywny: zmien kierunek lub daty i kliknij odswiez, aby przebudowac wyniki.",
+    destinationSearching: "Szukamy kierunków...",
+    destinationEmpty: "Brak dopasowań. Spróbuj wpisać inne miasto lub kraj.",
+    refreshFlow: "Odśwież pobyt i loty",
+    bookingSettingsHint: "Zmień kierunek albo daty i odśwież wyniki.",
     originPlaceholder: "Warszawa",
-    primaryFlow: "Sciezka glowna",
-    hotelFirst: "Najpierw pobyt, potem lot i kolejne kroki.",
+    primaryFlow: "Po kliknięciu",
+    hotelFirst: "Najpierw zobaczysz noclegi, potem loty i dalsze kroki.",
     selectedDatesValue: "noce",
     resultRank: "Pozycja",
-    directPrompt: "Podobne kierunki obok glownego wyboru",
+    directPrompt: "Podobne kierunki obok głównego wybóru",
     discoveryPrompt: "Najlepsze alternatywy",
     whyItFits: "Dlaczego pasuje",
     watchLabel: "Na co uwazac",
-    openCatalog: "Otworz katalog kierunkow",
+    openCatalog: "Otwórz katalog kierunków",
     bookingDeckOnSite: "Na miejscu",
-    decisionLenses: "Lupy decyzyjne",
-    decisionLensesBody: "Zamiast jednego rankingu pokazujemy tez, ktory kierunek wygrywa wartoscia, prostota dolotu i ogolnym dopasowaniem.",
+    decisionLenses: "Szybkie porównańie",
+    decisionLensesBody: "Obok głównego rankingu pokazujemy tez, który kierunek wygrywa wartoscia, prostota dolotu i pewniejsza pogoda.",
     lensBestFit: "Najlepszy fit",
     lensBestValue: "Najlepsza wartosc",
-    lensEasiest: "Najlatwiejszy dolot",
+    lensEasiest: "Najłatwiejszy dolot",
     lensWarmest: "Najpewniejsza pogoda",
     lensOpen: "Ustaw ten kierunek",
     lensTagBestFit: "fit",
@@ -227,24 +228,24 @@ const plannerCopy = {
     lensTagWarmest: "weather",
   },
   en: {
-    heroEyebrow: "HelpTravel Planner",
-    heroTitle: "Choose a destination and move straight into real options.",
-    heroBody: "Start with destination fit, then move into stays, flights and the next travel steps in one place.",
+    heroEyebrow: "Planner",
+    heroTitle: "Plan the trip in a few simple steps.",
+    heroBody: "Choose a destination or describe the kind of trip you want. Then set the dates and move into stays, flights and the next steps.",
     modeStandard: "I know the destination",
-    modeDiscovery: "I need ideas",
+    modeDiscovery: "Help me choose",
     describeTrip: "Describe the trip",
     discoveryPlaceholder: "E.g. a warm 5-day trip with a beach, sightseeing and a budget under 2000 PLN.",
     budget: "Budget",
     minDays: "Minimum days",
     maxDays: "Maximum days",
     direction: "Destination",
-    mainPath: "Primary flow",
-    mainPathBody: "Once the destination is set, we lead with stays first and then move into flights and the rest of the trip.",
-    sharedParams: "Shared settings",
-    sharedTitle: "Dates and travel party",
+    mainPath: "What happens next",
+    mainPathBody: "After you choose the destination, we start with stays and then move into flights and the next trip steps.",
+    sharedParams: "Trip details",
+    sharedTitle: "Dates and travelers",
     origin: "Flying from",
     travelStart: "Trip start",
-    nights: "Return",
+    nights: "Return date",
     travelers: "Travelers",
     rooms: "Rooms",
     quickPreview: "Quick preview",
@@ -256,22 +257,22 @@ const plannerCopy = {
     planError: "Could not build the trip plan.",
     showStayFlights: "Show stays and flights",
     savedPlans: "Saved plans",
-    savedPlansBody: "You can return to them in one click.",
+    savedPlansBody: "Saved trips you can reopen quickly.",
     savedEmpty: "Saved scenarios will appear here after the first result.",
-    savedSearches: "Saved searches",
-    savedSearchesBody: "Strong briefs and ready searches are kept so you can reopen them without rebuilding the form.",
+    savedSearches: "Recent searches",
+    savedSearchesBody: "Go back to previous settings without rebuilding the form.",
     savedSearchesEmpty: "Your first planner run will save the latest brief or direct search here.",
     reopenSearch: "Open search",
-    recentBriefs: "Recent briefs",
-    recentBriefsBody: "Replay your strongest discovery prompts without rewriting them.",
-    continuePlanning: "Continue planning",
-    continuePlanningBody: "Your latest planner setup is ready to reuse.",
+    recentBriefs: "Recent trip descriptions",
+    recentBriefsBody: "Reuse one of your latest descriptions in a click.",
+    continuePlanning: "Latest plan",
+    continuePlanningBody: "Your latest planner setup is saved here.",
     restoreSettings: "Restore setup",
     savedDestinations: "Saved destinations",
     savedDestinationsBody: "A short list of destinations worth revisiting and comparing.",
     noSavedDestinations: "Saved destinations will appear here once you keep a place for later.",
-    comparisonMemory: "Comparison memory",
-    comparisonMemoryBody: "The planner remembers destinations you compared next to the top pick.",
+    comparisonMemory: "Recently compared",
+    comparisonMemoryBody: "Destinations you compared next to the main pick come back here.",
     comparisonMemoryEmpty: "As soon as you switch between alternatives, your recent comparisons will appear here.",
     compareAgain: "Compare again",
     saveTrip: "Save plan",
@@ -279,16 +280,16 @@ const plannerCopy = {
     saveTripDone: "Plan saved",
     saveDestination: "Save destination",
     savedDestination: "Destination saved",
-    interpretedBrief: "How the brief was interpreted",
-    interpretedBriefBody: "We surface the strongest intent signals so the recommendation feels easier to trust and compare.",
-    methodologyTitle: "How recommendations are built",
-    methodologyBody: "The ranking blends climate, budget, route effort, trip length fit and travel style. The top pick is meant to be explainable, not random.",
+    interpretedBrief: "How we understood your trip description",
+    interpretedBriefBody: "We show the signals that mattered most in the ranking.",
+    methodologyTitle: "What we take into account",
+    methodologyBody: "We look at weather, budget, route effort and how well the place fits the style of trip you want.",
     decodedBudget: "Budget",
     decodedClimate: "Climate",
     decodedTransfer: "Transfers",
     decodedFocus: "Focused destination",
     decodedTravelStyle: "Strongest needs",
-    scoreWord: "score",
+    scoreWord: "fit",
     selectedRoute: "Selected route",
     bestForBrief: "Best destination for this brief",
     score: "Score",
@@ -299,8 +300,8 @@ const plannerCopy = {
     openStay: "Open stay on",
     openFlights: "Check flights on",
     openCars: "Cars on",
-    bookingSettings: "Commercial settings",
-    bookingSettingsBody: "Change the dates once and the whole flow refreshes consistently.",
+    bookingSettings: "Change route or dates",
+    bookingSettingsBody: "This panel refreshes the whole plan.",
     remainingOptions: "More options",
     similarDirections: "Similar destinations next to the main pick",
     bestAlternatives: "Best alternatives",
@@ -328,10 +329,10 @@ const plannerCopy = {
     mobileQuickBody: "Jump between sections or reopen the route editor without scanning the whole results page.",
     editTrip: "Edit plan",
     closeTripEditor: "Hide editor",
-    topChoiceSummary: "Why this destination wins",
-    topChoiceSummaryBody: "You already have the destination, dates and first CTAs. The strongest next move is opening the stay view and checking the closest alternatives.",
-    resultsNavigator: "Next steps",
-    resultsNavigatorBody: "Jump straight into the most important section without scanning the whole results screen first.",
+    topChoiceSummary: "Why this is a good choice",
+    topChoiceSummaryBody: "Start with stays, then check flights and the closest alternatives.",
+    resultsNavigator: "Go to the next step",
+    resultsNavigatorBody: "Jump straight into the section you need most.",
     jumpToStays: "Go to stays",
     jumpToFlights: "Go to flights",
     jumpToGuide: "Go to guide",
@@ -340,10 +341,10 @@ const plannerCopy = {
     destinationSearching: "Looking for destinations...",
     destinationEmpty: "No matches yet. Try another city or country.",
     refreshFlow: "Refresh stays and flights",
-    bookingSettingsHint: "This panel is active: change the destination or dates, then refresh the flow to rebuild results.",
+    bookingSettingsHint: "Change the destination or dates, then refresh the results.",
     originPlaceholder: "Warsaw",
-    primaryFlow: "Primary route",
-    hotelFirst: "Lead with stays first, then flights and the next trip steps.",
+    primaryFlow: "After you click",
+    hotelFirst: "You will see stays first, then flights and the next trip steps.",
     selectedDatesValue: "nights",
     resultRank: "Position",
     directPrompt: "Similar destinations next to your main pick",
@@ -352,8 +353,8 @@ const plannerCopy = {
     watchLabel: "Watch-outs",
     openCatalog: "Open destination catalog",
     bookingDeckOnSite: "On site",
-    decisionLenses: "Decision lenses",
-    decisionLensesBody: "Instead of a single ranking, we also surface which destination wins on fit, value, easier routing and weather confidence.",
+    decisionLenses: "Quick comparison",
+    decisionLensesBody: "Alongside the main ranking, we show which destination wins on fit, value, easier routing and weather confidence.",
     lensBestFit: "Best fit",
     lensBestValue: "Best value",
     lensEasiest: "Easiest route",
@@ -372,7 +373,7 @@ const scoreLabel = (score: number, locale: "pl" | "en") =>
       ? "Bardzo mocne dopasowanie"
       : score >= 70
         ? "Dobre dopasowanie"
-        : "Warto sprawdzic"
+        : "Warto sprawdzić"
     : score >= 82
       ? "Very strong match"
       : score >= 70
@@ -389,15 +390,6 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     throw new Error(`Request failed (${response.status}).`);
   }
   return (await response.json()) as T;
-}
-
-function trackClientEvent(eventType: "planner_restored" | "destination_saved" | "comparison_selected" | "search_saved", payload: Record<string, unknown>) {
-  void fetch("/api/events", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ eventType, payload }),
-    keepalive: true,
-  }).catch(() => undefined);
 }
 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -452,6 +444,8 @@ function DestinationAutocompleteField({
   loadingLabel: string;
   emptyLabel: string;
 }) {
+  const inputId = useId();
+  const listboxId = useId();
   const showDropdown = isOpen && (isLoading || suggestions.length > 0 || value.trim().length >= 2);
 
   return (
@@ -459,6 +453,11 @@ function DestinationAutocompleteField({
       {label}
       <div className="relative mt-2">
         <Input
+          id={inputId}
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-controls={showDropdown ? listboxId : undefined}
+          aria-autocomplete="list"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onFocus={onFocus}
@@ -466,7 +465,12 @@ function DestinationAutocompleteField({
           autoComplete="off"
         />
         {showDropdown ? (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.45rem)] z-30 overflow-hidden rounded-[1.3rem] border border-emerald-900/10 bg-white shadow-[0_18px_40px_rgba(16,84,48,0.12)]">
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label={label}
+            className="absolute left-0 right-0 top-[calc(100%+0.45rem)] z-30 overflow-hidden rounded-[1.3rem] border border-emerald-900/10 bg-white shadow-[0_18px_40px_rgba(16,84,48,0.12)]"
+          >
             {isLoading ? (
               <div className="px-4 py-3 text-sm text-emerald-900/70">{loadingLabel}</div>
             ) : suggestions.length > 0 ? (
@@ -474,7 +478,10 @@ function DestinationAutocompleteField({
                 {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.id}
+                    id={`${listboxId}-option-${suggestion.id}`}
                     type="button"
+                    role="option"
+                    aria-selected="false"
                     onMouseDown={(event) => {
                       event.preventDefault();
                       onSelect(suggestion);
@@ -561,6 +568,7 @@ export function PlannerClient({
   const [savedSearches, setSavedSearches] = useState<SavedSearchMemory[]>([]);
   const [comparedDestinations, setComparedDestinations] = useState<ComparedDestinationMemory[]>([]);
   const [lastSnapshot, setLastSnapshot] = useState<PlannerSnapshot | null>(null);
+  const [showPlanningMemory, setShowPlanningMemory] = useState(false);
   const [savingTrip, setSavingTrip] = useState(false);
   const [destinationSuggestions, setDestinationSuggestions] = useState<DestinationSuggestion[]>([]);
   const [isSuggestingDestinations, setIsSuggestingDestinations] = useState(false);
@@ -575,7 +583,7 @@ export function PlannerClient({
     initialQuery ||
       (locale === "en"
         ? "I want a warm destination for 5 days with a beach, sightseeing and a budget under 2000 PLN."
-        : "Chce poleciec do cieplego kraju do 2000 zl na 5 dni, bez wizy, z plaza i zwiedzaniem."),
+    : "Chcę polecieć do ciepłego kraju do 2000 zł na 5 dni, bez wizy, z plażą i zwiedzaniem."),
   );
   const [budget, setBudget] = useState(initialBudget);
   const [travelers, setTravelers] = useState(initialTravelers);
@@ -737,7 +745,7 @@ export function PlannerClient({
           : undefined,
       });
       setSavedSearches(nextSavedSearches);
-      trackClientEvent("search_saved", {
+      sendClientEvent("search_saved", {
         mode: input.mode,
         destinationHint: input.destinationHint,
         query: input.mode === "discovery" ? input.query : input.destinationHint,
@@ -769,6 +777,15 @@ export function PlannerClient({
   const runPlanner = async () => {
     shouldFocusOffersRef.current = true;
     setDestinationSuggestionsOpen(false);
+    sendClientEvent("planner_submitted", {
+      mode,
+      destinationHint,
+      query: mode === "discovery" ? query : destinationHint,
+      originCity,
+      travelers,
+      travelStartDate,
+      travelEndDate: checkOutDate,
+    });
     await executePlanner({
       mode,
       query,
@@ -834,7 +851,7 @@ export function PlannerClient({
       })
     : null;
   const flightPartner = getAffiliateBrandLabel(activeAffiliateLinks?.flights, "Partner lotniczy");
-  const stayPartner = getAffiliateBrandLabel(activeAffiliateLinks?.stays, "Partner noclegowy");
+  const stayPartner = getAffiliateBrandLabel(activeAffiliateLinks?.stays, "Partner noclegówy");
   const carPartner = getAffiliateBrandLabel(activeAffiliateLinks?.cars, "Partner mobilnosci");
   const isDirectRouteSearch = mode === "standard" && Boolean(originCity.trim()) && Boolean(destinationHint.trim());
   const savedDestinationSet = new Set(savedDestinations.map((item) => item.slug));
@@ -876,7 +893,7 @@ export function PlannerClient({
 
   const strongestNeeds = [
     result?.interpreted.styleWeights.beach
-      ? { label: locale === "en" ? "beach" : "plaza", score: result.interpreted.styleWeights.beach }
+      ? { label: locale === "en" ? "beach" : "plażą", score: result.interpreted.styleWeights.beach }
       : null,
     result?.interpreted.styleWeights.city
       ? { label: locale === "en" ? "city" : "miasto", score: result.interpreted.styleWeights.city }
@@ -905,9 +922,9 @@ export function PlannerClient({
         ]
       : [
           "Pogoda i sezon dla wybranego terminu",
-          "Dopasowanie do budzetu i profilu kosztowego kierunku",
+          "Dopasowanie do budżetu i profilu kosztowego kierunku",
           "Wysilek lotu z Polski i komfort przesiadek",
-          "Zgodnosc z najmocniejszymi potrzebami z briefu",
+          "Zgodność z najmocniejszymi potrzebami z briefu",
         ];
 
   const handleDestinationInputFocus = () => {
@@ -953,7 +970,7 @@ export function PlannerClient({
         body:
           locale === "en"
             ? `${byScore.destination.city} wins the broadest match across budget, intent and trip shape.`
-            : `${byScore.destination.city} wygrywa najbardziej pelnym dopasowaniem do briefu, budzetu i rytmu wyjazdu.`,
+            : `${byScore.destination.city} wygrywa najbardziej pełnym dopasowaniem do briefu, budżetu i rytmu wyjazdu.`,
         optionId: byScore.itineraryResultId,
         city: byScore.destination.city,
         country: byScore.destination.country,
@@ -975,7 +992,7 @@ export function PlannerClient({
         body:
           locale === "en"
             ? `${byEasy.destination.city} looks easiest from Poland when route comfort matters more than pure inspiration.`
-            : `${byEasy.destination.city} wyglada najlatwiej z Polski, gdy liczy sie prostszy dolot i mniej logistyki.`,
+            : `${byEasy.destination.city} wygląda najłatwiej z Polski, gdy liczy się prostszy dolot i mniej logistyki.`,
         optionId: byEasy.itineraryResultId,
         city: byEasy.destination.city,
         country: byEasy.destination.country,
@@ -1063,7 +1080,7 @@ export function PlannerClient({
   const handleRestoreSnapshot = (snapshot: PlannerSnapshot) => {
     applySnapshot(snapshot);
     shouldFocusOffersRef.current = true;
-    trackClientEvent("planner_restored", {
+    sendClientEvent("planner_restored", {
       mode: snapshot.mode,
       destinationHint: snapshot.destinationHint,
       query: snapshot.query,
@@ -1104,7 +1121,7 @@ export function PlannerClient({
         country: selectedOption.destination.country,
       });
     setSavedDestinations(nextSavedDestinations);
-    trackClientEvent("destination_saved", {
+    sendClientEvent("destination_saved", {
       slug: selectedOption.destination.slug,
       city: selectedOption.destination.city,
       country: selectedOption.destination.country,
@@ -1129,7 +1146,7 @@ export function PlannerClient({
         rationale: chosenOption.reasons[0],
       }),
     );
-    trackClientEvent("comparison_selected", {
+    sendClientEvent("comparison_selected", {
       slug: chosenOption.destination.slug,
       city: chosenOption.destination.city,
       rank: chosenOption.rank,
@@ -1158,7 +1175,7 @@ export function PlannerClient({
       });
       await refreshSavedTrips();
     } catch {
-      // Keep the main planner flow stable even if saving fails.
+      // Keep the planner usable even if saving fails.
     } finally {
       setSavingTrip(false);
     }
@@ -1218,6 +1235,20 @@ export function PlannerClient({
           },
         ]
       : [];
+  const hasPlanningMemory =
+    Boolean(lastSnapshot) ||
+    savedTrips.length > 0 ||
+    savedSearches.length > 0 ||
+    savedDestinations.length > 0 ||
+    comparedDestinations.length > 0 ||
+    recentBriefs.length > 0;
+  const shouldShowExpandedPlanningMemory = hasPlanningMemory && (showPlanningMemory || Boolean(result));
+
+  useEffect(() => {
+    if (result) {
+      setShowPlanningMemory(true);
+    }
+  }, [result]);
 
   useEffect(() => {
     if (!result || !selectedOption || !shouldFocusOffersRef.current) {
@@ -1245,7 +1276,10 @@ export function PlannerClient({
           <div className="inline-flex rounded-full border border-emerald-900/10 bg-white/84 p-1 shadow-sm">
             <button
               type="button"
-              onClick={() => setMode("standard")}
+              onClick={() => {
+                setMode("standard");
+                sendClientEvent("planner_mode_selected", { source: "planner", mode: "standard" });
+              }}
               className={`rounded-full px-4 py-2 text-sm font-semibold ${
                 mode === "standard" ? "bg-emerald-700 text-white" : "text-emerald-900 hover:bg-emerald-100"
               }`}
@@ -1254,7 +1288,10 @@ export function PlannerClient({
             </button>
             <button
               type="button"
-              onClick={() => setMode("discovery")}
+              onClick={() => {
+                setMode("discovery");
+                sendClientEvent("planner_mode_selected", { source: "planner", mode: "discovery" });
+              }}
               className={`rounded-full px-4 py-2 text-sm font-semibold ${
                 mode === "discovery" ? "bg-emerald-700 text-white" : "text-emerald-900 hover:bg-emerald-100"
               }`}
@@ -1287,28 +1324,6 @@ export function PlannerClient({
                     </button>
                   ))}
                 </div>
-                {recentBriefs.length > 0 ? (
-                  <div className="rounded-[1.5rem] border border-emerald-900/10 bg-white/78 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.recentBriefs}</p>
-                        <p className="mt-1 text-sm text-emerald-900/70">{text.recentBriefsBody}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {recentBriefs.map((brief) => (
-                        <button
-                          key={brief.id}
-                          type="button"
-                          onClick={() => setQuery(brief.text)}
-                          className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:border-emerald-500/40 hover:bg-emerald-100"
-                        >
-                          {brief.text}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Field label={text.budget}>
                     <Input type="number" value={budget} onChange={(event) => setBudget(Number(event.target.value) || 0)} />
@@ -1317,7 +1332,7 @@ export function PlannerClient({
                     <Input
                       type="number"
                       min={2}
-                      max={14}
+                      max={31}
                       value={durationMin}
                       onChange={(event) => setDurationMin(Number(event.target.value) || 2)}
                     />
@@ -1326,7 +1341,7 @@ export function PlannerClient({
                     <Input
                       type="number"
                       min={2}
-                      max={14}
+                      max={31}
                       value={durationMax}
                       onChange={(event) => setDurationMax(Number(event.target.value) || 2)}
                     />
@@ -1424,8 +1439,67 @@ export function PlannerClient({
             </button>
             {error ? <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
 
+          </aside>
+        </div>
+      </section>
+
+      {hasPlanningMemory && !shouldShowExpandedPlanningMemory ? (
+        <section className="rounded-[1.7rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                {locale === "en" ? "Your plans" : "Twoje plany"}
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-emerald-950">
+                {locale === "en" ? "Saved items stay here when you need them." : "Zapisane rzeczy czekaja tutaj, kiedy ich potrzebujesz."}
+              </h2>
+              <p className="mt-2 text-sm leading-7 text-emerald-900/72">
+                {locale === "en"
+                  ? "We keep the first screen simple. Open this section when you want to restore an earlier setup or compare with something you saved."
+                  : "Zostawiamy prosty start planera. Otwórz te sekcje wtedy, gdy chcesz wrócić do poprzednich ustawień albo porównać coś z zapisanych rzeczy."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPlanningMemory(true)}
+              className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+            >
+              {locale === "en" ? "Show your plans" : "Pokaż Twoje plany"}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {shouldShowExpandedPlanningMemory ? (
+        <section className="rounded-[1.85rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                {locale === "en" ? "Your plans" : "Twoje plany"}
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-emerald-950">
+                {locale === "en" ? "Return to saved searches and previous choices." : "Wróć do zapisanych wyszukiwan i poprzednich wybórow."}
+              </h2>
+              <p className="mt-2 text-sm leading-7 text-emerald-900/72">
+                {locale === "en"
+                  ? "This part stays secondary. It appears after you start using the planner, so the first screen stays simple."
+                  : "Ta sekcja zostaje pomocnicza. Pokazuje sie dopiero po pierwszym użyciu, dzięki czemu start planera pozostaje prosty."}
+              </p>
+            </div>
+            {!result ? (
+              <button
+                type="button"
+                onClick={() => setShowPlanningMemory(false)}
+                className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+              >
+                {locale === "en" ? "Hide" : "Ukryj"}
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-2">
             {lastSnapshot ? (
-              <div className="mt-5 rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/72 p-4">
+              <article className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/72 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.continuePlanning}</p>
                 <p className="mt-2 text-sm text-emerald-900/72">{text.continuePlanningBody}</p>
                 <p className="mt-2 text-sm font-semibold text-emerald-950">
@@ -1438,26 +1512,22 @@ export function PlannerClient({
                 >
                   {text.restoreSettings}
                 </button>
-              </div>
+              </article>
             ) : null}
 
-            <div className="mt-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedPlans}</p>
-                  <p className="mt-1 text-sm text-emerald-900/70">{text.savedPlansBody}</p>
+            {savedTrips.length > 0 ? (
+              <article className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedPlans}</p>
+                    <p className="mt-1 text-sm text-emerald-900/70">{text.savedPlansBody}</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                    {savedTrips.length}
+                  </span>
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
-                  {savedTrips.length}
-                </span>
-              </div>
-              <div className="mt-3 max-h-44 space-y-2 overflow-y-auto pr-1">
-                {savedTrips.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-emerald-900/10 bg-emerald-50/60 px-4 py-4 text-sm text-emerald-900/70">
-                    {text.savedEmpty}
-                  </p>
-                ) : (
-                  savedTrips.map((trip) => (
+                <div className="mt-3 max-h-52 space-y-2 overflow-y-auto pr-1">
+                  {savedTrips.map((trip) => (
                     <div
                       key={trip.itineraryResultId}
                       className="rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-950 transition hover:border-emerald-500/50 hover:bg-emerald-50"
@@ -1489,6 +1559,13 @@ export function PlannerClient({
                         <LocalizedLink
                           href={`/trips/${trip.itineraryResultId}`}
                           locale={locale}
+                          onClick={() =>
+                            sendClientEvent("saved_plan_clicked", {
+                              itineraryResultId: trip.itineraryResultId,
+                              city: trip.city,
+                              source: "planner_saved_trips",
+                            })
+                          }
                           className="rounded-full border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
                         >
                           {text.openPlan}
@@ -1504,28 +1581,24 @@ export function PlannerClient({
                         ) : null}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedSearches}</p>
-                  <p className="mt-1 text-sm text-emerald-900/70">{text.savedSearchesBody}</p>
+                  ))}
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
-                  {savedSearches.length}
-                </span>
-              </div>
-              <div className="mt-3 max-h-44 space-y-2 overflow-y-auto pr-1">
-                {savedSearches.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-emerald-900/10 bg-emerald-50/60 px-4 py-4 text-sm text-emerald-900/70">
-                    {text.savedSearchesEmpty}
-                  </p>
-                ) : (
-                  savedSearches.map((search) => (
+              </article>
+            ) : null}
+
+            {savedSearches.length > 0 ? (
+              <article className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedSearches}</p>
+                    <p className="mt-1 text-sm text-emerald-900/70">{text.savedSearchesBody}</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                    {savedSearches.length}
+                  </span>
+                </div>
+                <div className="mt-3 max-h-52 space-y-2 overflow-y-auto pr-1">
+                  {savedSearches.map((search) => (
                     <button
                       key={search.id}
                       type="button"
@@ -1555,34 +1628,54 @@ export function PlannerClient({
                         {formatShortDate(search.travelStartDate, dateLocale)} - {formatShortDate(
                           normalizeTravelEndDate(search.travelStartDate, search.travelEndDate, search.travelNights),
                           dateLocale,
-                        )} / {search.originCity}
+                        )}{" "}
+                        / {search.originCity}
                       </span>
                       <span className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900">
                         {text.reopenSearch}
                       </span>
                     </button>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedDestinations}</p>
-                  <p className="mt-1 text-sm text-emerald-900/70">{text.savedDestinationsBody}</p>
+                  ))}
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
-                  {savedDestinations.length}
-                </span>
-              </div>
-              <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
-                {savedDestinations.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-emerald-900/10 bg-emerald-50/60 px-4 py-4 text-sm text-emerald-900/70">
-                    {text.noSavedDestinations}
-                  </p>
-                ) : (
-                  savedDestinations.map((destination) => (
+              </article>
+            ) : null}
+
+            {recentBriefs.length > 0 ? (
+              <article className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.recentBriefs}</p>
+                    <p className="mt-1 text-sm text-emerald-900/70">{text.recentBriefsBody}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {recentBriefs.map((brief) => (
+                    <button
+                      key={brief.id}
+                      type="button"
+                      onClick={() => setQuery(brief.text)}
+                      className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+                    >
+                      {brief.text}
+                    </button>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+
+            {savedDestinations.length > 0 ? (
+              <article className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.savedDestinations}</p>
+                    <p className="mt-1 text-sm text-emerald-900/70">{text.savedDestinationsBody}</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                    {savedDestinations.length}
+                  </span>
+                </div>
+                <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
+                  {savedDestinations.map((destination) => (
                     <LocalizedLink
                       key={destination.slug}
                       href={`/kierunki/${destination.slug}`}
@@ -1594,28 +1687,24 @@ export function PlannerClient({
                       </span>
                       <span className="text-xs text-emerald-700">{locale === "en" ? "guide" : "przewodnik"}</span>
                     </LocalizedLink>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.comparisonMemory}</p>
-                  <p className="mt-1 text-sm text-emerald-900/70">{text.comparisonMemoryBody}</p>
+                  ))}
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
-                  {comparedDestinations.length}
-                </span>
-              </div>
-              <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
-                {comparedDestinations.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-emerald-900/10 bg-emerald-50/60 px-4 py-4 text-sm text-emerald-900/70">
-                    {text.comparisonMemoryEmpty}
-                  </p>
-                ) : (
-                  comparedDestinations.map((destination) => (
+              </article>
+            ) : null}
+
+            {comparedDestinations.length > 0 ? (
+              <article className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.comparisonMemory}</p>
+                    <p className="mt-1 text-sm text-emerald-900/70">{text.comparisonMemoryBody}</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                    {comparedDestinations.length}
+                  </span>
+                </div>
+                <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
+                  {comparedDestinations.map((destination) => (
                     <LocalizedLink
                       key={`${destination.slug}-${destination.savedAt}`}
                       href={`/kierunki/${destination.slug}`}
@@ -1627,13 +1716,13 @@ export function PlannerClient({
                       </span>
                       <span className="text-xs text-emerald-700">{text.compareAgain}</span>
                     </LocalizedLink>
-                  ))
-                )}
-              </div>
-            </div>
-          </aside>
-        </div>
-      </section>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       {loading ? (
         <section className="grid gap-4">
@@ -2305,7 +2394,7 @@ export function PlannerClient({
 
       {result && !selectedOption ? (
         <section className="rounded-[1.75rem] border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-900 shadow-sm">
-          Nie udalo sie zbudowac pelnego rankingu kierunkow dla tego zapytania. Sprobuj zmienic termin lub kierunek i uruchomic wyszukiwanie ponownie.
+          Nie udalo sie zbudowac pełnego rankingu kierunków dla tego zapytania. Sprobuj zmienic termin lub kierunek i uruchomic wyszukiwanie ponownie.
         </section>
       ) : null}
     </div>
@@ -2320,5 +2409,7 @@ type DecisionLensCard = {
   city: string;
   country: string;
 };
+
+
 
 

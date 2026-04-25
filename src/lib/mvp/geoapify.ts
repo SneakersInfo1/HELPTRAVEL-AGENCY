@@ -69,7 +69,7 @@ const groupDefinitions: Array<{
   },
   {
     key: "parks",
-    label: "Parki i spacer",
+    label: "Parki i spaćer",
     keywords: ["park", "garden", "nature", "square", "green", "trail", "walk"],
     iconLabel: "P",
   },
@@ -267,7 +267,7 @@ function buildFallbackGroups(destination: DestinationProfile): GeoapifyPlaceGrou
     },
     {
       key: "parks",
-      label: "Parki i spacer",
+      label: "Parki i spaćer",
       items: story.districts.slice(0, 3).map((item, index) => ({
         id: `${destination.slug}-fallback-park-${index}`,
         name: item,

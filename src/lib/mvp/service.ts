@@ -82,7 +82,7 @@ async function runVirtualStandard(input: StandardRequestInput, sessionId: string
   const query = [
     `lot z ${input.originCity}`,
     `do ${input.destinationHint}`,
-    `budzet do ${input.budgetMaxPln} zl`,
+    `budżet do ${input.budgetMaxPln} zł`,
     `${input.durationDays} dni`,
     input.style ? `styl ${input.style}` : "",
   ]
@@ -120,12 +120,12 @@ async function runVirtualStandard(input: StandardRequestInput, sessionId: string
   const estimatedBudgetMin = clamp(Math.round(input.budgetMaxPln * 0.58), 700, input.budgetMaxPln);
   const estimatedBudgetMax = input.budgetMaxPln;
   const reasons = [
-    `Kierunek zostal wybrany bezposrednio przez Ciebie: ${destination.city}.`,
-    "Mozesz od razu przejsc do lotow, noclegow i pozostalych uslug wyjazdowych.",
+    `Kierunek został wybrany bezpośrednio przez Ciebie: ${destination.city}.`,
+    "Możesz od razu przejść do lotów, noclegów i pozostałych uslug wyjazdówych.",
     "System utrzymuje ten kierunek jako glowny punkt dalszego planowania.",
   ];
   const tradeoffs = [
-    "Pelny ranking redakcyjny dla tego miasta moze byc jeszcze bardziej ograniczony niz dla glownych hubow serwisu.",
+    "Pełny ranking redakcyjny dla tego miasta może byc jeszcze bardziej ograniczony niz dla głównych hubow serwisu.",
   ];
   const breakdown = {
     budgetFit: 0.78,
@@ -313,7 +313,7 @@ export async function runStandard(input: StandardRequestInput, sessionId: string
   const query = [
     `lot z ${input.originCity}`,
     `do ${input.destinationHint}`,
-    `budzet do ${input.budgetMaxPln} zl`,
+    `budżet do ${input.budgetMaxPln} zł`,
     `${input.durationDays} dni`,
     input.style ? `styl ${input.style}` : "",
   ]
@@ -482,3 +482,4 @@ export function sanitizeBudgetInput(value: unknown, fallback: number): number {
   if (typeof value !== "number" || Number.isNaN(value)) return fallback;
   return clamp(Math.round(value), 600, 20000);
 }
+

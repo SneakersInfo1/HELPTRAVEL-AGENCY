@@ -112,19 +112,19 @@ function buildReasons(
     reasons.push("To dokladnie kierunek wskazany w briefie.");
   }
   if (breakdown.budgetFit >= 0.75) {
-    reasons.push(`Dobrze miesci sie w budzecie do ${prefs.budgetMaxPln} PLN.`);
+    reasons.push(`Dobrze miesci sie w budżecie do ${prefs.budgetMaxPln} PLN.`);
   }
   if ((prefs.niceTags.includes("beach") || prefs.niceTags.includes("beach_and_sightseeing")) && dest.beachScore >= 0.75) {
-    reasons.push("Dobrze laczy wypoczynek z plaza i spokojniejszym rytmem wyjazdu.");
+    reasons.push("Dobrze łączy wypoczynek z plażą i spokojniejszym rytmem wyjazdu.");
   }
   if (dest.cityScore >= 0.85 || dest.sightseeingScore >= 0.85) {
-    reasons.push("Ma mocny miejski i sightseeingowy rdzen, wiec latwiej podjac konkretna decyzje.");
+    reasons.push("Ma mocny miejski i sightseeingowy rdzen, wiec łatwiej podjac konkretna decyzje.");
   }
   if (breakdown.travelEase >= 0.75) {
     reasons.push("Dojazd z Polski jest relatywnie prosty jak na ten typ wyjazdu.");
   }
   if (dest.safetyScore >= 0.82) {
-    reasons.push("Daje dobry poziom przewidywalnosci i komfortu na krotki albo sredni pobyt.");
+    reasons.push("Daje dobry poziom przewidywalnosci i komfortu na krótki albo średni pobyt.");
   }
   if (prefs.temperaturePreference !== "any" && breakdown.weatherFit >= 0.72) {
     reasons.push("Pogoda wpisuje sie w oczekiwany klimat wyjazdu.");
@@ -133,25 +133,25 @@ function buildReasons(
     reasons.push("To kierunek z dobrym stosunkiem ceny do jakosci.");
   }
   if (prefs.visaPreference === "visa_free" && dest.visaForPL) {
-    reasons.push("Nie doklada dodatkowych formalnosci wizowych do wyjazdu.");
+    reasons.push("Nie doklada dodatkówych formalności wizowych do wyjazdu.");
   }
   if ((prefs.wantsShortFlight || prefs.logisticsPreference === "easy") && breakdown.logisticsFit >= 0.74) {
     reasons.push("Logistyka z Polski jest tu wyjatkowo prosta jak na ten typ wyjazdu.");
   }
   if (prefs.tripMood === "romantic" && breakdown.moodFit >= 0.72) {
-    reasons.push("Laczy klimat, jedzenie i rytm miasta dobrze pasujacy do romantycznego wyjazdu.");
+    reasons.push("Łączy klimat, jedzenie i rytm miasta dobrze pasujacy do romantycznego wyjazdu.");
   }
   if (prefs.tripMood === "family" && breakdown.moodFit >= 0.72) {
     reasons.push("Dobrze uklada bezpieczenstwo, prosty dojazd i spokojniejszy rytm pod wyjazd rodzinny.");
   }
   if (prefs.tripMood === "solo" && breakdown.moodFit >= 0.7) {
-    reasons.push("Sprawdza sie przy samodzielnym wyjezdzie dzieki prostocie, bezpieczenstwu i czytelnemu planowi miasta.");
+    reasons.push("Sprawdźa sie przy samodzielnym wyjezdzie dzięki prostocie, bezpieczenstwu i czytelnemu planowi miasta.");
   }
   if (prefs.tripMood === "foodie" && breakdown.moodFit >= 0.7) {
-    reasons.push("Mocno broni sie kulinarnie, wiec latwiej uzasadnic wyjazd jedzeniem i miejskim klimatem.");
+    reasons.push("Mocno broni sie kulinarnie, wiec łatwiej uzasadnic wyjazd jedzeniem i miejskim klimatem.");
   }
   if (prefs.wantsBeachSightseeingMix && dest.beachScore >= 0.7 && dest.sightseeingScore >= 0.7) {
-    reasons.push("Naprawde domyka miks plazy i zwiedzania bez rozjechanego planu.");
+    reasons.push("Naprawde domyka miks plaży i zwiedzania bez rozjechanego planu.");
   }
 
   return reasons.slice(0, 4);
@@ -161,31 +161,31 @@ function buildTradeoffs(dest: DestinationProfile, breakdown: ScoreBreakdown, pre
   const tradeoffs: string[] = [];
 
   if (dest.typicalFlightHoursFromPL > 4.5) {
-    tradeoffs.push("Dluzszy lot obniza wygode przy krotszym wyjezdzie.");
+    tradeoffs.push("Dluzszy lot obniza wygodę przy krotszym wyjezdzie.");
   }
   if (dest.costIndex > 1.45) {
-    tradeoffs.push("Na miejscu moze byc wyraznie drozej niz w najmocniejszych alternatywach.");
+    tradeoffs.push("Na miejscu może byc wyraznie drozej niz w najmocniejszych alternatywach.");
   }
   if ((prefs.niceTags.includes("beach") || prefs.niceTags.includes("beach_and_sightseeing")) && dest.beachScore < 0.4) {
     tradeoffs.push("To bardziej kierunek miejski niz plazowy.");
   }
   if (breakdown.weatherFit < 0.5) {
-    tradeoffs.push("Pogoda w tym okresie moze byc mniej stabilna niz sugeruje brief.");
+    tradeoffs.push("Pogoda w tym okresie może byc mniej stabilna niz sugeruje brief.");
   }
   if (prefs.niceTags.includes("family") && dest.natureScore < 0.45 && dest.beachScore < 0.45) {
-    tradeoffs.push("Mniej oczywisty wybor, jesli priorytetem jest spokojniejszy rodzinny rytm.");
+    tradeoffs.push("Mniej oczywisty wybór, jeśli priorytetem jest spokojniejszy rodzinny rytm.");
   }
   if (prefs.maxTransfers === 0 && breakdown.travelEase < 0.66) {
-    tradeoffs.push("Przy wymaganiu prostszego lotu moze byc trudniej o naprawde wygodna trase.");
+    tradeoffs.push("Przy wymaganiu prostszego lotu może byc trudniej o naprawde wygodna trase.");
   }
   if ((prefs.wantsShortFlight || prefs.logisticsPreference === "easy") && dest.typicalFlightHoursFromPL > 4.2) {
-    tradeoffs.push("To nie jest najmocniejszy wybor, jesli priorytetem ma byc bardzo lekki dolot.");
+    tradeoffs.push("To nie jest najmocniejszy wybór, jeśli priorytetem ma byc bardzo lekki dolot.");
   }
   if (prefs.tripMood === "family" && dest.nightlifeScore > 0.7) {
-    tradeoffs.push("Bardziej zywe dzielnice moga dawac mniej spokojny rodzinny rytm.");
+    tradeoffs.push("Bardziej zywe dzielnice mogą dawac mniej spokojny rodzinny rytm.");
   }
   if (prefs.tripMood === "romantic" && dest.cityScore < 0.55 && dest.beachScore < 0.55) {
-    tradeoffs.push("Mniej oczywisty wybor, jesli zalezy Ci na bardziej nastrojowym albo widokowym klimacie.");
+    tradeoffs.push("Mniej oczywisty wybór, jeśli zalezy Ci na bardziej nastrojowym albo widokowym klimacie.");
   }
   if (prefs.wantsWeatherReliability && breakdown.weatherFit < 0.62) {
     tradeoffs.push("Przy nacisku na pewniejsza pogode inne kierunki beda bardziej przewidywalne.");
@@ -285,3 +285,4 @@ export function scoreDestinations(
 
   return scored.sort((a, b) => b.score - a.score).slice(0, topN);
 }
+

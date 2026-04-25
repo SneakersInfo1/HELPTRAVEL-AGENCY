@@ -70,8 +70,8 @@ function combinePackages(flights: NormalizedFlightOffer[], stays: NormalizedStay
         totalAmount: sameCurrency ? flight.total_amount + stay.total_amount : undefined,
         currency: sameCurrency ? flight.currency : undefined,
         description: sameCurrency
-          ? "Lot i hotel w jednej walucie. To realny pakiet, ktory mozna porownac jednym rzutem oka."
-          : "Obie ceny sa realne, ale wystepuja w roznych walutach. Pokazujemy je osobno, zeby nie zafalszowac sumy.",
+          ? "Lot i hotel w jednej walucie. To realny pakiet, który można porównać jednym rzutem oka."
+          : "Obie ceny sa realne, ale występują w różnych walutach. Pokazujemy je osobno, żeby nie zafałszować sumy.",
       });
     }
   }
@@ -342,3 +342,4 @@ export function TravelPackagePanel(props: {
     </section>
   );
 }
+

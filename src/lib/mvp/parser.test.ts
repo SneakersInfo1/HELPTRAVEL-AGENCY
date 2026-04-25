@@ -5,7 +5,7 @@ import { parseDiscoveryInput } from "./parser";
 
 test("parseDiscoveryInput extracts budget, duration and visa preference", () => {
   const parsed = parseDiscoveryInput({
-    query: "Chce poleciec do cieplego kraju do 2000 zl na 5 dni, bez wizy, z Polski, plaza i zwiedzanie.",
+    query: "Chcę polecieć do ciepłego kraju do 2000 zł na 5 dni, bez wizy, z Polski, plażą i zwiedzanie.",
     originCity: "Warszawa",
     travelers: 2,
   });
@@ -21,13 +21,13 @@ test("parseDiscoveryInput extracts budget, duration and visa preference", () => 
 
 test("parseDiscoveryInput understands intent for easy logistics, short flight and family mood", () => {
   const parsed = parseDiscoveryInput({
-    query: "Chce rodzinny city break 4-5 dni z Gdanska, z prosta logistyka, krotkim lotem i dobra pogoda.",
+    query: "Chcę rodzinny city break 4-5 dni z Gdańska, z prostą logistyką, krótkim lotem i dobrą pogodą.",
     travelers: 3,
   });
 
   assert.equal(parsed.durationMinDays, 4);
   assert.equal(parsed.durationMaxDays, 5);
-  assert.equal(parsed.originCity, "Gdansk");
+  assert.equal(parsed.originCity, "Gdańsk");
   assert.equal(parsed.tripMood, "family");
   assert.equal(parsed.logisticsPreference, "easy");
   assert.equal(parsed.wantsShortFlight, true);

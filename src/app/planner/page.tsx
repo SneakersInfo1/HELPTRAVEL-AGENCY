@@ -9,25 +9,27 @@ export function getPlannerMetadata(locale: SiteLocale): Metadata {
 
   return {
     title: isEnglish
-      ? "Trip planner - stays, flights and next steps in one flow"
-      : "Planer wyjazdu - hotel, lot i kolejne kroki w jednym flow",
+      ? "Trip planner - choose a destination, dates and the next steps"
+      : "Planner wyjazdu - wybierz kierunek, termin i kolejne kroki",
     description: isEnglish
-      ? "Search by travel need or enter a destination directly. HelpTravel moves from dates and route setup into stays, flights and the next travel actions."
-      : "Wyszukaj kierunek po potrzebie albo wpisz konkretne miasto. HelpTravel prowadzi od wyboru dat i miasta do pobytu, lotow i dalszych krokow w jednym flow.",
+      ? "Enter a destination or describe the trip you want. Then move into stays, flights and the next travel steps."
+      : "Wpisz kierunek albo opisz, jakiego wyjazdu szukasz. Potem przejdź do noclegów, lotów i dalszych kroków.",
     alternates: {
-      canonical: locale === "en" ? "/en/planner" : "/planner",
-      languages: {
-        "pl-PL": "/planner",
-        "en-US": "/en/planner",
-      },
+      canonical: "/planner",
     },
+    robots: isEnglish
+      ? {
+          index: false,
+          follow: true,
+        }
+      : undefined,
     openGraph: {
       title: isEnglish
-        ? "Trip planner - stays, flights and next steps in one flow"
-        : "Planer wyjazdu - hotel, lot i kolejne kroki w jednym flow",
+        ? "Trip planner - choose a destination and keep planning"
+        : "Planner wyjazdu - wybierz kierunek i planuj dalej",
       description: isEnglish
-        ? "Set the city, dates and travel party, then move straight into stays, flights, attractions and transport."
-        : "Ustaw miasto, termin i sklad podrozy. Potem przejdz od razu do pobytu, lotow, atrakcji i transportu.",
+        ? "Set city, dates and travelers, then move into stays, flights and useful extras."
+        : "Ustaw miasto, termin i liczbę osób, a potem przejdź do noclegów, lotów i dodatków.",
       url: locale === "en" ? "/en/planner" : "/planner",
       type: "website",
     },
@@ -91,3 +93,4 @@ export async function PlannerPageView({ searchParams, locale }: PlannerPageProps
 export default async function PlannerPage({ searchParams }: PlannerPageProps) {
   return PlannerPageView({ searchParams, locale: "pl" });
 }
+

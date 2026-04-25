@@ -1,4 +1,4 @@
-import type { SiteLocale } from "@/lib/mvp/locale";
+﻿import type { SiteLocale } from "@/lib/mvp/locale";
 
 export type TrustedTravelResource = {
   href: string;
@@ -8,9 +8,9 @@ export type TrustedTravelResource = {
 
 export const TRUSTED_TRAVEL_RESOURCES: TrustedTravelResource[] = [
   {
-    href: "https://www.gov.pl/web/dyplomacja/informacje-dla-podrozujacych",
+    href: "https://www.gov.pl/web/dyplomacja/informacje-dla-podróżujacych",
     label: {
-      pl: "MSZ: informacje dla podrozujacych",
+      pl: "MSZ: informacje dla podróżujacych",
       en: "Polish MFA travel information",
     },
     description: {
@@ -25,7 +25,7 @@ export const TRUSTED_TRAVEL_RESOURCES: TrustedTravelResource[] = [
       en: "EU passenger rights",
     },
     description: {
-      pl: "Oficjalne zasady dotyczace opoznionych lotow, odwolanych polaczen i overbookingu.",
+      pl: "Oficjalne zasady dotyczace opoznionych lotów, odwolanych polaczen i overbookingu.",
       en: "Official rules for delays, cancellations and denied boarding in Europe.",
     },
   },
@@ -47,8 +47,9 @@ export const TRUSTED_TRAVEL_RESOURCES: TrustedTravelResource[] = [
       en: "Polish Tourism Organisation",
     },
     description: {
-      pl: "Instytucjonalne zrodlo wiedzy o rynku turystycznym i kierunkach podrozy.",
+      pl: "Instytucjonalne źródło wiedzy o rynku turystycznym i kierunkach podróży.",
       en: "Institutional source for tourism information and destination context.",
     },
   },
 ];
+

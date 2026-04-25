@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
-import { LanguageSwitcher } from "@/components/site/language-switcher";
 import { PartnerLogoWordmark, TRUSTED_PARTNERS } from "@/components/site/partner-logo";
 import { useLanguage } from "@/components/site/language-provider";
 import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
@@ -14,140 +14,120 @@ import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
 const copy = {
   pl: {
     nav: [
-      { href: "/", label: "Start" },
-      { href: "/planner", label: "Planer" },
+      { href: "/planner", label: "Planner" },
       { href: "/kierunki", label: "Kierunki" },
-      { href: "/inspiracje", label: "Inspiracje" },
-      { href: "/przewodniki", label: "Przewodniki" },
-      { href: "/jak-pracujemy", label: "Jak pracujemy" },
+      { href: "/inspiracje", label: "Pomysły na wyjazd" },
+      { href: "/jak-pracujemy", label: "Jak to działa" },
+      { href: "/o-nas", label: "O serwisie" },
     ],
     mobileLinks: [
-      { href: "/city-breaki", label: "City breaki" },
-      { href: "/cieple-kierunki", label: "Cieple kierunki" },
-      { href: "/bez-wizy", label: "Bez wizy" },
+      { href: "/faq", label: "FAQ" },
       { href: "/kontakt", label: "Kontakt" },
+      { href: "/linki-partnerskie", label: "Linki partnerskie" },
     ],
-    plannerCta: "Zacznij plan",
+    plannerCta: "Zacznij planować",
     menuOpen: "Menu",
-    menuClose: "Zamknij",
-    headerNote: "Kierunek, pobyt, lot i kolejne kroki wyjazdu w jednym flow.",
-    footerLead: "Planer podrozy i serwis z przewodnikami pod realne decyzje wyjazdowe.",
-    footerBody:
-      "Laczymy inspiracje, katalog kierunkow i planner, ktory prowadzi do hoteli, lotow i kolejnych krokow wyjazdu.",
-    partnerStripEyebrow: "Partnerzy, z ktorymi pracujemy",
-    partnerStripBody: "Najmocniejsze przejscia komercyjne prowadzimy do sprawdzonych marek w noclegach, lotach i atrakcjach.",
+    menuClose: "Zamknij menu",
+    headerNote: "Kierunek, termin i kolejne kroki wyjazdu bez chaosu.",
+    skipToContent: "Przejdź do treści",
+    footerLead: "Pomagamy wybrać wyjazd i przejść dalej spokojnie.",
+    footerBody: "Korzystanie z serwisu jest darmowe. Rezerwacje finalizujesz u partnera, a ostatnie ceny i warunki zawsze sprawdzasz po jego stronie.",
     footerColumns: [
       {
-        title: "Odkrywaj",
+        title: "Start",
         links: [
-          { href: "/kierunki", label: "Kierunki" },
-          { href: "/inspiracje", label: "Inspiracje" },
-          { href: "/oferta", label: "Oferta" },
-          { href: "/przewodniki", label: "Przewodniki" },
-          { href: "/planner?mode=discovery", label: "Nie wiem dokad leciec" },
-          { href: "/mapa-serwisu", label: "Mapa serwisu" },
-        ],
-      },
-      {
-        title: "Tematy",
-        links: [
+          { href: "/planner", label: "Planner" },
+          { href: "/kierunki", label: "Katalog kierunków" },
+          { href: "/inspiracje", label: "Pomysły na wyjazd" },
           { href: "/city-breaki", label: "City breaki" },
-          { href: "/cieple-kierunki", label: "Cieple kierunki" },
-          { href: "/tanie-podroze", label: "Tanie podroze" },
-          { href: "/weekendowe-wyjazdy", label: "Weekendowe wyjazdy" },
         ],
       },
       {
         title: "Zaufanie",
         links: [
-          { href: "/o-nas", label: "O nas" },
-          { href: "/kontakt", label: "Kontakt" },
+          { href: "/jak-pracujemy", label: "Jak to działa" },
+          { href: "/o-nas", label: "O serwisie" },
           { href: "/faq", label: "FAQ" },
+          { href: "/kontakt", label: "Kontakt" },
+        ],
+      },
+      {
+        title: "Pomoc i dokumenty",
+        links: [
           { href: "/cennik", label: "Cennik" },
+          { href: "/linki-partnerskie", label: "Linki partnerskie" },
           { href: "/polityka-prywatnosci", label: "Polityka prywatnosci" },
           { href: "/regulamin", label: "Regulamin" },
-          { href: "/linki-partnerskie", label: "Linki partnerskie" },
-          { href: "/dla-partnerow", label: "Dla partnerow" },
+          { href: "/dla-partnerow", label: "Dla partnerów" },
+          { href: "/standard-redakcyjny", label: "Standard redakcyjny" },
         ],
       },
     ],
-    resourcesEyebrow: "Oficjalne zrodla",
-    resourcesTitle: "Przydatne strony zewnetrzne, ktore wzmacniaja decyzje przed wyjazdem.",
-    footerMetaLeft: "HelpTravel - planner podrozy, kierunki, inspiracje i przejscia do partnerow.",
-    footerMetaRight: "Serwis informacyjny i afiliacyjny. Finalne warunki oferty sprawdzaj zawsze u partnera.",
+    resourcesTitle: "Oficjalne źródła przed wyjazdem",
+    partnerTitle: "Partnerzy rezerwacyjni",
+    footerMetaLeft: "Planner, kierunki i pomysły na wyjazd dla osób z Polski.",
+    footerMetaRight: "Transparentny serwis afiliacyjny. Nie jestesmy biurem podróży.",
   },
   en: {
     nav: [
-      { href: "/", label: "Home" },
       { href: "/planner", label: "Planner" },
       { href: "/kierunki", label: "Destinations" },
-      { href: "/inspiracje", label: "Inspiration" },
-      { href: "/przewodniki", label: "Guides" },
-      { href: "/jak-pracujemy", label: "How we work" },
+      { href: "/inspiracje", label: "Trip ideas" },
+      { href: "/jak-pracujemy", label: "How it works" },
+      { href: "/o-nas", label: "About" },
     ],
     mobileLinks: [
-      { href: "/city-breaki", label: "City breaks" },
-      { href: "/cieple-kierunki", label: "Warm escapes" },
-      { href: "/bez-wizy", label: "Visa-free" },
+      { href: "/faq", label: "FAQ" },
       { href: "/kontakt", label: "Contact" },
+      { href: "/linki-partnerskie", label: "Affiliate links" },
     ],
     plannerCta: "Start planning",
     menuOpen: "Menu",
-    menuClose: "Close",
-    headerNote: "Destination, stay, flight and the next trip step in one flow.",
-    footerLead: "Trip planner and travel content built for real booking decisions.",
-    footerBody:
-      "We combine destination discovery, editorial guidance and a planner that moves users toward stays, flights and next travel steps.",
-    partnerStripEyebrow: "Trusted commercial partners",
-    partnerStripBody: "Our strongest outbound actions lead into established brands across stays, flights and in-destination services.",
+    menuClose: "Close menu",
+    headerNote: "Destination, dates and the next travel steps without the usual clutter.",
+    skipToContent: "Skip to content",
+    footerLead: "We help people choose a trip and move forward calmly.",
+    footerBody: "The service is free to use. Final booking happens with the partner, and the last price or policy should always be checked on their site.",
     footerColumns: [
       {
-        title: "Discover",
+        title: "Start",
         links: [
-          { href: "/kierunki", label: "Destinations" },
-          { href: "/inspiracje", label: "Inspiration" },
-          { href: "/oferta", label: "Offer" },
-          { href: "/przewodniki", label: "Guides" },
-          { href: "/planner?mode=discovery", label: "I need ideas" },
-          { href: "/mapa-serwisu", label: "Site map" },
-        ],
-      },
-      {
-        title: "Themes",
-        links: [
+          { href: "/planner", label: "Planner" },
+          { href: "/kierunki", label: "Destination catalog" },
+          { href: "/inspiracje", label: "Trip ideas" },
           { href: "/city-breaki", label: "City breaks" },
-          { href: "/cieple-kierunki", label: "Warm escapes" },
-          { href: "/tanie-podroze", label: "Budget travel" },
-          { href: "/weekendowe-wyjazdy", label: "Weekend trips" },
         ],
       },
       {
         title: "Trust",
         links: [
+          { href: "/jak-pracujemy", label: "How it works" },
           { href: "/o-nas", label: "About" },
-          { href: "/kontakt", label: "Contact" },
           { href: "/faq", label: "FAQ" },
+          { href: "/kontakt", label: "Contact" },
+        ],
+      },
+      {
+        title: "Help and documents",
+        links: [
           { href: "/cennik", label: "Pricing" },
+          { href: "/linki-partnerskie", label: "Affiliate links" },
           { href: "/polityka-prywatnosci", label: "Privacy policy" },
           { href: "/regulamin", label: "Terms" },
-          { href: "/linki-partnerskie", label: "Affiliate disclosure" },
           { href: "/dla-partnerow", label: "For partners" },
+          { href: "/standard-redakcyjny", label: "Editorial standard" },
         ],
       },
     ],
-    resourcesEyebrow: "Official resources",
-    resourcesTitle: "Useful external references that support trip decisions before booking.",
-    footerMetaLeft: "HelpTravel - trip planner, destinations, inspiration and partner outbound flow.",
-    footerMetaRight: "Informational and affiliate-based website. Always check final conditions with the external partner.",
+    resourcesTitle: "Official resources before a trip",
+    partnerTitle: "Booking partners",
+    footerMetaLeft: "Planner, destinations and trip ideas for short leisure travel.",
+    footerMetaRight: "Transparent affiliate website. Not a travel agency.",
   },
 } as const;
 
 function isActivePath(pathname: string, href: string) {
   const normalizedPathname = stripLocalePrefix(pathname);
-  if (href === "/") {
-    return normalizedPathname === "/";
-  }
-
   return normalizedPathname === href || normalizedPathname.startsWith(`${href}/`);
 }
 
@@ -156,14 +136,33 @@ export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const effectiveLocale = localeFromPathname(pathname) ?? locale;
   const text = copy[effectiveLocale];
+  const shouldLoadStay22 = !pathname.startsWith("/admin");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const mobileMenuButtonLabel = mobileMenuOpen ? text.menuClose : text.menuOpen;
-  const primaryLinks = useMemo(() => text.nav, [text.nav]);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-4 sm:px-6 lg:px-8">
-      <header className="sticky top-0 z-30 mt-3 overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white/82 px-4 py-3 shadow-[0_14px_40px_rgba(12,58,34,0.06)] backdrop-blur-xl">
+      {shouldLoadStay22 ? (
+        <Script id="stay22-letmeallez" strategy="afterInteractive">
+          {`(function (s, t, a, y, twenty, two) {
+  s.Stay22 = s.Stay22 || {};
+  s.Stay22.params = { lmaID: "69dbaa5050e44cb3cb21c07e" };
+  twenty = t.createElement(a);
+  two = t.getElementsByTagName(a)[0];
+  twenty.async = 1;
+  twenty.src = y;
+  two.parentNode.insertBefore(twenty, two);
+})(window, document, "script", "https://scripts.stay22.com/letmeallez.js");`}
+        </Script>
+      ) : null}
+
+      <a
+        href="#main-content"
+        className="sr-only rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+      >
+        {text.skipToContent}
+      </a>
+
+      <header className="sticky top-0 z-30 mt-3 overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white/92 px-4 py-3 shadow-[0_14px_40px_rgba(12,58,34,0.06)] backdrop-blur-xl">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <LocalizedLink href="/" className="flex items-center">
@@ -176,59 +175,53 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 priority
               />
             </LocalizedLink>
-            <div className="hidden min-[920px]:block">
-              <p className="max-w-xs text-xs font-medium leading-5 text-emerald-900/62">{text.headerNote}</p>
-            </div>
+          <p className="hidden max-w-xs text-xs font-medium leading-5 text-emerald-900/62 min-[920px]:block">
+              {text.headerNote}
+            </p>
           </div>
 
-          <div className="hidden items-center gap-2 lg:flex">
-            <LanguageSwitcher />
-            <nav className="flex flex-wrap items-center gap-2">
-              {primaryLinks.map((item) => {
-                const active = isActivePath(pathname, item.href);
+          <nav aria-label="Główne menu" className="hidden items-center gap-2 lg:flex">
+            {text.nav.map((item) => {
+              const active = isActivePath(pathname, item.href);
 
-                return (
-                  <LocalizedLink
-                    key={item.href}
-                    href={item.href}
-                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
-                      active
-                        ? "border-emerald-700 bg-emerald-700 text-white shadow-[0_12px_30px_rgba(21,128,61,0.16)]"
-                        : "border-emerald-900/10 bg-white/70 text-emerald-900 hover:border-emerald-500/50 hover:bg-emerald-50"
-                    }`}
-                  >
-                    {item.label}
-                  </LocalizedLink>
-                );
-              })}
-              <LocalizedLink
-                href="/planner?mode=standard"
-                className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
-              >
-                {text.plannerCta}
-              </LocalizedLink>
-            </nav>
-          </div>
-
-          <div className="flex items-center gap-2 lg:hidden">
-            <LanguageSwitcher />
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((value) => !value)}
-              className="inline-flex h-11 items-center rounded-full border border-emerald-900/10 bg-white px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-50"
-              aria-expanded={mobileMenuOpen}
-              aria-label={mobileMenuButtonLabel}
+              return (
+                <LocalizedLink
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
+                    active
+                      ? "border-emerald-700 bg-emerald-700 text-white shadow-[0_12px_30px_rgba(21,128,61,0.16)]"
+                      : "border-emerald-900/10 bg-white text-emerald-900 hover:border-emerald-500/50 hover:bg-emerald-50"
+                  }`}
+                >
+                  {item.label}
+                </LocalizedLink>
+              );
+            })}
+            <LocalizedLink
+              href="/planner?mode=standard"
+              className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
-              {mobileMenuButtonLabel}
-            </button>
-          </div>
+              {text.plannerCta}
+            </LocalizedLink>
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((value) => !value)}
+            className="inline-flex min-h-11 items-center rounded-full border border-emerald-900/10 bg-white px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-50 lg:hidden"
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? text.menuClose : text.menuOpen}
+          >
+            {mobileMenuOpen ? text.menuClose : text.menuOpen}
+          </button>
         </div>
 
         {mobileMenuOpen ? (
           <div className="mt-4 grid gap-3 border-t border-emerald-900/10 pt-4 lg:hidden">
-            <p className="text-sm leading-6 text-emerald-900/66">{text.headerNote}</p>
+            <p className="text-sm leading-6 text-emerald-900/70">{text.headerNote}</p>
             <div className="grid gap-2 sm:grid-cols-2">
-              {primaryLinks.map((item) => {
+              {text.nav.map((item) => {
                 const active = isActivePath(pathname, item.href);
 
                 return (
@@ -260,7 +253,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             <LocalizedLink
               href="/planner?mode=standard"
               onClick={() => setMobileMenuOpen(false)}
-              className="inline-flex items-center justify-center rounded-[1.2rem] bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+              className="inline-flex min-h-11 items-center justify-center rounded-[1.2rem] bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
               {text.plannerCta}
             </LocalizedLink>
@@ -268,24 +261,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
         ) : null}
       </header>
 
-      <div id="main-content" tabIndex={-1} className="flex flex-1 flex-col">{children}</div>
+      <div id="main-content" className="flex flex-1 flex-col">
+        {children}
+      </div>
 
-      <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/92 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-        <div className="rounded-[1.7rem] border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(234,247,239,0.78),rgba(255,255,255,0.96))] p-5 shadow-sm">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.partnerStripEyebrow}</p>
-              <p className="mt-2 text-sm leading-7 text-emerald-900/74">{text.partnerStripBody}</p>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {TRUSTED_PARTNERS.map((partner) => (
-              <PartnerLogoWordmark key={partner} brand={partner} />
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr]">
+      <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr]">
           <div>
             <Image
               src="/branding/helptravel-logo.png"
@@ -294,8 +275,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
               height={136}
               className="h-auto w-[180px] sm:w-[220px]"
             />
-            <h2 className="mt-3 font-display text-4xl leading-none text-emerald-950">{text.footerLead}</h2>
-            <p className="mt-4 text-sm leading-7 text-emerald-900/76">{text.footerBody}</p>
+            <h2 className="mt-3 text-2xl font-bold leading-tight text-emerald-950">{text.footerLead}</h2>
+            <p className="mt-3 text-sm leading-7 text-emerald-900/76">{text.footerBody}</p>
           </div>
 
           {text.footerColumns.map((column) => (
@@ -316,26 +297,30 @@ export function SiteShell({ children }: { children: ReactNode }) {
           ))}
         </div>
 
-        <section className="mt-8 border-t border-emerald-900/10 pt-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.resourcesEyebrow}</p>
-              <h2 className="mt-2 text-2xl font-bold text-emerald-950">{text.resourcesTitle}</h2>
+        <section className="mt-8 grid gap-6 border-t border-emerald-900/10 pt-6 lg:grid-cols-[1fr_1fr]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.resourcesTitle}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {TRUSTED_TRAVEL_RESOURCES.slice(0, 4).map((resource) => (
+                <a
+                  key={resource.href}
+                  href={resource.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-emerald-900/10 bg-emerald-50/70 px-3 py-2 text-xs font-semibold text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+                >
+                  {resource.label[effectiveLocale]}
+                </a>
+              ))}
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {TRUSTED_TRAVEL_RESOURCES.map((resource) => (
-              <a
-                key={resource.href}
-                href={resource.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-[1.4rem] border border-emerald-900/10 bg-emerald-50/70 px-4 py-4 transition hover:border-emerald-500/40 hover:bg-emerald-100"
-              >
-                <p className="text-sm font-semibold text-emerald-950">{resource.label[effectiveLocale]}</p>
-                <p className="mt-2 text-sm leading-6 text-emerald-900/74">{resource.description[effectiveLocale]}</p>
-              </a>
-            ))}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.partnerTitle}</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {TRUSTED_PARTNERS.map((partner) => (
+                <PartnerLogoWordmark key={partner} brand={partner} />
+              ))}
+            </div>
           </div>
         </section>
 
@@ -347,3 +332,4 @@ export function SiteShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+

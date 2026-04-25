@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -35,9 +35,9 @@ function formatMoney(value: number, currency: string, locale: "pl" | "en") {
 }
 
 function formatTime(value: string, locale: "pl" | "en") {
-  if (!value) return "â€”";
+  if (!value) return "--";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "â€”";
+  if (Number.isNaN(date.getTime())) return "--";
   return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "pl-PL", {
     hour: "2-digit",
     minute: "2-digit",
@@ -63,18 +63,18 @@ function Spinner() {
 const copy = {
   pl: {
     eyebrow: "Loty",
-    body: "Najpierw pokazujemy sygnal trasy i realne opcje lotu na wylot. Finalny klik nadal prowadzi do partnera z ustawionym wyszukiwaniem.",
+    body: "Najpierw pokazujemy sygnał trasy i realne opcje lotu na wylot. Finalny klik nadal prowadzi do partnera z ustawionym wyszukiwaniem.",
     partner: "Partner",
     route: "Trasa",
     departure: "Wylot",
     return: "Powrot",
-    tripWindow: "Zakres podrozy",
-    travelers: "Podrozni",
+    tripWindow: "Zakres podróży",
+    travelers: "Podróżni",
     travelersShort: "os.",
     liveBadge: "Realny shortlist",
-    fallbackBadge: "Partner-first flow",
-    flightSignals: "Jak wyglada ten kierunek lotniczo",
-    flightSignalsBody: "Jesli live feed odpowiada, pokazujemy najmocniejsze opcje na dzien wylotu. Jesli nie, otwierasz od razu gotowe wyniki partnera dla tej samej trasy.",
+    fallbackBadge: "Wyniki partnera",
+    flightSignals: "Jak wygląda ten kierunek lotniczo",
+    flightSignalsBody: "Jeśli live feed odpowiada, pokazujemy najmocniejsze opcje na dzień wylotu. Jeśli nie, otwierasz od razu gotowe wyniki partnera dla tej samej trasy.",
     topFlight: "Najmocniejsza opcja na start",
     moreFlights: "Kolejne opcje",
     airline: "Linia",
@@ -82,20 +82,20 @@ const copy = {
     duration: "Czas lotu",
     stops: "Przesiadki",
     times: "Godziny",
-    openFlight: "Otworz ten lot",
-    openFlights: "Otworz loty w",
-    liveHint: "To realne opcje na wylot dla wybranego dnia. Partner otwiera pelne wyniki dla calej trasy.",
-    fallbackTitle: "Gotowe wyniki lotow nadal sa dostepne",
+    openFlight: "Otwórz ten lot",
+    openFlights: "Otwórz loty w",
+    liveHint: "To realne opcje na wylot dla wybranego dnia. Partner otwiera pełne wyniki dla całej trasy.",
+    fallbackTitle: "Gotowe wyniki lotów nadal są dostępne",
     fallbackBody:
-      "Jesli live feed nie zwraca jeszcze shortlisty na stronie, nie gubimy kontekstu. Klik otwiera partnera z ustawiona trasa, data i liczba podroznych.",
-    fallbackStatus: "Trasa i daty sa juz ustawione",
+      "Jeśli live feed nie zwraca jeszcze shortlisty na stronie, nie gubimy kontekstu. Klik otwiera partnera z ustawiona trasa, data i liczba podróżnych.",
+    fallbackStatus: "Trasa i daty są już ustawione",
     sortCheap: "Najtansze",
     sortBalance: "Najlepszy balans",
     sortDirect: "Najmniej przesiadek",
     liveCount: "realnych opcji",
-    routeReady: "Wyniki partnera zachowuja trase i date.",
-    noFlightUrl: "Ta opcja nie ma jeszcze bezposredniego linku do zakupu, ale partner otworzy pelny wynik dla tej samej trasy.",
-    resultsHint: "Po kliknieciu ladujesz na wynikach z ustawionym wyszukiwaniem.",
+    routeReady: "Wyniki partnera zachowują trasę i datę.",
+    noFlightUrl: "Ta opcja nie ma jeszcze bezpośredniego linku do zakupu, ale partner otwórzy pełny wynik dla tej samej trasy.",
+    resultsHint: "Po kliknięciu lądujesz na wynikach z ustawionym wyszukiwaniem.",
   },
   en: {
     eyebrow: "Flights",
@@ -108,7 +108,7 @@ const copy = {
     travelers: "Travelers",
     travelersShort: "trav.",
     liveBadge: "Live shortlist",
-    fallbackBadge: "Partner-first flow",
+    fallbackBadge: "Partner results",
     flightSignals: "What the route looks like",
     flightSignalsBody: "When the live feed responds, we show the strongest outbound options for your departure day. If not, you still open a partner with the same route and timing.",
     topFlight: "Strongest opening option",
@@ -123,7 +123,7 @@ const copy = {
     liveHint: "These are live outbound options for the selected day. The partner still opens full results for the whole trip.",
     fallbackTitle: "Ready flight results are still available",
     fallbackBody:
-      "If the live feed does not return an on-page shortlist yet, we keep the flow honest. The click opens a partner with the route, date and traveler count already applied.",
+      "If the live feed does not return an on-page shortlist yet, we keep the next step clear. The click opens a partner with the route, date and traveler count already applied.",
     fallbackStatus: "The route and dates are already set",
     sortCheap: "Lowest price",
     sortBalance: "Best balance",
@@ -360,7 +360,7 @@ export function FlightOffersPanel(props: {
               </div>
               <div className="rounded-2xl bg-white/8 px-3 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.duration}</p>
-                <p className="mt-1 text-sm font-semibold text-white">{topOffer.total_duration || "â€”"}</p>
+                <p className="mt-1 text-sm font-semibold text-white">{topOffer.total_duration || "—"}</p>
               </div>
               <div className="rounded-2xl bg-white/8 px-3 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200">{text.stops}</p>
@@ -446,5 +446,7 @@ export function FlightOffersPanel(props: {
     </section>
   );
 }
+
+
 
 

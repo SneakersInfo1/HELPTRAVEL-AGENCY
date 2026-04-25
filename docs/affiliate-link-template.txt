@@ -1,0 +1,152 @@
+HelpTravel affiliate link template
+
+Use this file to paste your final links.
+If a field is not needed, leave it blank.
+
+==================================================
+HOMEPAGE
+==================================================
+
+Booking:
+
+Hotels.com:
+
+Expedia:
+
+Vrbo:
+
+Flights:
+
+Attractions:
+
+Transfers:
+
+Cars:
+
+Extra:
+
+Campaign IDs:
+
+Homepage booking campaign:
+
+Homepage flights campaign:
+
+Homepage attractions campaign:
+
+Homepage transfers campaign:
+
+==================================================
+TOP CITIES
+==================================================
+
+Antalya
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Barcelona
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Rome
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Lisbon
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Valencia
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Athens
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Budapest
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Prague
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Istanbul
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+Larnaca
+- Booking:
+- Flights:
+- Attractions:
+- Transfers:
+- Cars:
+- Notes:
+
+==================================================
+DEFAULT PARTNERS
+==================================================
+
+Stays default:
+
+Flights default:
+
+Attractions default:
+
+Transfers default:
+
+Cars default:
+
+Fallback booking URL:
+
+Fallback flights URL:
+
+Fallback attractions URL:
+
+Fallback transfers URL:
+
+==================================================
+NOTES
+==================================================
+
+- Booking should be the main stay partner.
+- Stay22 script stays enabled globally.
+- Use City-specific overrides only for the most important destinations.
+- If a link is missing, the app should fall back safely.
+

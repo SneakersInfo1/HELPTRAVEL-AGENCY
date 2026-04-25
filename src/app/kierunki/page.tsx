@@ -19,25 +19,25 @@ const pageCopy = {
   pl: {
     title: "Kierunki",
     description:
-      "Katalog 200+ kierunkow pod city break, cieple wyjazdy i praktyczne planowanie z Polski: opisy, budzety, atrakcje i przejscie do planera.",
+      "Katalog 200+ kierunków pod city break, ciepłe wyjazdy i praktyczne planowanie z Polski: opisy, budżety, atrakcje i przejście do planera.",
     ogDescription:
-      "Katalog 200+ kierunkow pod city break i krotkie wyjazdy z Polski. Praktyczne opisy, FAQ i przejscie do planera.",
-    eyebrow: "Katalog kierunkow",
-    heading: "Kierunki, ktore realnie nadaja sie na city break, krotki urlop i wyjazdy z Polski.",
+      "Katalog 200+ kierunków pod city break i krótkie wyjazdy z Polski. Praktyczne opisy, FAQ i przejście do planera.",
+    eyebrow: "Katalog kierunków",
+    heading: "Kierunki, które realnie nadają się na city break, krótki urlop i wyjazdy z Polski.",
     intro:
-      "Kazdy kierunek ma swoja strone z praktycznym opisem, sekcjami pod SEO, lokalnym kontekstem i prostym przejsciem do planera. To nie jest lista miast bez tresci, tylko warstwa wydawnicza z realnym sensem dla uzytkownika i skalowalnym katalogiem 200+ destynacji.",
-    enriched: "rozbudowanych hubow redakcyjnych",
-    supported: "wspieranych destynacji",
-    entryPoints: "punktow wejscia tematycznego",
-    metaEyebrow: "Warstwa publishera",
-    metaTitle: "Katalog kierunkow budowany jako indeksowalny hub z przejsciem do planera",
-    metaItem: "tresci dla polskiego odbiorcy",
+      "W plannerze znajdziesz ponad 235 kierunków. Pełne publiczne przewodniki mamy obecnie dla najważniejszych miast i regionów, a reszta jest dostępna przez katalog i planner bez sztucznego pompowania treści.",
+    enriched: "pełnych przewodników",
+    supported: "kierunków w plannerze",
+    entryPoints: "tematycznych wejść",
+    metaEyebrow: "Na start",
+    metaTitle: "Najpierw wybierz kierunek, potem przejdź do terminu, noclegów i lotów",
+    metaItem: "praktyczne przewodniki po najwazniejszych miastach",
     thematicPaths: "sciezek tematycznych",
-    fullCatalogEyebrow: "Pelny katalog",
-    fullCatalogTitle: "Pomysly na wyjazdy pogrupowane regionalnie",
+    fullCatalogEyebrow: "Pełny katalog",
+    fullCatalogTitle: "Pomysły na wyjazdy pogrupowane regionalnie",
     fullCatalogBody:
-      "Featured hubs sa najbardziej dopracowane redakcyjnie, ale planner i wyszukiwarka pracuja juz na szerszym katalogu. To daje wiecej punktow wejscia bez gubienia jakosci decyzji.",
-    destinationsCount: "kierunkow",
+      "Nie wszystkie kierunki mają jeszcze tak samo rozbudowany opis. Zamiast udawac gotowe przewodniki dla wszystkiego, pokazujemy najmocniejsze strony publiczne i pełny katalog w plannerze.",
+    destinationsCount: "kierunków",
   },
   en: {
     title: "Destinations",
@@ -48,18 +48,18 @@ const pageCopy = {
     eyebrow: "Destination catalog",
     heading: "Destinations that genuinely work for city breaks, short escapes and practical trips from Poland.",
     intro:
-      "Each destination has its own practical guide, decision-focused sections, local context and a clear transition into the planner. This is not a thin list of cities but a scalable publishing layer built around real travel choices.",
-    enriched: "editorially strengthened hubs",
-    supported: "supported destinations",
-    entryPoints: "thematic entry points",
-    metaEyebrow: "Publisher layer",
-    metaTitle: "A destination catalog built as an indexable hub with a planner transition",
-    metaItem: "content for short-leisure travel decisions",
+      "The planner already works on more than 235 destinations. Full public guides are available only for the strongest ones, while the rest remain available through the catalog and planner without pretending every page is equally deep.",
+    enriched: "full guides",
+    supported: "planner destinations",
+    entryPoints: "theme entry points",
+    metaEyebrow: "Start here",
+    metaTitle: "Pick a destination first, then move into dates, stays and flights",
+    metaItem: "practical destination guides for the strongest cities",
     thematicPaths: "thematic paths",
     fullCatalogEyebrow: "Full catalog",
     fullCatalogTitle: "Trip ideas grouped by region",
     fullCatalogBody:
-      "Featured hubs are the most editorially developed, but the planner and discovery stack already work on a broader destination universe. That creates more entry points without sacrificing decision quality.",
+      "Not every destination has the same editorial depth yet. Instead of faking complete guides everywhere, we surface the strongest public pages and keep the wider catalog inside the planner.",
     destinationsCount: "destinations",
   },
 } as const;
@@ -71,12 +71,14 @@ export function getDestinationsIndexMetadata(locale: SiteLocale): Metadata {
     title: text.title,
     description: text.description,
     alternates: {
-      canonical: locale === "en" ? "/en/kierunki" : "/kierunki",
-      languages: {
-        "pl-PL": "/kierunki",
-        "en-US": "/en/kierunki",
-      },
+      canonical: "/kierunki",
     },
+    robots: locale === "en"
+      ? {
+          index: false,
+          follow: true,
+        }
+      : undefined,
     openGraph: {
       title: `${text.title} - HelpTravel`,
       description: text.ogDescription,
@@ -252,4 +254,5 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
 export default async function DestinationsIndexPage() {
   return DestinationsIndexPageView({ locale: "pl" });
 }
+
 

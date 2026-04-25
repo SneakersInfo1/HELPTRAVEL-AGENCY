@@ -75,11 +75,11 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
     title: `${guide.destination.city} guide - where it wins, where to stay and how to plan it`,
     description: `${localizedGuide.overview} A practical budget frame for two travelers is usually ${budget.min}-${budget.max} PLN.`,
     alternates: {
-      canonical: `/en/kierunki/${guide.destination.slug}`,
-      languages: {
-        "pl-PL": `/kierunki/${guide.destination.slug}`,
-        "en-US": `/en/kierunki/${guide.destination.slug}`,
-      },
+      canonical: `/kierunki/${guide.destination.slug}`,
+    },
+    robots: {
+      index: false,
+      follow: true,
     },
     openGraph: {
       title: `${guide.destination.city} guide - a decision-first trip page`,
@@ -87,7 +87,6 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
       url: `${getSiteUrl()}/en/kierunki/${guide.destination.slug}`,
       type: "article",
       locale: "en_US",
-      alternateLocale: ["pl_PL"],
     },
   };
 }
