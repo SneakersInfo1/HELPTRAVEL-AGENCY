@@ -200,6 +200,7 @@ const plannerCopy = {
     childrenCount: "Dzieci (2-11 lat)",
     infants: "Niemowleta (0-1 rok)",
     detailsLabel: "Szczegoly",
+    otherOptions: "Inne propozycje",
     tabStays: "Pobyt",
     tabFlights: "Loty",
     tabAttractions: "Atrakcje",
@@ -351,6 +352,7 @@ const plannerCopy = {
     childrenCount: "Children (2-11 yrs)",
     infants: "Infants (0-1 yr)",
     detailsLabel: "Details",
+    otherOptions: "Other options",
     tabStays: "Stays",
     tabFlights: "Flights",
     tabAttractions: "Activities",
@@ -473,6 +475,7 @@ export function PlannerClient({
   const [infants, setInfants] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"stays" | "flights" | "attractions" | "cars">("stays");
+  const [altOpen, setAltOpen] = useState(false);
 
   const [query, setQuery] = useState(
     initialQuery ||
@@ -1731,14 +1734,28 @@ export function PlannerClient({
         </>
       ) : null}
 
-      {result ? (
-        <section className="grid gap-4">
-          <h2 className="text-xl font-bold text-emerald-950">
-            {mode === "standard" ? text.directPrompt : text.discoveryPrompt}
-          </h2>
+      {result && result.options.filter((option) => option.itineraryResultId !== selectedOptionId).length > 0 ? (
+        <section className="rounded-[2.2rem] border border-emerald-900/10 bg-white/95 p-5 shadow-[0_18px_56px_rgba(16,84,48,0.06)] sm:p-6">
+          <button
+            type="button"
+            onClick={() => setAltOpen((current) => !current)}
+            aria-expanded={altOpen}
+            aria-controls="planner-alt-options"
+            className="flex w-full items-center justify-between gap-4 text-left"
+          >
+            <span className="text-base font-bold text-emerald-950 sm:text-lg">
+              {text.otherOptions} ({result.options.filter((option) => option.itineraryResultId !== selectedOptionId).length})
+            </span>
+            <span aria-hidden="true" className={`text-emerald-700 transition-transform duration-200 ${altOpen ? "rotate-180" : ""}`}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
+          </button>
 
-          <div className="grid gap-4">
-            {result.options.map((option) => {
+          {altOpen ? (
+          <div id="planner-alt-options" className="mt-6 grid gap-4">
+            {result.options.filter((option) => option.itineraryResultId !== selectedOptionId).map((option) => {
               const story = getDestinationStory(option.destination);
               const active = option.itineraryResultId === selectedOptionId;
               return (
@@ -1841,6 +1858,7 @@ export function PlannerClient({
               );
             })}
           </div>
+          ) : null}
         </section>
       ) : null}
 
