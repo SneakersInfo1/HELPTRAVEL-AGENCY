@@ -170,21 +170,19 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {text.skipToContent}
       </a>
 
-      <header className="sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 px-4 py-3 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-5 sm:py-3.5">
+      <header className="sticky top-0 z-30 mt-2 rounded-[1.5rem] border border-emerald-900/10 bg-white/92 px-4 py-3 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-6 sm:py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <LocalizedLink href="/" className="flex items-center gap-2.5 leading-none">
-              <span className="block h-12 w-12 shrink-0 p-1 sm:h-14 sm:w-14 sm:p-1.5">
-                <Image
-                  src="/branding/helptravel-mark.png"
-                  alt=""
-                  width={120}
-                  height={120}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </span>
-              <span aria-label="HelpTravel" className="hidden text-base font-extrabold leading-none tracking-tight sm:inline-flex">
+            <LocalizedLink href="/" className="flex items-center gap-3 leading-none">
+              <Image
+                src="/branding/helptravel-mark.png"
+                alt=""
+                width={160}
+                height={160}
+                className="block h-14 w-14 shrink-0 object-contain sm:h-16 sm:w-16"
+                priority
+              />
+              <span aria-label="HelpTravel" className="hidden text-lg font-extrabold leading-none tracking-tight sm:inline-flex">
                 <span className="text-blue-700">HELP</span><span className="text-emerald-600">TRAVEL</span>
               </span>
             </LocalizedLink>
