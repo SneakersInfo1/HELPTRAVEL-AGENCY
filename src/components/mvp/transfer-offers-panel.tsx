@@ -21,10 +21,11 @@ const copy = {
     loading: "Odswiezamy transfery",
     options: "opcji",
     ready: "Gotowe do wyszukania",
-    date: "Data",
+    summary: "Twoja konfiguracja",
     arrivalTime: "Godzina przylotu",
-    adults: "Dorośli",
-    children: "Dzieci / niemowleta",
+    travelersWord: "os.",
+    childrenWord: "dz.",
+    infantsWord: "niem.",
     option: "Opcja",
     price: "Cena",
     open: "Zobacz transfer",
@@ -38,10 +39,11 @@ const copy = {
     loading: "Refreshing transfers",
     options: "options",
     ready: "Ready to search",
-    date: "Date",
+    summary: "Your setup",
     arrivalTime: "Arrival time",
-    adults: "Adults",
-    children: "Children / infants",
+    travelersWord: "trav.",
+    childrenWord: "ch.",
+    infantsWord: "inf.",
     option: "Option",
     price: "Price",
     open: "View transfer",
@@ -54,13 +56,16 @@ export function TransferOffersPanel(props: {
   destinationCountry: string;
   outboundDate: string;
   adults: number;
+  childrenCount?: number;
+  infants?: number;
+  originCity?: string;
 }) {
   const { locale } = useLanguage();
   const text = copy[locale];
   const dateLocale = locale === "en" ? "en-GB" : "pl-PL";
+  const childrenCount = props.childrenCount ?? 0;
+  const infants = props.infants ?? 0;
   const [departureHour, setDepartureHour] = useState("12:00");
-  const [children, setChildren] = useState(0);
-  const [infants, setInfants] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<TransferSearchResponse | null>(null);
@@ -80,7 +85,7 @@ export function TransferOffersPanel(props: {
             country: props.destinationCountry,
             outboundDateTime: `${props.outboundDate}T${departureHour}:00`,
             adults: props.adults,
-            children,
+            children: childrenCount,
             infants,
           });
 
@@ -106,7 +111,7 @@ export function TransferOffersPanel(props: {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [children, departureHour, infants, props.adults, props.destinationCity, props.destinationCountry, props.outboundDate, text.requestError]);
+  }, [childrenCount, departureHour, infants, props.adults, props.destinationCity, props.destinationCountry, props.outboundDate, text.requestError]);
 
   const displayedOffers = useMemo(() => data?.offers.slice(0, 20) ?? [], [data?.offers]);
 
@@ -125,10 +130,15 @@ export function TransferOffersPanel(props: {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <div className="rounded-2xl bg-emerald-50/70 px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.date}</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-950">{formatShortDate(props.outboundDate, dateLocale)}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.summary}</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950">
+            {props.originCity ? `${props.originCity} -> ` : ""}
+            {props.destinationCity} · {formatShortDate(props.outboundDate, dateLocale)} · {props.adults} {text.travelersWord}
+            {childrenCount > 0 ? ` / ${childrenCount} ${text.childrenWord}` : ""}
+            {infants > 0 ? ` / ${infants} ${text.infantsWord}` : ""}
+          </p>
         </div>
 
         <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
@@ -137,35 +147,8 @@ export function TransferOffersPanel(props: {
             type="time"
             value={departureHour}
             onChange={(event) => setDepartureHour(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
+            className="mt-2 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70 sm:w-36"
           />
-        </label>
-
-        <div className="rounded-2xl bg-emerald-50/70 px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{text.adults}</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-950">{props.adults}</p>
-        </div>
-
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          {text.children}
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <input
-              type="number"
-              min={0}
-              max={8}
-              value={children}
-              onChange={(event) => setChildren(Number(event.target.value) || 0)}
-              className="w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-            />
-            <input
-              type="number"
-              min={0}
-              max={8}
-              value={infants}
-              onChange={(event) => setInfants(Number(event.target.value) || 0)}
-              className="w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
-            />
-          </div>
         </label>
       </div>
 

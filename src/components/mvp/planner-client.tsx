@@ -1694,6 +1694,9 @@ export function PlannerClient({
                     destinationCountry={selectedOption.destination.country}
                     outboundDate={travelStartDate}
                     adults={travelers}
+                    childrenCount={withChildren ? childrenCount : 0}
+                    infants={withChildren ? infants : 0}
+                    originCity={originCity}
                   />
                 </div>
               ) : null}
