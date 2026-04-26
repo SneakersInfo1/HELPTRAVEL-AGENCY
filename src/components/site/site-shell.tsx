@@ -170,16 +170,16 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {text.skipToContent}
       </a>
 
-      <header className="sticky top-0 z-30 mt-2 overflow-hidden rounded-[1.2rem] border border-emerald-900/10 bg-white/92 px-3 py-2 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-4">
+      <header className="sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 px-3 py-3 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            <LocalizedLink href="/" className="flex items-center gap-2 leading-none">
+            <LocalizedLink href="/" className="flex items-center gap-2.5 leading-none">
               <Image
                 src="/branding/helptravel-mark.png"
                 alt=""
                 width={96}
                 height={96}
-                className="h-10 w-10 shrink-0 sm:h-11 sm:w-11"
+                className="block h-11 w-11 shrink-0 sm:h-12 sm:w-12"
                 priority
               />
               <span aria-label="HelpTravel" className="hidden text-base font-extrabold leading-none tracking-tight sm:inline-flex">
