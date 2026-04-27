@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { searchHotelbedsActivities } from "@/lib/mvp/hotelbeds-activities";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const activitySearchSchema = z.object({
@@ -12,21 +11,8 @@ const activitySearchSchema = z.object({
   travelers: z.coerce.number().int().min(1).max(8).default(2),
 });
 
-function buildFallback(input: z.infer<typeof activitySearchSchema>, errorMessage?: string) {
-  return {
-    city: input.city,
-    country: input.country,
-    source: "fallback" as const,
-    destinationCode: undefined,
-    fromDate: input.fromDate,
-    toDate: input.toDate,
-    travelers: input.travelers,
-    offers: [],
-    fetchedAt: new Date().toISOString(),
-    error: errorMessage || "Aktualnie nie udało się pobrać ofert atrakcji dla tego kierunku.",
-  };
-}
-
+// Po wycofaniu Hotelbeds Activities zostaje tylko empty state.
+// UI renderuje wtedy deeplinki do Klook / Tiqets (Travelpayouts) z affiliate-config.
 export async function POST(request: NextRequest) {
   const limited = await enforceRateLimit(request, "activities-search");
   if (limited) return limited;
@@ -35,22 +21,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = activitySearchSchema.parse(body);
 
-    const result = await searchHotelbedsActivities({
-      city: input.city,
-      country: input.country,
-      fromDate: input.fromDate,
-      toDate: input.toDate,
-      travelers: input.travelers,
-    }).catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : "";
-      return buildFallback(input, message);
-    });
-
-    return NextResponse.json(result, {
-      headers: {
-        "Cache-Control": "no-store",
+    return NextResponse.json(
+      {
+        city: input.city,
+        country: input.country,
+        source: "fallback" as const,
+        destinationCode: undefined,
+        fromDate: input.fromDate,
+        toDate: input.toDate,
+        travelers: input.travelers,
+        offers: [],
+        fetchedAt: new Date().toISOString(),
+        error: "Atrakcje rezerwujesz bezposrednio u partnerow (Klook, Tiqets).",
       },
-    });
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch {
     return NextResponse.json({ error: "Nie udało się pobrać danych." }, { status: 400 });
   }

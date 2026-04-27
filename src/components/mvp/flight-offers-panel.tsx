@@ -96,6 +96,7 @@ const copy = {
     routeReady: "Wyniki partnera zachowują trasę i datę.",
     noFlightUrl: "Ta opcja nie ma jeszcze bezpośredniego linku do zakupu, ale partner otwórzy pełny wynik dla tej samej trasy.",
     resultsHint: "Po kliknięciu lądujesz na wynikach z ustawionym wyszukiwaniem.",
+    showMoreFlights: "Pokaż więcej lotów",
   },
   en: {
     eyebrow: "Flights",
@@ -132,6 +133,7 @@ const copy = {
     routeReady: "Partner results keep the route and date context.",
     noFlightUrl: "This option does not expose a direct booking link yet, but the partner will still open the same route.",
     resultsHint: "After the click you land directly on prefilled flight results.",
+    showMoreFlights: "Show more flights",
   },
 } as const;
 
@@ -151,6 +153,7 @@ export function FlightOffersPanel(props: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<FlightSearchResponse | null>(null);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   const tripNights = countNightsBetweenIsoDates(props.departureDate, props.returnDate, 4);
   const partnerLabel = getAffiliateBrandLabel(props.partnerUrl, locale === "en" ? "Flight partner" : "Partner lotniczy");
@@ -196,6 +199,7 @@ export function FlightOffersPanel(props: {
 
           if (!cancelled) {
             setData(result);
+            setVisibleCount(10);
           }
         } catch (requestError) {
           if (!cancelled) {
@@ -220,8 +224,10 @@ export function FlightOffersPanel(props: {
 
   const liveOffers = data?.offers ?? [];
   const topOffer = liveOffers[0] ?? null;
-  const secondaryOffers = liveOffers.slice(1, 4);
-  const hasLiveShortlist = data?.source === "duffel" && liveOffers.length > 0;
+  const visibleOffers = liveOffers.slice(0, Math.max(1, visibleCount));
+  const secondaryOffers = visibleOffers.slice(1);
+  const canShowMore = visibleCount < liveOffers.length;
+  const hasLiveShortlist = data?.source === "travelpayouts" && liveOffers.length > 0;
   const fallbackMessage = error || data?.error || text.fallbackBody;
 
   const buildFlightHref = (offer?: NormalizedFlightOffer | null, source = "flight_panel_live") =>
@@ -410,6 +416,18 @@ export function FlightOffersPanel(props: {
                   </a>
                 </article>
               ))}
+            </div>
+          ) : null}
+          {canShowMore ? (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((value) => Math.min(liveOffers.length, value + 10))}
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/14"
+              >
+                {text.showMoreFlights}
+                <span aria-hidden>↓</span>
+              </button>
             </div>
           ) : null}
         </div>

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { searchDuffelFlights } from "@/lib/mvp/duffel";
-import type { CabinClass, FlightSearchResponse, FlightSortMode } from "@/lib/mvp/types";
+import { searchTravelpayoutsFlights } from "@/lib/mvp/travelpayouts-flights";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const flightSearchSchema = z.object({
@@ -14,33 +13,6 @@ const flightSearchSchema = z.object({
   sortBy: z.enum(["cheap", "balance", "direct"]).default("balance"),
 });
 
-function buildFallback(
-  input: {
-    origin: string;
-    destination: string;
-    departureDate: string;
-    passengers: number;
-    cabinClass: CabinClass;
-    sortBy: FlightSortMode;
-  },
-  errorMessage?: string,
-): FlightSearchResponse {
-  return {
-    origin: input.origin,
-    destination: input.destination,
-    departureDate: input.departureDate,
-    passengers: input.passengers,
-    cabinClass: input.cabinClass,
-    sortBy: input.sortBy,
-    offers: [],
-    fetchedAt: new Date().toISOString(),
-    source: "partner_fallback",
-    error:
-      errorMessage ||
-      "Jeśli nie mamy jeszcze własnej shortlisty lotów, otwieramy gotowe wyniki partnera z ustawiona trasa i data.",
-  };
-}
-
 export async function POST(request: NextRequest) {
   const limited = await enforceRateLimit(request, "flights-search");
   if (limited) return limited;
@@ -49,32 +21,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = flightSearchSchema.parse(body);
 
-    const result = await searchDuffelFlights({
+    const result = await searchTravelpayoutsFlights({
       origin: input.origin,
       destination: input.destination,
       departureDate: input.departureDate,
       passengers: input.passengers,
       cabinClass: input.cabinClass,
       sortBy: input.sortBy,
-    }).catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : "";
-      const friendlyMessage =
-        message.includes("DUFFEL_ACCESS_TOKEN") || message.includes("kod lotniska")
-          ? "Jeśli nie mamy jeszcze własnej shortlisty lotów, otwieramy gotowe wyniki partnera z zachowanym kierunkiem i data."
-          : message;
-
-      return buildFallback(input, friendlyMessage);
     });
 
-    const payload: FlightSearchResponse =
-      "source" in result
-        ? result
-        : {
-            ...result,
-            source: "duffel",
-          };
-
-    return NextResponse.json(payload, {
+    return NextResponse.json(result, {
       headers: {
         "Cache-Control": "no-store",
       },
@@ -83,4 +39,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nie udalo sie pobrac danych lotów." }, { status: 400 });
   }
 }
-
