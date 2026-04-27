@@ -74,45 +74,45 @@ function StayCard({ offer, nights, locale, t }: {
 }) {
   const stars = offer.rating ?? 0;
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_8px_24px_rgba(16,84,48,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(16,84,48,0.1)]">
-      <div className="relative h-40 w-full bg-emerald-50">
+    <article className="flex items-stretch overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)]">
+      <div className="relative h-32 w-32 shrink-0 bg-emerald-50 sm:h-36 sm:w-48">
         {offer.imageUrl ? (
           <Image
             src={offer.imageUrl}
             alt={offer.name}
             fill
-            sizes="(max-width: 640px) 100vw, 33vw"
+            sizes="(max-width: 640px) 128px, 192px"
             className="object-cover"
           />
         ) : null}
-        {stars > 0 ? (
-          <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2 py-1 text-xs font-bold text-emerald-900 shadow">
-            {t.starsLabel(stars)}
-          </span>
-        ) : null}
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="line-clamp-2 text-sm font-bold text-emerald-950">{offer.name}</h3>
-        <p className="line-clamp-1 text-xs text-emerald-900/64">{offer.address}</p>
-        <div className="mt-auto flex items-end justify-between gap-2 pt-2">
-          <div>
-            {offer.total_amount > 0 ? (
-              <>
-                <p className="text-lg font-bold text-emerald-950">
-                  {formatPrice(offer.total_amount, offer.currency, locale)}
-                </p>
-                <p className="text-[11px] text-emerald-900/60">{t.nights(nights)}</p>
-              </>
-            ) : (
-              <p className="text-sm font-semibold text-emerald-900/72">{t.noPrice}</p>
-            )}
+      <div className="flex flex-1 items-center gap-4 p-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="line-clamp-1 text-base font-bold text-emerald-950">{offer.name}</h3>
+            {stars > 0 ? (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                {t.starsLabel(stars)}
+              </span>
+            ) : null}
           </div>
+          <p className="mt-1 line-clamp-1 text-xs text-emerald-900/64">{offer.address}</p>
+          <p className="mt-2 text-[11px] text-emerald-900/56">{t.nights(nights)}</p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {offer.total_amount > 0 ? (
+            <p className="whitespace-nowrap text-xl font-bold text-emerald-950">
+              {formatPrice(offer.total_amount, offer.currency, locale)}
+            </p>
+          ) : (
+            <p className="text-sm font-semibold text-emerald-900/72">{t.noPrice}</p>
+          )}
           {offer.bookingUrl ? (
             <a
               href={offer.bookingUrl}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-800"
+              className="whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
               {t.bookNow}
             </a>
@@ -212,14 +212,14 @@ export function StayOffersPanel(props: {
       </header>
 
       {loading && shown.length === 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 10 }).map((_, idx) => (
-            <div key={idx} className="h-64 animate-pulse rounded-2xl bg-emerald-50" />
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <div key={idx} className="h-32 animate-pulse rounded-2xl bg-emerald-50 sm:h-36" />
           ))}
         </div>
       ) : shown.length > 0 ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="flex flex-col gap-3">
             {shown.map((offer) => (
               <StayCard key={offer.searchResultId} offer={offer} nights={nights} locale={locale} t={t} />
             ))}

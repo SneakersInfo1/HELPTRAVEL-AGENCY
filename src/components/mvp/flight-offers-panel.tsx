@@ -76,47 +76,53 @@ function FlightCard({ offer, locale, t }: {
   t: Copy;
 }) {
   return (
-    <article className="flex flex-col gap-3 rounded-2xl border border-emerald-900/10 bg-white p-4 shadow-[0_8px_24px_rgba(16,84,48,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(16,84,48,0.1)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">{offer.airline}</p>
-          <p className="mt-1 text-sm font-bold text-emerald-950">
-            {offer.origin} → {offer.destination}
-          </p>
+    <article className="flex items-center gap-4 rounded-2xl border border-emerald-900/10 bg-white p-4 shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)]">
+      <div className="hidden w-16 shrink-0 sm:block">
+        <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">{offer.airline}</p>
+      </div>
+
+      <div className="flex flex-1 items-center gap-4">
+        <div className="text-center">
+          <p className="text-base font-bold text-emerald-950">{formatTime(offer.departure_time, locale)}</p>
+          <p className="text-[11px] text-emerald-900/56">{offer.origin}</p>
         </div>
+
+        <div className="flex flex-1 flex-col items-center">
+          <p className="text-[11px] text-emerald-900/56">{offer.total_duration || "—"}</p>
+          <div className="my-1 flex w-full items-center gap-2">
+            <span className="h-px flex-1 bg-emerald-200" />
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+              {t.stops(offer.number_of_stops)}
+            </span>
+            <span className="h-px flex-1 bg-emerald-200" />
+          </div>
+          <p className="text-[10px] text-emerald-900/56 sm:hidden">{offer.airline}</p>
+        </div>
+
+        <div className="text-center">
+          <p className="text-base font-bold text-emerald-950">{formatTime(offer.arrival_time, locale)}</p>
+          <p className="text-[11px] text-emerald-900/56">{offer.destination}</p>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 flex-col items-end gap-2">
         <div className="text-right">
-          <p className="whitespace-nowrap text-lg font-bold text-emerald-950">
+          <p className="whitespace-nowrap text-xl font-bold text-emerald-950">
             {formatPrice(offer.total_amount, offer.currency, locale)}
           </p>
           <p className="text-[10px] text-emerald-900/56">{t.perPerson}</p>
         </div>
+        {offer.bookingUrl ? (
+          <a
+            href={offer.bookingUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            {t.bookNow}
+          </a>
+        ) : null}
       </div>
-
-      <div className="grid grid-cols-3 gap-2 rounded-xl bg-emerald-50/60 p-3 text-xs">
-        <div>
-          <p className="text-emerald-900/56">{formatTime(offer.departure_time, locale)}</p>
-          <p className="font-semibold text-emerald-950">{offer.origin}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-emerald-900/56">{offer.total_duration || "—"}</p>
-          <p className="font-semibold text-emerald-900">{t.stops(offer.number_of_stops)}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-emerald-900/56">{formatTime(offer.arrival_time, locale)}</p>
-          <p className="font-semibold text-emerald-950">{offer.destination}</p>
-        </div>
-      </div>
-
-      {offer.bookingUrl ? (
-        <a
-          href={offer.bookingUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-auto inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
-        >
-          {t.bookNow}
-        </a>
-      ) : null}
     </article>
   );
 }
@@ -191,14 +197,14 @@ export function FlightOffersPanel(props: {
       </header>
 
       {loading && shown.length === 0 ? (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 10 }).map((_, idx) => (
-            <div key={idx} className="h-44 animate-pulse rounded-2xl bg-emerald-50" />
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <div key={idx} className="h-24 animate-pulse rounded-2xl bg-emerald-50" />
           ))}
         </div>
       ) : shown.length > 0 ? (
         <>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="flex flex-col gap-3">
             {shown.map((offer) => (
               <FlightCard key={offer.offerId} offer={offer} locale={locale} t={t} />
             ))}
