@@ -261,14 +261,14 @@ export interface FlightSearchResponse {
   sortBy: FlightSortMode;
   offers: NormalizedFlightOffer[];
   fetchedAt: string;
-  source?: "duffel" | "partner_fallback";
+  source?: "travelpayouts" | "partner_fallback";
   error?: string;
 }
 
 export interface StaySearchResponse {
   city: string;
   country: string;
-  source: "duffel" | "hotelbeds" | "fallback";
+  source: "hotellook" | "fallback";
   checkInDate: string;
   checkOutDate: string;
   guests: number;
@@ -282,7 +282,7 @@ export interface StaySearchResponse {
 export interface ActivitySearchResponse {
   city: string;
   country: string;
-  source: "hotelbeds" | "fallback";
+  source: "fallback";
   destinationCode?: string;
   fromDate: string;
   toDate: string;
@@ -295,7 +295,7 @@ export interface ActivitySearchResponse {
 export interface TransferSearchResponse {
   city: string;
   country: string;
-  source: "hotelbeds" | "fallback";
+  source: "fallback";
   airportCode?: string;
   center?: {
     lat: number;

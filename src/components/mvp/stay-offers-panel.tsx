@@ -12,9 +12,9 @@ import { buildRedirectHref } from "@/lib/mvp/providers";
 import { countNightsBetweenIsoDates, formatShortDate } from "@/lib/mvp/travel-dates";
 import type { NormalizedStayOffer, StaySearchResponse, StaySortMode } from "@/lib/mvp/types";
 
-const INITIAL_VISIBLE_OFFERS = 24;
-const VISIBLE_OFFERS_STEP = 24;
-const MAX_VISIBLE_OFFERS = 500;
+const INITIAL_VISIBLE_OFFERS = 10;
+const VISIBLE_OFFERS_STEP = 10;
+const MAX_VISIBLE_OFFERS = 100;
 
 function postJson<T>(url: string, body: unknown): Promise<T> {
   return fetch(url, {
@@ -138,6 +138,7 @@ const copy = {
     quickShortlistBody: "Trzy opcje, od których najłatwiej zacząć porównańie tego pobytu.",
     shortlistOpen: "Otwórz",
     showMore: "Pokaż więcej",
+    jumpToFlights: "Skocz do lotów",
     partnersTitle: "Sprawdź tez u innych partnerów",
     partnerHotelsBody: "Pełne wyniki hoteli dla tego samego terminu i składu podróży.",
     partnerCompareBody: "Drugie źródło do szybkiego porównania cen i standardu.",
@@ -192,6 +193,7 @@ const copy = {
     quickShortlistBody: "Three options that make it easier to start comparing this stay window.",
     shortlistOpen: "Open",
     showMore: "Show more",
+    jumpToFlights: "Jump to flights",
     partnersTitle: "Also check other partners",
     partnerHotelsBody: "Full hotel results for the same dates and traveler setup.",
     partnerCompareBody: "A second source for checking price and standard quickly.",
@@ -466,6 +468,15 @@ export function StayOffersPanel(props: {
           >
             {text.showMore}
           </button>
+        ) : null}
+        {displayedOffers.length > 0 ? (
+          <a
+            href="#planner-flights"
+            className="ml-auto inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
+          >
+            {text.jumpToFlights}
+            <span aria-hidden>↓</span>
+          </a>
         ) : null}
       </div>
 

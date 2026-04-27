@@ -13,42 +13,30 @@ export interface DataSourceOption {
 export const DATA_SOURCE_STRATEGY: Record<DataDomain, DataSourceOption[]> = {
   flights: [
     {
-      provider: "Duffel",
+      provider: "Travelpayouts (Aviasales Flight Data)",
       role: "primary",
-      purpose: "real flight offers",
-      notes: "Use as the main live inventory layer for routes, dates and traveler counts.",
-    },
-    {
-      provider: "Travelpayouts",
-      role: "secondary",
-      purpose: "affiliate fallback",
-      notes: "Use for redirect-based monetization when live inventory is unavailable.",
-    },
-    {
-      provider: "SerpApi or Apify",
-      role: "fallback",
-      purpose: "search enrichment",
-      notes: "Use only for research, intent checks and inspiration, not as the final source of truth.",
+      purpose: "cached flight prices + affiliate redirect",
+      notes: "Meta-search via Travelpayouts API. Click leads to Aviasales for live booking with affiliate marker.",
     },
   ],
   stays: [
     {
-      provider: "Booking Demand API",
+      provider: "Travelpayouts (Hotellook)",
       role: "primary",
-      purpose: "real stay inventory",
-      notes: "Use for availability, prices and availability-aware redirect flows.",
+      purpose: "hotel meta-search with prices",
+      notes: "Hotellook cache.json gives hotel cards with prices in PLN. Click leads to partner via marker.",
+    },
+    {
+      provider: "Stay22",
+      role: "secondary",
+      purpose: "smart Booking redirect / map widget",
+      notes: "Used as secondary CTA under hotel cards (Booking, Airbnb, Vrbo deep links).",
     },
     {
       provider: "CJ",
       role: "secondary",
-      purpose: "affiliate hotel redirects",
-      notes: "Use as a practical fallback when live inventory is not available for a given route.",
-    },
-    {
-      provider: "Travelpayouts",
-      role: "fallback",
-      purpose: "supporting affiliate layer",
-      notes: "Use for partner links and additional travel verticals where inventory is not needed.",
+      purpose: "affiliate hotel redirects (Hotels.com, Expedia, Vrbo)",
+      notes: "Compare-price buttons under hotel cards.",
     },
   ],
   activities: [

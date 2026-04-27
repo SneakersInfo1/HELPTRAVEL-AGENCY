@@ -11,7 +11,7 @@ Projekt jest zbudowany w Next.js i przygotowany pod publiczny serwis travelowy z
 
 - Next.js App Router + TypeScript + Tailwind CSS
 - Prisma + Postgres
-- Duffel, Geoapify, Pexels
+- Travelpayouts (Hotellook + Aviasales), Stay22, CJ, Geoapify, Pexels
 - opcjonalnie OpenAI do lepszego rozumienia intencji w trybie discovery
 - Vercel jako docelowy deployment
 
@@ -50,9 +50,9 @@ Podstawowe:
 
 Integracje:
 
-- `DUFFEL_ACCESS_TOKEN`
-- `DUFFEL_API_URL`
-- `DUFFEL_VERSION`
+- `NEXT_PUBLIC_TRAVELPAYOUTS_MARKER` - marker affiliate (publiczny, w linkach)
+- `TRAVELPAYOUTS_API_TOKEN` - token API (sekret) do Hotellook i Aviasales Flight Data
+- `NEXT_PUBLIC_STAY22_AID` - AID Stay22 do widgetu/redirectow Booking
 - `PEXELS_API_KEY`
 - `GEOAPIFY_API_KEY`
 - `AFFILIATE_FLIGHTS_TEMPLATE` - szablon deeplinku dla lotow (np. z Travelpayouts/CJ)
@@ -61,15 +61,6 @@ Integracje:
 - `CJ_HOTELS_COM_TEMPLATE` - wrapper CJ dla wynikow Hotels.com z placeholderem `{urlEncoded}`
 - `CJ_EXPEDIA_TEMPLATE` - wrapper CJ dla wynikow Expedia z placeholderem `{urlEncoded}`
 - `CJ_VRBO_TEMPLATE` - wrapper CJ dla wynikow Vrbo z placeholderem `{urlEncoded}`
-- `HOTELBEDS_HOTEL_API_KEY`
-- `HOTELBEDS_HOTEL_API_SECRET`
-- `HOTELBEDS_HOTEL_API_URL`
-- `HOTELBEDS_ACTIVITIES_API_KEY`
-- `HOTELBEDS_ACTIVITIES_API_SECRET`
-- `HOTELBEDS_ACTIVITIES_API_URL`
-- `HOTELBEDS_TRANSFER_API_KEY`
-- `HOTELBEDS_TRANSFER_API_SECRET`
-- `HOTELBEDS_TRANSFER_API_URL`
 
 Opcjonalne:
 
