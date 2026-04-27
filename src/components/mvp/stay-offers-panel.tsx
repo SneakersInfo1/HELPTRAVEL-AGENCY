@@ -7,9 +7,9 @@ import { useLanguage } from "@/components/site/language-provider";
 import { countNightsBetweenIsoDates } from "@/lib/mvp/travel-dates";
 import type { NormalizedStayOffer, StaySearchResponse } from "@/lib/mvp/types";
 
-const INITIAL_VISIBLE = 10;
-const STEP = 10;
-const MAX_VISIBLE = 50;
+const INITIAL_VISIBLE = 5;
+const STEP = 5;
+const MAX_VISIBLE = 30;
 
 const copy = {
   pl: {
