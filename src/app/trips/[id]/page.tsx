@@ -204,7 +204,6 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           departureDate={tripStartDate}
           returnDate={tripCheckOutDate}
           passengers={tripTravelers}
-          partnerUrl={contextualAffiliateLinks.flights}
         />
       </div>
 

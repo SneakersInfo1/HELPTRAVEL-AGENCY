@@ -1700,225 +1700,8 @@ export function PlannerClient({
         </section>
       ) : null}
 
-      {selectedOption && selectedStory && activeAffiliateLinks ? (
+      {selectedOption ? (
         <>
-          <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_18px_55px_rgba(16,84,48,0.08)]">
-            <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="relative min-h-[360px]">
-                <Image
-                  src={selectedStory.heroImage}
-                  alt={selectedStory.name}
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 56vw"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,16,10,0.08)_0%,rgba(6,16,10,0.72)_100%)]" />
-                <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                    {isDirectRouteSearch ? text.selectedRoute : text.bestForBrief}
-                  </p>
-                  <h2 className="mt-2 text-3xl font-bold sm:text-4xl">
-                    {selectedOption.destination.city}, {selectedOption.destination.country}
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-white/84">{selectedStory.tagline}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4 p-5 sm:p-6">
-                <div className="flex flex-wrap gap-3">
-                  <SummaryPill label={text.score} value={`${selectedOption.score.toFixed(0)} / ${scoreLabel(selectedOption.score, locale)}`} />
-                  <SummaryPill label={text.term} value={`${formatShortDate(travelStartDate, dateLocale)} - ${formatShortDate(checkOutDate, dateLocale)}`} />
-                  <SummaryPill label={text.travelParty} value={`${travelers} ${text.travelersShort} / ${travelNights} ${text.selectedDatesValue}`} />
-                </div>
-
-                <div className="rounded-[1.5rem] border border-emerald-900/10 bg-emerald-50/70 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.whyNow}</p>
-                  <p className="mt-2 text-sm leading-7 text-emerald-900/82">{selectedStory.summary}</p>
-                  {localFocus ? (
-                    <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-emerald-950 shadow-sm">
-                      {text.exactMatch}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {selectedStory.bestFor.map((tag) => (
-                    <span key={tag} className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {selectedStory.highlights.slice(0, 4).map((highlight) => (
-                    <div key={highlight} className="rounded-2xl border border-emerald-900/10 bg-white px-4 py-3 text-sm font-medium text-emerald-950">
-                      {highlight}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href={buildSelectedRedirectHref("stays", activeAffiliateLinks.stays)}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => sendClientEvent("affiliate_clicked", { type: "stays", partner: stayPartner, source: "planner_hero", city: selectedOption.destination.city })}
-                    className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800"
-                  >
-                    <PartnerLogoMark brand={stayPartner} size="sm" variant="contrast" />
-                    {text.openStay} {stayPartner}
-                  </a>
-                  <a
-                    href={buildSelectedRedirectHref("flights", activeAffiliateLinks.flights)}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => sendClientEvent("affiliate_clicked", { type: "flights", partner: flightPartner, source: "planner_hero", city: selectedOption.destination.city })}
-                    className="inline-flex items-center gap-2 rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
-                  >
-                    <PartnerLogoMark brand={flightPartner} size="sm" />
-                    {text.openFlights} {flightPartner}
-                  </a>
-                  <a
-                    href={buildSelectedRedirectHref("cars", activeAffiliateLinks.cars)}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => sendClientEvent("affiliate_clicked", { type: "cars", partner: carPartner, source: "planner_hero", city: selectedOption.destination.city })}
-                    className="inline-flex items-center gap-2 rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
-                  >
-                    <PartnerLogoMark brand={carPartner} size="sm" />
-                    {text.openCars} {carPartner}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleSaveTrip();
-                    }}
-                    disabled={savingTrip}
-                    className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50 disabled:opacity-70"
-                  >
-                    {savingTrip ? text.savingTrip : text.saveTrip}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleSavedDestination()}
-                    className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-                      isSelectedDestinationSaved
-                        ? "bg-emerald-950 text-white hover:bg-emerald-900"
-                        : "border border-emerald-900/12 bg-white text-emerald-950 hover:bg-emerald-50"
-                    }`}
-                  >
-                    {isSelectedDestinationSaved ? text.savedDestination : text.saveDestination}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid gap-3 xl:grid-cols-4">
-            {bookingDeck.map((card, index) => {
-              const cardClassName =
-                card.tone === "primary"
-                  ? "border-emerald-700 bg-emerald-700 text-white shadow-[0_20px_60px_rgba(21,128,61,0.22)]"
-                  : card.tone === "dark"
-                    ? "border-emerald-950 bg-emerald-950 text-white shadow-[0_18px_55px_rgba(7,31,18,0.16)]"
-                    : "border-emerald-900/10 bg-white text-emerald-950 shadow-[0_16px_45px_rgba(16,84,48,0.06)]";
-              const eyebrowClassName = card.tone === "light" ? "text-emerald-700" : "text-emerald-200";
-              const descriptionClassName = card.tone === "light" ? "text-emerald-900/72" : "text-white/72";
-              const buttonClassName =
-                card.tone === "primary"
-                  ? "bg-white text-emerald-950 hover:bg-emerald-50"
-                  : card.tone === "dark"
-                    ? "bg-emerald-400 text-emerald-950 hover:bg-emerald-300"
-                    : "bg-emerald-700 text-white hover:bg-emerald-800";
-
-              const isExternal = !card.href.startsWith("#");
-              return (
-                <a
-                  key={card.title + index}
-                  href={card.href}
-                  target={isExternal ? "_blank" : undefined}
-                  rel={isExternal ? "noreferrer" : undefined}
-                  onClick={() => {
-                    if (isExternal) {
-                      sendClientEvent("affiliate_clicked", {
-                        type: index === 0 ? "stays" : index === 1 ? "flights" : index === 2 ? "cars" : "activities",
-                        partner: card.brand,
-                        source: "planner_booking_deck",
-                        city: selectedOption.destination.city,
-                      });
-                    }
-                  }}
-                  className={`animate-rise-card rounded-[1.7rem] border p-5 transition duration-300 hover:-translate-y-1 ${cardClassName}`}
-                >
-                  <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${eyebrowClassName}`}>{card.eyebrow}</p>
-                  <div className="mt-3 flex items-center gap-3">
-                    <PartnerLogoMark
-                      brand={card.brand}
-                      size="md"
-                      variant={card.tone === "light" ? "brand" : "contrast"}
-                    />
-                    <h3 className="text-2xl font-bold">{card.title}</h3>
-                  </div>
-                  <p className={`mt-3 text-sm leading-6 ${descriptionClassName}`}>{card.description}</p>
-                  <span className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${buttonClassName}`}>
-                    <PartnerLogoMark brand={card.brand} size="sm" variant={card.tone === "light" ? "brand" : "neutral"} />
-                    {index === 0 ? text.showStay : index === 1 ? text.showFlights : index === 2 ? text.showCars : text.showOnSite}
-                  </span>
-                </a>
-              );
-            })}
-          </section>
-
-          <section className="sticky top-20 z-20 -mx-1 lg:hidden">
-            <div className="rounded-[1.5rem] border border-emerald-900/12 bg-white/94 p-4 shadow-[0_18px_40px_rgba(16,84,48,0.12)] backdrop-blur">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold text-emerald-950">
-                  {selectedOption.destination.city}, {selectedOption.destination.country}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (mobileSettingsOpen) {
-                      setMobileSettingsOpen(false);
-                    } else {
-                      openMobileSettings();
-                    }
-                  }}
-                  className="rounded-full border border-emerald-900/12 bg-white px-3 py-2 text-xs font-bold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {mobileSettingsOpen ? text.closeTripEditor : text.editTrip}
-                </button>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <a
-                  href="#planner-stays"
-                  className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
-                >
-                  {text.jumpToStays}
-                </a>
-                <a
-                  href="#planner-flights"
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToFlights}
-                </a>
-                <a
-                  href="#planner-guide"
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToGuide}
-                </a>
-                <a
-                  href="#planner-on-site"
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-                >
-                  {text.jumpToOnSite}
-                </a>
-              </div>
-            </div>
-          </section>
-
           <section
             ref={settingsPanelRef}
             id="planner-settings"
@@ -2014,30 +1797,7 @@ export function PlannerClient({
                 departureDate={travelStartDate}
                 returnDate={checkOutDate}
                 passengers={travelers}
-                partnerUrl={activeAffiliateLinks.flights}
               />
-            </div>
-            <div id="planner-guide" className="scroll-mt-36">
-              <DestinationAttractionsPanel city={selectedOption.destination.city} country={selectedOption.destination.country} />
-            </div>
-            <div id="aktywnosci-na-miejscu" className="grid gap-5 xl:grid-cols-2">
-              <div id="planner-on-site" className="scroll-mt-36">
-                <ActivityOffersPanel
-                  destinationCity={selectedOption.destination.city}
-                  destinationCountry={selectedOption.destination.country}
-                  fromDate={travelStartDate}
-                  toDate={checkOutDate}
-                  travelers={travelers}
-                />
-              </div>
-              <div id="planner-transfers" className="scroll-mt-36">
-                <TransferOffersPanel
-                  destinationCity={selectedOption.destination.city}
-                  destinationCountry={selectedOption.destination.country}
-                  outboundDate={travelStartDate}
-                  adults={travelers}
-                />
-              </div>
             </div>
           </div>
         </>
@@ -2049,104 +1809,43 @@ export function PlannerClient({
             {mode === "standard" ? text.directPrompt : text.discoveryPrompt}
           </h2>
 
-          <div className="grid gap-4">
-            {result.options.map((option) => {
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {result.options.slice(0, 5).map((option) => {
               const story = getDestinationStory(option.destination);
               const active = option.itineraryResultId === selectedOptionId;
               return (
                 <article
                   key={option.itineraryResultId}
                   onClick={() => handleSelectOption(option.itineraryResultId)}
-                  className={`group cursor-pointer overflow-hidden rounded-[1.75rem] border bg-white shadow-[0_16px_40px_rgba(16,84,48,0.07)] transition-all duration-300 ${
+                  className={`group flex cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white shadow-[0_8px_24px_rgba(16,84,48,0.06)] transition-all duration-200 ${
                     active
                       ? "border-emerald-500/70 ring-1 ring-emerald-300"
-                      : "border-emerald-900/10 hover:-translate-y-1 hover:border-emerald-500/45 hover:shadow-[0_20px_48px_rgba(16,84,48,0.12)]"
+                      : "border-emerald-900/10 hover:-translate-y-0.5 hover:border-emerald-500/45 hover:shadow-[0_12px_32px_rgba(16,84,48,0.1)]"
                   }`}
                 >
-                  <div className="grid gap-0 lg:grid-cols-[320px_1fr]">
-                    <div className="relative h-56 lg:h-full">
-                      <Image
-                        src={story.heroImage}
-                        alt={story.name}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 320px"
-                        className="object-cover transition duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,16,10,0.02)_0%,rgba(6,16,10,0.52)_100%)]" />
-                      <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200">{story.tagline}</p>
-                        <h3 className="mt-2 text-2xl font-bold">
-                          {option.destination.city}, {option.destination.country}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <div className="p-5 sm:p-6">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.resultRank} #{option.rank}</p>
-                        <p className="mt-2 text-2xl font-bold text-emerald-950">{scoreLabel(option.score, locale)}</p>
-                        {optionLensBadges.get(option.itineraryResultId)?.length ? (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {optionLensBadges.get(option.itineraryResultId)?.map((badge) => (
-                              <span
-                                key={`${option.itineraryResultId}-${badge}`}
-                                className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900"
-                              >
-                                {badge}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                        <div className="rounded-2xl bg-emerald-700 px-4 py-2 text-right text-white">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-100">{text.score}</p>
-                          <p className="text-2xl font-bold">{option.score.toFixed(0)}</p>
-                        </div>
-                      </div>
-
-                      <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-900/80">{option.aiSummary}</p>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {story.bestFor.slice(0, 3).map((tag) => (
-                          <span key={tag} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                        {story.gallery.map((imageUrl, index) => (
-                          <div key={`${option.itineraryResultId}-${imageUrl}`} className="relative h-20 overflow-hidden rounded-2xl border border-emerald-900/10">
-                            <Image
-                              src={imageUrl}
-                              alt={`${story.name} image ${index + 1}`}
-                              fill
-                              sizes="(max-width: 640px) 100vw, 11vw"
-                              className="object-cover transition duration-500 group-hover:scale-105"
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-5 grid gap-4 md:grid-cols-2">
-                        <div className="rounded-[1.25rem] bg-emerald-50/70 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.whyItFits}</p>
-                          <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/82">
-                            {option.reasons.slice(0, 3).map((reason) => (
-                              <li key={reason} className="ml-5 list-disc">{reason}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="rounded-[1.25rem] bg-emerald-50/70 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.watchLabel}</p>
-                          <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/82">
-                            {(option.tradeoffs.length > 0 ? option.tradeoffs : [text.noTradeoffs]).map((tradeoff) => (
-                              <li key={tradeoff} className="ml-5 list-disc">{tradeoff}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
+                  <div className="relative h-32 w-full">
+                    <Image
+                      src={story.heroImage}
+                      alt={story.name}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 20vw"
+                      className="object-cover"
+                    />
+                    <span className="absolute right-2 top-2 rounded-full bg-emerald-700 px-2 py-1 text-xs font-bold text-white shadow">
+                      {option.score.toFixed(0)}
+                    </span>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2 p-3">
+                    <h3 className="text-sm font-bold text-emerald-950">
+                      {option.destination.city}, {option.destination.country}
+                    </h3>
+                    <p className="line-clamp-3 text-xs leading-5 text-emerald-900/72">{option.aiSummary}</p>
+                    <div className="mt-auto flex flex-wrap gap-1 pt-2">
+                      {story.bestFor.slice(0, 2).map((tag) => (
+                        <span key={tag} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-900">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </article>
@@ -2154,58 +1853,6 @@ export function PlannerClient({
             })}
           </div>
         </section>
-      ) : null}
-
-      {selectedOption && bookingDeck.length >= 2 ? (
-        <div className="fixed inset-x-4 bottom-4 z-40 lg:hidden">
-          <div className="rounded-[1.7rem] border border-emerald-900/12 bg-emerald-950/96 p-4 text-white shadow-[0_24px_60px_rgba(7,31,18,0.3)] backdrop-blur">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  {selectedOption.destination.city}, {selectedOption.destination.country}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-white/72">
-                  {formatShortDate(travelStartDate, dateLocale)} - {formatShortDate(checkOutDate, dateLocale)} / {originCity}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleSaveTrip()}
-                disabled={savingTrip}
-                className="rounded-full bg-white px-3 py-2 text-xs font-bold text-emerald-950 transition hover:bg-emerald-50 disabled:opacity-70"
-              >
-                {savingTrip ? text.savingTrip : text.saveTrip}
-              </button>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <a
-                href={bookingDeck[0].href}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-400 px-4 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
-              >
-                <PartnerLogoMark brand={bookingDeck[0].brand} size="sm" variant="neutral" />
-                {text.showStay}
-              </a>
-              <a
-                href={bookingDeck[1].href}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/14"
-              >
-                <PartnerLogoMark brand={bookingDeck[1].brand} size="sm" variant="contrast" />
-                {text.showFlights}
-              </a>
-              <button
-                type="button"
-                onClick={openMobileSettings}
-                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/14"
-              >
-                {text.editTrip}
-              </button>
-            </div>
-          </div>
-        </div>
       ) : null}
 
       {result && !selectedOption ? (
