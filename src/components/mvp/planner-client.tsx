@@ -3,11 +3,10 @@
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { startTransition, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
-import { PartnerLogoMark } from "@/components/site/partner-logo";
 
 const PanelSkeleton = () => (
   <div className="glass-panel rounded-[2rem] border border-emerald-900/10 p-6">
@@ -16,14 +15,6 @@ const PanelSkeleton = () => (
   </div>
 );
 
-const ActivityOffersPanel = dynamic(
-  () => import("@/components/mvp/activity-offers-panel").then((m) => m.ActivityOffersPanel),
-  { loading: PanelSkeleton, ssr: false },
-);
-const DestinationAttractionsPanel = dynamic(
-  () => import("@/components/mvp/destination-attractions-panel").then((m) => m.DestinationAttractionsPanel),
-  { loading: PanelSkeleton, ssr: false },
-);
 const FlightOffersPanel = dynamic(
   () => import("@/components/mvp/flight-offers-panel").then((m) => m.FlightOffersPanel),
   { loading: PanelSkeleton, ssr: false },
@@ -32,12 +23,6 @@ const StayOffersPanel = dynamic(
   () => import("@/components/mvp/stay-offers-panel").then((m) => m.StayOffersPanel),
   { loading: PanelSkeleton, ssr: false },
 );
-const TransferOffersPanel = dynamic(
-  () => import("@/components/mvp/transfer-offers-panel").then((m) => m.TransferOffersPanel),
-  { loading: PanelSkeleton, ssr: false },
-);
-import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
-import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
 import { sendClientEvent } from "@/lib/mvp/client-events";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
@@ -50,14 +35,12 @@ import {
   pushRecentDiscoveryBrief,
   pushSavedSearch,
   savePlannerSnapshot,
-  toggleSavedDestination,
   type ComparedDestinationMemory,
   type PlannerSnapshot,
   type RecentDiscoveryBrief,
   type SavedDestinationMemory,
   type SavedSearchMemory,
 } from "@/lib/mvp/planner-memory";
-import { buildRedirectHref } from "@/lib/mvp/providers";
 import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import {
   countNightsBetweenIsoDates,
@@ -367,19 +350,6 @@ const plannerCopy = {
   },
 } as const;
 
-const scoreLabel = (score: number, locale: "pl" | "en") =>
-  locale === "pl"
-    ? score >= 82
-      ? "Bardzo mocne dopasowanie"
-      : score >= 70
-        ? "Dobre dopasowanie"
-        : "Warto sprawdzić"
-    : score >= 82
-      ? "Very strong match"
-      : score >= 70
-        ? "Good match"
-        : "Worth checking";
-
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
@@ -510,15 +480,6 @@ function DestinationAutocompleteField({
   );
 }
 
-function SummaryPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-emerald-900/10 bg-white/92 px-4 py-3 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-emerald-950">{value}</p>
-    </div>
-  );
-}
-
 interface PlannerClientProps {
   initialMode?: Mode;
   initialQuery?: string;
@@ -569,7 +530,6 @@ export function PlannerClient({
   const [comparedDestinations, setComparedDestinations] = useState<ComparedDestinationMemory[]>([]);
   const [lastSnapshot, setLastSnapshot] = useState<PlannerSnapshot | null>(null);
   const [showPlanningMemory, setShowPlanningMemory] = useState(false);
-  const [savingTrip, setSavingTrip] = useState(false);
   const [destinationSuggestions, setDestinationSuggestions] = useState<DestinationSuggestion[]>([]);
   const [isSuggestingDestinations, setIsSuggestingDestinations] = useState(false);
   const [destinationSuggestionsOpen, setDestinationSuggestionsOpen] = useState(false);
@@ -812,13 +772,6 @@ export function PlannerClient({
     });
   });
 
-  const openMobileSettings = () => {
-    setMobileSettingsOpen(true);
-    window.requestAnimationFrame(() => {
-      settingsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
-
   useEffect(() => {
     if (!autoRunStandardSearch || autoSearchRef.current) return;
     if (mode !== "standard" || !destinationHint.trim()) return;
@@ -834,28 +787,7 @@ export function PlannerClient({
 
   const selectedOption =
     result?.options.find((option) => option.itineraryResultId === selectedOptionId) ?? result?.options[0] ?? null;
-  const selectedStory = selectedOption ? getDestinationStory(selectedOption.destination) : null;
-  const destinationFocus = result?.interpreted.destinationFocus;
-  const localFocus = Boolean(destinationFocus && selectedOption && selectedOption.destination.slug === destinationFocus);
   const checkOutDate = normalizeTravelEndDate(travelStartDate, travelEndDate, travelNights);
-  const activeAffiliateLinks = selectedOption
-    ? buildAffiliateLinksWithContext({
-        city: selectedOption.destination.city,
-        country: selectedOption.destination.country,
-        originCity,
-        departureDate: travelStartDate,
-        checkInDate: travelStartDate,
-        checkOutDate,
-        passengers: travelers,
-        rooms,
-      })
-    : null;
-  const flightPartner = getAffiliateBrandLabel(activeAffiliateLinks?.flights, "Partner lotniczy");
-  const stayPartner = getAffiliateBrandLabel(activeAffiliateLinks?.stays, "Partner noclegówy");
-  const carPartner = getAffiliateBrandLabel(activeAffiliateLinks?.cars, "Partner mobilnosci");
-  const isDirectRouteSearch = mode === "standard" && Boolean(originCity.trim()) && Boolean(destinationHint.trim());
-  const savedDestinationSet = new Set(savedDestinations.map((item) => item.slug));
-  const isSelectedDestinationSaved = selectedOption ? savedDestinationSet.has(selectedOption.destination.slug) : false;
   const interpretedBriefChips = [
     `${text.decodedBudget}: ${result?.interpreted.budgetMaxPln ?? budget} PLN`,
     `${text.term}: ${
@@ -907,101 +839,6 @@ export function PlannerClient({
     setDestinationSuggestionsOpen(false);
   };
 
-  const decisionLenses = useMemo<DecisionLensCard[]>(() => {
-    if (!result?.options.length) {
-      return [];
-    }
-
-    const byScore = [...result.options].sort((left, right) => right.score - left.score)[0];
-    const byValue = [...result.options].sort(
-      (left, right) =>
-        right.breakdown.valueFit + right.breakdown.budgetFit * 0.6 - right.breakdown.penalties * 0.4 -
-        (left.breakdown.valueFit + left.breakdown.budgetFit * 0.6 - left.breakdown.penalties * 0.4),
-    )[0];
-    const byEasy = [...result.options].sort(
-      (left, right) =>
-        right.breakdown.logisticsFit + right.breakdown.travelEase * 0.5 - right.breakdown.penalties * 0.5 -
-        (left.breakdown.logisticsFit + left.breakdown.travelEase * 0.5 - left.breakdown.penalties * 0.5),
-    )[0];
-    const byWeather = [...result.options].sort(
-      (left, right) => right.breakdown.weatherFit - left.breakdown.weatherFit,
-    )[0];
-
-    const lensCandidates: DecisionLensCard[] = [
-      {
-        key: "fit",
-        title: text.lensBestFit,
-        body:
-          locale === "en"
-            ? `${byScore.destination.city} wins the broadest match across budget, intent and trip shape.`
-            : `${byScore.destination.city} wygrywa najbardziej pełnym dopasowaniem do briefu, budżetu i rytmu wyjazdu.`,
-        optionId: byScore.itineraryResultId,
-        city: byScore.destination.city,
-        country: byScore.destination.country,
-      },
-      {
-        key: "value",
-        title: text.lensBestValue,
-        body:
-          locale === "en"
-            ? `${byValue.destination.city} keeps the strongest price-to-fit ratio in the current shortlist.`
-            : `${byValue.destination.city} ma najmocniejsza relacje kosztu do sensu wyjazdu w tej shortliscie.`,
-        optionId: byValue.itineraryResultId,
-        city: byValue.destination.city,
-        country: byValue.destination.country,
-      },
-      {
-        key: "easy",
-        title: text.lensEasiest,
-        body:
-          locale === "en"
-            ? `${byEasy.destination.city} looks easiest from Poland when route comfort matters more than pure inspiration.`
-            : `${byEasy.destination.city} wygląda najłatwiej z Polski, gdy liczy się prostszy dolot i mniej logistyki.`,
-        optionId: byEasy.itineraryResultId,
-        city: byEasy.destination.city,
-        country: byEasy.destination.country,
-      },
-      {
-        key: "weather",
-        title: text.lensWarmest,
-        body:
-          locale === "en"
-            ? `${byWeather.destination.city} gives the strongest weather confidence for the selected window.`
-            : `${byWeather.destination.city} daje najpewniejszy klimat pogodowy dla wybranego terminu.`,
-        optionId: byWeather.itineraryResultId,
-        city: byWeather.destination.city,
-        country: byWeather.destination.country,
-      },
-    ];
-
-    const used = new Set<string>();
-    return lensCandidates.filter((item) => {
-      if (used.has(item.optionId)) {
-        return false;
-      }
-      used.add(item.optionId);
-      return true;
-    });
-  }, [locale, result?.options, text.lensBestFit, text.lensBestValue, text.lensEasiest, text.lensWarmest]);
-
-  const optionLensBadges = useMemo(() => {
-    const map = new Map<string, string[]>();
-
-    for (const lens of decisionLenses) {
-      const label =
-        lens.key === "fit"
-          ? text.lensTagBestFit
-          : lens.key === "value"
-            ? text.lensTagBestValue
-            : lens.key === "easy"
-              ? text.lensTagEasiest
-              : text.lensTagWarmest;
-      map.set(lens.optionId, [...(map.get(lens.optionId) ?? []), label]);
-    }
-
-    return map;
-  }, [decisionLenses, text.lensTagBestFit, text.lensTagBestValue, text.lensTagEasiest, text.lensTagWarmest]);
-
   const applySnapshot = (snapshot: PlannerSnapshot) => {
     setMode(snapshot.mode);
     setQuery(snapshot.query);
@@ -1016,25 +853,6 @@ export function PlannerClient({
     setTravelEndDate(normalizeTravelEndDate(snapshot.travelStartDate, snapshot.travelEndDate, snapshot.travelNights));
     setTravelNights(snapshot.travelNights);
   };
-
-  const buildCurrentTripSnapshot = (): SavedTripSnapshot => ({
-    mode,
-    query,
-    destinationHint,
-    originCity,
-    budget,
-    travelers,
-    rooms,
-    durationMin,
-    durationMax,
-    travelStartDate,
-    travelEndDate: checkOutDate,
-    travelNights,
-    selectedDestinationSlug: selectedOption?.destination.slug,
-    selectedDestinationLabel: selectedOption
-      ? `${selectedOption.destination.city}, ${selectedOption.destination.country}`
-      : undefined,
-  });
 
   const toPlannerSnapshot = (snapshot: SavedTripSnapshot, savedAt?: string): PlannerSnapshot => ({
     ...snapshot,
@@ -1074,25 +892,6 @@ export function PlannerClient({
     handleRestoreSnapshot(toPlannerSnapshot(trip.snapshot, trip.createdAt));
   };
 
-  const handleToggleSavedDestination = () => {
-    if (!selectedOption) {
-      return;
-    }
-
-    const nextSavedDestinations = toggleSavedDestination({
-        slug: selectedOption.destination.slug,
-        city: selectedOption.destination.city,
-        country: selectedOption.destination.country,
-      });
-    setSavedDestinations(nextSavedDestinations);
-    sendClientEvent("destination_saved", {
-      slug: selectedOption.destination.slug,
-      city: selectedOption.destination.city,
-      country: selectedOption.destination.country,
-      saved: nextSavedDestinations.some((item) => item.slug === selectedOption.destination.slug),
-    });
-  };
-
   const handleSelectOption = (optionId: string) => {
     const chosenOption = result?.options.find((option) => option.itineraryResultId === optionId);
     setSelectedOptionId(optionId);
@@ -1119,86 +918,6 @@ export function PlannerClient({
     });
   };
 
-  const refreshSavedTrips = () => {
-    return fetch("/api/trips/history")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => setSavedTrips(data?.items ?? []))
-      .catch(() => setSavedTrips([]));
-  };
-
-  const handleSaveTrip = async () => {
-    if (!selectedOption || savingTrip) {
-      return;
-    }
-
-    setSavingTrip(true);
-    try {
-      await postJson("/api/trips/save", {
-        itineraryResultId: selectedOption.itineraryResultId,
-        snapshot: buildCurrentTripSnapshot(),
-      });
-      await refreshSavedTrips();
-    } catch {
-      // Keep the planner usable even if saving fails.
-    } finally {
-      setSavingTrip(false);
-    }
-  };
-
-  const buildSelectedRedirectHref = (
-    providerKey: "flights" | "stays" | "attractions" | "cars",
-    targetUrl: string | undefined,
-  ) =>
-    buildRedirectHref({
-      providerKey,
-      targetUrl: targetUrl ?? "",
-      itineraryResultId: selectedOption?.itineraryResultId,
-      destinationSlug: selectedOption?.destination.slug,
-      requestId: result?.requestId,
-      city: selectedOption?.destination.city,
-      country: selectedOption?.destination.country,
-      source: "planner",
-      rank: selectedOption?.rank,
-      query: result?.rawQuery,
-    });
-
-  const bookingDeck =
-    selectedOption && activeAffiliateLinks
-      ? [
-          {
-            eyebrow: text.bookingDeckStay,
-            title: stayPartner,
-            brand: stayPartner,
-            description: text.bookingDeckStayBody,
-            href: buildSelectedRedirectHref("stays", activeAffiliateLinks.stays),
-            tone: "primary" as const,
-          },
-          {
-            eyebrow: text.bookingDeckFlights,
-            title: flightPartner,
-            brand: flightPartner,
-            description: text.bookingDeckFlightsBody,
-            href: buildSelectedRedirectHref("flights", activeAffiliateLinks.flights),
-            tone: "dark" as const,
-          },
-          {
-            eyebrow: text.bookingDeckCars,
-            title: carPartner,
-            brand: carPartner,
-            description: text.bookingDeckCarsBody,
-            href: buildSelectedRedirectHref("cars", activeAffiliateLinks.cars),
-            tone: "light" as const,
-          },
-          {
-            eyebrow: text.bookingDeckActivities,
-            title: text.bookingDeckOnSite,
-            brand: locale === "en" ? "Activity partner" : "Partner atrakcji",
-            description: text.bookingDeckActivitiesBody,
-            href: "#aktywnosci-na-miejscu",
-            tone: "light" as const,
-          },
-        ]
-      : [];
   const hasPlanningMemory =
     Boolean(lastSnapshot) ||
     savedTrips.length > 0 ||
@@ -1224,11 +943,7 @@ export function PlannerClient({
   }, [result, selectedOption]);
 
   return (
-    <div
-      className={`mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 ${
-        bookingDeck.length > 0 ? "pb-32 lg:pb-8" : ""
-      }`}
-    >
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
       <section className="glass-panel rounded-[2rem] border border-emerald-900/10 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-emerald-950 sm:text-3xl">{text.heroTitle}</h1>
@@ -1863,15 +1578,6 @@ export function PlannerClient({
     </div>
   );
 }
-
-type DecisionLensCard = {
-  key: "fit" | "value" | "easy" | "weather";
-  title: string;
-  body: string;
-  optionId: string;
-  city: string;
-  country: string;
-};
 
 
 
