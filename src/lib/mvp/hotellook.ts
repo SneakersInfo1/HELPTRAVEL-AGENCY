@@ -87,26 +87,86 @@ function emptyResponse(input: HotellookSearchInput, error?: string): StaySearchR
 }
 
 // Lookup miasta -> locationId. Cache 24h (miasta sie nie zmieniaja).
+// Strategia: probujemy najpierw query po angielsku (jesli mamy mape PL->EN),
+// potem oryginalna nazwa. lookFor=both bo "city" bywa za waskie dla niektorych miast.
 async function lookupLocationId(city: string, token: string): Promise<string | null> {
-  const url = new URL(HOTELLOOK_LOOKUP_API);
-  url.searchParams.set("query", city);
-  url.searchParams.set("lang", "en");
-  url.searchParams.set("lookFor", "city");
-  url.searchParams.set("limit", "1");
-  url.searchParams.set("token", token);
+  const candidates = [translateCityToEnglish(city), city].filter(
+    (value, index, arr) => value && arr.indexOf(value) === index,
+  ) as string[];
 
-  try {
-    const response = await fetch(url.toString(), {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 86400 },
-    });
-    if (!response.ok) return null;
-    const body = (await response.json()) as HotellookLookupResponse;
-    const first = body.results?.locations?.[0];
-    return first?.id ? String(first.id) : null;
-  } catch {
-    return null;
+  for (const query of candidates) {
+    const url = new URL(HOTELLOOK_LOOKUP_API);
+    url.searchParams.set("query", query);
+    url.searchParams.set("lang", "en");
+    url.searchParams.set("lookFor", "both");
+    url.searchParams.set("limit", "10");
+    url.searchParams.set("token", token);
+
+    try {
+      const response = await fetch(url.toString(), {
+        headers: { Accept: "application/json" },
+        next: { revalidate: 86400 },
+      });
+      if (!response.ok) continue;
+      const body = (await response.json()) as HotellookLookupResponse;
+      const locations = body.results?.locations ?? [];
+      // Bierzemy pierwsza lokalizacje typu "city" (najpewniej best match w Hotellook)
+      const cityMatch = locations.find((loc) => loc.type === "city") ?? locations[0];
+      if (cityMatch?.id) {
+        return String(cityMatch.id);
+      }
+    } catch {
+      // sprobuj nastepnego kandydata
+    }
   }
+  return null;
+}
+
+// Mapa polskich nazw miast -> angielskie. Hotellook lookup czesto nie rozpoznaje
+// polskich form ("Rzym" zamiast "Rome", "Stambul" zamiast "Istanbul").
+const PL_TO_EN_CITY: Record<string, string> = {
+  rzym: "Rome",
+  stambul: "Istanbul",
+  istambul: "Istanbul",
+  walencja: "Valencia",
+  ateny: "Athens",
+  lizbona: "Lisbon",
+  wieden: "Vienna",
+  praga: "Prague",
+  budapeszt: "Budapest",
+  kopenhaga: "Copenhagen",
+  monachium: "Munich",
+  florencja: "Florence",
+  wenecja: "Venice",
+  mediolan: "Milan",
+  neapol: "Naples",
+  marsylia: "Marseille",
+  bruksela: "Brussels",
+  zurych: "Zurich",
+  saloniki: "Thessaloniki",
+  parya: "Paris",
+  paryz: "Paris",
+  londyn: "London",
+  berlin: "Berlin",
+  madryt: "Madrid",
+  malaga: "Malaga",
+  porto: "Porto",
+  dubaj: "Dubai",
+  bangkok: "Bangkok",
+  tokio: "Tokyo",
+  pekin: "Beijing",
+  szanghaj: "Shanghai",
+  nicea: "Nice",
+};
+
+function translateCityToEnglish(city: string): string | null {
+  const normalized = city
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/ł/g, "l")
+    .trim();
+  return PL_TO_EN_CITY[normalized] ?? null;
 }
 
 function sortOffers(offers: NormalizedStayOffer[], sortBy: StaySortMode): NormalizedStayOffer[] {

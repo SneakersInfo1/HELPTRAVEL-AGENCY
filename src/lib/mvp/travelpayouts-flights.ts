@@ -44,6 +44,37 @@ interface TpFlightResponse {
 
 const TP_FLIGHTS_API = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
 
+async function fetchTpFlights(
+  origin: string,
+  destination: string,
+  departureAt: string, // YYYY-MM-DD lub YYYY-MM
+  token: string,
+  sortBy: FlightSortMode,
+): Promise<TpFlightEntry[]> {
+  const url = new URL(TP_FLIGHTS_API);
+  url.searchParams.set("origin", origin);
+  url.searchParams.set("destination", destination);
+  url.searchParams.set("departure_at", departureAt);
+  url.searchParams.set("unique", "false");
+  url.searchParams.set("sorting", sortBy === "cheap" ? "price" : "route");
+  url.searchParams.set("direct", "false");
+  url.searchParams.set("currency", "pln");
+  url.searchParams.set("limit", "30");
+  url.searchParams.set("token", token);
+
+  try {
+    const response = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 1800 },
+    });
+    if (!response.ok) return [];
+    const body = (await response.json()) as TpFlightResponse;
+    return body.success && Array.isArray(body.data) ? body.data : [];
+  } catch {
+    return [];
+  }
+}
+
 function minutesToHuman(minutes: number | undefined): { text: string; minutes: number } {
   if (!minutes || minutes <= 0) return { text: "—", minutes: 0 };
   const h = Math.floor(minutes / 60);
@@ -110,49 +141,28 @@ export async function searchTravelpayoutsFlights(
 
   const { travelpayoutsMarker } = getAffiliateConfig();
 
-  const url = new URL(TP_FLIGHTS_API);
-  url.searchParams.set("origin", originIata);
-  url.searchParams.set("destination", destinationIata);
-  url.searchParams.set("departure_at", input.departureDate);
-  url.searchParams.set("unique", "false");
-  url.searchParams.set("sorting", input.sortBy === "cheap" ? "price" : "route");
-  url.searchParams.set("direct", "false");
-  url.searchParams.set("currency", "pln");
-  url.searchParams.set("limit", "20");
-  url.searchParams.set("token", token);
+  // 1) Pierwszy strzal: konkretny dzien
+  const entries = await fetchTpFlights(originIata, destinationIata, input.departureDate, token, input.sortBy);
 
-  let response: Response;
-  try {
-    response = await fetch(url.toString(), {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 1800 }, // 30 min — to i tak cache po stronie TP
-    });
-  } catch (error) {
-    return emptyResponse(
-      input,
-      error instanceof Error ? error.message : "Travelpayouts fetch failed.",
-    );
+  // 2) Jesli mniej niz 5 wynikow, doladuj z calego miesiaca (jak w Skyscanner / Kiwi)
+  if (entries.length < 5) {
+    const month = input.departureDate.slice(0, 7); // YYYY-MM
+    const monthEntries = await fetchTpFlights(originIata, destinationIata, month, token, input.sortBy);
+    const seen = new Set(entries.map((e) => `${e.airline}-${e.flight_number}-${e.departure_at}`));
+    for (const entry of monthEntries) {
+      const key = `${entry.airline}-${entry.flight_number}-${entry.departure_at}`;
+      if (!seen.has(key)) {
+        entries.push(entry);
+        seen.add(key);
+      }
+    }
   }
 
-  if (!response.ok) {
-    return emptyResponse(input, `Travelpayouts ${response.status}`);
+  if (entries.length === 0) {
+    return emptyResponse(input, "Brak ofert lotow dla tej trasy.");
   }
 
-  let body: TpFlightResponse;
-  try {
-    body = (await response.json()) as TpFlightResponse;
-  } catch {
-    return emptyResponse(input, "Travelpayouts: nieprawidlowa odpowiedz JSON.");
-  }
-
-  if (!body.success || !Array.isArray(body.data) || body.data.length === 0) {
-    return emptyResponse(
-      input,
-      body.error || "Brak ofert lotow dla podanej trasy i daty.",
-    );
-  }
-
-  const offers: NormalizedFlightOffer[] = body.data.map((entry) => {
+  const offers: NormalizedFlightOffer[] = entries.map((entry) => {
     const durationMinutes = entry.duration ?? entry.duration_to ?? 0;
     const human = minutesToHuman(durationMinutes);
     return {
