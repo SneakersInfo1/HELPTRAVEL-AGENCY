@@ -158,7 +158,7 @@ export async function searchTravelpayoutsFlights(
     return {
       offerId: `tp-${entry.airline}-${entry.flight_number}-${entry.departure_at}`,
       airline: entry.airline,
-      total_amount: Math.round(entry.price * Math.max(1, input.passengers)),
+      total_amount: Math.round(entry.price),
       currency: "PLN",
       number_of_stops: entry.transfers ?? 0,
       departure_time: entry.departure_at,

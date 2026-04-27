@@ -5,16 +5,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/site/language-provider";
 import type { FlightSearchResponse, NormalizedFlightOffer } from "@/lib/mvp/types";
 
-const INITIAL_VISIBLE = 10;
-const STEP = 10;
-const MAX_VISIBLE = 50;
+const INITIAL_VISIBLE = 5;
+const STEP = 5;
+const MAX_VISIBLE = 30;
 
 const copy = {
   pl: {
     eyebrow: "Loty",
     title: "Konkretne oferty lotów",
-    body: "Ceny orientacyjne z cache Travelpayouts. Finalna cena na stronie partnera.",
+    body: "Ceny orientacyjne z cache Travelpayouts (za 1 osobę). Finalna cena na stronie partnera.",
     bookNow: "Sprawdź lot",
+    perPerson: "/ os.",
     showMore: "Pokaż więcej lotów",
     empty: "Nie znaleźliśmy lotów dla tej trasy i daty. Zmień dzień wylotu.",
     requestError: "Nie udało się pobrać ofert lotów.",
@@ -24,8 +25,9 @@ const copy = {
   en: {
     eyebrow: "Flights",
     title: "Concrete flight offers",
-    body: "Indicative prices cached by Travelpayouts. Final price on the partner site.",
+    body: "Indicative prices cached by Travelpayouts (per person). Final price on the partner site.",
     bookNow: "Check flight",
+    perPerson: "/ pers.",
     showMore: "Show more flights",
     empty: "We couldn't find flights for this route and date. Try a different day.",
     requestError: "Could not load flight offers.",
@@ -82,9 +84,12 @@ function FlightCard({ offer, locale, t }: {
             {offer.origin} → {offer.destination}
           </p>
         </div>
-        <p className="whitespace-nowrap text-lg font-bold text-emerald-950">
-          {formatPrice(offer.total_amount, offer.currency, locale)}
-        </p>
+        <div className="text-right">
+          <p className="whitespace-nowrap text-lg font-bold text-emerald-950">
+            {formatPrice(offer.total_amount, offer.currency, locale)}
+          </p>
+          <p className="text-[10px] text-emerald-900/56">{t.perPerson}</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 rounded-xl bg-emerald-50/60 p-3 text-xs">
@@ -145,7 +150,7 @@ export function FlightOffersPanel(props: {
             departureDate: props.departureDate,
             passengers: props.passengers,
             cabinClass: "economy",
-            sortBy: "balance",
+            sortBy: "cheap",
           });
           if (!cancelled) {
             setData(result);

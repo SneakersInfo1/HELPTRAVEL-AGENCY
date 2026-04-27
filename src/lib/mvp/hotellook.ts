@@ -1,6 +1,7 @@
 // Klient Hotellook (Travelpayouts) — meta-search hoteli z realnymi cenami.
-// Zwraca te same struktury co duffel-stays / hotelbeds-hotels, zeby route
-// handler i UI nie musialy wiedziec, ktory dostawca odpowiedzial.
+// Flow: 1) lookup.json -> wyciagamy locationId po nazwie miasta
+//       2) cache.json?locationId=X -> ceny hoteli
+// Zwraca te same struktury co route handler oczekuje (StaySearchResponse).
 
 import { getAffiliateConfig } from "./affiliate-config";
 import type { NormalizedStayOffer, StaySearchResponse, StaySortMode } from "./types";
@@ -30,7 +31,21 @@ interface HotellookCacheEntry {
   hotelStars?: number;
 }
 
-const HOTELLOOK_API = "https://engine.hotellook.com/api/v2/cache.json";
+interface HotellookLookupResponse {
+  status?: string;
+  results?: {
+    locations?: Array<{
+      id?: string | number;
+      type?: string;
+      cityName?: string;
+      countryName?: string;
+      iata?: string[];
+    }>;
+  };
+}
+
+const HOTELLOOK_LOOKUP_API = "https://engine.hotellook.com/api/v2/lookup.json";
+const HOTELLOOK_CACHE_API = "https://engine.hotellook.com/api/v2/cache.json";
 const HOTELLOOK_PHOTO_BASE = "https://photo.hotellook.com/image_v2/limit/h";
 
 function addDays(iso: string, days: number): string {
@@ -55,23 +70,6 @@ function buildBookingUrl(
   return url.toString();
 }
 
-function sortOffers(offers: NormalizedStayOffer[], sortBy: StaySortMode): NormalizedStayOffer[] {
-  const sorted = [...offers];
-  if (sortBy === "cheap") {
-    sorted.sort((a, b) => a.total_amount - b.total_amount);
-  } else if (sortBy === "quality") {
-    sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || a.total_amount - b.total_amount);
-  } else {
-    // value: cena/gwiazdki — preferuj wyzsze gwiazdki przy podobnej cenie
-    sorted.sort((a, b) => {
-      const ra = (a.rating ?? 1) || 1;
-      const rb = (b.rating ?? 1) || 1;
-      return a.total_amount / ra - b.total_amount / rb;
-    });
-  }
-  return sorted;
-}
-
 function emptyResponse(input: HotellookSearchInput, error?: string): StaySearchResponse {
   return {
     city: input.city,
@@ -88,6 +86,46 @@ function emptyResponse(input: HotellookSearchInput, error?: string): StaySearchR
   };
 }
 
+// Lookup miasta -> locationId. Cache 24h (miasta sie nie zmieniaja).
+async function lookupLocationId(city: string, token: string): Promise<string | null> {
+  const url = new URL(HOTELLOOK_LOOKUP_API);
+  url.searchParams.set("query", city);
+  url.searchParams.set("lang", "en");
+  url.searchParams.set("lookFor", "city");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("token", token);
+
+  try {
+    const response = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 86400 },
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as HotellookLookupResponse;
+    const first = body.results?.locations?.[0];
+    return first?.id ? String(first.id) : null;
+  } catch {
+    return null;
+  }
+}
+
+function sortOffers(offers: NormalizedStayOffer[], sortBy: StaySortMode): NormalizedStayOffer[] {
+  const sorted = [...offers];
+  if (sortBy === "quality") {
+    sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || a.total_amount - b.total_amount);
+  } else if (sortBy === "value") {
+    sorted.sort((a, b) => {
+      const ra = (a.rating ?? 1) || 1;
+      const rb = (b.rating ?? 1) || 1;
+      return a.total_amount / ra - b.total_amount / rb;
+    });
+  } else {
+    // cheap (default) — najtansze najpierw
+    sorted.sort((a, b) => a.total_amount - b.total_amount);
+  }
+  return sorted;
+}
+
 export async function searchHotellookStays(input: HotellookSearchInput): Promise<StaySearchResponse> {
   const token = process.env.TRAVELPAYOUTS_API_TOKEN?.trim();
   if (!token) {
@@ -97,20 +135,24 @@ export async function searchHotellookStays(input: HotellookSearchInput): Promise
   const checkOut = addDays(input.checkInDate, Math.max(1, input.nights));
   const { travelpayoutsMarker } = getAffiliateConfig();
 
-  const url = new URL(HOTELLOOK_API);
-  url.searchParams.set("location", `${input.city}, ${input.country}`);
+  const locationId = await lookupLocationId(input.city, token);
+  if (!locationId) {
+    return emptyResponse(input, `Nie znaleziono miasta "${input.city}" w bazie Hotellook.`);
+  }
+
+  const url = new URL(HOTELLOOK_CACHE_API);
+  url.searchParams.set("locationId", locationId);
   url.searchParams.set("currency", "pln");
   url.searchParams.set("checkIn", input.checkInDate);
   url.searchParams.set("checkOut", checkOut);
   url.searchParams.set("adults", String(Math.max(1, input.guests)));
-  url.searchParams.set("limit", "20");
+  url.searchParams.set("limit", "30");
   url.searchParams.set("token", token);
 
   let response: Response;
   try {
     response = await fetch(url.toString(), {
       headers: { Accept: "application/json" },
-      // krotki cache — meta-search ToS wymaga relatywnie swiezych cen
       next: { revalidate: 600 },
     });
   } catch (error) {
@@ -137,7 +179,8 @@ export async function searchHotellookStays(input: HotellookSearchInput): Promise
   const offers: NormalizedStayOffer[] = entries
     .filter((entry) => typeof entry.hotelId === "number" && (entry.priceAvg || entry.priceFrom))
     .map((entry) => {
-      const totalCandidate = entry.priceAvg ?? entry.priceFrom ?? 0;
+      // Bierzemy priceFrom (najnizsza cena) jako bazowa, fallback na priceAvg
+      const totalCandidate = entry.priceFrom ?? entry.priceAvg ?? 0;
       const total = Math.round(totalCandidate);
       return {
         searchResultId: `hotellook-${entry.hotelId}`,
