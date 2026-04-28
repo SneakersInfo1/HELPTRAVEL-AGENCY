@@ -1,0 +1,119 @@
+# Dependencies & Lock Files
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnpm-store/
+vendor/
+Gemfile.lock
+Pipfile.lock
+poetry.lock
+uv.lock
+
+# Build Outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.vitepress/dist/
+.docusaurus/
+site/
+public/
+
+# Compiled & Minified Files
+*.min.js
+*.min.css
+*.bundle.js
+*.map
+
+# Cache Directories
+.cache/
+.eslintcache
+.stylelintcache
+node_modules/.cache
+__pycache__/
+*.pyc
+.pytest_cache/
+.tox/
+.coverage/
+htmlcov/
+
+# IDE & Editor Files
+.vscode/
+.idea/
+.sublime-workspace
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Version Control
+.git/
+.gitignore
+.github/
+.gitlab-ci.yml
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.secrets/
+.credentials
+
+# Test Coverage & Reports
+coverage/
+.nyc_output/
+junit.xml
+coverage.xml
+*.lcov
+
+# OS & Temp Files
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+.tmp/
+
+# Large Binary Files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Docker
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+
+# OS Specific
+.AppleDouble
+.LSOverride
+._*
+
+# Package managers backup
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnp
+.pnp.js
+
+# Generated Files (by tools)
+CHANGELOG.md (usually auto-generated)
+.graphql-config
+.nuxtrc
+
+# Archives
+*.tar
+*.tar.bz2
+*.tar.gz
+*.zip
