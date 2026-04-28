@@ -224,7 +224,12 @@ async function lookupOnce(query: string, token: string): Promise<string | null> 
       headers: { Accept: "application/json" },
       next: { revalidate: 86400 },
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      if (response.status === 404 && process.env.NODE_ENV !== "production") {
+        console.warn(`[hotellook] lookup 404 — brak dostepu do Hotel Data API dla query="${query}".`);
+      }
+      return null;
+    }
     const body = (await response.json()) as HotellookLookupResponse;
     return extractLocationId(body);
   } catch {
@@ -284,10 +289,9 @@ export async function searchHotellookStays(input: HotellookSearchInput): Promise
   const locationId = await resolveLocationId(input.city, input.country, token);
   if (!locationId) {
     if (process.env.NODE_ENV !== "production") {
-      // Loguj nieznajdowane miasta zeby dorzucac do mapy
-      console.warn(`[hotellook] Nie udalo sie zresolvac locationId dla "${input.city}, ${input.country}".`);
+      console.warn(`[hotellook] Nie udalo sie zresolvac locationId dla "${input.city}, ${input.country}". Sprawdz czy token ma dostep do Hotel Data API.`);
     }
-    return emptyResponse(input, `Nie znaleziono miasta "${input.city}" w bazie Hotellook.`);
+    return emptyResponse(input, `Nie znaleziono hoteli dla "${input.city}".`);
   }
 
   const url = new URL(HOTELLOOK_CACHE_API);
@@ -307,6 +311,15 @@ export async function searchHotellookStays(input: HotellookSearchInput): Promise
     });
   } catch (error) {
     return emptyResponse(input, error instanceof Error ? error.message : "Hotellook fetch failed.");
+  }
+
+  if (response.status === 404) {
+    // 404 from engine.hotellook.com means the token lacks Hotel Data API access.
+    // Activate "Hotel Data" program at travelpayouts.com to enable this endpoint.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[hotellook] 404 — token nie ma dostepu do Hotel Data API. Aktywuj program Hotel Data na travelpayouts.com.");
+    }
+    return emptyResponse(input, "Hotel Data API niedostępne (brak aktywacji programu Hotellook w panelu Travelpayouts).");
   }
 
   if (!response.ok) {
