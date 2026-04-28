@@ -1,8 +1,17 @@
 // Klient Hotellook (Travelpayouts) — meta-search hoteli z realnymi cenami.
-// Flow: 1) lookup.json -> wyciagamy locationId po nazwie miasta
-//       2) cache.json?locationId=X -> ceny hoteli
-// Zwraca te same struktury co route handler oczekuje (StaySearchResponse).
+//
+// Strategia rozwiazania locationId (od najpewniejszego do najslabszego):
+//   1) IATA z lokalnej bazy destinations.ts -> lookup.json?query=IATA (najpewniej)
+//   2) lookup.json?query=ENGLISH_NAME -> bierzemy locations[type=city] LUB
+//      hotels[0].locationId (kazdy hotel ma id miasta)
+//   3) lookup.json?query=ORIGINAL_NAME -> jw.
+//
+// Ten flow pokrywa praktycznie kazdy popularny kierunek bo:
+//   - jesli miasto ma lotnisko, mamy IATA -> 100% sukces
+//   - jesli miasto ma jakikolwiek hotel w bazie Hotellook -> wyciagamy locationId
+//     z hotels[].locationId (nie polegamy na sztywnym `locations` array)
 
+import { findDestinationProfile } from "./destinations";
 import { getAffiliateConfig } from "./affiliate-config";
 import type { NormalizedStayOffer, StaySearchResponse, StaySortMode } from "./types";
 
@@ -31,16 +40,27 @@ interface HotellookCacheEntry {
   hotelStars?: number;
 }
 
+interface HotellookLookupLocation {
+  id?: string | number;
+  type?: string;
+  cityName?: string;
+  countryName?: string;
+  iata?: string[];
+}
+
+interface HotellookLookupHotel {
+  id?: string | number;
+  fullName?: string;
+  locationId?: string | number;
+  locationName?: string;
+  cityName?: string;
+}
+
 interface HotellookLookupResponse {
   status?: string;
   results?: {
-    locations?: Array<{
-      id?: string | number;
-      type?: string;
-      cityName?: string;
-      countryName?: string;
-      iata?: string[];
-    }>;
+    locations?: HotellookLookupLocation[];
+    hotels?: HotellookLookupHotel[];
   };
 }
 
@@ -86,44 +106,8 @@ function emptyResponse(input: HotellookSearchInput, error?: string): StaySearchR
   };
 }
 
-// Lookup miasta -> locationId. Cache 24h (miasta sie nie zmieniaja).
-// Strategia: probujemy najpierw query po angielsku (jesli mamy mape PL->EN),
-// potem oryginalna nazwa. lookFor=both bo "city" bywa za waskie dla niektorych miast.
-async function lookupLocationId(city: string, token: string): Promise<string | null> {
-  const candidates = [translateCityToEnglish(city), city].filter(
-    (value, index, arr) => value && arr.indexOf(value) === index,
-  ) as string[];
-
-  for (const query of candidates) {
-    const url = new URL(HOTELLOOK_LOOKUP_API);
-    url.searchParams.set("query", query);
-    url.searchParams.set("lang", "en");
-    url.searchParams.set("lookFor", "both");
-    url.searchParams.set("limit", "10");
-    url.searchParams.set("token", token);
-
-    try {
-      const response = await fetch(url.toString(), {
-        headers: { Accept: "application/json" },
-        next: { revalidate: 86400 },
-      });
-      if (!response.ok) continue;
-      const body = (await response.json()) as HotellookLookupResponse;
-      const locations = body.results?.locations ?? [];
-      // Bierzemy pierwsza lokalizacje typu "city" (najpewniej best match w Hotellook)
-      const cityMatch = locations.find((loc) => loc.type === "city") ?? locations[0];
-      if (cityMatch?.id) {
-        return String(cityMatch.id);
-      }
-    } catch {
-      // sprobuj nastepnego kandydata
-    }
-  }
-  return null;
-}
-
-// Mapa polskich nazw miast -> angielskie. Hotellook lookup czesto nie rozpoznaje
-// polskich form ("Rzym" zamiast "Rome", "Stambul" zamiast "Istanbul").
+// Mapa polskich form -> angielskie nazwy miast Hotellook.
+// Uzywana TYLKO jako fallback - glowna sciezka to IATA z bazy destinations.ts.
 const PL_TO_EN_CITY: Record<string, string> = {
   rzym: "Rome",
   stambul: "Istanbul",
@@ -157,16 +141,119 @@ const PL_TO_EN_CITY: Record<string, string> = {
   pekin: "Beijing",
   szanghaj: "Shanghai",
   nicea: "Nice",
+  sewilla: "Seville",
+  funchal: "Funchal",
+  reykjawik: "Reykjavik",
+  helsinki: "Helsinki",
+  oslo: "Oslo",
+  sztokholm: "Stockholm",
+  amsterdam: "Amsterdam",
+  rotterdam: "Rotterdam",
+  hamburg: "Hamburg",
+  frankfurt: "Frankfurt",
+  dublin: "Dublin",
+  edynburg: "Edinburgh",
+  bordeaux: "Bordeaux",
+  lyon: "Lyon",
+  bolonia: "Bologna",
+  turyn: "Turin",
+  bilbao: "Bilbao",
+  alicante: "Alicante",
+  palmademallorca: "Palma de Mallorca",
+  ibiza: "Ibiza",
+  larnaka: "Larnaca",
+  nikozja: "Nicosia",
+  tirana: "Tirana",
+  bukareszt: "Bucharest",
+  sofia: "Sofia",
+  belgrad: "Belgrade",
+  zagrzeb: "Zagreb",
+  ljubljana: "Ljubljana",
+  bratyslawa: "Bratislava",
+  ryga: "Riga",
+  wilno: "Vilnius",
+  tallin: "Tallinn",
+  reykiawik: "Reykjavik",
 };
 
-function translateCityToEnglish(city: string): string | null {
-  const normalized = city
+function normalizeCity(value: string): string {
+  return value
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/ł/g, "l")
+    .replace(/\s+/g, "")
     .trim();
-  return PL_TO_EN_CITY[normalized] ?? null;
+}
+
+function translateCityToEnglish(city: string): string | null {
+  return PL_TO_EN_CITY[normalizeCity(city)] ?? null;
+}
+
+// Wyciaga locationId z odpowiedzi lookup. Patrzymy najpierw na locations (idealne),
+// potem na hotels (kazdy hotel ma locationId = id miasta w Hotellook).
+function extractLocationId(body: HotellookLookupResponse): string | null {
+  const locations = body.results?.locations ?? [];
+
+  // 1) Najlepsze: lokalizacja typu "city"
+  const cityLoc = locations.find((loc) => loc.type === "city" && loc.id);
+  if (cityLoc?.id) return String(cityLoc.id);
+
+  // 2) Inny typ lokalizacji (destination/region) tez moze byc OK dla cache.json
+  const anyLoc = locations.find((loc) => loc.id);
+  if (anyLoc?.id) return String(anyLoc.id);
+
+  // 3) Fallback: wyciagnij locationId z pierwszego hotelu (zawsze ma id miasta)
+  const hotels = body.results?.hotels ?? [];
+  const firstHotel = hotels.find((hotel) => hotel.locationId);
+  if (firstHotel?.locationId) return String(firstHotel.locationId);
+
+  return null;
+}
+
+async function lookupOnce(query: string, token: string): Promise<string | null> {
+  const url = new URL(HOTELLOOK_LOOKUP_API);
+  url.searchParams.set("query", query);
+  url.searchParams.set("lang", "en");
+  url.searchParams.set("lookFor", "both");
+  url.searchParams.set("limit", "10");
+  url.searchParams.set("token", token);
+
+  try {
+    const response = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 86400 },
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as HotellookLookupResponse;
+    return extractLocationId(body);
+  } catch {
+    return null;
+  }
+}
+
+// 3-warstwowa rezolucja: IATA z lokalnej bazy -> EN nazwa -> oryginalna nazwa.
+async function resolveLocationId(
+  city: string,
+  country: string,
+  token: string,
+): Promise<string | null> {
+  // Warstwa 1: IATA z destinations.ts (najszybsze i najpewniejsze)
+  const profile = findDestinationProfile({ city, country });
+  if (profile?.airportCode) {
+    const fromIata = await lookupOnce(profile.airportCode, token);
+    if (fromIata) return fromIata;
+  }
+
+  // Warstwa 2: angielska nazwa z mapy PL->EN
+  const englishName = translateCityToEnglish(city);
+  if (englishName && englishName.toLowerCase() !== city.toLowerCase()) {
+    const fromEn = await lookupOnce(englishName, token);
+    if (fromEn) return fromEn;
+  }
+
+  // Warstwa 3: oryginalna nazwa wpisana przez usera
+  return lookupOnce(city, token);
 }
 
 function sortOffers(offers: NormalizedStayOffer[], sortBy: StaySortMode): NormalizedStayOffer[] {
@@ -180,7 +267,6 @@ function sortOffers(offers: NormalizedStayOffer[], sortBy: StaySortMode): Normal
       return a.total_amount / ra - b.total_amount / rb;
     });
   } else {
-    // cheap (default) — najtansze najpierw
     sorted.sort((a, b) => a.total_amount - b.total_amount);
   }
   return sorted;
@@ -195,8 +281,12 @@ export async function searchHotellookStays(input: HotellookSearchInput): Promise
   const checkOut = addDays(input.checkInDate, Math.max(1, input.nights));
   const { travelpayoutsMarker } = getAffiliateConfig();
 
-  const locationId = await lookupLocationId(input.city, token);
+  const locationId = await resolveLocationId(input.city, input.country, token);
   if (!locationId) {
+    if (process.env.NODE_ENV !== "production") {
+      // Loguj nieznajdowane miasta zeby dorzucac do mapy
+      console.warn(`[hotellook] Nie udalo sie zresolvac locationId dla "${input.city}, ${input.country}".`);
+    }
     return emptyResponse(input, `Nie znaleziono miasta "${input.city}" w bazie Hotellook.`);
   }
 
@@ -230,7 +320,7 @@ export async function searchHotellookStays(input: HotellookSearchInput): Promise
     return emptyResponse(input, "Hotellook: nieprawidlowa odpowiedz JSON.");
   }
 
-  if (!Array.isArray(raw)) {
+  if (!Array.isArray(raw) || raw.length === 0) {
     return emptyResponse(input, "Brak ofert dla tego kierunku.");
   }
 
@@ -239,7 +329,6 @@ export async function searchHotellookStays(input: HotellookSearchInput): Promise
   const offers: NormalizedStayOffer[] = entries
     .filter((entry) => typeof entry.hotelId === "number" && (entry.priceAvg || entry.priceFrom))
     .map((entry) => {
-      // Bierzemy priceFrom (najnizsza cena) jako bazowa, fallback na priceAvg
       const totalCandidate = entry.priceFrom ?? entry.priceAvg ?? 0;
       const total = Math.round(totalCandidate);
       return {

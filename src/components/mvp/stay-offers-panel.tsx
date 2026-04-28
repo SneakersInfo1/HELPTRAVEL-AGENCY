@@ -25,6 +25,8 @@ const copy = {
     empty: "Nie znaleźliśmy ofert dla tych dat. Zmień termin lub liczbę gości.",
     requestError: "Nie udało się pobrać ofert hoteli.",
     starsLabel: (s: number) => `${s}★`,
+    cheapest: "Najtańsza",
+    priceFromLabel: "od",
   },
   en: {
     eyebrow: "Stays",
@@ -39,6 +41,8 @@ const copy = {
     empty: "We couldn't find offers for these dates. Try different dates or guest count.",
     requestError: "Could not load stay offers.",
     starsLabel: (s: number) => `${s}★`,
+    cheapest: "Cheapest",
+    priceFromLabel: "from",
   },
 } as const;
 
@@ -66,15 +70,23 @@ function formatPrice(value: number, currency: string, locale: "pl" | "en"): stri
 
 type Copy = (typeof copy)[keyof typeof copy];
 
-function StayCard({ offer, nights, locale, t }: {
+function StayCard({ offer, nights, locale, t, isCheapest }: {
   offer: NormalizedStayOffer;
   nights: number;
   locale: "pl" | "en";
   t: Copy;
+  isCheapest: boolean;
 }) {
   const stars = offer.rating ?? 0;
   return (
-    <article className="flex items-stretch overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)]">
+    <article className={`relative flex items-stretch overflow-hidden rounded-2xl border bg-white shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)] ${
+      isCheapest ? "border-emerald-500/60 ring-1 ring-emerald-300" : "border-emerald-900/10"
+    }`}>
+      {isCheapest ? (
+        <span className="absolute left-2 top-2 z-10 rounded-full bg-emerald-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow">
+          {t.cheapest}
+        </span>
+      ) : null}
       <div className="relative h-32 w-32 shrink-0 bg-emerald-50 sm:h-36 sm:w-48">
         {offer.imageUrl ? (
           <Image
@@ -101,9 +113,12 @@ function StayCard({ offer, nights, locale, t }: {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           {offer.total_amount > 0 ? (
-            <p className="whitespace-nowrap text-xl font-bold text-emerald-950">
-              {formatPrice(offer.total_amount, offer.currency, locale)}
-            </p>
+            <div className="text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">{t.priceFromLabel}</p>
+              <p className="whitespace-nowrap text-xl font-bold text-emerald-950">
+                {formatPrice(offer.total_amount, offer.currency, locale)}
+              </p>
+            </div>
           ) : (
             <p className="text-sm font-semibold text-emerald-900/72">{t.noPrice}</p>
           )}
@@ -220,8 +235,15 @@ export function StayOffersPanel(props: {
       ) : shown.length > 0 ? (
         <>
           <div className="flex flex-col gap-3">
-            {shown.map((offer) => (
-              <StayCard key={offer.searchResultId} offer={offer} nights={nights} locale={locale} t={t} />
+            {shown.map((offer, idx) => (
+              <StayCard
+                key={offer.searchResultId}
+                offer={offer}
+                nights={nights}
+                locale={locale}
+                t={t}
+                isCheapest={idx === 0 && shown.length > 1}
+              />
             ))}
           </div>
           {canShowMore ? (
