@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { searchHotellookStays } from "@/lib/mvp/hotellook";
+import { searchLiteApiStays } from "@/lib/mvp/liteapi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const staySearchSchema = z.object({
@@ -23,10 +23,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = staySearchSchema.parse(body);
 
-    const result = await searchHotellookStays({
+    const checkOutDate = (() => {
+      const d = new Date(`${input.checkInDate}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + Math.max(1, input.nights));
+      return d.toISOString().slice(0, 10);
+    })();
+
+    const result = await searchLiteApiStays({
       city: input.city,
       country: input.country,
       checkInDate: input.checkInDate,
+      checkOutDate,
       nights: input.nights,
       guests: input.guests,
       rooms: input.rooms,

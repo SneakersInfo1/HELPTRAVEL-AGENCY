@@ -268,7 +268,7 @@ export interface FlightSearchResponse {
 export interface StaySearchResponse {
   city: string;
   country: string;
-  source: "hotellook" | "fallback";
+  source: "hotellook" | "liteapi" | "fallback";
   checkInDate: string;
   checkOutDate: string;
   guests: number;
