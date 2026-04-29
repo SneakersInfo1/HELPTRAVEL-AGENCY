@@ -74,12 +74,10 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
     heroImage: item.media.heroImage,
   }));
 
-  const destinationOptions = publishedDestinations.map((d) => ({ city: d.city, country: d.country }));
-
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-8">
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
-        <HomeHybridHero featured={featuredTiles} destinationOptions={destinationOptions} />
+        <HomeHybridHero featured={featuredTiles} />
       </div>
       <HomePageSections locale={locale} />
     </main>

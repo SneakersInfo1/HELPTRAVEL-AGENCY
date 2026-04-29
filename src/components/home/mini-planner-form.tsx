@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { sendClientEvent } from "@/lib/mvp/client-events";
@@ -10,10 +10,9 @@ import {
   EUROPEAN_ORIGIN_CITIES,
   POLISH_ORIGIN_CITIES,
 } from "@/lib/mvp/origin-cities";
-import type { DestinationProfile } from "@/lib/mvp/types";
+import type { DestinationSuggestion } from "@/lib/mvp/types";
 
 interface MiniPlannerFormProps {
-  destinationOptions: Array<Pick<DestinationProfile, "city" | "country">>;
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
   compact?: boolean;
 }
@@ -43,15 +42,69 @@ function diffNights(start: string, end: string): number {
   return nights > 0 ? nights : 4;
 }
 
-export function MiniPlannerForm({ destinationOptions, compact = false }: MiniPlannerFormProps) {
+export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
   const router = useRouter();
   const { locale } = useLanguage();
-  const datalistId = useId();
+  const listboxId = useId();
+  const destInputRef = useRef<HTMLInputElement>(null);
+  const destListRef = useRef<HTMLUListElement>(null);
   const [origin, setOrigin] = useState(DEFAULT_ORIGIN_CITY);
   const [destination, setDestination] = useState("");
+  const [destQuery, setDestQuery] = useState("");
+  const [destSuggestions, setDestSuggestions] = useState<DestinationSuggestion[]>([]);
+  const [destOpen, setDestOpen] = useState(false);
+  const [destHighlight, setDestHighlight] = useState(-1);
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [travelers, setTravelers] = useState(2);
+
+  useEffect(() => {
+    if (destQuery.trim().length < 2) {
+      setDestSuggestions([]);
+      setDestOpen(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/destinations/suggest?q=${encodeURIComponent(destQuery.trim())}`, {
+          signal: controller.signal,
+        });
+        const payload = (await res.json().catch(() => ({ items: [] }))) as { items?: DestinationSuggestion[] };
+        const items = payload.items ?? [];
+        setDestSuggestions(items);
+        setDestOpen(items.length > 0);
+        setDestHighlight(-1);
+      } catch {
+        // aborted or network error
+      }
+    }, 150);
+    return () => { controller.abort(); window.clearTimeout(timeout); };
+  }, [destQuery]);
+
+  function selectSuggestion(s: DestinationSuggestion) {
+    setDestination(s.queryValue);
+    setDestQuery(s.city);
+    setDestOpen(false);
+    setDestHighlight(-1);
+    destInputRef.current?.blur();
+  }
+
+  function handleDestKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (!destOpen || destSuggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setDestHighlight((h) => Math.min(h + 1, destSuggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setDestHighlight((h) => Math.max(h - 1, 0));
+    } else if (e.key === "Enter" && destHighlight >= 0) {
+      e.preventDefault();
+      selectSuggestion(destSuggestions[destHighlight]);
+    } else if (e.key === "Escape") {
+      setDestOpen(false);
+    }
+  }
 
   const dateMin = useMemo(() => toISO(new Date()), []);
   const endMin = useMemo(() => {
@@ -123,25 +176,60 @@ export function MiniPlannerForm({ destinationOptions, compact = false }: MiniPla
           </select>
         </label>
 
-        {/* DOKAD */}
-        <label className="flex flex-col gap-1.5">
+        {/* DOKAD — autocomplete combobox */}
+        <div className="relative flex flex-col gap-1.5">
           <span className={labelCls}>Dokad</span>
           <input
+            ref={destInputRef}
             type="text"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            placeholder="Malaga, Barcelona, Rzym..."
-            list={datalistId}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={destOpen}
+            aria-controls={listboxId}
+            value={destQuery}
+            onChange={(e) => {
+              setDestQuery(e.target.value);
+              setDestination(e.target.value);
+            }}
+            onKeyDown={handleDestKeyDown}
+            onFocus={() => { if (destSuggestions.length > 0) setDestOpen(true); }}
+            onBlur={() => { window.setTimeout(() => setDestOpen(false), 150); }}
+            placeholder="Wpisz miasto lub kraj…"
+            autoComplete="off"
             className={fieldCls}
           />
-          <datalist id={datalistId}>
-            {destinationOptions.map((opt) => (
-              <option key={`${opt.city}-${opt.country}`} value={opt.city}>
-                {opt.country}
-              </option>
-            ))}
-          </datalist>
-        </label>
+          {destOpen && destSuggestions.length > 0 && (
+            <ul
+              id={listboxId}
+              ref={destListRef}
+              role="listbox"
+              className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-64 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
+            >
+              {destSuggestions.map((s, idx) => (
+                <li
+                  key={s.id}
+                  role="option"
+                  aria-selected={idx === destHighlight}
+                  onMouseDown={() => selectSuggestion(s)}
+                  onMouseEnter={() => setDestHighlight(idx)}
+                  className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition ${
+                    idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
+                  }`}
+                >
+                  <span className="text-base leading-none">
+                    {s.source === "curated" ? "🌍" : "📍"}
+                  </span>
+                  <span>
+                    <span className="font-semibold text-emerald-950">{s.city}</span>
+                    <span className="ml-1 text-xs text-emerald-900/56">
+                      {[s.country, s.region].filter(Boolean).join(" / ")}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         {/* WYLOT */}
         <label className="flex flex-col gap-1.5">
