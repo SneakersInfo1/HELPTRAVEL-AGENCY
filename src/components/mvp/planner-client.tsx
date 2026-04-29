@@ -944,7 +944,7 @@ export function PlannerClient({
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-      <section className="glass-panel rounded-[2rem] border border-emerald-900/10 p-4 sm:p-6">
+      {!result && <section className="glass-panel rounded-[2rem] border border-emerald-900/10 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-emerald-950 sm:text-3xl">{text.heroTitle}</h1>
 
@@ -1111,9 +1111,9 @@ export function PlannerClient({
 
           </aside>
         </div>
-      </section>
+      </section>}
 
-      {hasPlanningMemory && !shouldShowExpandedPlanningMemory ? (
+      {false && hasPlanningMemory && !shouldShowExpandedPlanningMemory ? (
         <section className="rounded-[1.7rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
@@ -1140,7 +1140,7 @@ export function PlannerClient({
         </section>
       ) : null}
 
-      {shouldShowExpandedPlanningMemory ? (
+      {false && shouldShowExpandedPlanningMemory ? (
         <section className="rounded-[1.85rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
@@ -1173,11 +1173,11 @@ export function PlannerClient({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{text.continuePlanning}</p>
                 <p className="mt-2 text-sm text-emerald-900/72">{text.continuePlanningBody}</p>
                 <p className="mt-2 text-sm font-semibold text-emerald-950">
-                  {lastSnapshot.selectedDestinationLabel ?? (lastSnapshot.mode === "discovery" ? lastSnapshot.query : lastSnapshot.destinationHint)}
+                  {lastSnapshot!.selectedDestinationLabel ?? (lastSnapshot!.mode === "discovery" ? lastSnapshot!.query : lastSnapshot!.destinationHint)}
                 </p>
                 <button
                   type="button"
-                  onClick={() => handleRestoreSnapshot(lastSnapshot)}
+                  onClick={() => handleRestoreSnapshot(lastSnapshot!)}
                   className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
                 >
                   {text.restoreSettings}
@@ -1518,14 +1518,18 @@ export function PlannerClient({
         </>
       ) : null}
 
-      {result ? (
+      {result ? (() => {
+        const selectedId = selectedOption?.itineraryResultId ?? result.options[0]?.itineraryResultId;
+        const alternatives = result.options.filter((o) => o.itineraryResultId !== selectedId).slice(0, 5);
+        if (alternatives.length === 0) return null;
+        return (
         <section className="grid gap-4">
           <h2 className="text-xl font-bold text-emerald-950">
             {mode === "standard" ? text.directPrompt : text.discoveryPrompt}
           </h2>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {result.options.slice(0, 5).map((option) => {
+            {alternatives.map((option) => {
               const story = getDestinationStory(option.destination);
               const active = option.itineraryResultId === selectedOptionId;
               return (
@@ -1568,7 +1572,8 @@ export function PlannerClient({
             })}
           </div>
         </section>
-      ) : null}
+        );
+      })() : null}
 
       {result && !selectedOption ? (
         <section className="rounded-[1.75rem] border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-900 shadow-sm">

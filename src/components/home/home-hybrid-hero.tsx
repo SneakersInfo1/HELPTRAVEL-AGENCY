@@ -35,7 +35,7 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
         <LiveVisitorBadge />
 
         {/* Content — kompaktowe, form widoczny w pierwszym viewporcie */}
-        <div className="relative z-10 flex min-h-[560px] flex-col gap-5 px-5 py-6 sm:min-h-[600px] sm:gap-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
+        <div className="relative z-20 flex min-h-[560px] flex-col gap-5 px-5 py-6 sm:min-h-[600px] sm:gap-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
           {/* Top row: badge + 100% DARMOWE */}
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-md sm:text-[11px]">
