@@ -7,7 +7,7 @@ import { useLanguage } from "@/components/site/language-provider";
 import { countNightsBetweenIsoDates } from "@/lib/mvp/travel-dates";
 import type { NormalizedStayOffer, StaySearchResponse } from "@/lib/mvp/types";
 
-const INITIAL_VISIBLE = 5;
+const INITIAL_VISIBLE = 10;
 const STEP = 5;
 const MAX_VISIBLE = 30;
 
@@ -21,7 +21,7 @@ const copy = {
     bookNow: "Rezerwuj",
     noPrice: "Cena u partnera",
     showMore: "Pokaż więcej hoteli",
-    jumpToFlights: "Skocz do lotów",
+    jumpToFlights: "Pokaż loty",
     empty: "Nie znaleźliśmy ofert dla tych dat. Zmień termin lub liczbę gości.",
     requestError: "Nie udało się pobrać ofert hoteli.",
     starsLabel: (s: number) => `${s}★`,
@@ -42,7 +42,7 @@ const copy = {
     bookNow: "Book",
     noPrice: "Price at partner",
     showMore: "Show more stays",
-    jumpToFlights: "Jump to flights",
+    jumpToFlights: "Show flights",
     empty: "We couldn't find offers for these dates. Try different dates or guest count.",
     requestError: "Could not load stay offers.",
     starsLabel: (s: number) => `${s}★`,
@@ -88,44 +88,63 @@ function StayCard({ offer, nights, locale, t, isCheapest }: {
   isCheapest: boolean;
 }) {
   const stars = offer.rating ?? 0;
+
   return (
-    <article className={`relative flex items-stretch overflow-hidden rounded-2xl border bg-white shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)] ${
-      isCheapest ? "border-emerald-500/60 ring-1 ring-emerald-300" : "border-emerald-900/10"
-    }`}>
+    <article
+      className={`group relative flex items-stretch overflow-hidden rounded-2xl border bg-white shadow-[0_4px_16px_rgba(16,84,48,0.05)]
+        transition-all duration-[250ms] [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]
+        hover:scale-[1.02] hover:shadow-[0_12px_32px_rgba(16,84,48,0.14)] hover:border-emerald-400/60
+        motion-reduce:hover:scale-100 motion-reduce:transition-none
+        ${isCheapest ? "border-emerald-500/60 ring-1 ring-emerald-300" : "border-emerald-900/10"}`}
+    >
       {isCheapest ? (
         <span className="absolute left-2 top-2 z-10 rounded-full bg-emerald-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow">
           {t.cheapest}
         </span>
       ) : null}
-      <div className="relative h-32 w-32 shrink-0 bg-emerald-50 sm:h-36 sm:w-48">
+
+      {/* Zdjęcie z zoom-in na hover */}
+      <div className="relative h-32 w-32 shrink-0 overflow-hidden bg-emerald-50 sm:h-36 sm:w-48">
         {offer.imageUrl ? (
           <Image
             src={offer.imageUrl}
             alt={offer.name}
             fill
             sizes="(max-width: 640px) 128px, 192px"
-            className="object-cover"
+            className="object-cover transition-transform duration-[350ms] ease-out group-hover:scale-110 motion-reduce:group-hover:scale-100"
+            loading="lazy"
           />
-        ) : null}
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-emerald-50">
+            <svg className="h-10 w-10 text-emerald-200" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6 13H6v-.5c0-2 4-3.1 6-3.1s6 1.1 6 3.1V19z"/>
+            </svg>
+          </div>
+        )}
       </div>
+
       <div className="flex flex-1 items-center gap-4 p-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="line-clamp-1 text-base font-bold text-emerald-950">{offer.name}</h3>
             {stars > 0 ? (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+              <span className="translate-y-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 motion-reduce:translate-y-0 motion-reduce:opacity-100">
                 {t.starsLabel(stars)}
               </span>
             ) : null}
           </div>
           <p className="mt-1 line-clamp-1 text-xs text-emerald-900/64">{offer.address}</p>
           <p className="mt-2 text-[11px] text-emerald-900/56">{t.nights(nights)}</p>
+          {offer.description ? (
+            <p className="mt-1 text-[11px] text-emerald-700/70">{offer.description}</p>
+          ) : null}
         </div>
+
         <div className="flex shrink-0 flex-col items-end gap-2">
           {offer.total_amount > 0 ? (
             <div className="text-right">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">{t.priceFromLabel}</p>
-              <p className="whitespace-nowrap text-xl font-bold text-emerald-950">
+              <p className="whitespace-nowrap text-xl font-bold text-emerald-950 transition-colors duration-150 group-hover:text-emerald-600">
                 {formatPrice(offer.total_amount, offer.currency, locale)}
               </p>
             </div>
@@ -137,7 +156,7 @@ function StayCard({ offer, nights, locale, t, isCheapest }: {
               href={offer.bookingUrl}
               target="_blank"
               rel="noreferrer"
-              className="whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
+              className="translate-y-1 whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2 text-sm font-bold text-white opacity-0 transition-all duration-200 hover:bg-emerald-800 group-hover:translate-y-0 group-hover:opacity-100 motion-reduce:translate-y-0 motion-reduce:opacity-100"
             >
               {t.bookNow}
             </a>
@@ -219,21 +238,10 @@ export function StayOffersPanel(props: {
 
   return (
     <section className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-5 shadow-[0_12px_32px_rgba(16,84,48,0.06)]">
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{t.eyebrow}</p>
-          <h2 className="mt-1 text-xl font-bold text-emerald-950">{t.title}</h2>
-          <p className="mt-1 text-sm text-emerald-900/72">{t.body}</p>
-        </div>
-        {shown.length > 0 ? (
-          <a
-            href="#planner-flights"
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
-          >
-            {t.jumpToFlights}
-            <span aria-hidden>↓</span>
-          </a>
-        ) : null}
+      <header className="mb-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{t.eyebrow}</p>
+        <h2 className="mt-1 text-xl font-bold text-emerald-950">{t.title}</h2>
+        <p className="mt-1 text-sm text-emerald-900/72">{t.body}</p>
       </header>
 
       {loading && shown.length === 0 ? (
@@ -256,8 +264,8 @@ export function StayOffersPanel(props: {
               />
             ))}
           </div>
-          {canShowMore ? (
-            <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            {canShowMore ? (
               <button
                 type="button"
                 onClick={() => setVisible((v) => Math.min(MAX_VISIBLE, v + STEP))}
@@ -265,8 +273,15 @@ export function StayOffersPanel(props: {
               >
                 {t.showMore}
               </button>
-            </div>
-          ) : null}
+            ) : <span />}
+            <a
+              href="#planner-flights"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+            >
+              <span aria-hidden>✈</span>
+              {t.jumpToFlights}
+            </a>
+          </div>
         </>
       ) : (
         <AffiliateFallback
@@ -313,28 +328,16 @@ function AffiliateFallback({
         <p className="text-sm font-semibold text-emerald-950">{t.fallbackTitle}</p>
         <p className="mt-1 text-xs text-emerald-900/64">{t.fallbackBody}</p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <a
-            href={hotellookUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
-          >
+          <a href={hotellookUrl} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
             {t.searchHotellook} →
           </a>
-          <a
-            href={bookingUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-emerald-900/16 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-          >
+          <a href={bookingUrl} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-900/16 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50">
             {t.searchBooking} →
           </a>
-          <a
-            href={hotelsComUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-emerald-900/16 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-          >
+          <a href={hotelsComUrl} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-900/16 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50">
             {t.searchHotels} →
           </a>
         </div>
