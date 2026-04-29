@@ -172,7 +172,9 @@ export async function searchTravelpayoutsFlights(
       currency: "PLN",
       number_of_stops: entry.transfers ?? 0,
       departure_time: entry.departure_at,
-      arrival_time: entry.return_at ?? entry.departure_at,
+      arrival_time: durationMinutes > 0
+        ? new Date(new Date(entry.departure_at).getTime() + durationMinutes * 60_000).toISOString()
+        : entry.departure_at,
       total_duration: human.text,
       total_duration_minutes: human.minutes,
       origin: entry.origin_airport ?? entry.origin,
