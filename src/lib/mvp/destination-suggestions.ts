@@ -1,5 +1,7 @@
 import "server-only";
 
+import Fuse from "fuse.js";
+
 import { destinationCatalog } from "./destination-catalog";
 import { curatedDestinations } from "./destinations";
 import { normalizeLookup, resolveAirportCode } from "./location";
@@ -16,28 +18,6 @@ type GeoapifyFeature = {
     name?: string;
   };
 };
-
-function rankCuratedDestination(query: string, city: string, country: string, aliases: string[] = [], region?: string): number {
-  if (!query) {
-    return 100;
-  }
-
-  const normalizedQuery = normalizeLookup(query);
-  const cityLookup = normalizeLookup(city);
-  const countryLookup = normalizeLookup(country);
-  const regionLookup = normalizeLookup(region ?? "");
-  const aliasLookups = aliases.map((alias) => normalizeLookup(alias));
-  const haystack = `${cityLookup} ${countryLookup} ${regionLookup} ${aliasLookups.join(" ")}`.trim();
-
-  if (haystack === normalizedQuery) return 120;
-  if (cityLookup === normalizedQuery) return 115;
-  if (`${cityLookup} ${countryLookup}`.startsWith(normalizedQuery)) return 110;
-  if (aliasLookups.some((alias) => alias === normalizedQuery)) return 109;
-  if (aliasLookups.some((alias) => alias.startsWith(normalizedQuery))) return 103;
-  if (cityLookup.startsWith(normalizedQuery)) return 105;
-  if (haystack.includes(normalizedQuery)) return 92;
-  return 0;
-}
 
 function curatedSuggestion(destination: (typeof curatedDestinations)[number]): DestinationSuggestion {
   return {
@@ -127,37 +107,64 @@ async function fetchGeoapifySuggestions(query: string): Promise<DestinationSugge
     .filter((item): item is DestinationSuggestion => Boolean(item));
 }
 
+type FuseEntry = {
+  city: string;
+  country: string;
+  aliases: string[];
+  suggestion: DestinationSuggestion;
+};
+
+function buildFuseIndex(entries: FuseEntry[]) {
+  return new Fuse(entries, {
+    keys: ["city", "country", "aliases"],
+    threshold: 0.4,
+    minMatchCharLength: 2,
+    includeScore: true,
+    shouldSort: true,
+  });
+}
+
 export async function getDestinationSuggestions(query: string): Promise<DestinationSuggestion[]> {
   const trimmed = query.trim();
-  const curated = curatedDestinations
-    .map((destination) => ({
-      destination,
-      score: rankCuratedDestination(trimmed, destination.city, destination.country, destination.aliases, destination.region),
-    }))
-    .filter((item) => item.score > 0 || !trimmed)
-    .sort((left, right) => right.score - left.score || left.destination.city.localeCompare(right.destination.city))
-    .map((item) => curatedSuggestion(item.destination));
-  const catalog = destinationCatalog
-    .map((entry) => ({
-      entry,
-      score: rankCuratedDestination(trimmed, entry.city, entry.country, entry.aliases, entry.region),
-    }))
-    .filter((item) => item.score > 0 || !trimmed)
-    .sort((left, right) => right.score - left.score || left.entry.city.localeCompare(right.entry.city))
-    .map((item) => catalogSuggestion(item.entry));
 
   if (!trimmed) {
-    return [...new Map([...curated, ...catalog].map((item) => [normalizeLookup(`${item.city} ${item.country}`), item])).values()].slice(0, 8);
+    const defaults = [
+      ...curatedDestinations.map(curatedSuggestion),
+      ...destinationCatalog.map(catalogSuggestion),
+    ];
+    return [
+      ...new Map(defaults.map((item) => [normalizeLookup(`${item.city} ${item.country}`), item])).values(),
+    ].slice(0, 8);
   }
+
+  const fuseEntries: FuseEntry[] = [
+    ...curatedDestinations.map((d) => ({
+      city: d.city,
+      country: d.country,
+      aliases: d.aliases ?? [],
+      suggestion: curatedSuggestion(d),
+    })),
+    ...destinationCatalog.map((e) => ({
+      city: e.city,
+      country: e.country,
+      aliases: e.aliases ?? [],
+      suggestion: catalogSuggestion(e),
+    })),
+  ];
+
+  const fuse = buildFuseIndex(fuseEntries);
+  const fuzzyResults = fuse.search(trimmed, { limit: 5 });
 
   const live = await fetchGeoapifySuggestions(trimmed);
   const merged = new Map<string, DestinationSuggestion>();
 
-  for (const item of [...curated, ...catalog, ...live]) {
+  for (const result of fuzzyResults) {
+    const key = normalizeLookup(`${result.item.city} ${result.item.country}`);
+    if (!merged.has(key)) merged.set(key, result.item.suggestion);
+  }
+  for (const item of live) {
     const key = normalizeLookup(`${item.city} ${item.country}`);
-    if (!merged.has(key)) {
-      merged.set(key, item);
-    }
+    if (!merged.has(key)) merged.set(key, item);
   }
 
   return [...merged.values()].slice(0, 8);

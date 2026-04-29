@@ -14,10 +14,9 @@ interface FeaturedTile {
 
 interface HomeHybridHeroProps {
   featured: FeaturedTile[];
-  destinationOptions: Array<Pick<DestinationProfile, "city" | "country">>;
 }
 
-export function HomeHybridHero({ featured, destinationOptions }: HomeHybridHeroProps) {
+export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
   const backdropImages = featured.slice(0, 6).map((tile) => ({
     src: tile.heroImage,
     alt: `${tile.destination.city}, ${tile.destination.country}`,
@@ -73,7 +72,7 @@ export function HomeHybridHero({ featured, destinationOptions }: HomeHybridHeroP
 
           {/* Form */}
           <div className="mt-auto">
-            <MiniPlannerForm destinationOptions={destinationOptions} compact />
+            <MiniPlannerForm compact />
             <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[10px] text-white/80 sm:text-[11px]">
               <span className="flex items-center gap-1.5">
                 <span aria-hidden className="text-amber-300">✦</span>
