@@ -132,7 +132,7 @@ function resolveCountryCode(country: string): string | null {
 const LITEAPI_BASE = "https://api.liteapi.travel/v3.0";
 const HOTELS_LIMIT = 20; // ile hoteli pobieramy na raz do rates
 
-function buildBookingUrl(hotelName: string, checkIn: string, checkOut: string, guests: number, marker: string | null): string {
+function buildBookingUrl(hotelName: string, checkIn: string, checkOut: string, guests: number): string {
   const params = new URLSearchParams({
     ss: hotelName,
     checkin: checkIn,
@@ -141,16 +141,7 @@ function buildBookingUrl(hotelName: string, checkIn: string, checkOut: string, g
     no_rooms: "1",
     lang: "pl",
   });
-  const base = `https://www.booking.com/searchresults.html?${params.toString()}`;
-  if (!marker) return base;
-  // Booking.com przez Travelpayouts marker (deeplink afiliacyjny)
-  const url = new URL("https://www.travelpayouts.com/click");
-  url.searchParams.set("shmarker", marker);
-  url.searchParams.set("promo_id", "7654");
-  url.searchParams.set("source_type", "customlink");
-  url.searchParams.set("type", "click");
-  url.searchParams.set("url", base);
-  return url.toString();
+  return `https://www.booking.com/searchresults.html?${params.toString()}`;
 }
 
 function emptyResponse(input: LiteApiSearchInput, error?: string): StaySearchResponse {
@@ -308,7 +299,7 @@ export async function searchLiteApiStays(input: LiteApiSearchInput): Promise<Sta
       imageUrl: hotelInfo.main_photo ?? null,
       description: cheapestBoardName || undefined,
       rooms: input.rooms,
-      bookingUrl: buildBookingUrl(hotelInfo.name, input.checkInDate, input.checkOutDate, input.guests, marker),
+      bookingUrl: buildBookingUrl(hotelInfo.name, input.checkInDate, input.checkOutDate, input.guests),
     } satisfies NormalizedStayOffer);
   }
 
