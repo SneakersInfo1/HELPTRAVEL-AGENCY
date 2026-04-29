@@ -120,8 +120,7 @@ const copy = {
     perPerson: "/ os.",
     cheapest: "Najtańsza",
     priceFromLabel: "od",
-    roundTripEst: "↔ w obie strony est.",
-    roundTripNote: "* szacunkowa cena powrotu (×1,85)",
+    roundTripCta: "↔ Szukaj lotów w obie strony",
     showMore: "Pokaż więcej lotów",
     empty: "Nie znaleźliśmy lotów dla tej trasy i daty. Zmień dzień wylotu.",
     requestError: "Nie udało się pobrać ofert lotów.",
@@ -137,8 +136,7 @@ const copy = {
     perPerson: "/ pers.",
     cheapest: "Cheapest",
     priceFromLabel: "from",
-    roundTripEst: "↔ round trip est.",
-    roundTripNote: "* estimated return price (×1.85)",
+    roundTripCta: "↔ Search round-trip flights",
     showMore: "Show more flights",
     empty: "We couldn't find flights for this route and date. Try a different day.",
     requestError: "Could not load flight offers.",
@@ -180,14 +178,39 @@ function formatTime(value: string, locale: "pl" | "en"): string {
   }).format(date);
 }
 
+function aviasalesRoundTripUrl(
+  originIata: string,
+  destIata: string,
+  departureDate: string,
+  returnDate: string,
+  passengers: number,
+): string | null {
+  if (!departureDate || !returnDate) return null;
+  const marker = process.env.NEXT_PUBLIC_TRAVELPAYOUTS_MARKER ?? "";
+  const fmt = (d: string) => {
+    const date = new Date(d);
+    if (Number.isNaN(date.getTime())) return null;
+    const dd = String(date.getUTCDate()).padStart(2, "0");
+    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+    return `${dd}${mm}`;
+  };
+  const dep = fmt(departureDate);
+  const ret = fmt(returnDate);
+  if (!dep || !ret) return null;
+  const pax = Math.max(1, passengers);
+  const base = `https://www.aviasales.com/search/${originIata.toUpperCase()}${dep}${destIata.toUpperCase()}${ret}${pax}1`;
+  return marker ? `${base}?marker=${marker}` : base;
+}
+
 type Copy = (typeof copy)[keyof typeof copy];
 
-function FlightCard({ offer, locale, t, isCheapest, isDeal }: {
+function FlightCard({ offer, locale, t, isCheapest, isDeal, roundTripUrl }: {
   offer: NormalizedFlightOffer;
   locale: "pl" | "en";
   t: Copy;
   isCheapest: boolean;
   isDeal: boolean;
+  roundTripUrl: string | null;
 }) {
   return (
     <article className={`relative flex items-center gap-4 rounded-2xl border bg-white p-4 shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)] ${
@@ -242,20 +265,29 @@ function FlightCard({ offer, locale, t, isCheapest, isDeal }: {
             {formatPrice(offer.total_amount, offer.currency, locale)}
           </p>
           <p className="text-[10px] text-emerald-900/56">{t.perPerson}</p>
-          <p className="mt-0.5 whitespace-nowrap text-[10px] text-emerald-900/48">
-            {t.roundTripEst} ~{formatPrice(Math.round(offer.total_amount * 1.85), offer.currency, locale)}*
-          </p>
         </div>
-        {offer.bookingUrl ? (
-          <a
-            href={offer.bookingUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
-          >
-            {t.bookNow}
-          </a>
-        ) : null}
+        <div className="flex flex-col gap-1.5">
+          {offer.bookingUrl ? (
+            <a
+              href={offer.bookingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
+            >
+              {t.bookNow}
+            </a>
+          ) : null}
+          {roundTripUrl ? (
+            <a
+              href={roundTripUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="whitespace-nowrap rounded-full border border-emerald-700 px-5 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
+            >
+              {t.roundTripCta}
+            </a>
+          ) : null}
+        </div>
       </div>
     </article>
   );
@@ -354,6 +386,13 @@ export function FlightOffersPanel(props: {
                 t={t}
                 isCheapest={idx === 0 && shown.length > 1}
                 isDeal={avgPrice > 0 && offer.total_amount < avgPrice * 0.8}
+                roundTripUrl={aviasalesRoundTripUrl(
+                  offer.origin,
+                  offer.destination,
+                  props.departureDate,
+                  props.returnDate,
+                  props.passengers,
+                )}
               />
             ))}
           </div>
@@ -368,7 +407,6 @@ export function FlightOffersPanel(props: {
               </button>
             </div>
           ) : null}
-          <p className="mt-3 text-[10px] text-emerald-900/40">{t.roundTripNote}</p>
         </>
       ) : (
         <div className="rounded-2xl bg-emerald-50/60 p-5 text-sm text-emerald-900/76">
