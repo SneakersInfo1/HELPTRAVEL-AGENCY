@@ -54,6 +54,9 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
   const [destSuggestions, setDestSuggestions] = useState<DestinationSuggestion[]>([]);
   const [destOpen, setDestOpen] = useState(false);
   const [destHighlight, setDestHighlight] = useState(-1);
+  const [destFetching, setDestFetching] = useState(false);
+  const [destConfirmed, setDestConfirmed] = useState(false);
+  const [destError, setDestError] = useState("");
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [travelers, setTravelers] = useState(2);
@@ -62,8 +65,10 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
     if (destQuery.trim().length < 2) {
       setDestSuggestions([]);
       setDestOpen(false);
+      setDestFetching(false);
       return;
     }
+    setDestFetching(true);
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       try {
@@ -73,10 +78,12 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
         const payload = (await res.json().catch(() => ({ items: [] }))) as { items?: DestinationSuggestion[] };
         const items = payload.items ?? [];
         setDestSuggestions(items);
-        setDestOpen(items.length > 0);
+        setDestOpen(true);
         setDestHighlight(-1);
       } catch {
         // aborted or network error
+      } finally {
+        setDestFetching(false);
       }
     }, 150);
     return () => { controller.abort(); window.clearTimeout(timeout); };
@@ -87,6 +94,8 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
     setDestQuery(s.city);
     setDestOpen(false);
     setDestHighlight(-1);
+    setDestConfirmed(true);
+    setDestError("");
     destInputRef.current?.blur();
   }
 
@@ -116,6 +125,13 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Jeśli user coś wpisał ale nie wybrał z listy → pokaż błąd
+    if (destQuery.trim().length > 0 && !destConfirmed) {
+      setDestError("Nie znaleziono takiego kierunku. Wybierz miasto z listy podpowiedzi.");
+      setDestOpen(true);
+      return;
+    }
+    setDestError("");
     const nights = diffNights(startDate, endDate);
     const params = new URLSearchParams({
       mode: "standard",
@@ -190,6 +206,8 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
             onChange={(e) => {
               setDestQuery(e.target.value);
               setDestination(e.target.value);
+              setDestConfirmed(false);
+              setDestError("");
             }}
             onKeyDown={handleDestKeyDown}
             onFocus={() => { if (destSuggestions.length > 0) setDestOpen(true); }}
@@ -198,36 +216,49 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
             autoComplete="off"
             className={fieldCls}
           />
-          {destOpen && destSuggestions.length > 0 && (
+          {destOpen && (
             <ul
               id={listboxId}
               ref={destListRef}
               role="listbox"
               className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-64 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
             >
-              {destSuggestions.map((s, idx) => (
-                <li
-                  key={s.id}
-                  role="option"
-                  aria-selected={idx === destHighlight}
-                  onMouseDown={() => selectSuggestion(s)}
-                  onMouseEnter={() => setDestHighlight(idx)}
-                  className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition ${
-                    idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
-                  }`}
-                >
-                  <span className="text-base leading-none">
-                    {s.source === "curated" ? "🌍" : "📍"}
-                  </span>
-                  <span>
-                    <span className="font-semibold text-emerald-950">{s.city}</span>
-                    <span className="ml-1 text-xs text-emerald-900/56">
-                      {[s.country, s.region].filter(Boolean).join(" / ")}
+              {destFetching ? (
+                <li className="px-3 py-2 text-sm text-emerald-900/56">Szukamy kierunków…</li>
+              ) : destSuggestions.length > 0 ? (
+                destSuggestions.map((s, idx) => (
+                  <li
+                    key={s.id}
+                    role="option"
+                    aria-selected={idx === destHighlight}
+                    onMouseDown={() => selectSuggestion(s)}
+                    onMouseEnter={() => setDestHighlight(idx)}
+                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition ${
+                      idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
+                    }`}
+                  >
+                    <span className="text-base leading-none">
+                      {s.source === "curated" ? "🌍" : "📍"}
                     </span>
-                  </span>
+                    <span>
+                      <span className="font-semibold text-emerald-950">{s.city}</span>
+                      <span className="ml-1 text-xs text-emerald-900/56">
+                        {[s.country, s.region].filter(Boolean).join(" / ")}
+                      </span>
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <li className="px-3 py-2 text-sm text-emerald-900/56">
+                  Brak wyników dla „{destQuery}". Spróbuj innego miasta lub kraju.
                 </li>
-              ))}
+              )}
             </ul>
+          )}
+          {destError && (
+            <p className="mt-1 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
+              {destError}
+            </p>
           )}
         </div>
 

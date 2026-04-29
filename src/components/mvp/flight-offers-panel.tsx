@@ -120,6 +120,8 @@ const copy = {
     perPerson: "/ os.",
     cheapest: "Najtańsza",
     priceFromLabel: "od",
+    roundTripEst: "↔ w obie strony est.",
+    roundTripNote: "* szacunkowa cena powrotu (×1,85)",
     showMore: "Pokaż więcej lotów",
     empty: "Nie znaleźliśmy lotów dla tej trasy i daty. Zmień dzień wylotu.",
     requestError: "Nie udało się pobrać ofert lotów.",
@@ -135,6 +137,8 @@ const copy = {
     perPerson: "/ pers.",
     cheapest: "Cheapest",
     priceFromLabel: "from",
+    roundTripEst: "↔ round trip est.",
+    roundTripNote: "* estimated return price (×1.85)",
     showMore: "Show more flights",
     empty: "We couldn't find flights for this route and date. Try a different day.",
     requestError: "Could not load flight offers.",
@@ -190,11 +194,10 @@ function FlightCard({ offer, locale, t, isCheapest, isDeal }: {
       isCheapest ? "border-emerald-500/60 ring-1 ring-emerald-300" : "border-emerald-900/10"
     }`}>
       {isCheapest ? (
-        <span className="absolute -top-2 left-4 z-10 rounded-full bg-emerald-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow">
-          {t.cheapest}
+        <span className="absolute -top-2 left-4 z-10 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2 py-1 text-[10px] font-bold tracking-wide text-white shadow">
+          {t.deal}
         </span>
-      ) : null}
-      {isDeal && !isCheapest ? (
+      ) : isDeal ? (
         <span className="absolute -top-2 left-4 z-10 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2 py-1 text-[10px] font-bold tracking-wide text-white shadow">
           {t.deal}
         </span>
@@ -207,7 +210,7 @@ function FlightCard({ offer, locale, t, isCheapest, isDeal }: {
       <div className="flex flex-1 items-center gap-4">
         <div className="text-center">
           <p className="text-base font-bold text-emerald-950">{formatTime(offer.departure_time, locale)}</p>
-          <p className="max-w-[80px] truncate text-[11px] text-emerald-900/56" title={formatAirport(offer.origin)}>
+          <p className="text-[11px] text-emerald-900/56" title={formatAirport(offer.origin)}>
             {formatAirport(offer.origin)}
           </p>
         </div>
@@ -226,7 +229,7 @@ function FlightCard({ offer, locale, t, isCheapest, isDeal }: {
 
         <div className="text-center">
           <p className="text-base font-bold text-emerald-950">{formatTime(offer.arrival_time, locale)}</p>
-          <p className="max-w-[80px] truncate text-[11px] text-emerald-900/56" title={formatAirport(offer.destination)}>
+          <p className="text-[11px] text-emerald-900/56" title={formatAirport(offer.destination)}>
             {formatAirport(offer.destination)}
           </p>
         </div>
@@ -239,6 +242,9 @@ function FlightCard({ offer, locale, t, isCheapest, isDeal }: {
             {formatPrice(offer.total_amount, offer.currency, locale)}
           </p>
           <p className="text-[10px] text-emerald-900/56">{t.perPerson}</p>
+          <p className="mt-0.5 whitespace-nowrap text-[10px] text-emerald-900/48">
+            {t.roundTripEst} ~{formatPrice(Math.round(offer.total_amount * 1.85), offer.currency, locale)}*
+          </p>
         </div>
         {offer.bookingUrl ? (
           <a
@@ -362,6 +368,7 @@ export function FlightOffersPanel(props: {
               </button>
             </div>
           ) : null}
+          <p className="mt-3 text-[10px] text-emerald-900/40">{t.roundTripNote}</p>
         </>
       ) : (
         <div className="rounded-2xl bg-emerald-50/60 p-5 text-sm text-emerald-900/76">
