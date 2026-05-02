@@ -250,7 +250,7 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
                 ))
               ) : (
                 <li className="px-3 py-2 text-sm text-emerald-900/56">
-                  Brak wyników dla „{destQuery}". Spróbuj innego miasta lub kraju.
+                  Brak wyników dla „{destQuery}&rdquo;. Spróbuj innego miasta lub kraju.
                 </li>
               )}
             </ul>

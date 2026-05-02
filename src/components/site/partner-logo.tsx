@@ -1,5 +1,9 @@
 "use client";
 
+// Phase 1: TRUSTED_PARTNERS reduced to Aviasales only (flights). Hotels are
+// served internally via LiteAPI (no third-party brand surfaced).
+// All other partner brand metadata removed per master spec section 2.
+
 import { getAffiliateBrandId, getAffiliateBrandLabel, type AffiliateBrandId } from "@/lib/mvp/affiliate-brand";
 
 type LogoSize = "sm" | "md" | "lg";
@@ -23,125 +27,13 @@ const BRAND_META: Record<AffiliateBrandId, BrandMeta> = {
     textClassName: "text-[#0d6efd]",
     ringClassName: "ring-[#0d6efd]/18",
   },
-  booking: {
-    id: "booking",
-    label: "Booking.com",
-    short: "B",
-    chipClassName: "bg-[#0a5ad4] text-white",
-    textClassName: "text-[#0a5ad4]",
-    ringClassName: "ring-[#0a5ad4]/18",
-  },
-  cheapoair: {
-    id: "cheapoair",
-    label: "CheapOair",
-    short: "C",
-    chipClassName: "bg-[#173a8f] text-white",
-    textClassName: "text-[#173a8f]",
-    ringClassName: "ring-[#173a8f]/18",
-  },
-  expedia: {
-    id: "expedia",
-    label: "Expedia",
-    short: "E",
-    chipClassName: "bg-[#f8c636] text-slate-950",
-    textClassName: "text-slate-950",
-    ringClassName: "ring-[#f8c636]/30",
-  },
-  getrentacar: {
-    id: "getrentacar",
-    label: "GetRentacar",
-    short: "G",
-    chipClassName: "bg-[#df1b2f] text-white",
-    textClassName: "text-[#df1b2f]",
-    ringClassName: "ring-[#df1b2f]/18",
-  },
-  google: {
-    id: "google",
-    label: "Google",
-    short: "G",
-    chipClassName: "bg-slate-100 text-slate-700",
-    textClassName: "text-slate-700",
-    ringClassName: "ring-slate-900/10",
-  },
-  hotels: {
-    id: "hotels",
-    label: "Hotels.com",
-    short: "H",
-    chipClassName: "bg-[#d92b2b] text-white",
-    textClassName: "text-[#d92b2b]",
-    ringClassName: "ring-[#d92b2b]/20",
-  },
-  klook: {
-    id: "klook",
-    label: "Klook",
-    short: "K",
-    chipClassName: "bg-[#ff5b00] text-white",
-    textClassName: "text-[#ff5b00]",
-    ringClassName: "ring-[#ff5b00]/18",
-  },
-  kiwi: {
-    id: "kiwi",
-    label: "Kiwi.com",
-    short: "K",
-    chipClassName: "bg-[#24d000] text-slate-950",
-    textClassName: "text-[#1a7d15]",
-    ringClassName: "ring-[#24d000]/18",
-  },
-  kiwitaxi: {
-    id: "kiwitaxi",
-    label: "Kiwitaxi",
-    short: "K",
-    chipClassName: "bg-[#ffb000] text-slate-950",
-    textClassName: "text-[#9b6a00]",
-    ringClassName: "ring-[#ffb000]/18",
-  },
-  localrent: {
-    id: "localrent",
-    label: "Localrent",
-    short: "L",
-    chipClassName: "bg-[#11a46f] text-white",
-    textClassName: "text-[#0d6e4b]",
-    ringClassName: "ring-[#11a46f]/18",
-  },
-  lot: {
-    id: "lot",
-    label: "LOT Global",
-    short: "L",
-    chipClassName: "bg-[#153a8a] text-white",
-    textClassName: "text-[#153a8a]",
-    ringClassName: "ring-[#153a8a]/18",
-  },
-  tiqets: {
-    id: "tiqets",
-    label: "Tiqets",
-    short: "T",
-    chipClassName: "bg-[#20c7c9] text-slate-950",
-    textClassName: "text-[#147a7c]",
-    ringClassName: "ring-[#20c7c9]/18",
-  },
-  travelpayouts: {
-    id: "travelpayouts",
-    label: "Travelpayouts",
-    short: "TP",
-    chipClassName: "bg-[#1b3df0] text-white",
-    textClassName: "text-[#1b3df0]",
-    ringClassName: "ring-[#1b3df0]/18",
-  },
-  yesim: {
-    id: "yesim",
-    label: "Yesim",
-    short: "Y",
-    chipClassName: "bg-[#10b981] text-white",
-    textClassName: "text-[#0f766e]",
-    ringClassName: "ring-[#10b981]/18",
-  },
-  vrbo: {
-    id: "vrbo",
-    label: "Vrbo",
-    short: "V",
-    chipClassName: "bg-[#0d5c70] text-white",
-    textClassName: "text-[#0d5c70]",
-    ringClassName: "ring-[#0d5c70]/18",
+  helptravel: {
+    id: "helptravel",
+    label: "HelpTravel",
+    short: "HT",
+    chipClassName: "bg-emerald-700 text-white",
+    textClassName: "text-emerald-800",
+    ringClassName: "ring-emerald-700/18",
   },
   generic: {
     id: "generic",
@@ -166,17 +58,9 @@ function cx(...parts: Array<string | false | null | undefined>) {
 function getBrandMeta(brand?: string, fallbackLabel?: string): BrandMeta {
   const brandId = getAffiliateBrandId(brand);
   const meta = BRAND_META[brandId];
-
-  if (brandId !== "generic") {
-    return meta;
-  }
-
+  if (brandId !== "generic") return meta;
   const label = fallbackLabel ?? getAffiliateBrandLabel(brand, "Partner");
-  return {
-    ...meta,
-    label,
-    short: label.slice(0, 2).toUpperCase(),
-  };
+  return { ...meta, label, short: label.slice(0, 2).toUpperCase() };
 }
 
 export function PartnerLogoMark(props: {
@@ -194,7 +78,6 @@ export function PartnerLogoMark(props: {
       : variant === "neutral"
         ? "bg-emerald-950/8 text-current"
         : meta.chipClassName;
-
   return (
     <span
       aria-hidden="true"
@@ -218,7 +101,6 @@ export function PartnerLogoWordmark(props: {
 }) {
   const { brand, fallbackLabel, size = "md", className } = props;
   const meta = getBrandMeta(brand, fallbackLabel);
-
   return (
     <span
       className={cx(
@@ -233,17 +115,6 @@ export function PartnerLogoWordmark(props: {
   );
 }
 
-export const TRUSTED_PARTNERS = [
-  "Aviasales",
-  "Hotels.com",
-  "Expedia",
-  "Vrbo",
-  "CheapOair",
-  "Klook",
-  "Tiqets",
-  "Kiwi.com",
-  "Kiwitaxi",
-  "Localrent",
-  "LOT Global",
-  "Yesim",
-] as const;
+// Aviasales is the only outbound affiliate brand we surface in the footer
+// "Partnerzy rezerwacyjni". Hotels run internally via LiteAPI.
+export const TRUSTED_PARTNERS = ["Aviasales"] as const;

@@ -144,7 +144,7 @@ export async function searchTravelpayoutsFlights(
   // 1) Pierwszy strzal: konkretny dzien
   const entries = await fetchTpFlights(originIata, destinationIata, input.departureDate, token, input.sortBy);
 
-  // 2) Jesli mniej niz 5 wynikow, doladuj z calego miesiaca (jak w Skyscanner / Kiwi)
+  // 2) Jesli mniej niz 5 wynikow, doladuj z calego miesiaca
   if (entries.length < 5) {
     const month = input.departureDate.slice(0, 7); // YYYY-MM
     const monthEntries = await fetchTpFlights(originIata, destinationIata, month, token, input.sortBy);

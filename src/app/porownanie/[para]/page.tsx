@@ -7,8 +7,6 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { comparisonPairs, getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 import { getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
-import { getAffiliateConfig } from "@/lib/mvp/affiliate-config";
-import { Stay22Widget } from "@/components/affiliate/stay22-widget";
 import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
@@ -128,7 +126,6 @@ export default async function ComparisonPage({ params }: PageProps) {
   const b = gb.destination;
   const verdicts = buildVerdict(a, b);
   const baseUrl = getSiteUrl();
-  const config = getAffiliateConfig();
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -276,27 +273,40 @@ export default async function ComparisonPage({ params }: PageProps) {
         ))}
       </section>
 
+      {/* Per master spec section 2: 2-CTA per destination — internal hotele + Aviasales. */}
       <section className="grid gap-5 lg:grid-cols-2">
         {[
           { dest: a, campaign: `compare-${pair.slug}-a` },
           { dest: b, campaign: `compare-${pair.slug}-b` },
-        ].map(({ dest, campaign }) => (
-          <div key={dest.slug} className="flex flex-col gap-4">
-            <Stay22Widget
-              city={dest.city}
-              country={dest.country}
-              aid={config.stay22Aid}
-              campaign={campaign}
-              height={360}
-            />
-            <AviasalesCta
-              city={dest.city}
-              country={dest.country}
-              campaign={campaign}
-              flightHours={dest.typicalFlightHoursFromPL}
-            />
-          </div>
-        ))}
+        ].map(({ dest, campaign }) => {
+          const hotelHref = `/hotele/szukaj?${new URLSearchParams({
+            destination: dest.city,
+            country: dest.country,
+          }).toString()}`;
+          return (
+            <div key={dest.slug} className="flex flex-col gap-4">
+              <article className="rounded-[1.6rem] border border-emerald-900/10 bg-emerald-700 p-5 text-white">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">Hotele</p>
+                <h3 className="mt-1 font-display text-2xl">Konkretne ceny dla {dest.city}</h3>
+                <p className="mt-2 text-sm leading-7 text-emerald-50/85">
+                  Sprawdź ceny noclegów w PLN dla swoich dat. Bez wychodzenia ze strony.
+                </p>
+                <Link
+                  href={hotelHref}
+                  className="mt-4 inline-flex w-fit rounded-full bg-white px-5 py-2.5 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100"
+                >
+                  Zobacz hotele w {dest.city}
+                </Link>
+              </article>
+              <AviasalesCta
+                city={dest.city}
+                country={dest.country}
+                campaign={campaign}
+                flightHours={dest.typicalFlightHoursFromPL}
+              />
+            </div>
+          );
+        })}
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">

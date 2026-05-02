@@ -1,4 +1,3 @@
-import { Stay22Widget } from "@/components/affiliate/stay22-widget";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { buildPlannerLink } from "@/lib/mvp/planner-links";
 
@@ -6,8 +5,6 @@ interface KierunkiHeroCtaProps {
   city: string;
   country: string;
   campaign: string;
-  stay22Aid: string | null;
-  // Parametry przekazywane do plannera i Stay22.
   startDate?: string;
   checkOutDate?: string;
   nights?: number;
@@ -15,15 +12,13 @@ interface KierunkiHeroCtaProps {
   budget?: number;
 }
 
-// Wspolny above-fold CTA dla stron kierunkow.
-// Lewa: grube klikalne CTA do plannera z preselected destynacja i rozsadnymi defaultami.
-// Prawa: Stay22 widget (CTA-button wariant, bez iframe — stabilne CSP, szybszy LCP).
-// Mobile: stack vertykalny, CTA plannera pierwsze.
+// Hero CTA dla stron kierunków — Phase 1 affiliate purge:
+//   • lewa: planer z preselected destynacją
+//   • prawa: internal hotele search (LiteAPI display, Phase 2+)
+// Wszystkie inne CTA do partnerów hotelowych zostały usunięte z tego komponentu.
 export function KierunkiHeroCta({
   city,
   country,
-  campaign,
-  stay22Aid,
   startDate,
   checkOutDate,
   nights = 4,
@@ -40,6 +35,15 @@ export function KierunkiHeroCta({
     q: city,
   });
 
+  const hotelHref = `/hotele/szukaj?${new URLSearchParams({
+    destination: city,
+    country,
+    ...(startDate ? { checkin: startDate } : {}),
+    ...(checkOutDate ? { checkout: checkOutDate } : {}),
+    travelers: String(travelers),
+    rooms: "1",
+  }).toString()}`;
+
   return (
     <section className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
       <article className="flex flex-col justify-between rounded-[1.8rem] border border-emerald-900/10 bg-emerald-950 p-6 text-white shadow-[0_18px_42px_rgba(7,31,18,0.18)]">
@@ -52,7 +56,7 @@ export function KierunkiHeroCta({
           </h2>
           <p className="mt-3 text-sm leading-7 text-emerald-100/85">
             Otworz planner z gotowymi ustawieniami ({nights} nocy, {travelers} osoby, start z Warszawy).
-            Zmienisz dowolny parametr w planerze jednym kliknieciem.
+            Zmienisz dowolny parametr w planerze jednym kliknięciem.
           </p>
         </div>
         <div className="mt-5">
@@ -64,16 +68,25 @@ export function KierunkiHeroCta({
           </LocalizedLink>
         </div>
       </article>
-      <div>
-        <Stay22Widget
-          city={city}
-          country={country}
-          aid={stay22Aid}
-          campaign={campaign}
-          checkin={startDate}
-          checkout={checkOutDate}
-        />
-      </div>
+      <article className="flex flex-col justify-between rounded-[1.8rem] border border-emerald-900/10 bg-emerald-700 p-6 text-white shadow-[0_18px_42px_rgba(7,31,18,0.16)]">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-100/85">Hotele</p>
+          <h2 className="mt-2 font-display text-3xl leading-tight">
+            Sprawdź konkretne hotele w {city}.
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-emerald-50/85">
+            Ceny w PLN dla Twojego terminu i liczby gości. Finalizujesz u dostawcy bez wychodzenia z naszej strony.
+          </p>
+        </div>
+        <div className="mt-5">
+          <LocalizedLink
+            href={hotelHref}
+            className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100"
+          >
+            Zobacz hotele w {city}
+          </LocalizedLink>
+        </div>
+      </article>
     </section>
   );
 }
