@@ -6,9 +6,10 @@ const csp = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://photo.hotellook.com https://static.cupid.travel https://*.geoapify.com https://maps.geoapify.com",
+  "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.geoapify.com https://maps.geoapify.com",
   "media-src 'self' https://videos.pexels.com",
-  "connect-src 'self' https://*.upstash.io https://engine.hotellook.com https://api.travelpayouts.com https://api.geoapify.com https://api.openai.com https://vitals.vercel-insights.com https://vercel.live",
+  "connect-src 'self' https://*.upstash.io https://api.travelpayouts.com https://api.liteapi.travel https://api.sandbox.liteapi.travel https://api.geoapify.com https://api.anthropic.com https://vitals.vercel-insights.com https://vercel.live",
+  "frame-src 'self' https://payment-wrapper.liteapi.travel",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -77,12 +78,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "photo.hotellook.com",
-      },
-      {
-        protocol: "https",
         hostname: "static.cupid.travel",
       },
+      // LiteAPI image CDN(s) — confirmed hostname(s) added during Phase 2
+      // when sandbox responses are inspected. Until then the placeholder
+      // patterns above cover Pexels/Unsplash/Cupid (LiteAPI's main CDN).
     ],
   },
   async headers() {

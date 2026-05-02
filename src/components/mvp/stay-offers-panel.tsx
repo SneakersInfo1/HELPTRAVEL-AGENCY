@@ -27,11 +27,7 @@ const copy = {
     starsLabel: (s: number) => `${s}★`,
     cheapest: "Najtańsza",
     priceFromLabel: "od",
-    fallbackTitle: "Szukaj hoteli u naszych partnerów",
-    fallbackBody: "Porównaj ceny w największych serwisach rezerwacyjnych.",
-    searchHotellook: "Hotellook",
-    searchBooking: "Booking.com",
-    searchHotels: "Hotels.com",
+    emptyAdvice: "Spróbuj innych dat, mniej osób w pokoju lub innego pobliskiego miasta.",
   },
   en: {
     eyebrow: "Stays",
@@ -48,11 +44,7 @@ const copy = {
     starsLabel: (s: number) => `${s}★`,
     cheapest: "Cheapest",
     priceFromLabel: "from",
-    fallbackTitle: "Search hotels at our partners",
-    fallbackBody: "Compare prices across the largest booking platforms.",
-    searchHotellook: "Hotellook",
-    searchBooking: "Booking.com",
-    searchHotels: "Hotels.com",
+    emptyAdvice: "Try different dates, fewer guests per room, or a nearby city.",
   },
 } as const;
 
@@ -284,64 +276,12 @@ export function StayOffersPanel(props: {
           </div>
         </>
       ) : (
-        <AffiliateFallback
-          city={props.destinationCity}
-          checkInDate={props.checkInDate}
-          checkOutDate={props.checkOutDate}
-          guests={props.guests}
-          t={t}
-          error={error || data?.error || ""}
-        />
+        <div className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
+          {error ? <p className="text-xs text-emerald-900/48">{error}</p> : null}
+          <p className="mt-2 text-sm text-emerald-900/72">{data?.error || t.empty}</p>
+          <p className="mt-1 text-xs text-emerald-900/56">{t.emptyAdvice}</p>
+        </div>
       )}
     </section>
-  );
-}
-
-function AffiliateFallback({
-  city,
-  checkInDate,
-  checkOutDate,
-  guests,
-  t,
-  error,
-}: {
-  city: string;
-  checkInDate: string;
-  checkOutDate: string;
-  guests: number;
-  t: Copy;
-  error: string;
-}) {
-  const marker = process.env.NEXT_PUBLIC_TRAVELPAYOUTS_MARKER ?? "";
-  const encoded = encodeURIComponent(city);
-
-  const hotellookUrl = `https://search.hotellook.com/hotels?destination=${encoded}&checkIn=${checkInDate}&checkOut=${checkOutDate}&adults=${Math.max(1, guests)}${marker ? `&marker=${marker}` : ""}`;
-  const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encoded}&checkin=${checkInDate}&checkout=${checkOutDate}&group_adults=${Math.max(1, guests)}`;
-  const hotelsComUrl = `https://www.hotels.com/search.do?q-destination=${encoded}&q-check-in=${checkInDate}&q-check-out=${checkOutDate}&q-rooms=1&q-room-0-adults=${Math.max(1, guests)}`;
-
-  return (
-    <div className="space-y-4">
-      {error ? (
-        <p className="text-xs text-emerald-900/48">{error}</p>
-      ) : null}
-      <div className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
-        <p className="text-sm font-semibold text-emerald-950">{t.fallbackTitle}</p>
-        <p className="mt-1 text-xs text-emerald-900/64">{t.fallbackBody}</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <a href={hotellookUrl} target="_blank" rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
-            {t.searchHotellook} →
-          </a>
-          <a href={bookingUrl} target="_blank" rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-emerald-900/16 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50">
-            {t.searchBooking} →
-          </a>
-          <a href={hotelsComUrl} target="_blank" rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-emerald-900/16 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50">
-            {t.searchHotels} →
-          </a>
-        </div>
-      </div>
-    </div>
   );
 }

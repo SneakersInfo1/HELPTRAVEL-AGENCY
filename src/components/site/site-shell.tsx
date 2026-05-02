@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
@@ -144,25 +143,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const effectiveLocale = localeFromPathname(pathname) ?? locale;
   const text = copy[effectiveLocale];
-  const shouldLoadStay22 = !pathname.startsWith("/admin");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-4 sm:px-6 lg:px-8">
-      {shouldLoadStay22 ? (
-        <Script id="stay22-letmeallez" strategy="afterInteractive">
-          {`(function (s, t, a, y, twenty, two) {
-  s.Stay22 = s.Stay22 || {};
-  s.Stay22.params = { lmaID: "69dbaa5050e44cb3cb21c07e" };
-  twenty = t.createElement(a);
-  two = t.getElementsByTagName(a)[0];
-  twenty.async = 1;
-  twenty.src = y;
-  two.parentNode.insertBefore(twenty, two);
-})(window, document, "script", "https://scripts.stay22.com/letmeallez.js");`}
-        </Script>
-      ) : null}
-
       <a
         href="#main-content"
         className="sr-only rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
