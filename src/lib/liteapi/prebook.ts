@@ -16,8 +16,11 @@ export interface PrebookInput {
 }
 
 export async function prebook(input: PrebookInput): Promise<LiteApiPrebookResponse> {
+  // LiteAPI naming drift: getRates returns `rateId`, but POST /rates/prebook
+  // requires the same value under the field name `offerId`. We keep the
+  // internal name (`rateId`) consistent and rename only at the boundary.
   const body = {
-    rateId: input.rateId,
+    offerId: input.rateId,
     clientReference: input.clientReference,
     usePaymentSdk: true,
   };

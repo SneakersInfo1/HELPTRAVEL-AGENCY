@@ -16,6 +16,7 @@ import {
   liteApiErrorFromResponse,
 } from "./errors";
 import { resolveCountryCode } from "./search";
+import { getEnv } from "./client";
 import { LiteApiHotelsListResponseSchema, LiteApiPrebookResponseSchema } from "./types";
 import { addMinor, fromMinor, mulMinor, subMinor, toMinor } from "../money";
 import { verifyWebhookSignature } from "./webhook";
@@ -121,10 +122,305 @@ test("verifyWebhookSignature rejects bad signature", () => {
   );
 });
 
+function withEnv<T>(overrides: Record<string, string | undefined>, fn: () => T | Promise<T>): T | Promise<T> {
+  const prior: Record<string, string | undefined> = {};
+  for (const k of Object.keys(overrides)) {
+    prior[k] = process.env[k];
+    if (overrides[k] === undefined) delete process.env[k];
+    else process.env[k] = overrides[k];
+  }
+  const restore = () => {
+    for (const k of Object.keys(prior)) {
+      if (prior[k] === undefined) delete process.env[k];
+      else process.env[k] = prior[k];
+    }
+  };
+  let result: T | Promise<T>;
+  try {
+    result = fn();
+  } catch (err) {
+    restore();
+    throw err;
+  }
+  if (result && typeof (result as Promise<T>).then === "function") {
+    return (result as Promise<T>).then(
+      (v) => { restore(); return v; },
+      (e) => { restore(); throw e; },
+    );
+  }
+  restore();
+  return result;
+}
+
+test("getEnv throws when LITEAPI_BASE_URL points at non-existent sandbox subdomain", () => {
+  withEnv(
+    {
+      LITEAPI_BASE_URL: "https://api.sandbox.liteapi.travel/v3.0",
+      LITEAPI_SANDBOX_KEY: "sand_test",
+    },
+    () => {
+      assert.throws(() => getEnv(), /single hostname/i);
+    },
+  );
+});
+
+test("getEnv defaults to documented hosts when env vars are absent", () => {
+  withEnv(
+    {
+      LITEAPI_BASE_URL: undefined,
+      LITEAPI_BOOK_BASE_URL: undefined,
+      LITEAPI_SANDBOX_KEY: "sand_test",
+      LITEAPI_SANDBOX_PRIVATE_KEY: "sand_test_priv",
+      LITEAPI_PROD_KEY: undefined,
+      LITEAPI_PROD_PRIVATE_KEY: undefined,
+      LITEAPI_PROD_PUBLIC_KEY: undefined,
+      LITEAPI_API_KEY: undefined,
+      LITEAPI_ENV: undefined,
+    },
+    () => {
+      const env = getEnv();
+      assert.equal(env.apiBase, "https://api.liteapi.travel/v3.0");
+      assert.equal(env.bookBase, "https://book.liteapi.travel/v3.0");
+    },
+  );
+});
+
+test("getEnv mode is driven by API key prefix", () => {
+  withEnv(
+    {
+      LITEAPI_BASE_URL: undefined,
+      LITEAPI_BOOK_BASE_URL: undefined,
+      LITEAPI_SANDBOX_KEY: "sand_abc",
+      LITEAPI_SANDBOX_PRIVATE_KEY: undefined,
+      LITEAPI_PROD_KEY: undefined,
+      LITEAPI_PROD_PRIVATE_KEY: undefined,
+      LITEAPI_PROD_PUBLIC_KEY: undefined,
+      LITEAPI_API_KEY: undefined,
+      LITEAPI_ENV: undefined,
+    },
+    () => assert.equal(getEnv().mode, "sandbox"),
+  );
+  withEnv(
+    {
+      LITEAPI_BASE_URL: undefined,
+      LITEAPI_BOOK_BASE_URL: undefined,
+      LITEAPI_SANDBOX_KEY: undefined,
+      LITEAPI_SANDBOX_PRIVATE_KEY: undefined,
+      LITEAPI_PROD_KEY: "prod_xyz",
+      LITEAPI_PROD_PRIVATE_KEY: "prod_xyz_priv",
+      LITEAPI_PROD_PUBLIC_KEY: undefined,
+      LITEAPI_API_KEY: undefined,
+      LITEAPI_ENV: "production",
+    },
+    () => assert.equal(getEnv().mode, "production"),
+  );
+});
+
 test("verifyWebhookSignature accepts a correct signature", () => {
   const secret = "test-secret";
   const body = JSON.stringify({ type: "payment_success", timestamp: "2026-01-01T00:00:00Z", data: { ok: true } });
   const sig = createHmac("sha256", secret).update(body).digest("hex");
   const event = verifyWebhookSignature({ rawBody: body, signatureHeader: sig, secret });
   assert.equal(event.type, "payment_success");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API boundary contract tests
+//
+// These tests mock `globalThis.fetch` to capture the outgoing request body /
+// URL and assert the JSON keys match the LiteAPI documented contract. They
+// guard against regressions like the prebook `rateId` → `offerId` field-name
+// drift that broke Phase 1 sandbox smoke.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface CapturedRequest {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body: unknown;
+}
+
+function mockFetchOnce(responseBody: unknown, status = 200): {
+  captured: CapturedRequest[];
+  restore: () => void;
+} {
+  const original = globalThis.fetch;
+  const captured: CapturedRequest[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const headers: Record<string, string> = {};
+    if (init?.headers) {
+      const h = new Headers(init.headers);
+      h.forEach((v, k) => (headers[k] = v));
+    }
+    let body: unknown = null;
+    if (init?.body && typeof init.body === "string") {
+      try { body = JSON.parse(init.body); } catch { body = init.body; }
+    }
+    captured.push({ url, method: init?.method ?? "GET", headers, body });
+    return new Response(JSON.stringify(responseBody), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+  return { captured, restore: () => { globalThis.fetch = original; } };
+}
+
+const BASE_ENV = {
+  LITEAPI_BASE_URL: "https://api.liteapi.travel/v3.0",
+  LITEAPI_BOOK_BASE_URL: "https://book.liteapi.travel/v3.0",
+  LITEAPI_SANDBOX_KEY: "sand_test_public",
+  LITEAPI_SANDBOX_PRIVATE_KEY: "sand_test_private",
+  LITEAPI_PROD_KEY: undefined,
+  LITEAPI_PROD_PRIVATE_KEY: undefined,
+  LITEAPI_PROD_PUBLIC_KEY: undefined,
+  LITEAPI_API_KEY: undefined,
+  LITEAPI_ENV: undefined,
+} as const;
+
+test("contract: searchHotels (GET /data/hotels) sends countryCode + cityName + limit", async () => {
+  const { fetchHotelsList } = await import("./search");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce({ data: [], total: 0 });
+    try {
+      await fetchHotelsList({ city: "Malaga", country: "Spain", limit: 5 });
+      const req = m.captured[0];
+      assert.equal(req.method, "GET");
+      assert.match(req.url, /^https:\/\/api\.liteapi\.travel\/v3\.0\/data\/hotels\?/);
+      assert.match(req.url, /countryCode=ES/);
+      assert.match(req.url, /cityName=Malaga/);
+      assert.match(req.url, /limit=5/);
+      assert.equal(req.headers["x-api-key"], "sand_test_public");
+    } finally { m.restore(); }
+  });
+});
+
+test("contract: getRates (POST /hotels/rates) sends documented body keys", async () => {
+  const { getRates } = await import("./rates");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce({ data: [] });
+    try {
+      await getRates({
+        hotelIds: ["lp1"],
+        checkin: "2026-06-01",
+        checkout: "2026-06-05",
+        currency: "PLN",
+        occupancies: [{ adults: 2, children: [] }],
+      });
+      const req = m.captured[0];
+      assert.equal(req.method, "POST");
+      assert.equal(req.url, "https://api.liteapi.travel/v3.0/hotels/rates");
+      const body = req.body as Record<string, unknown>;
+      assert.deepEqual(Object.keys(body).sort(), [
+        "checkin", "checkout", "currency", "guestNationality", "hotelIds", "limit", "occupancies",
+      ]);
+      assert.equal(req.headers["x-api-key"], "sand_test_public");
+    } finally { m.restore(); }
+  });
+});
+
+test("contract: getHotelDetail (GET /data/hotel) sends hotelId query", async () => {
+  const { getHotelDetail } = await import("./hotel");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce({
+      data: { id: "lp1", name: "X", city: "Malaga", main_photo: "https://x/y.jpg" },
+    });
+    try {
+      await getHotelDetail("lp1");
+      const req = m.captured[0];
+      assert.equal(req.method, "GET");
+      assert.match(req.url, /^https:\/\/api\.liteapi\.travel\/v3\.0\/data\/hotel\?hotelId=lp1$/);
+    } finally { m.restore(); }
+  });
+});
+
+test("contract: prebook (POST /rates/book base, /rates/prebook path) sends offerId — NOT rateId", async () => {
+  const { prebook } = await import("./prebook");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce({ data: { prebookId: "pb_1" } });
+    try {
+      await prebook({ rateId: "OFFER_ABC", clientReference: "cr-1" });
+      const req = m.captured[0];
+      assert.equal(req.method, "POST");
+      assert.equal(req.url, "https://book.liteapi.travel/v3.0/rates/prebook");
+      const body = req.body as Record<string, unknown>;
+      // Key contract: offerId must be present, rateId must NOT be present.
+      assert.equal(body.offerId, "OFFER_ABC", "expected offerId at boundary");
+      assert.equal(body.rateId, undefined, "rateId leaked across boundary");
+      assert.equal(body.usePaymentSdk, true);
+      assert.equal(body.clientReference, "cr-1");
+      // private-key endpoint
+      assert.equal(req.headers["x-api-key"], "sand_test_private");
+    } finally { m.restore(); }
+  });
+});
+
+test("contract: book (POST /rates/book) sends guests (NOT guestInfo) + payment.method", async () => {
+  const { book } = await import("./book");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce({
+      data: {
+        bookingId: "b1",
+        status: "CONFIRMED",
+        checkin: "2026-06-01",
+        checkout: "2026-06-05",
+        hotel: { hotelId: "lp1" },
+      },
+    });
+    try {
+      await book({
+        prebookId: "pb_1",
+        transactionId: "tx_1",
+        clientReference: "cr-1",
+        guests: [{ occupancyNumber: 1, firstName: "Jan", lastName: "Kowalski" }],
+        holder: { firstName: "Jan", lastName: "Kowalski", email: "j@k.pl", phone: "+48500111222" },
+      });
+      const req = m.captured[0];
+      assert.equal(req.url, "https://book.liteapi.travel/v3.0/rates/book");
+      const body = req.body as Record<string, unknown>;
+      assert.ok(Array.isArray(body.guests), "expected `guests` array at boundary");
+      assert.equal(body.guestInfo, undefined, "guestInfo leaked across boundary");
+      const payment = body.payment as Record<string, unknown>;
+      assert.equal(payment.method, "TRANSACTION_ID");
+      assert.equal(payment.transactionId, "tx_1");
+      assert.equal(body.prebookId, "pb_1");
+      assert.equal(req.headers["x-api-key"], "sand_test_private");
+    } finally { m.restore(); }
+  });
+});
+
+test("contract: getBooking (GET /bookings/{id}) routes to book host with private key", async () => {
+  const { getBooking } = await import("./retrieve");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce({
+      data: {
+        bookingId: "b1",
+        status: "CONFIRMED",
+        checkin: "2026-06-01",
+        checkout: "2026-06-05",
+        hotel: { hotelId: "lp1" },
+      },
+    });
+    try {
+      await getBooking("b1");
+      const req = m.captured[0];
+      assert.equal(req.method, "GET");
+      assert.equal(req.url, "https://book.liteapi.travel/v3.0/bookings/b1");
+      assert.equal(req.headers["x-api-key"], "sand_test_private");
+    } finally { m.restore(); }
+  });
+});
+
+test("contract: cancelBooking (DELETE /bookings/{id}) routes to book host with private key", async () => {
+  const { cancelBooking } = await import("./cancel");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce({ data: { bookingId: "b1", status: "CANCELLED" } });
+    try {
+      await cancelBooking("b1");
+      const req = m.captured[0];
+      assert.equal(req.method, "DELETE");
+      assert.equal(req.url, "https://book.liteapi.travel/v3.0/bookings/b1");
+      assert.equal(req.headers["x-api-key"], "sand_test_private");
+    } finally { m.restore(); }
+  });
 });

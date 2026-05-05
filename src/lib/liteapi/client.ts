@@ -16,8 +16,27 @@ import {
   liteApiErrorFromResponse,
 } from "./errors";
 
-const SANDBOX_BASE = "https://api.sandbox.liteapi.travel/v3.0";
-const PRODUCTION_BASE = "https://api.liteapi.travel/v3.0";
+// LiteAPI uses a SINGLE hostname for both sandbox and production — environment
+// is determined by the API key prefix (`sand_` vs `prod_`), not by the URL.
+// Reference: https://docs.liteapi.travel/reference/authentication
+// `api.liteapi.travel` serves search/details/places/rates; `book.liteapi.travel`
+// serves prebook/book/cancel/retrieve (private-key endpoints).
+const DEFAULT_API_BASE = "https://api.liteapi.travel/v3.0";
+const DEFAULT_BOOK_BASE = "https://book.liteapi.travel/v3.0";
+
+function assertValidLiteApiHost(url: string, varName: string): void {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    throw new LiteApiUnknownError(`Invalid ${varName}: not a valid URL (${url})`);
+  }
+  if (host.startsWith("api.sandbox.") || host.startsWith("sandbox.api.")) {
+    throw new LiteApiUnknownError(
+      `Invalid LiteAPI base URL in ${varName} (${url}) — LiteAPI uses a single hostname (api.liteapi.travel / book.liteapi.travel) for both environments. Sandbox vs production is determined by API key prefix (sand_ vs prod_), not URL.`,
+    );
+  }
+}
 
 type Method = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -35,20 +54,52 @@ interface ClientRequestOptions<TSchema extends ZodTypeAny> {
   signal?: AbortSignal;
 }
 
-function getEnv(): { base: string; publicKey: string | null; privateKey: string | null } {
-  const env = process.env.LITEAPI_ENV?.trim() || "sandbox";
-  const isProd = env === "production";
+interface LiteApiEnv {
+  apiBase: string;
+  bookBase: string;
+  publicKey: string | null;
+  privateKey: string | null;
+  mode: "sandbox" | "production" | "unknown";
+}
+
+export function getEnv(): LiteApiEnv {
+  const apiBase = (process.env.LITEAPI_BASE_URL?.trim() || DEFAULT_API_BASE).replace(/\/+$/, "");
+  const bookBase = (process.env.LITEAPI_BOOK_BASE_URL?.trim() || DEFAULT_BOOK_BASE).replace(/\/+$/, "");
+  assertValidLiteApiHost(apiBase, "LITEAPI_BASE_URL");
+  assertValidLiteApiHost(bookBase, "LITEAPI_BOOK_BASE_URL");
+
+  // Resolve keys. Prefer explicit sandbox/prod-named vars; fall back to the
+  // single LITEAPI_API_KEY for callers that don't distinguish.
+  const sandboxPublic = process.env.LITEAPI_SANDBOX_KEY?.trim() || null;
+  const sandboxPrivate = process.env.LITEAPI_SANDBOX_PRIVATE_KEY?.trim() || sandboxPublic;
+  const prodPublic =
+    process.env.LITEAPI_PROD_KEY?.trim() || process.env.LITEAPI_PROD_PUBLIC_KEY?.trim() || null;
+  const prodPrivate = process.env.LITEAPI_PROD_PRIVATE_KEY?.trim() || prodPublic;
+  const generic = process.env.LITEAPI_API_KEY?.trim() || null;
+
+  // Mode is driven by key prefix, not by LITEAPI_ENV. We still honour an
+  // explicit override for tests, but warn loudly if URL/key disagree.
+  const explicit = process.env.LITEAPI_ENV?.trim().toLowerCase();
+  const preferProd = explicit === "production";
+
   const publicKey =
-    (isProd ? process.env.LITEAPI_PROD_KEY : process.env.LITEAPI_SANDBOX_KEY) ??
-    process.env.LITEAPI_API_KEY ??
-    null;
+    (preferProd ? prodPublic ?? sandboxPublic : sandboxPublic ?? prodPublic) ?? generic;
   const privateKey =
-    (isProd ? process.env.LITEAPI_PROD_PRIVATE_KEY : process.env.LITEAPI_SANDBOX_PRIVATE_KEY) ??
-    publicKey;
+    (preferProd ? prodPrivate ?? sandboxPrivate : sandboxPrivate ?? prodPrivate) ?? publicKey;
+
+  const probe = publicKey ?? privateKey ?? "";
+  const mode: LiteApiEnv["mode"] = probe.startsWith("prod_")
+    ? "production"
+    : probe.startsWith("sand_")
+      ? "sandbox"
+      : "unknown";
+
   return {
-    base: isProd ? PRODUCTION_BASE : SANDBOX_BASE,
-    publicKey: publicKey?.trim() || null,
-    privateKey: privateKey?.trim() || null,
+    apiBase,
+    bookBase,
+    publicKey: publicKey || null,
+    privateKey: privateKey || null,
+    mode,
   };
 }
 
@@ -102,11 +153,13 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
   opts: ClientRequestOptions<TSchema>,
 ): Promise<z.infer<TSchema>> {
   const env = getEnv();
-  if (!env.base) throw new LiteApiUnknownError("LiteAPI base URL not configured");
-  const apiKey = (opts.keyMode === "private" ? env.privateKey : env.publicKey) ?? null;
+  const isPrivate = opts.keyMode === "private";
+  const base = isPrivate ? env.bookBase : env.apiBase;
+  if (!base) throw new LiteApiUnknownError("LiteAPI base URL not configured");
+  const apiKey = (isPrivate ? env.privateKey : env.publicKey) ?? null;
   if (!apiKey) throw new LiteApiUnknownError(`Missing LiteAPI ${opts.keyMode ?? "public"} key in env`);
 
-  const url = buildUrl(env.base, opts.path, opts.query);
+  const url = buildUrl(base, opts.path, opts.query);
   const timeoutMs = opts.timeoutMs ?? 30_000;
   const maxRetries = opts.retries ?? 3;
 
