@@ -20,7 +20,15 @@
 // Those steps require sandbox-confirmed payment methods + a webhook listener
 // running locally — beyond Phase 1 scope. Stubs are flagged below.
 
-import { fetchHotelsList, getRates, prebook } from "../src/lib/liteapi";
+import { fetchHotelsList, getRates, prebook, LiteApiError } from "../src/lib/liteapi";
+
+function describeError(err: unknown): string {
+  if (err instanceof LiteApiError) {
+    const bodySnippet = err.body ? ` body=${JSON.stringify(err.body).slice(0, 400)}` : "";
+    return `${err.message} [${err.internalCode}]${bodySnippet}`;
+  }
+  return err instanceof Error ? err.message : String(err);
+}
 
 interface ConsoleResult {
   step: string;
@@ -63,14 +71,16 @@ async function main(): Promise<number> {
       currency: "PLN",
       occupancies: [{ adults: 2, children: [] }],
     });
+    // LiteAPI prebook expects `offerId` from the room-type level, not the
+    // rate-level `rateId`. We reuse our `rateId` parameter slot to carry it.
     for (const hr of rates.data) {
       for (const room of hr.roomTypes ?? []) {
-        for (const r of room.rates ?? []) {
-          if (!rateId) rateId = r.rateId;
+        if (!rateId && room.offerId && (room.rates?.length ?? 0) > 0) {
+          rateId = room.offerId;
         }
       }
     }
-    log("rates /hotels/rates", Boolean(rateId), rateId ? `picked rateId=${rateId.slice(0, 16)}…` : "no rates returned");
+    log("rates /hotels/rates", Boolean(rateId), rateId ? `picked offerId=${rateId.slice(0, 16)}…` : "no rates returned");
   } catch (err) {
     log("rates /hotels/rates", false, err instanceof Error ? err.message : String(err));
     return 1;
@@ -90,7 +100,7 @@ async function main(): Promise<number> {
     );
     if (!hasSdkHandle) return 2;
   } catch (err) {
-    log("prebook usePaymentSdk:true", false, err instanceof Error ? err.message : String(err));
+    log("prebook usePaymentSdk:true", false, describeError(err));
     return 1;
   }
 

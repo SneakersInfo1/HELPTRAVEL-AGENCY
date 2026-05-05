@@ -20,6 +20,9 @@ export interface BookInput {
 }
 
 export async function book(input: BookInput): Promise<LiteApiBookResponse> {
+  // LiteAPI book contract (POST /rates/book):
+  //   { prebookId, guests[], holder, payment{method,transactionId}, clientReference }
+  // Internal field stays `guests` — matches LiteAPI's request key 1:1.
   const body = {
     holder: input.holder,
     payment: {
@@ -27,7 +30,7 @@ export async function book(input: BookInput): Promise<LiteApiBookResponse> {
       transactionId: input.transactionId,
     },
     prebookId: input.prebookId,
-    guestInfo: input.guests,
+    guests: input.guests,
     clientReference: input.clientReference,
   };
   return liteApiRequest({
