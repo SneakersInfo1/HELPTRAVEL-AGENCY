@@ -209,9 +209,11 @@ export function scoreDestinations(
     const budget = budgetForDestination(destination, prefs);
     const budgetFit = clamp(1 - Math.max(0, budget.min - prefs.budgetMaxPln) / Math.max(700, prefs.budgetMaxPln));
 
-    if (budget.min > prefs.budgetMaxPln * 1.45) {
-      continue;
-    }
+    // Don't hard-drop destinations on budget overshoot. With 5 travellers or
+    // 6+ nights at the default budget=2500 PLN, the previous *1.45 cut would
+    // remove EVERY destination → empty options → generic "ranking" error in
+    // the planner. Booking-style: show the results, let the budgetFit penalty
+    // demote over-budget options. Users keep control via the budget filter.
 
     const weather = weatherFit(destination, prefs);
     const travelEase = clamp(

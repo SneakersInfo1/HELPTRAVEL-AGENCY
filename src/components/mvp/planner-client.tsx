@@ -1577,7 +1577,10 @@ export function PlannerClient({
 
       {result && !selectedOption ? (
         <section className="rounded-[1.75rem] border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-900 shadow-sm">
-          Nie udalo sie zbudowac pełnego rankingu kierunków dla tego zapytania. Sprobuj zmienic termin lub kierunek i uruchomic wyszukiwanie ponownie.
+          <p className="font-semibold">Brak dostępności dla tego zapytania.</p>
+          <p className="mt-1 text-amber-900/80">
+            Spróbuj innych dat, mniej osób, wyższego budżetu lub innego kierunku.
+          </p>
         </section>
       ) : null}
     </div>
