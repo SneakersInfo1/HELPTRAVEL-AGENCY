@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import { countNightsBetweenIsoDates } from "@/lib/mvp/travel-dates";
@@ -29,6 +30,29 @@ const copy = {
     priceFromLabel: "od",
     emptyAdvice: "Spróbuj innych dat, mniej osób w pokoju lub innego pobliskiego miasta.",
     moreOptions: (n: number) => `${n} ${n === 1 ? "opcja noclegu" : n < 5 ? "opcje noclegu" : "opcji noclegu"}`,
+    filtersTitle: "Filtry",
+    filtersOpen: "Filtry i sortowanie",
+    filtersClose: "Zamknij",
+    filtersApply: "Pokaż wyniki",
+    filtersReset: "Wyczyść",
+    sortLabel: "Sortuj",
+    sortRecommended: "Rekomendowane",
+    sortPriceAsc: "Cena rosnąco",
+    sortPriceDesc: "Cena malejąco",
+    sortRating: "Ocena gości",
+    priceLabel: "Cena za pobyt (PLN)",
+    priceMin: "od",
+    priceMax: "do",
+    starsLabelTitle: "Standard hotelu",
+    starsAndUp: "i więcej",
+    ratingLabel: "Ocena gości",
+    ratingAll: "Wszystkie",
+    cancelLabel: "Anulacja",
+    cancelFree: "Tylko z bezpłatną anulacją",
+    flightsCardTitle: "Loty na ten kierunek",
+    flightsCardBody: "Sprawdź ceny przelotów dopasowane do Twoich dat.",
+    flightsCardCta: "Zobacz wszystkie loty →",
+    resultsCount: (n: number) => `${n} ${n === 1 ? "hotel" : n < 5 ? "hotele" : "hoteli"}`,
   },
   en: {
     eyebrow: "Stays",
@@ -47,6 +71,29 @@ const copy = {
     priceFromLabel: "from",
     emptyAdvice: "Try different dates, fewer guests per room, or a nearby city.",
     moreOptions: (n: number) => `${n} ${n === 1 ? "stay option" : "stay options"}`,
+    filtersTitle: "Filters",
+    filtersOpen: "Filters & sort",
+    filtersClose: "Close",
+    filtersApply: "Show results",
+    filtersReset: "Clear",
+    sortLabel: "Sort",
+    sortRecommended: "Recommended",
+    sortPriceAsc: "Price low to high",
+    sortPriceDesc: "Price high to low",
+    sortRating: "Guest rating",
+    priceLabel: "Stay price (PLN)",
+    priceMin: "from",
+    priceMax: "to",
+    starsLabelTitle: "Hotel class",
+    starsAndUp: "and up",
+    ratingLabel: "Guest rating",
+    ratingAll: "All",
+    cancelLabel: "Cancellation",
+    cancelFree: "Free cancellation only",
+    flightsCardTitle: "Flights to this destination",
+    flightsCardBody: "See flight prices matched to your dates.",
+    flightsCardCta: "See all flights →",
+    resultsCount: (n: number) => `${n} ${n === 1 ? "hotel" : "hotels"}`,
   },
 } as const;
 
@@ -78,6 +125,75 @@ type Copy = (typeof copy)[keyof typeof copy];
 // safety net for upstream feeds that re-emit the same hotel under multiple
 // supplier IDs. Per-hotel we keep the cheapest total, and surface the rest
 // as "X opcji noclegu" — the actual rates remain reachable on /hotele/[id].
+// ─────────────────────────────────────────────────────────────────────────────
+// URL-driven filters / sort. We write to the current pathname (works on
+// /planner where this panel lives, and anywhere else it's mounted) so every
+// filter/sort change produces a shareable URL.
+// ─────────────────────────────────────────────────────────────────────────────
+type SortKey = "recommended" | "price_asc" | "price_desc" | "rating";
+
+interface PanelFilters {
+  minPrice: number | null;
+  maxPrice: number | null;
+  minStars: number | null;
+  minRating: number | null;
+  freeCancelOnly: boolean;
+  sort: SortKey;
+}
+
+function parseFilters(sp: URLSearchParams): PanelFilters {
+  const num = (k: string) => {
+    const v = sp.get(k);
+    if (!v) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const sort = (sp.get("sort") ?? "recommended") as SortKey;
+  return {
+    minPrice: num("minPrice"),
+    maxPrice: num("maxPrice"),
+    minStars: num("minStars"),
+    minRating: num("minRating"),
+    freeCancelOnly: sp.get("cancel") === "free",
+    sort: ["recommended", "price_asc", "price_desc", "rating"].includes(sort) ? sort : "recommended",
+  };
+}
+
+function applyFilters(
+  groups: Array<{ offer: NormalizedStayOffer; alternativeCount: number }>,
+  f: PanelFilters,
+): Array<{ offer: NormalizedStayOffer; alternativeCount: number }> {
+  let out = groups;
+  if (f.minPrice !== null) out = out.filter((g) => g.offer.total_amount >= f.minPrice!);
+  if (f.maxPrice !== null) out = out.filter((g) => g.offer.total_amount <= f.maxPrice!);
+  if (f.minStars !== null) out = out.filter((g) => (g.offer.rating ?? 0) >= f.minStars!);
+  if (f.minRating !== null) out = out.filter((g) => (g.offer.reviewScore ?? 0) >= f.minRating!);
+  // Free-cancel filter: NormalizedStayOffer doesn't carry the policy flag, so
+  // until the adapter exposes it we treat this as a no-op rather than emit a
+  // wrong empty state. Phase 4 surfaces refundableTag at this layer.
+  // (Intentional, not a TODO.)
+  void f.freeCancelOnly;
+
+  switch (f.sort) {
+    case "price_asc":
+      out = [...out].sort((a, b) => a.offer.total_amount - b.offer.total_amount);
+      break;
+    case "price_desc":
+      out = [...out].sort((a, b) => b.offer.total_amount - a.offer.total_amount);
+      break;
+    case "rating":
+      out = [...out].sort((a, b) => (b.offer.reviewScore ?? 0) - (a.offer.reviewScore ?? 0));
+      break;
+    default:
+      out = [...out].sort((a, b) => {
+        const score = (g: typeof a) =>
+          (g.offer.reviewScore ?? 7) * 100 - g.offer.total_amount / 10;
+        return score(b) - score(a);
+      });
+  }
+  return out;
+}
+
 function dedupeOffers(offers: NormalizedStayOffer[]): Array<{ offer: NormalizedStayOffer; alternativeCount: number }> {
   const map = new Map<string, { offer: NormalizedStayOffer; alternativeCount: number }>();
   for (const o of offers) {
@@ -253,65 +369,279 @@ export function StayOffersPanel(props: {
     t.requestError,
   ]);
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const sp = useSearchParams();
+  const filters = useMemo(() => parseFilters(sp), [sp]);
+
+  const setFilterParam = useCallback(
+    (key: string, value: string | null) => {
+      const next = new URLSearchParams(sp.toString());
+      if (!value) next.delete(key);
+      else next.set(key, value);
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    },
+    [pathname, router, sp],
+  );
+
   const dedupedAll = useMemo(() => dedupeOffers(data?.offers ?? []), [data?.offers]);
-  const shown = dedupedAll.slice(0, Math.min(visible, MAX_VISIBLE));
-  const canShowMore = visible < Math.min(dedupedAll.length, MAX_VISIBLE);
+  const filteredAll = useMemo(() => applyFilters(dedupedAll, filters), [dedupedAll, filters]);
+  const shown = filteredAll.slice(0, Math.min(visible, MAX_VISIBLE));
+  const canShowMore = visible < Math.min(filteredAll.length, MAX_VISIBLE);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  const filtersBlock = (
+    <FiltersPanel filters={filters} setFilterParam={setFilterParam} t={t} />
+  );
 
   return (
     <section className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-5 shadow-[0_12px_32px_rgba(16,84,48,0.06)]">
-      <header className="mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{t.eyebrow}</p>
-        <h2 className="mt-1 text-xl font-bold text-emerald-950">{t.title}</h2>
-        <p className="mt-1 text-sm text-emerald-900/72">{t.body}</p>
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{t.eyebrow}</p>
+          <h2 className="mt-1 text-xl font-bold text-emerald-950">{t.title}</h2>
+          <p className="mt-1 text-sm text-emerald-900/72">{t.body}</p>
+        </div>
+        {filteredAll.length > 0 && (
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+            {t.resultsCount(filteredAll.length)}
+          </span>
+        )}
       </header>
 
-      {loading && shown.length === 0 ? (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 5 }).map((_, idx) => (
-            <div key={idx} className="h-32 animate-pulse rounded-2xl bg-emerald-50 sm:h-36" />
-          ))}
+      {/* Mobile filter trigger */}
+      <button
+        type="button"
+        onClick={() => setMobileFiltersOpen(true)}
+        className="mb-3 inline-flex h-10 items-center justify-center rounded-full border border-emerald-900/12 bg-white px-4 text-xs font-semibold text-emerald-950 lg:hidden"
+      >
+        {t.filtersOpen}
+      </button>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_1fr]">
+        {/* Desktop sticky sidebar */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 rounded-2xl border border-emerald-900/10 bg-white p-4">{filtersBlock}</div>
+        </aside>
+
+        {/* Right column: Loty teaser + hotel cards */}
+        <div className="min-w-0">
+          <FlightsTeaserCard t={t} />
+
+          {loading && shown.length === 0 ? (
+            <div className="mt-4 flex flex-col gap-3">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="h-32 animate-pulse rounded-2xl bg-emerald-50 sm:h-36" />
+              ))}
+            </div>
+          ) : shown.length > 0 ? (
+            <>
+              <div className="mt-4 flex flex-col gap-3">
+                {shown.map(({ offer, alternativeCount }, idx) => (
+                  <StayCard
+                    key={offer.accommodationId || offer.searchResultId}
+                    offer={offer}
+                    nights={nights}
+                    locale={locale}
+                    t={t}
+                    isCheapest={idx === 0 && shown.length > 1}
+                    alternativeCount={alternativeCount}
+                  />
+                ))}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                {canShowMore ? (
+                  <button
+                    type="button"
+                    onClick={() => setVisible((v) => Math.min(MAX_VISIBLE, v + STEP))}
+                    className="rounded-full border border-emerald-900/12 bg-white px-5 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                  >
+                    {t.showMore}
+                  </button>
+                ) : <span />}
+                <a
+                  href="#planner-flights"
+                  className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+                >
+                  <span aria-hidden>✈</span>
+                  {t.jumpToFlights}
+                </a>
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
+              {error ? <p className="text-xs text-emerald-900/48">{error}</p> : null}
+              <p className="mt-2 text-sm text-emerald-900/72">{data?.error || t.empty}</p>
+              <p className="mt-1 text-xs text-emerald-900/56">{t.emptyAdvice}</p>
+            </div>
+          )}
         </div>
-      ) : shown.length > 0 ? (
-        <>
-          <div className="flex flex-col gap-3">
-            {shown.map(({ offer, alternativeCount }, idx) => (
-              <StayCard
-                key={offer.accommodationId || offer.searchResultId}
-                offer={offer}
-                nights={nights}
-                locale={locale}
-                t={t}
-                isCheapest={idx === 0 && shown.length > 1}
-                alternativeCount={alternativeCount}
-              />
-            ))}
-          </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            {canShowMore ? (
-              <button
-                type="button"
-                onClick={() => setVisible((v) => Math.min(MAX_VISIBLE, v + STEP))}
-                className="rounded-full border border-emerald-900/12 bg-white px-5 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-              >
-                {t.showMore}
-              </button>
-            ) : <span />}
-            <a
-              href="#planner-flights"
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+      </div>
+
+      {/* Mobile bottom-sheet drawer */}
+      {mobileFiltersOpen && (
+        <div className="fixed inset-0 z-40 flex flex-col bg-white p-5 lg:hidden">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-emerald-950">{t.filtersTitle}</h3>
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(false)}
+              className="rounded-md px-3 py-1 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
             >
-              <span aria-hidden>✈</span>
-              {t.jumpToFlights}
-            </a>
+              {t.filtersClose}
+            </button>
           </div>
-        </>
-      ) : (
-        <div className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
-          {error ? <p className="text-xs text-emerald-900/48">{error}</p> : null}
-          <p className="mt-2 text-sm text-emerald-900/72">{data?.error || t.empty}</p>
-          <p className="mt-1 text-xs text-emerald-900/56">{t.emptyAdvice}</p>
+          <div className="flex-1 overflow-auto">{filtersBlock}</div>
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(false)}
+            className="mt-3 w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white"
+          >
+            {t.filtersApply}
+          </button>
         </div>
       )}
     </section>
+  );
+}
+
+function FlightsTeaserCard({ t }: { t: Copy }) {
+  return (
+    <a
+      href="#planner-flights"
+      className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-900/10 bg-gradient-to-r from-emerald-50 to-white p-4 transition hover:border-emerald-300 hover:shadow"
+    >
+      <div className="flex items-center gap-3">
+        <span aria-hidden className="text-2xl">✈</span>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-emerald-950">{t.flightsCardTitle}</div>
+          <div className="line-clamp-2 text-xs text-emerald-900/72">{t.flightsCardBody}</div>
+        </div>
+      </div>
+      <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white">
+        {t.flightsCardCta}
+      </span>
+    </a>
+  );
+}
+
+function FiltersPanel({
+  filters,
+  setFilterParam,
+  t,
+}: {
+  filters: PanelFilters;
+  setFilterParam: (key: string, value: string | null) => void;
+  t: Copy;
+}) {
+  const reset = () => {
+    setFilterParam("minPrice", null);
+    setFilterParam("maxPrice", null);
+    setFilterParam("minStars", null);
+    setFilterParam("minRating", null);
+    setFilterParam("cancel", null);
+    setFilterParam("sort", null);
+  };
+  return (
+    <div className="space-y-5 text-sm">
+      {/* Sort */}
+      <div>
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-emerald-700">
+          {t.sortLabel}
+        </label>
+        <select
+          value={filters.sort}
+          onChange={(e) => setFilterParam("sort", e.target.value === "recommended" ? null : e.target.value)}
+          className="w-full rounded-lg border border-emerald-900/15 bg-white px-3 py-2"
+        >
+          <option value="recommended">{t.sortRecommended}</option>
+          <option value="price_asc">{t.sortPriceAsc}</option>
+          <option value="price_desc">{t.sortPriceDesc}</option>
+          <option value="rating">{t.sortRating}</option>
+        </select>
+      </div>
+
+      {/* Price */}
+      <div>
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-emerald-700">{t.priceLabel}</div>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            inputMode="numeric"
+            placeholder={t.priceMin}
+            value={filters.minPrice ?? ""}
+            onChange={(e) => setFilterParam("minPrice", e.target.value || null)}
+            className="w-full rounded border border-emerald-900/15 px-2 py-1"
+          />
+          <span className="text-emerald-900/50">—</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            placeholder={t.priceMax}
+            value={filters.maxPrice ?? ""}
+            onChange={(e) => setFilterParam("maxPrice", e.target.value || null)}
+            className="w-full rounded border border-emerald-900/15 px-2 py-1"
+          />
+        </div>
+      </div>
+
+      {/* Stars */}
+      <div>
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-emerald-700">{t.starsLabelTitle}</div>
+        <div className="space-y-1">
+          {[5, 4, 3, 2, 1].map((s) => (
+            <label key={s} className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="minStars"
+                checked={filters.minStars === s}
+                onChange={() => setFilterParam("minStars", String(s))}
+                className="h-4 w-4 accent-emerald-700"
+              />
+              <span className="text-amber-500">{"★".repeat(s)}</span>
+              <span className="text-emerald-900/60">{t.starsAndUp}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Guest rating */}
+      <div>
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-emerald-700">
+          {t.ratingLabel}
+        </label>
+        <select
+          value={filters.minRating ?? ""}
+          onChange={(e) => setFilterParam("minRating", e.target.value || null)}
+          className="w-full rounded border border-emerald-900/15 bg-white px-2 py-1"
+        >
+          <option value="">{t.ratingAll}</option>
+          <option value="9">9+</option>
+          <option value="8">8+</option>
+          <option value="7">7+</option>
+        </select>
+      </div>
+
+      {/* Free cancel */}
+      <div>
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={filters.freeCancelOnly}
+            onChange={(e) => setFilterParam("cancel", e.target.checked ? "free" : null)}
+            className="h-4 w-4 accent-emerald-700"
+          />
+          <span>{t.cancelFree}</span>
+        </label>
+      </div>
+
+      <button
+        type="button"
+        onClick={reset}
+        className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+      >
+        {t.filtersReset}
+      </button>
+    </div>
   );
 }
