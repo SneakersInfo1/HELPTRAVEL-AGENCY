@@ -17,13 +17,17 @@ interface Props {
     children: number[];
   };
   cheapestTotal?: number;
+  nights: number;
   currency: string;
 }
 
 const formatPLN = (amount: number, currency: string) =>
   new Intl.NumberFormat("pl-PL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 
-export function BookingWidget({ hotelId, initial, cheapestTotal, currency }: Props) {
+const nightsCopy = (n: number) => (n === 1 ? "noc" : n < 5 ? "noce" : "nocy");
+
+export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currency }: Props) {
+  const perNight = cheapestTotal !== undefined && nights > 0 ? Math.round(cheapestTotal / nights) : null;
   const router = useRouter();
   const [checkin, setCheckin] = useState(initial.checkin);
   const [checkout, setCheckout] = useState(initial.checkout);
@@ -53,8 +57,22 @@ export function BookingWidget({ hotelId, initial, cheapestTotal, currency }: Pro
           {cheapestTotal !== undefined && (
             <div className="mb-3 border-b border-neutral-100 pb-3">
               <div className="text-xs text-neutral-500">Od</div>
-              <div className="text-2xl font-bold text-neutral-900">{formatPLN(cheapestTotal, currency)}</div>
-              <div className="text-[11px] text-neutral-500">wł. podatków i opłat</div>
+              {perNight !== null ? (
+                <>
+                  <div className="text-2xl font-bold text-emerald-700">
+                    {formatPLN(perNight, currency)}
+                    <span className="ml-0.5 text-sm font-semibold text-emerald-700/80">/ noc</span>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-neutral-500">
+                    {formatPLN(cheapestTotal, currency)} za {nights} {nightsCopy(nights)} · wł. podatków i opłat
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-emerald-700">{formatPLN(cheapestTotal, currency)}</div>
+                  <div className="text-[11px] text-neutral-500">wł. podatków i opłat</div>
+                </>
+              )}
             </div>
           )}
           <div className="grid grid-cols-2 gap-2">
@@ -121,10 +139,19 @@ export function BookingWidget({ hotelId, initial, cheapestTotal, currency }: Pro
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] lg:hidden">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            {cheapestTotal !== undefined ? (
+            {cheapestTotal !== undefined && perNight !== null ? (
               <>
                 <div className="text-[11px] text-neutral-500">Od</div>
-                <div className="text-base font-bold text-neutral-900">{formatPLN(cheapestTotal, currency)}</div>
+                <div className="text-base font-bold text-emerald-700">
+                  {formatPLN(perNight, currency)}
+                  <span className="ml-0.5 text-[11px] font-semibold text-emerald-700/80">/ noc</span>
+                </div>
+                <div className="text-[10px] text-neutral-500">{formatPLN(cheapestTotal, currency)} łącznie</div>
+              </>
+            ) : cheapestTotal !== undefined ? (
+              <>
+                <div className="text-[11px] text-neutral-500">Od</div>
+                <div className="text-base font-bold text-emerald-700">{formatPLN(cheapestTotal, currency)}</div>
               </>
             ) : (
               <div className="text-sm text-neutral-600">Wybierz daty</div>

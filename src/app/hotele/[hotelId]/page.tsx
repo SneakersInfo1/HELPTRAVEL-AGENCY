@@ -376,6 +376,7 @@ export default async function HotelDetailPage({
             hotelId={hotelId}
             initial={{ checkin, checkout, adults, rooms, children }}
             cheapestTotal={cheapestTotal}
+            nights={nights}
             currency={currency}
           />
         </div>
