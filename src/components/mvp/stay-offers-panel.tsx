@@ -28,6 +28,7 @@ const copy = {
     cheapest: "Najtańsza",
     priceFromLabel: "od",
     emptyAdvice: "Spróbuj innych dat, mniej osób w pokoju lub innego pobliskiego miasta.",
+    moreOptions: (n: number) => `${n} ${n === 1 ? "opcja noclegu" : n < 5 ? "opcje noclegu" : "opcji noclegu"}`,
   },
   en: {
     eyebrow: "Stays",
@@ -45,6 +46,7 @@ const copy = {
     cheapest: "Cheapest",
     priceFromLabel: "from",
     emptyAdvice: "Try different dates, fewer guests per room, or a nearby city.",
+    moreOptions: (n: number) => `${n} ${n === 1 ? "stay option" : "stay options"}`,
   },
 } as const;
 
@@ -72,12 +74,36 @@ function formatPrice(value: number, currency: string, locale: "pl" | "en"): stri
 
 type Copy = (typeof copy)[keyof typeof copy];
 
-function StayCard({ offer, nights, locale, t, isCheapest }: {
+// Deduplicate by accommodationId (LiteAPI hotelId), then by name+city as a
+// safety net for upstream feeds that re-emit the same hotel under multiple
+// supplier IDs. Per-hotel we keep the cheapest total, and surface the rest
+// as "X opcji noclegu" — the actual rates remain reachable on /hotele/[id].
+function dedupeOffers(offers: NormalizedStayOffer[]): Array<{ offer: NormalizedStayOffer; alternativeCount: number }> {
+  const map = new Map<string, { offer: NormalizedStayOffer; alternativeCount: number }>();
+  for (const o of offers) {
+    const key = (o.accommodationId || `${o.name}|${o.city}`).toLowerCase();
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, { offer: o, alternativeCount: 0 });
+      continue;
+    }
+    existing.alternativeCount += 1;
+    if (o.total_amount > 0 && (existing.offer.total_amount <= 0 || o.total_amount < existing.offer.total_amount)) {
+      // Keep cheapest as the displayed offer; preserve the alternative tally.
+      const altCount = existing.alternativeCount;
+      map.set(key, { offer: o, alternativeCount: altCount });
+    }
+  }
+  return Array.from(map.values());
+}
+
+function StayCard({ offer, nights, locale, t, isCheapest, alternativeCount }: {
   offer: NormalizedStayOffer;
   nights: number;
   locale: "pl" | "en";
   t: Copy;
   isCheapest: boolean;
+  alternativeCount: number;
 }) {
   const stars = offer.rating ?? 0;
 
@@ -126,7 +152,10 @@ function StayCard({ offer, nights, locale, t, isCheapest }: {
             ) : null}
           </div>
           <p className="mt-1 line-clamp-1 text-xs text-emerald-900/64">{offer.address}</p>
-          <p className="mt-2 text-[11px] text-emerald-900/56">{t.nights(nights)}</p>
+          <p className="mt-2 text-[11px] text-emerald-900/56">
+            {t.nights(nights)}
+            {alternativeCount > 0 ? <> · <span className="font-semibold text-emerald-700">{t.moreOptions(alternativeCount + 1)}</span></> : null}
+          </p>
           {offer.description ? (
             <p className="mt-1 text-[11px] text-emerald-700/70">{offer.description}</p>
           ) : null}
@@ -224,9 +253,9 @@ export function StayOffersPanel(props: {
     t.requestError,
   ]);
 
-  const allOffers = data?.offers ?? [];
-  const shown = allOffers.slice(0, Math.min(visible, MAX_VISIBLE));
-  const canShowMore = visible < Math.min(allOffers.length, MAX_VISIBLE);
+  const dedupedAll = useMemo(() => dedupeOffers(data?.offers ?? []), [data?.offers]);
+  const shown = dedupedAll.slice(0, Math.min(visible, MAX_VISIBLE));
+  const canShowMore = visible < Math.min(dedupedAll.length, MAX_VISIBLE);
 
   return (
     <section className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-5 shadow-[0_12px_32px_rgba(16,84,48,0.06)]">
@@ -245,14 +274,15 @@ export function StayOffersPanel(props: {
       ) : shown.length > 0 ? (
         <>
           <div className="flex flex-col gap-3">
-            {shown.map((offer, idx) => (
+            {shown.map(({ offer, alternativeCount }, idx) => (
               <StayCard
-                key={offer.searchResultId}
+                key={offer.accommodationId || offer.searchResultId}
                 offer={offer}
                 nights={nights}
                 locale={locale}
                 t={t}
                 isCheapest={idx === 0 && shown.length > 1}
+                alternativeCount={alternativeCount}
               />
             ))}
           </div>
