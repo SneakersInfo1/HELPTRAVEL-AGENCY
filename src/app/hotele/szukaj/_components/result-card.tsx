@@ -52,6 +52,12 @@ function nightsLabel(n: number): string {
   return `${n} nocy`;
 }
 
+function nightsForTotal(n: number): string {
+  if (n === 1) return "noc";
+  if (n < 5) return "noce";
+  return "nocy";
+}
+
 interface BadgeKind {
   cheapest?: boolean;
   topRated?: boolean;
@@ -154,11 +160,14 @@ export function ResultCard({
 
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-2">
           <div>
-            <div className="text-xs text-neutral-500">
-              {nightsLabel(nights)} · od {perNight}/noc
+            <div className="text-xs text-neutral-500">{nightsLabel(nights)}</div>
+            <div className="text-xl font-bold text-emerald-700">
+              {perNight}
+              <span className="ml-0.5 text-xs font-semibold text-emerald-700/80">/ noc</span>
             </div>
-            <div className="text-xl font-bold text-neutral-900">{total}</div>
-            <div className="text-[11px] text-neutral-500">wł. podatków i opłat</div>
+            <div className="text-[11px] text-neutral-500">
+              {total} za {nights} {nightsForTotal(nights)} · wł. podatków i opłat
+            </div>
           </div>
           <Link
             href={`/hotele/${encodeURIComponent(offer.hotelId)}?${searchQuery}`}

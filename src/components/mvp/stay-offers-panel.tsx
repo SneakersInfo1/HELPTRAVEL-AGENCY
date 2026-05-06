@@ -30,6 +30,9 @@ const copy = {
     priceFromLabel: "od",
     emptyAdvice: "Spróbuj innych dat, mniej osób w pokoju lub innego pobliskiego miasta.",
     moreOptions: (n: number) => `${n} ${n === 1 ? "opcja noclegu" : n < 5 ? "opcje noclegu" : "opcji noclegu"}`,
+    perNight: "/ noc",
+    totalForNights: (total: string, n: number) =>
+      `${total} za ${n} ${n === 1 ? "noc" : n < 5 ? "noce" : "nocy"} · wł. podatków i opłat`,
     filtersTitle: "Filtry",
     filtersOpen: "Filtry i sortowanie",
     filtersClose: "Zamknij",
@@ -71,6 +74,9 @@ const copy = {
     priceFromLabel: "from",
     emptyAdvice: "Try different dates, fewer guests per room, or a nearby city.",
     moreOptions: (n: number) => `${n} ${n === 1 ? "stay option" : "stay options"}`,
+    perNight: "/ night",
+    totalForNights: (total: string, n: number) =>
+      `${total} for ${n} ${n === 1 ? "night" : "nights"} · taxes & fees included`,
     filtersTitle: "Filters",
     filtersOpen: "Filters & sort",
     filtersClose: "Close",
@@ -280,9 +286,12 @@ function StayCard({ offer, nights, locale, t, isCheapest, alternativeCount }: {
         <div className="flex shrink-0 flex-col items-end gap-2">
           {offer.total_amount > 0 ? (
             <div className="text-right">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">{t.priceFromLabel}</p>
-              <p className="whitespace-nowrap text-xl font-bold text-emerald-950 transition-colors duration-150 group-hover:text-emerald-600">
-                {formatPrice(offer.total_amount, offer.currency, locale)}
+              <p className="whitespace-nowrap text-xl font-bold text-emerald-700 transition-colors duration-150 group-hover:text-emerald-600">
+                {formatPrice(Math.round(offer.total_amount / Math.max(1, nights)), offer.currency, locale)}
+                <span className="ml-0.5 text-xs font-semibold text-emerald-700/80">{t.perNight}</span>
+              </p>
+              <p className="mt-0.5 whitespace-nowrap text-[11px] text-emerald-900/56">
+                {t.totalForNights(formatPrice(offer.total_amount, offer.currency, locale), nights)}
               </p>
             </div>
           ) : (
