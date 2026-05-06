@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
 import type { FlightSearchResponse, NormalizedFlightOffer } from "@/lib/mvp/types";
@@ -127,6 +128,13 @@ const copy = {
     deal: "🔥 OKAZJA",
     stops: (n: number) => (n === 0 ? "bezpośrednio" : n === 1 ? "1 przesiadka" : `${n} przesiadki`),
     duration: "Czas",
+    sortBest: "Najlepsze",
+    sortCheap: "Najtańsze",
+    sortFast: "Najszybsze",
+    directOnly: "Tylko bezpośrednie",
+    nonstopBadge: "Bezpośredni",
+    oneStopBadge: "1 przesiadka",
+    multiStopBadge: "2+ przesiadki",
   },
   en: {
     eyebrow: "Flights",
@@ -143,8 +151,48 @@ const copy = {
     deal: "🔥 DEAL",
     stops: (n: number) => (n === 0 ? "non-stop" : n === 1 ? "1 stop" : `${n} stops`),
     duration: "Duration",
+    sortBest: "Best",
+    sortCheap: "Cheapest",
+    sortFast: "Fastest",
+    directOnly: "Direct only",
+    nonstopBadge: "Non-stop",
+    oneStopBadge: "1 stop",
+    multiStopBadge: "2+ stops",
   },
 } as const;
+
+type FlightSortKey = "best" | "cheap" | "fast";
+
+function rankFlights(offers: NormalizedFlightOffer[], sort: FlightSortKey): NormalizedFlightOffer[] {
+  if (offers.length === 0) return offers;
+  switch (sort) {
+    case "cheap":
+      return [...offers].sort((a, b) => a.total_amount - b.total_amount);
+    case "fast":
+      return [...offers].sort((a, b) => a.total_duration_minutes - b.total_duration_minutes);
+    case "best":
+    default: {
+      // Best-deal score: price + (extra duration over shortest) * 0.5 PLN/min.
+      // A 30-hour flight that's 1700 min slower than the 90-min direct will
+      // pick up ~850 "virtual zł" — enough to push it well below cheap-fast
+      // direct flights but not enough to bury legitimate small-savings stops.
+      const shortest = Math.min(...offers.map((o) => o.total_duration_minutes || Infinity));
+      const PENALTY_PER_MIN = 0.5;
+      return [...offers].sort((a, b) => {
+        const scoreA = a.total_amount + Math.max(0, a.total_duration_minutes - shortest) * PENALTY_PER_MIN;
+        const scoreB = b.total_amount + Math.max(0, b.total_duration_minutes - shortest) * PENALTY_PER_MIN;
+        return scoreA - scoreB;
+      });
+    }
+  }
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
 
 function postJson<T>(url: string, body: unknown): Promise<T> {
   return fetch(url, {
@@ -204,23 +252,25 @@ function aviasalesRoundTripUrl(
 
 type Copy = (typeof copy)[keyof typeof copy];
 
-function FlightCard({ offer, locale, t, isCheapest, isDeal, roundTripUrl }: {
+function FlightCard({ offer, locale, t, isDeal, roundTripUrl }: {
   offer: NormalizedFlightOffer;
   locale: "pl" | "en";
   t: Copy;
-  isCheapest: boolean;
   isDeal: boolean;
   roundTripUrl: string | null;
 }) {
+  const stopsLabel = offer.number_of_stops === 0 ? t.nonstopBadge : offer.number_of_stops === 1 ? t.oneStopBadge : t.multiStopBadge;
+  const stopsClasses =
+    offer.number_of_stops === 0
+      ? "bg-emerald-100 text-emerald-800"
+      : offer.number_of_stops === 1
+        ? "bg-amber-100 text-amber-800"
+        : "bg-neutral-100 text-neutral-700";
   return (
     <article className={`relative flex items-center gap-4 rounded-2xl border bg-white p-4 shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)] ${
-      isCheapest ? "border-emerald-500/60 ring-1 ring-emerald-300" : "border-emerald-900/10"
+      isDeal ? "border-emerald-500/60 ring-1 ring-emerald-300" : "border-emerald-900/10"
     }`}>
-      {isCheapest ? (
-        <span className="absolute -top-2 left-4 z-10 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2 py-1 text-[10px] font-bold tracking-wide text-white shadow">
-          {t.deal}
-        </span>
-      ) : isDeal ? (
+      {isDeal ? (
         <span className="absolute -top-2 left-4 z-10 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2 py-1 text-[10px] font-bold tracking-wide text-white shadow">
           {t.deal}
         </span>
@@ -239,11 +289,11 @@ function FlightCard({ offer, locale, t, isCheapest, isDeal, roundTripUrl }: {
         </div>
 
         <div className="flex flex-1 flex-col items-center">
-          <p className="text-[11px] text-emerald-900/56">{offer.total_duration || "—"}</p>
+          <p className="text-sm font-semibold text-emerald-950">{offer.total_duration || "—"}</p>
           <div className="my-1 flex w-full items-center gap-2">
             <span className="h-px flex-1 bg-emerald-200" />
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-              {t.stops(offer.number_of_stops)}
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${stopsClasses}`}>
+              {stopsLabel}
             </span>
             <span className="h-px flex-1 bg-emerald-200" />
           </div>
@@ -350,16 +400,48 @@ export function FlightOffersPanel(props: {
     t.requestError,
   ]);
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const sp = useSearchParams();
+
+  const sort: FlightSortKey = (() => {
+    const v = sp.get("flightSort");
+    return v === "cheap" || v === "fast" ? v : "best";
+  })();
+  const directOnly = sp.get("directOnly") === "true";
+
+  const setParam = useCallback(
+    (key: string, value: string | null) => {
+      const next = new URLSearchParams(sp.toString());
+      if (!value) next.delete(key);
+      else next.set(key, value);
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    },
+    [pathname, router, sp],
+  );
+
   const allOffers = useMemo(() => data?.offers ?? [], [data?.offers]);
 
-  // Oblicz średnią cenę do wykrywania okazji (>20% taniej od średniej)
-  const avgPrice = useMemo(() => {
-    if (allOffers.length === 0) return 0;
-    return allOffers.reduce((sum, o) => sum + o.total_amount, 0) / allOffers.length;
+  const filteredOffers = useMemo(
+    () => (directOnly ? allOffers.filter((o) => o.number_of_stops === 0) : allOffers),
+    [allOffers, directOnly],
+  );
+
+  const sortedOffers = useMemo(() => rankFlights(filteredOffers, sort), [filteredOffers, sort]);
+
+  // OKAZJA gate: only direct flights priced at or below the median direct
+  // price qualify. Previously every result claimed to be a deal — this kills
+  // the badge as visual noise and restores its signal value.
+  const dealEligibleIds = useMemo(() => {
+    const directs = allOffers.filter((o) => o.number_of_stops === 0);
+    if (directs.length === 0) return new Set<string>();
+    const m = median(directs.map((o) => o.total_amount));
+    return new Set(directs.filter((o) => o.total_amount <= m).map((o) => o.offerId));
   }, [allOffers]);
 
-  const shown = allOffers.slice(0, Math.min(visible, MAX_VISIBLE));
-  const canShowMore = visible < Math.min(allOffers.length, MAX_VISIBLE);
+  const shown = sortedOffers.slice(0, Math.min(visible, MAX_VISIBLE));
+  const canShowMore = visible < Math.min(sortedOffers.length, MAX_VISIBLE);
+  const hasAnyDirect = useMemo(() => allOffers.some((o) => o.number_of_stops === 0), [allOffers]);
 
   return (
     <section id="planner-flights" className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-5 shadow-[0_12px_32px_rgba(16,84,48,0.06)]">
@@ -368,6 +450,44 @@ export function FlightOffersPanel(props: {
         <h2 className="mt-1 text-xl font-bold text-emerald-950">{t.title}</h2>
         <p className="mt-1 text-sm text-emerald-900/72">{t.body}</p>
       </header>
+
+      {/* Sort tabs + direct-only filter */}
+      {!loading && allOffers.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div role="tablist" className="inline-flex rounded-full border border-emerald-900/12 bg-emerald-50/60 p-1">
+            {([
+              { k: "best", label: t.sortBest },
+              { k: "cheap", label: t.sortCheap },
+              { k: "fast", label: t.sortFast },
+            ] as const).map(({ k, label }) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={sort === k}
+                onClick={() => setParam("flightSort", k === "best" ? null : k)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  sort === k ? "bg-emerald-700 text-white shadow" : "text-emerald-900/72 hover:bg-white"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+            directOnly ? "border-emerald-700 bg-emerald-50 text-emerald-900" : "border-emerald-900/12 bg-white text-emerald-900/72 hover:bg-emerald-50/40"
+          } ${!hasAnyDirect ? "opacity-50" : ""}`}>
+            <input
+              type="checkbox"
+              checked={directOnly}
+              disabled={!hasAnyDirect}
+              onChange={(e) => setParam("directOnly", e.target.checked ? "true" : null)}
+              className="h-3.5 w-3.5 accent-emerald-700"
+            />
+            {t.directOnly}
+          </label>
+        </div>
+      )}
 
       {loading && shown.length === 0 ? (
         <div className="flex flex-col gap-3">
@@ -378,14 +498,13 @@ export function FlightOffersPanel(props: {
       ) : shown.length > 0 ? (
         <>
           <div className="flex flex-col gap-3">
-            {shown.map((offer, idx) => (
+            {shown.map((offer) => (
               <FlightCard
                 key={offer.offerId}
                 offer={offer}
                 locale={locale}
                 t={t}
-                isCheapest={idx === 0 && shown.length > 1}
-                isDeal={avgPrice > 0 && offer.total_amount < avgPrice * 0.8}
+                isDeal={dealEligibleIds.has(offer.offerId)}
                 roundTripUrl={aviasalesRoundTripUrl(
                   offer.origin,
                   offer.destination,
