@@ -56,10 +56,13 @@ function sortOffers(offers: NormalizedStayOffer[], sortBy: StaySortMode): Normal
 
 // Internal hotel detail href. Phase 2+ provides /hotele/[hotelId] page.
 function buildInternalHotelHref(hotelId: string, input: LiteApiSearchInput): string {
+  // Param names match the Phase 3 /hotele/[hotelId] page contract:
+  // checkin, checkout, adults, rooms. Do not rename to "travelers" — the
+  // detail page won't read it and will fall back to defaults.
   const params = new URLSearchParams({
     checkin: input.checkInDate,
     checkout: input.checkOutDate,
-    travelers: String(Math.max(1, input.guests)),
+    adults: String(Math.max(1, input.guests)),
     rooms: String(Math.max(1, input.rooms)),
   });
   return `/hotele/${encodeURIComponent(hotelId)}?${params.toString()}`;
