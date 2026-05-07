@@ -8,7 +8,15 @@ import {
   type NormalizedHotelSearchInput,
 } from "./types";
 
+// Includes Polish localizations — Geoapify autocomplete is queried with
+// `lang=pl` (see destination-suggestions.ts), so the country field on user-
+// facing suggestions arrives as "Niemcy"/"Hiszpania"/etc. Without these
+// aliases the Results page used to throw "Unknown country: Niemcy" and the
+// global error.tsx took over, dropping the user on the "Mamy chwilowy
+// problem" screen for any city sourced from Geoapify rather than the
+// curated catalog.
 const COUNTRY_TO_ISO: Record<string, string> = {
+  // English / canonical
   Greece: "GR", Spain: "ES", Italy: "IT", France: "FR", Portugal: "PT",
   Germany: "DE", Netherlands: "NL", Belgium: "BE", Austria: "AT", Switzerland: "CH",
   Czech: "CZ", Czechia: "CZ", Hungary: "HU", Poland: "PL", Croatia: "HR",
@@ -17,6 +25,15 @@ const COUNTRY_TO_ISO: Record<string, string> = {
   Finland: "FI", Ireland: "IE", "United Kingdom": "GB", UK: "GB", Iceland: "IS",
   Slovakia: "SK", Slovenia: "SI", Estonia: "EE", Latvia: "LV", Lithuania: "LT",
   Morocco: "MA", Egypt: "EG", Tunisia: "TN", "United Arab Emirates": "AE", UAE: "AE",
+  // Polish
+  Grecja: "GR", Hiszpania: "ES", Włochy: "IT", Francja: "FR", Portugalia: "PT",
+  Niemcy: "DE", Holandia: "NL", Belgia: "BE", Szwajcaria: "CH",
+  Czechy: "CZ", Węgry: "HU", Polska: "PL", Chorwacja: "HR",
+  Turcja: "TR", Cypr: "CY", Albania_PL: "AL", Rumunia: "RO",
+  Bułgaria: "BG", Dania: "DK", Szwecja: "SE", Norwegia: "NO",
+  Finlandia: "FI", Irlandia: "IE", "Wielka Brytania": "GB", Islandia: "IS",
+  Słowacja: "SK", Słowenia: "SI", Łotwa: "LV", Litwa: "LT",
+  Maroko: "MA", Egipt: "EG", Tunezja: "TN", "Zjednoczone Emiraty Arabskie": "AE",
 };
 
 export function resolveCountryCode(country: string): string | null {
