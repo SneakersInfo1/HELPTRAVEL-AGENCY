@@ -15,7 +15,8 @@ import { normalizeOffer, nightsBetween } from "@/lib/hotels/normalize";
 
 import { MiniPlannerForm } from "@/components/home/mini-planner-form";
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
-import { FiltersSidebar, applyFiltersAndSort } from "./_components/filters-sidebar";
+import { FiltersSidebar } from "./_components/filters-sidebar";
+import { applyFiltersAndSort } from "./_components/filters-logic";
 import { ResultCard } from "./_components/result-card";
 import { ResultSkeletonList } from "./_components/skeleton";
 
