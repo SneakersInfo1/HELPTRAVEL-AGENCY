@@ -3,7 +3,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { HotelSearchForm } from "./_components/search-form";
+import { MiniPlannerForm } from "@/components/home/mini-planner-form";
 
 export const metadata: Metadata = {
   title: "Hotele w Europie i basenie Morza Śródziemnego | HelpTravel",
@@ -52,7 +52,7 @@ export default function HotelLandingPage() {
             Rezerwujesz bezpośrednio na HelpTravel — to my zajmujemy się płatnością i potwierdzeniem.
           </p>
           <div className="mt-6">
-            <HotelSearchForm />
+            <MiniPlannerForm compact />
           </div>
         </div>
       </section>
