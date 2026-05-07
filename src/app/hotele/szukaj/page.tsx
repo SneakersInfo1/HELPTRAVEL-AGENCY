@@ -13,7 +13,7 @@ import { fromMinor } from "@/lib/money";
 import { fetchHotelsList, getRates, LiteApiError } from "@/lib/liteapi";
 import { normalizeOffer, nightsBetween } from "@/lib/hotels/normalize";
 
-import { HotelSearchForm } from "../_components/search-form";
+import { MiniPlannerForm } from "@/components/home/mini-planner-form";
 import { FiltersSidebar, applyFiltersAndSort } from "./_components/filters-sidebar";
 import { ResultCard } from "./_components/result-card";
 import { ResultSkeletonList } from "./_components/skeleton";
@@ -23,6 +23,7 @@ export const dynamic = "force-dynamic";
 interface SP {
   destination?: string;
   country?: string;
+  origin?: string;
   checkin?: string;
   checkout?: string;
   adults?: string;
@@ -34,6 +35,8 @@ interface SP {
   minRating?: string;
   cancel?: string;
   sort?: string;
+  flightSort?: string;
+  directOnly?: string;
 }
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
@@ -69,21 +72,18 @@ export default async function HotelResultsPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      {/* Sticky search bar */}
-      <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white shadow-sm">
+      {/* Sticky search bar — same component as homepage hero */}
+      <div className="sticky top-0 z-20 border-b border-emerald-900/10 bg-emerald-700/5 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 py-3">
-          <HotelSearchForm
-            variant="compact"
+          <MiniPlannerForm
+            compact
             initial={{
+              origin: sp.origin,
               destination: sp.destination,
-              country: sp.country,
-              checkin: sp.checkin,
-              checkout: sp.checkout,
-              adults: sp.adults ? Number(sp.adults) : undefined,
-              rooms: sp.rooms ? Number(sp.rooms) : undefined,
-              children: sp.children
-                ? sp.children.split(",").map((s) => Number(s)).filter(Number.isFinite)
-                : undefined,
+              destinationCountry: sp.country,
+              startDate: sp.checkin,
+              endDate: sp.checkout,
+              travelers: sp.adults ? Number(sp.adults) : undefined,
             }}
           />
         </div>

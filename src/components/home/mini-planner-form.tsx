@@ -15,6 +15,15 @@ import type { DestinationSuggestion } from "@/lib/mvp/types";
 interface MiniPlannerFormProps {
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
   compact?: boolean;
+  /** Initial values when reusing the bar on results pages. Sesja C pkt 2. */
+  initial?: Partial<{
+    origin: string;
+    destination: string;
+    destinationCountry: string;
+    startDate: string;
+    endDate: string;
+    travelers: number;
+  }>;
 }
 
 function toISO(date: Date): string {
@@ -42,24 +51,25 @@ function diffNights(start: string, end: string): number {
   return nights > 0 ? nights : 4;
 }
 
-export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
+export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormProps) {
   const router = useRouter();
   const { locale } = useLanguage();
   const listboxId = useId();
   const destInputRef = useRef<HTMLInputElement>(null);
   const destListRef = useRef<HTMLUListElement>(null);
-  const [origin, setOrigin] = useState(DEFAULT_ORIGIN_CITY);
-  const [destination, setDestination] = useState("");
-  const [destQuery, setDestQuery] = useState("");
+  const [origin, setOrigin] = useState(initial?.origin || DEFAULT_ORIGIN_CITY);
+  const [destination, setDestination] = useState(initial?.destination ?? "");
+  const [destinationCountry, setDestinationCountry] = useState(initial?.destinationCountry ?? "");
+  const [destQuery, setDestQuery] = useState(initial?.destination ?? "");
   const [destSuggestions, setDestSuggestions] = useState<DestinationSuggestion[]>([]);
   const [destOpen, setDestOpen] = useState(false);
   const [destHighlight, setDestHighlight] = useState(-1);
   const [destFetching, setDestFetching] = useState(false);
-  const [destConfirmed, setDestConfirmed] = useState(false);
+  const [destConfirmed, setDestConfirmed] = useState(Boolean(initial?.destination));
   const [destError, setDestError] = useState("");
-  const [startDate, setStartDate] = useState(defaultStartDate);
-  const [endDate, setEndDate] = useState(defaultEndDate);
-  const [travelers, setTravelers] = useState(2);
+  const [startDate, setStartDate] = useState(initial?.startDate ?? defaultStartDate);
+  const [endDate, setEndDate] = useState(initial?.endDate ?? defaultEndDate);
+  const [travelers, setTravelers] = useState(initial?.travelers ?? 2);
 
   useEffect(() => {
     if (destQuery.trim().length < 2) {
@@ -90,7 +100,8 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
   }, [destQuery]);
 
   function selectSuggestion(s: DestinationSuggestion) {
-    setDestination(s.queryValue);
+    setDestination(s.city);
+    setDestinationCountry(s.country);
     setDestQuery(s.city);
     setDestOpen(false);
     setDestHighlight(-1);
@@ -133,27 +144,30 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
     }
     setDestError("");
     const nights = diffNights(startDate, endDate);
-    const params = new URLSearchParams({
-      mode: "standard",
-      origin: origin || DEFAULT_ORIGIN_CITY,
-      startDate,
-      endDate,
-      nights: String(nights),
-      travelers: String(travelers),
-    });
     const trimmedDestination = destination.trim();
-    if (trimmedDestination.length > 0) {
-      params.set("destination", trimmedDestination);
-    }
+    // Sesja C pkt 2: route directly to /hotele/szukaj — the unified results
+    // page that composes hotels (LiteAPI) + flights (Travelpayouts).
+    // Old /planner is gone; middleware 308s any stragglers but submitting
+    // here goes straight to the canonical URL.
+    const params = new URLSearchParams({
+      destination: trimmedDestination,
+      country: destinationCountry,
+      checkin: startDate,
+      checkout: endDate,
+      adults: String(travelers),
+      rooms: "1",
+      origin: origin || DEFAULT_ORIGIN_CITY,
+    });
     sendClientEvent("mini_planner_submitted", {
       origin: origin || DEFAULT_ORIGIN_CITY,
       destination: trimmedDestination || null,
+      country: destinationCountry || null,
       nights,
       travelers,
       hasDestination: trimmedDestination.length > 0,
     });
     const prefix = locale === "en" ? "/en" : "";
-    router.push(`${prefix}/planner?${params.toString()}`);
+    router.push(`${prefix}/hotele/szukaj?${params.toString()}`);
   }
 
   const fieldCls =
