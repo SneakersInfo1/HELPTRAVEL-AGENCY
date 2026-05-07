@@ -163,7 +163,17 @@ export async function searchTravelpayoutsFlights(
   }
 
   const offers: NormalizedFlightOffer[] = entries.map((entry) => {
-    const durationMinutes = entry.duration ?? entry.duration_to ?? 0;
+    // Sesja C pkt 7: use `duration_to` (outbound flight time) NOT `duration`.
+    // Travelpayouts v3 `prices_for_dates` returns three fields:
+    //   • duration_to — outbound flight time, minutes (what we want)
+    //   • duration_back — return flight time, minutes (0 for one-way queries)
+    //   • duration — aggregated "trip duration" that empirically includes
+    //     overnight layover wait-time and is ~6× larger than the actual
+    //     fly-time (e.g. 1515 min for a WAW-BER 2-stop where duration_to=245).
+    // Preferring `duration` was inflating the displayed flight time, which
+    // the user reported as "loty 5x większe" — the price was correct,
+    // duration was the bug.
+    const durationMinutes = entry.duration_to ?? entry.duration ?? 0;
     const human = minutesToHuman(durationMinutes);
     return {
       offerId: `tp-${entry.airline}-${entry.flight_number}-${entry.departure_at}`,
