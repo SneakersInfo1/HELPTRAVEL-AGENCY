@@ -21,7 +21,7 @@ import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
 const copy = {
   pl: {
     nav: [
-      { href: "/planner", label: "Planner" },
+      { href: "/hotele", label: "Hotele" },
       { href: "/kierunki", label: "Kierunki" },
       { href: "/inspiracje", label: "Pomysły na wyjazd" },
       { href: "/jak-pracujemy", label: "Jak to działa" },
@@ -43,7 +43,7 @@ const copy = {
       {
         title: "Start",
         links: [
-          { href: "/planner", label: "Planner" },
+          { href: "/hotele", label: "Hotele" },
           { href: "/kierunki", label: "Katalog kierunków" },
           { href: "/inspiracje", label: "Pomysły na wyjazd" },
           { href: "/city-breaki", label: "City breaki" },
@@ -77,7 +77,7 @@ const copy = {
   },
   en: {
     nav: [
-      { href: "/planner", label: "Planner" },
+      { href: "/hotele", label: "Hotele" },
       { href: "/kierunki", label: "Destinations" },
       { href: "/inspiracje", label: "Trip ideas" },
       { href: "/jak-pracujemy", label: "How it works" },
@@ -99,7 +99,7 @@ const copy = {
       {
         title: "Start",
         links: [
-          { href: "/planner", label: "Planner" },
+          { href: "/hotele", label: "Hotele" },
           { href: "/kierunki", label: "Destination catalog" },
           { href: "/inspiracje", label: "Trip ideas" },
           { href: "/city-breaki", label: "City breaks" },
@@ -192,7 +192,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               );
             })}
             <LocalizedLink
-              href="/planner?mode=standard"
+              href="/hotele"
               className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
               {text.plannerCta}
@@ -244,7 +244,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               ))}
             </div>
             <LocalizedLink
-              href="/planner?mode=standard"
+              href="/hotele"
               onClick={() => setMobileMenuOpen(false)}
               className="inline-flex min-h-11 items-center justify-center rounded-[1.2rem] bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
