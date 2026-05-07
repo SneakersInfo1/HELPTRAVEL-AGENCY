@@ -48,6 +48,18 @@ test("resolveCountryCode handles common variants", () => {
   assert.equal(resolveCountryCode("Atlantis"), null);
 });
 
+test("resolveCountryCode handles Polish localised names from Geoapify", () => {
+  // Geoapify is queried with lang=pl, so country arrives in Polish.
+  // These mappings are what stops the planner falling through to error.tsx.
+  assert.equal(resolveCountryCode("Niemcy"), "DE");
+  assert.equal(resolveCountryCode("Hiszpania"), "ES");
+  assert.equal(resolveCountryCode("Portugalia"), "PT");
+  assert.equal(resolveCountryCode("Włochy"), "IT");
+  assert.equal(resolveCountryCode("Wielka Brytania"), "GB");
+  assert.equal(resolveCountryCode("Grecja"), "GR");
+  assert.equal(resolveCountryCode("Francja"), "FR");
+});
+
 test("LiteApiHotelsListResponseSchema accepts the documented shape", () => {
   const ok = LiteApiHotelsListResponseSchema.safeParse({
     data: [

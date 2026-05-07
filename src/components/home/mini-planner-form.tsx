@@ -247,19 +247,16 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
                     aria-selected={idx === destHighlight}
                     onMouseDown={() => selectSuggestion(s)}
                     onMouseEnter={() => setDestHighlight(idx)}
-                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition ${
+                    className={`cursor-pointer px-3 py-2 text-sm transition ${
                       idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
                     }`}
                   >
-                    <span className="text-base leading-none">
-                      {s.source === "curated" ? "🌍" : "📍"}
-                    </span>
-                    <span>
-                      <span className="font-semibold text-emerald-950">{s.city}</span>
-                      <span className="ml-1 text-xs text-emerald-900/56">
-                        {[s.country, s.region].filter(Boolean).join(" / ")}
-                      </span>
-                    </span>
+                    <div className="font-semibold text-emerald-950">{s.city}</div>
+                    {(s.country || s.region) && (
+                      <div className="text-xs text-emerald-900/56">
+                        {[s.country, s.region].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
                   </li>
                 ))
               ) : (
