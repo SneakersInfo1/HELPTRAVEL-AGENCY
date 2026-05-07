@@ -1,12 +1,43 @@
-// Rooms section — server component. Groups by roomType.offerId per master
-// spec §5.3. Each rate row CTA links to /hotele/rezerwacja with offerId
-// (NOT rateId — see FIXES_LOG.md prebook hotfix).
+"use client";
+
+// Rooms section — groups by roomType.offerId per master spec §5.3. Each rate
+// row CTA links to /hotele/rezerwacja with offerId (NOT rateId — see
+// FIXES_LOG.md prebook hotfix).
+//
+// Sesja C pkt 6A: cap each room type to top-3 cheapest rates by default,
+// dedupe identical (boardName + refundableTag) combinations from different
+// suppliers (LiteAPI emits a row per supplier even when terms are identical),
+// and offer "Pokaż wszystkie X opcji" expansion. Avoids the "50 booking
+// options" UX collapse the user reported.
 
 import Link from "next/link";
+import { useState } from "react";
 
 import type { LiteApiRate, LiteApiRoomType } from "@/lib/liteapi";
 import { rateTotalMinor, isFreeCancellation, rateCancellationDeadline } from "@/lib/hotels/normalize";
 import { fromMinor } from "@/lib/money";
+
+const VISIBLE_RATES_DEFAULT = 3;
+
+function dedupeRates(rates: LiteApiRate[]): LiteApiRate[] {
+  // Cheapest first.
+  const sorted = [...rates].sort((a, b) => {
+    const aMin = rateTotalMinor(a);
+    const bMin = rateTotalMinor(b);
+    if (aMin === null) return 1;
+    if (bMin === null) return -1;
+    return aMin < bMin ? -1 : aMin > bMin ? 1 : 0;
+  });
+  const seen = new Set<string>();
+  const out: LiteApiRate[] = [];
+  for (const r of sorted) {
+    const key = `${(r.boardName ?? r.boardType ?? "").toLowerCase()}|${r.refundableTag ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
 
 interface Props {
   hotelId: string;
@@ -80,14 +111,18 @@ function RoomTypeCard({
   nights: number;
   currency: string;
 }) {
-  const headerName = roomType.rates[0]?.name ?? "Pokój";
+  const deduped = dedupeRates(roomType.rates);
+  const headerName = deduped[0]?.name ?? roomType.rates[0]?.name ?? "Pokój";
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? deduped : deduped.slice(0, VISIBLE_RATES_DEFAULT);
+  const hidden = deduped.length - visible.length;
   return (
     <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <header className="border-b border-neutral-100 bg-neutral-50 px-5 py-3">
         <h3 className="text-base font-semibold text-neutral-900">{headerName}</h3>
       </header>
       <ul className="divide-y divide-neutral-100">
-        {roomType.rates.map((rate, idx) => (
+        {visible.map((rate, idx) => (
           <RateRow
             key={`${rate.rateId}-${idx}`}
             hotelId={hotelId}
@@ -99,6 +134,24 @@ function RoomTypeCard({
           />
         ))}
       </ul>
+      {hidden > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="w-full border-t border-neutral-100 bg-neutral-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 hover:text-emerald-800"
+        >
+          Pokaż wszystkie {deduped.length} {deduped.length === 1 ? "opcję" : deduped.length < 5 ? "opcje" : "opcji"} ↓
+        </button>
+      )}
+      {expanded && deduped.length > VISIBLE_RATES_DEFAULT && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="w-full border-t border-neutral-100 bg-neutral-50 px-5 py-2.5 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-100"
+        >
+          Zwiń ↑
+        </button>
+      )}
     </article>
   );
 }
