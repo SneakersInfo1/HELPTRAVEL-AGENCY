@@ -101,7 +101,7 @@ const structuredData = {
         "@type": "SearchAction",
         target: {
           "@type": "EntryPoint",
-          urlTemplate: `${siteUrl}/planner?mode=standard&q={search_term_string}`,
+          urlTemplate: `${siteUrl}/hotele/szukaj?destination={search_term_string}`,
         },
         "query-input": "required name=search_term_string",
       },
