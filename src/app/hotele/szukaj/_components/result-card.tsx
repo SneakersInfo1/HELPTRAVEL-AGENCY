@@ -46,6 +46,18 @@ const ratingLabel = (r: number): string => {
   return "Akceptowalny";
 };
 
+// Sesja C pkt 5 — polish board names that come from LiteAPI in English.
+function polishBoard(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const r = raw.toLowerCase();
+  if (r.includes("all inclusive") || r.includes("all-inclusive") || r === "ai") return "All Inclusive";
+  if (r.includes("full board") || r === "fb") return "Pełne wyżywienie";
+  if (r.includes("half board") || r === "hb") return "HB · śniadanie + obiadokolacja";
+  if (r.includes("breakfast")) return "Ze śniadaniem w cenie";
+  if (r.includes("room only") || r === "ro") return "Bez wyżywienia";
+  return raw;
+}
+
 function nightsLabel(n: number): string {
   if (n === 1) return "1 noc";
   if (n < 5) return `${n} noce`;
@@ -84,22 +96,24 @@ export function ResultCard({
   const isFreeCancel = offer.cheapestRate.refundableTag === "RFN" || badges?.freeCancel;
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition hover:shadow-md sm:flex-row">
+    <article className="group flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(16,84,48,0.12)] sm:flex-row">
       {/* Image */}
-      <div className="relative aspect-[4/3] w-full shrink-0 bg-neutral-100 sm:aspect-[1/1] sm:w-64">
+      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-neutral-100 sm:aspect-[1/1] sm:w-64">
         {offer.thumbnailUrl ? (
           <Image
             src={offer.thumbnailUrl}
             alt={offer.name}
             fill
             sizes="(max-width: 640px) 100vw, 256px"
-            className="object-cover"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-neutral-300">
             <span className="text-sm">Brak zdjęcia</span>
           </div>
         )}
+        {/* Subtle gradient at top for badge readability */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/30 to-transparent" />
         <div className="absolute left-2 top-2 flex flex-col gap-1">
           {badges?.cheapest && (
             <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
@@ -139,17 +153,27 @@ export function ResultCard({
             </div>
           </div>
           {offer.rating !== undefined && offer.rating > 0 && (
-            <div className="flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-emerald-800">
-              <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-xs font-bold text-white">
-                {offer.rating.toFixed(1)}
-              </span>
-              <span className="text-xs font-medium">{ratingLabel(offer.rating)}</span>
+            <div className="flex shrink-0 flex-col items-end">
+              <div className="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-emerald-800">
+                <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-xs font-bold text-white">
+                  {offer.rating.toFixed(1)}
+                </span>
+                <span className="text-xs font-semibold">{ratingLabel(offer.rating)}</span>
+              </div>
+              {offer.reviewCount !== undefined && offer.reviewCount > 0 && (
+                <span className="mt-0.5 text-[10px] text-neutral-500">
+                  {offer.reviewCount.toLocaleString("pl-PL")} {offer.reviewCount === 1 ? "opinia" : offer.reviewCount < 5 ? "opinie" : "opinii"}
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        {offer.cheapestRate.boardName && (
-          <div className="text-xs text-neutral-600">{offer.cheapestRate.boardName}</div>
+        {polishBoard(offer.cheapestRate.boardName) && (
+          <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-900">
+            <span aria-hidden>🍽</span>
+            {polishBoard(offer.cheapestRate.boardName)}
+          </div>
         )}
 
         {isFreeCancel && freeCancelDate && (
