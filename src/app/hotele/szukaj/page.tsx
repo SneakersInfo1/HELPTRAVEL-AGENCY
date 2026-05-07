@@ -36,6 +36,9 @@ interface SP {
   minRating?: string;
   cancel?: string;
   sort?: string;
+  q?: string;
+  propertyType?: string;
+  board?: string;
   flightSort?: string;
   directOnly?: string;
 }
@@ -197,6 +200,9 @@ async function Results({ sp }: { sp: SP }) {
     minRating: sp.minRating ? Number(sp.minRating) : undefined,
     cancel: sp.cancel,
     sort: sp.sort,
+    q: sp.q,
+    propertyType: sp.propertyType ? sp.propertyType.split(",").filter(Boolean) : undefined,
+    board: sp.board ? sp.board.split(",").filter(Boolean) : undefined,
   });
 
   if (filtered.length === 0) return <EmptyResults destination={destination} />;

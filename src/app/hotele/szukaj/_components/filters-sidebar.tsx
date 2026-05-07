@@ -166,6 +166,95 @@ export function FiltersSidebar() {
             </div>
           </FilterBlock>
 
+          {/* Sesja C pkt 4 — extended filters */}
+          <FilterBlock title="Słowa kluczowe">
+            <input
+              type="text"
+              placeholder="np. spa, basen, centrum"
+              value={sp.get("q") ?? ""}
+              onChange={(e) => setParam("q", e.target.value || null)}
+              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"
+            />
+          </FilterBlock>
+
+          <FilterBlock title="Typ obiektu">
+            <div className="space-y-1 text-sm">
+              {[
+                { value: "hotel", label: "Hotel" },
+                { value: "apartment", label: "Apartament" },
+                { value: "aparthotel", label: "Aparthotel" },
+                { value: "hostel", label: "Hostel" },
+                { value: "guesthouse", label: "Pensjonat" },
+              ].map((p) => {
+                const current = (sp.get("propertyType") ?? "").split(",").filter(Boolean);
+                const checked = current.includes(p.value);
+                return (
+                  <label key={p.value} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        const next = checked
+                          ? current.filter((v) => v !== p.value)
+                          : [...current, p.value];
+                        setParam("propertyType", next.length ? next.join(",") : null);
+                      }}
+                      className="h-4 w-4 accent-emerald-600"
+                    />
+                    <span>{p.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </FilterBlock>
+
+          <FilterBlock title="Wyżywienie">
+            <div className="space-y-1 text-sm">
+              {[
+                { value: "room_only", label: "Bez wyżywienia" },
+                { value: "breakfast", label: "Ze śniadaniem" },
+                { value: "half_board", label: "HB (ze obiadokolacją)" },
+                { value: "full_board", label: "FB (pełne wyżywienie)" },
+                { value: "all_inclusive", label: "All Inclusive" },
+              ].map((b) => {
+                const current = (sp.get("board") ?? "").split(",").filter(Boolean);
+                const checked = current.includes(b.value);
+                return (
+                  <label key={b.value} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        const next = checked
+                          ? current.filter((v) => v !== b.value)
+                          : [...current, b.value];
+                        setParam("board", next.length ? next.join(",") : null);
+                      }}
+                      className="h-4 w-4 accent-emerald-600"
+                    />
+                    <span>{b.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </FilterBlock>
+
+          {/* Amenities + distance: data not available on the LiteAPI list
+              endpoint (only on hotel detail), so the UI is here for
+              consistency but the filter functions are no-ops until the
+              adapter is extended in a follow-up. Marked visually muted
+              so users don't expect immediate effect. */}
+          <FilterBlock title={"Udogodnienia (wkrótce)"}>
+            <div className="space-y-1 text-sm text-neutral-400">
+              {["WiFi", "Parking", "Basen", "Klimatyzacja", "Śniadanie"].map((a) => (
+                <label key={a} className="flex items-center gap-2 opacity-60">
+                  <input type="checkbox" disabled className="h-4 w-4" />
+                  <span>{a}</span>
+                </label>
+              ))}
+            </div>
+          </FilterBlock>
+
           {openOnMobile && (
             <button
               type="button"
@@ -190,8 +279,34 @@ function FilterBlock({ title, children }: { title: string; children: React.React
   );
 }
 
+// Heuristic match — LiteAPI's list endpoint doesn't return propertyType, so
+// we infer it from the hotel name. Apartments/hostels/aparthotels routinely
+// say so in the name. Falls back to "hotel" when nothing matches.
+function inferPropertyType(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("aparthotel") || n.includes("apart-hotel")) return "aparthotel";
+  if (n.includes("apartament") || n.includes("apartment") || n.includes("aparth")) return "apartment";
+  if (n.includes("hostel")) return "hostel";
+  if (n.includes("pensjonat") || n.includes("guesthouse") || n.includes("guest house")) return "guesthouse";
+  return "hotel";
+}
+
+// Map LiteAPI raw boardName → our 5 board categories (matches the filter
+// values). Keep in sync with the labels in FiltersSidebar above.
+function classifyBoard(boardName: string | undefined): string {
+  if (!boardName) return "room_only";
+  const b = boardName.toLowerCase();
+  if (b.includes("all inclusive") || b.includes("all-inclusive") || b.includes(" ai")) return "all_inclusive";
+  if (b.includes("full board") || b.includes("fb")) return "full_board";
+  if (b.includes("half board") || b.includes("hb")) return "half_board";
+  if (b.includes("breakfast") || b.includes("śniadan")) return "breakfast";
+  return "room_only";
+}
+
 export function applyFiltersAndSort<T extends {
-  cheapestRate: { totalAmount: number; refundableTag?: string; cancellationDeadline?: string };
+  name: string;
+  city: string;
+  cheapestRate: { totalAmount: number; refundableTag?: string; cancellationDeadline?: string; boardName?: string };
   stars?: number;
   rating?: number;
 }>(
@@ -203,9 +318,26 @@ export function applyFiltersAndSort<T extends {
     minRating?: number;
     cancel?: string;
     sort?: string;
+    q?: string;
+    propertyType?: string[]; // multi-select
+    board?: string[]; // multi-select
   },
 ): T[] {
   let filtered = [...offers];
+  if (params.q) {
+    const q = params.q.toLowerCase();
+    filtered = filtered.filter((o) =>
+      `${o.name} ${o.city} ${o.cheapestRate.boardName ?? ""}`.toLowerCase().includes(q),
+    );
+  }
+  if (params.propertyType && params.propertyType.length > 0) {
+    const allowed = new Set(params.propertyType);
+    filtered = filtered.filter((o) => allowed.has(inferPropertyType(o.name)));
+  }
+  if (params.board && params.board.length > 0) {
+    const allowed = new Set(params.board);
+    filtered = filtered.filter((o) => allowed.has(classifyBoard(o.cheapestRate.boardName)));
+  }
   if (params.minPrice !== undefined)
     filtered = filtered.filter((o) => o.cheapestRate.totalAmount >= params.minPrice!);
   if (params.maxPrice !== undefined)
