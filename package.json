@@ -8,7 +8,7 @@
     "analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test src/lib/mvp/parser.test.ts src/lib/mvp/scoring.test.ts src/lib/mvp/planner-links.test.ts src/lib/mvp/featured-destinations.test.ts src/lib/mvp/travelpayouts-flights.test.ts src/lib/liteapi/client.test.ts",
+    "test": "node --import tsx --test src/lib/mvp/parser.test.ts src/lib/mvp/scoring.test.ts src/lib/mvp/planner-links.test.ts src/lib/mvp/featured-destinations.test.ts src/lib/mvp/travelpayouts-flights.test.ts src/lib/html/sanitize.test.ts src/lib/liteapi/client.test.ts",
     "smoke:liteapi": "tsx --env-file=.env.local scripts/smoke-liteapi.ts",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",

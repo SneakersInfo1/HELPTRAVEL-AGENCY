@@ -14,6 +14,7 @@ import { notFound } from "next/navigation";
 import { fromMinor } from "@/lib/money";
 import { getHotelDetail, getRates, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
+import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 import { BookingWidget } from "./_components/booking-widget";
@@ -297,14 +298,20 @@ export default async function HotelDetailPage({
             {/* Overview */}
             <section id="overview" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
               <h2 className="text-lg font-bold text-neutral-900">Przegląd</h2>
-              {(detail.hotelDescription || detail.description) && (
-                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-neutral-700">
-                  {detail.hotelDescription ?? detail.description}
-                </p>
-              )}
-              {!detail.hotelDescription && !detail.description && (
-                <p className="mt-3 text-sm text-neutral-500">Opis hotelu nie jest dostępny u dostawcy.</p>
-              )}
+              {(() => {
+                const sanitized = sanitizeHotelDescription(detail.hotelDescription ?? detail.description);
+                if (sanitized) {
+                  return (
+                    <div
+                      className="mt-3 space-y-3 text-sm leading-relaxed text-neutral-700 [&_p]:mt-0 [&_strong]:font-semibold [&_strong]:text-neutral-900 [&_em]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1"
+                      dangerouslySetInnerHTML={{ __html: sanitized }}
+                    />
+                  );
+                }
+                return (
+                  <p className="mt-3 text-sm text-neutral-500">Opis hotelu nie jest dostępny u dostawcy.</p>
+                );
+              })()}
             </section>
 
             {/* Rooms */}
