@@ -14,6 +14,7 @@ import { fetchHotelsList, getRates, LiteApiError } from "@/lib/liteapi";
 import { normalizeOffer, nightsBetween } from "@/lib/hotels/normalize";
 
 import { MiniPlannerForm } from "@/components/home/mini-planner-form";
+import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { FiltersSidebar, applyFiltersAndSort } from "./_components/filters-sidebar";
 import { ResultCard } from "./_components/result-card";
 import { ResultSkeletonList } from "./_components/skeleton";
@@ -92,7 +93,36 @@ export default async function HotelResultsPage({
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[280px_1fr]">
         <FiltersSidebar />
 
-        <section>
+        <section className="space-y-6">
+          {/* Anchor link to flights below */}
+          {valid && sp.origin && (
+            <a
+              href="#planner-flights"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-900/10 bg-gradient-to-r from-emerald-50 to-white p-4 transition hover:border-emerald-300 hover:shadow"
+            >
+              <div className="flex items-center gap-3">
+                <span aria-hidden className="text-2xl">✈</span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-emerald-950">Loty na ten kierunek</div>
+                  <div className="line-clamp-2 text-xs text-emerald-900/72">
+                    Sprawdź ceny przelotów z {sp.origin} dopasowane do Twoich dat.
+                  </div>
+                </div>
+              </div>
+              <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white">
+                Zobacz wszystkie loty →
+              </span>
+            </a>
+          )}
+          {valid && !sp.origin && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <div className="font-semibold">Dodaj miasto wylotu, by zobaczyć loty.</div>
+              <div className="mt-0.5 text-xs text-amber-800">
+                Kliknij pole „Skąd” w pasku wyszukiwania powyżej.
+              </div>
+            </div>
+          )}
+
           {!valid ? (
             <EmptyPrompt />
           ) : (
@@ -102,6 +132,21 @@ export default async function HotelResultsPage({
           )}
         </section>
       </div>
+
+      {/* Flights — full-width below hotels. FlightOffersPanel is its own
+          client component with internal Suspense-equivalent loading. */}
+      {valid && sp.origin && sp.destination && sp.checkin && sp.checkout && (
+        <div className="mx-auto max-w-7xl px-4 pb-12">
+          <FlightOffersPanel
+            originCity={sp.origin}
+            destinationCity={sp.destination}
+            destinationCountry={sp.country ?? ""}
+            departureDate={sp.checkin}
+            returnDate={sp.checkout}
+            passengers={sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 2}
+          />
+        </div>
+      )}
     </main>
   );
 }
