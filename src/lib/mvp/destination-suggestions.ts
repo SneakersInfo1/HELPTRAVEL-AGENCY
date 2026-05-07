@@ -7,17 +7,6 @@ import { curatedDestinations } from "./destinations";
 import { normalizeLookup, resolveAirportCode } from "./location";
 import type { DestinationSuggestion } from "./types";
 
-type GeoapifyFeature = {
-  properties?: {
-    place_id?: string | number;
-    city?: string;
-    country?: string;
-    state?: string;
-    county?: string;
-    formatted?: string;
-    name?: string;
-  };
-};
 
 function curatedSuggestion(destination: (typeof curatedDestinations)[number]): DestinationSuggestion {
   return {
@@ -52,60 +41,6 @@ function catalogSuggestion(entry: (typeof destinationCatalog)[number]): Destinat
   };
 }
 
-function toGeoapifySuggestion(feature: GeoapifyFeature): DestinationSuggestion | null {
-  const city = feature.properties?.city?.trim() || feature.properties?.name?.trim();
-  const country = feature.properties?.country?.trim();
-  if (!city || !country) {
-    return null;
-  }
-
-  const region = feature.properties?.state?.trim() || feature.properties?.county?.trim();
-  const curatedMatch = curatedDestinations.find(
-    (destination) =>
-      normalizeLookup(destination.city) === normalizeLookup(city) &&
-      normalizeLookup(destination.country) === normalizeLookup(country),
-  );
-
-  return {
-    id: String(feature.properties?.place_id ?? `${city}-${country}`),
-    city,
-    country,
-    region,
-    label: `${city}, ${country}`,
-    queryValue: `${city}, ${country}`,
-    source: curatedMatch ? "curated" : "geoapify",
-    destinationSlug: curatedMatch?.slug,
-    airportCode: curatedMatch?.airportCode ?? resolveAirportCode(city),
-  };
-}
-
-async function fetchGeoapifySuggestions(query: string): Promise<DestinationSuggestion[]> {
-  const apiKey = process.env.GEOAPIFY_API_KEY?.trim();
-  if (!apiKey || query.trim().length < 2) {
-    return [];
-  }
-
-  const url = new URL("https://api.geoapify.com/v1/geocode/autocomplete");
-  url.searchParams.set("text", query.trim());
-  url.searchParams.set("type", "city");
-  url.searchParams.set("limit", "8");
-  url.searchParams.set("lang", "pl");
-  url.searchParams.set("apiKey", apiKey);
-
-  const response = await fetch(url, {
-    method: "GET",
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    return [];
-  }
-
-  const payload = (await response.json()) as { features?: GeoapifyFeature[] };
-  return (payload.features ?? [])
-    .map(toGeoapifySuggestion)
-    .filter((item): item is DestinationSuggestion => Boolean(item));
-}
 
 type FuseEntry = {
   city: string;
@@ -152,20 +87,19 @@ export async function getDestinationSuggestions(query: string): Promise<Destinat
     })),
   ];
 
+  // Sesja C follow-up: autocomplete is restricted to destinations we
+  // actually have inventory for (curated + catalog). Geoapify was added
+  // earlier to widen the input surface, but it returned cities we cannot
+  // serve (LiteAPI may not have hotels there) and ones with Polish-only
+  // country names that broke the country→ISO lookup. Honest UX: only
+  // suggest what we can deliver.
   const fuse = buildFuseIndex(fuseEntries);
-  const fuzzyResults = fuse.search(trimmed, { limit: 5 });
+  const fuzzyResults = fuse.search(trimmed, { limit: 8 });
 
-  const live = await fetchGeoapifySuggestions(trimmed);
   const merged = new Map<string, DestinationSuggestion>();
-
   for (const result of fuzzyResults) {
     const key = normalizeLookup(`${result.item.city} ${result.item.country}`);
     if (!merged.has(key)) merged.set(key, result.item.suggestion);
   }
-  for (const item of live) {
-    const key = normalizeLookup(`${item.city} ${item.country}`);
-    if (!merged.has(key)) merged.set(key, item);
-  }
-
   return [...merged.values()].slice(0, 8);
 }
