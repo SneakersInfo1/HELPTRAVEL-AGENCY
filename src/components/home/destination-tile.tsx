@@ -21,14 +21,21 @@ export function DestinationTile({
   defaultNights = 4,
   defaultTravelers = 2,
 }: DestinationTileProps) {
+  // Sesja C1 FIX 7: chips link directly to the unified results page with
+  // destination + country pre-filled. No dates → page renders the empty
+  // prompt with the sticky search form ready for the user to pick dates.
+  // (Old `/planner?mode=standard&...` shape was bouncing through middleware
+  // 308 to /hotele/szukaj which didn't understand mode/nights, leaving the
+  // user on a 404-feeling empty page.)
+  void defaultNights; // dates intentionally not pre-filled — user picks them
   const params = new URLSearchParams({
-    mode: "standard",
     destination: destination.city,
+    country: destination.country,
     origin: DEFAULT_ORIGIN_CITY,
-    nights: String(defaultNights),
-    travelers: String(defaultTravelers),
+    adults: String(defaultTravelers),
+    rooms: "1",
   });
-  const href = `/planner?${params.toString()}`;
+  const href = `/hotele/szukaj?${params.toString()}`;
   const flightHoursLabel = `~${destination.typicalFlightHoursFromPL.toFixed(1)} h z PL`;
 
   const sp = getDestinationSocialProof(destination.slug);

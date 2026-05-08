@@ -84,7 +84,7 @@ export function HomePageSections({ locale: localeOverride }: HomePageSectionsPro
 
           <div className="mt-7">
             <LocalizedLink
-              href="/planner?mode=standard"
+              href="/#hero"
               locale={locale}
               className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 px-6 py-3 text-sm font-bold uppercase tracking-[0.1em] text-emerald-950 shadow-[0_12px_40px_rgba(234,88,12,0.45)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_50px_rgba(234,88,12,0.6)]"
             >
