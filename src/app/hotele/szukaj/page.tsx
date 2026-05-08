@@ -13,8 +13,8 @@ import { fromMinor } from "@/lib/money";
 import { fetchHotelsList, getRates, LiteApiError } from "@/lib/liteapi";
 import { normalizeOffer, nightsBetween } from "@/lib/hotels/normalize";
 
-import { MiniPlannerForm } from "@/components/home/mini-planner-form";
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
+import { CollapsibleSearchBar } from "./_components/collapsible-search-bar";
 import { FiltersSidebar } from "./_components/filters-sidebar";
 import { applyFiltersAndSort } from "./_components/filters-logic";
 import { ResultCard } from "./_components/result-card";
@@ -77,44 +77,53 @@ export default async function HotelResultsPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      {/* Sticky search bar — same component as homepage hero */}
-      <div className="sticky top-0 z-20 border-b border-emerald-900/10 bg-emerald-700/5 backdrop-blur-md">
-        <div className="mx-auto max-w-7xl px-4 py-3">
-          <MiniPlannerForm
-            compact
-            initial={{
-              origin: sp.origin,
-              destination: sp.destination,
-              destinationCountry: sp.country,
-              startDate: sp.checkin,
-              endDate: sp.checkout,
-              travelers: sp.adults ? Number(sp.adults) : undefined,
-            }}
-          />
-        </div>
+      {/* Sticky search bar — slim summary by default after submit, expands
+          inline on click. Sesja C1 FIX 1. */}
+      <div className="sticky top-0 z-20 shadow-sm">
+        <CollapsibleSearchBar
+          valid={Boolean(valid)}
+          initial={{
+            origin: sp.origin,
+            destination: sp.destination,
+            destinationCountry: sp.country,
+            startDate: sp.checkin,
+            endDate: sp.checkout,
+            travelers: sp.adults ? Number(sp.adults) : undefined,
+          }}
+        />
       </div>
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[280px_1fr]">
         <FiltersSidebar />
 
         <section className="space-y-6">
-          {/* Anchor link to flights below */}
+          {/* Sesja C1 FIX 6 — prominent flight banner above hotels.
+              Plane icon + bolded route + subtitle + larger CTA. */}
           {valid && sp.origin && (
             <a
               href="#planner-flights"
-              className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-900/10 bg-gradient-to-r from-emerald-50 to-white p-4 transition hover:border-emerald-300 hover:shadow"
+              className="flex flex-col gap-3 rounded-2xl border border-emerald-900/12 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
-              <div className="flex items-center gap-3">
-                <span aria-hidden className="text-2xl">✈</span>
+              <div className="flex items-center gap-4">
+                <span
+                  aria-hidden
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white shadow-md sm:h-14 sm:w-14"
+                >
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+                  </svg>
+                </span>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-emerald-950">Loty na ten kierunek</div>
-                  <div className="line-clamp-2 text-xs text-emerald-900/72">
-                    Sprawdź ceny przelotów z {sp.origin} dopasowane do Twoich dat.
+                  <div className="text-base font-bold text-emerald-950 sm:text-lg">
+                    Loty {sp.origin} → {sp.destination}
+                  </div>
+                  <div className="text-sm text-emerald-900/72">
+                    Najlepsze połączenia · ceny w obie strony · sortowane po wartości
                   </div>
                 </div>
               </div>
-              <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white">
-                Zobacz wszystkie loty →
+              <span className="inline-flex h-11 shrink-0 items-center justify-center self-stretch rounded-full bg-emerald-700 px-6 text-sm font-bold text-white shadow-md transition hover:bg-emerald-800 sm:self-center">
+                Zobacz loty →
               </span>
             </a>
           )}
