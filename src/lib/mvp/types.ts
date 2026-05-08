@@ -200,6 +200,14 @@ export interface NormalizedFlightOffer {
   total_duration_minutes: number;
   origin: string;
   destination: string;
+  // Round-trip leg (Sesja C1 FIX 2). Present only when the search included
+  // a returnDate AND the cache had a paired itinerary. Cards render both
+  // rows; total_amount applies to the pair.
+  return_departure_time?: string;
+  return_arrival_time?: string;
+  return_duration?: string;
+  return_duration_minutes?: number;
+  return_number_of_stops?: number;
   cabinClass: CabinClass;
   bookingUrl?: string;
 }
