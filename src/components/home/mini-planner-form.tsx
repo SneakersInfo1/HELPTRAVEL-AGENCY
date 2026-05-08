@@ -73,6 +73,12 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
   const [travelers, setTravelers] = useState(initial?.travelers ?? 2);
 
   useEffect(() => {
+    // After user picks a suggestion (destConfirmed=true), don't refetch with
+    // the now-confirmed city name — that's what reopens the dropdown after
+    // the click. onChange resets destConfirmed=false so typing still works.
+    if (destConfirmed) {
+      return;
+    }
     if (destQuery.trim().length < 2) {
       setDestSuggestions([]);
       setDestOpen(false);
@@ -98,12 +104,14 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
       }
     }, 150);
     return () => { controller.abort(); window.clearTimeout(timeout); };
-  }, [destQuery]);
+  }, [destQuery, destConfirmed]);
 
   function selectSuggestion(s: DestinationSuggestion) {
     setDestination(s.city);
     setDestinationCountry(s.country);
     setDestQuery(s.city);
+    setDestSuggestions([]);
+    setDestFetching(false);
     setDestOpen(false);
     setDestHighlight(-1);
     setDestConfirmed(true);
@@ -250,7 +258,10 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
                       key={s.id}
                       role="option"
                       aria-selected={idx === destHighlight}
-                      onMouseDown={() => selectSuggestion(s)}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        selectSuggestion(s);
+                      }}
                       onMouseEnter={() => setDestHighlight(idx)}
                       className={`cursor-pointer px-3 py-2 text-sm transition ${
                         idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
