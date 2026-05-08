@@ -129,3 +129,29 @@ refactors cannot reintroduce the drift. The book test asserts
     `secretKey` returned (proves Payments product activated).
   - · `book` / `retrieve` / `cancel` — Phase 4 (intentional skips,
     require front-end SDK-completed payment).
+
+## 2026-05-08 — Sesja C1 quirks discovered
+
+**Travelpayouts v3 `prices_for_dates` ignores `return_at` on this token.**
+Setting the param resulted in `{data: []}` for every date pair we tried
+(WAW→BER, WAW→AGP, multiple +N day shifts). The same exact request without
+`return_at` returns one-way data correctly. Round-trip data lives at the
+sibling endpoint `/aviasales/v3/get_latest_prices?one_way=false`, which
+returns paired itineraries `{depart_date, return_date, value,
+number_of_changes, duration}`. Sesja C1 FIX 2 uses that endpoint for any
+search with a returnDate; it caches per-year not per-date so we filter to
+pairs within ±7 days of the requested departure to keep the panel
+relevant.
+
+**Travelpayouts `duration` field aggregates layover wait time** (already
+documented in pkt 7 of Sesja C). The round-trip endpoint surfaces only one
+`duration` for the whole RT, which we halve for the per-leg estimate;
+better than nothing, less precise than the one-way endpoint's `duration_to`.
+
+**LiteAPI `/data/hotels` does not include amenities.** Only
+`/data/hotel/{hotelId}` does. Sesja C1 FIX 4 (amenity filter on listing)
+is therefore deferred — implementing it would require either a fan-out
+detail fetch per result (30× extra requests on every search) or a
+backfill job populating an amenities cache keyed by hotelId. Filter UI
+remains in-place but marked "(wkrótce)" so users see the surface
+without a no-op false promise.
