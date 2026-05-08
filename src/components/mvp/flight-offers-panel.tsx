@@ -267,7 +267,7 @@ function FlightCard({ offer, locale, t, isDeal, roundTripUrl }: {
         ? "bg-amber-100 text-amber-800"
         : "bg-neutral-100 text-neutral-700";
   return (
-    <article className={`relative flex items-center gap-4 rounded-2xl border bg-white p-4 shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)] ${
+    <article className={`relative flex flex-col items-stretch gap-3 rounded-2xl border bg-white p-4 shadow-[0_4px_16px_rgba(16,84,48,0.05)] transition hover:border-emerald-500/40 hover:shadow-[0_8px_24px_rgba(16,84,48,0.1)] sm:flex-row sm:items-center sm:gap-4 ${
       isDeal ? "border-emerald-500/60 ring-1 ring-emerald-300" : "border-emerald-900/10"
     }`}>
       {isDeal ? (
@@ -280,32 +280,51 @@ function FlightCard({ offer, locale, t, isDeal, roundTripUrl }: {
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">{offer.airline}</p>
       </div>
 
-      <div className="flex flex-1 items-center gap-4">
-        <div className="text-center">
-          <p className="text-base font-bold text-emerald-950">{formatTime(offer.departure_time, locale)}</p>
-          <p className="text-[11px] text-emerald-900/56" title={formatAirport(offer.origin)}>
-            {formatAirport(offer.origin)}
-          </p>
-        </div>
-
-        <div className="flex flex-1 flex-col items-center">
-          <p className="text-sm font-semibold text-emerald-950">{offer.total_duration || "—"}</p>
-          <div className="my-1 flex w-full items-center gap-2">
-            <span className="h-px flex-1 bg-emerald-200" />
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${stopsClasses}`}>
-              {stopsLabel}
-            </span>
-            <span className="h-px flex-1 bg-emerald-200" />
+      {/* Sesja C1 FIX 2 — when round-trip data present, stack outbound +
+          return as two rows. One-way path renders just the first row. */}
+      <div className="flex flex-1 flex-col gap-2">
+        <FlightLeg
+          label={offer.return_departure_time ? "Tam" : null}
+          arrow="→"
+          origin={offer.origin}
+          destination={offer.destination}
+          departureTime={offer.departure_time}
+          arrivalTime={offer.arrival_time}
+          duration={offer.total_duration}
+          stopsLabel={stopsLabel}
+          stopsClasses={stopsClasses}
+          locale={locale}
+          airline={offer.airline}
+        />
+        {offer.return_departure_time && offer.return_arrival_time && (
+          <div className="border-t border-emerald-100 pt-2">
+            <FlightLeg
+              label="Powrót"
+              arrow="←"
+              origin={offer.destination}
+              destination={offer.origin}
+              departureTime={offer.return_departure_time}
+              arrivalTime={offer.return_arrival_time}
+              duration={offer.return_duration ?? offer.total_duration}
+              stopsLabel={
+                (offer.return_number_of_stops ?? 0) === 0
+                  ? t.nonstopBadge
+                  : (offer.return_number_of_stops ?? 0) === 1
+                    ? t.oneStopBadge
+                    : t.multiStopBadge
+              }
+              stopsClasses={
+                (offer.return_number_of_stops ?? 0) === 0
+                  ? "bg-emerald-100 text-emerald-800"
+                  : (offer.return_number_of_stops ?? 0) === 1
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-neutral-100 text-neutral-700"
+              }
+              locale={locale}
+              airline={offer.airline}
+            />
           </div>
-          <p className="text-[10px] text-emerald-900/56 sm:hidden">{offer.airline}</p>
-        </div>
-
-        <div className="text-center">
-          <p className="text-base font-bold text-emerald-950">{formatTime(offer.arrival_time, locale)}</p>
-          <p className="text-[11px] text-emerald-900/56" title={formatAirport(offer.destination)}>
-            {formatAirport(offer.destination)}
-          </p>
-        </div>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-2">
@@ -370,6 +389,10 @@ export function FlightOffersPanel(props: {
             origin: props.originCity,
             destination: props.destinationCity,
             departureDate: props.departureDate,
+            // Sesja C1 FIX 2 — request the round-trip path. The API
+            // adapter will fall back to one-way if the cache has no
+            // paired itineraries for these dates.
+            returnDate: props.returnDate || undefined,
             passengers: props.passengers,
             cabinClass: "economy",
             sortBy: "cheap",
@@ -394,6 +417,7 @@ export function FlightOffersPanel(props: {
     };
   }, [
     props.departureDate,
+    props.returnDate,
     props.destinationCity,
     props.originCity,
     props.passengers,
@@ -533,5 +557,68 @@ export function FlightOffersPanel(props: {
         </div>
       )}
     </section>
+  );
+}
+
+// Single-leg row used by the card. Re-rendered for both outbound and return
+// when round-trip data is present (Sesja C1 FIX 2).
+function FlightLeg({
+  label,
+  arrow,
+  origin,
+  destination,
+  departureTime,
+  arrivalTime,
+  duration,
+  stopsLabel,
+  stopsClasses,
+  locale,
+  airline,
+}: {
+  label: string | null;
+  arrow: "→" | "←";
+  origin: string;
+  destination: string;
+  departureTime: string;
+  arrivalTime: string;
+  duration: string;
+  stopsLabel: string;
+  stopsClasses: string;
+  locale: "pl" | "en";
+  airline: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {label && (
+        <span className="hidden w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700 sm:block">
+          {arrow} {label}
+        </span>
+      )}
+      <div className="flex flex-1 items-center gap-3">
+        <div className="text-center">
+          <p className="text-base font-bold text-emerald-950">{formatTime(departureTime, locale)}</p>
+          <p className="text-[11px] text-emerald-900/56" title={formatAirport(origin)}>
+            {formatAirport(origin)}
+          </p>
+        </div>
+        <div className="flex flex-1 flex-col items-center">
+          <p className="text-sm font-semibold text-emerald-950">{duration || "—"}</p>
+          <div className="my-1 flex w-full items-center gap-2">
+            <span className="h-px flex-1 bg-emerald-200" />
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${stopsClasses}`}>
+              {stopsLabel}
+            </span>
+            <span className="h-px flex-1 bg-emerald-200" />
+          </div>
+          <p className="text-[10px] text-emerald-900/56 sm:hidden">{airline}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-base font-bold text-emerald-950">{formatTime(arrivalTime, locale)}</p>
+          <p className="text-[11px] text-emerald-900/56" title={formatAirport(destination)}>
+            {formatAirport(destination)}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
