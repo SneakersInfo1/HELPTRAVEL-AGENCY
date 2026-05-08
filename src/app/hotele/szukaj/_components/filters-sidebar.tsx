@@ -1,11 +1,19 @@
 "use client";
 
-// URL-driven filters sidebar (desktop) + bottom-sheet trigger (mobile).
-// Every filter writes to the URL so every results page is shareable.
-// Per master spec §5.2.
+// Sesja C1 FIX 5 — staged-then-apply filter pattern. Each control writes
+// to a local draft state; the URL only updates when the user clicks
+// "Zastosuj filtry". This keeps Booking-style 1-click batch filtering and
+// stops six controls from triggering six re-fetches.
+//
+// "Wyczyść" resets the draft to defaults AND clears the URL in one go
+// (Booking pattern: clear → see all results immediately).
+//
+// "Zastosuj filtry (N)" badge shows count of staged filters that DIFFER
+// from what's currently in the URL — gives the user a visual cue that
+// changes are pending.
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const STARS = [5, 4, 3, 2, 1];
 const CANCEL = [
@@ -18,26 +26,143 @@ const SORTS = [
   { value: "price_desc", label: "Cena malejąco" },
   { value: "rating", label: "Ocena gości" },
 ] as const;
+const PROPERTY_TYPES = [
+  { value: "hotel", label: "Hotel" },
+  { value: "apartment", label: "Apartament" },
+  { value: "aparthotel", label: "Aparthotel" },
+  { value: "hostel", label: "Hostel" },
+  { value: "guesthouse", label: "Pensjonat" },
+] as const;
+const BOARD_TYPES = [
+  { value: "room_only", label: "Bez wyżywienia" },
+  { value: "breakfast", label: "Ze śniadaniem" },
+  { value: "half_board", label: "HB (ze obiadokolacją)" },
+  { value: "full_board", label: "FB (pełne wyżywienie)" },
+  { value: "all_inclusive", label: "All Inclusive" },
+] as const;
+
+interface Draft {
+  minPrice: string;
+  maxPrice: string;
+  minStars: string;
+  minRating: string;
+  cancel: string;
+  sort: string;
+  q: string;
+  propertyType: string[];
+  board: string[];
+}
+
+const EMPTY_DRAFT: Draft = {
+  minPrice: "",
+  maxPrice: "",
+  minStars: "",
+  minRating: "",
+  cancel: "any",
+  sort: "recommended",
+  q: "",
+  propertyType: [],
+  board: [],
+};
+
+function readDraftFromUrl(sp: URLSearchParams): Draft {
+  return {
+    minPrice: sp.get("minPrice") ?? "",
+    maxPrice: sp.get("maxPrice") ?? "",
+    minStars: sp.get("minStars") ?? "",
+    minRating: sp.get("minRating") ?? "",
+    cancel: sp.get("cancel") ?? "any",
+    sort: sp.get("sort") ?? "recommended",
+    q: sp.get("q") ?? "",
+    propertyType: (sp.get("propertyType") ?? "").split(",").filter(Boolean),
+    board: (sp.get("board") ?? "").split(",").filter(Boolean),
+  };
+}
+
+// Count of fields that depart from default — used in "Zastosuj filtry (N)".
+function countActive(d: Draft): number {
+  let n = 0;
+  if (d.minPrice) n++;
+  if (d.maxPrice) n++;
+  if (d.minStars) n++;
+  if (d.minRating) n++;
+  if (d.cancel !== "any") n++;
+  if (d.sort !== "recommended") n++;
+  if (d.q) n++;
+  n += d.propertyType.length;
+  n += d.board.length;
+  return n;
+}
+
+function draftsEqual(a: Draft, b: Draft): boolean {
+  return (
+    a.minPrice === b.minPrice &&
+    a.maxPrice === b.maxPrice &&
+    a.minStars === b.minStars &&
+    a.minRating === b.minRating &&
+    a.cancel === b.cancel &&
+    a.sort === b.sort &&
+    a.q === b.q &&
+    a.propertyType.join(",") === b.propertyType.join(",") &&
+    a.board.join(",") === b.board.join(",")
+  );
+}
 
 export function FiltersSidebar() {
   const router = useRouter();
   const sp = useSearchParams();
+  const urlDraft = useMemo(() => readDraftFromUrl(sp), [sp]);
+  const [draft, setDraft] = useState<Draft>(urlDraft);
+  const [openOnMobile, setOpenOnMobile] = useState(false);
 
-  const setParam = (key: string, value: string | null) => {
+  // Reseed local draft when URL changes (e.g. when other parts of the page
+  // navigate, like the search-bar resubmit).
+  useEffect(() => {
+    setDraft(urlDraft);
+  }, [urlDraft]);
+
+  const stagedCount = countActive(draft);
+  const dirty = !draftsEqual(draft, urlDraft);
+
+  const apply = () => {
     const next = new URLSearchParams(sp.toString());
-    if (!value) next.delete(key);
-    else next.set(key, value);
+    const set = (k: string, v: string | null) => {
+      if (!v) next.delete(k);
+      else next.set(k, v);
+    };
+    set("minPrice", draft.minPrice || null);
+    set("maxPrice", draft.maxPrice || null);
+    set("minStars", draft.minStars || null);
+    set("minRating", draft.minRating || null);
+    set("cancel", draft.cancel === "any" ? null : draft.cancel);
+    set("sort", draft.sort === "recommended" ? null : draft.sort);
+    set("q", draft.q || null);
+    set("propertyType", draft.propertyType.length ? draft.propertyType.join(",") : null);
+    set("board", draft.board.length ? draft.board.join(",") : null);
+    router.replace(`/hotele/szukaj?${next.toString()}`, { scroll: false });
+    setOpenOnMobile(false);
+  };
+
+  const reset = () => {
+    setDraft(EMPTY_DRAFT);
+    // also clear the URL — the user's intent is "show me everything".
+    const next = new URLSearchParams(sp.toString());
+    for (const k of [
+      "minPrice", "maxPrice", "minStars", "minRating",
+      "cancel", "sort", "q", "propertyType", "board",
+    ]) {
+      next.delete(k);
+    }
     router.replace(`/hotele/szukaj?${next.toString()}`, { scroll: false });
   };
 
-  const minPrice = sp.get("minPrice") ?? "";
-  const maxPrice = sp.get("maxPrice") ?? "";
-  const minStars = sp.get("minStars");
-  const minRating = sp.get("minRating");
-  const cancel = sp.get("cancel") ?? "any";
-  const sort = sp.get("sort") ?? "recommended";
-
-  const [openOnMobile, setOpenOnMobile] = useState(false);
+  const toggle = (key: "propertyType" | "board", value: string) => {
+    setDraft((d) => {
+      const current = d[key];
+      const has = current.includes(value);
+      return { ...d, [key]: has ? current.filter((v) => v !== value) : [...current, value] };
+    });
+  };
 
   return (
     <>
@@ -47,18 +172,18 @@ export function FiltersSidebar() {
         onClick={() => setOpenOnMobile(true)}
         className="mb-3 inline-flex h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-800 lg:hidden"
       >
-        Filtry i sortowanie
+        Filtry i sortowanie {stagedCount > 0 ? `(${stagedCount})` : ""}
       </button>
 
       <aside
         className={
           openOnMobile
-            ? "fixed inset-0 z-40 overflow-auto bg-white p-5 lg:static lg:block lg:p-0"
+            ? "fixed inset-0 z-40 flex flex-col bg-white lg:static lg:block"
             : "hidden lg:block"
         }
       >
         {openOnMobile && (
-          <div className="mb-4 flex items-center justify-between lg:hidden">
+          <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3 lg:hidden">
             <h2 className="text-lg font-semibold">Filtry</h2>
             <button
               type="button"
@@ -69,31 +194,27 @@ export function FiltersSidebar() {
             </button>
           </div>
         )}
-        <div className="space-y-6 lg:sticky lg:top-20">
-          {/* Sort */}
+        <div className={`space-y-6 lg:sticky lg:top-20 ${openOnMobile ? "flex-1 overflow-auto p-5" : ""}`}>
           <FilterBlock title="Sortuj">
             <select
-              value={sort}
-              onChange={(e) => setParam("sort", e.target.value === "recommended" ? null : e.target.value)}
+              value={draft.sort}
+              onChange={(e) => setDraft((d) => ({ ...d, sort: e.target.value }))}
               className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"
             >
               {SORTS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           </FilterBlock>
 
-          {/* Price */}
           <FilterBlock title="Cena za pobyt (PLN)">
             <div className="flex items-center gap-2">
               <input
                 type="number"
                 inputMode="numeric"
                 placeholder="od"
-                value={minPrice}
-                onChange={(e) => setParam("minPrice", e.target.value || null)}
+                value={draft.minPrice}
+                onChange={(e) => setDraft((d) => ({ ...d, minPrice: e.target.value }))}
                 className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
               />
               <span className="text-neutral-400">—</span>
@@ -101,14 +222,13 @@ export function FiltersSidebar() {
                 type="number"
                 inputMode="numeric"
                 placeholder="do"
-                value={maxPrice}
-                onChange={(e) => setParam("maxPrice", e.target.value || null)}
+                value={draft.maxPrice}
+                onChange={(e) => setDraft((d) => ({ ...d, maxPrice: e.target.value }))}
                 className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
               />
             </div>
           </FilterBlock>
 
-          {/* Stars */}
           <FilterBlock title="Standard hotelu">
             <div className="space-y-1">
               {STARS.map((s) => (
@@ -116,8 +236,8 @@ export function FiltersSidebar() {
                   <input
                     type="radio"
                     name="minStars"
-                    checked={String(s) === minStars}
-                    onChange={() => setParam("minStars", String(s))}
+                    checked={String(s) === draft.minStars}
+                    onChange={() => setDraft((d) => ({ ...d, minStars: String(s) }))}
                     className="h-4 w-4 accent-emerald-600"
                   />
                   <span className="text-amber-500">{"★".repeat(s)}</span>
@@ -126,19 +246,18 @@ export function FiltersSidebar() {
               ))}
               <button
                 type="button"
-                onClick={() => setParam("minStars", null)}
+                onClick={() => setDraft((d) => ({ ...d, minStars: "" }))}
                 className="mt-1 text-xs font-medium text-emerald-700 hover:text-emerald-800"
               >
-                Wyczyść
+                Wyczyść standard
               </button>
             </div>
           </FilterBlock>
 
-          {/* Guest score */}
           <FilterBlock title="Ocena gości">
             <select
-              value={minRating ?? ""}
-              onChange={(e) => setParam("minRating", e.target.value || null)}
+              value={draft.minRating}
+              onChange={(e) => setDraft((d) => ({ ...d, minRating: e.target.value }))}
               className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
             >
               <option value="">Wszystkie</option>
@@ -148,7 +267,6 @@ export function FiltersSidebar() {
             </select>
           </FilterBlock>
 
-          {/* Cancellation */}
           <FilterBlock title="Anulacja">
             <div className="space-y-1">
               {CANCEL.map((c) => (
@@ -156,8 +274,8 @@ export function FiltersSidebar() {
                   <input
                     type="radio"
                     name="cancel"
-                    checked={cancel === c.value}
-                    onChange={() => setParam("cancel", c.value === "any" ? null : c.value)}
+                    checked={draft.cancel === c.value}
+                    onChange={() => setDraft((d) => ({ ...d, cancel: c.value }))}
                     className="h-4 w-4 accent-emerald-600"
                   />
                   <span>{c.label}</span>
@@ -166,85 +284,53 @@ export function FiltersSidebar() {
             </div>
           </FilterBlock>
 
-          {/* Sesja C pkt 4 — extended filters */}
           <FilterBlock title="Słowa kluczowe">
             <input
               type="text"
               placeholder="np. spa, basen, centrum"
-              value={sp.get("q") ?? ""}
-              onChange={(e) => setParam("q", e.target.value || null)}
+              value={draft.q}
+              onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
               className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"
             />
           </FilterBlock>
 
           <FilterBlock title="Typ obiektu">
             <div className="space-y-1 text-sm">
-              {[
-                { value: "hotel", label: "Hotel" },
-                { value: "apartment", label: "Apartament" },
-                { value: "aparthotel", label: "Aparthotel" },
-                { value: "hostel", label: "Hostel" },
-                { value: "guesthouse", label: "Pensjonat" },
-              ].map((p) => {
-                const current = (sp.get("propertyType") ?? "").split(",").filter(Boolean);
-                const checked = current.includes(p.value);
-                return (
-                  <label key={p.value} className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => {
-                        const next = checked
-                          ? current.filter((v) => v !== p.value)
-                          : [...current, p.value];
-                        setParam("propertyType", next.length ? next.join(",") : null);
-                      }}
-                      className="h-4 w-4 accent-emerald-600"
-                    />
-                    <span>{p.label}</span>
-                  </label>
-                );
-              })}
+              {PROPERTY_TYPES.map((p) => (
+                <label key={p.value} className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={draft.propertyType.includes(p.value)}
+                    onChange={() => toggle("propertyType", p.value)}
+                    className="h-4 w-4 accent-emerald-600"
+                  />
+                  <span>{p.label}</span>
+                </label>
+              ))}
             </div>
           </FilterBlock>
 
           <FilterBlock title="Wyżywienie">
             <div className="space-y-1 text-sm">
-              {[
-                { value: "room_only", label: "Bez wyżywienia" },
-                { value: "breakfast", label: "Ze śniadaniem" },
-                { value: "half_board", label: "HB (ze obiadokolacją)" },
-                { value: "full_board", label: "FB (pełne wyżywienie)" },
-                { value: "all_inclusive", label: "All Inclusive" },
-              ].map((b) => {
-                const current = (sp.get("board") ?? "").split(",").filter(Boolean);
-                const checked = current.includes(b.value);
-                return (
-                  <label key={b.value} className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => {
-                        const next = checked
-                          ? current.filter((v) => v !== b.value)
-                          : [...current, b.value];
-                        setParam("board", next.length ? next.join(",") : null);
-                      }}
-                      className="h-4 w-4 accent-emerald-600"
-                    />
-                    <span>{b.label}</span>
-                  </label>
-                );
-              })}
+              {BOARD_TYPES.map((b) => (
+                <label key={b.value} className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={draft.board.includes(b.value)}
+                    onChange={() => toggle("board", b.value)}
+                    className="h-4 w-4 accent-emerald-600"
+                  />
+                  <span>{b.label}</span>
+                </label>
+              ))}
             </div>
           </FilterBlock>
 
-          {/* Amenities + distance: data not available on the LiteAPI list
-              endpoint (only on hotel detail), so the UI is here for
-              consistency but the filter functions are no-ops until the
-              adapter is extended in a follow-up. Marked visually muted
-              so users don't expect immediate effect. */}
-          <FilterBlock title={"Udogodnienia (wkrótce)"}>
+          {/* Udogodnienia: see Sesja C1 FIX 4 — list endpoint doesn't return
+              amenities, so this filter waits for an adapter extension. UI
+              kept disabled with a clear "(wkrótce)" so users see the surface
+              area but don't get fooled by a no-op. */}
+          <FilterBlock title="Udogodnienia (wkrótce)">
             <div className="space-y-1 text-sm text-neutral-400">
               {["WiFi", "Parking", "Basen", "Klimatyzacja", "Śniadanie"].map((a) => (
                 <label key={a} className="flex items-center gap-2 opacity-60">
@@ -254,16 +340,31 @@ export function FiltersSidebar() {
               ))}
             </div>
           </FilterBlock>
+        </div>
 
-          {openOnMobile && (
-            <button
-              type="button"
-              onClick={() => setOpenOnMobile(false)}
-              className="w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white"
-            >
-              Pokaż wyniki
-            </button>
-          )}
+        {/* Apply / reset row — sticky bottom on mobile, inline on desktop */}
+        <div
+          className={
+            openOnMobile
+              ? "sticky bottom-0 mt-auto flex gap-2 border-t border-neutral-200 bg-white p-4 lg:static lg:p-0"
+              : "mt-4 flex gap-2 lg:sticky lg:bottom-2"
+          }
+        >
+          <button
+            type="button"
+            onClick={reset}
+            className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+          >
+            Wyczyść
+          </button>
+          <button
+            type="button"
+            onClick={apply}
+            disabled={!dirty}
+            className="flex-1 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-default disabled:bg-emerald-700/40"
+          >
+            {dirty ? `Zastosuj filtry${stagedCount > 0 ? ` (${stagedCount})` : ""}` : "Filtry zastosowane"}
+          </button>
         </div>
       </aside>
     </>
