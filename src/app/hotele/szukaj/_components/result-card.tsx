@@ -4,6 +4,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { localizeCountry } from "@/lib/mvp/i18n-geo";
+
 interface OfferCard {
   hotelId: string;
   name: string;
@@ -148,7 +150,7 @@ export function ResultCard({
               )}
               <span>
                 {offer.city}
-                {offer.country ? `, ${offer.country}` : ""}
+                {offer.country ? `, ${localizeCountry(offer.country)}` : ""}
               </span>
             </div>
           </div>

@@ -5,6 +5,7 @@ import {
   formatPricePLN,
   getDestinationSocialProof,
 } from "@/lib/mvp/destination-social-proof";
+import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { DEFAULT_ORIGIN_CITY } from "@/lib/mvp/origin-cities";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
@@ -86,7 +87,7 @@ export function DestinationTile({
       <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.9)_55%,rgba(5,18,11,0.95)_100%)] p-3 text-white">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-            {destination.country}
+            {localizeCountry(destination.country)}
           </p>
           <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-100 backdrop-blur-sm">
             <span className="relative flex h-1.5 w-1.5">

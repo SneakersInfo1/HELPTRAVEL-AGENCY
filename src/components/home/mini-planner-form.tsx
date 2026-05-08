@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
 import {
   DEFAULT_ORIGIN_CITY,
@@ -240,25 +241,26 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
               {destFetching ? (
                 <li className="px-3 py-2 text-sm text-emerald-900/56">Szukamy kierunków…</li>
               ) : destSuggestions.length > 0 ? (
-                destSuggestions.map((s, idx) => (
-                  <li
-                    key={s.id}
-                    role="option"
-                    aria-selected={idx === destHighlight}
-                    onMouseDown={() => selectSuggestion(s)}
-                    onMouseEnter={() => setDestHighlight(idx)}
-                    className={`cursor-pointer px-3 py-2 text-sm transition ${
-                      idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
-                    }`}
-                  >
-                    <div className="font-semibold text-emerald-950">{s.city}</div>
-                    {(s.country || s.region) && (
-                      <div className="text-xs text-emerald-900/56">
-                        {[s.country, s.region].filter(Boolean).join(" · ")}
-                      </div>
-                    )}
-                  </li>
-                ))
+                destSuggestions.map((s, idx) => {
+                  const ctry = localizeCountry(s.country);
+                  const reg = localizeRegion(s.region);
+                  const meta = [ctry, reg].filter(Boolean).join(" · ");
+                  return (
+                    <li
+                      key={s.id}
+                      role="option"
+                      aria-selected={idx === destHighlight}
+                      onMouseDown={() => selectSuggestion(s)}
+                      onMouseEnter={() => setDestHighlight(idx)}
+                      className={`cursor-pointer px-3 py-2 text-sm transition ${
+                        idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
+                      }`}
+                    >
+                      <div className="font-semibold text-emerald-950">{s.city}</div>
+                      {meta && <div className="text-xs text-emerald-900/56">{meta}</div>}
+                    </li>
+                  );
+                })
               ) : (
                 <li className="px-3 py-2 text-sm text-emerald-900/56">
                   Brak wyników dla „{destQuery}&rdquo;. Spróbuj innego miasta lub kraju.
