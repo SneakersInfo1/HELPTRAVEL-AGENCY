@@ -27,7 +27,7 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
       {/* Urgency strip nad hero */}
       <UrgencyStrip />
 
-      <section className="relative overflow-hidden rounded-b-[2rem] shadow-[0_30px_80px_rgba(16,84,48,0.22)] sm:rounded-[2rem]">
+      <section id="hero" className="relative scroll-mt-20 overflow-hidden rounded-b-[2rem] shadow-[0_30px_80px_rgba(16,84,48,0.22)] sm:rounded-[2rem]">
         {/* Cinematic tlo */}
         <CinematicBackdrop images={backdropImages} />
 

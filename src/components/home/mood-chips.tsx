@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 
 import { useLanguage } from "@/components/site/language-provider";
-import { DEFAULT_ORIGIN_CITY } from "@/lib/mvp/origin-cities";
 
 interface MoodChip {
   key: string;
@@ -26,15 +25,15 @@ export function MoodChips() {
   const { locale } = useLanguage();
   const prefix = locale === "en" ? "/en" : "";
 
+  // Sesja C1 FIX 7: mood chips no longer route to /planner (gone). The
+  // discovery free-text mode lived only there; on /hotele/szukaj users
+  // pick a concrete destination. Send chip clicks to the hero form
+  // instead — anchor scroll + the chosen mood remembered as a hint
+  // (`?intent=…`) the hero can pick up later if we wire mood→catalog
+  // filtering. For now the user lands focused on the destination input.
   function go(q: string) {
-    const params = new URLSearchParams({
-      mode: "standard",
-      origin: DEFAULT_ORIGIN_CITY,
-      nights: "4",
-      travelers: "2",
-      q,
-    });
-    router.push(`${prefix}/planner?${params.toString()}`);
+    void q; // intent ignored until /hotele search supports mood filters
+    router.push(`${prefix}/#hero`);
   }
 
   return (
