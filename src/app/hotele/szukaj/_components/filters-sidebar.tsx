@@ -195,6 +195,27 @@ export function FiltersSidebar() {
           </div>
         )}
         <div className={`space-y-6 lg:sticky lg:top-20 ${openOnMobile ? "flex-1 overflow-auto p-5" : ""}`}>
+          {/* Apply / reset row at top — Booking-style. The whole sidebar is
+              sticky on desktop, so the action stays in view as the user
+              scrolls through filter content. */}
+          <div className="-mx-1 flex gap-2 border-b border-neutral-200 pb-4">
+            <button
+              type="button"
+              onClick={reset}
+              className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+            >
+              Wyczyść
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              disabled={!dirty}
+              className="flex-1 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-default disabled:bg-emerald-700/40"
+            >
+              {dirty ? `Zastosuj filtry${stagedCount > 0 ? ` (${stagedCount})` : ""}` : "Filtry zastosowane"}
+            </button>
+          </div>
+
           <FilterBlock title="Sortuj">
             <select
               value={draft.sort}
@@ -342,30 +363,26 @@ export function FiltersSidebar() {
           </FilterBlock>
         </div>
 
-        {/* Apply / reset row — sticky bottom on mobile, inline on desktop */}
-        <div
-          className={
-            openOnMobile
-              ? "sticky bottom-0 mt-auto flex gap-2 border-t border-neutral-200 bg-white p-4 lg:static lg:p-0"
-              : "mt-4 flex gap-2 lg:sticky lg:bottom-2"
-          }
-        >
-          <button
-            type="button"
-            onClick={reset}
-            className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
-          >
-            Wyczyść
-          </button>
-          <button
-            type="button"
-            onClick={apply}
-            disabled={!dirty}
-            className="flex-1 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-default disabled:bg-emerald-700/40"
-          >
-            {dirty ? `Zastosuj filtry${stagedCount > 0 ? ` (${stagedCount})` : ""}` : "Filtry zastosowane"}
-          </button>
-        </div>
+        {/* Mobile-only sticky-bottom apply (desktop has it at top). */}
+        {openOnMobile && (
+          <div className="sticky bottom-0 mt-auto flex gap-2 border-t border-neutral-200 bg-white p-4 lg:hidden">
+            <button
+              type="button"
+              onClick={reset}
+              className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+            >
+              Wyczyść
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              disabled={!dirty}
+              className="flex-1 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-default disabled:bg-emerald-700/40"
+            >
+              {dirty ? `Zastosuj filtry${stagedCount > 0 ? ` (${stagedCount})` : ""}` : "Filtry zastosowane"}
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );
