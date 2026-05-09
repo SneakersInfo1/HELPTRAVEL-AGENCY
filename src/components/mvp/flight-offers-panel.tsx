@@ -526,10 +526,13 @@ export function FlightOffersPanel(props: {
                 locale={locale}
                 t={t}
                 isDeal={dealEligibleIds.has(offer.offerId)}
+                // Use offer's ACTUAL departure date — the panel shows ±2
+                // days around the user's pick (more results), so the URL
+                // must match the row, not the original query.
                 ctaUrl={aviasalesOneWayUrl(
                   offer.origin,
                   offer.destination,
-                  queryDate,
+                  offer.departure_time?.slice(0, 10) || queryDate,
                   props.passengers,
                 )}
               />
