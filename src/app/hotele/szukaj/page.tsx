@@ -77,9 +77,12 @@ export default async function HotelResultsPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      {/* Sticky search bar — slim summary by default after submit, expands
-          inline on click. Sesja C1 FIX 1. */}
-      <div className="sticky top-0 z-20 shadow-sm">
+      {/* Sticky search bar — sits BELOW the site-shell header (which is
+          itself sticky top-0 z-30). Without this offset the bar slides
+          underneath the header on scroll and only its bottom edge is
+          visible. Header logo h-12 (48px) + py-2 (16px) + mt-2 (8px) ≈ 72px
+          on mobile; sm: bumps to ≈ 84px because logo is sm:h-14. */}
+      <div className="sticky top-[72px] z-20 shadow-sm sm:top-[84px]">
         <CollapsibleSearchBar
           valid={Boolean(valid)}
           initial={{

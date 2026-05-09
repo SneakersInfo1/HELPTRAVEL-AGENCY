@@ -194,7 +194,11 @@ export function FiltersSidebar() {
             </button>
           </div>
         )}
-        <div className={`space-y-6 lg:sticky lg:top-20 ${openOnMobile ? "flex-1 overflow-auto p-5" : ""}`}>
+        {/* lg:top must clear both the site-shell header (sticky top-0 z-30,
+            ~84px tall on sm+) AND the search-bar (sticky top-[84px], ~56px
+            collapsed). 84 + 56 = 140 — tight but stops the sidebar from
+            slipping under the search bar on scroll. */}
+        <div className={`space-y-6 lg:sticky lg:top-[148px] ${openOnMobile ? "flex-1 overflow-auto p-5" : ""}`}>
           {/* Apply / reset row at top — Booking-style. The whole sidebar is
               sticky on desktop, so the action stays in view as the user
               scrolls through filter content. */}

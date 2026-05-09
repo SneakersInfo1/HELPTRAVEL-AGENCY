@@ -228,6 +228,16 @@ function formatTime(value: string, locale: "pl" | "en"): string {
   }).format(date);
 }
 
+function formatDayShort(value: string, locale: "pl" | "en"): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "pl-PL", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
 function aviasalesOneWayUrl(
   originIata: string,
   destIata: string,
@@ -583,6 +593,9 @@ function FlightLeg({
       <div className="flex flex-1 items-center gap-3">
         <div className="text-center">
           <p className="text-base font-bold text-emerald-950">{formatTime(departureTime, locale)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+            {formatDayShort(departureTime, locale)}
+          </p>
           <p className="text-[11px] text-emerald-900/56" title={formatAirport(origin)}>
             {formatAirport(origin)}
           </p>
@@ -600,6 +613,9 @@ function FlightLeg({
         </div>
         <div className="text-center">
           <p className="text-base font-bold text-emerald-950">{formatTime(arrivalTime, locale)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+            {formatDayShort(arrivalTime, locale)}
+          </p>
           <p className="text-[11px] text-emerald-900/56" title={formatAirport(destination)}>
             {formatAirport(destination)}
           </p>
