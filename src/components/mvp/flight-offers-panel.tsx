@@ -461,7 +461,7 @@ export function FlightOffersPanel(props: {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setDirection(dir)}
-                className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                className={`rounded-full px-4 py-1.5 text-xs font-bold tracking-wide transition ${
                   active ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-white/70"
                 }`}
               >
