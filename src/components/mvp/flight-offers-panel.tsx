@@ -116,17 +116,14 @@ const copy = {
   pl: {
     eyebrow: "Loty",
     title: "Konkretne oferty lotów",
-    body: "Ceny orientacyjne z cache Travelpayouts (za 1 osobę). Finalna cena potwierdzana po kliknięciu u partnera.",
     bookNow: "Sprawdź lot",
     perPerson: "/ os.",
     cheapest: "Najtańsza",
     priceFromLabel: "od",
-    roundTripCta: "↔ Szukaj lotów w obie strony",
     showMore: "Pokaż więcej lotów",
     empty: "Nie znaleźliśmy lotów dla tej trasy i daty. Zmień dzień wylotu.",
     requestError: "Nie udało się pobrać ofert lotów.",
     deal: "🔥 OKAZJA",
-    stops: (n: number) => (n === 0 ? "bezpośrednio" : n === 1 ? "1 przesiadka" : `${n} przesiadki`),
     duration: "Czas",
     sortBest: "Najlepsze",
     sortCheap: "Najtańsze",
@@ -135,21 +132,21 @@ const copy = {
     nonstopBadge: "Bezpośredni",
     oneStopBadge: "1 przesiadka",
     multiStopBadge: "2+ przesiadki",
+    tabOutbound: "Docelowe",
+    tabReturn: "Powrotne",
+    tabsAriaLabel: "Kierunek lotu",
   },
   en: {
     eyebrow: "Flights",
     title: "Concrete flight offers",
-    body: "Indicative prices cached by Travelpayouts (per person). Final price confirmed at partner after click.",
     bookNow: "Check flight",
     perPerson: "/ pers.",
     cheapest: "Cheapest",
     priceFromLabel: "from",
-    roundTripCta: "↔ Search round-trip flights",
     showMore: "Show more flights",
     empty: "We couldn't find flights for this route and date. Try a different day.",
     requestError: "Could not load flight offers.",
     deal: "🔥 DEAL",
-    stops: (n: number) => (n === 0 ? "non-stop" : n === 1 ? "1 stop" : `${n} stops`),
     duration: "Duration",
     sortBest: "Best",
     sortCheap: "Cheapest",
@@ -158,8 +155,13 @@ const copy = {
     nonstopBadge: "Non-stop",
     oneStopBadge: "1 stop",
     multiStopBadge: "2+ stops",
+    tabOutbound: "Outbound",
+    tabReturn: "Return",
+    tabsAriaLabel: "Flight direction",
   },
 } as const;
+
+type Direction = "outbound" | "return";
 
 type FlightSortKey = "best" | "cheap" | "fast";
 
@@ -226,38 +228,31 @@ function formatTime(value: string, locale: "pl" | "en"): string {
   }).format(date);
 }
 
-function aviasalesRoundTripUrl(
+function aviasalesOneWayUrl(
   originIata: string,
   destIata: string,
   departureDate: string,
-  returnDate: string,
   passengers: number,
 ): string | null {
-  if (!departureDate || !returnDate) return null;
+  if (!departureDate) return null;
   const marker = process.env.NEXT_PUBLIC_TRAVELPAYOUTS_MARKER ?? "";
-  const fmt = (d: string) => {
-    const date = new Date(d);
-    if (Number.isNaN(date.getTime())) return null;
-    const dd = String(date.getUTCDate()).padStart(2, "0");
-    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
-    return `${dd}${mm}`;
-  };
-  const dep = fmt(departureDate);
-  const ret = fmt(returnDate);
-  if (!dep || !ret) return null;
+  const date = new Date(departureDate);
+  if (Number.isNaN(date.getTime())) return null;
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
   const pax = Math.max(1, passengers);
-  const base = `https://www.aviasales.com/search/${originIata.toUpperCase()}${dep}${destIata.toUpperCase()}${ret}${pax}1`;
+  const base = `https://www.aviasales.com/search/${originIata.toUpperCase()}${dd}${mm}${destIata.toUpperCase()}${pax}1`;
   return marker ? `${base}?marker=${marker}` : base;
 }
 
 type Copy = (typeof copy)[keyof typeof copy];
 
-function FlightCard({ offer, locale, t, isDeal, roundTripUrl }: {
+function FlightCard({ offer, locale, t, isDeal, ctaUrl }: {
   offer: NormalizedFlightOffer;
   locale: "pl" | "en";
   t: Copy;
   isDeal: boolean;
-  roundTripUrl: string | null;
+  ctaUrl: string | null;
 }) {
   const stopsLabel = offer.number_of_stops === 0 ? t.nonstopBadge : offer.number_of_stops === 1 ? t.oneStopBadge : t.multiStopBadge;
   const stopsClasses =
@@ -280,11 +275,9 @@ function FlightCard({ offer, locale, t, isDeal, roundTripUrl }: {
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">{offer.airline}</p>
       </div>
 
-      {/* Sesja C1 FIX 2 — when round-trip data present, stack outbound +
-          return as two rows. One-way path renders just the first row. */}
       <div className="flex flex-1 flex-col gap-2">
         <FlightLeg
-          label={offer.return_departure_time ? "Tam" : null}
+          label={null}
           arrow="→"
           origin={offer.origin}
           destination={offer.destination}
@@ -296,35 +289,6 @@ function FlightCard({ offer, locale, t, isDeal, roundTripUrl }: {
           locale={locale}
           airline={offer.airline}
         />
-        {offer.return_departure_time && offer.return_arrival_time && (
-          <div className="border-t border-emerald-100 pt-2">
-            <FlightLeg
-              label="Powrót"
-              arrow="←"
-              origin={offer.destination}
-              destination={offer.origin}
-              departureTime={offer.return_departure_time}
-              arrivalTime={offer.return_arrival_time}
-              duration={offer.return_duration ?? offer.total_duration}
-              stopsLabel={
-                (offer.return_number_of_stops ?? 0) === 0
-                  ? t.nonstopBadge
-                  : (offer.return_number_of_stops ?? 0) === 1
-                    ? t.oneStopBadge
-                    : t.multiStopBadge
-              }
-              stopsClasses={
-                (offer.return_number_of_stops ?? 0) === 0
-                  ? "bg-emerald-100 text-emerald-800"
-                  : (offer.return_number_of_stops ?? 0) === 1
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-neutral-100 text-neutral-700"
-              }
-              locale={locale}
-              airline={offer.airline}
-            />
-          </div>
-        )}
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-2">
@@ -335,28 +299,16 @@ function FlightCard({ offer, locale, t, isDeal, roundTripUrl }: {
           </p>
           <p className="text-[10px] text-emerald-900/56">{t.perPerson}</p>
         </div>
-        <div className="flex flex-col gap-1.5">
-          {offer.bookingUrl ? (
-            <a
-              href={offer.bookingUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
-            >
-              {t.bookNow}
-            </a>
-          ) : null}
-          {roundTripUrl ? (
-            <a
-              href={roundTripUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="whitespace-nowrap rounded-full border border-emerald-700 px-5 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
-            >
-              {t.roundTripCta}
-            </a>
-          ) : null}
-        </div>
+        {ctaUrl ? (
+          <a
+            href={offer.bookingUrl ?? ctaUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            {t.bookNow}
+          </a>
+        ) : null}
       </div>
     </article>
   );
@@ -372,13 +324,29 @@ export function FlightOffersPanel(props: {
 }) {
   const { locale } = useLanguage();
   const t = copy[locale];
+  const [direction, setDirection] = useState<Direction>("outbound");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<FlightSearchResponse | null>(null);
   const [visible, setVisible] = useState(INITIAL_VISIBLE);
 
+  // Per-direction one-way query: outbound = origin → destination on
+  // departureDate; return = destination → origin on returnDate. Calling the
+  // API one-way (no returnDate) routes through TP /v3/prices_for_dates which
+  // returns real per-flight durations and direct flights — round-trip
+  // /v3/get_latest_prices only returns paired stopover combos with halved
+  // duration estimates (that's why WAW→BER showed as "17h").
+  const queryOrigin = direction === "outbound" ? props.originCity : props.destinationCity;
+  const queryDestination = direction === "outbound" ? props.destinationCity : props.originCity;
+  const queryDate = direction === "outbound" ? props.departureDate : props.returnDate;
+  const hasReturnLeg = Boolean(props.returnDate);
+
   useEffect(() => {
-    if (!props.destinationCity || !props.originCity || !props.departureDate) return;
+    if (!queryDestination || !queryOrigin || !queryDate) {
+      setData(null);
+      setError("");
+      return;
+    }
     let cancelled = false;
     const timeout = window.setTimeout(() => {
       void (async () => {
@@ -386,13 +354,9 @@ export function FlightOffersPanel(props: {
         setError("");
         try {
           const result = await postJson<FlightSearchResponse>("/api/flights/search", {
-            origin: props.originCity,
-            destination: props.destinationCity,
-            departureDate: props.departureDate,
-            // Sesja C1 FIX 2 — request the round-trip path. The API
-            // adapter will fall back to one-way if the cache has no
-            // paired itineraries for these dates.
-            returnDate: props.returnDate || undefined,
+            origin: queryOrigin,
+            destination: queryDestination,
+            departureDate: queryDate,
             passengers: props.passengers,
             cabinClass: "economy",
             sortBy: "cheap",
@@ -416,10 +380,9 @@ export function FlightOffersPanel(props: {
       window.clearTimeout(timeout);
     };
   }, [
-    props.departureDate,
-    props.returnDate,
-    props.destinationCity,
-    props.originCity,
+    queryDate,
+    queryDestination,
+    queryOrigin,
     props.passengers,
     t.requestError,
   ]);
@@ -472,8 +435,32 @@ export function FlightOffersPanel(props: {
       <header className="mb-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{t.eyebrow}</p>
         <h2 className="mt-1 text-xl font-bold text-emerald-950">{t.title}</h2>
-        <p className="mt-1 text-sm text-emerald-900/72">{t.body}</p>
       </header>
+
+      {/* Direction tabs (Docelowe / Powrotne) — primary axis. Each tab fires
+          its own one-way query so durations + direct-flight availability are
+          real (not halved round-trip estimates). */}
+      {hasReturnLeg && (
+        <div role="tablist" aria-label={t.tabsAriaLabel} className="mb-3 inline-flex gap-1 rounded-full bg-emerald-50 p-1">
+          {(["outbound", "return"] as const).map((dir) => {
+            const active = direction === dir;
+            return (
+              <button
+                key={dir}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setDirection(dir)}
+                className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                  active ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-white/70"
+                }`}
+              >
+                {dir === "outbound" ? t.tabOutbound : t.tabReturn}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Sort tabs + direct-only filter */}
       {!loading && allOffers.length > 0 && (
@@ -529,11 +516,10 @@ export function FlightOffersPanel(props: {
                 locale={locale}
                 t={t}
                 isDeal={dealEligibleIds.has(offer.offerId)}
-                roundTripUrl={aviasalesRoundTripUrl(
+                ctaUrl={aviasalesOneWayUrl(
                   offer.origin,
                   offer.destination,
-                  props.departureDate,
-                  props.returnDate,
+                  queryDate,
                   props.passengers,
                 )}
               />
