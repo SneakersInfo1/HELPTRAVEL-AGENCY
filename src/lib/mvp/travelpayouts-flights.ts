@@ -267,14 +267,24 @@ export async function searchTravelpayoutsFlights(
   }
 
   // 1) Pierwszy strzal: konkretny dzien
-  const entries = await fetchTpFlights(originIata, destinationIata, input.departureDate, token, input.sortBy);
+  const dayEntries = await fetchTpFlights(originIata, destinationIata, input.departureDate, token, input.sortBy);
 
-  // 2) Jesli mniej niz 5 wynikow, doladuj z calego miesiaca
+  // 2) Jesli day query ma <5 wynikow, doladuj z calego miesiaca, ale FILTRUJ
+  // do dokladnie wybranego dnia. Bez tego month fallback wpychal loty z
+  // dowolnych dni do listy, a karta i tak pokazuje tylko HH:MM (nie pelna
+  // date) — uzytkownik mial wrazenie ze klika na lot 24 maja, a Aviasales
+  // ladowal mu z innym lotem (bo offer.departure_at byl np. 2026-05-15).
+  // Strict date filter -> co widac to co dostaniesz na Aviasales.
+  const entries = [...dayEntries];
   if (entries.length < 5) {
     const month = input.departureDate.slice(0, 7); // YYYY-MM
     const monthEntries = await fetchTpFlights(originIata, destinationIata, month, token, input.sortBy);
     const seen = new Set(entries.map((e) => `${e.airline}-${e.flight_number}-${e.departure_at}`));
     for (const entry of monthEntries) {
+      // Hard date gate: keep only entries departing on the requested day.
+      if (!entry.departure_at || entry.departure_at.slice(0, 10) !== input.departureDate) {
+        continue;
+      }
       const key = `${entry.airline}-${entry.flight_number}-${entry.departure_at}`;
       if (!seen.has(key)) {
         entries.push(entry);
