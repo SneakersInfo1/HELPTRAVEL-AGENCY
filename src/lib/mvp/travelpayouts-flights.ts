@@ -269,22 +269,25 @@ export async function searchTravelpayoutsFlights(
   // 1) Pierwszy strzal: konkretny dzien
   const dayEntries = await fetchTpFlights(originIata, destinationIata, input.departureDate, token, input.sortBy);
 
-  // 2) Jesli day query ma <5 wynikow, doladuj z calego miesiaca, ale FILTRUJ
-  // do dokladnie wybranego dnia. Bez tego month fallback wpychal loty z
-  // dowolnych dni do listy, a karta i tak pokazuje tylko HH:MM (nie pelna
-  // date) — uzytkownik mial wrazenie ze klika na lot 24 maja, a Aviasales
-  // ladowal mu z innym lotem (bo offer.departure_at byl np. 2026-05-15).
-  // Strict date filter -> co widac to co dostaniesz na Aviasales.
+  // 2) Doladuj z miesiaca, ale tylko +/- DAY_WINDOW dni od wybranej daty.
+  // Strict same-day filter zostawial nas z 1-3 ofertami na krotkich trasach
+  // (TP cache jest rzadki). Okno +/- 2 dni daje 4-9 ofert i NIE wprowadza
+  // dezorientacji bo:
+  //   (a) karta pokazuje pelna date (np. "24 maj"),
+  //   (b) Aviasales CTA uzywa offer.departure_at (rzeczywista data oferty),
+  //       nie daty z URL'a — co widac na karcie ladujesz na Aviasales.
+  const DAY_WINDOW = 2;
+  const targetDate = new Date(`${input.departureDate}T00:00:00Z`).getTime();
   const entries = [...dayEntries];
-  if (entries.length < 5) {
+  if (entries.length < 8) {
     const month = input.departureDate.slice(0, 7); // YYYY-MM
     const monthEntries = await fetchTpFlights(originIata, destinationIata, month, token, input.sortBy);
     const seen = new Set(entries.map((e) => `${e.airline}-${e.flight_number}-${e.departure_at}`));
     for (const entry of monthEntries) {
-      // Hard date gate: keep only entries departing on the requested day.
-      if (!entry.departure_at || entry.departure_at.slice(0, 10) !== input.departureDate) {
-        continue;
-      }
+      if (!entry.departure_at) continue;
+      const entryDate = new Date(`${entry.departure_at.slice(0, 10)}T00:00:00Z`).getTime();
+      const dayDiff = Math.abs((entryDate - targetDate) / 86_400_000);
+      if (!Number.isFinite(dayDiff) || dayDiff > DAY_WINDOW) continue;
       const key = `${entry.airline}-${entry.flight_number}-${entry.departure_at}`;
       if (!seen.has(key)) {
         entries.push(entry);
@@ -292,6 +295,13 @@ export async function searchTravelpayoutsFlights(
       }
     }
   }
+  // Sort: exact-date matches first (so the date the user actually picked
+  // bubbles to the top), then closest-date adjacent.
+  entries.sort((a, b) => {
+    const aDate = new Date(`${a.departure_at.slice(0, 10)}T00:00:00Z`).getTime();
+    const bDate = new Date(`${b.departure_at.slice(0, 10)}T00:00:00Z`).getTime();
+    return Math.abs(aDate - targetDate) - Math.abs(bDate - targetDate);
+  });
 
   if (entries.length === 0) {
     return emptyResponse(input, "Brak ofert lotow dla tej trasy.");
