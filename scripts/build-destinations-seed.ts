@@ -68,6 +68,31 @@ const HOTEL_RPS = 3;
 const COUNTRIES_RPS = 5;
 const WIKIDATA_RPS = 3; // wikidata.org public API — be polite
 
+// Curated top-tourism countries for --full mode. Walking every LiteAPI
+// country gives us 10k+ obscure cities that mostly drop at the >=15-hotel
+// filter and cost API calls; this allowlist keeps the run bounded
+// (~60 countries × avg 25 cities = ~1500 hotel checks, ~8 min wall-time
+// at 3 rps). Any country not in this list still gets covered by the
+// curated catalog seed.
+const TOP_TOURISM_COUNTRIES: ReadonlyArray<string> = [
+  // Europe — south & islands (highest pl-outbound)
+  "ES", "PT", "IT", "GR", "CY", "MT", "HR", "ME", "AL", "BA", "RS", "MK", "BG",
+  // Europe — west / central / north
+  "FR", "DE", "AT", "CH", "NL", "BE", "LU", "GB", "IE", "DK", "SE", "NO", "FI", "IS",
+  // Europe — central / east
+  "PL", "CZ", "SK", "HU", "SI", "RO", "MD",
+  // Baltics
+  "EE", "LV", "LT",
+  // MENA + Middle East
+  "TR", "MA", "TN", "EG", "DZ", "JO", "IL", "AE", "QA", "OM", "SA",
+  // Asia
+  "TH", "ID", "VN", "SG", "MY", "PH", "JP", "KR", "HK", "TW", "IN", "LK", "MV", "NP", "CN",
+  // Americas
+  "US", "CA", "MX", "CR", "DO", "CU", "JM", "BR", "AR", "CL", "PE", "CO",
+  // Africa + Oceania
+  "ZA", "KE", "TZ", "MU", "SC", "AU", "NZ", "FJ",
+];
+
 // ────────────────────────────────────────────────────────────────────────────
 // CLI
 
@@ -75,21 +100,41 @@ interface CliOptions {
   full: boolean;
   max: number | null;
   noNetwork: boolean;
+  prod: boolean;
+  countries: string[] | null;
+  perCountry: number;
 }
 
 function parseCli(argv: string[]): CliOptions {
   let full = false;
   let max: number | null = null;
   let noNetwork = false;
+  let prod = false;
+  let countries: string[] | null = null;
+  // LiteAPI sandbox returns thousands of city rows per country (most are
+  // tiny villages with no hotels). 30 keeps the harvest bounded — the
+  // curated catalog already covers the top 5-15 cities per country, and
+  // anything past slot 30 is almost certainly low-value.
+  let perCountry = 30;
   for (const arg of argv.slice(2)) {
     if (arg === "--full") full = true;
     else if (arg === "--no-network") noNetwork = true;
+    else if (arg === "--prod") prod = true;
     else if (arg.startsWith("--max=")) {
       const n = Number(arg.slice("--max=".length));
       if (Number.isFinite(n) && n > 0) max = n;
+    } else if (arg.startsWith("--countries=")) {
+      countries = arg
+        .slice("--countries=".length)
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+    } else if (arg.startsWith("--per-country=")) {
+      const n = Number(arg.slice("--per-country=".length));
+      if (Number.isFinite(n) && n > 0) perCountry = Math.floor(n);
     }
   }
-  return { full, max, noNetwork };
+  return { full, max, noNetwork, prod, countries, perCountry };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -810,7 +855,10 @@ function sourceFromCatalog(): SourceCity[] {
   });
 }
 
-async function sourceFromLiteApiListings(countryFilter?: string[]): Promise<SourceCity[]> {
+async function sourceFromLiteApiListings(
+  countryFilter?: string[],
+  perCountry = 30,
+): Promise<SourceCity[]> {
   const countries = await fetchCountries();
   const selected = countryFilter
     ? countries.filter((c) => countryFilter.includes(c.code))
@@ -820,7 +868,18 @@ async function sourceFromLiteApiListings(countryFilter?: string[]): Promise<Sour
     selected,
     async (country) => {
       const cities = await fetchCitiesForCountry(country.code);
-      for (const c of cities) {
+      // Prefer cities that already resolve to a real IATA airport — those
+      // are the ones the seed pipeline can actually book flights to. We
+      // still cap at perCountry but bias toward airport-served cities so
+      // we don't waste hotel-check API calls on landlocked villages.
+      const ranked = [...cities].sort((a, b) => {
+        const aHasAirport = resolveAirportCode(a.city) ? 0 : 1;
+        const bHasAirport = resolveAirportCode(b.city) ? 0 : 1;
+        if (aHasAirport !== bHasAirport) return aHasAirport - bHasAirport;
+        return a.city.localeCompare(b.city);
+      });
+      const capped = ranked.slice(0, perCountry);
+      for (const c of capped) {
         out.push({
           city: c.city,
           country: country.name,
@@ -873,21 +932,57 @@ interface IndexEntry {
 async function main(): Promise<void> {
   const opts = parseCli(process.argv);
   const startedAt = Date.now();
-  console.log(`[build-destinations] mode=${opts.full ? "full" : "pilot"} max=${opts.max ?? "∞"} no-network=${opts.noNetwork}`);
+
+  // --prod flips the LiteAPI client to production keys. Default = sandbox.
+  // We override the env var BEFORE liteApiRequest evaluates its env (the
+  // client reads process.env per request).
+  if (opts.prod) {
+    process.env.LITEAPI_ENV = "production";
+  }
+
+  // --full without --countries defaults to the curated tourism allowlist
+  // (walking every LiteAPI country = 10k+ obscure cities for negligible
+  // user value). Explicit --countries override takes priority.
+  const countryFilter = opts.full
+    ? opts.countries ?? [...TOP_TOURISM_COUNTRIES]
+    : null;
+
+  console.log(
+    `[build-destinations] mode=${opts.full ? "full" : "pilot"} prod=${opts.prod} max=${opts.max ?? "∞"} ` +
+      `countries=${countryFilter ? countryFilter.length : "(pilot)"} no-network=${opts.noNetwork}`,
+  );
 
   await fs.mkdir(CACHE_DIR, { recursive: true });
 
   // 1) Source cities.
   let source = opts.full
-    ? await sourceFromLiteApiListings()
+    ? await sourceFromLiteApiListings(countryFilter ?? undefined, opts.perCountry)
     : sourceFromCatalog();
+
+  // De-dupe: --full pulls catalog + LiteAPI listings combined. Catalog
+  // entries beat LiteAPI entries (richer metadata / vetted IATAs).
+  if (opts.full) {
+    const catalogEntries = sourceFromCatalog();
+    const seen = new Set<string>(catalogEntries.map((e) => `${e.city.toLowerCase()}|${e.country.toLowerCase()}`));
+    const merged = [...catalogEntries];
+    for (const item of source) {
+      const key = `${item.city.toLowerCase()}|${item.country.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(item);
+      }
+    }
+    source = merged;
+  }
 
   if (opts.max && source.length > opts.max) source = source.slice(0, opts.max);
   console.log(`[source] ${source.length} cities to evaluate`);
 
-  // 2) Hotel inventory.
+  // 2) Hotel inventory. Cache is saved every 100 checks so a killed run
+  // doesn't lose progress (1800 cities × 3 rps = 10 min; not losing that).
   const hotelCache = await loadHotelCache();
   let hotelCheckedCount = 0;
+  let lastFlush = Date.now();
   await throttledMap(
     source,
     async (item) => {
@@ -897,6 +992,11 @@ async function main(): Promise<void> {
       if (entry && (item.lat === null || item.lng === null) && entry.lat && entry.lng) {
         item.lat = entry.lat;
         item.lng = entry.lng;
+      }
+      // Periodic cache flush (every 100 checks or 30s, whichever first).
+      if (hotelCheckedCount % 100 === 0 || Date.now() - lastFlush > 30_000) {
+        await saveHotelCache(hotelCache);
+        lastFlush = Date.now();
       }
       return entry;
     },
@@ -981,10 +1081,35 @@ async function main(): Promise<void> {
     return order;
   })();
 
-  const destinations: OutputDestination[] = withFlights.map((item) => {
+  // Garbage filter: LiteAPI sandbox occasionally returns city names with
+  // non-Latin lead chars (`Ezbet Shalabi el-Rûdi, ...) or whitespace-only
+  // entries. Drop them before output to keep the seed honest. Also dropped:
+  // entries where the IATA looks wrong (more than 200 km from the city's
+  // lat/lng — only happens when the airport-code resolver accidentally
+  // points at LAX/NYC/etc for a non-matching city).
+  function isCityNameClean(name: string): boolean {
+    const trimmed = name.trim();
+    if (trimmed.length < 2) return false;
+    // Reject leading non-letter (backtick, hash, digits — LiteAPI quirks).
+    if (!/^\p{L}/u.test(trimmed)) return false;
+    // Reject if name contains forward-slash or backslash (compound entries).
+    if (/[\\/]/.test(trimmed)) return false;
+    return true;
+  }
+  const cleaned = withFlights.filter((item) => isCityNameClean(item.city));
+  console.log(`[output] cleaned ${cleaned.length}, dropped ${withFlights.length - cleaned.length} (garbage city names)`);
+
+  const destinations: OutputDestination[] = cleaned.map((item) => {
     const region = regionFor(item.countryCode ?? "");
-    const cityPl = CITY_PL[item.city] ?? wikidataCache[item.city] ?? item.city;
-    const countryPl = COUNTRY_PL[item.country] ?? (item.countryCode ? COUNTRY_PL[item.countryCode] ?? item.country : item.country);
+    // Nullish coalescing alone treats "" as a hit. Cast empty strings to
+    // undefined so the fallback chain actually reaches cityEn for entries
+    // where Wikidata returned no Polish exonym.
+    const cityPlCurated = CITY_PL[item.city] || null;
+    const cityPlWikidata = wikidataCache[item.city] || null;
+    const cityPl = cityPlCurated ?? cityPlWikidata ?? item.city;
+    const countryPlCurated = COUNTRY_PL[item.country] || null;
+    const countryPlByCode = item.countryCode ? COUNTRY_PL[item.countryCode] || null : null;
+    const countryPl = countryPlCurated ?? countryPlByCode ?? item.country;
     const curated = curatedById.get(`${item.city}|${item.country}`);
     const scores: CuratedScores | undefined = curated
       ? {
