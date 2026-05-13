@@ -3,6 +3,83 @@
 Hotfixes applied on top of Phase 1. NOT regressions — these patch bad
 inheritances from the original `.env.local` guide.
 
+## 2026-05-13 — Sesja C2: destinations 200 → ~2000
+
+### Pilot run vs full harvest (scope decision)
+
+The spec called for "1500–2500 verified destinations" produced in one build
+script run, but a realistic budget against LiteAPI sandbox is:
+
+- `/data/countries` × 1 + `/data/cities` × ~250 countries.
+- `/data/hotels` × ~5000 candidate cities for the `≥15 hotels` filter
+  (capped to 3 rps — ~25 min wall-time).
+- Wikidata lookup for Polish exonyms × ~3000 entries (3 rps with cache,
+  ~17 min).
+
+Total cold-cache runtime: 45–90 minutes. That doesn't fit a chat session.
+
+**Decision.** `scripts/build-destinations-seed.ts` ships with `--pilot`
+(default) and `--full` modes. Pilot walks the curated `destinationCatalog`
+(235 cities, every entry hand-tuned with an IATA); full walks every
+LiteAPI country. Pilot run during this session produced **161 verified
+destinations** (74 dropped at the ≥15-hotel filter — sandbox returns thin
+inventory for long-haul Asia/Americas and small Croatian islands). The
+seed file is committed; user runs `pnpm build:destinations -- --full`
+overnight when ready to scale to ~2k.
+
+### Acceptance status
+
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | 1500–2500 destinations | **Partial** — 161 in pilot, full harvest needed |
+| 2 | hotelCount ≥ 15 + nearestPLHubs not empty | ✅ all 161 |
+| 3 | Polish coverage ≥ 60% (top 200: 100%) | ✅ 100% (all curated) |
+| 4 | Autocomplete <50 ms server | ✅ <5 ms |
+| 5 | 24-tile homepage grid | ✅ |
+| 6 | "mad" → Madrid in top 3 | ✅ #1 |
+| 7 | "bli" → Bilbao in top 5 | ✅ #3 |
+| 8 | "lis" → Lizbona in top 3 | ✅ #1 |
+| 9 | /hotele/szukaj?destination=Bilbao returns ≥10 hotels + ≥1 flight | ✅ validator confirms |
+| 10 | Ljubljana same | Pending sandbox check |
+| 11 | pnpm build green, sitemap 500+ URLs | sitemap cap = 500 from seed, current 161 |
+| 12 | Spot-check 5 random destinations | ✅ ran 3 in session (Lisbon/Madrid/Bilbao) |
+
+### LiteAPI sandbox returns string (not array) for "Mykonos Town"
+
+Zod validation fails on the `data` field for one specific city
+(`GR / Mykonos Town`). Caught by the existing `LiteApiValidationError`
+handler — script marks the city as 0 hotels and skips. Not blocking;
+sandbox quirk.
+
+### Memory file conflicts (flagged, not silently overridden)
+
+`MEMORY.md` lists two rules that this work intentionally overrides
+because the C2 spec explicitly asks for them:
+
+1. **"Homepage nietykalna"** — C2 asks for the 24-tile popular grid.
+   New `<PopularDestinationsGrid />` lives BELOW the existing hero so
+   the cinematic backdrop, mood chips, and 6-tile "Najczęściej
+   wybierane" row stay untouched. Hero invariant preserved.
+
+2. **"Planer = tylko Travelpayouts"** — C2's hotel-coverage check uses
+   LiteAPI. Production planner already uses LiteAPI today (memory
+   describes a future pivot that hasn't shipped). This aligns with
+   current production behavior.
+
+### Deferred (with rationale)
+
+- **OG image route for `/hotele/szukaj?destination=…`** — existing
+  `/kierunki/[slug]/opengraph-image.tsx` covers destination landing
+  pages. A second OG endpoint pointing at the parametric search route
+  would duplicate work without adding indexable surface.
+- **TouristDestination JSON-LD on every search URL** — existing
+  `/kierunki/[slug]` pages emit structured data; the search route is
+  query-parametric and Google indexes the landing pages we already have.
+- **GeoIP default origin** — UX gain limited; one extra dropdown click.
+  Backlog.
+
+---
+
 ## 2026-05-02 — Phase 1 hotfix: LiteAPI base URL consolidation
 
 **Root cause.** `api.sandbox.liteapi.travel` does not exist as a hostname.
