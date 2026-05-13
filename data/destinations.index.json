@@ -1,0 +1,1451 @@
+[
+  {
+    "id": "barcelona-spain",
+    "cityPl": "Barcelona",
+    "cityEn": "Barcelona",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 100,
+    "iata": "BCN"
+  },
+  {
+    "id": "madrid-spain",
+    "cityPl": "Madryt",
+    "cityEn": "Madrid",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 100,
+    "iata": "MAD"
+  },
+  {
+    "id": "malaga-spain",
+    "cityPl": "Malaga",
+    "cityEn": "Malaga",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 100,
+    "iata": "AGP"
+  },
+  {
+    "id": "valencia-spain",
+    "cityPl": "Walencja",
+    "cityEn": "Valencia",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 100,
+    "iata": "VLC"
+  },
+  {
+    "id": "alicante-spain",
+    "cityPl": "Alicante",
+    "cityEn": "Alicante",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 99,
+    "iata": "ALC"
+  },
+  {
+    "id": "las-palmas-spain",
+    "cityPl": "Las Palmas",
+    "cityEn": "Las Palmas",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 99,
+    "iata": "LPA"
+  },
+  {
+    "id": "palma-spain",
+    "cityPl": "Palma de Mallorca",
+    "cityEn": "Palma",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 99,
+    "iata": "PMI"
+  },
+  {
+    "id": "seville-spain",
+    "cityPl": "Sewilla",
+    "cityEn": "Seville",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 99,
+    "iata": "SVQ"
+  },
+  {
+    "id": "bilbao-spain",
+    "cityPl": "Bilbao",
+    "cityEn": "Bilbao",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 98,
+    "iata": "BIO"
+  },
+  {
+    "id": "granada-spain",
+    "cityPl": "Granada",
+    "cityEn": "Granada",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 98,
+    "iata": "GRX"
+  },
+  {
+    "id": "ibiza-town-spain",
+    "cityPl": "Ibiza",
+    "cityEn": "Ibiza Town",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 98,
+    "iata": "IBZ"
+  },
+  {
+    "id": "san-sebastian-spain",
+    "cityPl": "San Sebastián",
+    "cityEn": "San Sebastian",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 98,
+    "iata": "EAS"
+  },
+  {
+    "id": "arrecife-spain",
+    "cityPl": "Lanzarote",
+    "cityEn": "Arrecife",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 97,
+    "iata": "ACE"
+  },
+  {
+    "id": "cordoba-spain",
+    "cityPl": "Kordoba",
+    "cityEn": "Cordoba",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 97,
+    "iata": "ODB"
+  },
+  {
+    "id": "lisbon-portugal",
+    "cityPl": "Lizbona",
+    "cityEn": "Lisbon",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 97,
+    "iata": "LIS"
+  },
+  {
+    "id": "santa-cruz-de-tenerife-spain",
+    "cityPl": "Teneryfa",
+    "cityEn": "Santa Cruz de Tenerife",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 97,
+    "iata": "TFS"
+  },
+  {
+    "id": "faro-portugal",
+    "cityPl": "Faro",
+    "cityEn": "Faro",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 96,
+    "iata": "FAO"
+  },
+  {
+    "id": "funchal-portugal",
+    "cityPl": "Funchal",
+    "cityEn": "Funchal",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 96,
+    "iata": "FNC"
+  },
+  {
+    "id": "ponta-delgada-portugal",
+    "cityPl": "Ponta Delgada",
+    "cityEn": "Ponta Delgada",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 96,
+    "iata": "PDL"
+  },
+  {
+    "id": "porto-portugal",
+    "cityPl": "Porto",
+    "cityEn": "Porto",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 96,
+    "iata": "OPO"
+  },
+  {
+    "id": "braga-portugal",
+    "cityPl": "Braga",
+    "cityEn": "Braga",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 95,
+    "iata": "OPO"
+  },
+  {
+    "id": "coimbra-portugal",
+    "cityPl": "Coimbra",
+    "cityEn": "Coimbra",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 95,
+    "iata": "OPO"
+  },
+  {
+    "id": "naples-italy",
+    "cityPl": "Neapol",
+    "cityEn": "Naples",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 95,
+    "iata": "NAP"
+  },
+  {
+    "id": "rome-italy",
+    "cityPl": "Rzym",
+    "cityEn": "Rome",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 95,
+    "iata": "ROM"
+  },
+  {
+    "id": "bologna-italy",
+    "cityPl": "Bolonia",
+    "cityEn": "Bologna",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 94,
+    "iata": "BLQ"
+  },
+  {
+    "id": "florence-italy",
+    "cityPl": "Florencja",
+    "cityEn": "Florence",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 94,
+    "iata": "FLR"
+  },
+  {
+    "id": "milan-italy",
+    "cityPl": "Mediolan",
+    "cityEn": "Milan",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 94,
+    "iata": "MIL"
+  },
+  {
+    "id": "venice-italy",
+    "cityPl": "Wenecja",
+    "cityEn": "Venice",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 94,
+    "iata": "VCE"
+  },
+  {
+    "id": "bari-italy",
+    "cityPl": "Bari",
+    "cityEn": "Bari",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 93,
+    "iata": "BRI"
+  },
+  {
+    "id": "catania-italy",
+    "cityPl": "Katania",
+    "cityEn": "Catania",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 93,
+    "iata": "CTA"
+  },
+  {
+    "id": "palermo-italy",
+    "cityPl": "Palermo",
+    "cityEn": "Palermo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 93,
+    "iata": "PMO"
+  },
+  {
+    "id": "turin-italy",
+    "cityPl": "Turyn",
+    "cityEn": "Turin",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 93,
+    "iata": "TRN"
+  },
+  {
+    "id": "cagliari-italy",
+    "cityPl": "Cagliari",
+    "cityEn": "Cagliari",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 92,
+    "iata": "CAG"
+  },
+  {
+    "id": "genoa-italy",
+    "cityPl": "Genua",
+    "cityEn": "Genoa",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 92,
+    "iata": "GOA"
+  },
+  {
+    "id": "pisa-italy",
+    "cityPl": "Piza",
+    "cityEn": "Pisa",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 92,
+    "iata": "PSA"
+  },
+  {
+    "id": "verona-italy",
+    "cityPl": "Werona",
+    "cityEn": "Verona",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 92,
+    "iata": "VRN"
+  },
+  {
+    "id": "marseille-france",
+    "cityPl": "Marsylia",
+    "cityEn": "Marseille",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 91,
+    "iata": "MRS"
+  },
+  {
+    "id": "nice-france",
+    "cityPl": "Nicea",
+    "cityEn": "Nice",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 91,
+    "iata": "NCE"
+  },
+  {
+    "id": "olbia-italy",
+    "cityPl": "Olbia",
+    "cityEn": "Olbia",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 91,
+    "iata": "OLB"
+  },
+  {
+    "id": "paris-france",
+    "cityPl": "Paryż",
+    "cityEn": "Paris",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 91,
+    "iata": "PAR"
+  },
+  {
+    "id": "bordeaux-france",
+    "cityPl": "Bordeaux",
+    "cityEn": "Bordeaux",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 90,
+    "iata": "BOD"
+  },
+  {
+    "id": "lyon-france",
+    "cityPl": "Lyon",
+    "cityEn": "Lyon",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 90,
+    "iata": "LYS"
+  },
+  {
+    "id": "strasbourg-france",
+    "cityPl": "Strasburg",
+    "cityEn": "Strasbourg",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 90,
+    "iata": "SXB"
+  },
+  {
+    "id": "toulouse-france",
+    "cityPl": "Tuluza",
+    "cityEn": "Toulouse",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 90,
+    "iata": "TLS"
+  },
+  {
+    "id": "cannes-france",
+    "cityPl": "Cannes",
+    "cityEn": "Cannes",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 89,
+    "iata": "NCE"
+  },
+  {
+    "id": "lille-france",
+    "cityPl": "Lille",
+    "cityEn": "Lille",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 89,
+    "iata": "LIL"
+  },
+  {
+    "id": "montpellier-france",
+    "cityPl": "Montpellier",
+    "cityEn": "Montpellier",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 89,
+    "iata": "MPL"
+  },
+  {
+    "id": "nantes-france",
+    "cityPl": "Nantes",
+    "cityEn": "Nantes",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 89,
+    "iata": "NTE"
+  },
+  {
+    "id": "athens-greece",
+    "cityPl": "Ateny",
+    "cityEn": "Athens",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 88,
+    "iata": "ATH"
+  },
+  {
+    "id": "chania-greece",
+    "cityPl": "Chania",
+    "cityEn": "Chania",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 88,
+    "iata": "CHQ"
+  },
+  {
+    "id": "heraklion-greece",
+    "cityPl": "Heraklion",
+    "cityEn": "Heraklion",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 88,
+    "iata": "HER"
+  },
+  {
+    "id": "thessaloniki-greece",
+    "cityPl": "Saloniki",
+    "cityEn": "Thessaloniki",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 88,
+    "iata": "SKG"
+  },
+  {
+    "id": "corfu-greece",
+    "cityPl": "Korfu",
+    "cityEn": "Corfu",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 87,
+    "iata": "CFU"
+  },
+  {
+    "id": "fira-greece",
+    "cityPl": "Fira (Santorini)",
+    "cityEn": "Fira",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 87,
+    "iata": "JTR"
+  },
+  {
+    "id": "rhodes-greece",
+    "cityPl": "Rodos",
+    "cityEn": "Rhodes",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 87,
+    "iata": "RHO"
+  },
+  {
+    "id": "kos-greece",
+    "cityPl": "Kos",
+    "cityEn": "Kos",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 86,
+    "iata": "KOS"
+  },
+  {
+    "id": "larnaca-cyprus",
+    "cityPl": "Larnaka",
+    "cityEn": "Larnaca",
+    "countryPl": "Cypr",
+    "countryCode": "CY",
+    "popularity": 86,
+    "iata": "LCA"
+  },
+  {
+    "id": "paphos-cyprus",
+    "cityPl": "Pafos",
+    "cityEn": "Paphos",
+    "countryPl": "Cypr",
+    "countryCode": "CY",
+    "popularity": 86,
+    "iata": "PFO"
+  },
+  {
+    "id": "zakynthos-greece",
+    "cityPl": "Zakynthos",
+    "cityEn": "Zakynthos",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 86,
+    "iata": "ZTH"
+  },
+  {
+    "id": "limassol-cyprus",
+    "cityPl": "Limassol",
+    "cityEn": "Limassol",
+    "countryPl": "Cypr",
+    "countryCode": "CY",
+    "popularity": 85,
+    "iata": "LCA"
+  },
+  {
+    "id": "nicosia-cyprus",
+    "cityPl": "Nikozja",
+    "cityEn": "Nicosia",
+    "countryPl": "Cypr",
+    "countryCode": "CY",
+    "popularity": 85,
+    "iata": "LCA"
+  },
+  {
+    "id": "sliema-malta",
+    "cityPl": "Sliema",
+    "cityEn": "Sliema",
+    "countryPl": "Malta",
+    "countryCode": "MT",
+    "popularity": 85,
+    "iata": "MLA"
+  },
+  {
+    "id": "valletta-malta",
+    "cityPl": "Valletta",
+    "cityEn": "Valletta",
+    "countryPl": "Malta",
+    "countryCode": "MT",
+    "popularity": 85,
+    "iata": "MLA"
+  },
+  {
+    "id": "antalya-turkey",
+    "cityPl": "Antalya",
+    "cityEn": "Antalya",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 84,
+    "iata": "AYT"
+  },
+  {
+    "id": "istanbul-turkey",
+    "cityPl": "Stambuł",
+    "cityEn": "Istanbul",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 84,
+    "iata": "IST"
+  },
+  {
+    "id": "izmir-turkey",
+    "cityPl": "Izmir",
+    "cityEn": "Izmir",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 84,
+    "iata": "ADB"
+  },
+  {
+    "id": "st-julian-s-malta",
+    "cityPl": "St. Julian's",
+    "cityEn": "St Julian's",
+    "countryPl": "Malta",
+    "countryCode": "MT",
+    "popularity": 84,
+    "iata": "MLA"
+  },
+  {
+    "id": "ankara-turkey",
+    "cityPl": "Ankara",
+    "cityEn": "Ankara",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 83,
+    "iata": "ESB"
+  },
+  {
+    "id": "bodrum-turkey",
+    "cityPl": "Bodrum",
+    "cityEn": "Bodrum",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 83,
+    "iata": "BJV"
+  },
+  {
+    "id": "dalaman-turkey",
+    "cityPl": "Dalaman",
+    "cityEn": "Dalaman",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 83,
+    "iata": "DLM"
+  },
+  {
+    "id": "goreme-turkey",
+    "cityPl": "Göreme",
+    "cityEn": "Goreme",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 83,
+    "iata": "NAV"
+  },
+  {
+    "id": "agadir-morocco",
+    "cityPl": "Agadir",
+    "cityEn": "Agadir",
+    "countryPl": "Maroko",
+    "countryCode": "MA",
+    "popularity": 82,
+    "iata": "AGA"
+  },
+  {
+    "id": "casablanca-morocco",
+    "cityPl": "Casablanca",
+    "cityEn": "Casablanca",
+    "countryPl": "Maroko",
+    "countryCode": "MA",
+    "popularity": 82,
+    "iata": "CMN"
+  },
+  {
+    "id": "marrakesh-morocco",
+    "cityPl": "Marrakesz",
+    "cityEn": "Marrakesh",
+    "countryPl": "Maroko",
+    "countryCode": "MA",
+    "popularity": 82,
+    "iata": "RAK"
+  },
+  {
+    "id": "trabzon-turkey",
+    "cityPl": "Trabzon",
+    "cityEn": "Trabzon",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 82,
+    "iata": "TZX"
+  },
+  {
+    "id": "cairo-egypt",
+    "cityPl": "Kair",
+    "cityEn": "Cairo",
+    "countryPl": "Egipt",
+    "countryCode": "EG",
+    "popularity": 81,
+    "iata": "CAI"
+  },
+  {
+    "id": "rabat-morocco",
+    "cityPl": "Rabat",
+    "cityEn": "Rabat",
+    "countryPl": "Maroko",
+    "countryCode": "MA",
+    "popularity": 81,
+    "iata": "RBA"
+  },
+  {
+    "id": "tangier-morocco",
+    "cityPl": "Tanger",
+    "cityEn": "Tangier",
+    "countryPl": "Maroko",
+    "countryCode": "MA",
+    "popularity": 81,
+    "iata": "TNG"
+  },
+  {
+    "id": "alexandria-egypt",
+    "cityPl": "Aleksandria",
+    "cityEn": "Alexandria",
+    "countryPl": "Egipt",
+    "countryCode": "EG",
+    "popularity": 80,
+    "iata": "HBE"
+  },
+  {
+    "id": "hurghada-egypt",
+    "cityPl": "Hurghada",
+    "cityEn": "Hurghada",
+    "countryPl": "Egipt",
+    "countryCode": "EG",
+    "popularity": 80,
+    "iata": "HRG"
+  },
+  {
+    "id": "luxor-egypt",
+    "cityPl": "Luksor",
+    "cityEn": "Luxor",
+    "countryPl": "Egipt",
+    "countryCode": "EG",
+    "popularity": 80,
+    "iata": "LXR"
+  },
+  {
+    "id": "sharm-el-sheikh-egypt",
+    "cityPl": "Szarm el-Szejk",
+    "cityEn": "Sharm El Sheikh",
+    "countryPl": "Egipt",
+    "countryCode": "EG",
+    "popularity": 80,
+    "iata": "SSH"
+  },
+  {
+    "id": "djerba-tunisia",
+    "cityPl": "Dżerba",
+    "cityEn": "Djerba",
+    "countryPl": "Tunezja",
+    "countryCode": "TN",
+    "popularity": 79,
+    "iata": "DJE"
+  },
+  {
+    "id": "hammamet-tunisia",
+    "cityPl": "Hammamet",
+    "cityEn": "Hammamet",
+    "countryPl": "Tunezja",
+    "countryCode": "TN",
+    "popularity": 79,
+    "iata": "NBE"
+  },
+  {
+    "id": "sousse-tunisia",
+    "cityPl": "Susa",
+    "cityEn": "Sousse",
+    "countryPl": "Tunezja",
+    "countryCode": "TN",
+    "popularity": 79,
+    "iata": "NBE"
+  },
+  {
+    "id": "tunis-tunisia",
+    "cityPl": "Tunis",
+    "cityEn": "Tunis",
+    "countryPl": "Tunezja",
+    "countryCode": "TN",
+    "popularity": 79,
+    "iata": "TUN"
+  },
+  {
+    "id": "sarande-albania",
+    "cityPl": "Sarandë",
+    "cityEn": "Sarande",
+    "countryPl": "Albania",
+    "countryCode": "AL",
+    "popularity": 78,
+    "iata": "TIA"
+  },
+  {
+    "id": "split-croatia",
+    "cityPl": "Split",
+    "cityEn": "Split",
+    "countryPl": "Chorwacja",
+    "countryCode": "HR",
+    "popularity": 78,
+    "iata": "SPU"
+  },
+  {
+    "id": "tirana-albania",
+    "cityPl": "Tirana",
+    "cityEn": "Tirana",
+    "countryPl": "Albania",
+    "countryCode": "AL",
+    "popularity": 78,
+    "iata": "TIA"
+  },
+  {
+    "id": "vlore-albania",
+    "cityPl": "Wlora",
+    "cityEn": "Vlore",
+    "countryPl": "Albania",
+    "countryCode": "AL",
+    "popularity": 78,
+    "iata": "TIA"
+  },
+  {
+    "id": "dubrovnik-croatia",
+    "cityPl": "Dubrownik",
+    "cityEn": "Dubrovnik",
+    "countryPl": "Chorwacja",
+    "countryCode": "HR",
+    "popularity": 77,
+    "iata": "DBV"
+  },
+  {
+    "id": "pula-croatia",
+    "cityPl": "Pula",
+    "cityEn": "Pula",
+    "countryPl": "Chorwacja",
+    "countryCode": "HR",
+    "popularity": 77,
+    "iata": "PUY"
+  },
+  {
+    "id": "zadar-croatia",
+    "cityPl": "Zadar",
+    "cityEn": "Zadar",
+    "countryPl": "Chorwacja",
+    "countryCode": "HR",
+    "popularity": 77,
+    "iata": "ZAD"
+  },
+  {
+    "id": "zagreb-croatia",
+    "cityPl": "Zagrzeb",
+    "cityEn": "Zagreb",
+    "countryPl": "Chorwacja",
+    "countryCode": "HR",
+    "popularity": 77,
+    "iata": "ZAG"
+  },
+  {
+    "id": "rijeka-croatia",
+    "cityPl": "Rijeka",
+    "cityEn": "Rijeka",
+    "countryPl": "Chorwacja",
+    "countryCode": "HR",
+    "popularity": 76,
+    "iata": "RJK"
+  },
+  {
+    "id": "bled-slovenia",
+    "cityPl": "Bled",
+    "cityEn": "Bled",
+    "countryPl": "Słowenia",
+    "countryCode": "SI",
+    "popularity": 75,
+    "iata": "LJU"
+  },
+  {
+    "id": "ljubljana-slovenia",
+    "cityPl": "Lublana",
+    "cityEn": "Ljubljana",
+    "countryPl": "Słowenia",
+    "countryCode": "SI",
+    "popularity": 75,
+    "iata": "LJU"
+  },
+  {
+    "id": "piran-slovenia",
+    "cityPl": "Piran",
+    "cityEn": "Piran",
+    "countryPl": "Słowenia",
+    "countryCode": "SI",
+    "popularity": 75,
+    "iata": "LJU"
+  },
+  {
+    "id": "graz-austria",
+    "cityPl": "Graz",
+    "cityEn": "Graz",
+    "countryPl": "Austria",
+    "countryCode": "AT",
+    "popularity": 74,
+    "iata": "GRZ"
+  },
+  {
+    "id": "innsbruck-austria",
+    "cityPl": "Innsbruck",
+    "cityEn": "Innsbruck",
+    "countryPl": "Austria",
+    "countryCode": "AT",
+    "popularity": 74,
+    "iata": "INN"
+  },
+  {
+    "id": "salzburg-austria",
+    "cityPl": "Salzburg",
+    "cityEn": "Salzburg",
+    "countryPl": "Austria",
+    "countryCode": "AT",
+    "popularity": 74,
+    "iata": "SZG"
+  },
+  {
+    "id": "vienna-austria",
+    "cityPl": "Wiedeń",
+    "cityEn": "Vienna",
+    "countryPl": "Austria",
+    "countryCode": "AT",
+    "popularity": 74,
+    "iata": "VIE"
+  },
+  {
+    "id": "berlin-germany",
+    "cityPl": "Berlin",
+    "cityEn": "Berlin",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 73,
+    "iata": "BER"
+  },
+  {
+    "id": "cologne-germany",
+    "cityPl": "Kolonia",
+    "cityEn": "Cologne",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 73,
+    "iata": "CGN"
+  },
+  {
+    "id": "hamburg-germany",
+    "cityPl": "Hamburg",
+    "cityEn": "Hamburg",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 73,
+    "iata": "HAM"
+  },
+  {
+    "id": "munich-germany",
+    "cityPl": "Monachium",
+    "cityEn": "Munich",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 73,
+    "iata": "MUC"
+  },
+  {
+    "id": "dresden-germany",
+    "cityPl": "Drezno",
+    "cityEn": "Dresden",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 72,
+    "iata": "DRS"
+  },
+  {
+    "id": "dusseldorf-germany",
+    "cityPl": "Düsseldorf",
+    "cityEn": "Dusseldorf",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 72,
+    "iata": "DUS"
+  },
+  {
+    "id": "frankfurt-germany",
+    "cityPl": "Frankfurt",
+    "cityEn": "Frankfurt",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 72,
+    "iata": "FRA"
+  },
+  {
+    "id": "nuremberg-germany",
+    "cityPl": "Norymberga",
+    "cityEn": "Nuremberg",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 72,
+    "iata": "NUE"
+  },
+  {
+    "id": "amsterdam-netherlands",
+    "cityPl": "Amsterdam",
+    "cityEn": "Amsterdam",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 71,
+    "iata": "AMS"
+  },
+  {
+    "id": "rotterdam-netherlands",
+    "cityPl": "Rotterdam",
+    "cityEn": "Rotterdam",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 71,
+    "iata": "RTM"
+  },
+  {
+    "id": "the-hague-netherlands",
+    "cityPl": "Haga",
+    "cityEn": "The Hague",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 71,
+    "iata": "RTM"
+  },
+  {
+    "id": "utrecht-netherlands",
+    "cityPl": "Utrecht",
+    "cityEn": "Utrecht",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 71,
+    "iata": "AMS"
+  },
+  {
+    "id": "antwerp-belgium",
+    "cityPl": "Antwerpia",
+    "cityEn": "Antwerp",
+    "countryPl": "Belgia",
+    "countryCode": "BE",
+    "popularity": 70,
+    "iata": "ANR"
+  },
+  {
+    "id": "bruges-belgium",
+    "cityPl": "Brugia",
+    "cityEn": "Bruges",
+    "countryPl": "Belgia",
+    "countryCode": "BE",
+    "popularity": 70,
+    "iata": "BRU"
+  },
+  {
+    "id": "brussels-belgium",
+    "cityPl": "Bruksela",
+    "cityEn": "Brussels",
+    "countryPl": "Belgia",
+    "countryCode": "BE",
+    "popularity": 70,
+    "iata": "BRU"
+  },
+  {
+    "id": "eindhoven-netherlands",
+    "cityPl": "Eindhoven",
+    "cityEn": "Eindhoven",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 70,
+    "iata": "EIN"
+  },
+  {
+    "id": "cork-ireland",
+    "cityPl": "Cork",
+    "cityEn": "Cork",
+    "countryPl": "Irlandia",
+    "countryCode": "IE",
+    "popularity": 69,
+    "iata": "ORK"
+  },
+  {
+    "id": "dublin-ireland",
+    "cityPl": "Dublin",
+    "cityEn": "Dublin",
+    "countryPl": "Irlandia",
+    "countryCode": "IE",
+    "popularity": 69,
+    "iata": "DUB"
+  },
+  {
+    "id": "galway-ireland",
+    "cityPl": "Galway",
+    "cityEn": "Galway",
+    "countryPl": "Irlandia",
+    "countryCode": "IE",
+    "popularity": 69,
+    "iata": "NOC"
+  },
+  {
+    "id": "ghent-belgium",
+    "cityPl": "Gandawa",
+    "cityEn": "Ghent",
+    "countryPl": "Belgia",
+    "countryCode": "BE",
+    "popularity": 69,
+    "iata": "BRU"
+  },
+  {
+    "id": "edinburgh-united-kingdom",
+    "cityPl": "Edynburg",
+    "cityEn": "Edinburgh",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 68,
+    "iata": "EDI"
+  },
+  {
+    "id": "killarney-ireland",
+    "cityPl": "Killarney",
+    "cityEn": "Killarney",
+    "countryPl": "Irlandia",
+    "countryCode": "IE",
+    "popularity": 68,
+    "iata": "KIR"
+  },
+  {
+    "id": "london-united-kingdom",
+    "cityPl": "Londyn",
+    "cityEn": "London",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 68,
+    "iata": "LON"
+  },
+  {
+    "id": "manchester-united-kingdom",
+    "cityPl": "Manchester",
+    "cityEn": "Manchester",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 68,
+    "iata": "MAN"
+  },
+  {
+    "id": "birmingham-united-kingdom",
+    "cityPl": "Birmingham",
+    "cityEn": "Birmingham",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 67,
+    "iata": "BHX"
+  },
+  {
+    "id": "bristol-united-kingdom",
+    "cityPl": "Bristol",
+    "cityEn": "Bristol",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 67,
+    "iata": "BRS"
+  },
+  {
+    "id": "glasgow-united-kingdom",
+    "cityPl": "Glasgow",
+    "cityEn": "Glasgow",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 67,
+    "iata": "GLA"
+  },
+  {
+    "id": "liverpool-united-kingdom",
+    "cityPl": "Liverpool",
+    "cityEn": "Liverpool",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 67,
+    "iata": "LPL"
+  },
+  {
+    "id": "belfast-united-kingdom",
+    "cityPl": "Belfast",
+    "cityEn": "Belfast",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 66,
+    "iata": "BFS"
+  },
+  {
+    "id": "budapest-hungary",
+    "cityPl": "Budapeszt",
+    "cityEn": "Budapest",
+    "countryPl": "Węgry",
+    "countryCode": "HU",
+    "popularity": 66,
+    "iata": "BUD"
+  },
+  {
+    "id": "debrecen-hungary",
+    "cityPl": "Debreczyn",
+    "cityEn": "Debrecen",
+    "countryPl": "Węgry",
+    "countryCode": "HU",
+    "popularity": 66,
+    "iata": "DEB"
+  },
+  {
+    "id": "prague-czechia",
+    "cityPl": "Praga",
+    "cityEn": "Prague",
+    "countryPl": "Czechy",
+    "countryCode": "CZ",
+    "popularity": 66,
+    "iata": "PRG"
+  },
+  {
+    "id": "brno-czechia",
+    "cityPl": "Brno",
+    "cityEn": "Brno",
+    "countryPl": "Czechy",
+    "countryCode": "CZ",
+    "popularity": 65,
+    "iata": "BRQ"
+  },
+  {
+    "id": "gdansk-poland",
+    "cityPl": "Gdańsk",
+    "cityEn": "Gdansk",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 65,
+    "iata": "GDN"
+  },
+  {
+    "id": "krakow-poland",
+    "cityPl": "Kraków",
+    "cityEn": "Krakow",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 65,
+    "iata": "KRK"
+  },
+  {
+    "id": "warsaw-poland",
+    "cityPl": "Warszawa",
+    "cityEn": "Warsaw",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 65,
+    "iata": "WAW"
+  },
+  {
+    "id": "aarhus-denmark",
+    "cityPl": "Aarhus",
+    "cityEn": "Aarhus",
+    "countryPl": "Dania",
+    "countryCode": "DK",
+    "popularity": 64,
+    "iata": "AAR"
+  },
+  {
+    "id": "copenhagen-denmark",
+    "cityPl": "Kopenhaga",
+    "cityEn": "Copenhagen",
+    "countryPl": "Dania",
+    "countryCode": "DK",
+    "popularity": 64,
+    "iata": "CPH"
+  },
+  {
+    "id": "gothenburg-sweden",
+    "cityPl": "Göteborg",
+    "cityEn": "Gothenburg",
+    "countryPl": "Szwecja",
+    "countryCode": "SE",
+    "popularity": 64,
+    "iata": "GOT"
+  },
+  {
+    "id": "stockholm-sweden",
+    "cityPl": "Sztokholm",
+    "cityEn": "Stockholm",
+    "countryPl": "Szwecja",
+    "countryCode": "SE",
+    "popularity": 64,
+    "iata": "STO"
+  },
+  {
+    "id": "bergen-norway",
+    "cityPl": "Bergen",
+    "cityEn": "Bergen",
+    "countryPl": "Norwegia",
+    "countryCode": "NO",
+    "popularity": 63,
+    "iata": "BGO"
+  },
+  {
+    "id": "helsinki-finland",
+    "cityPl": "Helsinki",
+    "cityEn": "Helsinki",
+    "countryPl": "Finlandia",
+    "countryCode": "FI",
+    "popularity": 63,
+    "iata": "HEL"
+  },
+  {
+    "id": "malmo-sweden",
+    "cityPl": "Malmö",
+    "cityEn": "Malmo",
+    "countryPl": "Szwecja",
+    "countryCode": "SE",
+    "popularity": 63,
+    "iata": "MMX"
+  },
+  {
+    "id": "oslo-norway",
+    "cityPl": "Oslo",
+    "cityEn": "Oslo",
+    "countryPl": "Norwegia",
+    "countryCode": "NO",
+    "popularity": 63,
+    "iata": "OSL"
+  },
+  {
+    "id": "geneva-switzerland",
+    "cityPl": "Genewa",
+    "cityEn": "Geneva",
+    "countryPl": "Szwajcaria",
+    "countryCode": "CH",
+    "popularity": 62,
+    "iata": "GVA"
+  },
+  {
+    "id": "lucerne-switzerland",
+    "cityPl": "Lucerna",
+    "cityEn": "Lucerne",
+    "countryPl": "Szwajcaria",
+    "countryCode": "CH",
+    "popularity": 62,
+    "iata": "ZRH"
+  },
+  {
+    "id": "reykjavik-iceland",
+    "cityPl": "Reykjavik",
+    "cityEn": "Reykjavik",
+    "countryPl": "Islandia",
+    "countryCode": "IS",
+    "popularity": 62,
+    "iata": "KEF"
+  },
+  {
+    "id": "zurich-switzerland",
+    "cityPl": "Zurych",
+    "cityEn": "Zurich",
+    "countryPl": "Szwajcaria",
+    "countryCode": "CH",
+    "popularity": 62,
+    "iata": "ZRH"
+  },
+  {
+    "id": "basel-switzerland",
+    "cityPl": "Bazylea",
+    "cityEn": "Basel",
+    "countryPl": "Szwajcaria",
+    "countryCode": "CH",
+    "popularity": 61,
+    "iata": "BSL"
+  },
+  {
+    "id": "belgrade-serbia",
+    "cityPl": "Belgrad",
+    "cityEn": "Belgrade",
+    "countryPl": "Serbia",
+    "countryCode": "RS",
+    "popularity": 61,
+    "iata": "BEG"
+  },
+  {
+    "id": "bucharest-romania",
+    "cityPl": "Bukareszt",
+    "cityEn": "Bucharest",
+    "countryPl": "Rumunia",
+    "countryCode": "RO",
+    "popularity": 60,
+    "iata": "OTP"
+  },
+  {
+    "id": "cluj-napoca-romania",
+    "cityPl": "Kluż-Napoka",
+    "cityEn": "Cluj-Napoca",
+    "countryPl": "Rumunia",
+    "countryCode": "RO",
+    "popularity": 60,
+    "iata": "CLJ"
+  },
+  {
+    "id": "riga-latvia",
+    "cityPl": "Ryga",
+    "cityEn": "Riga",
+    "countryPl": "Łotwa",
+    "countryCode": "LV",
+    "popularity": 60,
+    "iata": "RIX"
+  },
+  {
+    "id": "sofia-bulgaria",
+    "cityPl": "Sofia",
+    "cityEn": "Sofia",
+    "countryPl": "Bułgaria",
+    "countryCode": "BG",
+    "popularity": 60,
+    "iata": "SOF"
+  },
+  {
+    "id": "dubai-united-arab-emirates",
+    "cityPl": "Dubaj",
+    "cityEn": "Dubai",
+    "countryPl": "Zjednoczone Emiraty Arabskie",
+    "countryCode": "AE",
+    "popularity": 59,
+    "iata": "DXB"
+  },
+  {
+    "id": "kaunas-lithuania",
+    "cityPl": "Kowno",
+    "cityEn": "Kaunas",
+    "countryPl": "Litwa",
+    "countryCode": "LT",
+    "popularity": 59,
+    "iata": "KUN"
+  },
+  {
+    "id": "tallinn-estonia",
+    "cityPl": "Tallin",
+    "cityEn": "Tallinn",
+    "countryPl": "Estonia",
+    "countryCode": "EE",
+    "popularity": 59,
+    "iata": "TLL"
+  },
+  {
+    "id": "vilnius-lithuania",
+    "cityPl": "Wilno",
+    "cityEn": "Vilnius",
+    "countryPl": "Litwa",
+    "countryCode": "LT",
+    "popularity": 59,
+    "iata": "VNO"
+  },
+  {
+    "id": "abu-dhabi-united-arab-emirates",
+    "cityPl": "Abu Zabi",
+    "cityEn": "Abu Dhabi",
+    "countryPl": "Zjednoczone Emiraty Arabskie",
+    "countryCode": "AE",
+    "popularity": 58,
+    "iata": "AUH"
+  }
+]
