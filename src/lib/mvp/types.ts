@@ -210,6 +210,13 @@ export interface NormalizedFlightOffer {
   return_number_of_stops?: number;
   cabinClass: CabinClass;
   bookingUrl?: string;
+  // Nearby-airport fanout (Sesja C2). True when this leg uses an airport
+  // other than the user's first-choice resolution — used to show a small
+  // "z lotniska XYZ" badge in the offer card.
+  isAlternativeOrigin?: boolean;
+  isAlternativeDestination?: boolean;
+  alternativeOriginHint?: string;
+  alternativeDestinationHint?: string;
 }
 
 export interface NormalizedStayOffer {
@@ -271,6 +278,12 @@ export interface FlightSearchResponse {
   fetchedAt: string;
   source?: "travelpayouts" | "partner_fallback";
   error?: string;
+  // Which alternative airports actually returned hits during the nearby-
+  // airport fanout. Useful for UI ("dodatkowo szukaliśmy w: BGY, MXP").
+  usedAlternativeAirports?: {
+    origins: string[];
+    destinations: string[];
+  };
 }
 
 export interface StaySearchResponse {
@@ -359,6 +372,12 @@ export interface DestinationSuggestion {
   source: "curated" | "catalog" | "geoapify";
   destinationSlug?: string;
   airportCode?: string;
+  // Sesja C2 — Polish exonyms denormalized onto the suggestion so the UI
+  // doesn't re-localize on every render. Both are optional for backwards
+  // compatibility with any legacy callers.
+  cityPl?: string;
+  countryPl?: string;
+  popularity?: number;
 }
 
 export interface TravelPackageOffer {
