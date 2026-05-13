@@ -17,6 +17,11 @@ name: Build destinations seed (LiteAPI production)
 #   - TRAVELPAYOUTS_API_TOKEN   (for validator's flight-coverage probe)
 
 on:
+  # Schedule cron intentionally OMITTED — owner runs the harvest manually
+  # from a local terminal (`pnpm build:destinations -- --full`) with the
+  # production keys already in their .env.local. This workflow stays as a
+  # manual rerun option (Actions tab → Run workflow) once GitHub secrets
+  # are configured, or as a CI fallback if local runs become impractical.
   workflow_dispatch:
     inputs:
       per_country:
@@ -27,12 +32,6 @@ on:
         description: "Comma-separated ISO-2 country codes (blank = tourism allowlist)"
         default: ""
         required: false
-  schedule:
-    # 05:00 UTC = 07:00 Europe/Warsaw (summer DST). GitHub may delay cron by
-    # up to ~15 min during peak load. After the first successful run you can
-    # remove this schedule block if you prefer manual control — the
-    # workflow_dispatch entry above keeps the rerun button available.
-    - cron: "0 5 * * *"
 
 permissions:
   contents: write
