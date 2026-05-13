@@ -1447,5 +1447,266 @@
     "countryCode": "AE",
     "popularity": 58,
     "iata": "AUH"
+  },
+  {
+    "id": "agios-ioannis-mykonos-greece",
+    "cityPl": "Agios Ioannis Mykonos",
+    "cityEn": "Agios Ioannis Mykonos",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "JMK"
+  },
+  {
+    "id": "agios-spyridon-corfu-greece",
+    "cityPl": "Agios Spyridon Corfu",
+    "cityEn": "Agios Spyridon Corfu",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "CFU"
+  },
+  {
+    "id": "aia-spain",
+    "cityPl": "Anguilla",
+    "cityEn": "Aia",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "AIA"
+  },
+  {
+    "id": "ajo-spain",
+    "cityPl": "Ajo",
+    "cityEn": "Ajo",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "AJO"
+  },
+  {
+    "id": "alexandria-united-kingdom",
+    "cityPl": "Aleksandria",
+    "cityEn": "Alexandria",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 50,
+    "iata": "HBE"
+  },
+  {
+    "id": "alf-germany",
+    "cityPl": "Alf",
+    "cityEn": "Alf",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 50,
+    "iata": "ALF"
+  },
+  {
+    "id": "are-sweden",
+    "cityPl": "Zjednoczone Emiraty Arabskie",
+    "cityEn": "Are",
+    "countryPl": "Szwecja",
+    "countryCode": "SE",
+    "popularity": 50,
+    "iata": "ARE"
+  },
+  {
+    "id": "aue-germany",
+    "cityPl": "australijska odmiana języka angielskiego",
+    "cityEn": "Aue",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 50,
+    "iata": "AUE"
+  },
+  {
+    "id": "ayr-united-kingdom",
+    "cityPl": "Ayr",
+    "cityEn": "Ayr",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 50,
+    "iata": "AYR"
+  },
+  {
+    "id": "bergen-netherlands",
+    "cityPl": "Bergen",
+    "cityEn": "Bergen",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 50,
+    "iata": "BGO"
+  },
+  {
+    "id": "bergen-aan-zee-netherlands",
+    "cityPl": "Bergen aan Zee",
+    "cityEn": "Bergen aan Zee",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 50,
+    "iata": "BGO"
+  },
+  {
+    "id": "bergen-op-zoom-netherlands",
+    "cityPl": "Bergen op Zoom",
+    "cityEn": "Bergen op Zoom",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 50,
+    "iata": "BGO"
+  },
+  {
+    "id": "bodrum-city-turkey",
+    "cityPl": "Bodrum City",
+    "cityEn": "Bodrum City",
+    "countryPl": "Turcja",
+    "countryCode": "TR",
+    "popularity": 50,
+    "iata": "BJV"
+  },
+  {
+    "id": "bol-croatia",
+    "cityPl": "Boliwia",
+    "cityEn": "Bol",
+    "countryPl": "Chorwacja",
+    "countryCode": "HR",
+    "popularity": 50,
+    "iata": "BOL"
+  },
+  {
+    "id": "bor-serbia",
+    "cityPl": "Bor (miasto w Czechach)",
+    "cityEn": "Bor",
+    "countryPl": "Serbia",
+    "countryCode": "RS",
+    "popularity": 50,
+    "iata": "BOR"
+  },
+  {
+    "id": "djerba-midun-tunisia",
+    "cityPl": "Djerba Midun",
+    "cityEn": "Djerba Midun",
+    "countryPl": "Tunezja",
+    "countryCode": "TN",
+    "popularity": 50,
+    "iata": "DJE"
+  },
+  {
+    "id": "ede-netherlands",
+    "cityPl": "Ede",
+    "cityEn": "Ede",
+    "countryPl": "Holandia",
+    "countryCode": "NL",
+    "popularity": 50,
+    "iata": "EDE"
+  },
+  {
+    "id": "egg-austria",
+    "cityPl": "jądro",
+    "cityEn": "Egg",
+    "countryPl": "Austria",
+    "countryCode": "AT",
+    "popularity": 50,
+    "iata": "EGG"
+  },
+  {
+    "id": "hammam-sousse-tunisia",
+    "cityPl": "Hamam Susa",
+    "cityEn": "Hammam Sousse",
+    "countryPl": "Tunezja",
+    "countryCode": "TN",
+    "popularity": 50,
+    "iata": "NBE"
+  },
+  {
+    "id": "hammamet-nord-tunisia",
+    "cityPl": "Hammamet Nord",
+    "cityEn": "Hammamet Nord",
+    "countryPl": "Tunezja",
+    "countryCode": "TN",
+    "popularity": 50,
+    "iata": "NBE"
+  },
+  {
+    "id": "hammamet-sud-tunisia",
+    "cityPl": "Hammamet Sud",
+    "cityEn": "Hammamet Sud",
+    "countryPl": "Tunezja",
+    "countryCode": "TN",
+    "popularity": 50,
+    "iata": "NBE"
+  },
+  {
+    "id": "kato-paphos-cyprus",
+    "cityPl": "Kato Paphos",
+    "cityEn": "Kato Paphos",
+    "countryPl": "Cypr",
+    "countryCode": "CY",
+    "popularity": 50,
+    "iata": "PFO"
+  },
+  {
+    "id": "larnaka-cyprus",
+    "cityPl": "Port lotniczy Larnaka",
+    "cityEn": "Larnaka",
+    "countryPl": "Cypr",
+    "countryCode": "CY",
+    "popularity": 50,
+    "iata": "LCA"
+  },
+  {
+    "id": "new-cairo-egypt",
+    "cityPl": "Nowy Kair",
+    "cityEn": "New Cairo",
+    "countryPl": "Egipt",
+    "countryCode": "EG",
+    "popularity": 50,
+    "iata": "CAI"
+  },
+  {
+    "id": "rabat-malta",
+    "cityPl": "Rabat",
+    "cityEn": "Rabat",
+    "countryPl": "Malta",
+    "countryCode": "MT",
+    "popularity": 50,
+    "iata": "RBA"
+  },
+  {
+    "id": "reykjavik-iceland",
+    "cityPl": "Reykjavík",
+    "cityEn": "Reykjavík",
+    "countryPl": "Islandia",
+    "countryCode": "IS",
+    "popularity": 50,
+    "iata": "KEF"
+  },
+  {
+    "id": "riga-latvia",
+    "cityPl": "Ryga",
+    "cityEn": "Rīga",
+    "countryPl": "Łotwa",
+    "countryCode": "LV",
+    "popularity": 50,
+    "iata": "RIX"
+  },
+  {
+    "id": "sarande-albania",
+    "cityPl": "Saranda",
+    "cityEn": "Sarandë",
+    "countryPl": "Albania",
+    "countryCode": "AL",
+    "popularity": 50,
+    "iata": "TIA"
+  },
+  {
+    "id": "vlore-albania",
+    "cityPl": "Wlora",
+    "cityEn": "Vlorë",
+    "countryPl": "Albania",
+    "countryCode": "AL",
+    "popularity": 50,
+    "iata": "TIA"
   }
 ]
