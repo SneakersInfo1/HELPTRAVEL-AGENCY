@@ -3,6 +3,60 @@
 Hotfixes applied on top of Phase 1. NOT regressions — these patch bad
 inheritances from the original `.env.local` guide.
 
+## 2026-05-13 — Sesja C2 follow-up: scale + drop homepage grid
+
+### Homepage destinations grid removed
+
+Product feedback: the 24-tile grid added below the hero felt like
+clutter — duplicating the existing 6-tile "Najczęściej wybierane" row
+without earning the real estate. Reverted (deleted the component,
+removed the import from `src/app/page.tsx`). Memory rule "Homepage
+nietykalna" reinstated. The seed-driven autocomplete + planner still
+surface every destination — discovery was never blocked on a grid.
+
+### LiteAPI hotels-list default page size 20 → 50
+
+`src/lib/liteapi/search.ts`: bumped default `limit` so the destination
+search results page shows 50 hotels instead of 20. LiteAPI `/data/hotels`
+caps at 1000 per call and returns metadata only (no rate lookups), so
+50 is essentially free. Downstream rate fetching still throttles to a
+smaller top-N after sorting.
+
+### Harvest script bounded per-country
+
+The first `--full` attempt without filters tried to evaluate 139k cities
+(LiteAPI sandbox returns every village in every country). Killed it and
+added:
+
+- `--prod` flag — flips client to production keys (LITEAPI_ENV=production).
+  Probed on this account: returns 401, prod activation pending. Stuck
+  with sandbox for the harvest.
+- `--countries=AA,BB,…` flag — explicit country filter. Default for
+  `--full` is the `TOP_TOURISM_COUNTRIES` allowlist (~83 high-outbound
+  countries from PL perspective).
+- `--per-country=N` flag (default 30) — caps how many cities per country
+  we evaluate. Cities with an existing IATA airport are sorted first
+  so we don't waste API calls on landlocked villages with no flight
+  reachability.
+- Periodic cache flush every 100 hotel checks — a killed run no longer
+  loses progress.
+
+Resulting bounded harvest: 83 countries × 30 cities = ~2.5k candidates,
+~14 min wall-time on sandbox. After ≥15-hotel filter the count of
+verified destinations lands in the 500–1000 range (final number recorded
+in the commit that follows).
+
+### Travelpayouts limits already maxed
+
+User asked for "more flights." Looking at the adapter
+(`src/lib/mvp/travelpayouts-flights.ts`) — already at `limit=1000` on
+`/v3/prices_for_dates`, already running 6-pair nearby-airport fanout
+(`MAX_FANOUT_CALLS=8`, `MIN_OFFERS_TARGET=10`). The Aviasales cache
+itself is the bottleneck past this point. Increasing further would
+duplicate API calls without lifting yield.
+
+---
+
 ## 2026-05-13 — Sesja C2: destinations 200 → ~2000
 
 ### Pilot run vs full harvest (scope decision)
