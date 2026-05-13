@@ -56,6 +56,14 @@ export interface HotelsListInput {
   limit?: number;
 }
 
+// Default page size bumped 20 → 50 in Sesja C2 follow-up: user explicitly
+// asked for more hotels per destination after we expanded the dataset.
+// LiteAPI /data/hotels caps at 1000 per call and returns just metadata
+// (no rate lookups), so 50 is cheap. The downstream rates fetch in
+// rates.ts is what actually costs us — and that still limits to top-N
+// after sorting.
+const DEFAULT_HOTELS_LIMIT = 50;
+
 export async function fetchHotelsList(input: HotelsListInput): Promise<LiteApiHotelsListResponse> {
   const countryCode = resolveCountryCode(input.country);
   if (!countryCode) {
@@ -69,7 +77,7 @@ export async function fetchHotelsList(input: HotelsListInput): Promise<LiteApiHo
     query: {
       countryCode,
       cityName: input.city,
-      limit: input.limit ?? 20,
+      limit: input.limit ?? DEFAULT_HOTELS_LIMIT,
     },
   });
 }
@@ -79,6 +87,6 @@ export async function searchHotels(input: NormalizedHotelSearchInput): Promise<L
   return fetchHotelsList({
     city: input.destination.city,
     country: input.destination.country,
-    limit: 20,
+    limit: DEFAULT_HOTELS_LIMIT,
   });
 }
