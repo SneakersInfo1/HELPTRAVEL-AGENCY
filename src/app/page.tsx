@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { HomePageSections } from "@/components/home/home-page-sections";
-import { PopularDestinationsGrid } from "@/components/home/popular-destinations-grid";
 import { getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -80,7 +79,6 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} />
       </div>
-      <PopularDestinationsGrid locale={locale} count={24} />
       <HomePageSections locale={locale} />
     </main>
   );
