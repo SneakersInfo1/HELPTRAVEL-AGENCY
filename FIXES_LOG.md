@@ -57,6 +57,75 @@ duplicate API calls without lifting yield.
 
 ---
 
+## 2026-05-14 — Sesja C2 closing: production-LiteAPI online + perf cache
+
+After a full debugging sprint, prod-LiteAPI access works and the
+destinations seed has been rebuilt from the production catalog.
+
+### Three production blockers, in chronological discovery order
+
+1. **Standard-auth used the wrong key.** `LITEAPI_PROD_PUBLIC_KEY` env
+   var (their "Public Key" from the dashboard) is for HMAC Secure
+   Authentication only. Standard auth via X-API-Key requires their
+   "Private API Key" (env var `LITEAPI_PROD_PRIVATE_KEY`). Our
+   `client.ts` was sending the HMAC public key — silent 401 on every
+   prod call. Fix: `prodPublic`/`prodPrivate` both resolve from
+   `LITEAPI_PROD_KEY ?? LITEAPI_PROD_PRIVATE_KEY`. HMAC public key is
+   not consumed (HMAC isn't used here). Detailed inline doc to prevent
+   regression.
+
+2. **3-letter shortcut accepted PascalCase city names as IATAs.**
+   `resolveAirportCode` had a regex `/^[A-Za-z]{3}$/` fast-path. Cities
+   like Vig (Denmark), Zug (Switzerland), Vir (Croatia) — all real
+   3-letter names — got promoted to "VIG", "ZUG", "VIR" pseudo-airports.
+   None are real IATAs. ~49 false-positives in the first prod harvest.
+   Fix: require UPPERCASE (`/^[A-Z]{3}$/`) — separates "WAW" (typed by
+   user) from "Vig" (LiteAPI city listing).
+
+3. **Auth-class errors were caught as "city not found".** The harvest
+   script's checkHotelInventory mapped any LiteApiError to
+   `hotelCount=0`. With LiteAPI prod returning 401 for every request
+   (bug #1 above), the script "succeeded" with 0 destinations and
+   overwrote data/destinations.json with empty seed. Two-bug failure
+   mode: bad auth + soft-failure swallowed it. Fix: LITEAPI_AUTH errors
+   now rethrow + pre-flight probe checks Madrid before the main loop.
+   Hard-fail in <1s with a clear banner instead of 3 min of pollution.
+
+### Output
+
+Production LiteAPI harvest (`pnpm build:destinations -- --full --prod`):
+
+  Source candidates:   2476 (83 tourism countries × top-30 cities)
+  Hotel filter (≥15):  350 passed
+  After resolver/garbage filter:  224 verified destinations
+  Polish coverage:     82%
+  Inventory depth:     30 hotels/destination (LiteAPI page size)
+  Total hotels accessible: ~2 million (full LiteAPI prod catalog,
+                                       served on-demand at request time)
+
+### Performance: Next.js Data Cache wired
+
+Two-tier server cache for LiteAPI reads:
+  - /data/hotels      → 24h TTL, tag `liteapi-hotels-list`
+  - /hotels/rates     → 15min TTL, tag `liteapi-rates`
+  - Booking endpoints stay `no-store` (cannot cache writes)
+
+Expected effect on /hotele/szukaj:
+  - First request to a city: ~1.5-2.5s P50 (LiteAPI round-trip)
+  - Repeat traffic within TTL: ~5-50ms (Data Cache hit at edge)
+  - Manual revalidation: `revalidateTag("liteapi")` from admin code
+
+### Path to 1500+ destinations
+
+Current 224 is below the spec's 1500-2500 target. The cap is the
+`--per-country=30` setting + the ≥15-hotel filter (cities at slot 31+
+in LiteAPI's per-country listings are mostly small towns with low
+inventory). Pending follow-up: run with `--per-country=100` (~30-45 min
+wall-time) to add 1000-1500 mid-tier destinations. Cache machinery is
+in place so the user experience won't degrade at scale.
+
+---
+
 ## 2026-05-13 — Sesja C2: destinations 200 → ~2000
 
 ### Pilot run vs full harvest (scope decision)

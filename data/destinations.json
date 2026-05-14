@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-05-13T21:29:43.423Z",
+  "generatedAt": "2026-05-14T18:00:50.293Z",
   "mode": "full",
   "destinations": [
     {
@@ -3627,7 +3627,7 @@
       "lat": 36.8918,
       "lng": 27.2879,
       "airports": [
-        "KOS"
+        "KGS"
       ],
       "nearestPLHubs": [
         {
@@ -10506,138 +10506,6 @@
       "heroImage": null
     },
     {
-      "id": "aia-spain",
-      "city": {
-        "en": "Aia",
-        "pl": "Anguilla"
-      },
-      "country": {
-        "code": "ES",
-        "en": "Spain",
-        "pl": "Hiszpania"
-      },
-      "region": {
-        "en": "Southern Europe",
-        "pl": "Europa Południowa"
-      },
-      "lat": 43.263213,
-      "lng": -2.108159,
-      "airports": [
-        "AIA"
-      ],
-      "nearestPLHubs": [
-        {
-          "iata": "WRO",
-          "km": 1672,
-          "minutes": 172
-        },
-        {
-          "iata": "POZ",
-          "km": 1733,
-          "minutes": 177
-        },
-        {
-          "iata": "KTW",
-          "km": 1791,
-          "minutes": 183
-        }
-      ],
-      "popularity": 50,
-      "vibeTagsEn": [
-        "city break",
-        "culture",
-        "beach"
-      ],
-      "vibeTagsPl": [
-        "city break",
-        "kultura",
-        "plaża"
-      ],
-      "climate": {
-        "1": "cold",
-        "2": "cold",
-        "3": "cold",
-        "4": "cold",
-        "5": "mild",
-        "6": "mild",
-        "7": "mild",
-        "8": "mild",
-        "9": "mild",
-        "10": "cold",
-        "11": "cold",
-        "12": "cold"
-      },
-      "budgetTier": "mid",
-      "hotelCount": 20,
-      "heroImage": null
-    },
-    {
-      "id": "ajo-spain",
-      "city": {
-        "en": "Ajo",
-        "pl": "Ajo"
-      },
-      "country": {
-        "code": "ES",
-        "en": "Spain",
-        "pl": "Hiszpania"
-      },
-      "region": {
-        "en": "Southern Europe",
-        "pl": "Europa Południowa"
-      },
-      "lat": 43.471636,
-      "lng": -3.619196,
-      "airports": [
-        "AJO"
-      ],
-      "nearestPLHubs": [
-        {
-          "iata": "WRO",
-          "km": 1756,
-          "minutes": 180
-        },
-        {
-          "iata": "POZ",
-          "km": 1809,
-          "minutes": 185
-        },
-        {
-          "iata": "KTW",
-          "km": 1880,
-          "minutes": 191
-        }
-      ],
-      "popularity": 50,
-      "vibeTagsEn": [
-        "city break",
-        "culture",
-        "beach"
-      ],
-      "vibeTagsPl": [
-        "city break",
-        "kultura",
-        "plaża"
-      ],
-      "climate": {
-        "1": "cold",
-        "2": "cold",
-        "3": "cold",
-        "4": "cold",
-        "5": "mild",
-        "6": "mild",
-        "7": "mild",
-        "8": "mild",
-        "9": "mild",
-        "10": "cold",
-        "11": "cold",
-        "12": "cold"
-      },
-      "budgetTier": "mid",
-      "hotelCount": 26,
-      "heroImage": null
-    },
-    {
       "id": "alexandria-united-kingdom",
       "city": {
         "en": "Alexandria",
@@ -10700,123 +10568,129 @@
       "heroImage": null
     },
     {
-      "id": "alf-germany",
+      "id": "alhama-de-granada-spain",
       "city": {
-        "en": "Alf",
-        "pl": "Alf"
+        "en": "Alhama de Granada",
+        "pl": "Alhama de Granada"
       },
       "country": {
-        "code": "DE",
-        "en": "Germany",
-        "pl": "Niemcy"
+        "code": "ES",
+        "en": "Spain",
+        "pl": "Hiszpania"
       },
       "region": {
-        "en": "Central Europe",
-        "pl": "Europa Środkowa"
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
       },
-      "lat": 50.055576,
-      "lng": 7.127494,
+      "lat": 37.002127,
+      "lng": -3.988126,
       "airports": [
-        "ALF"
+        "GRX"
       ],
       "nearestPLHubs": [
         {
           "iata": "WRO",
-          "km": 698,
-          "minutes": 80
+          "km": 2274,
+          "minutes": 228
         },
         {
           "iata": "POZ",
-          "km": 724,
-          "minutes": 83
+          "km": 2359,
+          "minutes": 236
         },
         {
           "iata": "KTW",
-          "km": 850,
-          "minutes": 95
+          "km": 2366,
+          "minutes": 237
         }
       ],
       "popularity": 50,
       "vibeTagsEn": [
-        "city break"
+        "city break",
+        "culture",
+        "beach"
       ],
       "vibeTagsPl": [
-        "city break"
+        "city break",
+        "kultura",
+        "plaża"
       ],
       "climate": {
         "1": "cold",
         "2": "cold",
         "3": "cold",
         "4": "cold",
-        "5": "mild",
-        "6": "mild",
-        "7": "mild",
-        "8": "mild",
-        "9": "mild",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
         "10": "cold",
         "11": "cold",
         "12": "cold"
       },
       "budgetTier": "mid",
-      "hotelCount": 21,
+      "hotelCount": 28,
       "heroImage": null
     },
     {
-      "id": "are-sweden",
+      "id": "almodovar-del-rio-spain",
       "city": {
-        "en": "Are",
-        "pl": "Zjednoczone Emiraty Arabskie"
+        "en": "Almodovar del Rio",
+        "pl": "Almodóvar del Río"
       },
       "country": {
-        "code": "SE",
-        "en": "Sweden",
-        "pl": "Szwecja"
+        "code": "ES",
+        "en": "Spain",
+        "pl": "Hiszpania"
       },
       "region": {
-        "en": "Nordics",
-        "pl": "Skandynawia"
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
       },
-      "lat": 63.404618,
-      "lng": 13.09119,
+      "lat": 37.809413,
+      "lng": -5.020176,
       "airports": [
-        "ARE"
+        "RIO"
       ],
       "nearestPLHubs": [
         {
-          "iata": "GDN",
-          "km": 1049,
-          "minutes": 113
+          "iata": "WRO",
+          "km": 2266,
+          "minutes": 227
         },
         {
           "iata": "POZ",
-          "km": 1241,
-          "minutes": 131
+          "km": 2344,
+          "minutes": 235
         },
         {
-          "iata": "WAW",
-          "km": 1332,
-          "minutes": 140
+          "iata": "KTW",
+          "km": 2366,
+          "minutes": 237
         }
       ],
       "popularity": 50,
       "vibeTagsEn": [
         "city break",
-        "nature"
+        "culture",
+        "beach"
       ],
       "vibeTagsPl": [
         "city break",
-        "natura"
+        "kultura",
+        "plaża"
       ],
       "climate": {
         "1": "cold",
         "2": "cold",
         "3": "cold",
         "4": "cold",
-        "5": "mild",
-        "6": "mild",
-        "7": "mild",
-        "8": "mild",
-        "9": "mild",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
         "10": "cold",
         "11": "cold",
         "12": "cold"
@@ -10826,48 +10700,52 @@
       "heroImage": null
     },
     {
-      "id": "aue-germany",
+      "id": "bari-palese-italy",
       "city": {
-        "en": "Aue",
-        "pl": "australijska odmiana języka angielskiego"
+        "en": "Bari Palese",
+        "pl": "Bari Palese Macchie"
       },
       "country": {
-        "code": "DE",
-        "en": "Germany",
-        "pl": "Niemcy"
+        "code": "IT",
+        "en": "Italy",
+        "pl": "Włochy"
       },
       "region": {
-        "en": "Central Europe",
-        "pl": "Europa Środkowa"
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
       },
-      "lat": 50.587093,
-      "lng": 12.699504,
+      "lat": 41.131558,
+      "lng": 16.77398,
       "airports": [
-        "AUE"
+        "BRI"
       ],
       "nearestPLHubs": [
         {
-          "iata": "WRO",
-          "km": 299,
-          "minutes": 43
-        },
-        {
-          "iata": "POZ",
-          "km": 351,
-          "minutes": 48
+          "iata": "KRK",
+          "km": 1022,
+          "minutes": 111
         },
         {
           "iata": "KTW",
-          "km": 451,
-          "minutes": 57
+          "km": 1054,
+          "minutes": 114
+        },
+        {
+          "iata": "WRO",
+          "km": 1109,
+          "minutes": 119
         }
       ],
       "popularity": 50,
       "vibeTagsEn": [
-        "city break"
+        "city break",
+        "culture",
+        "beach"
       ],
       "vibeTagsPl": [
-        "city break"
+        "city break",
+        "kultura",
+        "plaża"
       ],
       "climate": {
         "1": "cold",
@@ -10884,44 +10762,110 @@
         "12": "cold"
       },
       "budgetTier": "mid",
-      "hotelCount": 18,
+      "hotelCount": 17,
       "heroImage": null
     },
     {
-      "id": "ayr-united-kingdom",
+      "id": "bari-sardo-italy",
       "city": {
-        "en": "Ayr",
-        "pl": "Ayr"
+        "en": "Bari Sardo",
+        "pl": "Bari Sardo"
       },
       "country": {
-        "code": "GB",
-        "en": "United Kingdom",
-        "pl": "Wielka Brytania"
+        "code": "IT",
+        "en": "Italy",
+        "pl": "Włochy"
       },
       "region": {
-        "en": "British Isles",
-        "pl": "Wyspy Brytyjskie"
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
       },
-      "lat": 55.460813,
-      "lng": -4.631735,
+      "lat": 39.832569,
+      "lng": 9.675482,
       "airports": [
-        "AYR"
+        "BRI"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 1372,
+          "minutes": 144
+        },
+        {
+          "iata": "KRK",
+          "km": 1387,
+          "minutes": 145
+        },
+        {
+          "iata": "KTW",
+          "km": 1392,
+          "minutes": 145
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "bergen-germany",
+      "city": {
+        "en": "Bergen",
+        "pl": "Bergen"
+      },
+      "country": {
+        "code": "DE",
+        "en": "Germany",
+        "pl": "Niemcy"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 52.807914,
+      "lng": 9.959914,
+      "airports": [
+        "BGO"
       ],
       "nearestPLHubs": [
         {
           "iata": "POZ",
-          "km": 1438,
-          "minutes": 150
-        },
-        {
-          "iata": "GDN",
-          "km": 1474,
-          "minutes": 153
+          "km": 465,
+          "minutes": 59
         },
         {
           "iata": "WRO",
-          "km": 1503,
-          "minutes": 156
+          "km": 511,
+          "minutes": 63
+        },
+        {
+          "iata": "GDN",
+          "km": 587,
+          "minutes": 70
         }
       ],
       "popularity": 50,
@@ -11074,6 +11018,68 @@
       "heroImage": null
     },
     {
+      "id": "bergen-auf-rugen-germany",
+      "city": {
+        "en": "Bergen auf Rügen",
+        "pl": "Bergen auf Rügen"
+      },
+      "country": {
+        "code": "DE",
+        "en": "Germany",
+        "pl": "Niemcy"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 54.417791,
+      "lng": 13.429067,
+      "airports": [
+        "BGO"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "POZ",
+          "km": 316,
+          "minutes": 45
+        },
+        {
+          "iata": "GDN",
+          "km": 326,
+          "minutes": 46
+        },
+        {
+          "iata": "WRO",
+          "km": 436,
+          "minutes": 56
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
       "id": "bergen-op-zoom-netherlands",
       "city": {
         "en": "Bergen op Zoom",
@@ -11133,6 +11139,130 @@
       },
       "budgetTier": "mid",
       "hotelCount": 19,
+      "heroImage": null
+    },
+    {
+      "id": "bernau-bei-berlin-germany",
+      "city": {
+        "en": "Bernau bei Berlin",
+        "pl": "Bernau bei Berlin"
+      },
+      "country": {
+        "code": "DE",
+        "en": "Germany",
+        "pl": "Niemcy"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 52.67595,
+      "lng": 13.582899,
+      "airports": [
+        "BER"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "POZ",
+          "km": 221,
+          "minutes": 36
+        },
+        {
+          "iata": "WRO",
+          "km": 286,
+          "minutes": 42
+        },
+        {
+          "iata": "GDN",
+          "km": 374,
+          "minutes": 50
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 21,
+      "heroImage": null
+    },
+    {
+      "id": "bishop-auckland-united-kingdom",
+      "city": {
+        "en": "Bishop Auckland",
+        "pl": "Bishop Auckland"
+      },
+      "country": {
+        "code": "GB",
+        "en": "United Kingdom",
+        "pl": "Wielka Brytania"
+      },
+      "region": {
+        "en": "British Isles",
+        "pl": "Wyspy Brytyjskie"
+      },
+      "lat": 54.631816,
+      "lng": -1.723429,
+      "airports": [
+        "AKL"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "POZ",
+          "km": 1247,
+          "minutes": 132
+        },
+        {
+          "iata": "GDN",
+          "km": 1299,
+          "minutes": 137
+        },
+        {
+          "iata": "WRO",
+          "km": 1305,
+          "minutes": 137
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
       "heroImage": null
     },
     {
@@ -11202,52 +11332,114 @@
       "heroImage": null
     },
     {
-      "id": "bol-croatia",
+      "id": "bolonia-spain",
       "city": {
-        "en": "Bol",
-        "pl": "Boliwia"
+        "en": "Bolonia",
+        "pl": "Bolonia"
       },
       "country": {
-        "code": "HR",
-        "en": "Croatia",
-        "pl": "Chorwacja"
+        "code": "ES",
+        "en": "Spain",
+        "pl": "Hiszpania"
       },
       "region": {
-        "en": "Balkans",
-        "pl": "Bałkany"
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
       },
-      "lat": 43.260442,
-      "lng": 16.64257,
+      "lat": 36.08566,
+      "lng": -5.76701,
       "airports": [
-        "BOL"
+        "BLQ"
       ],
       "nearestPLHubs": [
         {
-          "iata": "KRK",
-          "km": 795,
-          "minutes": 90
+          "iata": "WRO",
+          "km": 2454,
+          "minutes": 245
+        },
+        {
+          "iata": "POZ",
+          "km": 2536,
+          "minutes": 253
         },
         {
           "iata": "KTW",
-          "km": 823,
-          "minutes": 92
-        },
-        {
-          "iata": "WRO",
-          "km": 872,
-          "minutes": 97
+          "km": 2549,
+          "minutes": 254
         }
       ],
       "popularity": 50,
       "vibeTagsEn": [
-        "beach",
-        "nature",
-        "budget"
+        "city break",
+        "culture",
+        "beach"
       ],
       "vibeTagsPl": [
-        "plaża",
-        "natura",
-        "tani wyjazd"
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 22,
+      "heroImage": null
+    },
+    {
+      "id": "boston-united-kingdom",
+      "city": {
+        "en": "Boston",
+        "pl": "Boston"
+      },
+      "country": {
+        "code": "GB",
+        "en": "United Kingdom",
+        "pl": "Wielka Brytania"
+      },
+      "region": {
+        "en": "British Isles",
+        "pl": "Wyspy Brytyjskie"
+      },
+      "lat": 52.970641,
+      "lng": -0.026251,
+      "airports": [
+        "BOS"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "POZ",
+          "km": 1135,
+          "minutes": 121
+        },
+        {
+          "iata": "WRO",
+          "km": 1172,
+          "minutes": 125
+        },
+        {
+          "iata": "GDN",
+          "km": 1224,
+          "minutes": 130
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
       ],
       "climate": {
         "1": "cold",
@@ -11268,52 +11460,48 @@
       "heroImage": null
     },
     {
-      "id": "bor-serbia",
+      "id": "brno-czech-republic",
       "city": {
-        "en": "Bor",
-        "pl": "Bor (miasto w Czechach)"
+        "en": "Brno",
+        "pl": "Brno"
       },
       "country": {
-        "code": "RS",
-        "en": "Serbia",
-        "pl": "Serbia"
+        "code": "CZ",
+        "en": "Czech Republic",
+        "pl": "Czechy"
       },
       "region": {
-        "en": "Balkans",
-        "pl": "Bałkany"
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
       },
-      "lat": 44.068721,
-      "lng": 22.09874,
+      "lat": 49.212292,
+      "lng": 16.608062,
       "airports": [
-        "BOR"
+        "BRQ"
       ],
       "nearestPLHubs": [
         {
-          "iata": "KRK",
-          "km": 691,
-          "minutes": 80
+          "iata": "WRO",
+          "km": 211,
+          "minutes": 35
         },
         {
           "iata": "KTW",
-          "km": 748,
-          "minutes": 85
+          "km": 226,
+          "minutes": 36
         },
         {
-          "iata": "WRO",
-          "km": 874,
-          "minutes": 97
+          "iata": "KRK",
+          "km": 248,
+          "minutes": 38
         }
       ],
       "popularity": 50,
       "vibeTagsEn": [
-        "beach",
-        "nature",
-        "budget"
+        "city break"
       ],
       "vibeTagsPl": [
-        "plaża",
-        "natura",
-        "tani wyjazd"
+        "city break"
       ],
       "climate": {
         "1": "cold",
@@ -11330,7 +11518,399 @@
         "12": "cold"
       },
       "budgetTier": "mid",
-      "hotelCount": 16,
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "bydgoszcz-poland",
+      "city": {
+        "en": "Bydgoszcz",
+        "pl": "Bydgoszcz"
+      },
+      "country": {
+        "code": "PL",
+        "en": "Poland",
+        "pl": "Polska"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 53.122972,
+      "lng": 18.021342,
+      "airports": [
+        "BZG"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "POZ",
+          "km": 112,
+          "minutes": 26
+        },
+        {
+          "iata": "GDN",
+          "km": 143,
+          "minutes": 28
+        },
+        {
+          "iata": "WAW",
+          "km": 225,
+          "minutes": 36
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "cairo-montenotte-italy",
+      "city": {
+        "en": "Cairo Montenotte",
+        "pl": "Cairo Montenotte"
+      },
+      "country": {
+        "code": "IT",
+        "en": "Italy",
+        "pl": "Włochy"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 44.408619,
+      "lng": 8.267297,
+      "airports": [
+        "CAI"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 983,
+          "minutes": 107
+        },
+        {
+          "iata": "KTW",
+          "km": 1055,
+          "minutes": 114
+        },
+        {
+          "iata": "KRK",
+          "km": 1072,
+          "minutes": 115
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 23,
+      "heroImage": null
+    },
+    {
+      "id": "campagnano-di-roma-italy",
+      "city": {
+        "en": "Campagnano di Roma",
+        "pl": "Campagnano di Roma"
+      },
+      "country": {
+        "code": "IT",
+        "en": "Italy",
+        "pl": "Włochy"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 42.135567,
+      "lng": 12.327121,
+      "airports": [
+        "ROM"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1053,
+          "minutes": 114
+        },
+        {
+          "iata": "WRO",
+          "km": 1056,
+          "minutes": 114
+        },
+        {
+          "iata": "KTW",
+          "km": 1061,
+          "minutes": 115
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "capo-d-orlando-italy",
+      "city": {
+        "en": "Capo dʼOrlando",
+        "pl": "Capo d'Orlando"
+      },
+      "country": {
+        "code": "IT",
+        "en": "Italy",
+        "pl": "Włochy"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 38.153634,
+      "lng": 14.77253,
+      "airports": [
+        "MCO"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1384,
+          "minutes": 145
+        },
+        {
+          "iata": "KTW",
+          "km": 1412,
+          "minutes": 147
+        },
+        {
+          "iata": "WRO",
+          "km": 1449,
+          "minutes": 151
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "chania-town-greece",
+      "city": {
+        "en": "Chania Town",
+        "pl": "Chania Town"
+      },
+      "country": {
+        "code": "GR",
+        "en": "Greece",
+        "pl": "Grecja"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 35.512361,
+      "lng": 24.017208,
+      "airports": [
+        "CHQ"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1655,
+          "minutes": 170
+        },
+        {
+          "iata": "KTW",
+          "km": 1710,
+          "minutes": 175
+        },
+        {
+          "iata": "WRO",
+          "km": 1825,
+          "minutes": 186
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "corfu-town-greece",
+      "city": {
+        "en": "Corfu Town",
+        "pl": "Corfu Town"
+      },
+      "country": {
+        "code": "GR",
+        "en": "Greece",
+        "pl": "Grecja"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 39.597153,
+      "lng": 19.920646,
+      "airports": [
+        "CFU"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1165,
+          "minutes": 124
+        },
+        {
+          "iata": "KTW",
+          "km": 1211,
+          "minutes": 129
+        },
+        {
+          "iata": "WRO",
+          "km": 1301,
+          "minutes": 137
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
       "heroImage": null
     },
     {
@@ -11396,102 +11976,40 @@
       "heroImage": null
     },
     {
-      "id": "ede-netherlands",
+      "id": "dusseldorf-germany",
       "city": {
-        "en": "Ede",
-        "pl": "Ede"
+        "en": "Düsseldorf",
+        "pl": "Düsseldorf"
       },
       "country": {
-        "code": "NL",
-        "en": "Netherlands",
-        "pl": "Holandia"
-      },
-      "region": {
-        "en": "Western Europe",
-        "pl": "Europa Zachodnia"
-      },
-      "lat": 52.024358,
-      "lng": 5.67152,
-      "airports": [
-        "EDE"
-      ],
-      "nearestPLHubs": [
-        {
-          "iata": "POZ",
-          "km": 760,
-          "minutes": 86
-        },
-        {
-          "iata": "WRO",
-          "km": 781,
-          "minutes": 88
-        },
-        {
-          "iata": "GDN",
-          "km": 890,
-          "minutes": 98
-        }
-      ],
-      "popularity": 50,
-      "vibeTagsEn": [
-        "city break"
-      ],
-      "vibeTagsPl": [
-        "city break"
-      ],
-      "climate": {
-        "1": "cold",
-        "2": "cold",
-        "3": "cold",
-        "4": "cold",
-        "5": "mild",
-        "6": "mild",
-        "7": "mild",
-        "8": "mild",
-        "9": "mild",
-        "10": "cold",
-        "11": "cold",
-        "12": "cold"
-      },
-      "budgetTier": "mid",
-      "hotelCount": 15,
-      "heroImage": null
-    },
-    {
-      "id": "egg-austria",
-      "city": {
-        "en": "Egg",
-        "pl": "jądro"
-      },
-      "country": {
-        "code": "AT",
-        "en": "Austria",
-        "pl": "Austria"
+        "code": "DE",
+        "en": "Germany",
+        "pl": "Niemcy"
       },
       "region": {
         "en": "Central Europe",
         "pl": "Europa Środkowa"
       },
-      "lat": 47.433157,
-      "lng": 9.927998,
+      "lat": 51.275807,
+      "lng": 6.769209,
       "airports": [
-        "EGG"
+        "DUS"
       ],
       "nearestPLHubs": [
         {
-          "iata": "WRO",
-          "km": 649,
-          "minutes": 76
-        },
-        {
           "iata": "POZ",
-          "km": 742,
-          "minutes": 85
+          "km": 702,
+          "minutes": 81
         },
         {
-          "iata": "KTW",
-          "km": 748,
-          "minutes": 85
+          "iata": "WRO",
+          "km": 705,
+          "minutes": 81
+        },
+        {
+          "iata": "GDN",
+          "km": 857,
+          "minutes": 95
         }
       ],
       "popularity": 50,
@@ -11516,7 +12034,267 @@
         "12": "cold"
       },
       "budgetTier": "mid",
-      "hotelCount": 29,
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "emporio-santorini-greece",
+      "city": {
+        "en": "Emporio Santorini",
+        "pl": "Emporio Santorini"
+      },
+      "country": {
+        "code": "GR",
+        "en": "Greece",
+        "pl": "Grecja"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 36.355752,
+      "lng": 25.444123,
+      "airports": [
+        "JTR"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1592,
+          "minutes": 164
+        },
+        {
+          "iata": "KTW",
+          "km": 1650,
+          "minutes": 170
+        },
+        {
+          "iata": "WRO",
+          "km": 1775,
+          "minutes": 181
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "gdansk-poland",
+      "city": {
+        "en": "Gdańsk",
+        "pl": "Gdańsk"
+      },
+      "country": {
+        "code": "PL",
+        "en": "Poland",
+        "pl": "Polska"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 54.347479,
+      "lng": 18.658464,
+      "airports": [
+        "GDN"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "GDN",
+          "km": 13,
+          "minutes": 16
+        },
+        {
+          "iata": "POZ",
+          "km": 246,
+          "minutes": 38
+        },
+        {
+          "iata": "WAW",
+          "km": 287,
+          "minutes": 42
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "genzano-di-roma-italy",
+      "city": {
+        "en": "Genzano di Roma",
+        "pl": "Genzano di Roma"
+      },
+      "country": {
+        "code": "IT",
+        "en": "Italy",
+        "pl": "Włochy"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 41.692975,
+      "lng": 12.677166,
+      "airports": [
+        "ROM"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1081,
+          "minutes": 116
+        },
+        {
+          "iata": "KTW",
+          "km": 1093,
+          "minutes": 117
+        },
+        {
+          "iata": "WRO",
+          "km": 1094,
+          "minutes": 118
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 27,
+      "heroImage": null
+    },
+    {
+      "id": "giglio-porto-italy",
+      "city": {
+        "en": "Giglio Porto",
+        "pl": "Giglio Porto"
+      },
+      "country": {
+        "code": "IT",
+        "en": "Italy",
+        "pl": "Włochy"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 42.359111,
+      "lng": 10.922894,
+      "airports": [
+        "OPO"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 1072,
+          "minutes": 116
+        },
+        {
+          "iata": "KRK",
+          "km": 1095,
+          "minutes": 118
+        },
+        {
+          "iata": "KTW",
+          "km": 1096,
+          "minutes": 118
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 18,
       "heroImage": null
     },
     {
@@ -11706,6 +12484,138 @@
       "heroImage": null
     },
     {
+      "id": "kalamaki-heraklion-greece",
+      "city": {
+        "en": "Kalamaki Heraklion",
+        "pl": "Kalamaki Heraklion"
+      },
+      "country": {
+        "code": "GR",
+        "en": "Greece",
+        "pl": "Grecja"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 35.027604,
+      "lng": 24.759149,
+      "airports": [
+        "HER"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1721,
+          "minutes": 176
+        },
+        {
+          "iata": "KTW",
+          "km": 1778,
+          "minutes": 182
+        },
+        {
+          "iata": "WRO",
+          "km": 1896,
+          "minutes": 193
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "kallithea-rhodes-greece",
+      "city": {
+        "en": "Kallithea Rhodes",
+        "pl": "Kallithea Rhodes"
+      },
+      "country": {
+        "code": "GR",
+        "en": "Greece",
+        "pl": "Grecja"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 36.391037,
+      "lng": 28.234794,
+      "airports": [
+        "RHO"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1666,
+          "minutes": 171
+        },
+        {
+          "iata": "KTW",
+          "km": 1729,
+          "minutes": 177
+        },
+        {
+          "iata": "WAW",
+          "km": 1845,
+          "minutes": 188
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 15,
+      "heroImage": null
+    },
+    {
       "id": "kato-paphos-cyprus",
       "city": {
         "en": "Kato Paphos",
@@ -11769,6 +12679,196 @@
       },
       "budgetTier": "mid",
       "hotelCount": 21,
+      "heroImage": null
+    },
+    {
+      "id": "katowice-poland",
+      "city": {
+        "en": "Katowice",
+        "pl": "Katowice"
+      },
+      "country": {
+        "code": "PL",
+        "en": "Poland",
+        "pl": "Polska"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 50.263548,
+      "lng": 19.016339,
+      "airports": [
+        "KTW"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KTW",
+          "km": 24,
+          "minutes": 17
+        },
+        {
+          "iata": "KRK",
+          "km": 59,
+          "minutes": 20
+        },
+        {
+          "iata": "WRO",
+          "km": 177,
+          "minutes": 32
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "kos-town-greece",
+      "city": {
+        "en": "Kos Town",
+        "pl": "Kos Town"
+      },
+      "country": {
+        "code": "GR",
+        "en": "Greece",
+        "pl": "Grecja"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 36.893626,
+      "lng": 27.286562,
+      "airports": [
+        "KGS"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1584,
+          "minutes": 164
+        },
+        {
+          "iata": "KTW",
+          "km": 1646,
+          "minutes": 169
+        },
+        {
+          "iata": "WAW",
+          "km": 1769,
+          "minutes": 181
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "krakow-poland",
+      "city": {
+        "en": "Kraków",
+        "pl": "Kraków"
+      },
+      "country": {
+        "code": "PL",
+        "en": "Poland",
+        "pl": "Polska"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 50.071659,
+      "lng": 19.802158,
+      "airports": [
+        "KRK"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1,
+          "minutes": 15
+        },
+        {
+          "iata": "KTW",
+          "km": 68,
+          "minutes": 21
+        },
+        {
+          "iata": "WRO",
+          "km": 236,
+          "minutes": 37
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
       "heroImage": null
     },
     {
@@ -11838,6 +12938,574 @@
       "heroImage": null
     },
     {
+      "id": "lille-belgium",
+      "city": {
+        "en": "Lille",
+        "pl": "Lille"
+      },
+      "country": {
+        "code": "BE",
+        "en": "Belgium",
+        "pl": "Belgia"
+      },
+      "region": {
+        "en": "Western Europe",
+        "pl": "Europa Zachodnia"
+      },
+      "lat": 51.271667,
+      "lng": 4.799529,
+      "airports": [
+        "LIL"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "POZ",
+          "km": 835,
+          "minutes": 93
+        },
+        {
+          "iata": "WRO",
+          "km": 842,
+          "minutes": 94
+        },
+        {
+          "iata": "GDN",
+          "km": 979,
+          "minutes": 107
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 19,
+      "heroImage": null
+    },
+    {
+      "id": "lodz-poland",
+      "city": {
+        "en": "Lodz",
+        "pl": "Łódź"
+      },
+      "country": {
+        "code": "PL",
+        "en": "Poland",
+        "pl": "Polska"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 51.778701,
+      "lng": 19.448547,
+      "airports": [
+        "LCJ"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WAW",
+          "km": 113,
+          "minutes": 26
+        },
+        {
+          "iata": "KTW",
+          "km": 147,
+          "minutes": 29
+        },
+        {
+          "iata": "KRK",
+          "km": 191,
+          "minutes": 33
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "lublin-poland",
+      "city": {
+        "en": "Lublin",
+        "pl": "Lublin"
+      },
+      "country": {
+        "code": "PL",
+        "en": "Poland",
+        "pl": "Polska"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 51.253982,
+      "lng": 22.552917,
+      "airports": [
+        "LUZ"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WAW",
+          "km": 149,
+          "minutes": 29
+        },
+        {
+          "iata": "KRK",
+          "km": 235,
+          "minutes": 37
+        },
+        {
+          "iata": "KTW",
+          "km": 259,
+          "minutes": 39
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "odz-poland",
+      "city": {
+        "en": "Łódź",
+        "pl": "Łódź"
+      },
+      "country": {
+        "code": "PL",
+        "en": "Poland",
+        "pl": "Polska"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 51.778701,
+      "lng": 19.448547,
+      "airports": [
+        "LCJ"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WAW",
+          "km": 113,
+          "minutes": 26
+        },
+        {
+          "iata": "KTW",
+          "km": 147,
+          "minutes": 29
+        },
+        {
+          "iata": "KRK",
+          "km": 191,
+          "minutes": 33
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "male-ciche-poland",
+      "city": {
+        "en": "Male Ciche",
+        "pl": "Małe Ciche"
+      },
+      "country": {
+        "code": "PL",
+        "en": "Poland",
+        "pl": "Polska"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 49.305395,
+      "lng": 20.069029,
+      "airports": [
+        "MLE"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 88,
+          "minutes": 23
+        },
+        {
+          "iata": "KTW",
+          "km": 148,
+          "minutes": 29
+        },
+        {
+          "iata": "WRO",
+          "km": 302,
+          "minutes": 43
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 29,
+      "heroImage": null
+    },
+    {
+      "id": "malmo-sweden",
+      "city": {
+        "en": "Malmö",
+        "pl": "Malmö"
+      },
+      "country": {
+        "code": "SE",
+        "en": "Sweden",
+        "pl": "Szwecja"
+      },
+      "region": {
+        "en": "Nordics",
+        "pl": "Skandynawia"
+      },
+      "lat": 55.596514,
+      "lng": 13.001413,
+      "airports": [
+        "MMX"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "GDN",
+          "km": 374,
+          "minutes": 50
+        },
+        {
+          "iata": "POZ",
+          "km": 432,
+          "minutes": 56
+        },
+        {
+          "iata": "WRO",
+          "km": 562,
+          "minutes": 68
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "nature"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "natura"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "marrakech-morocco",
+      "city": {
+        "en": "Marrakech",
+        "pl": "Marrakesz"
+      },
+      "country": {
+        "code": "MA",
+        "en": "Morocco",
+        "pl": "Maroko"
+      },
+      "region": {
+        "en": "North Africa",
+        "pl": "Afryka Północna"
+      },
+      "lat": 31.623704,
+      "lng": -8.007788,
+      "airports": [
+        "RAK"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 2973,
+          "minutes": 294
+        },
+        {
+          "iata": "KTW",
+          "km": 3059,
+          "minutes": 302
+        },
+        {
+          "iata": "POZ",
+          "km": 3060,
+          "minutes": 302
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "mild",
+        "2": "mild",
+        "3": "mild",
+        "4": "mild",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "mild",
+        "11": "mild",
+        "12": "mild"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "mykonos-greece",
+      "city": {
+        "en": "Mykonos",
+        "pl": "Mykonos"
+      },
+      "country": {
+        "code": "GR",
+        "en": "Greece",
+        "pl": "Grecja"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 37.416591,
+      "lng": 25.339139,
+      "airports": [
+        "JMK"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1476,
+          "minutes": 153
+        },
+        {
+          "iata": "KTW",
+          "km": 1535,
+          "minutes": 159
+        },
+        {
+          "iata": "WRO",
+          "km": 1661,
+          "minutes": 171
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "mykonos-city-greece",
+      "city": {
+        "en": "Mýkonos City",
+        "pl": "Mýkonos City"
+      },
+      "country": {
+        "code": "GR",
+        "en": "Greece",
+        "pl": "Grecja"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 37.456456,
+      "lng": 25.328802,
+      "airports": [
+        "JMK"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1471,
+          "minutes": 153
+        },
+        {
+          "iata": "KTW",
+          "km": 1530,
+          "minutes": 158
+        },
+        {
+          "iata": "WRO",
+          "km": 1657,
+          "minutes": 170
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
       "id": "new-cairo-egypt",
       "city": {
         "en": "New Cairo",
@@ -11894,6 +13562,398 @@
         "10": "mild",
         "11": "mild",
         "12": "mild"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "north-nicosia-cyprus",
+      "city": {
+        "en": "North Nicosia",
+        "pl": "Nikozja Północna"
+      },
+      "country": {
+        "code": "CY",
+        "en": "Cyprus",
+        "pl": "Cypr"
+      },
+      "region": {
+        "en": "Eastern Mediterranean",
+        "pl": "Wschodnie Morze Śródziemne"
+      },
+      "lat": 35.193328,
+      "lng": 33.346957,
+      "airports": [
+        "LCA"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1986,
+          "minutes": 201
+        },
+        {
+          "iata": "KTW",
+          "km": 2051,
+          "minutes": 207
+        },
+        {
+          "iata": "WAW",
+          "km": 2127,
+          "minutes": 214
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 27,
+      "heroImage": null
+    },
+    {
+      "id": "paphos-city-cyprus",
+      "city": {
+        "en": "Paphos City",
+        "pl": "Paphos City"
+      },
+      "country": {
+        "code": "CY",
+        "en": "Cyprus",
+        "pl": "Cypr"
+      },
+      "region": {
+        "en": "Eastern Mediterranean",
+        "pl": "Wschodnie Morze Śródziemne"
+      },
+      "lat": 34.771234,
+      "lng": 32.407377,
+      "airports": [
+        "PFO"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 1986,
+          "minutes": 201
+        },
+        {
+          "iata": "KTW",
+          "km": 2052,
+          "minutes": 207
+        },
+        {
+          "iata": "WAW",
+          "km": 2137,
+          "minutes": 215
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "mild",
+        "2": "mild",
+        "3": "mild",
+        "4": "mild",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "mild",
+        "11": "mild",
+        "12": "mild"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "ponte-de-lima-portugal",
+      "city": {
+        "en": "Ponte de Lima",
+        "pl": "Ponte de Lima"
+      },
+      "country": {
+        "code": "PT",
+        "en": "Portugal",
+        "pl": "Portugalia"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 41.765868,
+      "lng": -8.586679,
+      "airports": [
+        "LIM"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 2195,
+          "minutes": 221
+        },
+        {
+          "iata": "POZ",
+          "km": 2242,
+          "minutes": 225
+        },
+        {
+          "iata": "KTW",
+          "km": 2324,
+          "minutes": 233
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "porto-covo-portugal",
+      "city": {
+        "en": "Porto Covo",
+        "pl": "Porto Covo"
+      },
+      "country": {
+        "code": "PT",
+        "en": "Portugal",
+        "pl": "Portugalia"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 37.855353,
+      "lng": -8.791086,
+      "airports": [
+        "OPO"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 2493,
+          "minutes": 249
+        },
+        {
+          "iata": "POZ",
+          "km": 2557,
+          "minutes": 255
+        },
+        {
+          "iata": "KTW",
+          "km": 2605,
+          "minutes": 259
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "porto-da-cruz-portugal",
+      "city": {
+        "en": "Porto da Cruz",
+        "pl": "Porto da Cruz"
+      },
+      "country": {
+        "code": "PT",
+        "en": "Portugal",
+        "pl": "Portugalia"
+      },
+      "region": {
+        "en": "Southern Europe",
+        "pl": "Europa Południowa"
+      },
+      "lat": 32.773038,
+      "lng": -16.827899,
+      "airports": [
+        "OPO"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 3406,
+          "minutes": 334
+        },
+        {
+          "iata": "POZ",
+          "km": 3464,
+          "minutes": 340
+        },
+        {
+          "iata": "KTW",
+          "km": 3523,
+          "minutes": 345
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break",
+        "culture",
+        "beach"
+      ],
+      "vibeTagsPl": [
+        "city break",
+        "kultura",
+        "plaża"
+      ],
+      "climate": {
+        "1": "mild",
+        "2": "mild",
+        "3": "mild",
+        "4": "mild",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "mild",
+        "11": "mild",
+        "12": "mild"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "prague-czech-republic",
+      "city": {
+        "en": "Prague",
+        "pl": "Praga"
+      },
+      "country": {
+        "code": "CZ",
+        "en": "Czech Republic",
+        "pl": "Czechy"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 50.08585,
+      "lng": 14.430378,
+      "airports": [
+        "PRG"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 207,
+          "minutes": 34
+        },
+        {
+          "iata": "POZ",
+          "km": 309,
+          "minutes": 44
+        },
+        {
+          "iata": "KTW",
+          "km": 333,
+          "minutes": 46
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
       },
       "budgetTier": "mid",
       "hotelCount": 30,
@@ -12160,6 +14220,68 @@
       "heroImage": null
     },
     {
+      "id": "tunis-egypt",
+      "city": {
+        "en": "Tunis",
+        "pl": "Tunis"
+      },
+      "country": {
+        "code": "EG",
+        "en": "Egypt",
+        "pl": "Egipt"
+      },
+      "region": {
+        "en": "North Africa",
+        "pl": "Afryka Północna"
+      },
+      "lat": 29.401404,
+      "lng": 30.486782,
+      "airports": [
+        "TUN"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "KRK",
+          "km": 2469,
+          "minutes": 246
+        },
+        {
+          "iata": "KTW",
+          "km": 2530,
+          "minutes": 252
+        },
+        {
+          "iata": "WAW",
+          "km": 2650,
+          "minutes": 263
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
+      ],
+      "climate": {
+        "1": "mild",
+        "2": "mild",
+        "3": "mild",
+        "4": "mild",
+        "5": "hot",
+        "6": "hot",
+        "7": "hot",
+        "8": "hot",
+        "9": "hot",
+        "10": "mild",
+        "11": "mild",
+        "12": "mild"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 18,
+      "heroImage": null
+    },
+    {
       "id": "vlore-albania",
       "city": {
         "en": "Vlorë",
@@ -12206,6 +14328,68 @@
         "plaża",
         "natura",
         "tani wyjazd"
+      ],
+      "climate": {
+        "1": "cold",
+        "2": "cold",
+        "3": "cold",
+        "4": "cold",
+        "5": "mild",
+        "6": "mild",
+        "7": "mild",
+        "8": "mild",
+        "9": "mild",
+        "10": "cold",
+        "11": "cold",
+        "12": "cold"
+      },
+      "budgetTier": "mid",
+      "hotelCount": 30,
+      "heroImage": null
+    },
+    {
+      "id": "zurich-switzerland",
+      "city": {
+        "en": "Zürich",
+        "pl": "Zurych"
+      },
+      "country": {
+        "code": "CH",
+        "en": "Switzerland",
+        "pl": "Szwajcaria"
+      },
+      "region": {
+        "en": "Central Europe",
+        "pl": "Europa Środkowa"
+      },
+      "lat": 47.372053,
+      "lng": 8.535343,
+      "airports": [
+        "ZRH"
+      ],
+      "nearestPLHubs": [
+        {
+          "iata": "WRO",
+          "km": 734,
+          "minutes": 84
+        },
+        {
+          "iata": "POZ",
+          "km": 816,
+          "minutes": 92
+        },
+        {
+          "iata": "KTW",
+          "km": 843,
+          "minutes": 94
+        }
+      ],
+      "popularity": 50,
+      "vibeTagsEn": [
+        "city break"
+      ],
+      "vibeTagsPl": [
+        "city break"
       ],
       "climate": {
         "1": "cold",
