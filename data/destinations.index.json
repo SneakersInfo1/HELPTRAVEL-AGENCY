@@ -501,7 +501,7 @@
     "countryPl": "Grecja",
     "countryCode": "GR",
     "popularity": 86,
-    "iata": "KOS"
+    "iata": "KGS"
   },
   {
     "id": "larnaca-cyprus",
@@ -1467,24 +1467,6 @@
     "iata": "CFU"
   },
   {
-    "id": "aia-spain",
-    "cityPl": "Anguilla",
-    "cityEn": "Aia",
-    "countryPl": "Hiszpania",
-    "countryCode": "ES",
-    "popularity": 50,
-    "iata": "AIA"
-  },
-  {
-    "id": "ajo-spain",
-    "cityPl": "Ajo",
-    "cityEn": "Ajo",
-    "countryPl": "Hiszpania",
-    "countryCode": "ES",
-    "popularity": 50,
-    "iata": "AJO"
-  },
-  {
     "id": "alexandria-united-kingdom",
     "cityPl": "Aleksandria",
     "cityEn": "Alexandria",
@@ -1494,40 +1476,49 @@
     "iata": "HBE"
   },
   {
-    "id": "alf-germany",
-    "cityPl": "Alf",
-    "cityEn": "Alf",
+    "id": "alhama-de-granada-spain",
+    "cityPl": "Alhama de Granada",
+    "cityEn": "Alhama de Granada",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "GRX"
+  },
+  {
+    "id": "almodovar-del-rio-spain",
+    "cityPl": "Almodóvar del Río",
+    "cityEn": "Almodovar del Rio",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "RIO"
+  },
+  {
+    "id": "bari-palese-italy",
+    "cityPl": "Bari Palese Macchie",
+    "cityEn": "Bari Palese",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "BRI"
+  },
+  {
+    "id": "bari-sardo-italy",
+    "cityPl": "Bari Sardo",
+    "cityEn": "Bari Sardo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "BRI"
+  },
+  {
+    "id": "bergen-germany",
+    "cityPl": "Bergen",
+    "cityEn": "Bergen",
     "countryPl": "Niemcy",
     "countryCode": "DE",
     "popularity": 50,
-    "iata": "ALF"
-  },
-  {
-    "id": "are-sweden",
-    "cityPl": "Zjednoczone Emiraty Arabskie",
-    "cityEn": "Are",
-    "countryPl": "Szwecja",
-    "countryCode": "SE",
-    "popularity": 50,
-    "iata": "ARE"
-  },
-  {
-    "id": "aue-germany",
-    "cityPl": "australijska odmiana języka angielskiego",
-    "cityEn": "Aue",
-    "countryPl": "Niemcy",
-    "countryCode": "DE",
-    "popularity": 50,
-    "iata": "AUE"
-  },
-  {
-    "id": "ayr-united-kingdom",
-    "cityPl": "Ayr",
-    "cityEn": "Ayr",
-    "countryPl": "Wielka Brytania",
-    "countryCode": "GB",
-    "popularity": 50,
-    "iata": "AYR"
+    "iata": "BGO"
   },
   {
     "id": "bergen-netherlands",
@@ -1548,6 +1539,15 @@
     "iata": "BGO"
   },
   {
+    "id": "bergen-auf-rugen-germany",
+    "cityPl": "Bergen auf Rügen",
+    "cityEn": "Bergen auf Rügen",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 50,
+    "iata": "BGO"
+  },
+  {
     "id": "bergen-op-zoom-netherlands",
     "cityPl": "Bergen op Zoom",
     "cityEn": "Bergen op Zoom",
@@ -1555,6 +1555,24 @@
     "countryCode": "NL",
     "popularity": 50,
     "iata": "BGO"
+  },
+  {
+    "id": "bernau-bei-berlin-germany",
+    "cityPl": "Bernau bei Berlin",
+    "cityEn": "Bernau bei Berlin",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 50,
+    "iata": "BER"
+  },
+  {
+    "id": "bishop-auckland-united-kingdom",
+    "cityPl": "Bishop Auckland",
+    "cityEn": "Bishop Auckland",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 50,
+    "iata": "AKL"
   },
   {
     "id": "bodrum-city-turkey",
@@ -1566,22 +1584,85 @@
     "iata": "BJV"
   },
   {
-    "id": "bol-croatia",
-    "cityPl": "Boliwia",
-    "cityEn": "Bol",
-    "countryPl": "Chorwacja",
-    "countryCode": "HR",
+    "id": "bolonia-spain",
+    "cityPl": "Bolonia",
+    "cityEn": "Bolonia",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
     "popularity": 50,
-    "iata": "BOL"
+    "iata": "BLQ"
   },
   {
-    "id": "bor-serbia",
-    "cityPl": "Bor (miasto w Czechach)",
-    "cityEn": "Bor",
-    "countryPl": "Serbia",
-    "countryCode": "RS",
+    "id": "boston-united-kingdom",
+    "cityPl": "Boston",
+    "cityEn": "Boston",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
     "popularity": 50,
-    "iata": "BOR"
+    "iata": "BOS"
+  },
+  {
+    "id": "brno-czech-republic",
+    "cityPl": "Brno",
+    "cityEn": "Brno",
+    "countryPl": "Czechy",
+    "countryCode": "CZ",
+    "popularity": 50,
+    "iata": "BRQ"
+  },
+  {
+    "id": "bydgoszcz-poland",
+    "cityPl": "Bydgoszcz",
+    "cityEn": "Bydgoszcz",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "BZG"
+  },
+  {
+    "id": "cairo-montenotte-italy",
+    "cityPl": "Cairo Montenotte",
+    "cityEn": "Cairo Montenotte",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "CAI"
+  },
+  {
+    "id": "campagnano-di-roma-italy",
+    "cityPl": "Campagnano di Roma",
+    "cityEn": "Campagnano di Roma",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "ROM"
+  },
+  {
+    "id": "capo-d-orlando-italy",
+    "cityPl": "Capo d'Orlando",
+    "cityEn": "Capo dʼOrlando",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "MCO"
+  },
+  {
+    "id": "chania-town-greece",
+    "cityPl": "Chania Town",
+    "cityEn": "Chania Town",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "CHQ"
+  },
+  {
+    "id": "corfu-town-greece",
+    "cityPl": "Corfu Town",
+    "cityEn": "Corfu Town",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "CFU"
   },
   {
     "id": "djerba-midun-tunisia",
@@ -1593,22 +1674,49 @@
     "iata": "DJE"
   },
   {
-    "id": "ede-netherlands",
-    "cityPl": "Ede",
-    "cityEn": "Ede",
-    "countryPl": "Holandia",
-    "countryCode": "NL",
+    "id": "dusseldorf-germany",
+    "cityPl": "Düsseldorf",
+    "cityEn": "Düsseldorf",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
     "popularity": 50,
-    "iata": "EDE"
+    "iata": "DUS"
   },
   {
-    "id": "egg-austria",
-    "cityPl": "jądro",
-    "cityEn": "Egg",
-    "countryPl": "Austria",
-    "countryCode": "AT",
+    "id": "emporio-santorini-greece",
+    "cityPl": "Emporio Santorini",
+    "cityEn": "Emporio Santorini",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
     "popularity": 50,
-    "iata": "EGG"
+    "iata": "JTR"
+  },
+  {
+    "id": "gdansk-poland",
+    "cityPl": "Gdańsk",
+    "cityEn": "Gdańsk",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "GDN"
+  },
+  {
+    "id": "genzano-di-roma-italy",
+    "cityPl": "Genzano di Roma",
+    "cityEn": "Genzano di Roma",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "ROM"
+  },
+  {
+    "id": "giglio-porto-italy",
+    "cityPl": "Giglio Porto",
+    "cityEn": "Giglio Porto",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
   },
   {
     "id": "hammam-sousse-tunisia",
@@ -1638,6 +1746,24 @@
     "iata": "NBE"
   },
   {
+    "id": "kalamaki-heraklion-greece",
+    "cityPl": "Kalamaki Heraklion",
+    "cityEn": "Kalamaki Heraklion",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "HER"
+  },
+  {
+    "id": "kallithea-rhodes-greece",
+    "cityPl": "Kallithea Rhodes",
+    "cityEn": "Kallithea Rhodes",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "RHO"
+  },
+  {
     "id": "kato-paphos-cyprus",
     "cityPl": "Kato Paphos",
     "cityEn": "Kato Paphos",
@@ -1645,6 +1771,33 @@
     "countryCode": "CY",
     "popularity": 50,
     "iata": "PFO"
+  },
+  {
+    "id": "katowice-poland",
+    "cityPl": "Katowice",
+    "cityEn": "Katowice",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "KTW"
+  },
+  {
+    "id": "kos-town-greece",
+    "cityPl": "Kos Town",
+    "cityEn": "Kos Town",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "KGS"
+  },
+  {
+    "id": "krakow-poland",
+    "cityPl": "Kraków",
+    "cityEn": "Kraków",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "KRK"
   },
   {
     "id": "larnaka-cyprus",
@@ -1656,6 +1809,87 @@
     "iata": "LCA"
   },
   {
+    "id": "lille-belgium",
+    "cityPl": "Lille",
+    "cityEn": "Lille",
+    "countryPl": "Belgia",
+    "countryCode": "BE",
+    "popularity": 50,
+    "iata": "LIL"
+  },
+  {
+    "id": "lodz-poland",
+    "cityPl": "Łódź",
+    "cityEn": "Lodz",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "LCJ"
+  },
+  {
+    "id": "lublin-poland",
+    "cityPl": "Lublin",
+    "cityEn": "Lublin",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "LUZ"
+  },
+  {
+    "id": "odz-poland",
+    "cityPl": "Łódź",
+    "cityEn": "Łódź",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "LCJ"
+  },
+  {
+    "id": "male-ciche-poland",
+    "cityPl": "Małe Ciche",
+    "cityEn": "Male Ciche",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "MLE"
+  },
+  {
+    "id": "malmo-sweden",
+    "cityPl": "Malmö",
+    "cityEn": "Malmö",
+    "countryPl": "Szwecja",
+    "countryCode": "SE",
+    "popularity": 50,
+    "iata": "MMX"
+  },
+  {
+    "id": "marrakech-morocco",
+    "cityPl": "Marrakesz",
+    "cityEn": "Marrakech",
+    "countryPl": "Maroko",
+    "countryCode": "MA",
+    "popularity": 50,
+    "iata": "RAK"
+  },
+  {
+    "id": "mykonos-greece",
+    "cityPl": "Mykonos",
+    "cityEn": "Mykonos",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "JMK"
+  },
+  {
+    "id": "mykonos-city-greece",
+    "cityPl": "Mýkonos City",
+    "cityEn": "Mýkonos City",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "JMK"
+  },
+  {
     "id": "new-cairo-egypt",
     "cityPl": "Nowy Kair",
     "cityEn": "New Cairo",
@@ -1663,6 +1897,60 @@
     "countryCode": "EG",
     "popularity": 50,
     "iata": "CAI"
+  },
+  {
+    "id": "north-nicosia-cyprus",
+    "cityPl": "Nikozja Północna",
+    "cityEn": "North Nicosia",
+    "countryPl": "Cypr",
+    "countryCode": "CY",
+    "popularity": 50,
+    "iata": "LCA"
+  },
+  {
+    "id": "paphos-city-cyprus",
+    "cityPl": "Paphos City",
+    "cityEn": "Paphos City",
+    "countryPl": "Cypr",
+    "countryCode": "CY",
+    "popularity": 50,
+    "iata": "PFO"
+  },
+  {
+    "id": "ponte-de-lima-portugal",
+    "cityPl": "Ponte de Lima",
+    "cityEn": "Ponte de Lima",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "LIM"
+  },
+  {
+    "id": "porto-covo-portugal",
+    "cityPl": "Porto Covo",
+    "cityEn": "Porto Covo",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-da-cruz-portugal",
+    "cityPl": "Porto da Cruz",
+    "cityEn": "Porto da Cruz",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "prague-czech-republic",
+    "cityPl": "Praga",
+    "cityEn": "Prague",
+    "countryPl": "Czechy",
+    "countryCode": "CZ",
+    "popularity": 50,
+    "iata": "PRG"
   },
   {
     "id": "rabat-malta",
@@ -1701,6 +1989,15 @@
     "iata": "TIA"
   },
   {
+    "id": "tunis-egypt",
+    "cityPl": "Tunis",
+    "cityEn": "Tunis",
+    "countryPl": "Egipt",
+    "countryCode": "EG",
+    "popularity": 50,
+    "iata": "TUN"
+  },
+  {
     "id": "vlore-albania",
     "cityPl": "Wlora",
     "cityEn": "Vlorë",
@@ -1708,5 +2005,14 @@
     "countryCode": "AL",
     "popularity": 50,
     "iata": "TIA"
+  },
+  {
+    "id": "zurich-switzerland",
+    "cityPl": "Zurych",
+    "cityEn": "Zürich",
+    "countryPl": "Szwajcaria",
+    "countryCode": "CH",
+    "popularity": 50,
+    "iata": "ZRH"
   }
 ]
