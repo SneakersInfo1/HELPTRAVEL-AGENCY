@@ -5,12 +5,14 @@ import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { getEditorialArticles, getEditorialCategories } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 
-// Sesja C2 — sitemap now sources verified destinations from
-// data/destinations.json. Up to 500 top destinations get their own
-// /hotele/szukaj URL so Google can index the search-results page per
-// destination. Above 5k URLs we'd split into a sitemap-index — at pilot
-// scale (161) we stay under that limit comfortably.
-const SEARCH_URL_LIMIT = 500;
+// Sesja C2 — sitemap sources verified destinations from
+// data/destinations.json. Up to SEARCH_URL_LIMIT top destinations get
+// their own /hotele/szukaj URL so Google can index the search-results
+// page per destination. Bumped 500 → 1500 in the Sesja C2 phase-2
+// follow-up (TP-resolver + geo-distance harvest yielded ~900
+// destinations and room to grow). Above 5k total URLs we'd split into
+// sitemap-index; at 905 destinations we still stay well under that.
+const SEARCH_URL_LIMIT = 1500;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = getSiteUrl();
