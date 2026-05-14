@@ -410,7 +410,10 @@ const airportCodesByKey: Record<string, string> = {
   "punta cana": "PUJ",
   "san juan": "SJU",
   "rio de janeiro": "RIO",
-  rio: "RIO",
+  // Short alias `rio: "RIO"` deliberately omitted — there's a small town
+  // named "Rio" in Greece (near Patras) that ended up assigned the
+  // Brazilian metro code during the C2 prod harvest. Force the full
+  // "Rio de Janeiro" name to avoid the collision.
   "sao paulo": "SAO",
   "buenos aires": "BUE",
   lima: "LIM",
