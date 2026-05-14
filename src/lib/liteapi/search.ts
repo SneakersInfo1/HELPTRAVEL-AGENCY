@@ -79,6 +79,17 @@ export async function fetchHotelsList(input: HotelsListInput): Promise<LiteApiHo
       cityName: input.city,
       limit: input.limit ?? DEFAULT_HOTELS_LIMIT,
     },
+    // Sesja C2 — server-side Data Cache via Next's fetch patches.
+    // Hotels list (IDs + metadata) keyed by countryCode+cityName+limit;
+    // doesn't change hourly so 24h TTL is safe. Rates with date-specific
+    // pricing are cached separately in rates.ts (15 min TTL).
+    //
+    //   First request:    ~800-1500ms (LiteAPI round-trip)
+    //   Repeat within 24h: ~5-20ms    (Next Data Cache hit at the fetch layer)
+    //
+    // Outside Next runtime (test runner, build script) the `next` fetch
+    // option is silently ignored — behaves identical to no-store.
+    nextCache: { revalidate: 86_400, tags: ["liteapi", "liteapi-hotels-list"] },
   });
 }
 
