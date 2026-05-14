@@ -330,6 +330,23 @@ async function checkHotelInventory(
     cache[key] = entry;
     return entry;
   } catch (err) {
+    // Sesja C2 follow-up — auth-class errors (401/403) MUST hard-fail the
+    // whole run, not silently cache 0. Previous behaviour was: every prod
+    // call returned 401 due to pending LiteAPI activation, all 541 cities
+    // were recorded as 0 hotels, the seed was overwritten to empty, the
+    // user lost 3 minutes + last-known-good data. Auth errors mean the
+    // env is misconfigured (wrong key, wrong prefix, account not active);
+    // continuing through 500 more requests cannot help.
+    if (err instanceof LiteApiError && err.internalCode === "LITEAPI_AUTH") {
+      console.error("");
+      console.error("FATAL: LiteAPI returned 401/403 unauthorized.");
+      console.error("  - Key in use likely points at an inactive or wrong-env account.");
+      console.error("  - Check LITEAPI_ENV (current:", process.env.LITEAPI_ENV ?? "(unset)", ")");
+      console.error("  - Probe with:  pnpm exec tsx --env-file=.env.local -e \"console.log(require('./src/lib/liteapi/client').getEnv())\"");
+      console.error("  - If using --prod and 401 persists, your LITEAPI_PROD_PUBLIC_KEY is still pending account activation.");
+      console.error("");
+      throw err;
+    }
     if (err instanceof LiteApiError) {
       // 404/400 = city not in LiteAPI index → record 0 so we skip on retry.
       const entry: HotelCacheEntry = {
@@ -929,6 +946,45 @@ interface IndexEntry {
 // ────────────────────────────────────────────────────────────────────────────
 // Main
 
+async function preflightLiteApiAuth(): Promise<void> {
+  // One-call sanity probe against a known popular city. If the configured
+  // LiteAPI key is rejected (401/403), we abort here rather than burning
+  // 500+ requests at 3 rps just to discover every cache entry is 0. This
+  // bug actually shipped once — keep the guard.
+  console.log("[preflight] probing /data/hotels with current LiteAPI key…");
+  try {
+    await liteApiRequest({
+      path: "/data/hotels",
+      method: "GET",
+      keyMode: "public",
+      schema: LiteApiHotelsListResponseSchema,
+      query: { countryCode: "ES", cityName: "Madrid", limit: 5 },
+    });
+    console.log("[preflight] ✓ LiteAPI auth OK");
+  } catch (err) {
+    if (err instanceof LiteApiError && err.internalCode === "LITEAPI_AUTH") {
+      console.error("");
+      console.error("──────────────────────────────────────────────────────────");
+      console.error("FATAL: LiteAPI returned 401 unauthorized on preflight probe.");
+      console.error("");
+      console.error("  Key in use likely points at an inactive or wrong-env account.");
+      console.error("  Current LITEAPI_ENV:", process.env.LITEAPI_ENV ?? "(unset → defaults to sandbox)");
+      console.error("");
+      console.error("  If you passed --prod and 401 persists, your LITEAPI_PROD_PUBLIC_KEY");
+      console.error("  is still pending account activation by LiteAPI support.");
+      console.error("");
+      console.error("  Workaround: drop --prod and run sandbox harvest");
+      console.error("    pnpm build:destinations -- --full");
+      console.error("──────────────────────────────────────────────────────────");
+      throw err;
+    }
+    // Non-auth errors during preflight (network, 5xx) — surface them
+    // loudly but don't necessarily mean the whole run is doomed.
+    console.warn("[preflight] non-auth error:", err instanceof Error ? err.message : String(err));
+    console.warn("[preflight] continuing — main loop may still succeed");
+  }
+}
+
 async function main(): Promise<void> {
   const opts = parseCli(process.argv);
   const startedAt = Date.now();
@@ -953,6 +1009,12 @@ async function main(): Promise<void> {
   );
 
   await fs.mkdir(CACHE_DIR, { recursive: true });
+
+  // Pre-flight: verify LiteAPI auth before kicking off the long-running
+  // harvest. Skips on --no-network (cache-only rebuild).
+  if (!opts.noNetwork) {
+    await preflightLiteApiAuth();
+  }
 
   // 1) Source cities.
   let source = opts.full
