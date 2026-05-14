@@ -1143,19 +1143,24 @@ async function main(): Promise<void> {
     return order;
   })();
 
-  // Garbage filter: LiteAPI sandbox occasionally returns city names with
-  // non-Latin lead chars (`Ezbet Shalabi el-Rûdi, ...) or whitespace-only
-  // entries. Drop them before output to keep the seed honest. Also dropped:
-  // entries where the IATA looks wrong (more than 200 km from the city's
-  // lat/lng — only happens when the airport-code resolver accidentally
-  // points at LAX/NYC/etc for a non-matching city).
+  // Garbage filter: LiteAPI occasionally returns:
+  //   - city names with non-Latin lead chars (`Ezbet Shalabi el-Rûdi)
+  //   - administrative wrappers ("City of Zagreb", "Town of Bath",
+  //     "Province of Limburg") — these are noise; the noun form is the
+  //     real destination
+  //   - "Greater <X>" metropolitan-region labels
+  //   - whitespace-only / slash-separated compounds
+  // Drop them before output to keep the seed honest.
   function isCityNameClean(name: string): boolean {
     const trimmed = name.trim();
     if (trimmed.length < 2) return false;
     // Reject leading non-letter (backtick, hash, digits — LiteAPI quirks).
     if (!/^\p{L}/u.test(trimmed)) return false;
-    // Reject if name contains forward-slash or backslash (compound entries).
+    // Reject forward/back-slashes (compound entries).
     if (/[\\/]/.test(trimmed)) return false;
+    // Drop administrative-prefix forms — caught during the C2 prod run.
+    if (/^(city|town|province|state|county|district|municipality|governorate|prefecture|region|borough|community)\s+of\s+/i.test(trimmed)) return false;
+    if (/^greater\s+/i.test(trimmed)) return false;
     return true;
   }
   const cleaned = withFlights.filter((item) => isCityNameClean(item.city));
