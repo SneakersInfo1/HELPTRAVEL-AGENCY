@@ -52,6 +52,14 @@ interface ClientRequestOptions<TSchema extends ZodTypeAny> {
   timeoutMs?: number; // default 30s, override 60s for prebook/book
   retries?: number; // default 3
   signal?: AbortSignal;
+  // Sesja C2 — opt-in Next.js Data Cache. When set, the underlying
+  // fetch() is called with `cache: "force-cache"` + `next: {revalidate, tags}`
+  // so repeated calls with the same path+query+body hit the on-disk /
+  // edge cache. Booking endpoints MUST NOT set this — rates and avails
+  // change with real-time inventory. Outside Next runtime (test runner,
+  // tsx scripts) the option is silently ignored — fetch falls back to
+  // default behavior.
+  nextCache?: { revalidate: number; tags?: string[] };
 }
 
 interface LiteApiEnv {
@@ -70,11 +78,30 @@ export function getEnv(): LiteApiEnv {
 
   // Resolve keys. Prefer explicit sandbox/prod-named vars; fall back to the
   // single LITEAPI_API_KEY for callers that don't distinguish.
+  //
+  // Important LiteAPI naming nuance (cost us a session to debug):
+  //   Their dashboard exposes TWO key types per environment:
+  //     • "Private API Key" (prefix `prod_0a…`, `sand_…`) — used in the
+  //       `X-API-Key` header for STANDARD authentication. This is what
+  //       every read AND write endpoint accepts.
+  //     • "Public Key" (prefix `prod_pu…`) — only valid as part of
+  //       SECURE authentication (HMAC-signed requests). Sending it in
+  //       `X-API-Key` returns 401.
+  //   We use Standard auth everywhere, so for our purposes the LiteAPI
+  //   "Private API Key" is the authoritative key — we use it for both
+  //   read-side (search/rates/places) AND booking-side calls.
+  //   `LITEAPI_PROD_PUBLIC_KEY` env var, despite its name, is the HMAC
+  //   key — we deliberately do NOT consume it as a fallback for X-API-Key
+  //   because that produces a silent 401-loop.
   const sandboxPublic = process.env.LITEAPI_SANDBOX_KEY?.trim() || null;
   const sandboxPrivate = process.env.LITEAPI_SANDBOX_PRIVATE_KEY?.trim() || sandboxPublic;
-  const prodPublic =
-    process.env.LITEAPI_PROD_KEY?.trim() || process.env.LITEAPI_PROD_PUBLIC_KEY?.trim() || null;
-  const prodPrivate = process.env.LITEAPI_PROD_PRIVATE_KEY?.trim() || prodPublic;
+  const prodStandardKey =
+    process.env.LITEAPI_PROD_KEY?.trim() || process.env.LITEAPI_PROD_PRIVATE_KEY?.trim() || null;
+  // Same key feeds both read and write paths — LiteAPI's standard auth
+  // is identical across endpoints. `prodPrivate` keeps the booking-path
+  // variable name for clarity at call sites.
+  const prodPublic = prodStandardKey;
+  const prodPrivate = prodStandardKey;
   const generic = process.env.LITEAPI_API_KEY?.trim() || null;
 
   // Mode is driven by key prefix, not by LITEAPI_ENV. We still honour an
@@ -175,7 +202,10 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
     }
 
     try {
-      const res = await fetch(url, {
+      // Sesja C2 — opt-in Next.js Data Cache. Callers (search.ts, rates.ts)
+      // pass nextCache for cacheable read endpoints. Booking endpoints
+      // omit it → cache: "no-store" enforced.
+      const fetchInit: Parameters<typeof fetch>[1] = {
         method: opts.method,
         headers: {
           "Content-Type": "application/json",
@@ -184,8 +214,17 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
         },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
         signal: controller.signal,
-        cache: "no-store",
-      });
+      };
+      if (opts.nextCache) {
+        fetchInit.cache = "force-cache";
+        (fetchInit as { next?: { revalidate: number; tags?: string[] } }).next = {
+          revalidate: opts.nextCache.revalidate,
+          tags: opts.nextCache.tags,
+        };
+      } else {
+        fetchInit.cache = "no-store";
+      }
+      const res = await fetch(url, fetchInit);
 
       const body = await readBody(res);
 
