@@ -33,6 +33,10 @@ import { destinationCatalog } from "../src/lib/mvp/destination-catalog";
 import { curatedDestinations } from "../src/lib/mvp/destinations";
 import { CITY_PL, COUNTRY_PL, REGION_PL } from "../src/lib/mvp/i18n-geo";
 import { resolveAirportCode } from "../src/lib/mvp/location";
+import {
+  nearestFlightableAirport,
+  resolveAirportFromTPDirectory,
+} from "../src/lib/mvp/tp-airport-directory";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Config
@@ -77,20 +81,28 @@ const WIKIDATA_RPS = 3; // wikidata.org public API — be polite
 const TOP_TOURISM_COUNTRIES: ReadonlyArray<string> = [
   // Europe — south & islands (highest pl-outbound)
   "ES", "PT", "IT", "GR", "CY", "MT", "HR", "ME", "AL", "BA", "RS", "MK", "BG",
+  "XK", "AD", "MC", "SM", "VA",
   // Europe — west / central / north
   "FR", "DE", "AT", "CH", "NL", "BE", "LU", "GB", "IE", "DK", "SE", "NO", "FI", "IS",
   // Europe — central / east
-  "PL", "CZ", "SK", "HU", "SI", "RO", "MD",
+  "PL", "CZ", "SK", "HU", "SI", "RO", "MD", "UA",
   // Baltics
   "EE", "LV", "LT",
-  // MENA + Middle East
-  "TR", "MA", "TN", "EG", "DZ", "JO", "IL", "AE", "QA", "OM", "SA",
+  // MENA + Middle East — Sesja C2 phase 2 expanded
+  "TR", "MA", "TN", "EG", "DZ", "LY", "JO", "IL", "LB",
+  "AE", "QA", "OM", "SA", "BH", "KW",
   // Asia
-  "TH", "ID", "VN", "SG", "MY", "PH", "JP", "KR", "HK", "TW", "IN", "LK", "MV", "NP", "CN",
+  "TH", "ID", "VN", "SG", "MY", "PH", "KH", "LA",
+  "JP", "KR", "HK", "TW", "MO",
+  "IN", "LK", "MV", "NP", "BT", "BD",
+  "CN",
   // Americas
-  "US", "CA", "MX", "CR", "DO", "CU", "JM", "BR", "AR", "CL", "PE", "CO",
+  "US", "CA", "MX", "CR", "PA", "GT", "BZ",
+  "DO", "CU", "JM", "BS", "BB", "AG", "TT", "PR",
+  "BR", "AR", "CL", "PE", "CO", "EC", "BO", "UY", "VE",
   // Africa + Oceania
-  "ZA", "KE", "TZ", "MU", "SC", "AU", "NZ", "FJ",
+  "ZA", "KE", "TZ", "MU", "SC", "NA", "BW", "RW",
+  "AU", "NZ", "FJ", "PF",
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -418,6 +430,27 @@ async function wikidataPolishLabel(
     };
     const pl = entityBody.entities?.[id]?.labels?.pl?.value;
     if (pl && pl.length > 0) {
+      // Reject Wikidata results that are clearly airport/transit names
+      // rather than the city itself. Wikidata's search-by-English-name
+      // matches whatever entity has that exact label — for cities like
+      // "Larnaca" it'd return the airport entity ("Port lotniczy
+      // Larnaka") because their English labels collide. We want CITY
+      // Polish names only.
+      if (/^port lotniczy\b/i.test(pl)) {
+        cache[english] = "";
+        return null;
+      }
+      if (/^lotnisko\b/i.test(pl)) {
+        cache[english] = "";
+        return null;
+      }
+      // Gwiazdozbiór / Konstelacja / "Constellation X" — happens when
+      // a 3-letter city name like "Vir" matches the Latin abbreviation
+      // for "Virgo constellation".
+      if (/^(gwiazdozbiór|konstelacja)\b/i.test(pl)) {
+        cache[english] = "";
+        return null;
+      }
       cache[english] = pl;
       return pl;
     }
@@ -889,21 +922,36 @@ async function sourceFromLiteApiListings(
       // are the ones the seed pipeline can actually book flights to. We
       // still cap at perCountry but bias toward airport-served cities so
       // we don't waste hotel-check API calls on landlocked villages.
-      const ranked = [...cities].sort((a, b) => {
-        const aHasAirport = resolveAirportCode(a.city) ? 0 : 1;
-        const bHasAirport = resolveAirportCode(b.city) ? 0 : 1;
-        if (aHasAirport !== bHasAirport) return aHasAirport - bHasAirport;
-        return a.city.localeCompare(b.city);
+      // Ranking uses BOTH the local resolver AND the TP city directory
+      // (the latter is async, so we batch by city for clarity).
+      // TP directory is the authoritative source: country-aware,
+      // ~9.6k cities globally with verified metro/IATA codes. Local
+      // map is intentionally NOT used as a fallback here — its flat
+      // Record<city, iata> shape produces wrong-country matches for
+      // ambiguous names (Bergen DE/NL/NO all → BGO Norway). Cities
+      // not in TP fall through with null IATA; geo-distance in the
+      // flight-reachability step picks them up using lat/lng +
+      // country-constrained nearest-airport search.
+      const rankedWithIata: Array<{ c: typeof cities[number]; iata: string | null }> = [];
+      for (const c of cities) {
+        const tp = await resolveAirportFromTPDirectory(c.city, country.code);
+        rankedWithIata.push({ c, iata: tp?.iata ?? null });
+      }
+      rankedWithIata.sort((a, b) => {
+        const aHasIata = a.iata ? 0 : 1;
+        const bHasIata = b.iata ? 0 : 1;
+        if (aHasIata !== bHasIata) return aHasIata - bHasIata;
+        return a.c.city.localeCompare(b.c.city);
       });
-      const capped = ranked.slice(0, perCountry);
-      for (const c of capped) {
+      const capped = rankedWithIata.slice(0, perCountry);
+      for (const r of capped) {
         out.push({
-          city: c.city,
+          city: r.c.city,
           country: country.name,
           countryCode: country.code,
           lat: null,
           lng: null,
-          airportCode: resolveAirportCode(c.city) ?? null,
+          airportCode: r.iata,
         });
       }
     },
@@ -1063,7 +1111,7 @@ async function main(): Promise<void> {
       return entry;
     },
     {
-      rps: HOTEL_RPS,
+      rps: opts.noNetwork ? 500 : HOTEL_RPS,
       onProgress: (d, t) => {
         if (d % 25 === 0 || d === t) console.log(`[hotels] ${d}/${t}`);
       },
@@ -1099,21 +1147,44 @@ async function main(): Promise<void> {
   const withFlights: SourceCity[] = [];
   let droppedNoAirport = 0;
   let droppedNoCoords = 0;
+  let recoveredViaGeo = 0;
+  let recoveredViaTpDirectory = 0;
   for (const item of withHotels) {
     if (item.lat === null || item.lng === null) {
       droppedNoCoords += 1;
       continue;
     }
-    // Allow long-haul (Bangkok, NYC, Sydney, etc.) — the user explicitly wants
-    // the catalog to span globally. The 100km rule from the spec applies to
-    // ensuring AN airport exists near the city, not that it's near Poland.
-    if (!item.airportCode) {
-      droppedNoAirport += 1;
+    // (a) Already has IATA from local or TP directory at source-time?
+    if (item.airportCode) {
+      withFlights.push(item);
       continue;
     }
-    withFlights.push(item);
+    // (b) Try TP directory again now that we have country context.
+    if (item.countryCode) {
+      const tp = await resolveAirportFromTPDirectory(item.city, item.countryCode);
+      if (tp) {
+        item.airportCode = tp.iata;
+        recoveredViaTpDirectory += 1;
+        withFlights.push(item);
+        continue;
+      }
+      // (c) Geo-distance fallback: find nearest flightable airport within
+      // 100 km of the city's lat/lng (constrained to same country).
+      // Captures small towns near regional airports — Booking-style scale.
+      const geo = await nearestFlightableAirport(item.lat, item.lng, item.countryCode, 100);
+      if (geo) {
+        item.airportCode = geo.iata;
+        recoveredViaGeo += 1;
+        withFlights.push(item);
+        continue;
+      }
+    }
+    droppedNoAirport += 1;
   }
-  console.log(`[flights] kept ${withFlights.length}, dropped ${droppedNoCoords} no-coords + ${droppedNoAirport} no-airport`);
+  console.log(
+    `[flights] kept ${withFlights.length}, dropped ${droppedNoCoords} no-coords + ${droppedNoAirport} no-airport ` +
+      `(recovered ${recoveredViaTpDirectory} via TP directory + ${recoveredViaGeo} via geo-distance)`,
+  );
 
   // 4) Polish localization with curated tier first, Wikidata fallback.
   const wikidataCache = await loadWikidataCache();
@@ -1124,7 +1195,7 @@ async function main(): Promise<void> {
       // Lazy Wikidata lookup only when curated map misses.
       await wikidataPolishLabel(item.city, wikidataCache, opts.noNetwork);
     },
-    { rps: WIKIDATA_RPS, onProgress: (d, t) => { if (d % 50 === 0 || d === t) console.log(`[wikidata] ${d}/${t}`); } },
+    { rps: opts.noNetwork ? 500 : WIKIDATA_RPS, onProgress: (d, t) => { if (d % 50 === 0 || d === t) console.log(`[wikidata] ${d}/${t}`); } },
   );
   await saveWikidataCache(wikidataCache);
 
