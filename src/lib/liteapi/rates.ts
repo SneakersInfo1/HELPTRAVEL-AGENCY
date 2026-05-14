@@ -32,5 +32,10 @@ export async function getRates(input: GetRatesInput): Promise<LiteApiRatesRespon
     keyMode: "public",
     body,
     schema: LiteApiRatesResponseSchema,
+    // Sesja C2 — server-side Data Cache via Next's fetch patches.
+    // Same (hotelIds, dates, occupancy) within 15 min → instant cache hit.
+    // Rates change slowly; if they expire by booking time we fall through
+    // to LiteApiRateExpiredError handling already in /prebook.
+    nextCache: { revalidate: 900, tags: ["liteapi", "liteapi-rates"] },
   });
 }
