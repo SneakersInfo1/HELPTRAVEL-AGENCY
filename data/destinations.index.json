@@ -1521,15 +1521,6 @@
     "iata": "BGO"
   },
   {
-    "id": "bergen-netherlands",
-    "cityPl": "Bergen",
-    "cityEn": "Bergen",
-    "countryPl": "Holandia",
-    "countryCode": "NL",
-    "popularity": 50,
-    "iata": "BGO"
-  },
-  {
     "id": "bergen-aan-zee-netherlands",
     "cityPl": "Bergen aan Zee",
     "cityEn": "Bergen aan Zee",
@@ -1544,15 +1535,6 @@
     "cityEn": "Bergen auf Rügen",
     "countryPl": "Niemcy",
     "countryCode": "DE",
-    "popularity": 50,
-    "iata": "BGO"
-  },
-  {
-    "id": "bergen-op-zoom-netherlands",
-    "cityPl": "Bergen op Zoom",
-    "cityEn": "Bergen op Zoom",
-    "countryPl": "Holandia",
-    "countryCode": "NL",
     "popularity": 50,
     "iata": "BGO"
   },
@@ -1665,6 +1647,15 @@
     "iata": "CFU"
   },
   {
+    "id": "cordoba-spain",
+    "cityPl": "Kordoba",
+    "cityEn": "Córdoba",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "ODB"
+  },
+  {
     "id": "djerba-midun-tunisia",
     "cityPl": "Djerba Midun",
     "cityEn": "Djerba Midun",
@@ -1690,6 +1681,24 @@
     "countryCode": "GR",
     "popularity": 50,
     "iata": "JTR"
+  },
+  {
+    "id": "faro-de-cullera-spain",
+    "cityPl": "Faro de Cullera",
+    "cityEn": "Faro de Cullera",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "FAO"
+  },
+  {
+    "id": "fuencaliente-de-la-palma-spain",
+    "cityPl": "Fuencaliente de La Palma",
+    "cityEn": "Fuencaliente de la Palma",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "PMI"
   },
   {
     "id": "gdansk-poland",
@@ -1719,6 +1728,15 @@
     "iata": "OPO"
   },
   {
+    "id": "gravina-di-catania-italy",
+    "cityPl": "Gravina di Catania",
+    "cityEn": "Gravina di Catania",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "CTA"
+  },
+  {
     "id": "hammam-sousse-tunisia",
     "cityPl": "Hamam Susa",
     "cityEn": "Hammam Sousse",
@@ -1744,6 +1762,24 @@
     "countryCode": "TN",
     "popularity": 50,
     "iata": "NBE"
+  },
+  {
+    "id": "ibiza-spain",
+    "cityPl": "Ibiza",
+    "cityEn": "Ibiza",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "IBZ"
+  },
+  {
+    "id": "innsbruck-italy",
+    "cityPl": "Innsbruck",
+    "cityEn": "Innsbruck",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "INN"
   },
   {
     "id": "kalamaki-heraklion-greece",
@@ -1791,6 +1827,15 @@
     "iata": "KGS"
   },
   {
+    "id": "krakow-am-see-germany",
+    "cityPl": "Krakow am See",
+    "cityEn": "Krakow am See",
+    "countryPl": "Niemcy",
+    "countryCode": "DE",
+    "popularity": 50,
+    "iata": "KRK"
+  },
+  {
     "id": "krakow-poland",
     "cityPl": "Kraków",
     "cityEn": "Kraków",
@@ -1807,6 +1852,24 @@
     "countryCode": "CY",
     "popularity": 50,
     "iata": "LCA"
+  },
+  {
+    "id": "las-palmas-de-gran-canaria-spain",
+    "cityPl": "Las Palmas de Gran Canaria",
+    "cityEn": "Las Palmas de Gran Canaria",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "LPA"
+  },
+  {
+    "id": "le-touquet-paris-plage-france",
+    "cityPl": "Le Touquet-Paris-Plage",
+    "cityEn": "Le Touquet-Paris-Plage",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 50,
+    "iata": "PAR"
   },
   {
     "id": "lille-belgium",
@@ -1845,6 +1908,24 @@
     "iata": "LCJ"
   },
   {
+    "id": "malaga-spain",
+    "cityPl": "Malaga",
+    "cityEn": "Málaga",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "AGP"
+  },
+  {
+    "id": "male-italy",
+    "cityPl": "Male",
+    "cityEn": "Male",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "MLE"
+  },
+  {
     "id": "male-ciche-poland",
     "cityPl": "Małe Ciche",
     "cityEn": "Male Ciche",
@@ -1863,6 +1944,15 @@
     "iata": "MMX"
   },
   {
+    "id": "marina-di-pisa-italy",
+    "cityPl": "Marina di Pisa",
+    "cityEn": "Marina di Pisa",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "PSA"
+  },
+  {
     "id": "marrakech-morocco",
     "cityPl": "Marrakesz",
     "cityEn": "Marrakech",
@@ -1870,6 +1960,33 @@
     "countryCode": "MA",
     "popularity": 50,
     "iata": "RAK"
+  },
+  {
+    "id": "miami-platja-spain",
+    "cityPl": "Miami Platja",
+    "cityEn": "Miami Platja",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "MIA"
+  },
+  {
+    "id": "milano-marittima-italy",
+    "cityPl": "Milano Marittima",
+    "cityEn": "Milano Marittima",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "MIL"
+  },
+  {
+    "id": "mola-di-bari-italy",
+    "cityPl": "Mola di Bari",
+    "cityEn": "Mola di Bari",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "BRI"
   },
   {
     "id": "mykonos-greece",
@@ -1908,6 +2025,33 @@
     "iata": "LCA"
   },
   {
+    "id": "palma-de-mallorca-spain",
+    "cityPl": "Palma",
+    "cityEn": "Palma de Mallorca",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "PMI"
+  },
+  {
+    "id": "palma-di-montechiaro-italy",
+    "cityPl": "Palma di Montechiaro",
+    "cityEn": "Palma di Montechiaro",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "PMI"
+  },
+  {
+    "id": "panormos-mykonos-greece",
+    "cityPl": "Panormos Mykonos",
+    "cityEn": "Panormos Mykonos",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "JMK"
+  },
+  {
     "id": "paphos-city-cyprus",
     "cityPl": "Paphos City",
     "cityEn": "Paphos City",
@@ -1915,6 +2059,51 @@
     "countryCode": "CY",
     "popularity": 50,
     "iata": "PFO"
+  },
+  {
+    "id": "pefki-rhodes-greece",
+    "cityPl": "Pefki Rhodes",
+    "cityEn": "Pefki Rhodes",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "RHO"
+  },
+  {
+    "id": "platis-yialos-mykonos-greece",
+    "cityPl": "Platis Yialos Mykonos",
+    "cityEn": "Platis Yialos Mykonos",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "JMK"
+  },
+  {
+    "id": "playa-de-palma-spain",
+    "cityPl": "Playa de Palma",
+    "cityEn": "Playa de Palma",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "PMI"
+  },
+  {
+    "id": "playa-de-san-juan-spain",
+    "cityPl": "Playa de San Juan",
+    "cityEn": "Playa de San Juan",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "SJU"
+  },
+  {
+    "id": "playa-de-santiago-spain",
+    "cityPl": "Playa de Santiago",
+    "cityEn": "Playa de Santiago",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "SCL"
   },
   {
     "id": "ponte-de-lima-portugal",
@@ -1926,11 +2115,65 @@
     "iata": "LIM"
   },
   {
+    "id": "porto-azzurro-italy",
+    "cityPl": "Porto Azzurro",
+    "cityEn": "Porto Azzurro",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-ceresio-italy",
+    "cityPl": "Porto Ceresio",
+    "cityEn": "Porto Ceresio",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-cervo-italy",
+    "cityPl": "Porto Cervo",
+    "cityEn": "Porto Cervo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-cesareo-italy",
+    "cityPl": "Porto Cesareo",
+    "cityEn": "Porto Cesareo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-conte-italy",
+    "cityPl": "Porto Conte",
+    "cityEn": "Porto Conte",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
     "id": "porto-covo-portugal",
     "cityPl": "Porto Covo",
     "cityEn": "Porto Covo",
     "countryPl": "Portugalia",
     "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-cristo-spain",
+    "cityPl": "Porto Cristo",
+    "cityEn": "Porto Cristo",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
     "popularity": 50,
     "iata": "OPO"
   },
@@ -1944,6 +2187,285 @@
     "iata": "OPO"
   },
   {
+    "id": "porto-de-espasante-spain",
+    "cityPl": "Porto de Espasante",
+    "cityEn": "Porto de Espasante",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-de-mos-portugal",
+    "cityPl": "Porto de Mós",
+    "cityEn": "Porto de Mós",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-do-son-spain",
+    "cityPl": "Porto do Son",
+    "cityEn": "Porto do Son",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-empedocle-italy",
+    "cityPl": "Porto Empedocle",
+    "cityEn": "Porto Empedocle",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-ercole-italy",
+    "cityPl": "Porto Ercole",
+    "cityEn": "Porto Ercole",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-formoso-portugal",
+    "cityPl": "Porto Formoso",
+    "cityEn": "Porto Formoso",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-garibaldi-italy",
+    "cityPl": "Porto Garibaldi",
+    "cityEn": "Porto Garibaldi",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-heli-greece",
+    "cityPl": "Porto Heli",
+    "cityEn": "Porto Heli",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-istana-italy",
+    "cityPl": "Porto Istana",
+    "cityEn": "Porto Istana",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-moniz-portugal",
+    "cityPl": "Porto Moniz",
+    "cityEn": "Porto Moniz",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-ota-france",
+    "cityPl": "Porto Ota",
+    "cityEn": "Porto Ota",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-ottiolu-italy",
+    "cityPl": "Porto Ottiolu",
+    "cityEn": "Porto Ottiolu",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-palo-italy",
+    "cityPl": "Porto Palo",
+    "cityEn": "Porto Palo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-pino-italy",
+    "cityPl": "Porto Pino",
+    "cityEn": "Porto Pino",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-pollo-italy",
+    "cityPl": "Porto Pollo",
+    "cityEn": "Porto Pollo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-potenza-picena-italy",
+    "cityPl": "Porto Potenza Picena",
+    "cityEn": "Porto Potenza Picena",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-pozzo-italy",
+    "cityPl": "Porto Pozzo",
+    "cityEn": "Porto Pozzo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-rafael-italy",
+    "cityPl": "Porto Rafael",
+    "cityEn": "Porto Rafael",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-rafti-greece",
+    "cityPl": "Porto Rafti",
+    "cityEn": "Porto Rafti",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-recanati-italy",
+    "cityPl": "Porto Recanati",
+    "cityEn": "Porto Recanati",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-rotondo-italy",
+    "cityPl": "Porto Rotondo",
+    "cityEn": "Porto Rotondo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-san-giorgio-italy",
+    "cityPl": "Porto San Giorgio",
+    "cityEn": "Porto San Giorgio",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-san-paolo-italy",
+    "cityPl": "Porto San Paolo",
+    "cityEn": "Porto San Paolo",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-santo-portugal",
+    "cityPl": "Porto Santo",
+    "cityEn": "Porto Santo",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-santo-stefano-italy",
+    "cityPl": "Porto Santo Stefano",
+    "cityEn": "Porto Santo Stefano",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-sant-elpidio-italy",
+    "cityPl": "Porto Sant'Elpidio",
+    "cityEn": "Porto SantʼElpidio",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-torres-italy",
+    "cityPl": "Porto Torres",
+    "cityEn": "Porto Torres",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-valtravaglia-italy",
+    "cityPl": "Porto Valtravaglia",
+    "cityEn": "Porto Valtravaglia",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-viro-italy",
+    "cityPl": "Porto Viro",
+    "cityEn": "Porto Viro",
+    "countryPl": "Włochy",
+    "countryCode": "IT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "porto-vecchio-france",
+    "cityPl": "Porto-Vecchio",
+    "cityEn": "Porto-Vecchio",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "poznan-poland",
+    "cityPl": "Poznań",
+    "cityEn": "Poznań",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "POZ"
+  },
+  {
     "id": "prague-czech-republic",
     "cityPl": "Praga",
     "cityEn": "Prague",
@@ -1951,6 +2473,24 @@
     "countryCode": "CZ",
     "popularity": 50,
     "iata": "PRG"
+  },
+  {
+    "id": "priego-de-cordoba-spain",
+    "cityPl": "Priego de Córdoba",
+    "cityEn": "Priego de Córdoba",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "ODB"
+  },
+  {
+    "id": "puerto-de-santiago-spain",
+    "cityPl": "Puerto de Santiago",
+    "cityEn": "Puerto de Santiago",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "SCL"
   },
   {
     "id": "rabat-malta",
@@ -1971,6 +2511,15 @@
     "iata": "KEF"
   },
   {
+    "id": "rhodes-town-greece",
+    "cityPl": "Rhodes Town",
+    "cityEn": "Rhodes Town",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "RHO"
+  },
+  {
     "id": "riga-latvia",
     "cityPl": "Ryga",
     "cityEn": "Rīga",
@@ -1978,6 +2527,141 @@
     "countryCode": "LV",
     "popularity": 50,
     "iata": "RIX"
+  },
+  {
+    "id": "rio-caldo-portugal",
+    "cityPl": "Rio Caldo",
+    "cityEn": "Rio Caldo",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "RIO"
+  },
+  {
+    "id": "rio-maior-portugal",
+    "cityPl": "Rio Maior",
+    "cityEn": "Rio Maior",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "RIO"
+  },
+  {
+    "id": "rzeszow-poland",
+    "cityPl": "Rzeszów",
+    "cityEn": "Rzeszów",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "RZE"
+  },
+  {
+    "id": "saint-florence-united-kingdom",
+    "cityPl": "Saint Florence",
+    "cityEn": "Saint Florence",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 50,
+    "iata": "FLR"
+  },
+  {
+    "id": "sainte-lucie-de-porto-vecchio-france",
+    "cityPl": "Sainte-Lucie de Porto-Vecchio",
+    "cityEn": "Sainte-Lucie de Porto-Vecchio",
+    "countryPl": "Francja",
+    "countryCode": "FR",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "salir-do-porto-portugal",
+    "cityPl": "Salir do Porto",
+    "cityEn": "Salir do Porto",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
+    "id": "san-juan-spain",
+    "cityPl": "San Juan",
+    "cityEn": "San Juan",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "SJU"
+  },
+  {
+    "id": "san-juan-de-alicante-spain",
+    "cityPl": "San Juan de Alicante",
+    "cityEn": "San Juan de Alicante",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "ALC"
+  },
+  {
+    "id": "san-juan-de-los-terreros-spain",
+    "cityPl": "San Juan de los Terreros",
+    "cityEn": "San Juan de los Terreros",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "SJU"
+  },
+  {
+    "id": "san-sebastian-spain",
+    "cityPl": "San Sebastián",
+    "cityEn": "San Sebastián",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "EAS"
+  },
+  {
+    "id": "san-sebastian-de-la-gomera-spain",
+    "cityPl": "San Sebastián de La Gomera",
+    "cityEn": "San Sebastián de la Gomera",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "EAS"
+  },
+  {
+    "id": "san-sebastian-de-los-reyes-spain",
+    "cityPl": "San Sebastián de los Reyes",
+    "cityEn": "San Sebastián de los Reyes",
+    "countryPl": "Hiszpania",
+    "countryCode": "ES",
+    "popularity": 50,
+    "iata": "EAS"
+  },
+  {
+    "id": "santiago-do-cacem-portugal",
+    "cityPl": "Santiago do Cacém",
+    "cityEn": "Santiago do Cacém",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "SCL"
+  },
+  {
+    "id": "santorini-greece",
+    "cityPl": "Santoryn",
+    "cityEn": "Santorini",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "JTR"
+  },
+  {
+    "id": "sao-martinho-do-porto-portugal",
+    "cityPl": "São Martinho do Porto",
+    "cityEn": "São Martinho do Porto",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
   },
   {
     "id": "sarande-albania",
@@ -1989,6 +2673,24 @@
     "iata": "TIA"
   },
   {
+    "id": "szczecin-poland",
+    "cityPl": "Szczecin",
+    "cityEn": "Szczecin",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "SZZ"
+  },
+  {
+    "id": "thessaloniki-municipal-unit-greece",
+    "cityPl": "Thessaloniki Municipal Unit",
+    "cityEn": "Thessaloniki Municipal Unit",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "SKG"
+  },
+  {
     "id": "tunis-egypt",
     "cityPl": "Tunis",
     "cityEn": "Tunis",
@@ -1998,6 +2700,15 @@
     "iata": "TUN"
   },
   {
+    "id": "vila-do-porto-portugal",
+    "cityPl": "Vila do Porto",
+    "cityEn": "Vila do Porto",
+    "countryPl": "Portugalia",
+    "countryCode": "PT",
+    "popularity": 50,
+    "iata": "OPO"
+  },
+  {
     "id": "vlore-albania",
     "cityPl": "Wlora",
     "cityEn": "Vlorë",
@@ -2005,6 +2716,51 @@
     "countryCode": "AL",
     "popularity": 50,
     "iata": "TIA"
+  },
+  {
+    "id": "washington-united-kingdom",
+    "cityPl": "Waszyngton",
+    "cityEn": "Washington",
+    "countryPl": "Wielka Brytania",
+    "countryCode": "GB",
+    "popularity": 50,
+    "iata": "WAS"
+  },
+  {
+    "id": "wroclaw-poland",
+    "cityPl": "Wrocław",
+    "cityEn": "Wroclaw",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "WRO"
+  },
+  {
+    "id": "wroc-aw-poland",
+    "cityPl": "Wrocław",
+    "cityEn": "Wrocław",
+    "countryPl": "Polska",
+    "countryCode": "PL",
+    "popularity": 50,
+    "iata": "WRO"
+  },
+  {
+    "id": "zakynthos-municipal-unit-greece",
+    "cityPl": "Zakynthos Municipal Unit",
+    "cityEn": "Zakynthos Municipal Unit",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "ZTH"
+  },
+  {
+    "id": "zakynthos-town-greece",
+    "cityPl": "Zakynthos Town",
+    "cityEn": "Zakynthos Town",
+    "countryPl": "Grecja",
+    "countryCode": "GR",
+    "popularity": 50,
+    "iata": "ZTH"
   },
   {
     "id": "zurich-switzerland",
