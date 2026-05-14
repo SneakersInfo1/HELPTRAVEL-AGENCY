@@ -57,6 +57,91 @@ duplicate API calls without lifting yield.
 
 ---
 
+## 2026-05-14 — Sesja C2 phase 2: scale to 796 destinations
+
+After production LiteAPI access was working (previous entry below), the
+catalog stayed bottlenecked at 308 destinations because our hand-curated
+`airportCodesByKey` map only knew ~280 city→IATA mappings. 415 LiteAPI
+cities with valid hotel inventory got dropped because no IATA mapped.
+
+### Travelpayouts open dataset as the authoritative IATA resolver
+
+Travelpayouts publishes two open JSON datasets (no auth required):
+  - data/en/cities.json   (9641 cities, metro IATA + country + coords)
+  - data/en/airports.json (10354 airports, flightable flag + coords)
+
+`scripts/download-tp-airports.ts` caches both under `data/.cache/`.
+`src/lib/mvp/tp-airport-directory.ts` exposes:
+
+  resolveAirportFromTPDirectory(city, countryCode)
+    Country-aware city→IATA lookup. Returns null on cross-country
+    mismatch — explicitly NO single-global-match fallback (caused
+    Halifax UK → YHZ Canada and Bergen DE/NL → BGO Norway bugs).
+
+  nearestFlightableAirport(lat, lng, countryCode, maxKm)
+    Same-country geo-distance fallback. Recovers small towns near
+    regional airports (Aalsmeer NL → AMS, Aalst BE → BRU).
+
+### Pipeline order
+
+  1. TP directory (country-aware, ~9.6k cities)
+  2. Geo-distance fallback (after lat/lng known from LiteAPI hotel)
+  3. Curated local map (only sourceFromCatalog path; country-agnostic
+     but catalog entries are hand-vetted, no collisions)
+
+### Country allowlist 83 → 130
+
+Added: Lebanon, Saudi Arabia + Gulf states, Cambodia/Laos, Bangladesh,
+Bhutan, Macau, Panama, Belize, all Caribbean islands, Bolivia, Uruguay,
+Venezuela, Namibia, Botswana, Rwanda, French Polynesia.
+
+### Bug fixes
+
+- Wikidata Polish lookup rejects "Port lotniczy" / "Lotnisko" / "Gwiazdozbiór" /
+  "Konstelacja" prefixes (airport-entity false-matches for short city names).
+- TP byNameOnly fallback requires country match (eliminates cross-country
+  single-global-match false-positives).
+- Throttle bypass for --no-network mode (RPS 3 → 500) — cache-only rebuilds
+  now finish in <60s instead of 14+ minutes.
+
+### Result
+
+  Sandbox initial:    190 destinations
+  Prod first run:     224
+  Prod per-country=100: 308
+  TP-resolver harvest: 905 (had cross-country bugs)
+  Bug-fixed rebuild:   899
+  TP-first refactor:   **796 destinations**
+
+Quality:
+  - 0 broken records
+  - 0 cross-country IATA collisions
+  - 0 admin-prefix leaks
+  - 0 airport-name Polish translations
+  - 0 actual bogus 3-letter IATAs (1 false-positive: "Van Turkey" → VAN
+    is a real Eastern Turkey airport)
+
+Performance:
+  - Live cache: 9.1s cold → 3.7s warm (-59%) — Next Data Cache 24h hotels / 15min rates
+  - Autocomplete: <5ms server-side (Fuse over 796-entry index)
+  - Sitemap: 796 destination URLs (cap bumped 500 → 1500 for room to grow)
+
+### Path beyond 796
+
+The 7-tier funnel (LiteAPI cities → ≥15 hotels → TP/geo IATA →
+garbage filter → Wikidata → output dedupe) shows the cap is the LiteAPI
+inventory, not our resolver. Yielding more would require:
+
+  - Bumping per-country past 100 (diminishing returns, mostly micro-villages)
+  - Lowering ≥15 hotel threshold (degrades quality)
+  - Adding more LiteAPI suppliers (commercial decision, not technical)
+
+796 is honest production scale for our current LiteAPI tier. Future
+LiteAPI plan upgrades or alternative aggregator additions would lift
+the cap.
+
+---
+
 ## 2026-05-14 — Sesja C2 closing: production-LiteAPI online + perf cache
 
 After a full debugging sprint, prod-LiteAPI access works and the
