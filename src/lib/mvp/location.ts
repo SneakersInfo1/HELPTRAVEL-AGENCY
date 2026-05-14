@@ -459,8 +459,15 @@ export function resolveCountryCode(country?: string): string | undefined {
 export function resolveAirportCode(value?: string): string | undefined {
   if (!value) return undefined;
   const trimmed = value.trim();
-  if (/^[A-Za-z]{3}$/.test(trimmed)) {
-    return trimmed.toUpperCase();
+  // 3-letter shortcut, but ONLY when the value is uppercase. Real IATA
+  // codes are conventionally written uppercase ("WAW", "LHR"). Lowercase
+  // or mixed-case 3-letter input is almost always a coincidence — small
+  // city names like "Vig", "Zug", "Vir" (3-letter villages) would
+  // otherwise produce garbage IATAs (VIG = El Vigía Venezuela; ZUG/VIR
+  // are not real airports). Caught during the C2 prod harvest where
+  // Danish/Swiss/Croatian villages got bogus airports assigned.
+  if (/^[A-Z]{3}$/.test(trimmed)) {
+    return trimmed;
   }
 
   const normalized = normalizeLookup(trimmed);
