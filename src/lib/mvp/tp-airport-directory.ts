@@ -24,6 +24,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import { CITY_PL } from "./i18n-geo";
 import { normalizeLookup } from "./location";
 
 interface TpCity {
@@ -89,6 +90,8 @@ async function buildCityIndex(): Promise<{
     if (!city.has_flightable_airport) continue;
     const namesToIndex = new Set<string>();
     namesToIndex.add(city.name);
+    const polishName = CITY_PL[city.name];
+    if (polishName) namesToIndex.add(polishName);
     if (city.name_translations) {
       for (const translated of Object.values(city.name_translations)) {
         if (translated) namesToIndex.add(translated);
