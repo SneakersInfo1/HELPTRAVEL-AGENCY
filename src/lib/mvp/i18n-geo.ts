@@ -13,6 +13,10 @@
 // `localizeRegion(input)` does the same for the broad regions our catalog
 // uses ("Central Europe", "Nordics", etc.).
 
+import { CITY_PL_GENERATED } from "./city-pl.generated";
+
+export const CITY_PL: Record<string, string> = CITY_PL_GENERATED;
+
 export const COUNTRY_PL: Record<string, string> = {
   // Western & Central Europe
   Germany: "Niemcy", DE: "Niemcy",
@@ -175,6 +179,12 @@ export function localizeCountry(input: string | null | undefined): string {
   if (!input) return "";
   const t = input.trim();
   return COUNTRY_PL[t] ?? COUNTRY_PL[t.toUpperCase()] ?? t;
+}
+
+export function localizeCity(input: string | null | undefined): string {
+  if (!input) return "";
+  const t = input.trim();
+  return CITY_PL[t] ?? t;
 }
 
 export function localizeRegion(input: string | null | undefined): string {
