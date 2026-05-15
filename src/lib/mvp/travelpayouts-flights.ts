@@ -14,6 +14,7 @@ import type {
 interface TpFlightSearchInput {
   origin: string;
   destination: string;
+  destinationIata?: string | null;
   departureDate: string;
   // Sesja C1 FIX 2 — when set, the adapter prefers Travelpayouts'
   // `/v3/get_latest_prices` endpoint with `one_way=false` so each row
@@ -195,7 +196,7 @@ export async function searchTravelpayoutsFlights(
   }
 
   const originIata = resolveAirportCode(input.origin);
-  const destinationIata = resolveAirportCode(input.destination);
+  const destinationIata = input.destinationIata?.trim().toUpperCase() || resolveAirportCode(input.destination);
   if (!originIata || !destinationIata) {
     return emptyResponse(input, "Nie udalo sie ustalic kodu lotniska (IATA).");
   }

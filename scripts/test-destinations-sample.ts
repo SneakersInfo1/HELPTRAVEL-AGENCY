@@ -14,6 +14,7 @@
 //   pnpm tsx --env-file=.env.local scripts/test-destinations-sample.ts
 //   pnpm tsx --env-file=.env.local scripts/test-destinations-sample.ts --n=5
 //   pnpm tsx --env-file=.env.local scripts/test-destinations-sample.ts --ids=lisbon-portugal,madrid-spain
+//   pnpm tsx --env-file=.env.local scripts/test-destinations-sample.ts --n=30 --e2e
 //
 // Exit code: 0 on full pass, 1 otherwise. Suitable for CI.
 
@@ -42,20 +43,28 @@ interface SeedFile {
 interface CliArgs {
   n: number;
   ids: string[] | null;
+  e2e: boolean;
+  baseUrl: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
   let n = 20;
   let ids: string[] | null = null;
+  let e2e = false;
+  let baseUrl = process.env.E2E_BASE_URL ?? "http://localhost:3000";
   for (const arg of argv.slice(2)) {
     if (arg.startsWith("--n=")) {
       const v = Number(arg.slice("--n=".length));
       if (Number.isFinite(v) && v > 0) n = v;
     } else if (arg.startsWith("--ids=")) {
       ids = arg.slice("--ids=".length).split(",").map((s) => s.trim()).filter(Boolean);
+    } else if (arg === "--e2e") {
+      e2e = true;
+    } else if (arg.startsWith("--base-url=")) {
+      baseUrl = arg.slice("--base-url=".length).replace(/\/$/, "");
     }
   }
-  return { n, ids };
+  return { n, ids, e2e, baseUrl };
 }
 
 function pickRandom<T>(arr: T[], n: number): T[] {
@@ -85,10 +94,19 @@ interface ResultRow {
   flightsCount: number;
   polishOk: boolean;
   polishValue: string;
+  e2eOk: boolean;
+  e2eStatus: number | null;
+  e2eMs: number | null;
   errors: string[];
 }
 
-async function check(record: SeedRecord): Promise<ResultRow> {
+function futureIso(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+async function check(record: SeedRecord, args: CliArgs): Promise<ResultRow> {
   const row: ResultRow = {
     id: record.id,
     cityEn: record.city.en,
@@ -98,6 +116,9 @@ async function check(record: SeedRecord): Promise<ResultRow> {
     flightsCount: 0,
     polishOk: false,
     polishValue: record.city.pl,
+    e2eOk: !args.e2e,
+    e2eStatus: null,
+    e2eMs: null,
     errors: [],
   };
 
@@ -124,6 +145,7 @@ async function check(record: SeedRecord): Promise<ResultRow> {
     const flightRes = await searchTravelpayoutsFlights({
       origin,
       destination: record.city.en,
+      destinationIata: record.airports[0] ?? undefined,
       departureDate,
       passengers: 1,
       cabinClass: "economy",
@@ -151,6 +173,35 @@ async function check(record: SeedRecord): Promise<ResultRow> {
     row.polishOk = true;
   }
 
+  if (args.e2e) {
+    const checkin = futureIso(30);
+    const checkout = futureIso(34);
+    const params = new URLSearchParams({
+      destination: record.city.en,
+      country: record.country.en,
+      checkin,
+      checkout,
+      origin: "Warszawa",
+      adults: "2",
+      rooms: "1",
+    });
+    const url = `${args.baseUrl.replace(/\/$/, "")}/hotele/szukaj?${params.toString()}`;
+    const started = performance.now();
+    try {
+      const response = await fetch(url, { headers: { "User-Agent": "helptravel-e2e-smoke/1.0" } });
+      row.e2eStatus = response.status;
+      const html = await response.text();
+      row.e2eMs = Math.round(performance.now() - started);
+      row.e2eOk = response.status === 200 && html.includes("<article") && row.e2eMs < 4000;
+      if (!row.e2eOk) {
+        row.errors.push(`e2e-failed status=${response.status} ms=${row.e2eMs} articles=${html.includes("<article")}`);
+      }
+    } catch (err) {
+      row.e2eMs = Math.round(performance.now() - started);
+      row.errors.push(`e2e-error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   return row;
 }
 
@@ -173,20 +224,23 @@ async function main(): Promise<number> {
   const results: ResultRow[] = [];
   for (const record of sample) {
     process.stdout.write(`  • ${record.id.padEnd(40)} `);
-    const row = await check(record);
+    const row = await check(record, args);
     results.push(row);
-    const allOk = row.hotelsOk && row.flightsOk && row.polishOk;
+    const allOk = row.hotelsOk && row.flightsOk && row.polishOk && row.e2eOk;
     if (allOk) {
-      console.log(`OK   hotels=${row.hotelsCount} flights=${row.flightsCount} pl="${row.polishValue}"`);
+      console.log(`OK   hotels=${row.hotelsCount} flights=${row.flightsCount} pl="${row.polishValue}"${args.e2e ? ` e2e=${row.e2eMs}ms` : ""}`);
     } else {
       console.log(`FAIL ${row.errors.join("; ")}`);
     }
   }
 
-  const passed = results.filter((r) => r.hotelsOk && r.flightsOk && r.polishOk).length;
+  const passed = results.filter((r) => r.hotelsOk && r.flightsOk && r.polishOk && r.e2eOk).length;
   const failed = results.length - passed;
   console.log("");
   console.log(`Result: ${passed}/${results.length} passed (${failed} failed)`);
+  if (args.e2e) {
+    return passed / results.length >= 0.9 ? 0 : 1;
+  }
   return failed > 0 ? 1 : 0;
 }
 

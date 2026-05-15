@@ -7,6 +7,7 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 const flightSearchSchema = z.object({
   origin: z.string().trim().min(2),
   destination: z.string().trim().min(2),
+  destinationIata: z.string().trim().length(3).optional(),
   departureDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
   returnDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   passengers: z.coerce.number().int().min(1).max(8).default(2),
@@ -25,6 +26,7 @@ export async function POST(request: NextRequest) {
     const result = await searchTravelpayoutsFlights({
       origin: input.origin,
       destination: input.destination,
+      destinationIata: input.destinationIata,
       departureDate: input.departureDate,
       returnDate: input.returnDate,
       passengers: input.passengers,
