@@ -6,7 +6,7 @@ const csp = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.geoapify.com https://maps.geoapify.com",
+  "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.cupid.travel https://*.liteapi.travel https://*.geoapify.com https://maps.geoapify.com",
   "media-src 'self' https://videos.pexels.com",
   "connect-src 'self' https://*.upstash.io https://api.travelpayouts.com https://api.liteapi.travel https://api.sandbox.liteapi.travel https://api.geoapify.com https://api.anthropic.com https://vitals.vercel-insights.com https://vercel.live",
   "frame-src 'self' https://payment-wrapper.liteapi.travel",
@@ -80,13 +80,37 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "static.cupid.travel",
       },
-      // LiteAPI image CDN(s) — confirmed hostname(s) added during Phase 2
-      // when sandbox responses are inspected. Until then the placeholder
-      // patterns above cover Pexels/Unsplash/Cupid (LiteAPI's main CDN).
+      {
+        protocol: "https",
+        hostname: "**.cupid.travel",
+      },
+      {
+        protocol: "https",
+        hostname: "**.liteapi.travel",
+      },
     ],
   },
   async headers() {
     return [
+      {
+        source: "/hotele/szukaj",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, s-maxage=300, stale-while-revalidate=900" },
+          ...securityHeaders,
+        ],
+      },
+      {
+        source: "/sitemap.xml",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, s-maxage=86400, stale-while-revalidate=86400" },
+        ],
+      },
+      {
+        source: "/robots.txt",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, s-maxage=86400, stale-while-revalidate=86400" },
+        ],
+      },
       {
         source: "/:path*",
         headers: securityHeaders,
