@@ -440,3 +440,60 @@ detail fetch per result (30× extra requests on every search) or a
 backfill job populating an amenities cache keyed by hotelId. Filter UI
 remains in-place but marked "(wkrótce)" so users see the surface
 without a no-op false promise.
+## 2026-05-14 — Sesja C3 halt: e2e smoke blocked by Travelpayouts cache coverage
+
+**Scope attempted.** C3 work ran in an isolated worktree
+`c3-site-polish` to avoid touching the owner's dirty checkout. Implemented
+the Lighthouse runner, search-result skeleton/error/image/cache changes,
+CITY_PL export + generated verified-name map, TP directory tests, and the
+`--e2e` destination smoke extension.
+
+**Blocker #1 — seed rebuild cache mismatch.** The required command:
+
+```bash
+pnpm tsx scripts/build-destinations-seed.ts --full --prod --per-country=100 --no-network
+```
+
+completed, but the local cache reproduced only **232 destinations**, not the
+expected 796. Committing that output would be a data regression, so
+`data/destinations.json` and `data/destinations.index.json` were restored to
+the 796-entry HEAD version. Polish-name verification is therefore provided by
+`CITY_PL`/`audit-polish-coverage.ts`, not by a regenerated seed in this run.
+
+**Blocker #2 — e2e smoke cannot meet 27/30 with current Travelpayouts data.**
+After passing `destinationIata` from the seed into the flight adapter, the
+IATA failures disappeared, but random samples across all 796 destinations
+still produced widespread:
+
+```text
+flights-error: Brak ofert lotow dla tej trasy.
+```
+
+Observed runs:
+
+- random 30 after IATA fix: **5/30 passed**; failures were predominantly
+  Travelpayouts "no offers" for valid destinations.
+- top popularity sample also failed the 27/30 gate because several valid
+  routes had no TP cache for the selected date and some SSR responses exceeded
+  the 4s smoke threshold before cache warming.
+
+**What is verified so far.**
+
+- `pnpm exec tsc --noEmit` — pass.
+- `pnpm lint` — pass.
+- `pnpm test` — pass, **56/56** after adding
+  `tp-airport-directory.test.ts`.
+- `pnpm build` — pass.
+- Lighthouse baseline was captured in `tmp/lighthouse/BASELINE.md`.
+
+**Decision.** Halt before atomic commits/push. A passing e2e gate would require
+one of:
+
+- narrowing the random smoke pool to destinations with known TP offers for the
+  test window,
+- changing the product contract so "flight panel loaded with graceful empty
+  state" counts as pass,
+- adding a deterministic fixture/mock layer for CI,
+- or integrating a richer flight data source.
+
+No fake flight offers or artificial social proof were introduced.
