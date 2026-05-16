@@ -85,7 +85,11 @@ function buildGenericQuery(destination: DestinationProfile): string {
 }
 
 function extractUrl(photo: PexelsPhoto): string | null {
-  return photo.src?.large2x ?? photo.src?.large ?? photo.src?.original ?? photo.src?.portrait ?? null;
+  // Prefer `large` (~1280px) over `large2x` (~1880px): the hero backdrop
+  // sits under a dark gradient + vignette and is re-optimized by
+  // next/image anyway, so the 2x variant only inflated LCP bytes for no
+  // visible gain. large2x kept as a fallback if `large` is absent.
+  return photo.src?.large ?? photo.src?.large2x ?? photo.src?.original ?? photo.src?.portrait ?? null;
 }
 
 function scoreCandidate(candidate: PhotoCandidate, keywords: string[]): number {
