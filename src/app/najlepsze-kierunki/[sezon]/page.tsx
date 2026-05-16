@@ -35,20 +35,20 @@ function avgSeasonalTemp(temps: number[], months: number[]) {
 
 const seasonIntro: Record<Season, string> = {
   wiosna:
-    "Wiosna to najlepszy moment na cieplejsze miasta poludnia Europy bez letnich tlumow i przed wzrostem cen sezonowych.",
+    "Wiosna to najlepszy moment na cieplejsze miasta południa Europy bez letnich tłumów i przed wzrostem cen sezonowych.",
   lato:
-    "Latem szukamy klimatu plazowego i komfortowej temperatury, ale rezerwujemy z wyprzedzeniem — to pelnia sezonu.",
+    "Latem szukamy klimatu plażowego i komfortowej temperatury, ale rezerwujemy z wyprzedzeniem — to pełnia sezonu.",
   jesien:
-    "Jesien daje cieple kierunki z drugiego rzedu i krotkie wyjazdy bez letnich kolejek, czesto za rozsadne pieniadze.",
+    "Jesień daje ciepłe kierunki z drugiego rzędu i krótkie wyjazdy bez letnich kolejek, często za rozsądne pieniądze.",
   zima:
-    "Zima to czas na ucieczki w cieplo (poludniowa Hiszpania, Wyspy Kanaryjskie) lub atmosferyczne city breaki w Europie.",
+    "Zima to czas na ucieczki w ciepło (południowa Hiszpania, Wyspy Kanaryjskie) lub atmosferyczne city breaki w Europie.",
 };
 
 const seasonHeading: Record<Season, string> = {
-  wiosna: "Najlepsze kierunki na wiosne 2026 — ranking pod krotki wyjazd",
-  lato: "Najlepsze kierunki na lato 2026 — gdzie cieplo i sensownie",
-  jesien: "Najlepsze kierunki na jesien 2026 — ciepla pogoda, mniej tlumow",
-  zima: "Najlepsze kierunki na zime 2026 — cieple ucieczki i city break",
+  wiosna: "Najlepsze kierunki na wiosnę 2026 — ranking pod krótki wyjazd",
+  lato: "Najlepsze kierunki na lato 2026 — gdzie ciepło i sensownie",
+  jesien: "Najlepsze kierunki na jesień 2026 — ciepła pogoda, mniej tłumów",
+  zima: "Najlepsze kierunki na zimę 2026 — ciepłe ucieczki i city break",
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!isSeason(sezon)) return { title: "Najlepsze kierunki" };
   return {
     title: seasonHeading[sezon],
-    description: `Ranking kierunkow na ${seasonInflected[sezon]} — pogoda, koszty i charakter wyjazdu. Praktyczna lista pod decyzje city break i krotki urlop z Polski.`,
+    description: `Ranking kierunków na ${seasonInflected[sezon]} — pogoda, koszty i charakter wyjazdu. Praktyczna lista pod decyzję city break i krótki urlop z Polski.`,
     alternates: { canonical: `/najlepsze-kierunki/${sezon}` },
     openGraph: {
       title: seasonHeading[sezon],
@@ -183,7 +183,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
                 </h2>
               </div>
               <div className="flex gap-3 text-sm text-emerald-900/80">
-                <span className="rounded-full bg-emerald-50 px-3 py-1.5">{entry.temp}°C srednio</span>
+                <span className="rounded-full bg-emerald-50 px-3 py-1.5">{entry.temp}°C średnio</span>
                 <span className="rounded-full bg-emerald-50 px-3 py-1.5">
                   Lot ~{entry.destination.typicalFlightHoursFromPL}h
                 </span>
@@ -208,24 +208,24 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-3xl text-emerald-950">Jak czytac ten ranking</h2>
+        <h2 className="font-display text-3xl text-emerald-950">Jak czytać ten ranking</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/72">
-          Pozycja w rankingu liczy sie z trzech rzeczy: srednia temperatura w sezonie (komfort 22-28°C dostaje najwiecej punktow),
-          dostepnosc lotow z Polski oraz indeks kosztow. Ranking ma orientowac szybko, a finalna decyzje warto przepuscic
-          przez planner — uwzglednia on dlugosc wyjazdu, budzet i preferencje stylu.
+          Pozycja w rankingu liczy się z trzech rzeczy: średnia temperatura w sezonie (komfort 22-28°C dostaje najwięcej punktów),
+          dostępność lotów z Polski oraz indeks kosztów. Ranking ma orientować szybko, a finalną decyzję warto sprawdzić
+          w wyszukiwarce hoteli i lotów — uwzględnia ona długość wyjazdu, budżet i preferencje stylu.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
-            href="/planner"
+            href="/hotele"
             className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Przejdz do plannera
+            Przejdź do hoteli
           </Link>
           <Link
             href="/kierunki"
             className="rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
           >
-            Pelny katalog kierunkow
+            Pełny katalog kierunków
           </Link>
         </div>
       </section>

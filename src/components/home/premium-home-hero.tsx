@@ -16,6 +16,7 @@ import {
 import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
 import { sendClientEvent } from "@/lib/mvp/client-events";
+import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { localizeHref, localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import {
   countNightsBetweenIsoDates,
@@ -62,7 +63,7 @@ const heroCopy = {
     searchDestinationPlaceholder: "Np. Malaga, Rzym, Lizbona",
     discoveryPlaceholder: "Np. ciepły wyjazd na 5 dni, z plażą i miastem, bez długiej logistyki.",
     startDate: "Wylot",
-    endDate: "Powrot",
+    endDate: "Powrót",
     travelers: "Liczba osób",
     submitStandard: "Pokaż noclegi i loty",
     submitDiscovery: "Pokaż pomysły na wyjazd",
@@ -78,7 +79,7 @@ const heroCopy = {
     catalogLink: "Przejdź do katalogu",
     quickStartLabel: "Szybki start",
     quickStartBody: "Jeśli chcesz wystartować od razu, wybierz jeden z prostych kierunków i przejdź dalej bez pustego formularza.",
-    plannerScale: "W plannerze znajdziesz 235 kierunków. Pełne przewodniki mamy obecnie dla 22 najwazniejszych.",
+    plannerScale: "W plannerze znajdziesz 235 kierunków. Pełne przewodniki mamy obecnie dla 22 najważniejszych.",
   },
   en: {
     title: "Start with the destination and see the next step.",
@@ -117,7 +118,7 @@ const discoveryPrompts = {
   pl: [
     "City break dla dwojga z dobrym jedzeniem i ladnym centrum.",
     "Ciepły wyjazd na 5 dni, plażą i zwiedzanie, bez drogiego lotu.",
-    "Weekendowy wypad z Polski, malo logistyki i duzo slonca.",
+    "Weekendowy wypad z Polski, mało logistyki i dużo słońca.",
   ],
   en: [
     "A city break for two with great food and a beautiful center.",
@@ -134,35 +135,28 @@ function buildStandardPlannerHref(params: {
   travelers: number;
   locale: SiteLocale;
 }): string {
-  const nights = countNightsBetweenIsoDates(params.startDate, params.endDate, 4);
   const searchParams = new URLSearchParams({
-    mode: "standard",
-    q: params.destination,
     origin: params.origin,
     destination: params.destination,
-    startDate: params.startDate,
-    endDate: params.endDate,
-    nights: String(nights),
-    travelers: String(params.travelers),
-    days: String(nights),
+    checkin: params.startDate,
+    checkout: params.endDate,
+    adults: String(params.travelers),
+    rooms: "1",
   });
 
-  return localizeHref(`/planner?${searchParams.toString()}`, params.locale);
+  return localizeHref(`/hotele/szukaj?${searchParams.toString()}`, params.locale);
 }
 
 function buildDiscoveryPlannerHref(query: string, origin: string, startDate: string, endDate: string, travelers: number, locale: SiteLocale) {
-  const nights = countNightsBetweenIsoDates(startDate, endDate, 4);
   const searchParams = new URLSearchParams({
-    mode: "discovery",
     q: query,
     origin,
-    startDate,
-    endDate,
-    nights: String(nights),
-    travelers: String(travelers),
+    checkin: startDate,
+    checkout: endDate,
+    adults: String(travelers),
   });
 
-  return localizeHref(`/planner?${searchParams.toString()}`, locale);
+  return localizeHref(`/kierunki?${searchParams.toString()}`, locale);
 }
 
 export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: localeOverride }: PremiumHomeHeroProps) {
@@ -204,7 +198,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
             title: "Malaga",
             description: "Słońce, miasto i prosty start do planera.",
             image: "/branding/helptravel-logo.png",
-            href: "/planner?mode=standard&q=Malaga",
+            href: "/hotele/szukaj?destination=Malaga&origin=Warszawa&adults=2&rooms=1",
             tags: ["słońce", "city break", "plażą"],
             meta: "łatwy start",
           },
@@ -544,10 +538,10 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
                               }`}
                             >
                               <div>
-                                <p className="text-sm font-bold text-emerald-950">{suggestion.city}</p>
+                                <p className="text-sm font-bold text-emerald-950">{localizeCity(suggestion.city)}</p>
                                 <p className="mt-1 text-xs leading-5 text-emerald-900/66">
-                                  {suggestion.country}
-                                  {suggestion.region ? `, ${suggestion.region}` : ""}
+                                  {localizeCountry(suggestion.country)}
+                                  {suggestion.region ? `, ${localizeRegion(suggestion.region)}` : ""}
                                 </p>
                               </div>
                             </button>
@@ -710,7 +704,7 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
                   </button>
                 </div>
                 <LocalizedLink
-                  href="/planner?mode=discovery"
+                  href="/kierunki"
                   locale={locale}
                   className="inline-flex text-sm font-semibold text-emerald-900 transition hover:text-emerald-700"
                 >
@@ -724,5 +718,3 @@ export function PremiumHomeHero({ slides, destinationCount, guideCount, locale: 
     </section>
   );
 }
-
-

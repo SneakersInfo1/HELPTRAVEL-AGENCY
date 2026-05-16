@@ -12,12 +12,12 @@ interface MoodChip {
 }
 
 const MOODS: readonly MoodChip[] = [
-  { key: "beach", icon: "🏖️", label: "Plaza", q: "plaza cieply kierunek morze" },
+  { key: "beach", icon: "🏖️", label: "Plaża", q: "plaża ciepły kierunek morze" },
   { key: "city", icon: "🌃", label: "City break", q: "city break kultura zwiedzanie" },
   { key: "mountains", icon: "🏔️", label: "Gory", q: "gory trekking natura" },
   { key: "culture", icon: "🏛️", label: "Kultura", q: "kultura zabytki historia" },
-  { key: "budget", icon: "💰", label: "Budzet", q: "tanio budzet najtaniej" },
-  { key: "sun", icon: "☀️", label: "Slonce zima", q: "cieply kierunek zima slonce" },
+  { key: "budget", icon: "💰", label: "Budżet", q: "tanio budżet najtaniej" },
+  { key: "sun", icon: "☀️", label: "Słońce zimą", q: "ciepły kierunek zima słońce" },
 ] as const;
 
 export function MoodChips() {
@@ -39,7 +39,7 @@ export function MoodChips() {
   return (
     <div
       role="group"
-      aria-label="Szybki wybor nastroju wyjazdu"
+      aria-label="Szybki wybór nastroju wyjazdu"
       className="flex flex-wrap justify-center gap-2"
     >
       {MOODS.map((mood) => (

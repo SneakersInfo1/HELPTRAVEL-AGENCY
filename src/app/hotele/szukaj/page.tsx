@@ -313,10 +313,10 @@ function EmptyResults({ destination }: { destination: string }) {
         <li>• zmniejszyć minimalny standard hotelu.</li>
       </ul>
       <Link
-        href="/planner?mode=discovery"
+        href="/hotele/szukaj"
         className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
       >
-        Otwórz Discovery Planner
+        Wróć do wyszukiwarki
       </Link>
     </div>
   );

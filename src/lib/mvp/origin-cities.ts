@@ -1,5 +1,5 @@
 // Lotniska startowe oferowane w mini-plannerze na homepage.
-// Podzielone na regiony: Polska (glowny target) + Europa (polska diaspora w UK/DE/NL/IE).
+// Podzielone na regiony: Polska (główny target) + Europa (polska diaspora w UK/DE/NL/IE).
 export interface OriginCity {
   city: string;
   iata: string;
@@ -8,12 +8,12 @@ export interface OriginCity {
 
 export const POLISH_ORIGIN_CITIES: readonly OriginCity[] = [
   { city: "Warszawa", iata: "WAW", region: "PL" },
-  { city: "Krakow", iata: "KRK", region: "PL" },
-  { city: "Gdansk", iata: "GDN", region: "PL" },
-  { city: "Wroclaw", iata: "WRO", region: "PL" },
+  { city: "Kraków", iata: "KRK", region: "PL" },
+  { city: "Gdańsk", iata: "GDN", region: "PL" },
+  { city: "Wrocław", iata: "WRO", region: "PL" },
   { city: "Katowice", iata: "KTW", region: "PL" },
-  { city: "Poznan", iata: "POZ", region: "PL" },
-  { city: "Rzeszow", iata: "RZE", region: "PL" },
+  { city: "Poznań", iata: "POZ", region: "PL" },
+  { city: "Rzeszów", iata: "RZE", region: "PL" },
   { city: "Lublin", iata: "LUZ", region: "PL" },
 ] as const;
 
@@ -26,8 +26,8 @@ export const EUROPEAN_ORIGIN_CITIES: readonly OriginCity[] = [
   { city: "Frankfurt", iata: "FRA", region: "EU" },
   { city: "Monachium", iata: "MUC", region: "EU" },
   { city: "Amsterdam", iata: "AMS", region: "EU" },
-  { city: "Paryz", iata: "PAR", region: "EU" },
-  { city: "Wieden", iata: "VIE", region: "EU" },
+  { city: "Paryż", iata: "PAR", region: "EU" },
+  { city: "Wiedeń", iata: "VIE", region: "EU" },
   { city: "Praga", iata: "PRG", region: "EU" },
   { city: "Kopenhaga", iata: "CPH", region: "EU" },
   { city: "Oslo", iata: "OSL", region: "EU" },

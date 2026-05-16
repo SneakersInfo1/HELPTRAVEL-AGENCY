@@ -1,9 +1,9 @@
 import { getAllDestinationProfiles } from "./destinations";
 import type { DestinationProfile } from "./types";
 
-// Handpicked 6 kierunkow dla homepage. Kolejnosc ma znaczenie — pierwsze widoczne
+// Handpicked 6 kierunków dla homepage. Kolejnosc ma znaczenie — pierwsze widoczne
 // nad fold-em na desktopie, ostatnie pod fold-em na mobile. Dobor pod polskiego
-// odbiorcow (city break + plaza, wszystkie z dobra dostepnoscia z Polski).
+// odbiorcow (city break + plaża, wszystkie z dobra dostępnośćia z Polski).
 export const FEATURED_DESTINATION_SLUGS = [
   "malaga-spain",
   "barcelona-spain",

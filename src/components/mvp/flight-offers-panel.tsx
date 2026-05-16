@@ -133,8 +133,9 @@ const copy = {
     oneStopBadge: "1 przesiadka",
     multiStopBadge: "2+ przesiadki",
     tabOutbound: "Docelowe",
-    tabReturn: "Powrotne",
+    tabReturn: "Powrótne",
     tabsAriaLabel: "Kierunek lotu",
+    altAirportBadge: "Inne pobliskie lotnisko",
   },
   en: {
     eyebrow: "Flights",
@@ -158,6 +159,7 @@ const copy = {
     tabOutbound: "Outbound",
     tabReturn: "Return",
     tabsAriaLabel: "Flight direction",
+    altAirportBadge: "Alternative nearby airport",
   },
 } as const;
 
@@ -298,6 +300,8 @@ function FlightCard({ offer, locale, t, isDeal, ctaUrl }: {
           stopsClasses={stopsClasses}
           locale={locale}
           airline={offer.airline}
+          altOriginHint={offer.isAlternativeOrigin ? offer.alternativeOriginHint ?? t.altAirportBadge : null}
+          altDestinationHint={offer.isAlternativeDestination ? offer.alternativeDestinationHint ?? t.altAirportBadge : null}
         />
       </div>
 
@@ -447,7 +451,7 @@ export function FlightOffersPanel(props: {
         <h2 className="mt-1 text-xl font-bold text-emerald-950">{t.title}</h2>
       </header>
 
-      {/* Direction tabs (Docelowe / Powrotne) — primary axis. Each tab fires
+      {/* Direction tabs (Docelowe / Powrótne) — primary axis. Each tab fires
           its own one-way query so durations + direct-flight availability are
           real (not halved round-trip estimates). */}
       {hasReturnLeg && (
@@ -573,6 +577,8 @@ function FlightLeg({
   stopsClasses,
   locale,
   airline,
+  altOriginHint,
+  altDestinationHint,
 }: {
   label: string | null;
   arrow: "→" | "←";
@@ -585,6 +591,12 @@ function FlightLeg({
   stopsClasses: string;
   locale: "pl" | "en";
   airline: string;
+  // Set to a non-empty string when the leg uses a nearby/alternative
+  // airport rather than what the user picked. Renders a small amber line
+  // beneath the IATA so the user immediately spots that we routed them
+  // through e.g. Bergamo instead of Milan center. null = no badge.
+  altOriginHint?: string | null;
+  altDestinationHint?: string | null;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -602,6 +614,11 @@ function FlightLeg({
           <p className="text-[11px] text-emerald-900/56" title={formatAirport(origin)}>
             {formatAirport(origin)}
           </p>
+          {altOriginHint ? (
+            <p className="mt-0.5 text-[10px] font-semibold text-amber-700" title={altOriginHint}>
+              ⚠ {altOriginHint}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-1 flex-col items-center">
           <p className="text-sm font-semibold text-emerald-950">{duration || "—"}</p>
@@ -622,6 +639,11 @@ function FlightLeg({
           <p className="text-[11px] text-emerald-900/56" title={formatAirport(destination)}>
             {formatAirport(destination)}
           </p>
+          {altDestinationHint ? (
+            <p className="mt-0.5 text-[10px] font-semibold text-amber-700" title={altDestinationHint}>
+              ⚠ {altDestinationHint}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

@@ -39,7 +39,7 @@ export default function HotelLandingPage() {
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-full bg-white/15 px-3 py-1 font-medium">Hotele</span>
             <Link
-              href="/planner?mode=discovery"
+              href="/kierunki"
               className="rounded-full bg-white/10 px-3 py-1 font-medium underline-offset-2 hover:bg-white/20 hover:underline"
             >
               Nie wiem dokąd lecieć →
@@ -97,24 +97,23 @@ export default function HotelLandingPage() {
         </div>
       </section>
 
-      {/* Discovery cross-link */}
+        {/* Destination cross-link */}
       <section className="bg-neutral-100">
         <div className="mx-auto max-w-6xl px-4 py-10">
           <div className="rounded-2xl bg-white p-6 sm:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="text-sm font-medium text-emerald-700">Discovery Planner</div>
+                <div className="text-sm font-medium text-emerald-700">Nie masz jeszcze kierunku?</div>
                 <h3 className="mt-1 text-xl font-bold text-neutral-900">Nie wiesz, dokąd? Zacznij od pomysłu.</h3>
                 <p className="mt-1 max-w-xl text-sm text-neutral-600">
-                  Powiedz nam, na co masz ochotę i jaki masz budżet — pokażemy 3-5 dopasowanych
-                  miast z gotowymi hotelami.
+                  Przejrzyj katalog kierunków, wybierz miasto i wróć do hoteli z konkretnym terminem.
                 </p>
               </div>
               <Link
-                href="/planner?mode=discovery"
+                href="/kierunki"
                 className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
               >
-                Otwórz planer
+                Zobacz kierunki
               </Link>
             </div>
           </div>

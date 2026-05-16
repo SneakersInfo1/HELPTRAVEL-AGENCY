@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const query = request.nextUrl.searchParams.get("query") ?? undefined;
 
   if (!targetUrl) {
-    const response = NextResponse.redirect(new URL("/planner", request.url));
+  const response = NextResponse.redirect(new URL("/hotele", request.url));
     if (resolvedSession.isNew) {
       attachSessionCookie(response, resolvedSession.sessionId);
     }

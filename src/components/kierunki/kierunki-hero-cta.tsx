@@ -12,10 +12,8 @@ interface KierunkiHeroCtaProps {
   budget?: number;
 }
 
-// Hero CTA dla stron kierunków — Phase 1 affiliate purge:
-//   • lewa: planer z preselected destynacją
-//   • prawa: internal hotele search (LiteAPI display, Phase 2+)
-// Wszystkie inne CTA do partnerów hotelowych zostały usunięte z tego komponentu.
+// Hero CTA dla stron kierunków: oba wejścia prowadzą do lokalnej warstwy hoteli,
+// a loty są pokazywane jako kolejny krok w wynikach.
 export function KierunkiHeroCta({
   city,
   country,
@@ -27,6 +25,7 @@ export function KierunkiHeroCta({
 }: KierunkiHeroCtaProps) {
   const plannerHref = buildPlannerLink({
     destination: city,
+    country,
     origin: "Warszawa",
     startDate,
     nights,
@@ -40,7 +39,7 @@ export function KierunkiHeroCta({
     country,
     ...(startDate ? { checkin: startDate } : {}),
     ...(checkOutDate ? { checkout: checkOutDate } : {}),
-    travelers: String(travelers),
+    adults: String(travelers),
     rooms: "1",
   }).toString()}`;
 
@@ -55,8 +54,8 @@ export function KierunkiHeroCta({
             {city} w jednym widoku — noclegi, loty i atrakcje.
           </h2>
           <p className="mt-3 text-sm leading-7 text-emerald-100/85">
-            Otworz planner z gotowymi ustawieniami ({nights} nocy, {travelers} osoby, start z Warszawy).
-            Zmienisz dowolny parametr w planerze jednym kliknięciem.
+            Otwórz hotele z gotowymi ustawieniami ({nights} nocy, {travelers} osoby, start z Warszawy).
+            Zmienisz dowolny parametr w wyszukiwarce jednym kliknięciem.
           </p>
         </div>
         <div className="mt-5">
@@ -64,7 +63,7 @@ export function KierunkiHeroCta({
             href={plannerHref}
             className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-6 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
           >
-            Zaplanuj wyjazd do {city}
+            Sprawdź hotele i loty w {city}
           </LocalizedLink>
         </div>
       </article>
