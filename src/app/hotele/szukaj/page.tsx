@@ -6,21 +6,25 @@
 // and stream the result list.
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 
 import { fromMinor } from "@/lib/money";
 import { fetchHotelsList, getRates, LiteApiError } from "@/lib/liteapi";
 import { normalizeOffer, nightsBetween } from "@/lib/hotels/normalize";
+import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
+import { localizeCity } from "@/lib/mvp/i18n-geo";
 
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { CollapsibleSearchBar } from "./_components/collapsible-search-bar";
 import { FiltersSidebar } from "./_components/filters-sidebar";
 import { applyFiltersAndSort } from "./_components/filters-logic";
 import { ResultCard } from "./_components/result-card";
-import { ResultSkeletonList } from "./_components/skeleton";
+import { ResultsError } from "./_components/results-error";
+import { ResultsSkeleton } from "./_components/results-skeleton";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
+const INITIAL_HOTEL_RESULTS_LIMIT = 12;
 
 interface SP {
   destination?: string;
@@ -51,13 +55,16 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const title = dest
     ? `Hotele ${dest}${ctry ? `, ${ctry}` : ""} — ceny w PLN | HelpTravel`
     : "Wyszukiwarka hoteli | HelpTravel";
+  const canonical = dest
+    ? `/hotele/szukaj?${new URLSearchParams({ destination: dest, ...(ctry ? { country: ctry } : {}) }).toString()}`
+    : "/hotele/szukaj";
   return {
     title,
     description: dest
       ? `Znajdź hotel w ${dest}. Prawdziwe ceny w PLN, bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`
       : "Wyszukaj hotel z prawdziwymi cenami w PLN.",
-    alternates: { canonical: "/hotele/szukaj" },
-    robots: { index: false, follow: true }, // dynamic listings — don't index
+    alternates: { canonical },
+    robots: dest ? "index, follow" : "noindex, follow",
   };
 }
 
@@ -67,6 +74,9 @@ export default async function HotelResultsPage({
   searchParams: Promise<SP>;
 }) {
   const sp = await searchParams;
+  const destinationRecord = sp.destination
+    ? resolveDestinationFromQuery({ destination: sp.destination, country: sp.country })
+    : null;
   const valid =
     sp.destination &&
     sp.country &&
@@ -142,7 +152,7 @@ export default async function HotelResultsPage({
           {!valid ? (
             <EmptyPrompt />
           ) : (
-            <Suspense fallback={<ResultSkeletonList count={6} />}>
+            <Suspense fallback={<ResultsSkeleton count={6} />}>
               <Results sp={sp} />
             </Suspense>
           )}
@@ -160,6 +170,9 @@ export default async function HotelResultsPage({
             departureDate={sp.checkin}
             returnDate={sp.checkout}
             passengers={sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 2}
+            destinationIata={destinationRecord?.airports[0] ?? null}
+            destinationLat={destinationRecord?.lat ?? null}
+            destinationLng={destinationRecord?.lng ?? null}
           />
         </div>
       )}
@@ -183,7 +196,7 @@ async function Results({ sp }: { sp: SP }) {
   let errorMessage: string | null = null;
 
   try {
-    const list = await fetchHotelsList({ city: destination, country, limit: 30 });
+    const list = await fetchHotelsList({ city: destination, country, limit: INITIAL_HOTEL_RESULTS_LIMIT });
     if (list.data?.length) {
       const hotelIds = list.data.map((h) => h.id);
       const rates = await getRates({
@@ -203,7 +216,20 @@ async function Results({ sp }: { sp: SP }) {
     errorMessage = err instanceof LiteApiError ? err.userMessagePl : "Coś poszło nie tak. Spróbuj ponownie.";
   }
 
-  if (errorMessage) return <ErrorState message={errorMessage} />;
+  const destinationRecord = resolveDestinationFromQuery({ destination, country });
+  const cityPl = destinationRecord?.city.pl ?? localizeCity(destination);
+
+  if (errorMessage) {
+    return (
+      <ResultsError
+        title={`Nie znaleźliśmy hoteli w ${cityPl}`}
+        message={errorMessage}
+        iata={destinationRecord?.airports[0] ?? null}
+        lat={destinationRecord?.lat ?? null}
+        lng={destinationRecord?.lng ?? null}
+      />
+    );
+  }
 
   // Apply URL filters/sort
   const filtered = applyFiltersAndSort(offers, {
@@ -218,7 +244,16 @@ async function Results({ sp }: { sp: SP }) {
     board: sp.board ? sp.board.split(",").filter(Boolean) : undefined,
   });
 
-  if (filtered.length === 0) return <EmptyResults destination={destination} />;
+  if (filtered.length === 0) {
+    return (
+      <EmptyResults
+        destination={cityPl}
+        iata={destinationRecord?.airports[0] ?? null}
+        lat={destinationRecord?.lat ?? null}
+        lng={destinationRecord?.lng ?? null}
+      />
+    );
+  }
 
   // Identify badges (cheapest, top-rated)
   const cheapestId = [...filtered].sort((a, b) => a.cheapestRate.totalAmount - b.cheapestRate.totalAmount)[0]?.hotelId;
@@ -248,12 +283,13 @@ async function Results({ sp }: { sp: SP }) {
         </div>
       </header>
 
-      {filtered.map((o) => (
+      {filtered.map((o, index) => (
         <ResultCard
           key={o.hotelId}
           offer={o}
           searchQuery={childParams.toString()}
           nights={nights}
+          imagePriority={index < 6}
           badges={{
             cheapest: o.hotelId === cheapestId,
             topRated: Boolean(topRatedId) && o.hotelId === topRatedId && o.hotelId !== cheapestId,
@@ -299,34 +335,24 @@ function EmptyPrompt() {
   );
 }
 
-function EmptyResults({ destination }: { destination: string }) {
+function EmptyResults({
+  destination,
+  iata,
+  lat,
+  lng,
+}: {
+  destination: string;
+  iata?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center">
-      <h2 className="text-lg font-semibold text-neutral-900">
-        Brak hoteli pasujących do filtrów dla {destination}
-      </h2>
-      <p className="mt-2 text-sm text-neutral-600">Spróbuj:</p>
-      <ul className="mx-auto mt-2 max-w-md space-y-1 text-left text-sm text-neutral-700">
-        <li>• poszerzyć zakres dat o 1–2 dni,</li>
-        <li>• zmienić obszar lub miasto,</li>
-        <li>• zwiększyć budżet w filtrze cen,</li>
-        <li>• zmniejszyć minimalny standard hotelu.</li>
-      </ul>
-      <Link
-        href="/hotele/szukaj"
-        className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
-      >
-        Wróć do wyszukiwarki
-      </Link>
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-      <h2 className="font-semibold">Nie udało się pobrać ofert</h2>
-      <p className="mt-1 text-sm">{message}</p>
-    </div>
+    <ResultsError
+      title={`Nie znaleźliśmy hoteli w ${destination}`}
+      message="Spróbuj zmienić daty, wyczyścić filtry albo wybrać pobliski kierunek."
+      iata={iata}
+      lat={lat}
+      lng={lng}
+    />
   );
 }
