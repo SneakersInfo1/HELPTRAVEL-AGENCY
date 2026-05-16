@@ -16,8 +16,7 @@ import { localizeCity } from "@/lib/mvp/i18n-geo";
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { CollapsibleSearchBar } from "./_components/collapsible-search-bar";
 import { FiltersSidebar } from "./_components/filters-sidebar";
-import { ResultCard } from "./_components/result-card";
-import { CardPrice } from "./_components/card-price";
+import { ResultsList } from "./_components/results-list";
 import { ResultsError } from "./_components/results-error";
 import { ResultsSkeleton } from "./_components/results-skeleton";
 import { HotelPagination } from "./_components/hotel-pagination";
@@ -321,23 +320,15 @@ async function Results({ sp }: { sp: SP }) {
         </div>
       </header>
 
-      {metaOffers.length === 0 ? (
-        <p className="rounded-2xl border border-neutral-200 bg-white p-6 text-sm text-neutral-600">
-          Na tej stronie nic nie pasuje do wybranych filtrów. Zmień filtry lub
-          przejdź do innej strony wyników.
-        </p>
-      ) : (
-        metaOffers.map((o, index) => (
-          <ResultCard
-            key={o.hotelId}
-            offer={o}
-            searchQuery={childParams.toString()}
-            nights={nights}
-            imagePriority={index < 6}
-            priceSlot={<CardPrice query={{ hotelId: o.hotelId, ...priceCtx }} nights={nights} />}
-          />
-        ))
-      )}
+      <ResultsList
+        offers={metaOffers}
+        ctx={priceCtx}
+        nights={nights}
+        childParams={childParams.toString()}
+        sort={sp.sort}
+        minPrice={sp.minPrice ? Number(sp.minPrice) : undefined}
+        maxPrice={sp.maxPrice ? Number(sp.maxPrice) : undefined}
+      />
 
       <HotelPagination page={page} totalPages={totalPages} baseQuery={pageBaseQuery} />
     </div>

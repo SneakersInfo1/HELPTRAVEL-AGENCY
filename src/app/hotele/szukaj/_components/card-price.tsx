@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import { fetchHotelPrice, type PriceQuery, type SlimRate } from "@/lib/hotels/price-batcher";
+import type { PriceEntry } from "@/lib/hotels/price-store";
 
 const formatPLN = (amount: number, currency: string) =>
   new Intl.NumberFormat("pl-PL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
@@ -37,41 +35,11 @@ function nightsLabel(n: number): string {
   return `${n} nocy`;
 }
 
-type State =
-  | { kind: "loading" }
-  | { kind: "ok"; rate: SlimRate }
-  | { kind: "unavailable" };
-
-// Progressive price slot. Renders a skeleton immediately, then the live
-// cheapest price once the batched request resolves (or a graceful
-// "no availability" state). The hotel-detail page still has full rates.
-export function CardPrice({ query, nights }: { query: PriceQuery; nights: number }) {
-  const [state, setState] = useState<State>({ kind: "loading" });
-  const childrenKey = query.children.join(".");
-
-  useEffect(() => {
-    let alive = true;
-    setState({ kind: "loading" });
-    fetchHotelPrice(query).then((rate) => {
-      if (!alive) return;
-      setState(rate ? { kind: "ok", rate } : { kind: "unavailable" });
-    });
-    return () => {
-      alive = false;
-    };
-    // Re-fetch only when the actual search context changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    query.hotelId,
-    query.checkin,
-    query.checkout,
-    query.adults,
-    childrenKey,
-    query.rooms,
-    query.currency,
-  ]);
-
-  if (state.kind === "loading") {
+// Presentational price slot — pure function of the store entry. Fetching
+// is owned by ResultsList via the price-store so prices survive
+// re-sorts/filters without re-hitting the network.
+export function PriceView({ entry, nights }: { entry: PriceEntry | undefined; nights: number }) {
+  if (entry === undefined || entry === "loading") {
     return (
       <div className="animate-pulse" aria-label="Sprawdzam cenę">
         <div className="h-3 w-16 rounded bg-neutral-200" />
@@ -81,7 +49,7 @@ export function CardPrice({ query, nights }: { query: PriceQuery; nights: number
     );
   }
 
-  if (state.kind === "unavailable") {
+  if (entry === null) {
     return (
       <div className="text-sm text-neutral-500">
         <div className="font-medium text-neutral-600">Brak miejsc w tym terminie</div>
@@ -90,12 +58,11 @@ export function CardPrice({ query, nights }: { query: PriceQuery; nights: number
     );
   }
 
-  const { rate } = state;
-  const board = polishBoard(rate.boardName);
-  const isFreeCancel = rate.refundableTag === "RFN" || Boolean(rate.cancellationDeadline);
-  const freeCancelDate = formatDate(rate.cancellationDeadline);
-  const perNight = formatPLN(Math.round(rate.totalAmount / Math.max(1, nights)), rate.currency);
-  const total = formatPLN(rate.totalAmount, rate.currency);
+  const board = polishBoard(entry.boardName);
+  const isFreeCancel = entry.refundableTag === "RFN" || Boolean(entry.cancellationDeadline);
+  const freeCancelDate = formatDate(entry.cancellationDeadline);
+  const perNight = formatPLN(Math.round(entry.totalAmount / Math.max(1, nights)), entry.currency);
+  const total = formatPLN(entry.totalAmount, entry.currency);
 
   return (
     <div>
