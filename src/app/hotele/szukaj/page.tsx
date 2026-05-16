@@ -8,29 +8,28 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { fromMinor } from "@/lib/money";
-import { fetchHotelsList, getRates, LiteApiError } from "@/lib/liteapi";
-import { normalizeOffer, nightsBetween } from "@/lib/hotels/normalize";
+import { fetchHotelsList, LiteApiError } from "@/lib/liteapi";
+import { nightsBetween } from "@/lib/hotels/normalize";
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
 
 import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { CollapsibleSearchBar } from "./_components/collapsible-search-bar";
 import { FiltersSidebar } from "./_components/filters-sidebar";
-import { applyFiltersAndSort } from "./_components/filters-logic";
 import { ResultCard } from "./_components/result-card";
+import { CardPrice } from "./_components/card-price";
 import { ResultsError } from "./_components/results-error";
 import { ResultsSkeleton } from "./_components/results-skeleton";
 import { HotelPagination } from "./_components/hotel-pagination";
 
 export const revalidate = 300;
 
-// Hotel metadata (/data/hotels) is cheap, so we pull a deep pool; the
-// expensive part (rates) is fetched in parallel chunks below. The user
-// browses the pool 30 at a time via server-side pagination (?strona=N).
+// Hotel metadata (/data/hotels) is cheap, so we pull a deep pool for
+// pagination depth. Rates are expensive, so we fetch them only for the
+// current page (see Results). The user browses 30 at a time via
+// server-side pagination (?strona=N).
 const HOTEL_POOL_SIZE = 200;
 const RESULTS_PER_PAGE = 30;
-const RATES_CHUNK_SIZE = 40; // each chunk stays well under the 2MB Data-Cache cap
 
 interface SP {
   destination?: string;
@@ -199,34 +198,62 @@ async function Results({ sp }: { sp: SP }) {
     : [];
   const nights = nightsBetween(checkin, checkout);
 
-  let offers: Array<ReturnType<typeof toCardOffer>> = [];
+  interface MetaOffer {
+    hotelId: string;
+    name: string;
+    city: string;
+    country?: string;
+    address?: string;
+    stars?: number;
+    rating?: number;
+    reviewCount?: number;
+    thumbnailUrl?: string;
+  }
+
+  let metaOffers: MetaOffer[] = [];
   let errorMessage: string | null = null;
+  let poolCount = 0;
+  let page = 1;
+  let totalPages = 1;
 
   try {
+    // Progressive pricing: /data/hotels is cheap metadata, so the page
+    // renders instantly. Live rates are fetched per card on the client
+    // (CardPrice → /api/hotels/rates/batch) because LiteAPI rates run
+    // ~0.6s/hotel — pricing a whole page synchronously blocked it ~22s.
     const list = await fetchHotelsList({ city: destination, country, limit: HOTEL_POOL_SIZE });
-    if (list.data?.length) {
-      const hotelIds = list.data.map((h) => h.id);
-      // Fetch rates for the whole pool in parallel chunks so global
-      // sort/filter/badges stay correct across pages, while each chunk
-      // remains cacheable (under the 2MB Next Data-Cache cap).
-      const idChunks: string[][] = [];
-      for (let i = 0; i < hotelIds.length; i += RATES_CHUNK_SIZE) {
-        idChunks.push(hotelIds.slice(i, i + RATES_CHUNK_SIZE));
-      }
-      const occupancies = Array.from({ length: rooms }, () => ({ adults, children }));
-      const rateChunks = await Promise.all(
-        idChunks.map((ids) =>
-          getRates({ hotelIds: ids, checkin, checkout, currency: "PLN", occupancies }),
-        ),
-      );
-      const ratesByHotel = new Map(
-        rateChunks.flatMap((r) => r.data).map((r) => [r.hotelId, r] as const),
-      );
-      offers = list.data
-        .map((h) => normalizeOffer(h, ratesByHotel.get(h.id)))
-        .filter((o): o is NonNullable<typeof o> => o !== null)
-        .map(toCardOffer);
-    }
+    let pool = list.data ?? [];
+
+    // Metadata-capable filters/sort run here; price/board/cancel filters
+    // and price sort now live with the client-side prices (follow-up).
+    const q = sp.q?.trim().toLowerCase();
+    if (q) pool = pool.filter((h) => `${h.name} ${h.city}`.toLowerCase().includes(q));
+    const minStars = sp.minStars ? Number(sp.minStars) : 0;
+    if (minStars) pool = pool.filter((h) => (h.stars ?? 0) >= minStars);
+    const minRating = sp.minRating ? Number(sp.minRating) : 0;
+    if (minRating) pool = pool.filter((h) => (h.rating ?? 0) >= minRating);
+    if (sp.sort === "rating") pool = [...pool].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    else if (sp.sort === "stars") pool = [...pool].sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
+
+    poolCount = pool.length;
+    totalPages = Math.max(1, Math.ceil(poolCount / RESULTS_PER_PAGE));
+    const requestedPage = Number(sp.strona);
+    page = Number.isFinite(requestedPage)
+      ? Math.min(Math.max(1, Math.trunc(requestedPage)), totalPages)
+      : 1;
+    metaOffers = pool
+      .slice((page - 1) * RESULTS_PER_PAGE, page * RESULTS_PER_PAGE)
+      .map((h) => ({
+        hotelId: h.id,
+        name: h.name,
+        city: h.city,
+        country: h.country,
+        address: h.address,
+        stars: h.stars ?? undefined,
+        rating: h.rating ?? undefined,
+        reviewCount: h.reviewCount ?? undefined,
+        thumbnailUrl: h.main_photo ?? h.thumbnail,
+      }));
   } catch (err) {
     errorMessage = err instanceof LiteApiError ? err.userMessagePl : "Coś poszło nie tak. Spróbuj ponownie.";
   }
@@ -246,20 +273,7 @@ async function Results({ sp }: { sp: SP }) {
     );
   }
 
-  // Apply URL filters/sort
-  const filtered = applyFiltersAndSort(offers, {
-    minPrice: sp.minPrice ? Number(sp.minPrice) : undefined,
-    maxPrice: sp.maxPrice ? Number(sp.maxPrice) : undefined,
-    minStars: sp.minStars ? Number(sp.minStars) : undefined,
-    minRating: sp.minRating ? Number(sp.minRating) : undefined,
-    cancel: sp.cancel,
-    sort: sp.sort,
-    q: sp.q,
-    propertyType: sp.propertyType ? sp.propertyType.split(",").filter(Boolean) : undefined,
-    board: sp.board ? sp.board.split(",").filter(Boolean) : undefined,
-  });
-
-  if (filtered.length === 0) {
+  if (poolCount === 0) {
     return (
       <EmptyResults
         destination={cityPl}
@@ -270,14 +284,6 @@ async function Results({ sp }: { sp: SP }) {
     );
   }
 
-  // Server-side pagination: keep filters/sort global, page the result set.
-  const totalPages = Math.max(1, Math.ceil(filtered.length / RESULTS_PER_PAGE));
-  const requestedPage = Number(sp.strona);
-  const page = Number.isFinite(requestedPage)
-    ? Math.min(Math.max(1, Math.trunc(requestedPage)), totalPages)
-    : 1;
-  const pageOffers = filtered.slice((page - 1) * RESULTS_PER_PAGE, page * RESULTS_PER_PAGE);
-
   // Base query (all params except the page cursor) so pagination links
   // preserve the active search + every filter/sort.
   const pageBaseParams = new URLSearchParams();
@@ -286,12 +292,6 @@ async function Results({ sp }: { sp: SP }) {
     pageBaseParams.set(k, String(v));
   }
   const pageBaseQuery = pageBaseParams.toString();
-
-  // Identify badges (cheapest, top-rated) — global across the whole pool.
-  const cheapestId = [...filtered].sort((a, b) => a.cheapestRate.totalAmount - b.cheapestRate.totalAmount)[0]?.hotelId;
-  const topRatedId = [...filtered]
-    .filter((o) => (o.rating ?? 0) > 0)
-    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0]?.hotelId;
 
   // Preserve search params for child links.
   const childParams = new URLSearchParams();
@@ -303,60 +303,45 @@ async function Results({ sp }: { sp: SP }) {
   childParams.set("rooms", String(rooms));
   if (children.length) childParams.set("children", children.join(","));
 
+  // Shared search context for the client price islands.
+  const priceCtx = { checkin, checkout, adults, children, rooms, currency: "PLN" };
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-xl font-bold text-neutral-900 sm:text-2xl">
-          {filtered.length} {filtered.length === 1 ? "hotel" : filtered.length < 5 ? "hotele" : "hoteli"} w{" "}
-          {destination}
+          Hotele w {destination}
         </h1>
         <div className="text-sm text-neutral-500">
-          {nights} {nights === 1 ? "noc" : nights < 5 ? "noce" : "nocy"} · {adults} {adults === 1 ? "dorosły" : "dorosłych"}
+          {poolCount >= HOTEL_POOL_SIZE ? `${HOTEL_POOL_SIZE}+` : poolCount}{" "}
+          {poolCount === 1 ? "obiekt" : "obiektów"} · {nights}{" "}
+          {nights === 1 ? "noc" : nights < 5 ? "noce" : "nocy"} · {adults}{" "}
+          {adults === 1 ? "dorosły" : "dorosłych"}
           {totalPages > 1 ? ` · Strona ${page} z ${totalPages}` : ""}
         </div>
       </header>
 
-      {pageOffers.map((o, index) => (
-        <ResultCard
-          key={o.hotelId}
-          offer={o}
-          searchQuery={childParams.toString()}
-          nights={nights}
-          imagePriority={index < 6}
-          badges={{
-            cheapest: o.hotelId === cheapestId,
-            topRated: Boolean(topRatedId) && o.hotelId === topRatedId && o.hotelId !== cheapestId,
-            freeCancel: o.cheapestRate.refundableTag === "RFN",
-          }}
-        />
-      ))}
+      {metaOffers.length === 0 ? (
+        <p className="rounded-2xl border border-neutral-200 bg-white p-6 text-sm text-neutral-600">
+          Na tej stronie nic nie pasuje do wybranych filtrów. Zmień filtry lub
+          przejdź do innej strony wyników.
+        </p>
+      ) : (
+        metaOffers.map((o, index) => (
+          <ResultCard
+            key={o.hotelId}
+            offer={o}
+            searchQuery={childParams.toString()}
+            nights={nights}
+            imagePriority={index < 6}
+            priceSlot={<CardPrice query={{ hotelId: o.hotelId, ...priceCtx }} nights={nights} />}
+          />
+        ))
+      )}
 
       <HotelPagination page={page} totalPages={totalPages} baseQuery={pageBaseQuery} />
     </div>
   );
-}
-
-function toCardOffer(o: ReturnType<typeof normalizeOffer> & object) {
-  return {
-    hotelId: o.hotelId,
-    name: o.name,
-    city: o.city,
-    country: o.country,
-    address: o.address,
-    stars: o.stars,
-    rating: o.rating,
-    reviewCount: o.reviewCount,
-    thumbnailUrl: o.thumbnailUrl,
-    cheapestRate: {
-      rateId: o.cheapestRate.rateId,
-      offerId: o.cheapestRate.offerId,
-      boardName: o.cheapestRate.boardName,
-      refundableTag: o.cheapestRate.refundableTag,
-      totalAmount: fromMinor(o.cheapestRate.totalAmountMinor),
-      currency: o.cheapestRate.currency,
-      cancellationDeadline: o.cheapestRate.cancellationDeadline,
-    },
-  };
 }
 
 function EmptyPrompt() {

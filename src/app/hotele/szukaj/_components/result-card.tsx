@@ -1,6 +1,7 @@
 // Hotel result card. Reused brand DNA from /components/mvp/stay-offers-panel
 // (white card, green CTA, badges). Server-rendered per result.
 
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -16,7 +17,9 @@ interface OfferCard {
   rating?: number;
   reviewCount?: number;
   thumbnailUrl?: string;
-  cheapestRate: {
+  // Optional: when omitted, the card renders `priceSlot` (progressive
+  // client-side pricing) instead of a server-rendered price.
+  cheapestRate?: {
     rateId: string;
     offerId: string;
     boardName?: string;
@@ -84,20 +87,22 @@ export function ResultCard({
   nights,
   badges,
   imagePriority = false,
+  priceSlot,
 }: {
   offer: OfferCard;
   searchQuery: string;
   nights: number;
   badges?: BadgeKind;
   imagePriority?: boolean;
+  priceSlot?: ReactNode;
 }) {
-  const total = formatPLN(offer.cheapestRate.totalAmount, offer.cheapestRate.currency);
-  const perNight = formatPLN(
-    Math.round(offer.cheapestRate.totalAmount / Math.max(1, nights)),
-    offer.cheapestRate.currency,
-  );
-  const freeCancelDate = formatDate(offer.cheapestRate.cancellationDeadline);
-  const isFreeCancel = offer.cheapestRate.refundableTag === "RFN" || badges?.freeCancel;
+  const rate = offer.cheapestRate;
+  const total = rate ? formatPLN(rate.totalAmount, rate.currency) : null;
+  const perNight = rate
+    ? formatPLN(Math.round(rate.totalAmount / Math.max(1, nights)), rate.currency)
+    : null;
+  const freeCancelDate = rate ? formatDate(rate.cancellationDeadline) : null;
+  const isFreeCancel = (rate?.refundableTag === "RFN" || badges?.freeCancel) ?? false;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(16,84,48,0.12)] sm:flex-row">
@@ -176,30 +181,34 @@ export function ResultCard({
           )}
         </div>
 
-        {polishBoard(offer.cheapestRate.boardName) && (
+        {rate && polishBoard(rate.boardName) && (
           <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-900">
             <span aria-hidden>🍽</span>
-            {polishBoard(offer.cheapestRate.boardName)}
+            {polishBoard(rate.boardName)}
           </div>
         )}
 
-        {isFreeCancel && freeCancelDate && (
+        {rate && isFreeCancel && freeCancelDate && (
           <div className="text-xs font-medium text-emerald-700">
             Bezpłatna anulacja do {freeCancelDate}
           </div>
         )}
 
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-2">
-          <div>
-            <div className="text-xs text-neutral-500">{nightsLabel(nights)}</div>
-            <div className="text-xl font-bold text-emerald-700">
-              {perNight}
-              <span className="ml-0.5 text-xs font-semibold text-emerald-700/80">/ noc</span>
+          {rate ? (
+            <div>
+              <div className="text-xs text-neutral-500">{nightsLabel(nights)}</div>
+              <div className="text-xl font-bold text-emerald-700">
+                {perNight}
+                <span className="ml-0.5 text-xs font-semibold text-emerald-700/80">/ noc</span>
+              </div>
+              <div className="text-[11px] text-neutral-500">
+                {total} za {nights} {nightsForTotal(nights)} · wł. podatków i opłat
+              </div>
             </div>
-            <div className="text-[11px] text-neutral-500">
-              {total} za {nights} {nightsForTotal(nights)} · wł. podatków i opłat
-            </div>
-          </div>
+          ) : (
+            <div className="min-w-[10rem]">{priceSlot}</div>
+          )}
           <Link
             href={`/hotele/${encodeURIComponent(offer.hotelId)}?${searchQuery}`}
             className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700"
