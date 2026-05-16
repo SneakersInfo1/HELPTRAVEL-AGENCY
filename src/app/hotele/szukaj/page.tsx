@@ -21,10 +21,16 @@ import { applyFiltersAndSort } from "./_components/filters-logic";
 import { ResultCard } from "./_components/result-card";
 import { ResultsError } from "./_components/results-error";
 import { ResultsSkeleton } from "./_components/results-skeleton";
+import { HotelPagination } from "./_components/hotel-pagination";
 
 export const revalidate = 300;
 
-const INITIAL_HOTEL_RESULTS_LIMIT = 12;
+// Hotel metadata (/data/hotels) is cheap, so we pull a deep pool; the
+// expensive part (rates) is fetched in parallel chunks below. The user
+// browses the pool 30 at a time via server-side pagination (?strona=N).
+const HOTEL_POOL_SIZE = 200;
+const RESULTS_PER_PAGE = 30;
+const RATES_CHUNK_SIZE = 40; // each chunk stays well under the 2MB Data-Cache cap
 
 interface SP {
   destination?: string;
@@ -42,6 +48,7 @@ interface SP {
   cancel?: string;
   sort?: string;
   q?: string;
+  strona?: string;
   propertyType?: string;
   board?: string;
   flightSort?: string;
@@ -196,17 +203,25 @@ async function Results({ sp }: { sp: SP }) {
   let errorMessage: string | null = null;
 
   try {
-    const list = await fetchHotelsList({ city: destination, country, limit: INITIAL_HOTEL_RESULTS_LIMIT });
+    const list = await fetchHotelsList({ city: destination, country, limit: HOTEL_POOL_SIZE });
     if (list.data?.length) {
       const hotelIds = list.data.map((h) => h.id);
-      const rates = await getRates({
-        hotelIds,
-        checkin,
-        checkout,
-        currency: "PLN",
-        occupancies: Array.from({ length: rooms }, () => ({ adults, children })),
-      });
-      const ratesByHotel = new Map(rates.data.map((r) => [r.hotelId, r] as const));
+      // Fetch rates for the whole pool in parallel chunks so global
+      // sort/filter/badges stay correct across pages, while each chunk
+      // remains cacheable (under the 2MB Next Data-Cache cap).
+      const idChunks: string[][] = [];
+      for (let i = 0; i < hotelIds.length; i += RATES_CHUNK_SIZE) {
+        idChunks.push(hotelIds.slice(i, i + RATES_CHUNK_SIZE));
+      }
+      const occupancies = Array.from({ length: rooms }, () => ({ adults, children }));
+      const rateChunks = await Promise.all(
+        idChunks.map((ids) =>
+          getRates({ hotelIds: ids, checkin, checkout, currency: "PLN", occupancies }),
+        ),
+      );
+      const ratesByHotel = new Map(
+        rateChunks.flatMap((r) => r.data).map((r) => [r.hotelId, r] as const),
+      );
       offers = list.data
         .map((h) => normalizeOffer(h, ratesByHotel.get(h.id)))
         .filter((o): o is NonNullable<typeof o> => o !== null)
@@ -255,7 +270,24 @@ async function Results({ sp }: { sp: SP }) {
     );
   }
 
-  // Identify badges (cheapest, top-rated)
+  // Server-side pagination: keep filters/sort global, page the result set.
+  const totalPages = Math.max(1, Math.ceil(filtered.length / RESULTS_PER_PAGE));
+  const requestedPage = Number(sp.strona);
+  const page = Number.isFinite(requestedPage)
+    ? Math.min(Math.max(1, Math.trunc(requestedPage)), totalPages)
+    : 1;
+  const pageOffers = filtered.slice((page - 1) * RESULTS_PER_PAGE, page * RESULTS_PER_PAGE);
+
+  // Base query (all params except the page cursor) so pagination links
+  // preserve the active search + every filter/sort.
+  const pageBaseParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (k === "strona" || v == null || v === "") continue;
+    pageBaseParams.set(k, String(v));
+  }
+  const pageBaseQuery = pageBaseParams.toString();
+
+  // Identify badges (cheapest, top-rated) — global across the whole pool.
   const cheapestId = [...filtered].sort((a, b) => a.cheapestRate.totalAmount - b.cheapestRate.totalAmount)[0]?.hotelId;
   const topRatedId = [...filtered]
     .filter((o) => (o.rating ?? 0) > 0)
@@ -280,10 +312,11 @@ async function Results({ sp }: { sp: SP }) {
         </h1>
         <div className="text-sm text-neutral-500">
           {nights} {nights === 1 ? "noc" : nights < 5 ? "noce" : "nocy"} · {adults} {adults === 1 ? "dorosły" : "dorosłych"}
+          {totalPages > 1 ? ` · Strona ${page} z ${totalPages}` : ""}
         </div>
       </header>
 
-      {filtered.map((o, index) => (
+      {pageOffers.map((o, index) => (
         <ResultCard
           key={o.hotelId}
           offer={o}
@@ -297,6 +330,8 @@ async function Results({ sp }: { sp: SP }) {
           }}
         />
       ))}
+
+      <HotelPagination page={page} totalPages={totalPages} baseQuery={pageBaseQuery} />
     </div>
   );
 }
