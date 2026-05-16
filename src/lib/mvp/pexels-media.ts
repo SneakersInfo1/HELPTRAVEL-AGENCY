@@ -105,6 +105,12 @@ async function fetchCandidates(query: string, apiKey: string): Promise<PhotoCand
       headers: {
         Authorization: apiKey,
       },
+      // Cache hero/destination media across ISR regenerations so the
+      // homepage rebuild isn't gated on live Pexels latency (and we stay
+      // well under Pexels rate limits). Silently ignored outside the Next
+      // runtime, so tests/scripts are unaffected.
+      cache: "force-cache",
+      next: { revalidate: 86400, tags: ["pexels-media"] },
     },
   );
 

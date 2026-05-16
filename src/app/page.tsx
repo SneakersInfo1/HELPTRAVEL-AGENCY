@@ -10,6 +10,12 @@ import type { DestinationProfile } from "@/lib/mvp/types";
 
 const siteUrl = getSiteUrl();
 
+// Homepage perf: ISR. Without this the page does `await Promise.all(6×
+// resolveDestinationMedia)` (6 blocking Pexels calls) on every request,
+// which dominated TTFB and pushed LCP to ~7s. Serving from the static
+// cache and regenerating hourly removes Pexels from the critical path.
+export const revalidate = 3600;
+
 export function getHomeMetadata(locale: SiteLocale): Metadata {
   const isEnglish = locale === "en";
 

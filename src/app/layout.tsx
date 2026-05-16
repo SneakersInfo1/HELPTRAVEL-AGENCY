@@ -155,6 +155,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl" suppressHydrationWarning className={`${displayFont.variable} ${uiFont.variable} h-full antialiased`}>
+      {/* Warm the connection to the hero-image CDN early so the LCP
+          backdrop image isn't gated on a cold TLS handshake. */}
+      <link rel="preconnect" href="https://images.pexels.com" />
+      <link rel="dns-prefetch" href="https://images.pexels.com" />
       <body className="min-h-full">
         <a href="#main-content" className="skip-to-content">
           Przejdź do głównej treści
