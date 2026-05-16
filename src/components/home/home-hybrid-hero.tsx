@@ -84,7 +84,7 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
               </span>
               <span className="flex items-center gap-1.5">
                 <span aria-hidden className="text-amber-300">✦</span>
-                Bezpieczne platnosci u partnerow
+            Bezpieczne płatności u partnerów
               </span>
             </div>
           </div>
@@ -94,7 +94,7 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
         <div className="relative z-10 border-t border-white/15 bg-gradient-to-b from-emerald-950/40 via-emerald-950/70 to-emerald-950/90 px-5 py-6 backdrop-blur-md sm:px-8 sm:py-8 lg:px-12">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-              Najczesciej wybierane w tym tygodniu
+          Najczęściej wybierane w tym tygodniu
             </p>
             <span className="text-[11px] text-white/60">aktualizacja: co godzine</span>
           </div>

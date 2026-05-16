@@ -57,19 +57,6 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const tripStartDate = snapshot?.travelStartDate || defaultTravelStartDate();
   const tripNights = snapshot?.travelNights ?? 4;
   const tripCheckOutDate = normalizeTravelEndDate(tripStartDate, snapshot?.travelEndDate, tripNights);
-  const plannerParams = new URLSearchParams({
-    mode: snapshot?.mode ?? trip.mode,
-    q: snapshot?.mode === "discovery" ? snapshot.query : snapshot?.destinationHint || trip.city,
-    origin: tripOriginCity,
-    destination: snapshot?.destinationHint || trip.city,
-    startDate: tripStartDate,
-    endDate: tripCheckOutDate,
-    nights: String(tripNights),
-    travelers: String(tripTravelers),
-    budget: String(snapshot?.budget ?? trip.estimatedBudgetMax),
-    days: String(snapshot?.travelNights ?? tripNights),
-  });
-  const plannerHref = `/planner?${plannerParams.toString()}`;
   const destinationGuideHref = `/kierunki/${trip.destinationSlug}`;
   const decisionBrief = snapshot?.mode === "discovery" ? snapshot.query : snapshot?.destinationHint || trip.city;
 
@@ -79,7 +66,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
     country: trip.country,
     checkin: tripStartDate,
     checkout: tripCheckOutDate,
-    travelers: String(tripTravelers),
+    adults: String(tripTravelers),
     rooms: String(tripRooms),
   }).toString()}`;
   const aviasalesHref = buildAviasalesLink({ campaign: `trip_${trip.destinationSlug}` });
@@ -91,7 +78,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           <Image src={resolvedMedia.heroImage} alt={story.name} fill priority className="object-cover" sizes="100vw" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,16,10,0.06)_0%,rgba(6,16,10,0.7)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">Plan szczegolowy</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">Plan szczegółowy</p>
             <h1 className="mt-2 text-4xl font-bold">{trip.city}, {trip.country}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/84">{trip.summary}</p>
           </div>
@@ -112,9 +99,9 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
             </p>
           </div>
           <div className="rounded-2xl bg-emerald-50/75 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Sklad podróży</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Skład podróży</p>
             <p className="mt-1 text-sm font-semibold text-emerald-950">
-              {tripOriginCity} / {tripTravelers} os. / {tripRooms} {tripRooms === 1 ? "pokoj" : tripRooms < 5 ? "pokoje" : "pokoi"}
+              {tripOriginCity} / {tripTravelers} os. / {tripRooms} {tripRooms === 1 ? "pokój" : tripRooms < 5 ? "pokoje" : "pokoi"}
             </p>
           </div>
         </div>
@@ -151,7 +138,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
 
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] animate-fade-in-up">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Jak zapadl wybór</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Jak zapadł wybór</p>
           <h2 className="mt-2 text-2xl font-bold text-emerald-950">Ten zapisany plan trzyma realny kontekst decyzji.</h2>
           <p className="mt-3 text-sm leading-7 text-emerald-900/78">
             {snapshot?.mode === "discovery"
@@ -163,7 +150,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
               {formatShortDate(tripStartDate, "pl-PL")} - {formatShortDate(tripCheckOutDate, "pl-PL")}
             </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950">
-              {tripOriginCity} / {tripTravelers} os. / {tripRooms} {tripRooms === 1 ? "pokoj" : tripRooms < 5 ? "pokoje" : "pokoi"}
+              {tripOriginCity} / {tripTravelers} os. / {tripRooms} {tripRooms === 1 ? "pokój" : tripRooms < 5 ? "pokoje" : "pokoi"}
             </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950">
               Budżet do ok. {trip.estimatedBudgetMax} PLN
@@ -178,7 +165,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
               ))
             ) : (
               <div className="rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm leading-6 text-emerald-900/82">
-                To miasto wygralo głównie przez ogolne dopasowanie do terminu, budżetu i logistyki wyjazdu.
+                To miasto wygrało głównie przez ogólne dopasowanie do terminu, budżetu i logistyki wyjazdu.
               </div>
             )}
           </div>
@@ -186,23 +173,23 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-5 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Co dalej</p>
-          <h2 className="mt-2 text-2xl font-bold text-emerald-950">Możesz wróćic do decyzji albo od razu przejść dalej.</h2>
+          <h2 className="mt-2 text-2xl font-bold text-emerald-950">Możesz wrócić do decyzji albo od razu przejść dalej.</h2>
           <p className="mt-3 text-sm leading-7 text-emerald-900/78">
             Ranking nie jest przypadkowy. HelpTravel łączy klimat, budżet, łatwość dojazdu i sens długości wyjazdu.
           </p>
           <div className="mt-4 rounded-2xl bg-white px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Na co uwazac</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Na co uważać</p>
             <div className="mt-2 space-y-2 text-sm leading-6 text-emerald-900/78">
               {trip.tradeoffs.length > 0 ? (
                 trip.tradeoffs.map((tradeoff) => <p key={tradeoff}>{tradeoff}</p>)
               ) : (
-                <p>Najwieksze ryzyko na tym etapie to już nie wybór kierunku, tylko ustawienie dobrego terminu.</p>
+                <p>Największe ryzyko na tym etapie to już nie wybór kierunku, tylko ustawienie dobrego terminu.</p>
               )}
             </div>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href={plannerHref} className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
-              Edytuj ten plan
+            <Link href={internalHotelsHref} className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+              Zmień hotele i daty
             </Link>
             <Link href={destinationGuideHref} className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50">
               Otwórz przewodnik kierunku
@@ -220,8 +207,8 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           <a href={aviasalesHref} target="_blank" rel="noopener nofollow sponsored noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
             Sprawdź loty w Aviasales
           </a>
-          <Link href={plannerHref} className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-            Wróć do planera
+          <Link href="/hotele" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
+            Wróć do hoteli
           </Link>
         </div>
       </section>

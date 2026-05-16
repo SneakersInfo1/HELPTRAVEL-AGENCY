@@ -69,9 +69,9 @@ export default function PricingPage() {
             <Link href="/linki-partnerskie" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
               Linki partnerskie
             </Link>
-            <Link href="/planner" className="rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800">
-              Otwórz planner
-            </Link>
+          <Link href="/hotele" className="rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800">
+            Otwórz wyszukiwarkę hoteli
+          </Link>
           </div>
         </article>
       </section>

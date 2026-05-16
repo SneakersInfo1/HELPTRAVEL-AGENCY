@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
-import { localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
+import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
 import {
   DEFAULT_ORIGIN_CITY,
@@ -61,7 +61,10 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
   const [origin, setOrigin] = useState(initial?.origin || DEFAULT_ORIGIN_CITY);
   const [destination, setDestination] = useState(initial?.destination ?? "");
   const [destinationCountry, setDestinationCountry] = useState(initial?.destinationCountry ?? "");
-  const [destQuery, setDestQuery] = useState(initial?.destination ?? "");
+  // Visible input gets the Polish exonym (e.g. "Lizbona") so collapsing back
+  // from /hotele/szukaj?destination=Lisbon shows what the user picked, not
+  // the canonical English key.
+  const [destQuery, setDestQuery] = useState(initial?.destination ? localizeCity(initial.destination) : "");
   const [destSuggestions, setDestSuggestions] = useState<DestinationSuggestion[]>([]);
   const [destOpen, setDestOpen] = useState(false);
   const [destHighlight, setDestHighlight] = useState(-1);
@@ -107,9 +110,11 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
   }, [destQuery, destConfirmed]);
 
   function selectSuggestion(s: DestinationSuggestion) {
+    // Backend key (URL param, LiteAPI/IATA lookups) stays English.
     setDestination(s.city);
     setDestinationCountry(s.country);
-    setDestQuery(s.city);
+    // Visible input gets the Polish exonym so the user sees what they picked.
+    setDestQuery(localizeCity(s.city));
     setDestSuggestions([]);
     setDestFetching(false);
     setDestOpen(false);
@@ -192,7 +197,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
       <div className="grid gap-3 lg:grid-cols-[1.1fr_1.4fr_1fr_1fr_0.9fr_auto] lg:items-end">
         {/* SKAD */}
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Skad</span>
+            <span className={labelCls}>Skąd</span>
           <select
             value={origin}
             onChange={(e) => setOrigin(e.target.value)}
@@ -217,9 +222,10 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
 
         {/* DOKAD — autocomplete combobox */}
         <div className="relative flex flex-col gap-1.5">
-          <span className={labelCls}>Dokad</span>
+            <span className={labelCls}>Dokąd</span>
           <input
             ref={destInputRef}
+            data-mini-planner-destination
             type="text"
             role="combobox"
             aria-autocomplete="list"
@@ -267,7 +273,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
                         idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
                       }`}
                     >
-                      <div className="font-semibold text-emerald-950">{s.city}</div>
+                      <div className="font-semibold text-emerald-950">{localizeCity(s.city)}</div>
                       {meta && <div className="text-xs text-emerald-900/56">{meta}</div>}
                     </li>
                   );
@@ -310,7 +316,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
 
         {/* POWROT */}
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Powrot</span>
+            <span className={labelCls}>Powrót</span>
           <input
             type="date"
             value={endDate}
@@ -327,7 +333,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
             <button
               type="button"
               onClick={() => setTravelers((v) => Math.max(1, v - 1))}
-              aria-label="Zmniejsz liczbe osob"
+                  aria-label="Zmniejsz liczbę osób"
               className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-lg font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-40"
               disabled={travelers <= 1}
             >
@@ -339,7 +345,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
             <button
               type="button"
               onClick={() => setTravelers((v) => Math.min(8, v + 1))}
-              aria-label="Zwieksz liczbe osob"
+                  aria-label="Zwiększ liczbę osób"
               className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-lg font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-40"
               disabled={travelers >= 8}
             >
@@ -366,7 +372,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
 
       {!compact && (
         <p className="mt-3 text-[11px] text-emerald-900/70">
-          Dokad mozesz zostawic puste — pomozemy wybrac kierunek po Twoich preferencjach.
+              Dokąd możesz zostawić puste — pomożemy wybrać kierunek po Twoich preferencjach.
         </p>
       )}
     </form>

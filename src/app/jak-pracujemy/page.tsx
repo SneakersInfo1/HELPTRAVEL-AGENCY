@@ -59,9 +59,9 @@ export default function HowItWorksPage() {
             <p>Nie chowamy przed użytkownikiem tego, że końcowy krok rezerwacji może prowadzić do partnera.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/planner" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
-              Otwórz planner
-            </Link>
+        <Link href="/hotele" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+          Otwórz hotele
+        </Link>
             <Link href="/linki-partnerskie" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
               Zobacz zasady partnerów
             </Link>

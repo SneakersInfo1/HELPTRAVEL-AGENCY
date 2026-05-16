@@ -21,7 +21,6 @@ import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
 const copy = {
   pl: {
     nav: [
-      { href: "/hotele", label: "Hotele" },
       { href: "/kierunki", label: "Kierunki" },
       { href: "/inspiracje", label: "Pomysły na wyjazd" },
       { href: "/jak-pracujemy", label: "Jak to działa" },
@@ -77,7 +76,6 @@ const copy = {
   },
   en: {
     nav: [
-      { href: "/hotele", label: "Hotele" },
       { href: "/kierunki", label: "Destinations" },
       { href: "/inspiracje", label: "Trip ideas" },
       { href: "/jak-pracujemy", label: "How it works" },
@@ -192,7 +190,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               );
             })}
             <LocalizedLink
-              href="/hotele"
+              href="/#hero"
               className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
               {text.plannerCta}
@@ -244,7 +242,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               ))}
             </div>
             <LocalizedLink
-              href="/hotele"
+              href="/#hero"
               onClick={() => setMobileMenuOpen(false)}
               className="inline-flex min-h-11 items-center justify-center rounded-[1.2rem] bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
             >

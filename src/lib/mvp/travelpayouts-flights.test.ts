@@ -118,3 +118,80 @@ test("falls back to duration when duration_to is missing", async () => {
     restore();
   }
 });
+
+// Sesja C2 — date drift guard. The user's strongest invariant: if they
+// pick departure 2026-06-01, NO offer with departure on 2026-06-02 (or
+// any other date) may surface. Two layers protect this: the per-pair
+// same-day filter inside the fanout loop, and a defense-in-depth
+// post-filter on the normalized offers. This test exercises both by
+// stubbing TP to return a mix of right-day and wrong-day rows.
+test("strict same-day filter: never leaks an off-date offer to the UI", async () => {
+  process.env.TRAVELPAYOUTS_API_TOKEN = "stub";
+  const restore = stubFetch([
+    sampleEntry({ flight_number: 1, departure_at: "2026-06-01T06:00:00+02:00" }),
+    // Wrong day - must be filtered out.
+    sampleEntry({ flight_number: 2, departure_at: "2026-06-02T06:00:00+02:00" }),
+    // Off by ten days - the exact bug the user reported (12.06 → 02.06 / 10.06).
+    sampleEntry({ flight_number: 3, departure_at: "2026-05-22T06:00:00+02:00" }),
+    sampleEntry({ flight_number: 4, departure_at: "2026-06-01T15:30:00+02:00" }),
+  ]);
+  try {
+    const result = await searchTravelpayoutsFlights({
+      origin: "Warszawa",
+      destination: "Berlin",
+      departureDate: "2026-06-01",
+      passengers: 1,
+      cabinClass: "economy",
+      sortBy: "cheap",
+    });
+    assert.equal(result.offers.length, 2, "only same-day rows survive");
+    for (const offer of result.offers) {
+      assert.equal(
+        offer.departure_time.slice(0, 10),
+        "2026-06-01",
+        `every offer must match the requested departureDate, got ${offer.departure_time}`,
+      );
+    }
+  } finally {
+    restore();
+  }
+});
+
+// Same invariant on the inverse "return" tab call (origin/destination
+// flipped, query date = returnDate). The panel issues it as a plain
+// one-way query, but the guard must still hold.
+test("return-leg query (one-way with destination→origin) stays strict on its day", async () => {
+  process.env.TRAVELPAYOUTS_API_TOKEN = "stub";
+  const restore = stubFetch([
+    sampleEntry({
+      origin: "BER",
+      destination: "WAW",
+      origin_airport: "BER",
+      destination_airport: "WAW",
+      flight_number: 11,
+      departure_at: "2026-06-12T18:00:00+02:00",
+    }),
+    sampleEntry({
+      origin: "BER",
+      destination: "WAW",
+      origin_airport: "BER",
+      destination_airport: "WAW",
+      flight_number: 12,
+      departure_at: "2026-06-10T18:00:00+02:00",
+    }),
+  ]);
+  try {
+    const result = await searchTravelpayoutsFlights({
+      origin: "Berlin",
+      destination: "Warszawa",
+      departureDate: "2026-06-12",
+      passengers: 1,
+      cabinClass: "economy",
+      sortBy: "cheap",
+    });
+    assert.equal(result.offers.length, 1);
+    assert.equal(result.offers[0].departure_time.slice(0, 10), "2026-06-12");
+  } finally {
+    restore();
+  }
+});

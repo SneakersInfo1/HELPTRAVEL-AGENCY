@@ -153,16 +153,14 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     "pl",
   );
   const winningScenarios = buildLocalizedWinningScenarios(guide, "pl");
-  const destinationPlannerHref = `/planner?${new URLSearchParams({
-    mode: "standard",
-    q: guide.destination.city,
+  const destinationSearchHref = `/hotele/szukaj?${new URLSearchParams({
     destination: guide.destination.city,
+    country: guide.destination.country,
     origin: "Warszawa",
-    startDate: defaultStartDate,
-    endDate: defaultCheckOutDate,
-    nights: String(defaultNights),
-    travelers: "2",
-    budget: String(budget.max),
+    checkin: defaultStartDate,
+    checkout: defaultCheckOutDate,
+    adults: "2",
+    rooms: "1",
   }).toString()}`;
   // Phase 1 affiliate model: hotels are internal, flights via Aviasales.
   const internalHotelsHref = `/hotele/szukaj?${new URLSearchParams({
@@ -170,7 +168,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     country: guide.destination.country,
     checkin: defaultStartDate,
     checkout: defaultCheckOutDate,
-    travelers: "2",
+    adults: "2",
     rooms: "1",
   }).toString()}`;
   const flightAffiliateHref = buildAviasalesLink({ campaign: `kierunki_${guide.destination.slug}` });
@@ -295,7 +293,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           `${guide.destination.city} z Polski`,
           `${guide.destination.typicalFlightHoursFromPL.toFixed(1)} h lotu`,
           localizedGuide.tripLength,
-          "planner i przejścia do partnerów",
+          "noclegi, loty i dalsze kroki",
         ]}
       />
 
@@ -393,14 +391,14 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               Startowo ustawiamy Warszawa, 2 osóby i {defaultNights} {defaultNights < 5 ? "noce" : "nocy"}:
               {" "}
               {formatShortDate(defaultStartDate, "pl-PL")} - {formatShortDate(defaultCheckOutDate, "pl-PL")}. To tylko punkt
-              wyjscia, który potem zmienisz w plannerze jednym kliknięciem.
+              wyjścia, który potem zmienisz w wyszukiwarce jednym kliknięciem.
             </p>
           </div>
           <LocalizedLink
-            href={destinationPlannerHref}
+            href={destinationSearchHref}
             className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Otwórz planner z gotowym setupem
+            Otwórz hotele i loty
           </LocalizedLink>
         </div>
 
@@ -493,16 +491,16 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <LocalizedLink
-              href={destinationPlannerHref}
+              href={destinationSearchHref}
               className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
-              Otwórz planner dla tego miasta
+              Sprawdź hotele i loty
             </LocalizedLink>
             <LocalizedLink
-              href="/planner?mode=discovery"
+              href="/kierunki"
               className="rounded-full border border-emerald-900/10 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
             >
-              Porównaj z innymi pomysłami
+              Porównaj z innymi kierunkami
             </LocalizedLink>
           </div>
         </article>
@@ -518,10 +516,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             </p>
           </div>
           <LocalizedLink
-            href="/planner?mode=discovery"
+            href="/kierunki"
             className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
           >
-            Porównaj z innym briefem
+            Porównaj z innym kierunkiem
           </LocalizedLink>
         </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -580,10 +578,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <h2 className="mt-2 font-display text-4xl text-emerald-950">Przykladowy rytm wyjazdu</h2>
           </div>
           <LocalizedLink
-            href={destinationPlannerHref}
+            href={destinationSearchHref}
             className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Sprawdź ten kierunek w plannerze
+            Sprawdź hotele i loty
           </LocalizedLink>
         </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -605,10 +603,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               <h2 className="mt-2 font-display text-4xl text-emerald-950">Jak {guide.destination.city} wypada na tle podobnych opcji</h2>
             </div>
             <LocalizedLink
-              href="/planner?mode=discovery"
+              href="/kierunki"
               className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
             >
-              Porównaj w plannerze
+              Porównaj kierunki
             </LocalizedLink>
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -651,13 +649,13 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <LocalizedLink
-              href={destinationPlannerHref}
+              href={destinationSearchHref}
               className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
             >
-              Uruchom planner dla {guide.destination.city}
+              Sprawdź hotele w {guide.destination.city}
             </LocalizedLink>
             <LocalizedLink
-              href="/planner?mode=discovery"
+              href="/kierunki"
               className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
             >
               Nie wiem dokąd lecieć

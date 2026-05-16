@@ -25,7 +25,7 @@ const uiFont = Manrope({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zl",
+    default: "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zł",
     template: "%s | HelpTravel",
   },
   alternates: {
@@ -39,13 +39,13 @@ export const metadata: Metadata = {
     },
   },
   description:
-    "Zaplanuj wyjazd w 3 minuty: lot + hotel + gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe — placisz tylko za rezerwacje u partnerow.",
+    "Zaplanuj wyjazd w 3 minuty: lot + hotel + gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe — płacisz tylko za rezerwacje u partnerów.",
   keywords: [
     "tani lot i hotel",
-    "planer podrozy",
-    "porownywarka lotow",
+    "planer podróży",
+    "porównywarka lotów",
     "city break",
-    "krotkie wyjazdy z Polski",
+    "krótkie wyjazdy z Polski",
     "wakacje last minute",
     "loty z Krakowa",
     "loty z Warszawy",
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty",
     description:
-      "Zaplanuj caly wyjazd w 3 minuty: lot, hotel i plan dnia w jednym kliku. 22 lotniska PL + EU. Bez rejestracji. 100% darmowe.",
+      "Zaplanuj cały wyjazd w 3 minuty: lot, hotel i plan dnia w jednym kliku. 22 lotniska PL + EU. Bez rejestracji. 100% darmowe.",
     url: siteUrl,
     siteName: "HelpTravel",
     locale: "pl_PL",
@@ -73,7 +73,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "HelpTravel - Loty + hotel i plan w 3 minuty",
-    description: "Zaplanuj wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 0 zl.",
+    description: "Zaplanuj wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 0 zł.",
     // images: generowane przez src/app/twitter-image.tsx (fallback do opengraph-image)
   },
   icons: {
@@ -95,7 +95,7 @@ const structuredData = {
       url: siteUrl,
       inLanguage: ["pl-PL", "en-US"],
       description:
-        "Planer podrozy, ktory laczy lot, hotel i gotowy plan dnia w jednym kliku. 22 lotniska PL+EU. Bez rejestracji.",
+        "Planer podróży, który łączy lot, hotel i gotowy plan dnia w jednym kliku. 22 lotniska PL+EU. Bez rejestracji.",
       publisher: { "@id": `${siteUrl}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
@@ -120,7 +120,7 @@ const structuredData = {
       },
       slogan: "Lot + hotel i plan wyjazdu w 3 minuty",
       description:
-        "Niezalezny polski serwis travelowy: planer wyjazdow z lotem, hotelem i planem dnia w jednym kliku, oparty o sprawdzonych partnerow rezerwacyjnych.",
+        "Niezależny polski serwis travelowy: planer wyjazdów z lotem, hotelem i planem dnia w jednym kliku, oparty o sprawdzonych partnerów rezerwacyjnych.",
       areaServed: [
         { "@type": "Country", name: "Poland" },
         { "@type": "Place", name: "Europe" },
@@ -134,14 +134,14 @@ const structuredData = {
       "@type": "Service",
       "@id": `${siteUrl}/#service`,
       serviceType: "Trip planning and booking comparison",
-      name: "Planer wyjazdow HelpTravel",
+      name: "Planer wyjazdów HelpTravel",
       provider: { "@id": `${siteUrl}/#organization` },
       areaServed: { "@type": "Place", name: "Europe" },
       offers: {
         "@type": "Offer",
         price: "0",
         priceCurrency: "PLN",
-        description: "Korzystanie z plannera jest darmowe. Platnosc nastepuje wylacznie u partnera rezerwacyjnego.",
+        description: "Korzystanie z planera jest darmowe. Płatność następuje wyłącznie u partnera rezerwacyjnego.",
       },
       audience: { "@type": "Audience", audienceType: "Polish travelers and Polish diaspora in Europe" },
     },
@@ -157,7 +157,7 @@ export default function RootLayout({
     <html lang="pl" suppressHydrationWarning className={`${displayFont.variable} ${uiFont.variable} h-full antialiased`}>
       <body className="min-h-full">
         <a href="#main-content" className="skip-to-content">
-          Przejdz do glownej tresci
+          Przejdź do głównej treści
         </a>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         <LanguageProvider>
