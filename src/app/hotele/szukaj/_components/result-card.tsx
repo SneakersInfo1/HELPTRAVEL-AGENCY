@@ -83,11 +83,13 @@ export function ResultCard({
   searchQuery,
   nights,
   badges,
+  imagePriority = false,
 }: {
   offer: OfferCard;
   searchQuery: string;
   nights: number;
   badges?: BadgeKind;
+  imagePriority?: boolean;
 }) {
   const total = formatPLN(offer.cheapestRate.totalAmount, offer.cheapestRate.currency);
   const perNight = formatPLN(
@@ -106,7 +108,10 @@ export function ResultCard({
             src={offer.thumbnailUrl}
             alt={offer.name}
             fill
-            sizes="(max-width: 640px) 100vw, 256px"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            priority={imagePriority}
+            fetchPriority={imagePriority ? "high" : undefined}
+            loading={imagePriority ? undefined : "lazy"}
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
           />
         ) : (

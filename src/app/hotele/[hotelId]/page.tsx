@@ -243,11 +243,19 @@ export default async function HotelDetailPage({
                 sizes="(max-width: 640px) 100vw, 50vw"
                 className="object-cover"
                 priority
+                fetchPriority="high"
               />
             </div>
             {photos.slice(1, 5).map((url, i) => (
               <div key={i} className="relative hidden sm:block">
-                <Image src={url} alt={`${detail.name} – zdjęcie ${i + 2}`} fill sizes="25vw" className="object-cover" />
+                <Image
+                  src={url}
+                  alt={`${detail.name} – zdjęcie ${i + 2}`}
+                  fill
+                  sizes="(max-width: 1024px) 50vw, 25vw"
+                  loading="lazy"
+                  className="object-cover"
+                />
               </div>
             ))}
           </div>

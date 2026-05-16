@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { localizeCity } from "@/lib/mvp/i18n-geo";
 import type { FlightSearchResponse, NormalizedFlightOffer } from "@/lib/mvp/types";
 
 const INITIAL_VISIBLE = 5;
@@ -335,6 +336,9 @@ export function FlightOffersPanel(props: {
   departureDate: string;
   returnDate: string;
   passengers: number;
+  destinationIata?: string | null;
+  destinationLat?: number | null;
+  destinationLng?: number | null;
 }) {
   const { locale } = useLanguage();
   const t = copy[locale];
@@ -370,6 +374,7 @@ export function FlightOffersPanel(props: {
           const result = await postJson<FlightSearchResponse>("/api/flights/search", {
             origin: queryOrigin,
             destination: queryDestination,
+            destinationIata: direction === "outbound" ? props.destinationIata ?? undefined : undefined,
             departureDate: queryDate,
             passengers: props.passengers,
             cabinClass: "economy",
@@ -397,6 +402,8 @@ export function FlightOffersPanel(props: {
     queryDate,
     queryDestination,
     queryOrigin,
+    direction,
+    props.destinationIata,
     props.passengers,
     t.requestError,
   ]);
@@ -443,6 +450,7 @@ export function FlightOffersPanel(props: {
   const shown = sortedOffers.slice(0, Math.min(visible, MAX_VISIBLE));
   const canShowMore = visible < Math.min(sortedOffers.length, MAX_VISIBLE);
   const hasAnyDirect = useMemo(() => allOffers.some((o) => o.number_of_stops === 0), [allOffers]);
+  const destinationLabel = localizeCity(props.destinationCity);
 
   return (
     <section id="planner-flights" className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-5 shadow-[0_12px_32px_rgba(16,84,48,0.06)]">
@@ -555,8 +563,28 @@ export function FlightOffersPanel(props: {
           ) : null}
         </>
       ) : (
-        <div className="rounded-2xl bg-emerald-50/60 p-5 text-sm text-emerald-900/76">
-          {error || data?.error || t.empty}
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-bold">Brak ofert lotów do {destinationLabel}</p>
+              <p className="mt-1 text-amber-900/80">{error || data?.error || t.empty}</p>
+              {(props.destinationIata || props.destinationLat != null || props.destinationLng != null) && (
+                <p className="mt-2 text-xs text-amber-900/70">
+                  Diagnostyka: {props.destinationIata ? `IATA ${props.destinationIata}` : "IATA n/a"}
+                  {props.destinationLat != null && props.destinationLng != null
+                    ? ` · ${props.destinationLat.toFixed(4)}, ${props.destinationLng.toFixed(4)}`
+                    : ""}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-amber-600 px-4 text-sm font-bold text-white transition hover:bg-amber-700"
+            >
+              Spróbuj ponownie
+            </button>
+          </div>
         </div>
       )}
     </section>

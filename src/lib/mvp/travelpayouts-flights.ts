@@ -18,6 +18,7 @@ import type {
 interface TpFlightSearchInput {
   origin: string;
   destination: string;
+  destinationIata?: string | null;
   departureDate: string;
   // Sesja C1 FIX 2 — when set, the adapter prefers Travelpayouts'
   // `/v3/get_latest_prices` endpoint with `one_way=false` so each row
@@ -254,7 +255,18 @@ export async function searchTravelpayoutsFlights(
   }
 
   const originCandidates = getOriginAirports(input.origin);
-  const destinationCandidates = getDestinationAirports(input.destination);
+  // c3 reconciliation: when the search page passes a pre-resolved seed IATA
+  // (avoids misresolving a Polish city name), use it as the primary
+  // destination candidate; WIP's nearby-airport fanout still supplies the
+  // alternatives behind it.
+  const seededDestinationIata = input.destinationIata?.trim().toUpperCase();
+  const resolvedDestinations = getDestinationAirports(input.destination);
+  const destinationCandidates = seededDestinationIata
+    ? [
+        { iata: seededDestinationIata, alternative: false } as AirportCandidate,
+        ...resolvedDestinations.filter((c) => c.iata !== seededDestinationIata),
+      ]
+    : resolvedDestinations;
   if (originCandidates.length === 0 || destinationCandidates.length === 0) {
     return emptyResponse(input, "Nie udalo się ustalic kodu lotniska (IATA).");
   }
