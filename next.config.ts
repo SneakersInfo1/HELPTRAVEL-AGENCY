@@ -58,6 +58,9 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Next 16 wymaga jawnej listy dozwolonych wartosci `quality`. Hero
+    // backdrop uzywa 70 (perf), reszta domyslnie 75.
+    qualities: [70, 75],
     // Logo serwisu jest SVG (helptravel-logo.svg / helptravel-mark.svg) -
     // wymagane, by next/image mogl je serwowac. CSP blokuje skrypty wewnatrz SVG.
     dangerouslyAllowSVG: true,
