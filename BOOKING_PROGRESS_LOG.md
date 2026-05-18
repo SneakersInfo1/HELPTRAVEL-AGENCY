@@ -121,4 +121,101 @@ DONE — no reservation created, nothing charged.
 routes + Upstash session + idempotency) is independent of B1 (local) and B2.
 Will confirm Q6 (route prefix) at Phase 2 start.
 
-**STOP — awaiting `proceed phase 2`.**
+**STOP — awaiting `proceed phase 2`.** → received `proceed phase 2`.
+
+---
+
+## Phase 2 — API Routes ✅ (2026-05-19)
+
+### Summary
+Three `/api/booking/*` routes + Upstash session/record/idempotency store.
+Conventions copied from `api/hotels/search` (runtime, zod, rate-limit-first,
+typed-error discrimination). Flag-gated (`disabled`→503). Critical-path
+(paid-but-book-failed) persists a recovery record + returns a non-success
+message. No pre-existing route behavior changed.
+
+### Commits
+- `feat(booking): rate limiter — booking keys + 10/min override + test seam`
+- `feat(booking): upstash booking session + idempotency store`
+- `feat(booking): POST /api/booking/prebook (flag, zod, rate-limit, session)`
+- `feat(booking): POST /api/booking/book critical-path + recovery record`
+- `feat(booking): GET /api/booking/[bookingId] confirmation data`
+- `test(booking): api route tests + runner registration`
+- `docs(booking): phase 2 progress log`
+(hashes appended at push)
+
+### Files created (5)
+- `src/lib/booking/session.ts` — `saveSession`/`getSession`/`deleteSession`,
+  `saveCompleted`/`getCompleted`, `saveFailed`, `getIdempotent`/`setIdempotent`,
+  `isSessionExpired`, key schema `booking:v1:{session|completed|failed|idem}:*`,
+  test seam. Reuses the `rate-cache.ts` Redis-client pattern; **strict** error
+  semantics on payment paths (idempotency stays best-effort).
+- `src/app/api/booking/prebook/route.ts` — POST; flag→503, rate-limit
+  `booking-prebook` (10/min), zod, `prebookHotel()`, persists session,
+  idempotency. Returns `{sessionId, secretKey, expiresAt, hotelSummary,
+  rateSummary}`. **`transactionId` never returned to client.**
+- `src/app/api/booking/book/route.ts` — POST; critical path. 410 on
+  missing/expired session; on book failure persists `booking:failed:` +
+  returns `502 {error:'book_failed', recoveryId}` (never claims success).
+- `src/app/api/booking/[bookingId]/route.ts` — GET; client-safe fields only;
+  404 if absent; **not** flag-gated (confirmations stay viewable).
+- `src/app/api/booking/booking-routes.test.ts` — 8 tests.
+
+### Files modified (outside the new booking surface)
+- `src/lib/rate-limit.ts` — **minimal additive** extension: added
+  `booking-prebook`/`booking-book` to `LimiterKey`, a `LIMIT_OVERRIDES` map
+  (booking = 10/min; **all existing keys unchanged at 20/min**), and a
+  test-only seam. No existing logic restructured (not a refactor).
+- `package.json` — registered `booking-routes.test.ts` in the test script.
+
+### Pre-existing behavior changed
+None. Verified by curl: `/api/hotels/search` still returns its normal `400
+invalid_query` (not 500); existing limiter keys keep 20/min. Full suite green.
+
+### Tests
+`pnpm test` → **80 passed, 0 failed** (72 prior all green + 8 new route tests).
+`tsc --noEmit`: zero errors in any booking/rate-limit file (pre-existing
+`tmp/repro-*.ts` errors are untracked, out of scope, not committed).
+`eslint` new/modified files: 0 problems.
+
+### Curl acceptance (local dev, `BOOKING_FLOW_MODE=disabled`)
+```
+POST /api/booking/prebook  → 503 {"error":"booking_disabled","message":"Wkrótce dostępne"}
+POST /api/booking/book     → 503
+GET  /api/booking/unknown  → 404 {"error":"not_found"}   (route live, Upstash reachable)
+GET  /api/hotels/search    → 400  (unchanged — existing endpoint unaffected)
+```
+Live happy-path (prebook→sessionId+secretKey→book) is proven by the 8 unit
+tests + Phase-1 `pnpm booking:smoke`; per the prompt the flag is flipped to
+`live` only at Phase 4, so a live curl/Upstash-dashboard check is deferred to
+the Phase 4 end-to-end (B1 — Vercel env — also lands then).
+
+### Decisions applied / deviations
+- **Q6 resolved:** routes use `/api/booking/*` per the prompt's explicit Phase 2
+  spec (documented minor deviation from the house `/api/hotels/*` prefix).
+- **Rate limit 10/min** honored via the additive `LIMIT_OVERRIDES` rather than
+  a duplicate limiter or a refactor of `rate-limit.ts` (reuse-first).
+- **Idempotency** caches terminal responses (prebook 200; book 200 **and** the
+  502 book_failed) so a double-submit never re-calls LiteAPI with the same
+  transaction. Validation/expired (pre-LiteAPI, cheap) are not cached.
+- **Stripe / CSP (decision #3):** Phase-1 smoke `secretKey` = Stripe `pi_…`.
+  **Phase 3 CSP (`next.config.ts`) must allow `js.stripe.com` (script-src),
+  `api.stripe.com` + `payment-wrapper.liteapi.travel` (connect-src), and
+  Stripe frame hosts.** Recorded here for Phase 3; aligns with Q1 hypothesis
+  that the LiteAPI widget wraps Stripe.
+- **Email (decision #2):** no MVP email — `book_failed` message carries the
+  support `mailto` + `recoveryId`; confirmation is the on-screen page (P3).
+- **B1 (decision #1):** `LITEAPI_ENV=production` to be set in Vercel by you
+  before the Phase 4 deploy (still OPEN in BOOKING_BLOCKERS.md).
+
+### Blockers
+- **B1 (HIGH, human, deploy-time):** Vercel `LITEAPI_ENV=production` — unchanged.
+- **B2 (HIGH for P3):** Q1 widget contract — awaiting LiteAPI. **P3 stays on
+  hold; P2 is complete and unaffected.**
+
+### Ready for Phase 3
+Server + API layer complete and tested. **Phase 3 is gated on B2 (Q1 — LiteAPI
+widget contract).** Do not start Phase 3 until LiteAPI confirms the
+redirect-vs-callback model.
+
+**STOP — awaiting `proceed phase 3` (and B2/Q1 resolution).**
