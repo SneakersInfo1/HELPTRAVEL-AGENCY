@@ -7,9 +7,18 @@ type LimiterKey =
   | "discovery"
   | "stays-search"
   | "flights-search"
-  | "activities-search";
+  | "activities-search"
+  | "booking-prebook"
+  | "booking-book";
 
 const LIMIT_PER_MINUTE = 20;
+
+// Per-key overrides. Existing keys keep the default 20/min (no behavior change);
+// booking endpoints are tighter per BOOKING_FLOW_PROMPT Phase 2 (10/min/IP).
+const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
+  "booking-prebook": 10,
+  "booking-book": 10,
+};
 
 let warnedMissingEnv = false;
 let redis: Redis | null | undefined;
@@ -45,12 +54,22 @@ function getLimiter(key: LimiterKey): Ratelimit | null {
 
   const limiter = new Ratelimit({
     redis: client,
-    limiter: Ratelimit.slidingWindow(LIMIT_PER_MINUTE, "1 m"),
+    limiter: Ratelimit.slidingWindow(LIMIT_OVERRIDES[key] ?? LIMIT_PER_MINUTE, "1 m"),
     analytics: false,
     prefix: `helptravel:ratelimit:${key}`,
   });
   limiters.set(key, limiter);
   return limiter;
+}
+
+// Test-only seam (additive, no runtime behavior change): pre-seed or clear a
+// limiter so route tests can assert 429 without a live Upstash instance.
+export function __setLimiterForTests(key: LimiterKey, limiter: Ratelimit | null): void {
+  if (limiter === null) limiters.delete(key);
+  else limiters.set(key, limiter);
+}
+export function __resetLimitersForTests(): void {
+  limiters.clear();
 }
 
 function getClientIp(request: NextRequest): string {
