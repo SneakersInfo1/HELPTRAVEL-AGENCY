@@ -10,6 +10,20 @@ export { getHotelDetail } from "./hotel";
 export { autocompletePlaces, type PlacesAutocompleteInput } from "./places";
 export { prebook, type PrebookInput } from "./prebook";
 export { book, type BookInput } from "./book";
+export {
+  prebookHotel,
+  bookHotel,
+  type PrebookHotelInput,
+  type PrebookResult,
+  type BookHotelInput,
+  type BookResult,
+} from "./booking";
+export {
+  BookingError,
+  BookFailedAfterPaymentError,
+  toBookingError,
+  type BookingErrorCode,
+} from "./booking-errors";
 export { getPaymentSdkConfig, type UserPaymentSdkConfig, type ClientSdkInitInput } from "./payments";
 export { verifyWebhookSignature, type VerifyWebhookInput } from "./webhook";
 export { getBooking } from "./retrieve";
