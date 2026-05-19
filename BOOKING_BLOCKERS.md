@@ -20,29 +20,55 @@ valid (Phase 0 live prebook = HTTP 200).
 (gitignored) so `pnpm booking:smoke` and dev work. `.env.example` updated to
 document `LITEAPI_ENV="production"` as the booking requirement.
 
-**ACTION REQUIRED BY HUMAN (kuba):** add `LITEAPI_ENV=production` to **Vercel →
-Project Settings → Environment Variables** for **Production _and_ Preview**
-environments **before** deploying any booking phase. Without it, every booking
-call in production/preview will 401. (Search/rates also switch to the prod key —
-verified working in Phase 0, no regression expected.)
+**ACTION REQUIRED BY HUMAN (kuba):** in **Vercel → Project Settings →
+Environment Variables**, for **Production _and_ Preview**, before deploying any
+booking phase:
+1. `LITEAPI_ENV=production` — else every booking call 401s (search/rates also
+   switch to the prod key — verified Phase 0, no regression expected).
+2. `NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY=<same value as LITEAPI_PROD_PUBLIC_KEY>`
+   (Phase 3) — the browser Payment SDK widget needs it; without it the widget
+   throws "no public key" and payment cannot start.
+Both are mirrored locally in `.env.local` (gitignored) so dev/smoke work.
 
 > This does not block Phase 1/2 code work locally. It blocks **deploy**.
 
 ---
 
-## B2 — Q1: LiteAPI Payment SDK has no JS success/failure callback (Phase 3 blocker)
+## B2 — Q1: LiteAPI Payment SDK has no JS success/failure callback
 
-**Severity:** HIGH for Phase 3 · **Status:** OPEN (awaiting LiteAPI support — user is asking)
-**Raised:** Phase 0, re-confirmed Phase 1
+**Severity:** was HIGH for Phase 3 · **Status:** ✅ RESOLVED 2026-05-19 (LiteAPI support)
+**Raised:** Phase 0 · **Resolved:** Phase 3 kickoff
 
-The shipped widget (`liteAPIPayment.js?v=a1`, decoded in BOOKING_AUDIT.md §8) is
-**redirect-only via `returnUrl`**; `handleReturn()` is an empty stub and errors
-are swallowed (`catch(e){}`). The prompt's "wire success callback → POST
-`/api/booking/book`" model does not match the artifact.
+LiteAPI support confirmed the widget is **redirect-only**: `handlePayment()` →
+card entry → LiteAPI redirects the browser to our `returnUrl`. No JS callbacks;
+LiteAPI does **not** append query params, so we smuggle `sid=<sessionId>` into
+the `returnUrl` ourselves. Provider underneath = **Stripe**. Architecture:
+prebook → widget(`returnUrl=<site>/hotele/rezerwacja/return?sid=…`) → return
+page server-side calls `/api/booking/book`. Implemented in Phase 3. See
+BOOKING_AUDIT.md §8 (updated). **No longer blocks Phase 3.**
 
-Per decision #4: **Phase 3 is on hold until LiteAPI confirms** the integration
-contract (redirect-to-returnUrl vs. a callback build). **Phases 1 and 2 are
-independent of this and proceed.**
+---
+
+## B3 — CSP extension for Stripe + LiteAPI payment hosts
+
+**Severity:** MED · **Status:** ✅ RESOLVED 2026-05-19 (minimal extension, no new infra)
+**Raised:** Phase 3
+
+A strict CSP **already exists** in `next.config.ts` (an array joined into the
+`Content-Security-Policy` header). Per the rule "if CSP exists — extend
+minimally, don't rewrite", Phase 3 makes the **minimal additive** change only:
+- `script-src` += `https://js.stripe.com https://payment-wrapper.liteapi.travel`
+- `connect-src` += `https://api.stripe.com https://payment-wrapper.liteapi.travel https://book.liteapi.travel`
+- `frame-src` += `https://js.stripe.com https://hooks.stripe.com` (Stripe 3DS;
+  `payment-wrapper.liteapi.travel` was already present)
+
+No other directive touched. No new infrastructure — this is an existing header.
+
+**Accepted constraint (no action needed):** `Permissions-Policy` keeps
+`payment=()`. This disables the W3C Payment Request API (Apple/Google Pay
+wallet buttons) but **not** Stripe card entry (Stripe Elements/PaymentIntent).
+MVP is **card-only** (prompt: BLIK/wallets out of scope), so this is correct
+and intentionally left unchanged.
 
 ---
 

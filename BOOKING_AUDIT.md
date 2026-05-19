@@ -212,6 +212,19 @@ booking:idem:<idempotencyKey>  -> cached route response                  TTL = 3
 
 ## 8. LiteAPI Widget JS API (verified, not guessed)
 
+> **CONFIRMED BY LITEAPI SUPPORT — 2026-05-19 (Q1 RESOLVED):**
+> The widget is **redirect-only**. Pattern: `new LiteAPIPayment(config)` →
+> `handlePayment()` → user enters card → **LiteAPI redirects the browser to our
+> `returnUrl`**. There are **no JS success/failure callbacks** and `handleReturn()`
+> is a no-op (as decoded). **LiteAPI does NOT append query params** to `returnUrl`
+> automatically — we must smuggle our own `sessionId` into the `returnUrl` we
+> pass in. Provider underneath is **Stripe** (prebook `secretKey` = `pi_…`
+> PaymentIntent client secret; confirmed Phase 1 smoke). Integration contract
+> therefore: server prebook → client widget with
+> `returnUrl=<site>/hotele/rezerwacja/return?sid=<sessionId>` → on redirect, our
+> return page server-side calls `/api/booking/book`. This supersedes the
+> prompt's "wire success callback" wording. Q1 is closed; Phase 3 unblocked.
+
 Fetched **`https://payment-wrapper.liteapi.travel/dist/liteAPIPayment.js?v=a1`** →
 **HTTP 200**, 2322 B, `application/javascript`. (The URL in `payments.ts:24`,
 `…/dist/liteapi-payment.js`, returns **HTTP 404** — broken, must be corrected, §12.)
