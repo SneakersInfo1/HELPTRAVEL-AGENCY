@@ -8,6 +8,7 @@ import Link from "next/link";
 
 import { isBookingLive } from "@/lib/config/featureFlags";
 import { getHotelDetail } from "@/lib/liteapi";
+import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 import { ReservationForm } from "./_components/reservation-form";
@@ -95,7 +96,10 @@ export default async function ReservationPage({
   const currency = (sp.cur || "PLN").toUpperCase();
   const adults = sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 1;
 
-  const publicKey = process.env.NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY ?? "";
+  // Per LiteAPI support (19 May 2026): the widget `publicKey` is an ENVIRONMENT
+  // FLAG ("live" | "sandbox"), NOT our LiteAPI API public key. Passing the
+  // prod_ key here made the widget POST it to .../config → HTTP 400.
+  const publicKey = getLiteApiWidgetEnv();
   const returnBaseUrl = getSiteUrl();
 
   return (

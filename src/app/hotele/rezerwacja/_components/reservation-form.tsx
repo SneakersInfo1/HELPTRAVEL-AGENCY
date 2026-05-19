@@ -161,6 +161,8 @@ export function ReservationForm({
         secretKey: data.secretKey,
         returnUrl,
         targetElement: "#payment-element",
+        appearance: { theme: "flat" },
+        options: { business: { name: "helptravel.pl" } },
         amount: data.rateSummary?.price ?? price ?? 0,
         currency: data.rateSummary?.currency ?? currency,
         submitButton: { text: "Zapłać i zarezerwuj" },
