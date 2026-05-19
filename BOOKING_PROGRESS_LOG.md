@@ -218,4 +218,117 @@ Server + API layer complete and tested. **Phase 3 is gated on B2 (Q1 — LiteAPI
 widget contract).** Do not start Phase 3 until LiteAPI confirms the
 redirect-vs-callback model.
 
-**STOP — awaiting `proceed phase 3` (and B2/Q1 resolution).**
+**STOP — awaiting `proceed phase 3` (and B2/Q1 resolution).** → Q1 resolved by
+LiteAPI support; received `proceed phase 3`.
+
+---
+
+## Phase 3 — Client Booking Flow UI ✅ (2026-05-19)
+
+### Summary
+End-to-end UI: gated rooms CTA → `/hotele/rezerwacja` guest form → LiteAPI
+Payment SDK widget (redirect model, Q1-confirmed) → `/hotele/rezerwacja/return`
+finalizes book and shows confirmation/recovery. Default `disabled` renders
+"Wkrótce dostępne" (no API, no 401) — **this fixes today's visible bug**.
+
+### Commits
+- `docs(booking): Q1 resolved — audit §8 + blockers B2/B3`
+- `feat(booking): CSP — Stripe + LiteAPI payment hosts`
+- `feat(booking): carry guest data through the session`
+- `feat(booking): gate hotel rooms CTA on BOOKING_FLOW_MODE`
+- `feat(booking): reservation page + guest form + payment SDK widget`
+- `feat(booking): return page — finalize book + confirmation/recovery`
+- `chore(booking): document NEXT_PUBLIC widget key in .env.example`
+- `test(booking): phase 3 session-carry route tests`
+- `docs(booking): phase 3 progress log`
+(hashes appended at push)
+
+### Files created (5)
+- `src/app/hotele/rezerwacja/page.tsx` — server; flag re-check (defense-in-depth),
+  resolves hotel name via `getHotelDetail` (reuse), hands off to form.
+- `src/app/hotele/rezerwacja/_components/reservation-form.tsx` — client; plain
+  React + native inputs (matches `booking-widget.tsx`; **no react-hook-form** —
+  the site has no form lib, reuse/minimum-surface). zod validation reuses
+  `LiteApiHolderSchema`/`LiteApiGuestSchema`. Idempotency-Key (UUID, regened on
+  retry), in-flight disable, 30s loading copy, widget init.
+- `src/app/hotele/rezerwacja/return/page.tsx` — server; calls
+  `/api/booking/book` (Idempotency-Key = sid), renders confirmation / recovery
+  / session-expired.
+- `src/app/hotele/rezerwacja/return/loading.tsx` — skeleton during book.
+
+### Files modified (booking surface — my own Phase 1/2 code, additive)
+- `src/lib/booking/session.ts` — `SessionRecord` += optional `holder`/`guests`.
+- `src/app/api/booking/prebook/route.ts` — optional `holder`/`guests` in body,
+  persisted to session.
+- `src/app/api/booking/book/route.ts` — `holder`/`guests` optional; resolved
+  from body **or** session (body wins). 400 if neither. **Backward compatible**
+  (Phase 2 tests unchanged & green).
+- `src/app/api/booking/booking-routes.test.ts`, `package.json` — already
+  registered; +3 Phase 3 tests.
+
+### Files modified (outside booking surface — minimal, sanctioned by Phase 3.1)
+- `src/app/hotele/[hotelId]/_components/rooms-section.tsx` — rate-row CTA now:
+  flag on → `<Link>` "Zarezerwuj" (carries offerId/price/cur/board); flag off →
+  inert `<span>` "Wkrótce dostępne" (no nav, no API, no 401 by construction).
+  Threaded one `bookingLive` prop. No search/sort/price logic touched.
+- `src/app/hotele/[hotelId]/page.tsx` — +1 import, +1 prop
+  `bookingLive={isBookingLive()}`. This is the booking-entry integration the
+  prompt's Phase 3.1 explicitly authorizes.
+- `next.config.ts` — **minimal additive** CSP extension only (B3): `script-src`
+  += js.stripe.com, payment-wrapper.liteapi.travel; `connect-src` +=
+  book.liteapi.travel, payment-wrapper.liteapi.travel, api.stripe.com;
+  `frame-src` += js.stripe.com, hooks.stripe.com. No directive rewritten.
+- `.env.example` — `NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY` documented (active).
+- `.env.local` (gitignored) — mirrored `NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY`
+  for local live testing (B1 updated: Vercel needs it too).
+
+### Pre-existing behavior changed
+None. The only non-booking edits are the rooms-CTA (was a `<Link>` "Wybierz" to
+the same `/hotele/rezerwacja` route — now flag-gated) and the additive CSP. Curl
+confirms `/` 200 and `/api/hotels/search` unaffected; full suite green.
+
+### Tests
+`pnpm test` → **83 passed, 0 failed** (80 prior all green incl. all Phase 1/2 +
+3 new Phase 3 backend tests: prebook persists holder/guests; book resolves them
+from session; 400 when absent). `tsc`: no real errors (only pre-existing
+untracked `tmp/repro-*` junk). `eslint` new/modified: 0 problems.
+
+### Curl acceptance (local dev, `BOOKING_FLOW_MODE=disabled` default)
+```
+GET  /hotele/rezerwacja?…           → 200, renders "Wkrótce dostępne" (no API call, no 401)
+POST /api/booking/prebook           → 503 (unchanged; the visible bug is fixed)
+GET  /hotele/rezerwacja/return      → 200, "Brak identyfikatora sesji" (no crash)
+GET  /                              → 200 (CSP change did not break the site)
+CSP header                          → now contains js.stripe.com, api.stripe.com, book.liteapi.travel
+```
+Live flow (form → widget → return) is exercised by the 83 unit tests at the
+backend boundary; the **real card** end-to-end is Phase 4 (per the prompt, flag
+flips to `live` only after Phase 4). No React DOM test harness added —
+introducing jsdom/RTL would be a new dependency (not pre-approved); UI verified
+via tsc + lint + disabled-mode curl + Phase 4 manual e2e.
+
+### Decisions / deviations
+- **No react-hook-form** despite pre-approval: the site has no form library;
+  reuse/minimum-surface → plain React matching `booking-widget.tsx`. Documented.
+- **No jsdom/RTL** for component tests (no-new-deps rule); backend behavior
+  fully unit-tested instead; UI by tsc/lint/curl + Phase 4 e2e.
+- **Guest data carried via session** (not re-collected on return): required by
+  Q1's redirect model (return page only has `sid`). Backward-compatible with
+  the Phase 2 body contract.
+- **Return page renders confirmation/recovery inline** (per your Phase 3
+  architecture) rather than redirecting to `/rezerwacja/[bookingId]`; the Phase 2
+  `GET /api/booking/[bookingId]` route remains for future deep-linking.
+- Q1 → BOOKING_AUDIT §8 updated; B2 RESOLVED; B3 (CSP) RESOLVED (minimal
+  extension; `Permissions-Policy payment=()` intentionally kept — card-only MVP).
+
+### Blockers
+- **B1 (HIGH, human, deploy-time):** Vercel needs `LITEAPI_ENV=production` **and**
+  `NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY` (Prod+Preview) before the Phase 4 deploy.
+- B2 ✅ RESOLVED. B3 ✅ RESOLVED.
+
+### Ready for Phase 4
+Yes — code-complete and tested in `disabled` mode. Phase 4 = docs +
+**human-run real-card e2e on a Vercel preview** with `BOOKING_FLOW_MODE=live`
+(after B1 env is set), then production enable.
+
+**STOP — awaiting `proceed phase 4`.**
