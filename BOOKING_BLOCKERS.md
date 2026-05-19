@@ -110,4 +110,50 @@ used server-side). See BOOKING_AUDIT.md §8 (CORRECTION block).
 
 ---
 
+## B5 — Widget Stripe `IntegrationError` (cached-script race) + Permissions-Policy blocked payment
+
+**Severity:** was CRITICAL (payment form never mounts on 2nd+ attempt) · **Status:** ✅ RESOLVED 2026-05-19
+**Raised:** Phase 4 production validation (B4 re-test on Vercel preview) · **Resolved:** commits `55d1db9` (race) / `6da8fc1` (Permissions-Policy)
+
+Detected after the B4 fix deployed with `NEXT_PUBLIC_LITEAPI_ENV=production`.
+Good signal first: `payment-wrapper.liteapi.travel/config` no longer 400s
+(B4 `publicKey:"live"` confirmed correct), prebook succeeded (Upstash session
++ valid `pi_…` secretKey), Stripe widget began loading. Two separate bugs:
+
+**Issue 1 — cached-script race (`IntegrationError`).** `reservation-form.tsx`
+initialized the widget inside `onSubmit`: `setStep("paying")` →
+`await loadWidgetScript()` → `new LiteAPIPayment().handlePayment()`. When the
+SDK script was already browser-cached (2nd/3rd attempt), `loadWidgetScript()`
+resolved in a microtask **before** React committed the `"paying"` branch, so
+the `#payment-element` div did not exist when Stripe tried to mount →
+`IntegrationError: elements should have a mounted Payment Element`. (Exactly
+the latent race flagged at the end of the B4 report.) **Fix (`55d1db9`):**
+widget init moved into a `useEffect` keyed on the prebook result; it awaits
+the script, then rAF-polls for `#payment-element` (bounded, 10 frames) before
+constructing `LiteAPIPayment`, with a cleanup flag cancelling on
+unmount/re-render. On failure it restores the form with the existing message.
+Side change in the same file: making the component compiler-analyzable
+activated `react-hooks/purity` on the **pre-existing** `idemKey` `useRef`
+initializer (`Math.random()`/`Date.now()` during render); minimal behavior-
+preserving fix — generate the key via a module-scope `freshIdemKey()` called
+from the handler, not during render. Idempotency semantics unchanged.
+
+**Issue 2 — Permissions-Policy blocked payment.** `next.config.ts`
+`permissionsPolicy` had `payment=()`; the browser enforced "payment is not
+allowed in this document", blocking the Stripe Payment Element iframe
+(api.stripe.com → HTTP 400). **This supersedes the B3 "Accepted constraint"
+note above** ("`payment=()` … intentionally left unchanged"): live testing
+proved Stripe Elements — not just Apple/Google Pay — needs the `payment`
+permission for its cross-origin iframe. **Fix (`6da8fc1`, minimal additive —
+only the `payment` token changed; the other 8 directives untouched):**
+`payment=(self "https://payment-wrapper.liteapi.travel" "https://js.stripe.com" "https://hooks.stripe.com")`.
+CSP `frame-src` already allowed `js.stripe.com`/`hooks.stripe.com`
+(Phase 3) — verified, unchanged.
+
+Backend (prebook/book/session) untouched — Upstash showed a valid session +
+`pi_…` secret throughout. `widget-env.ts` (B4) untouched. The unrelated
+`/api/hotels/rates/batch` 429 is out of scope (noted, ignored).
+
+---
+
 _No other open blockers. Q2 (prebook TTL) handled by decision #3 (fixed 1800s)._

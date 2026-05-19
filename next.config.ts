@@ -21,7 +21,10 @@ const permissionsPolicy = [
   "camera=()",
   "microphone=()",
   "geolocation=()",
-  "payment=()",
+  // B5: Stripe Payment Element (cross-origin iframe) needs the `payment`
+  // permission — `payment=()` made the browser block it. Allowlist self +
+  // the LiteAPI/Stripe iframe origins only; every other directive unchanged.
+  'payment=(self "https://payment-wrapper.liteapi.travel" "https://js.stripe.com" "https://hooks.stripe.com")',
   "usb=()",
   "magnetometer=()",
   "gyroscope=()",
