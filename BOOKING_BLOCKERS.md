@@ -210,6 +210,39 @@ Then redeploy the preview branch. (For a *test-card* dry run instead: set
 > PaymentIntent (no Stripe Connect `stripeAccount` parameter required from our
 > side), since we cannot inspect the cross-origin Stripe 400 body.
 
+### B6 update — LiteAPI confirmation + authoritative env binding (commit `fdccd43`)
+
+LiteAPI support (docs *Implementing a Payment Method → User Payment*) confirmed:
+`publicKey` is literally **`"live"`**/**`"sandbox"`** (✓ our B4/B6); `secretKey`
+is the prebook Stripe client secret (✓); **no Stripe Connect / `stripeAccount`**
+and **no extra required config** beyond `publicKey`,`secretKey`,`targetElement`,
+`returnUrl` (✓ our config matches). They also asked the key diagnostic
+question: *"in the prebook response, is `sandbox` flagged `false`?"*
+
+We discovered our Zod prebook schema was **silently stripping** any `sandbox`
+field LiteAPI returns, so the widget env was only ever a key-prefix *heuristic*.
+Fix (commit `fdccd43`), strictly additive:
+- `LiteApiPrebookResponseSchema`: capture optional `sandbox` (at `data.*` and
+  top-level).
+- `prebookHotel`: thread `sandbox` through; **log**
+  `[liteapi][booking][prebook] keyMode=<…> sandbox=<true|false|unreported>` —
+  this lets the operator confirm from **Vercel logs** whether a prebook truly
+  ran in production (answers LiteAPI's diagnostic + B1 uncertainty directly).
+- `/api/booking/prebook` now returns `widgetEnv`: LiteAPI's per-prebook
+  `sandbox` flag wins (`false`→`"live"`, `true`→`"sandbox"`); if unreported it
+  falls back to the commit-`454c4c5` key-mode heuristic.
+- `reservation-form.tsx`: the widget `publicKey` is taken from that
+  `widgetEnv` (same response as `secretKey`) — they now originate from one
+  prebook call and **cannot be different Stripe modes**.
+
+**Operator: after redeploy, before paying, check the Vercel function log for
+the prebook line.** `keyMode=production sandbox=false` → real-card ready.
+`keyMode=production sandbox=true` (or `sandbox=unreported` + still 400) → the
+production LiteAPI account is returning a test PaymentIntent → send the
+remaining LiteAPI questions + the **Stripe `/v1/elements` 400 response body**
+(DevTools → Network → that request → Response tab; we cannot read it from code
+— it's a cross-origin opaque response).
+
 ---
 
 _No other open blockers. Q2 (prebook TTL) handled by decision #3 (fixed 1800s)._
