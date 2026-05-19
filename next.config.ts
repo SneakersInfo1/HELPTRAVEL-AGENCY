@@ -3,13 +3,13 @@ import bundleAnalyzer from "@next/bundle-analyzer";
 
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com https://js.stripe.com https://payment-wrapper.liteapi.travel",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.cupid.travel https://*.liteapi.travel https://*.geoapify.com https://maps.geoapify.com",
   "media-src 'self' https://videos.pexels.com",
-  "connect-src 'self' https://*.upstash.io https://api.travelpayouts.com https://api.liteapi.travel https://api.sandbox.liteapi.travel https://api.geoapify.com https://api.anthropic.com https://vitals.vercel-insights.com https://vercel.live",
-  "frame-src 'self' https://payment-wrapper.liteapi.travel",
+  "connect-src 'self' https://*.upstash.io https://api.travelpayouts.com https://api.liteapi.travel https://api.sandbox.liteapi.travel https://book.liteapi.travel https://payment-wrapper.liteapi.travel https://api.stripe.com https://api.geoapify.com https://api.anthropic.com https://vitals.vercel-insights.com https://vercel.live",
+  "frame-src 'self' https://payment-wrapper.liteapi.travel https://js.stripe.com https://hooks.stripe.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
