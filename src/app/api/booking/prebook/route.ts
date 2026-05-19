@@ -10,7 +10,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { isBookingLive } from "@/lib/config/featureFlags";
-import { BookingError, prebookHotel } from "@/lib/liteapi";
+import {
+  BookingError,
+  LiteApiGuestSchema,
+  LiteApiHolderSchema,
+  prebookHotel,
+} from "@/lib/liteapi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   SESSION_TTL_SECONDS,
@@ -33,6 +38,11 @@ const BodySchema = z.object({
     checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   }),
+  // Phase 3: guest data captured here (pre-payment) and stored in the session
+  // so the redirect return page can book with only `sid`. Optional for
+  // backward compatibility with Phase 2 callers.
+  holder: LiteApiHolderSchema.optional(),
+  guests: z.array(LiteApiGuestSchema).min(1).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -99,6 +109,8 @@ export async function POST(request: NextRequest) {
         checkin: b.rate.checkin,
         checkout: b.rate.checkout,
       },
+      holder: b.holder,
+      guests: b.guests,
       createdAt: now,
     };
     await saveSession(sessionId, rec); // strict — throws if store unavailable

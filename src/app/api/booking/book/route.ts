@@ -27,11 +27,15 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// holder/guests are optional in the body: the Phase 3 redirect return page
+// only has `sid`, so guest data is read from the session (stored at prebook).
+// Phase 2 callers may still pass them in the body — body wins if present.
 const BodySchema = z.object({
   sessionId: z.string().min(8),
-  holder: LiteApiHolderSchema,
-  guests: z.array(LiteApiGuestSchema).min(1),
+  holder: LiteApiHolderSchema.optional(),
+  guests: z.array(LiteApiGuestSchema).min(1).optional(),
 });
+const GuestsSchema = z.array(LiteApiGuestSchema).min(1);
 
 const SUPPORT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() ||
@@ -68,7 +72,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const { sessionId, holder, guests } = parsed.data;
+  const { sessionId } = parsed.data;
 
   let session;
   try {
@@ -88,6 +92,19 @@ export async function POST(request: NextRequest) {
       { status: 410 },
     );
   }
+
+  // Resolve guest data: prefer the body (Phase 2 contract), else the session
+  // (Phase 3 redirect flow). Re-validate session-sourced data defensively.
+  const holderResult = LiteApiHolderSchema.safeParse(parsed.data.holder ?? session.holder);
+  const guestsResult = GuestsSchema.safeParse(parsed.data.guests ?? session.guests);
+  if (!holderResult.success || !guestsResult.success) {
+    return NextResponse.json(
+      { error: "invalid_body", message: "Brak lub nieprawidłowe dane gości." },
+      { status: 400 },
+    );
+  }
+  const holder = holderResult.data;
+  const guests = guestsResult.data;
 
   // Ops/audit metadata (Vercel headers). Logged WITHOUT PII.
   const ip =
