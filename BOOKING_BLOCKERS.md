@@ -72,4 +72,42 @@ and intentionally left unchanged.
 
 ---
 
+## B4 — Widget `publicKey` was the API key, not the env flag
+
+**Severity:** was CRITICAL (widget never initialized) · **Status:** ✅ RESOLVED 2026-05-19 (LiteAPI support)
+**Raised:** Phase 4 production validation · **Resolved:** commit `a578c73`
+
+Phase 3 passed `process.env.NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY` (a `prod_pu…`
+LiteAPI **API** public key) as the widget's `config.publicKey`. Per LiteAPI
+support (19 May 2026), `publicKey` is an **environment flag** — the literal
+string `"live"` (production) or `"sandbox"` — **not** an API key. The API
+public key is server-side only and is never sent to the widget. Passing the
+`prod_pu…` key made `handlePayment()` POST it to
+`https://payment-wrapper.liteapi.travel/config`, which rejected it as an
+invalid environment flag → **HTTP 400**; the widget never initialized and the
+booking page showed skeleton placeholders instead of the Stripe form.
+
+**Fix (commit `a578c73`):** new `src/lib/liteapi/widget-env.ts`
+`getLiteApiWidgetEnv()` returns `"live"` only when `NEXT_PUBLIC_LITEAPI_ENV`
+=== `"production"`, else `"sandbox"` (fail-safe). `page.tsx` now passes that
+to the widget. `appearance:{theme:"flat"}` + `options:{business:{name:
+"helptravel.pl"}}` added per LiteAPI's verified example. `targetElement`
+(`#payment-element`) and its container already existed — unchanged. Server
+prebook/book untouched. `NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY` kept (still
+used server-side). See BOOKING_AUDIT.md §8 (CORRECTION block).
+
+---
+
+## Operator action required before next preview redeploy
+
+- Add Vercel env var: `NEXT_PUBLIC_LITEAPI_ENV=production`
+  (Environments: **Production + Preview + Development**)
+- Then trigger a redeploy of the preview branch.
+
+> Note: B1's `NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY` is **no longer required by
+> the widget** (it was never the right value). It is retained only for any
+> server-side use; the widget needs `NEXT_PUBLIC_LITEAPI_ENV` instead.
+
+---
+
 _No other open blockers. Q2 (prebook TTL) handled by decision #3 (fixed 1800s)._
