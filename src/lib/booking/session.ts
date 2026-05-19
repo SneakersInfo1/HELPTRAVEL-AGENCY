@@ -77,6 +77,12 @@ export interface SessionRecord {
   currency?: string;
   hotelSummary: HotelSummary;
   rateSummary: RateSummary;
+  // Phase 3: guest data is collected at the form step (before payment) and
+  // stored here so the return page — which only carries `sid` — can finalize
+  // /api/booking/book without re-collecting it. Optional for backward compat
+  // (Phase 2 callers may still pass holder/guests in the book body).
+  holder?: unknown;
+  guests?: unknown;
   createdAt: number; // epoch ms
 }
 export interface CompletedRecord {
