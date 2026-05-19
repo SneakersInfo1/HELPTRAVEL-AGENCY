@@ -225,6 +225,34 @@ booking:idem:<idempotencyKey>  -> cached route response                  TTL = 3
 > return page server-side calls `/api/booking/book`. This supersedes the
 > prompt's "wire success callback" wording. Q1 is closed; Phase 3 unblocked.
 
+> **CORRECTION — `publicKey` contract (LiteAPI support, 19 May 2026, B4):**
+> The widget `config.publicKey` is an **ENVIRONMENT FLAG**, not an API key.
+> Valid values: the literal string **`"live"`** (production) or **`"sandbox"`**
+> (testing). Our LiteAPI API public key (`prod_pu…`) is used **only**
+> server-side (HMAC, `/config`/auth) and is **NEVER** passed to the widget.
+> Our earlier interpretation in this section (treating `publicKey` as the
+> `prod_` publishable key, e.g. line "LiteAPI publishable key") was **WRONG**:
+> passing the `prod_pu…` key made `handlePayment()` POST it to
+> `https://payment-wrapper.liteapi.travel/config`, which rejected it as an
+> invalid environment flag → **HTTP 400**, widget never initialized (skeleton
+> placeholders rendered instead of the Stripe form). The widget also requires
+> **`targetElement`** (CSS selector of the mount container) — already present
+> in our component as `#payment-element`. **Fixed in commit `a578c73`**
+> (`page.tsx` now passes `getLiteApiWidgetEnv()` → `"live"|"sandbox"`).
+>
+> Corrected production config (LiteAPI's own example, 19 May 2026):
+> ```js
+> const liteAPIConfig = {
+>   publicKey: "live",                 // env flag — "live" | "sandbox"
+>   targetElement: "#payment-element", // mount container (widget replaces it)
+>   secretKey: "pi_..._secret_...",    // prebook PaymentIntent client secret
+>   returnUrl: "https://<site>/hotele/rezerwacja/return?sid=<sessionId>",
+>   appearance: { theme: "flat" },
+>   options: { business: { name: "helptravel.pl" } },
+> };
+> new LiteAPIPayment(liteAPIConfig).handlePayment();
+> ```
+
 Fetched **`https://payment-wrapper.liteapi.travel/dist/liteAPIPayment.js?v=a1`** →
 **HTTP 200**, 2322 B, `application/javascript`. (The URL in `payments.ts:24`,
 `…/dist/liteapi-payment.js`, returns **HTTP 404** — broken, must be corrected, §12.)
@@ -233,7 +261,7 @@ Fetched **`https://payment-wrapper.liteapi.travel/dist/liteAPIPayment.js?v=a1`**
 - Global: **`window.LiteAPIPayment`** — a class.
 - Construct: **`new LiteAPIPayment(config)`**, `config` shape (defaults):
   ```js
-  { publicKey: "",            // LiteAPI publishable key (the prod_ "public" key)
+  { publicKey: "",            // ENV FLAG "live"|"sandbox" (NOT the prod_ key — see CORRECTION above, B4)
     secretKey: "",            // prebook.secretKey — if set, skips amount→key fetch
     options: {},
     targetElement: "#payment-element",
