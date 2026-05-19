@@ -331,4 +331,59 @@ Yes — code-complete and tested in `disabled` mode. Phase 4 = docs +
 **human-run real-card e2e on a Vercel preview** with `BOOKING_FLOW_MODE=live`
 (after B1 env is set), then production enable.
 
-**STOP — awaiting `proceed phase 4`.**
+**STOP — awaiting `proceed phase 4`.** → received `proceed phase 4` (docs only;
+real-card e2e is the human's task).
+
+---
+
+## Phase 4 — Documentation & Rollout Prep ✅ docs (2026-05-19)
+
+### Summary
+All Phase 4 **documentation** tasks done. The real-card end-to-end test and the
+production flag flip are explicitly the human's (kuba's) job and are **not**
+performed here. Code is unchanged this phase — docs only.
+
+### Commits
+- `docs(booking): phase 4 — booking-flow.md (ops + recovery + RODO)`
+- `docs(booking): phase 4 progress log`
+(hashes appended at push)
+
+### Delivered
+- **`docs/booking-flow.md`** (new) — 10 sections: end-to-end architecture
+  (ASCII), feature-flag enable/disable + prod-enable procedure, Upstash key
+  schema, **§4 `book_failed` recovery runbook** (detect → pull
+  `booking:v1:failed:<recoveryId>` → resolve with LiteAPI support via
+  prebookId+transactionId → finalize or refund; never double-charge), CS
+  booking lookup, **RODO/GDPR** (what/where/retention/lawful basis, no card
+  data, PII-redacted logs), refund/cancellation gap (Phase 5), benchmarks &
+  known limitations (prebook ~22 s), the human e2e checklist, required env.
+- **`BOOKING_PROGRESS_LOG.md`** — this section.
+- `book_failed` recovery procedure — documented in `docs/booking-flow.md` §4.
+
+### Not done (intentionally — human/owner tasks)
+- Real-card end-to-end test on a Vercel preview (`BOOKING_FLOW_MODE=live`).
+- Setting B1 env vars in Vercel + flipping `BOOKING_FLOW_MODE=live` in
+  Production.
+- `pnpm booking:tail` monitor — noted as an optional Phase 5 follow-up (adding
+  a script is out of scope for a docs-only phase; not requested).
+
+### Tests
+Unchanged — docs-only commits, no code touched. Suite remains **83 passed, 0
+failed** (last executed end of Phase 3). `tmp/repro-*` pre-existing scratch
+files remain untracked/out of scope.
+
+### Blockers
+- **B1 (HIGH, human, deploy-time):** before the preview/prod deploy, set in
+  Vercel (Production **and** Preview): `LITEAPI_ENV=production` **and**
+  `NEXT_PUBLIC_LITEAPI_PROD_PUBLIC_KEY`. Mirrored locally in `.env.local`.
+  Procedure in `docs/booking-flow.md` §2 & §9.
+- B2 ✅ RESOLVED, B3 ✅ RESOLVED.
+
+### Status
+Phases 0–3 implemented + tested (83 green, disabled-by-default, no 401 bug);
+Phase 4 docs complete. **Ready for the human-run real-card e2e** (procedure:
+`docs/booking-flow.md` §9). After a successful preview test, enable in
+Production per §2 and monitor `[CRITICAL]` for 24 h.
+
+**Booking project: code + docs complete. Awaiting human e2e + production
+enable.**
