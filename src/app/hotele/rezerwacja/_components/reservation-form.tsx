@@ -10,7 +10,7 @@
 //   new LiteAPIPayment({ ..., returnUrl: <site>/hotele/rezerwacja/return?sid }) →
 //   user pays → LiteAPI redirects browser to that returnUrl.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { LiteApiGuestSchema, LiteApiHolderSchema } from "@/lib/liteapi";
 
@@ -42,6 +42,12 @@ interface Props {
 const inputCls =
   "w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none";
 const labelCls = "mb-1 block text-[11px] font-medium uppercase text-neutral-500";
+
+function freshIdemKey(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `idem-${Date.now()}-${Math.random()}`;
+}
 
 function loadWidgetScript(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -87,11 +93,17 @@ export function ReservationForm({
   );
   const [step, setStep] = useState<"form" | "submitting" | "paying">("form");
   const [error, setError] = useState<string | null>(null);
-  const idemKey = useRef<string>(
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `idem-${Date.now()}-${Math.random()}`,
-  );
+  // Prebook result that the payment widget mounts from. Set once prebook
+  // succeeds; consumed by the widget effect below (NOT inside onSubmit — B5).
+  const [pay, setPay] = useState<{
+    secretKey: string;
+    sessionId: string;
+    amount: number;
+    currency: string;
+  } | null>(null);
+  // Lazily generated in onSubmit (never during render — keeps the component
+  // pure for the React Compiler / react-hooks/purity).
+  const idemKey = useRef<string>("");
 
   const setGuest = (i: number, field: "firstName" | "lastName", v: string) =>
     setGuests((g) => g.map((row, idx) => (idx === i ? { ...row, [field]: v } : row)));
@@ -116,6 +128,7 @@ export function ReservationForm({
       setError(v);
       return;
     }
+    if (!idemKey.current) idemKey.current = freshIdemKey();
     setError(null);
     setStep("submitting");
     try {
@@ -141,32 +154,22 @@ export function ReservationForm({
       };
       if (!res.ok || !data.sessionId || !data.secretKey) {
         // New attempt must use a fresh idempotency key.
-        idemKey.current =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `idem-${Date.now()}-${Math.random()}`;
+        idemKey.current = freshIdemKey();
         setError(data.message ?? "Nie udało się rozpocząć rezerwacji. Spróbuj ponownie.");
         setStep("form");
         return;
       }
 
+      // Hand off to the widget effect. Init MUST happen from useEffect, after
+      // React commits the #payment-element node — running it here races the
+      // render on the cached-script path → Stripe IntegrationError (B5).
       setStep("paying");
-      await loadWidgetScript();
-      if (!window.LiteAPIPayment) throw new Error("widget unavailable");
-      const returnUrl = `${returnBaseUrl}/hotele/rezerwacja/return?sid=${encodeURIComponent(
-        data.sessionId,
-      )}`;
-      new window.LiteAPIPayment({
-        publicKey,
+      setPay({
         secretKey: data.secretKey,
-        returnUrl,
-        targetElement: "#payment-element",
-        appearance: { theme: "flat" },
-        options: { business: { name: "helptravel.pl" } },
+        sessionId: data.sessionId,
         amount: data.rateSummary?.price ?? price ?? 0,
         currency: data.rateSummary?.currency ?? currency,
-        submitButton: { text: "Zapłać i zarezerwuj" },
-      }).handlePayment();
+      });
     } catch {
       setError(
         "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
@@ -174,6 +177,86 @@ export function ReservationForm({
       setStep("form");
     }
   }
+
+  // B5: widget init runs ONLY after (a) the SDK script is loaded and (b) the
+  // #payment-element node is committed to the DOM. The cached-script path made
+  // loadWidgetScript() resolve before React committed the "paying" branch, so
+  // Stripe had no node to mount → IntegrationError. rAF-poll the node, bounded.
+  useEffect(() => {
+    if (!pay) return;
+    const prebook = pay; // narrow for the nested async closure (TS)
+
+    let cancelled = false;
+    let rafHandle = 0;
+
+    const failToForm = () => {
+      if (cancelled) return;
+      setError(
+        "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
+      );
+      setStep("form");
+      setPay(null);
+    };
+
+    async function initWidget() {
+      try {
+        await loadWidgetScript();
+      } catch {
+        failToForm();
+        return;
+      }
+      if (cancelled) return;
+
+      let retries = 0;
+      const MAX_RETRIES = 10;
+      while (!document.getElementById("payment-element") && retries < MAX_RETRIES) {
+        retries++;
+        await new Promise<void>((r) => {
+          rafHandle = requestAnimationFrame(() => r());
+        });
+        if (cancelled) return;
+      }
+
+      if (!document.getElementById("payment-element")) {
+        console.error(
+          "[booking][widget] #payment-element never mounted after",
+          retries,
+          "retries — aborting widget init",
+        );
+        failToForm();
+        return;
+      }
+      if (!window.LiteAPIPayment) {
+        console.error(
+          "[booking][widget] LiteAPIPayment global unavailable after script load",
+        );
+        failToForm();
+        return;
+      }
+
+      const returnUrl = `${returnBaseUrl}/hotele/rezerwacja/return?sid=${encodeURIComponent(
+        prebook.sessionId,
+      )}`;
+      new window.LiteAPIPayment({
+        publicKey,
+        secretKey: prebook.secretKey,
+        returnUrl,
+        targetElement: "#payment-element",
+        appearance: { theme: "flat" },
+        options: { business: { name: "helptravel.pl" } },
+        amount: prebook.amount,
+        currency: prebook.currency,
+        submitButton: { text: "Zapłać i zarezerwuj" },
+      }).handlePayment();
+    }
+
+    void initWidget();
+
+    return () => {
+      cancelled = true;
+      if (rafHandle) cancelAnimationFrame(rafHandle);
+    };
+  }, [pay, publicKey, returnBaseUrl]);
 
   if (step === "paying") {
     return (
