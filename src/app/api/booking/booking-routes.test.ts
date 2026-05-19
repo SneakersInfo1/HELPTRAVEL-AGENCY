@@ -369,3 +369,93 @@ test("GET /api/booking/[bookingId]: 200 client-safe fields, 404 for unknown", as
     }
   });
 });
+
+// ── Phase 3 — guest data carried through the session (redirect flow) ──────────
+
+test("Phase 3: prebook persists holder/guests into the session", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch(() => ({ status: 200, body: PREBOOK_OK }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const r = await POST(
+        post("http://t/api/booking/prebook", {
+          ...PREBOOK_REQ_BODY,
+          holder: HOLDER,
+          guests: GUESTS,
+        }),
+      );
+      assert.equal(r.status, 200);
+      const sessionId = (await r.json()).sessionId as string;
+      const sess = fake.store.get(`booking:v1:session:${sessionId}`) as Record<
+        string,
+        unknown
+      >;
+      assert.deepEqual(sess.holder, HOLDER);
+      assert.deepEqual(sess.guests, GUESTS);
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("Phase 3: book with NO body holder/guests resolves them from the session", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch((url) =>
+      url.includes("/rates/prebook")
+        ? { status: 200, body: PREBOOK_OK }
+        : { status: 200, body: BOOK_OK },
+    );
+    try {
+      const { POST: pre } = await import("./prebook/route");
+      const r1 = await pre(
+        post("http://t/api/booking/prebook", {
+          ...PREBOOK_REQ_BODY,
+          holder: HOLDER,
+          guests: GUESTS,
+        }),
+      );
+      const sessionId = (await r1.json()).sessionId as string;
+
+      const { POST: bk } = await import("./book/route");
+      const r2 = await bk(
+        post("http://t/api/booking/book", { sessionId }), // no holder/guests
+      );
+      assert.equal(r2.status, 200);
+      assert.equal((await r2.json()).status, "confirmed");
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("Phase 3: book with neither body nor session guest data → 400", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    fake.store.set("booking:v1:session:no-guests", {
+      prebookId: "pb",
+      transactionId: "tx",
+      offerId: "o",
+      hotelSummary: { name: "H" },
+      rateSummary: { checkin: "2026-07-15", checkout: "2026-07-18" },
+      createdAt: Date.now(),
+    });
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch(() => ({ status: 200, body: BOOK_OK }));
+    try {
+      const { POST } = await import("./book/route");
+      const r = await POST(post("http://t/api/booking/book", { sessionId: "no-guests" }));
+      assert.equal(r.status, 400);
+      assert.equal((await r.json()).error, "invalid_body");
+      assert.equal(fetchCalls.length, 0, "must not call LiteAPI without guest data");
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
