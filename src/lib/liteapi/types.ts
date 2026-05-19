@@ -131,7 +131,12 @@ export const LiteApiPrebookResponseSchema = z.object({
     currency: CurrencyCodeSchema.optional(),
     cancellationPolicies: LiteApiCancellationPolicySchema.optional(),
     expiresAt: z.string().optional(),
+    // LiteAPI flags whether THIS prebook (and its Stripe PaymentIntent) is
+    // sandbox/test mode. Authoritative env signal for the payment widget —
+    // see B6. Location varies (data.* or top-level), capture both.
+    sandbox: z.boolean().optional(),
   }),
+  sandbox: z.boolean().optional(),
 });
 export type LiteApiPrebookResponse = z.infer<typeof LiteApiPrebookResponseSchema>;
 

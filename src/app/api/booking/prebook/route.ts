@@ -16,6 +16,7 @@ import {
   LiteApiHolderSchema,
   prebookHotel,
 } from "@/lib/liteapi";
+import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   SESSION_TTL_SECONDS,
@@ -115,11 +116,26 @@ export async function POST(request: NextRequest) {
     };
     await saveSession(sessionId, rec); // strict — throws if store unavailable
 
+    // B6: the widget's `publicKey` env MUST match the env that created this
+    // PaymentIntent, or Stripe 400s on /v1/elements. Prefer LiteAPI's own
+    // per-prebook `sandbox` flag (authoritative — same response as secretKey);
+    // fall back to the resolved key-mode heuristic when LiteAPI omits it.
+    const widgetEnv: "live" | "sandbox" =
+      pre.sandbox === false
+        ? "live"
+        : pre.sandbox === true
+          ? "sandbox"
+          : getLiteApiWidgetEnv();
+
     const responseBody = {
       sessionId,
       // secretKey IS returned (the widget needs it). transactionId is NOT —
       // it stays server-side and is read from the session at book time.
       secretKey: pre.secretKey,
+      // Env flag for the LiteAPI Payment widget, bound to THIS prebook so the
+      // Stripe publishable key and client secret can never be from different
+      // modes (B6).
+      widgetEnv,
       expiresAt: new Date(now + SESSION_TTL_SECONDS * 1000).toISOString(),
       hotelSummary: rec.hotelSummary,
       rateSummary: rec.rateSummary,
