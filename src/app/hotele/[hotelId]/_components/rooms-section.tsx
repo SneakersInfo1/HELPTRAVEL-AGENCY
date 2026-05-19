@@ -45,6 +45,10 @@ interface Props {
   searchQuery: string;
   nights: number;
   currency: string;
+  // BOOKING_FLOW_MODE, resolved server-side on the hotel page. When false the
+  // CTA renders a friendly "Wkrótce dostępne" disabled state (no navigation,
+  // no API call, no 401) — this alone fixes today's visible bug.
+  bookingLive: boolean;
 }
 
 const formatPLN = (amount: number, currency: string) =>
@@ -69,7 +73,14 @@ const polishBoard = (raw?: string): string => {
   return raw;
 };
 
-export function RoomsSection({ hotelId, roomTypes, searchQuery, nights, currency }: Props) {
+export function RoomsSection({
+  hotelId,
+  roomTypes,
+  searchQuery,
+  nights,
+  currency,
+  bookingLive,
+}: Props) {
   if (!roomTypes.length) {
     return (
       <section id="rooms" className="rounded-2xl border border-neutral-200 bg-white p-6">
@@ -92,6 +103,7 @@ export function RoomsSection({ hotelId, roomTypes, searchQuery, nights, currency
           searchQuery={searchQuery}
           nights={nights}
           currency={currency}
+          bookingLive={bookingLive}
         />
       ))}
     </section>
@@ -104,12 +116,14 @@ function RoomTypeCard({
   searchQuery,
   nights,
   currency,
+  bookingLive,
 }: {
   hotelId: string;
   roomType: LiteApiRoomType;
   searchQuery: string;
   nights: number;
   currency: string;
+  bookingLive: boolean;
 }) {
   const deduped = dedupeRates(roomType.rates);
   const headerName = deduped[0]?.name ?? roomType.rates[0]?.name ?? "Pokój";
@@ -131,6 +145,7 @@ function RoomTypeCard({
             searchQuery={searchQuery}
             nights={nights}
             currency={currency}
+            bookingLive={bookingLive}
           />
         ))}
       </ul>
@@ -163,6 +178,7 @@ function RateRow({
   searchQuery,
   nights,
   currency,
+  bookingLive,
 }: {
   hotelId: string;
   offerId: string;
@@ -170,6 +186,7 @@ function RateRow({
   searchQuery: string;
   nights: number;
   currency: string;
+  bookingLive: boolean;
 }) {
   const minor = rateTotalMinor(rate);
   const total = minor !== null ? fromMinor(minor) : null;
@@ -181,6 +198,10 @@ function RateRow({
   const params = new URLSearchParams(searchQuery);
   params.set("hotelId", hotelId);
   params.set("offerId", offerId);
+  if (total !== null) params.set("price", String(Math.round(total)));
+  params.set("cur", rateCurrency);
+  const boardLabel = rate.boardName ?? rate.boardType ?? "";
+  if (boardLabel) params.set("board", boardLabel);
   const reservationHref = `/hotele/rezerwacja?${params.toString()}`;
 
   return (
@@ -215,12 +236,22 @@ function RateRow({
         ) : (
           <div className="text-sm text-neutral-500">Cena u dostawcy</div>
         )}
-        <Link
-          href={reservationHref}
-          className="mt-2 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
-        >
-          Wybierz
-        </Link>
+        {bookingLive ? (
+          <Link
+            href={reservationHref}
+            className="mt-2 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            Zarezerwuj
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            title="Rezerwacja online będzie dostępna wkrótce"
+            className="mt-2 inline-flex h-10 cursor-not-allowed items-center justify-center rounded-lg bg-neutral-200 px-5 text-sm font-semibold text-neutral-500"
+          >
+            Wkrótce dostępne
+          </span>
+        )}
       </div>
     </li>
   );

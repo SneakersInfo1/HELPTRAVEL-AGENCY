@@ -13,6 +13,7 @@ import { notFound } from "next/navigation";
 
 import { fromMinor } from "@/lib/money";
 import { getHotelDetail, getRates, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
+import { isBookingLive } from "@/lib/config/featureFlags";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -329,6 +330,7 @@ export default async function HotelDetailPage({
               searchQuery={searchQuery}
               nights={nights}
               currency={currency}
+              bookingLive={isBookingLive()}
             />
 
             {/* Amenities */}
