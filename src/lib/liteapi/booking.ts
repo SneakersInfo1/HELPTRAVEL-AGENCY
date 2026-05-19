@@ -16,6 +16,7 @@
 
 import { book } from "./book";
 import { BookFailedAfterPaymentError, BookingError, toBookingError } from "./booking-errors";
+import { getEnv } from "./client";
 import { prebook } from "./prebook";
 import type { LiteApiBooking, LiteApiGuest, LiteApiHolder } from "./types";
 
@@ -38,6 +39,9 @@ export interface PrebookResult {
   expiresAt?: string;
   hotelId?: string;
   rateId?: string;
+  // LiteAPI's env flag for this prebook's Stripe PaymentIntent (B6).
+  // true = test/sandbox, false = live/production, undefined = not reported.
+  sandbox?: boolean;
 }
 
 export interface BookHotelInput {
@@ -65,10 +69,16 @@ export async function prebookHotel(input: PrebookHotelInput): Promise<PrebookRes
       clientReference: input.clientReference,
     });
     const d = res.data;
+    const sandbox = d.sandbox ?? res.sandbox;
+    // Diagnostic (B6): surface the env that ACTUALLY created the Stripe
+    // PaymentIntent vs the key mode we resolved. A mismatch (e.g.
+    // keyMode=production but sandbox=true) is the Stripe /v1/elements 400.
     console.log(
       `[liteapi][booking][prebook] ${logLine({
         rateId: input.rateId,
         prebookId: d.prebookId,
+        keyMode: getEnv().mode,
+        sandbox: sandbox === undefined ? "unreported" : String(sandbox),
         elapsed_ms: Date.now() - startedAt,
         status: "success",
       })}`,
@@ -82,6 +92,7 @@ export async function prebookHotel(input: PrebookHotelInput): Promise<PrebookRes
       expiresAt: d.expiresAt,
       hotelId: d.hotelId,
       rateId: d.rateId,
+      sandbox,
     };
   } catch (err) {
     // Pre-payment: safe to translate normally. Never BOOK_FAILED_AFTER_PAYMENT.

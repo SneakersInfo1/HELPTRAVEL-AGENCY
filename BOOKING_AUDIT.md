@@ -252,6 +252,14 @@ booking:idem:<idempotencyKey>  -> cached route response                  TTL = 3
 > };
 > new LiteAPIPayment(liteAPIConfig).handlePayment();
 > ```
+>
+> **REFINEMENT (B6, 2026-05-19):** `publicKey` ("live"/"sandbox") selects which
+> Stripe **publishable key** `/config` returns; the prebook `secretKey` is the
+> Stripe **client secret**. Stripe 400s on `/v1/elements` if the two come from
+> different modes. So `publicKey` MUST equal the environment the prebook ran
+> in. `getLiteApiWidgetEnv()` therefore now derives from `getEnv().mode` (the
+> resolved LiteAPI key prefix used by prebook) instead of the standalone
+> `NEXT_PUBLIC_LITEAPI_ENV` var — they could drift. See BOOKING_BLOCKERS B6.
 
 Fetched **`https://payment-wrapper.liteapi.travel/dist/liteAPIPayment.js?v=a1`** →
 **HTTP 200**, 2322 B, `application/javascript`. (The URL in `payments.ts:24`,

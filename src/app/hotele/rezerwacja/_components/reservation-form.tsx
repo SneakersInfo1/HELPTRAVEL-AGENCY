@@ -100,6 +100,9 @@ export function ReservationForm({
     sessionId: string;
     amount: number;
     currency: string;
+    // B6: env flag bound to THIS prebook (from /api/booking/prebook). Used for
+    // the widget publicKey so it can never mismatch the secretKey's mode.
+    widgetEnv: "live" | "sandbox";
   } | null>(null);
   // Lazily generated in onSubmit (never during render — keeps the component
   // pure for the React Compiler / react-hooks/purity).
@@ -149,6 +152,7 @@ export function ReservationForm({
       const data = (await res.json()) as {
         sessionId?: string;
         secretKey?: string;
+        widgetEnv?: "live" | "sandbox";
         message?: string;
         rateSummary?: { price?: number; currency?: string };
       };
@@ -169,6 +173,9 @@ export function ReservationForm({
         sessionId: data.sessionId,
         amount: data.rateSummary?.price ?? price ?? 0,
         currency: data.rateSummary?.currency ?? currency,
+        // Prefer the env bound to this prebook; fall back to the server prop
+        // (B6 key-mode heuristic) if the API didn't include it.
+        widgetEnv: data.widgetEnv ?? (publicKey === "live" ? "live" : "sandbox"),
       });
     } catch {
       setError(
@@ -238,7 +245,9 @@ export function ReservationForm({
         prebook.sessionId,
       )}`;
       new window.LiteAPIPayment({
-        publicKey,
+        // B6: env bound to THIS prebook — same response as secretKey, so the
+        // Stripe publishable key and client secret are always the same mode.
+        publicKey: prebook.widgetEnv,
         secretKey: prebook.secretKey,
         returnUrl,
         targetElement: "#payment-element",
@@ -256,7 +265,7 @@ export function ReservationForm({
       cancelled = true;
       if (rafHandle) cancelAnimationFrame(rafHandle);
     };
-  }, [pay, publicKey, returnBaseUrl]);
+  }, [pay, returnBaseUrl]);
 
   if (step === "paying") {
     return (
