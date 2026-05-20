@@ -12,6 +12,7 @@ import { z } from "zod";
 import { isBookingLive } from "@/lib/config/featureFlags";
 import {
   BookingError,
+  LiteApiError,
   LiteApiGuestSchema,
   LiteApiHolderSchema,
   prebookHotel,
@@ -144,8 +145,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responseBody, { status: 200 });
   } catch (err) {
     if (err instanceof BookingError) {
+      // Surface the underlying LiteAPI HTTP status + internal code in the
+      // response so the operator can diagnose 503s straight from the browser
+      // DevTools (Network → response body) — no Vercel log dive needed.
+      // No secrets / no PII: just status code + our internal taxonomy label.
+      const cause = err.cause;
+      const debug =
+        cause instanceof LiteApiError
+          ? { liteApiStatus: cause.status, liteApiCode: cause.internalCode }
+          : undefined;
       return NextResponse.json(
-        { error: err.code, message: err.userMessagePl },
+        {
+          error: err.code,
+          message: err.userMessagePl,
+          ...(debug ? { debug } : {}),
+        },
         { status: err.httpStatus },
       );
     }
