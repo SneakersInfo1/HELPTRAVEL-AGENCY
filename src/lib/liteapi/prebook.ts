@@ -31,6 +31,12 @@ export async function prebook(input: PrebookInput): Promise<LiteApiPrebookRespon
     body,
     schema: LiteApiPrebookResponseSchema,
     timeoutMs: 60_000,
-    retries: 1, // do NOT retry blindly — caller persists prebook record before this call
+    // One free retry for transient failures only (5xx / 408 / 425 / network /
+    // timeout — see RETRYABLE_STATUS in client.ts). Deterministic errors
+    // (401/403/409/410/422/429) are NOT retried — they would fail again.
+    // LiteAPI prebook is idempotent within the rate TTL with the same
+    // clientReference, so a duplicate attempt is safe; we only ever persist
+    // the successful response.
+    retries: 2,
   });
 }
