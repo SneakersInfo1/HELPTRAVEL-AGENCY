@@ -298,3 +298,53 @@ video {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+ * LiteAPI Payment widget — submit CTA promotion.
+ *
+ * The wrapper renders its `submitButton.text` (we pass "Zapłać teraz") as
+ * a low-contrast text element that users mistake for a label, not a CTA.
+ * We promote the widget's submit <button> visually to match the rest of
+ * helptravel.pl's primary actions (emerald-600, full-width, padded,
+ * hover/active/disabled states) without touching the widget's behaviour.
+ *
+ * Scope: `#payment-element` is the container we hand to the LiteAPI
+ * widget — this rule never reaches anything else. Wallet buttons
+ * (Apple/Google Pay) live inside Stripe iframes and are unaffected.
+ * `!important` is necessary because the wrapper inlines its own colours.
+ * ───────────────────────────────────────────────────────────────────── */
+#payment-element button[type="submit"] {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  min-height: 48px;
+  padding: 0.75rem 1.25rem;
+  background-color: rgb(5 150 105) !important; /* emerald-600 */
+  color: rgb(255 255 255) !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  text-align: center;
+  border-radius: 0.5rem;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition:
+    background-color 150ms ease,
+    transform 80ms ease;
+}
+#payment-element button[type="submit"]:hover:not(:disabled) {
+  background-color: rgb(4 120 87) !important; /* emerald-700 */
+}
+#payment-element button[type="submit"]:active:not(:disabled) {
+  transform: translateY(1px);
+}
+#payment-element button[type="submit"]:focus-visible {
+  outline: 2px solid rgb(16 185 129); /* emerald-500 */
+  outline-offset: 2px;
+}
+#payment-element button[type="submit"]:disabled {
+  background-color: rgb(5 150 105 / 0.6) !important;
+  cursor: not-allowed;
+}
+
