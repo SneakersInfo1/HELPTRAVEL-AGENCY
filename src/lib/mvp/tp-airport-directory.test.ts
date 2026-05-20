@@ -1,28 +1,22 @@
-import { existsSync } from "node:fs";
-import { execFileSync } from "node:child_process";
 import path from "node:path";
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { before } from "node:test";
 
 import {
   nearestFlightableAirport,
   resolveAirportFromTPDirectory,
 } from "./tp-airport-directory";
+import { ensureTpAirportsCache } from "./tp-airport-downloader";
 
+// Cache lives at <cwd>/data/.cache; `pnpm test` runs from project root.
+// The previous setup spawned a `pnpm.cmd` subprocess which failed on Windows
+// + Node 22.12+ (CVE-2024-27980 .cmd spawn restrictions). Now we call the
+// downloader directly — no child process, no shell, no platform branching.
 const CACHE_ROOT = path.resolve(process.cwd(), "data", ".cache");
-const REQUIRED_CACHE_FILES = ["tp-cities.json", "tp-airports.json"];
 
-function ensureTravelpayoutsDirectoryCache() {
-  const missing = REQUIRED_CACHE_FILES.some((file) => !existsSync(path.join(CACHE_ROOT, file)));
-  if (!missing) return;
-
-  execFileSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", ["tsx", "scripts/download-tp-airports.ts"], {
-    stdio: "inherit",
-    cwd: process.cwd(),
-  });
-}
-
-ensureTravelpayoutsDirectoryCache();
+before(async () => {
+  await ensureTpAirportsCache({ cacheDir: CACHE_ROOT, quiet: true });
+});
 
 test("resolveAirportFromTPDirectory resolves Madrid in Spain to MAD", async () => {
   const result = await resolveAirportFromTPDirectory("Madrid", "ES");
