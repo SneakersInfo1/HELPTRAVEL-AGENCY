@@ -1,29 +1,19 @@
 "use client";
 
-// Guest-data form → POST /api/booking/prebook → LiteAPI Payment SDK widget.
-// Plain React + native inputs, matching the existing booking-widget.tsx style
-// (the site has no form library; per reuse/minimum-surface we do NOT introduce
-// one). Client validation reuses the zod schemas from @/lib/liteapi.
+// Guest-data form (holder required, co-travelers optional) → POST
+// /api/booking/prebook → hand-off to <PaymentSlot/>, which owns the LiteAPI
+// Payment widget (B5 race fix + B6 env binding + skeleton-tiles fix).
 //
-// Flow (Q1 confirmed redirect model, BOOKING_AUDIT.md §8):
-//   submit → prebook → {sessionId, secretKey} → load widget →
-//   new LiteAPIPayment({ ..., returnUrl: <site>/hotele/rezerwacja/return?sid }) →
-//   user pays → LiteAPI redirects browser to that returnUrl.
+// Layout per docs/superpowers/specs/2026-05-20-booking-ui-polish-design.md.
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { LiteApiGuestSchema, LiteApiHolderSchema } from "@/lib/liteapi";
 
-const WIDGET_SRC = "https://payment-wrapper.liteapi.travel/dist/liteAPIPayment.js?v=a1";
-
-interface LiteApiPaymentCtor {
-  new (config: Record<string, unknown>): { handlePayment: () => Promise<void> };
-}
-declare global {
-  interface Window {
-    LiteAPIPayment?: LiteApiPaymentCtor;
-  }
-}
+import { OptionalGuestsAccordion } from "./optional-guests-accordion";
+import { OrderSummaryBanner } from "./order-summary-banner";
+import { PaymentSlot, type PaymentSlotPrebook } from "./payment-slot";
+import { TrustStrip } from "./trust-strip";
 
 interface Props {
   offerId: string;
@@ -40,33 +30,13 @@ interface Props {
 }
 
 const inputCls =
-  "w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none";
+  "w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-neutral-50";
 const labelCls = "mb-1 block text-[11px] font-medium uppercase text-neutral-500";
 
 function freshIdemKey(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : `idem-${Date.now()}-${Math.random()}`;
-}
-
-function loadWidgetScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.LiteAPIPayment) return resolve();
-    const existing = document.querySelector<HTMLScriptElement>(
-      `script[src="${WIDGET_SRC}"]`,
-    );
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("widget script failed")));
-      return;
-    }
-    const s = document.createElement("script");
-    s.src = WIDGET_SRC;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("widget script failed"));
-    document.head.appendChild(s);
-  });
 }
 
 export function ReservationForm({
@@ -82,50 +52,58 @@ export function ReservationForm({
   publicKey,
   returnBaseUrl,
 }: Props) {
+  const occupancy = Math.max(1, adults);
   const [holder, setHolder] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
   });
-  const [guests, setGuests] = useState(
-    Array.from({ length: Math.max(1, adults) }, () => ({ firstName: "", lastName: "" })),
+  // Co-travelers (guests #2..#occupancy) — entirely OPTIONAL. A solo trip in
+  // a multi-occupancy room is valid; only fully-filled rows are sent.
+  const [coGuests, setCoGuests] = useState(
+    Array.from({ length: Math.max(0, occupancy - 1) }, () => ({
+      firstName: "",
+      lastName: "",
+    })),
   );
   const [step, setStep] = useState<"form" | "submitting" | "paying">("form");
   const [error, setError] = useState<string | null>(null);
-  // Prebook result that the payment widget mounts from. Set once prebook
-  // succeeds; consumed by the widget effect below (NOT inside onSubmit — B5).
-  const [pay, setPay] = useState<{
-    secretKey: string;
-    sessionId: string;
-    amount: number;
-    currency: string;
-    // B6: env flag bound to THIS prebook (from /api/booking/prebook). Used for
-    // the widget publicKey so it can never mismatch the secretKey's mode.
-    widgetEnv: "live" | "sandbox";
-  } | null>(null);
+  const [pay, setPay] = useState<PaymentSlotPrebook | null>(null);
   // Lazily generated in onSubmit (never during render — keeps the component
   // pure for the React Compiler / react-hooks/purity).
   const idemKey = useRef<string>("");
 
-  const setGuest = (i: number, field: "firstName" | "lastName", v: string) =>
-    setGuests((g) => g.map((row, idx) => (idx === i ? { ...row, [field]: v } : row)));
+  const setCoGuest = (i: number, field: "firstName" | "lastName", v: string) =>
+    setCoGuests((g) =>
+      g.map((row, idx) => (idx === i ? { ...row, [field]: v } : row)),
+    );
 
   function validate(): string | null {
     const h = LiteApiHolderSchema.safeParse(holder);
-    if (!h.success) return "Uzupełnij poprawnie dane osoby rezerwującej (imię, nazwisko, e-mail, telefon).";
-    const gs = guests.map((g, i) => ({ occupancyNumber: i + 1, ...g }));
-    for (const g of gs) {
-      if (!LiteApiGuestSchema.safeParse(g).success) {
-        return "Uzupełnij imię i nazwisko każdego gościa.";
-      }
+    if (!h.success)
+      return "Uzupełnij poprawnie dane osoby rezerwującej (imię, nazwisko, e-mail, telefon).";
+    for (let i = 0; i < coGuests.length; i++) {
+      const row = coGuests[i];
+      const a = row?.firstName.trim() ?? "";
+      const b = row?.lastName.trim() ?? "";
+      if (!a && !b) continue; // empty row = OK (skipped on submit)
+      if (!a || !b)
+        return `Uzupełnij oba pola gościa ${i + 2} lub wyczyść oba pola.`;
+      const parsed = LiteApiGuestSchema.safeParse({
+        occupancyNumber: i + 2,
+        firstName: a,
+        lastName: b,
+      });
+      if (!parsed.success)
+        return `Uzupełnij imię i nazwisko gościa ${i + 2}.`;
     }
     return null;
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (step !== "form") return; // double-submit guard (Idempotency-Key also on backend)
+    if (step !== "form") return; // double-submit guard (Idempotency-Key on backend too)
     const v = validate();
     if (v) {
       setError(v);
@@ -135,6 +113,23 @@ export function ReservationForm({
     setError(null);
     setStep("submitting");
     try {
+      // guests[0] = holder (always); rows with both fields filled appended.
+      // Result length is between 1 and occupancy.
+      const guests = [
+        {
+          occupancyNumber: 1,
+          firstName: holder.firstName,
+          lastName: holder.lastName,
+        },
+        ...coGuests
+          .map((g, i) => ({
+            occupancyNumber: i + 2,
+            firstName: g.firstName.trim(),
+            lastName: g.lastName.trim(),
+          }))
+          .filter((g) => g.firstName && g.lastName),
+      ];
+
       const res = await fetch("/api/booking/prebook", {
         method: "POST",
         headers: {
@@ -146,7 +141,7 @@ export function ReservationForm({
           hotel: { name: hotelName, city: hotelCity },
           rate: { boardName: board, price, currency, checkin, checkout },
           holder,
-          guests: guests.map((g, i) => ({ occupancyNumber: i + 1, ...g })),
+          guests,
         }),
       });
       const data = (await res.json()) as {
@@ -159,14 +154,13 @@ export function ReservationForm({
       if (!res.ok || !data.sessionId || !data.secretKey) {
         // New attempt must use a fresh idempotency key.
         idemKey.current = freshIdemKey();
-        setError(data.message ?? "Nie udało się rozpocząć rezerwacji. Spróbuj ponownie.");
+        setError(
+          data.message ?? "Nie udało się rozpocząć rezerwacji. Spróbuj ponownie.",
+        );
         setStep("form");
         return;
       }
 
-      // Hand off to the widget effect. Init MUST happen from useEffect, after
-      // React commits the #payment-element node — running it here races the
-      // render on the cached-script path → Stripe IntegrationError (B5).
       setStep("paying");
       setPay({
         secretKey: data.secretKey,
@@ -185,112 +179,54 @@ export function ReservationForm({
     }
   }
 
-  // B5: widget init runs ONLY after (a) the SDK script is loaded and (b) the
-  // #payment-element node is committed to the DOM. The cached-script path made
-  // loadWidgetScript() resolve before React committed the "paying" branch, so
-  // Stripe had no node to mount → IntegrationError. rAF-poll the node, bounded.
-  useEffect(() => {
-    if (!pay) return;
-    const prebook = pay; // narrow for the nested async closure (TS)
-
-    let cancelled = false;
-    let rafHandle = 0;
-
-    const failToForm = () => {
-      if (cancelled) return;
-      setError(
-        "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
-      );
-      setStep("form");
-      setPay(null);
-    };
-
-    async function initWidget() {
-      try {
-        await loadWidgetScript();
-      } catch {
-        failToForm();
-        return;
-      }
-      if (cancelled) return;
-
-      let retries = 0;
-      const MAX_RETRIES = 10;
-      while (!document.getElementById("payment-element") && retries < MAX_RETRIES) {
-        retries++;
-        await new Promise<void>((r) => {
-          rafHandle = requestAnimationFrame(() => r());
-        });
-        if (cancelled) return;
-      }
-
-      if (!document.getElementById("payment-element")) {
-        console.error(
-          "[booking][widget] #payment-element never mounted after",
-          retries,
-          "retries — aborting widget init",
-        );
-        failToForm();
-        return;
-      }
-      if (!window.LiteAPIPayment) {
-        console.error(
-          "[booking][widget] LiteAPIPayment global unavailable after script load",
-        );
-        failToForm();
-        return;
-      }
-
-      const returnUrl = `${returnBaseUrl}/hotele/rezerwacja/return?sid=${encodeURIComponent(
-        prebook.sessionId,
-      )}`;
-      new window.LiteAPIPayment({
-        // B6: env bound to THIS prebook — same response as secretKey, so the
-        // Stripe publishable key and client secret are always the same mode.
-        publicKey: prebook.widgetEnv,
-        secretKey: prebook.secretKey,
-        returnUrl,
-        targetElement: "#payment-element",
-        appearance: { theme: "flat" },
-        options: { business: { name: "helptravel.pl" } },
-        amount: prebook.amount,
-        currency: prebook.currency,
-        submitButton: { text: "Zapłać i zarezerwuj" },
-      }).handlePayment();
-    }
-
-    void initWidget();
-
-    return () => {
-      cancelled = true;
-      if (rafHandle) cancelAnimationFrame(rafHandle);
-    };
-  }, [pay, returnBaseUrl]);
-
-  if (step === "paying") {
+  // Paying view — widget owns the form; we render the banner above, the
+  // PaymentSlot in the middle, and the truthful trust strip below.
+  if (step === "paying" && pay) {
     return (
       <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6">
+        <OrderSummaryBanner
+          hotelName={hotelName}
+          hotelCity={hotelCity}
+          checkin={checkin}
+          checkout={checkout}
+          price={pay.amount}
+          currency={pay.currency}
+        />
         <h2 className="text-lg font-bold text-neutral-900">Płatność</h2>
-        <p className="mt-1 text-sm text-neutral-600">
-          Wprowadź dane karty w bezpiecznym formularzu. Po opłaceniu wrócisz tu z
-          potwierdzeniem.
+        <p className="mb-4 mt-1 text-sm text-neutral-600">
+          Wprowadź dane karty w bezpiecznym formularzu. Po opłaceniu wrócisz tu
+          z potwierdzeniem.
         </p>
-        <div id="payment-element" className="mt-4 min-h-[220px]">
-          <div className="animate-pulse space-y-3 motion-reduce:animate-none">
-            <div className="h-10 rounded bg-neutral-100" />
-            <div className="h-10 rounded bg-neutral-100" />
-            <div className="h-10 w-1/2 rounded bg-neutral-100" />
-          </div>
-        </div>
+        <PaymentSlot
+          prebook={pay}
+          returnBaseUrl={returnBaseUrl}
+          onMountFail={() => {
+            setError(
+              "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
+            );
+            setStep("form");
+            setPay(null);
+          }}
+        />
+        <TrustStrip />
       </div>
     );
   }
 
+  // Form view.
   return (
     <form
       onSubmit={onSubmit}
-      className="mt-6 space-y-6 rounded-2xl border border-neutral-200 bg-white p-6"
+      className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6"
     >
+      <OrderSummaryBanner
+        hotelName={hotelName}
+        hotelCity={hotelCity}
+        checkin={checkin}
+        checkout={checkout}
+        price={price}
+        currency={currency}
+      />
       <fieldset disabled={step === "submitting"} className="space-y-6">
         <div>
           <h2 className="text-lg font-bold text-neutral-900">Osoba rezerwująca</h2>
@@ -337,33 +273,12 @@ export function ReservationForm({
           </div>
         </div>
 
-        <div>
-          <h2 className="text-lg font-bold text-neutral-900">
-            Goście ({guests.length})
-          </h2>
-          <div className="mt-3 space-y-3">
-            {guests.map((g, i) => (
-              <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className={labelCls}>Imię gościa {i + 1}</label>
-                  <input
-                    className={inputCls}
-                    value={g.firstName}
-                    onChange={(e) => setGuest(i, "firstName", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Nazwisko gościa {i + 1}</label>
-                  <input
-                    className={inputCls}
-                    value={g.lastName}
-                    onChange={(e) => setGuest(i, "lastName", e.target.value)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <OptionalGuestsAccordion
+          occupancy={occupancy}
+          value={coGuests}
+          onChange={setCoGuest}
+          disabled={step === "submitting"}
+        />
 
         {error && (
           <p
@@ -383,11 +298,8 @@ export function ReservationForm({
             ? "Rezerwujemy pokój… To może potrwać do 30 sekund"
             : "Przejdź do płatności"}
         </button>
-        <p className="text-center text-[11px] text-neutral-400">
-          Płatność kartą obsługiwana przez bezpieczny system LiteAPI. Nie
-          przechowujemy danych karty.
-        </p>
       </fieldset>
+      <TrustStrip />
     </form>
   );
 }
