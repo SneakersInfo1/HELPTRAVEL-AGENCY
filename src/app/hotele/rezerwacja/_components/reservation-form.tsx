@@ -149,9 +149,18 @@ export function ReservationForm({
         secretKey?: string;
         widgetEnv?: "live" | "sandbox";
         message?: string;
+        error?: string;
+        debug?: { liteApiStatus?: number; liteApiCode?: string };
         rateSummary?: { price?: number; currency?: string };
       };
       if (!res.ok || !data.sessionId || !data.secretKey) {
+        // Operator-visible diagnostic: open DevTools → Console after a failed
+        // attempt and you see the underlying LiteAPI status + code immediately,
+        // without needing to dig through Vercel logs (B6/B7 plumbing).
+        console.error(
+          "[booking][prebook] failed",
+          { httpStatus: res.status, body: data },
+        );
         // New attempt must use a fresh idempotency key.
         idemKey.current = freshIdemKey();
         setError(
