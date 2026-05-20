@@ -17,6 +17,7 @@
 import { book } from "./book";
 import { BookFailedAfterPaymentError, BookingError, toBookingError } from "./booking-errors";
 import { getEnv } from "./client";
+import { LiteApiError } from "./errors";
 import { prebook } from "./prebook";
 import type { LiteApiBooking, LiteApiGuest, LiteApiHolder } from "./types";
 
@@ -61,6 +62,51 @@ function logLine(parts: Record<string, string | number | undefined>): string {
     .join(" ");
 }
 
+// Pull a short, log-safe snippet from a LiteAPI error body. The body is
+// already PII-redacted by client.ts. We prefer common shapes (`{error:{...}}`,
+// `{message:""}`, plain strings) and cap to 200 chars so log lines stay
+// readable.
+function summarizeLiteApiBody(body: unknown): string | undefined {
+  if (body === null || body === undefined) return undefined;
+  const clamp = (s: string) => (s.length > 200 ? `${s.slice(0, 200)}…` : s);
+  if (typeof body === "string") return clamp(body);
+  if (typeof body === "object") {
+    const obj = body as {
+      error?: { message?: string; code?: string } | string;
+      message?: string;
+    };
+    if (typeof obj.error === "object") {
+      const parts = [obj.error.code, obj.error.message].filter(Boolean).join(": ");
+      if (parts) return clamp(parts);
+    }
+    if (typeof obj.error === "string") return clamp(obj.error);
+    if (typeof obj.message === "string") return clamp(obj.message);
+    try {
+      return clamp(JSON.stringify(body));
+    } catch {
+      return "[unserializable]";
+    }
+  }
+  return clamp(String(body));
+}
+
+// Pre-formatted diagnostic fields for booking error logs — extracts the
+// underlying LiteAPI HTTP status, internal code, and short body snippet so
+// operators can see in Vercel logs WHY a prebook/book failed (e.g. 401 ⇒
+// LITEAPI_ENV/key misconfig vs 5xx ⇒ provider downtime vs 422 ⇒ data shape).
+function liteApiDiag(err: unknown): {
+  liteApiStatus?: number;
+  liteApiCode?: string;
+  liteApiBody?: string;
+} {
+  if (!(err instanceof LiteApiError)) return {};
+  return {
+    liteApiStatus: err.status,
+    liteApiCode: err.internalCode,
+    liteApiBody: summarizeLiteApiBody(err.body),
+  };
+}
+
 export async function prebookHotel(input: PrebookHotelInput): Promise<PrebookResult> {
   const startedAt = Date.now();
   try {
@@ -97,12 +143,18 @@ export async function prebookHotel(input: PrebookHotelInput): Promise<PrebookRes
   } catch (err) {
     // Pre-payment: safe to translate normally. Never BOOK_FAILED_AFTER_PAYMENT.
     const mapped = toBookingError(err);
+    const diag = liteApiDiag(err);
+    // Auth failures are almost always env misconfiguration (LITEAPI_ENV /
+    // wrong key prefix) — flag them so they stand out in Vercel logs.
+    const critical = diag.liteApiCode === "LITEAPI_AUTH";
     console.error(
-      `[liteapi][booking][prebook] ${logLine({
+      `[liteapi][booking][prebook]${critical ? " [CRITICAL]" : ""} ${logLine({
         rateId: input.rateId,
+        keyMode: getEnv().mode,
         elapsed_ms: Date.now() - startedAt,
         status: "error",
         code: mapped.code,
+        ...diag,
       })}`,
     );
     throw mapped;
@@ -138,8 +190,10 @@ export async function bookHotel(input: BookHotelInput): Promise<BookResult> {
       `[liteapi][booking][CRITICAL] book_failed_after_payment ${logLine({
         prebookId: input.prebookId,
         transactionId: input.transactionId,
+        keyMode: getEnv().mode,
         underlying_code: underlying.code,
         elapsed_ms: Date.now() - startedAt,
+        ...liteApiDiag(err),
       })} — manual recovery required`,
     );
     throw new BookFailedAfterPaymentError(
