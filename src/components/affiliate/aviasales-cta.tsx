@@ -1,21 +1,24 @@
 import { AffiliateDisclosure } from "./affiliate-disclosure";
-import { buildTravelpayoutsLink, getAffiliateConfig } from "@/lib/mvp/affiliate-config";
+import { buildAviasalesLink, getAffiliateConfig } from "@/lib/mvp/affiliate-config";
 
 interface AviasalesCtaProps {
   city: string;
-  country: string;
+  // `country` accepted for call-site compatibility but unused — Aviasales URL
+  // builder takes only origin context, not destination metadata.
+  country?: string;
   campaign?: string;
   flightHours?: number;
 }
 
-// Sekcja CTA prowadzaca do wyszukiwarki Aviasales (najwyzsza prowizja w portfolio Travelpayouts).
-// Bez znajomosci IATA destynacji — uzytkownik dokaczy reszte w Aviasales.
-export function AviasalesCta({ city, country, campaign = "destination", flightHours }: AviasalesCtaProps) {
+// CTA do wyszukiwarki Aviasales (jedyna surviving outbound integracja po Phase 1).
+// Aviasales otrzymuje origin_iata + marker; destynacja dokończona w Aviasales,
+// ponieważ ich publiczny URL nie przyjmuje czystego dest_iata bez dat.
+export function AviasalesCta({ city, campaign = "destination", flightHours }: AviasalesCtaProps) {
   const config = getAffiliateConfig();
-  const link = buildTravelpayoutsLink("aviasales", { campaign, destination: { city, country } });
+  const link = buildAviasalesLink({ campaign });
   const flightLine =
     typeof flightHours === "number"
-      ? `Zwykle okolo ${flightHours.toFixed(1)} h lotu z ${config.defaultOriginCity}.`
+      ? `Zwykle około ${flightHours.toFixed(1)} h lotu z ${config.defaultOriginCity}.`
       : `Wylot zwykle z ${config.defaultOriginCity}.`;
 
   return (
@@ -24,10 +27,10 @@ export function AviasalesCta({ city, country, campaign = "destination", flightHo
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Loty z Polski</p>
           <h3 className="mt-1 font-display text-2xl text-emerald-950">
-            Sprawdz aktualne ceny lotow do {city}
+            Sprawdź aktualne ceny lotów do {city}
           </h3>
           <p className="mt-2 text-sm leading-7 text-emerald-900/82">
-            Porownaj oferty linii i tani lotow w Aviasales. {flightLine} Bez doplaty za korzystanie z porownywarki.
+            Porównaj oferty linii i tani lotów w Aviasales. {flightLine} Bez dopłaty za korzystanie z porownywarki.
           </p>
         </div>
         <AffiliateDisclosure inline />
@@ -36,10 +39,10 @@ export function AviasalesCta({ city, country, campaign = "destination", flightHo
         <a
           href={link}
           target="_blank"
-          rel="noopener nofollow sponsored"
+          rel="noopener nofollow sponsored noreferrer"
           className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
         >
-          Sprawdz loty w Aviasales
+          Sprawdź loty w Aviasales
         </a>
       </div>
     </div>

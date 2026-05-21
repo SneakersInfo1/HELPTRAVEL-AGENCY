@@ -47,3 +47,7 @@ CLAUDE.md
 next-env.d.ts
 
 .vercel
+
+
+# build artifacts
+/data/.cache/

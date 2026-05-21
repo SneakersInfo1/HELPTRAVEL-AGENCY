@@ -10,16 +10,22 @@ import type { DestinationProfile } from "@/lib/mvp/types";
 
 const siteUrl = getSiteUrl();
 
+// Homepage perf: ISR. Without this the page does `await Promise.all(6×
+// resolveDestinationMedia)` (6 blocking Pexels calls) on every request,
+// which dominated TTFB and pushed LCP to ~7s. Serving from the static
+// cache and regenerating hourly removes Pexels from the critical path.
+export const revalidate = 3600;
+
 export function getHomeMetadata(locale: SiteLocale): Metadata {
   const isEnglish = locale === "en";
 
   return {
     title: isEnglish
       ? "HelpTravel - Flight + hotel and full trip plan in 3 minutes | Free"
-      : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zl",
+      : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zł",
     description: isEnglish
       ? "Plan a full trip in 3 minutes: flight, hotel and a real day-by-day plan. 22 airports across Poland and Europe. No signup. Free to use - you only pay partners when you book."
-      : "Zaplanuj wyjazd w 3 minuty: lot, hotel i gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe - placisz tylko za rezerwacje u partnerow.",
+      : "Zaplanuj wyjazd w 3 minuty: lot, hotel i gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe - płacisz tylko za rezerwacje u partnerów.",
     alternates: {
       canonical: locale === "en" ? "/en" : "/",
       languages: {
@@ -33,7 +39,7 @@ export function getHomeMetadata(locale: SiteLocale): Metadata {
         : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty",
       description: isEnglish
         ? "Plan a full trip in 3 minutes: flight, hotel and a real day-by-day plan. 22 airports PL+EU. No signup. 100% free."
-        : "Zaplanuj caly wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 100% darmowe.",
+        : "Zaplanuj cały wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 100% darmowe.",
       url: locale === "en" ? `${siteUrl}/en` : siteUrl,
       locale: locale === "en" ? "en_US" : "pl_PL",
       alternateLocale: locale === "en" ? ["pl_PL"] : ["en_US"],

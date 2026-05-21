@@ -1,33 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+// @deprecated Sesja C — /planner has been removed. The unified results page
+// is /hotele/szukaj which composes hotels (LiteAPI) + flights (Travelpayouts)
+// directly. This endpoint is preserved as 410 Gone for the small number of
+// external bookmarks that may still exist.
 
-import { runStandard } from "@/lib/mvp/service";
-import { attachSessionCookie, resolveSessionId, SESSION_COOKIE_NAME } from "@/lib/mvp/session";
-import { MAX_TRIP_DAYS, MIN_TRIP_DAYS } from "@/lib/mvp/trip-limits";
+import { NextResponse } from "next/server";
 
-const StandardBodySchema = z.object({
-  originCity: z.string().min(2).max(100),
-  destinationHint: z.string().min(2).max(120),
-  travelers: z.number().min(1).max(8).default(2),
-  budgetMaxPln: z.number().min(600).max(20000),
-  durationDays: z.number().min(MIN_TRIP_DAYS).max(MAX_TRIP_DAYS),
-  departureMonth: z.number().min(1).max(12).optional(),
-  style: z.string().max(120).optional(),
-});
+export const runtime = "nodejs";
 
-export async function POST(request: NextRequest) {
-  try {
-    const payload = StandardBodySchema.parse(await request.json());
-    const resolved = resolveSessionId(request.cookies.get(SESSION_COOKIE_NAME)?.value);
-    const data = await runStandard(payload, resolved.sessionId);
+export async function POST() {
+  return NextResponse.json(
+    {
+      error: "endpoint_gone",
+      message:
+        "Endpoint /api/standard został wycofany. Użyj /hotele/szukaj (unified hotels + flights).",
+      replacement: "/hotele/szukaj",
+    },
+    { status: 410 },
+  );
+}
 
-    const response = NextResponse.json(data);
-    if (resolved.isNew) {
-      attachSessionCookie(response, resolved.sessionId);
-    }
-    return response;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Standard search failed";
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+export async function GET() {
+  return NextResponse.json(
+    {
+      error: "endpoint_gone",
+      message:
+        "Endpoint /api/standard został wycofany. Użyj /hotele/szukaj (unified hotels + flights).",
+      replacement: "/hotele/szukaj",
+    },
+    { status: 410 },
+  );
 }

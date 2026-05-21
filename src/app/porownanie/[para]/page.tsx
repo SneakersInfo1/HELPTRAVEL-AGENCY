@@ -7,8 +7,6 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { comparisonPairs, getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 import { getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
-import { getAffiliateConfig } from "@/lib/mvp/affiliate-config";
-import { Stay22Widget } from "@/components/affiliate/stay22-widget";
 import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
@@ -58,29 +56,29 @@ function buildVerdict(a: DestinationProfile, b: DestinationProfile): { title: st
   if (cheaper) {
     const other = cheaper === a ? b : a;
     verdicts.push({
-      title: "Budzet",
-      body: `${cheaper.city} wypada zwykle taniej niz ${other.city} — przy podobnym briefie latwiej obronic kierunek tanszy.`,
+      title: "Budżet",
+      body: `${cheaper.city} wypada zwykle taniej niż ${other.city} — przy podobnym planie łatwiej obronić kierunek tańszy.`,
     });
   } else {
     verdicts.push({
-      title: "Budzet",
-      body: `${a.city} i ${b.city} graja w podobnym pulapie cenowym, wiec budzet rzadko jest decydujacy.`,
+      title: "Budżet",
+      body: `${a.city} i ${b.city} grają w podobnym pułapie cenowym, więc budżet rzadko jest decydujący.`,
     });
   }
 
   const beach = pickWinner(a, b, "beachScore");
   if (beach) {
     verdicts.push({
-      title: "Plaza i klimat morski",
-      body: `${beach.city} ma mocniejszy profil plazowy — to lepszy wybor pod reset nad morzem.`,
+      title: "Plaża i klimat morski",
+      body: `${beach.city} ma mocniejszy profil plażowy — to lepszy wybór pod reset nad morzem.`,
     });
   }
 
   const city = pickWinner(a, b, "cityScore");
   if (city) {
     verdicts.push({
-      title: "City break i tlo miejskie",
-      body: `${city.city} jest mocniejszy jako klasyczny city break z gestszym zwiedzaniem i klimatem ulicznym.`,
+      title: "City break i tło miejskie",
+      body: `${city.city} jest mocniejszy jako klasyczny city break z gęstszym zwiedzaniem i klimatem ulicznym.`,
     });
   }
 
@@ -88,7 +86,7 @@ function buildVerdict(a: DestinationProfile, b: DestinationProfile): { title: st
   if (access) {
     verdicts.push({
       title: "Dolot z Polski",
-      body: `${access.city} ma latwiejsza i bardziej regularna logistyke z Polski — sensowny wybor pod krotki wyjazd.`,
+      body: `${access.city} ma łatwiejszą i bardziej regularną logistykę z Polski — sensowny wybór pod krótki wyjazd.`,
     });
   }
 
@@ -98,18 +96,18 @@ function buildVerdict(a: DestinationProfile, b: DestinationProfile): { title: st
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { para } = await params;
   const pair = getComparisonPairBySlug(para);
-  if (!pair) return { title: "Porownanie kierunkow" };
+  if (!pair) return { title: "Porównanie kierunków" };
   const ga = getDestinationGuideBySlug(pair.a);
   const gb = getDestinationGuideBySlug(pair.b);
-  if (!ga || !gb) return { title: "Porownanie kierunkow" };
+  if (!ga || !gb) return { title: "Porównanie kierunków" };
 
   return {
-    title: `${ga.destination.city} czy ${gb.destination.city}? Porownanie pod krotki wyjazd`,
+    title: `${ga.destination.city} czy ${gb.destination.city}? Porównanie pod krótki wyjazd`,
     description: `${ga.destination.city} kontra ${gb.destination.city}: pogoda, koszty, dolot z Polski i charakter wyjazdu. ${pair.intent}.`,
     alternates: { canonical: `/porownanie/${pair.slug}` },
     openGraph: {
-      title: `${ga.destination.city} vs ${gb.destination.city} — porownanie HelpTravel`,
-      description: `Konkretne porownanie ${ga.destination.city} i ${gb.destination.city} pod realna decyzje wyjazdowa.`,
+      title: `${ga.destination.city} vs ${gb.destination.city} — porównanie HelpTravel`,
+      description: `Konkretne porównanie ${ga.destination.city} i ${gb.destination.city} pod realną decyzję wyjazdową.`,
       url: `${getSiteUrl()}/porownanie/${pair.slug}`,
       type: "article",
     },
@@ -128,14 +126,13 @@ export default async function ComparisonPage({ params }: PageProps) {
   const b = gb.destination;
   const verdicts = buildVerdict(a, b);
   const baseUrl = getSiteUrl();
-  const config = getAffiliateConfig();
 
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "Article",
-        headline: `${a.city} czy ${b.city}? Porownanie pod krotki wyjazd`,
+        headline: `${a.city} czy ${b.city}? Porównanie pod krótki wyjazd`,
         description: pair.intent,
         url: `${baseUrl}/porownanie/${pair.slug}`,
         inLanguage: "pl-PL",
@@ -171,18 +168,18 @@ export default async function ComparisonPage({ params }: PageProps) {
       bv: `~${b.typicalFlightHoursFromPL.toFixed(1)} h`,
     },
     {
-      label: "Srednia roczna temperatura",
+      label: "Średnia roczna temperatura",
       av: `${avgYear(a.avgTempByMonth)}°C`,
       bv: `${avgYear(b.avgTempByMonth)}°C`,
     },
     { label: "Lato (cze-sie)", av: `${summerAvg(a.avgTempByMonth)}°C`, bv: `${summerAvg(b.avgTempByMonth)}°C` },
     { label: "Zima (gru-lut)", av: `${winterAvg(a.avgTempByMonth)}°C`, bv: `${winterAvg(b.avgTempByMonth)}°C` },
     {
-      label: "Budzet 2 os / 4 dni",
+      label: "Budżet 2 os. / 4 dni",
       av: `~${budget(a).toLocaleString("pl-PL")} PLN`,
       bv: `~${budget(b).toLocaleString("pl-PL")} PLN`,
     },
-    { label: "Profil plazowy", av: `${Math.round(a.beachScore * 100)}/100`, bv: `${Math.round(b.beachScore * 100)}/100` },
+    { label: "Profil plażowy", av: `${Math.round(a.beachScore * 100)}/100`, bv: `${Math.round(b.beachScore * 100)}/100` },
     { label: "City break", av: `${Math.round(a.cityScore * 100)}/100`, bv: `${Math.round(b.cityScore * 100)}/100` },
     {
       label: "Zwiedzanie",
@@ -190,7 +187,7 @@ export default async function ComparisonPage({ params }: PageProps) {
       bv: `${Math.round(b.sightseeingScore * 100)}/100`,
     },
     {
-      label: "Dolot/dostepnosc",
+      label: "Dolot/dostępność",
       av: `${Math.round(a.accessScore * 100)}/100`,
       bv: `${Math.round(b.accessScore * 100)}/100`,
     },
@@ -210,9 +207,9 @@ export default async function ComparisonPage({ params }: PageProps) {
             { label: `${a.city} vs ${b.city}` },
           ]}
         />
-        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Porownanie kierunkow</p>
+        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Porównanie kierunków</p>
         <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[0.95] text-emerald-950">
-          {a.city} czy {b.city}? Porownanie pod realna decyzje wyjazdowa.
+          {a.city} czy {b.city}? Porównanie pod realną decyzję wyjazdową.
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{pair.intent}.</p>
       </section>
@@ -263,44 +260,60 @@ export default async function ComparisonPage({ params }: PageProps) {
                 href={`/kierunki/${dest.slug}`}
                 className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-800"
               >
-                Pelny przewodnik
+                Pełny przewodnik
               </Link>
               <Link
-                href={`/planner?destination=${encodeURIComponent(dest.city)}`}
+                href={`/hotele/szukaj?${new URLSearchParams({
+                  destination: dest.city,
+                  country: dest.country,
+                }).toString()}`}
                 className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
               >
-                Zaplanuj wyjazd
+                Sprawdź hotele i loty
               </Link>
             </div>
           </article>
         ))}
       </section>
 
+      {/* Per master spec section 2: 2-CTA per destination — internal hotele + Aviasales. */}
       <section className="grid gap-5 lg:grid-cols-2">
         {[
           { dest: a, campaign: `compare-${pair.slug}-a` },
           { dest: b, campaign: `compare-${pair.slug}-b` },
-        ].map(({ dest, campaign }) => (
-          <div key={dest.slug} className="flex flex-col gap-4">
-            <Stay22Widget
-              city={dest.city}
-              country={dest.country}
-              aid={config.stay22Aid}
-              campaign={campaign}
-              height={360}
-            />
-            <AviasalesCta
-              city={dest.city}
-              country={dest.country}
-              campaign={campaign}
-              flightHours={dest.typicalFlightHoursFromPL}
-            />
-          </div>
-        ))}
+        ].map(({ dest, campaign }) => {
+          const hotelHref = `/hotele/szukaj?${new URLSearchParams({
+            destination: dest.city,
+            country: dest.country,
+          }).toString()}`;
+          return (
+            <div key={dest.slug} className="flex flex-col gap-4">
+              <article className="rounded-[1.6rem] border border-emerald-900/10 bg-emerald-700 p-5 text-white">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">Hotele</p>
+                <h3 className="mt-1 font-display text-2xl">Konkretne ceny dla {dest.city}</h3>
+                <p className="mt-2 text-sm leading-7 text-emerald-50/85">
+                  Sprawdź ceny noclegów w PLN dla swoich dat. Bez wychodzenia ze strony.
+                </p>
+                <Link
+                  href={hotelHref}
+                  className="mt-4 inline-flex w-fit rounded-full bg-white px-5 py-2.5 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100"
+                >
+                  Zobacz hotele w {dest.city}
+                </Link>
+              </article>
+              <AviasalesCta
+                city={dest.city}
+                country={dest.country}
+                campaign={campaign}
+                flightHours={dest.typicalFlightHoursFromPL}
+              />
+            </div>
+          );
+        })}
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-2xl text-emerald-950">Inne porownania</h2>
+        <h2 className="font-display text-2xl text-emerald-950">Inne porównania</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {comparisonPairs
             .filter((p) => p.slug !== pair.slug)

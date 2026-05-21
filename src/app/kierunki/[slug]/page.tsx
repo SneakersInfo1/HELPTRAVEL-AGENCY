@@ -7,10 +7,8 @@ import { DestinationGuideCard } from "@/components/publisher/destination-guide-c
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
-import { PartnerPlacementSection } from "@/components/site/partner-placement-section";
 import { LocalizedLink } from "@/components/site/localized-link";
-import { getAffiliateBrandLabel } from "@/lib/mvp/affiliate-brand";
-import { buildAffiliateLinksWithContext } from "@/lib/mvp/affiliate-links";
+import { buildAviasalesLink } from "@/lib/mvp/affiliate-config";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
   buildLocalizedAvoidNotes,
@@ -28,8 +26,6 @@ import {
   getSimilarDestinations,
 } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
-import { buildRedirectHref } from "@/lib/mvp/providers";
-import { buildPartnerPlacementCards } from "@/lib/mvp/partner-placements";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib/mvp/travel-dates";
 
@@ -157,77 +153,25 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     "pl",
   );
   const winningScenarios = buildLocalizedWinningScenarios(guide, "pl");
-  const commercialLinks = buildAffiliateLinksWithContext({
-    city: guide.destination.city,
-    country: guide.destination.country,
-    originCity: "Warszawa",
-    departureDate: defaultStartDate,
-    checkInDate: defaultStartDate,
-    checkOutDate: defaultCheckOutDate,
-    passengers: 2,
-    rooms: 1,
-  });
-  const stayPartner = getAffiliateBrandLabel(commercialLinks.stays, "Hotels.com");
-  const flightPartner = getAffiliateBrandLabel(commercialLinks.flights, "Partner lotniczy");
-  const carPartner = getAffiliateBrandLabel(commercialLinks.cars, "Partner aut");
-  const destinationPlannerHref = `/planner?${new URLSearchParams({
-    mode: "standard",
-    q: guide.destination.city,
+  const destinationSearchHref = `/hotele/szukaj?${new URLSearchParams({
     destination: guide.destination.city,
+    country: guide.destination.country,
     origin: "Warszawa",
-    startDate: defaultStartDate,
-    endDate: defaultCheckOutDate,
-    nights: String(defaultNights),
-    travelers: "2",
-    budget: String(budget.max),
+    checkin: defaultStartDate,
+    checkout: defaultCheckOutDate,
+    adults: "2",
+    rooms: "1",
   }).toString()}`;
-  const stayRedirectHref = buildRedirectHref({
-    providerKey: "stays",
-    targetUrl: commercialLinks.stays,
-    city: guide.destination.city,
+  // Phase 1 affiliate model: hotels are internal, flights via Aviasales.
+  const internalHotelsHref = `/hotele/szukaj?${new URLSearchParams({
+    destination: guide.destination.city,
     country: guide.destination.country,
-    source: "destination_page_stays",
-  });
-  const flightRedirectHref = buildRedirectHref({
-    providerKey: "flights",
-    targetUrl: commercialLinks.flights,
-    city: guide.destination.city,
-    country: guide.destination.country,
-    source: "destination_page_flights",
-  });
-  const activityRedirectHref = buildRedirectHref({
-    providerKey: "attractions",
-    targetUrl: commercialLinks.attractions,
-    city: guide.destination.city,
-    country: guide.destination.country,
-    source: "destination_page_activities",
-  });
-  const carRedirectHref = buildRedirectHref({
-    providerKey: "cars",
-    targetUrl: commercialLinks.cars,
-    city: guide.destination.city,
-    country: guide.destination.country,
-    source: "destination_page_cars",
-  });
-  const partnerPlacementCards = buildPartnerPlacementCards({
-    city: guide.destination.city,
-    country: guide.destination.country,
-    originCity: "Warszawa",
-    departureDate: defaultStartDate,
-    checkInDate: defaultStartDate,
-    checkOutDate: defaultCheckOutDate,
-    passengers: 2,
-    rooms: 1,
-    locale: "pl",
-  }).map((card, index) =>
-    index === 0
-      ? { ...card, href: stayRedirectHref }
-      : index === 1
-        ? { ...card, href: flightRedirectHref }
-        : index === 2
-          ? { ...card, href: activityRedirectHref }
-          : { ...card, href: carRedirectHref },
-  );
+    checkin: defaultStartDate,
+    checkout: defaultCheckOutDate,
+    adults: "2",
+    rooms: "1",
+  }).toString()}`;
+  const flightAffiliateHref = buildAviasalesLink({ campaign: `kierunki_${guide.destination.slug}` });
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -349,7 +293,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           `${guide.destination.city} z Polski`,
           `${guide.destination.typicalFlightHoursFromPL.toFixed(1)} h lotu`,
           localizedGuide.tripLength,
-          "planner i przejścia do partnerów",
+          "noclegi, loty i dalsze kroki",
         ]}
       />
 
@@ -447,64 +391,39 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               Startowo ustawiamy Warszawa, 2 osóby i {defaultNights} {defaultNights < 5 ? "noce" : "nocy"}:
               {" "}
               {formatShortDate(defaultStartDate, "pl-PL")} - {formatShortDate(defaultCheckOutDate, "pl-PL")}. To tylko punkt
-              wyjscia, który potem zmienisz w plannerze jednym kliknięciem.
+              wyjścia, który potem zmienisz w wyszukiwarce jednym kliknięciem.
             </p>
           </div>
           <LocalizedLink
-            href={destinationPlannerHref}
+            href={destinationSearchHref}
             className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Otwórz planner z gotowym setupem
+            Otwórz hotele i loty
           </LocalizedLink>
         </div>
 
         <div className="mt-6 grid gap-4 xl:grid-cols-4">
-          <a href={stayRedirectHref} target="_blank" rel="noreferrer" className="rounded-[1.6rem] border border-emerald-700 bg-emerald-700 p-5 text-white shadow-[0_20px_52px_rgba(21,128,61,0.18)] transition hover:-translate-y-1 hover:bg-emerald-800">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100">Pobyt</p>
-            <h3 className="mt-2 text-2xl font-bold">{stayPartner}</h3>
-            <p className="mt-3 text-sm leading-6 text-white/82">Gotowe wyniki noclegów dla tego kierunku i tego samego okna pobytu.</p>
-          </a>
-          <a href={flightRedirectHref} target="_blank" rel="noreferrer" className="rounded-[1.6rem] border border-emerald-950 bg-emerald-950 p-5 text-white shadow-[0_20px_52px_rgba(7,31,18,0.18)] transition hover:-translate-y-1 hover:bg-emerald-900">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Loty</p>
-            <h3 className="mt-2 text-2xl font-bold">{flightPartner}</h3>
-            <p className="mt-3 text-sm leading-6 text-white/78">Trasa i termin sa już ustawione, wiec nie wracasz do pustego startu.</p>
-          </a>
-          <a href={carRedirectHref} target="_blank" rel="noreferrer" className="rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/75 p-5 text-emerald-950 transition hover:-translate-y-1 hover:bg-emerald-100">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Mobilnosc</p>
-            <h3 className="mt-2 text-2xl font-bold">{carPartner}</h3>
-            <p className="mt-3 text-sm leading-6 text-emerald-900/78">Jeśli ten kierunek wymaga auta na miejscu, przechodzisz dalej bez ponownego wpisywania miasta.</p>
-          </a>
-          <article className="rounded-[1.6rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-5 text-emerald-950">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Jak czytac ta stronę</p>
-            <h3 className="mt-2 text-2xl font-bold">Najpierw wybór, potem rezerwacja.</h3>
-            <p className="mt-3 text-sm leading-6 text-emerald-900/78">
-              Ten przewodnik pomaga najpierw ocenic kierunek, a dopiero potem przejść do partnera z miastem i terminem już ustawionymi.
+          <LocalizedLink href={internalHotelsHref} className="rounded-[1.6rem] border border-emerald-700 bg-emerald-700 p-5 text-white shadow-[0_20px_52px_rgba(21,128,61,0.18)] transition hover:-translate-y-1 hover:bg-emerald-800 lg:col-span-2 xl:col-span-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100">Hotele</p>
+            <h3 className="mt-2 text-2xl font-bold">Sprawdź hotele w {guide.destination.city}</h3>
+            <p className="mt-3 text-sm leading-6 text-white/82">
+              Konkretne ceny w PLN dla terminu {formatShortDate(defaultStartDate, "pl-PL")} – {formatShortDate(defaultCheckOutDate, "pl-PL")}. Bez wychodzenia ze strony.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <LocalizedLink
-                href="/jak-pracujemy"
-                className="rounded-full border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
-              >
-                Jak pracujemy
-              </LocalizedLink>
-              <LocalizedLink
-                href="/linki-partnerskie"
-                className="rounded-full border border-emerald-900/10 bg-white px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
-              >
-                Linki partnerskie
-              </LocalizedLink>
-            </div>
-          </article>
+          </LocalizedLink>
+          <a
+            href={flightAffiliateHref}
+            target="_blank"
+            rel="noopener nofollow sponsored noreferrer"
+            className="rounded-[1.6rem] border border-emerald-950 bg-emerald-950 p-5 text-white shadow-[0_20px_52px_rgba(7,31,18,0.18)] transition hover:-translate-y-1 hover:bg-emerald-900 lg:col-span-2 xl:col-span-2"
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Loty</p>
+            <h3 className="mt-2 text-2xl font-bold">Sprawdź loty do {guide.destination.city}</h3>
+            <p className="mt-3 text-sm leading-6 text-white/78">
+              Aviasales: porównanie linii i tanich lotów. Lot ok. {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h.
+            </p>
+          </a>
           </div>
         </section>
-
-      <PartnerPlacementSection
-        eyebrow="Partnerzy dla tego kierunku"
-        title="W tym miejscu pokazujemy dokładnie, gdzie kliknąć dalej."
-        body="Najpierw wybierasz kierunek, potem przechodzisz do właściwego partnera bez przepisywania wszystkiego od nowa. Każda karta pokazuje, które marki najlepiej pasują do danego kroku planu."
-        cards={partnerPlacementCards}
-        footerNote="To jest szybki skrót do najważniejszych partnerów dla tego miasta. Sam wybór nadal robisz tutaj, a finalna rezerwacja odbywa się po stronie partnera."
-      />
 
       <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
@@ -572,16 +491,16 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <LocalizedLink
-              href={destinationPlannerHref}
+              href={destinationSearchHref}
               className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
-              Otwórz planner dla tego miasta
+              Sprawdź hotele i loty
             </LocalizedLink>
             <LocalizedLink
-              href="/planner?mode=discovery"
+              href="/kierunki"
               className="rounded-full border border-emerald-900/10 bg-white px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
             >
-              Porównaj z innymi pomysłami
+              Porównaj z innymi kierunkami
             </LocalizedLink>
           </div>
         </article>
@@ -597,10 +516,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             </p>
           </div>
           <LocalizedLink
-            href="/planner?mode=discovery"
+            href="/kierunki"
             className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
           >
-            Porównaj z innym briefem
+            Porównaj z innym kierunkiem
           </LocalizedLink>
         </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -659,10 +578,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <h2 className="mt-2 font-display text-4xl text-emerald-950">Przykladowy rytm wyjazdu</h2>
           </div>
           <LocalizedLink
-            href={destinationPlannerHref}
+            href={destinationSearchHref}
             className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Sprawdź ten kierunek w plannerze
+            Sprawdź hotele i loty
           </LocalizedLink>
         </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -684,10 +603,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               <h2 className="mt-2 font-display text-4xl text-emerald-950">Jak {guide.destination.city} wypada na tle podobnych opcji</h2>
             </div>
             <LocalizedLink
-              href="/planner?mode=discovery"
+              href="/kierunki"
               className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
             >
-              Porównaj w plannerze
+              Porównaj kierunki
             </LocalizedLink>
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -730,13 +649,13 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <LocalizedLink
-              href={destinationPlannerHref}
+              href={destinationSearchHref}
               className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
             >
-              Uruchom planner dla {guide.destination.city}
+              Sprawdź hotele w {guide.destination.city}
             </LocalizedLink>
             <LocalizedLink
-              href="/planner?mode=discovery"
+              href="/kierunki"
               className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
             >
               Nie wiem dokąd lecieć

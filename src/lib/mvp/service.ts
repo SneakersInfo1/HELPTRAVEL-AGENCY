@@ -343,7 +343,16 @@ export async function runStandard(input: StandardRequestInput, sessionId: string
     );
   });
 
-  const options = (filtered.length > 0 ? filtered : discovery.options)
+  // If discovery returned nothing (every destination dropped, or scoring
+  // failed) OR the city/country hint matched nothing, fall back to the
+  // virtual-standard path so the user still sees the destination they
+  // explicitly typed. This is the right answer for "/standard?destination=X"
+  // — never show empty.
+  if (discovery.options.length === 0 || filtered.length === 0) {
+    return runVirtualStandard(input, sessionId);
+  }
+
+  const options = filtered
     .slice(0, 5)
     .map((item, index) => ({ ...item, rank: index + 1 }));
 

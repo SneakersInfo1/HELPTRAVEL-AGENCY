@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { useLanguage } from "@/components/site/language-provider";
+import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
 import {
   DEFAULT_ORIGIN_CITY,
@@ -15,6 +16,15 @@ import type { DestinationSuggestion } from "@/lib/mvp/types";
 interface MiniPlannerFormProps {
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
   compact?: boolean;
+  /** Initial values when reusing the bar on results pages. Sesja C pkt 2. */
+  initial?: Partial<{
+    origin: string;
+    destination: string;
+    destinationCountry: string;
+    startDate: string;
+    endDate: string;
+    travelers: number;
+  }>;
 }
 
 function toISO(date: Date): string {
@@ -42,26 +52,36 @@ function diffNights(start: string, end: string): number {
   return nights > 0 ? nights : 4;
 }
 
-export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
+export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormProps) {
   const router = useRouter();
   const { locale } = useLanguage();
   const listboxId = useId();
   const destInputRef = useRef<HTMLInputElement>(null);
   const destListRef = useRef<HTMLUListElement>(null);
-  const [origin, setOrigin] = useState(DEFAULT_ORIGIN_CITY);
-  const [destination, setDestination] = useState("");
-  const [destQuery, setDestQuery] = useState("");
+  const [origin, setOrigin] = useState(initial?.origin || DEFAULT_ORIGIN_CITY);
+  const [destination, setDestination] = useState(initial?.destination ?? "");
+  const [destinationCountry, setDestinationCountry] = useState(initial?.destinationCountry ?? "");
+  // Visible input gets the Polish exonym (e.g. "Lizbona") so collapsing back
+  // from /hotele/szukaj?destination=Lisbon shows what the user picked, not
+  // the canonical English key.
+  const [destQuery, setDestQuery] = useState(initial?.destination ? localizeCity(initial.destination) : "");
   const [destSuggestions, setDestSuggestions] = useState<DestinationSuggestion[]>([]);
   const [destOpen, setDestOpen] = useState(false);
   const [destHighlight, setDestHighlight] = useState(-1);
   const [destFetching, setDestFetching] = useState(false);
-  const [destConfirmed, setDestConfirmed] = useState(false);
+  const [destConfirmed, setDestConfirmed] = useState(Boolean(initial?.destination));
   const [destError, setDestError] = useState("");
-  const [startDate, setStartDate] = useState(defaultStartDate);
-  const [endDate, setEndDate] = useState(defaultEndDate);
-  const [travelers, setTravelers] = useState(2);
+  const [startDate, setStartDate] = useState(initial?.startDate ?? defaultStartDate);
+  const [endDate, setEndDate] = useState(initial?.endDate ?? defaultEndDate);
+  const [travelers, setTravelers] = useState(initial?.travelers ?? 2);
 
   useEffect(() => {
+    // After user picks a suggestion (destConfirmed=true), don't refetch with
+    // the now-confirmed city name — that's what reopens the dropdown after
+    // the click. onChange resets destConfirmed=false so typing still works.
+    if (destConfirmed) {
+      return;
+    }
     if (destQuery.trim().length < 2) {
       setDestSuggestions([]);
       setDestOpen(false);
@@ -87,11 +107,16 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
       }
     }, 150);
     return () => { controller.abort(); window.clearTimeout(timeout); };
-  }, [destQuery]);
+  }, [destQuery, destConfirmed]);
 
   function selectSuggestion(s: DestinationSuggestion) {
-    setDestination(s.queryValue);
-    setDestQuery(s.city);
+    // Backend key (URL param, LiteAPI/IATA lookups) stays English.
+    setDestination(s.city);
+    setDestinationCountry(s.country);
+    // Visible input gets the Polish exonym so the user sees what they picked.
+    setDestQuery(localizeCity(s.city));
+    setDestSuggestions([]);
+    setDestFetching(false);
     setDestOpen(false);
     setDestHighlight(-1);
     setDestConfirmed(true);
@@ -133,27 +158,30 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
     }
     setDestError("");
     const nights = diffNights(startDate, endDate);
-    const params = new URLSearchParams({
-      mode: "standard",
-      origin: origin || DEFAULT_ORIGIN_CITY,
-      startDate,
-      endDate,
-      nights: String(nights),
-      travelers: String(travelers),
-    });
     const trimmedDestination = destination.trim();
-    if (trimmedDestination.length > 0) {
-      params.set("destination", trimmedDestination);
-    }
+    // Sesja C pkt 2: route directly to /hotele/szukaj — the unified results
+    // page that composes hotels (LiteAPI) + flights (Travelpayouts).
+    // Old /planner is gone; middleware 308s any stragglers but submitting
+    // here goes straight to the canonical URL.
+    const params = new URLSearchParams({
+      destination: trimmedDestination,
+      country: destinationCountry,
+      checkin: startDate,
+      checkout: endDate,
+      adults: String(travelers),
+      rooms: "1",
+      origin: origin || DEFAULT_ORIGIN_CITY,
+    });
     sendClientEvent("mini_planner_submitted", {
       origin: origin || DEFAULT_ORIGIN_CITY,
       destination: trimmedDestination || null,
+      country: destinationCountry || null,
       nights,
       travelers,
       hasDestination: trimmedDestination.length > 0,
     });
     const prefix = locale === "en" ? "/en" : "";
-    router.push(`${prefix}/planner?${params.toString()}`);
+    router.push(`${prefix}/hotele/szukaj?${params.toString()}`);
   }
 
   const fieldCls =
@@ -169,7 +197,7 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
       <div className="grid gap-3 lg:grid-cols-[1.1fr_1.4fr_1fr_1fr_0.9fr_auto] lg:items-end">
         {/* SKAD */}
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Skad</span>
+            <span className={labelCls}>Skąd</span>
           <select
             value={origin}
             onChange={(e) => setOrigin(e.target.value)}
@@ -194,9 +222,10 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
 
         {/* DOKAD — autocomplete combobox */}
         <div className="relative flex flex-col gap-1.5">
-          <span className={labelCls}>Dokad</span>
+            <span className={labelCls}>Dokąd</span>
           <input
             ref={destInputRef}
+            data-mini-planner-destination
             type="text"
             role="combobox"
             aria-autocomplete="list"
@@ -226,31 +255,32 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
               {destFetching ? (
                 <li className="px-3 py-2 text-sm text-emerald-900/56">Szukamy kierunków…</li>
               ) : destSuggestions.length > 0 ? (
-                destSuggestions.map((s, idx) => (
-                  <li
-                    key={s.id}
-                    role="option"
-                    aria-selected={idx === destHighlight}
-                    onMouseDown={() => selectSuggestion(s)}
-                    onMouseEnter={() => setDestHighlight(idx)}
-                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition ${
-                      idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
-                    }`}
-                  >
-                    <span className="text-base leading-none">
-                      {s.source === "curated" ? "🌍" : "📍"}
-                    </span>
-                    <span>
-                      <span className="font-semibold text-emerald-950">{s.city}</span>
-                      <span className="ml-1 text-xs text-emerald-900/56">
-                        {[s.country, s.region].filter(Boolean).join(" / ")}
-                      </span>
-                    </span>
-                  </li>
-                ))
+                destSuggestions.map((s, idx) => {
+                  const ctry = localizeCountry(s.country);
+                  const reg = localizeRegion(s.region);
+                  const meta = [ctry, reg].filter(Boolean).join(" · ");
+                  return (
+                    <li
+                      key={s.id}
+                      role="option"
+                      aria-selected={idx === destHighlight}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        selectSuggestion(s);
+                      }}
+                      onMouseEnter={() => setDestHighlight(idx)}
+                      className={`cursor-pointer px-3 py-2 text-sm transition ${
+                        idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
+                      }`}
+                    >
+                      <div className="font-semibold text-emerald-950">{localizeCity(s.city)}</div>
+                      {meta && <div className="text-xs text-emerald-900/56">{meta}</div>}
+                    </li>
+                  );
+                })
               ) : (
                 <li className="px-3 py-2 text-sm text-emerald-900/56">
-                  Brak wyników dla „{destQuery}". Spróbuj innego miasta lub kraju.
+                  Brak wyników dla „{destQuery}&rdquo;. Spróbuj innego miasta lub kraju.
                 </li>
               )}
             </ul>
@@ -286,7 +316,7 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
 
         {/* POWROT */}
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Powrot</span>
+            <span className={labelCls}>Powrót</span>
           <input
             type="date"
             value={endDate}
@@ -303,7 +333,7 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
             <button
               type="button"
               onClick={() => setTravelers((v) => Math.max(1, v - 1))}
-              aria-label="Zmniejsz liczbe osob"
+                  aria-label="Zmniejsz liczbę osób"
               className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-lg font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-40"
               disabled={travelers <= 1}
             >
@@ -315,7 +345,7 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
             <button
               type="button"
               onClick={() => setTravelers((v) => Math.min(8, v + 1))}
-              aria-label="Zwieksz liczbe osob"
+                  aria-label="Zwiększ liczbę osób"
               className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-lg font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-40"
               disabled={travelers >= 8}
             >
@@ -342,7 +372,7 @@ export function MiniPlannerForm({ compact = false }: MiniPlannerFormProps) {
 
       {!compact && (
         <p className="mt-3 text-[11px] text-emerald-900/70">
-          Dokad mozesz zostawic puste — pomozemy wybrac kierunek po Twoich preferencjach.
+              Dokąd możesz zostawić puste — pomożemy wybrać kierunek po Twoich preferencjach.
         </p>
       )}
     </form>

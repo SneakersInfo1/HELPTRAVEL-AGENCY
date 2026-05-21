@@ -29,8 +29,8 @@ export function DestinationGuideCard({
       ? "destinations_index"
       : pathname?.startsWith("/inspiracje") || pathname?.startsWith("/city-breaki") || pathname?.startsWith("/cieple-kierunki")
         ? "content_hub"
-        : pathname?.startsWith("/planner")
-          ? "planner"
+        : pathname?.startsWith("/hotele")
+          ? "hotels"
           : "homepage";
   const copy =
     locale === "en"
@@ -44,19 +44,19 @@ export function DestinationGuideCard({
           value: "better value",
           mid: "mid+",
           showDestination: "View destination",
-          planner: "Open in planner",
+          planner: "Check hotels",
         }
       : {
           openGuide: "Otwórz przewodnik",
           flight: "lot ok.",
           style: "styl",
           budget: "budżet",
-          beach: "plażą",
+          beach: "plaża",
           city: "miasto",
-          value: "bardziej oplacalny",
+          value: "bardziej opłacalny",
           mid: "średni+",
           showDestination: "Zobacz kierunek",
-          planner: "Sprawdź w plannerze",
+          planner: "Sprawdź hotele",
         };
 
   return (
@@ -123,13 +123,19 @@ export function DestinationGuideCard({
             {copy.showDestination}
           </LocalizedLink>
           <LocalizedLink
-            href={`/planner?mode=standard&q=${encodeURIComponent(destination.city)}`}
+            href={`/hotele/szukaj?${new URLSearchParams({
+              destination: destination.city,
+              country: destination.country,
+              origin: "Warszawa",
+              adults: "2",
+              rooms: "1",
+            }).toString()}`}
             locale={locale}
             onClick={() =>
               sendClientEvent("destination_card_clicked", {
                 slug: destination.slug,
                 city: destination.city,
-                action: "planner",
+                action: "hotels",
                 source,
                 locale,
               })

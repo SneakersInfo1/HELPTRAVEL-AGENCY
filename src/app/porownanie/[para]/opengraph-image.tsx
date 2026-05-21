@@ -4,7 +4,7 @@ import { getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 
 export const runtime = "nodejs";
-export const alt = "Porownanie kierunkow - HelpTravel";
+export const alt = "Porównanie kierunków - HelpTravel";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -31,7 +31,7 @@ export default async function OgImage({ params }: { params: { para: string } }) 
         <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 26, fontWeight: 700, opacity: 0.9 }}>
           <span>HelpTravel</span>
           <span style={{ opacity: 0.6 }}>/</span>
-          <span style={{ opacity: 0.8 }}>porownanie</span>
+          <span style={{ opacity: 0.8 }}>porównańie</span>
         </div>
 
         <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", gap: 40, marginTop: 32 }}>
@@ -88,7 +88,7 @@ export default async function OgImage({ params }: { params: { para: string } }) 
         </div>
 
         <div style={{ display: "flex", marginTop: 24, fontSize: 22, opacity: 0.85 }}>
-          Konkretne porownanie pod realna decyzje wyjazdowa.
+          Konkretne porównańie pod realna decyzje wyjazdowa.
         </div>
       </div>
     ),

@@ -15,11 +15,8 @@ import {
   type PolishMonthSlug,
 } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
-import { getAffiliateConfig } from "@/lib/mvp/affiliate-config";
-import { isEuRoamingFree } from "@/lib/mvp/eu-roaming";
-import { Stay22Widget } from "@/components/affiliate/stay22-widget";
 import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
-import { YesimCta } from "@/components/affiliate/yesim-cta";
+import { addDaysToIsoDate, defaultTravelStartDate } from "@/lib/mvp/travel-dates";
 
 export const revalidate = 86400;
 
@@ -37,7 +34,7 @@ export async function generateStaticParams() {
 function estimateBudgetForMonth(costIndex: number, flightHours: number, monthIndex: number) {
   const days = 4;
   const travelers = 2;
-  const peakMonths = [5, 6, 7]; // czerwiec - sierpien
+  const peakMonths = [5, 6, 7];
   const seasonalMultiplier = peakMonths.includes(monthIndex) ? 1.18 : monthIndex === 11 || monthIndex === 0 ? 1.06 : 0.96;
   const flightBasePerPerson = (380 + flightHours * 70) * seasonalMultiplier;
   const stayPerDayPerPerson = 170 * costIndex * (peakMonths.includes(monthIndex) ? 1.12 : 1);
@@ -47,18 +44,18 @@ function estimateBudgetForMonth(costIndex: number, flightHours: number, monthInd
 }
 
 function describeWeather(temp: number) {
-  if (temp >= 27) return "bardzo cieplo, czesto upaly w srodku dnia";
-  if (temp >= 22) return "cieplo, komfortowo na zwiedzanie i plaze";
-  if (temp >= 17) return "lagodnie, idealnie na chodzenie i tarasy";
+  if (temp >= 27) return "bardzo ciepło, często upały w środku dnia";
+  if (temp >= 22) return "ciepło, komfortowo na zwiedzanie i plaże";
+  if (temp >= 17) return "łagodnie, idealnie na chodzenie i tarasy";
   if (temp >= 12) return "chlodno, ale przyjemnie na spacer i kawiarnie";
   if (temp >= 6) return "zimnawo, warto miec cieplsza warstwe";
-  return "zimno, czesto wymaga kurtki zimowej";
+  return "zimno, często wymaga kurtki zimowej";
 }
 
 function suitabilityVerdict(temp: number, beachScore: number) {
   if (temp >= 22 && beachScore >= 0.7) return "Tak — to jeden z lepszych terminow na ten kierunek.";
   if (temp >= 18) return "Tak — komfortowy termin na city break i sensowne zwiedzanie.";
-  if (temp >= 12) return "Warto, jesli akceptujesz chlodniejsza pogode i nie liczysz na plaze.";
+  if (temp >= 12) return "Warto, jeśli akceptujesz chłodniejszą pogodę i nie liczysz na plażę.";
   return "Mozliwe, ale to nie najmocniejszy termin — lepiej traktowac jako city break poza sezonem.";
 }
 
@@ -78,14 +75,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   );
 
   return {
-    title: `${guide.destination.city} w ${monthInfl} - pogoda, budzet, czy warto`,
-    description: `${guide.destination.city} w ${monthInfl}: srednia temperatura ${temp}°C, orientacyjny budzet 2 osob ${budget.min}-${budget.max} PLN, kiedy leciec i czy warto.`,
-    alternates: {
-      canonical: `/kierunki/${slug}/${miesiac}`,
-    },
+    title: `${guide.destination.city} w ${monthInfl} - pogoda, budżet, czy warto`,
+    description: `${guide.destination.city} w ${monthInfl}: średnia temperatura ${temp}°C, orientacyjny budżet 2 osób ${budget.min}-${budget.max} PLN, kiedy leciec i czy warto.`,
+    alternates: { canonical: `/kierunki/${slug}/${miesiac}` },
     openGraph: {
       title: `${guide.destination.city} w ${monthInfl} - przewodnik HelpTravel`,
-      description: `Pogoda, budzet i decyzja czy ${guide.destination.city} broni sie w ${monthInfl}.`,
+      description: `Pogoda, budżet i decyzja czy ${guide.destination.city} broni się w ${monthInfl}.`,
       url: `${getSiteUrl()}/kierunki/${slug}/${miesiac}`,
       type: "article",
     },
@@ -106,7 +101,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
   const yearTemps = guide.destination.avgTempByMonth;
   const yearMin = Math.min(...yearTemps);
   const yearMax = Math.max(...yearTemps);
-  const tempPosition = temp >= yearMax - 2 ? "wysokie" : temp <= yearMin + 2 ? "niskie" : "srednie";
+  const tempPosition = temp >= yearMax - 2 ? "wysokie" : temp <= yearMin + 2 ? "niskie" : "średnie";
   const budget = estimateBudgetForMonth(
     guide.destination.costIndex,
     guide.destination.typicalFlightHoursFromPL,
@@ -115,23 +110,28 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
   const verdict = suitabilityVerdict(temp, guide.destination.beachScore);
   const weather = describeWeather(temp);
   const baseUrl = getSiteUrl();
-  const config = getAffiliateConfig();
   const affiliateCampaign = `month-${slug}-${monthSlug}`;
-  const showYesim = !isEuRoamingFree(guide.destination.country);
+  const startDate = defaultTravelStartDate();
+  const checkout = addDaysToIsoDate(startDate, 4);
+  const internalHotelHref = `/hotele/szukaj?${new URLSearchParams({
+    destination: guide.destination.city,
+    country: guide.destination.country,
+    checkin: startDate,
+    checkout,
+    adults: "2",
+    rooms: "1",
+  }).toString()}`;
 
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "Article",
-        headline: `${guide.destination.city} w ${monthInfl} - pogoda, budzet, czy warto`,
-        description: `Praktyczny przewodnik po ${guide.destination.city} w ${monthInfl}: srednia temperatura, sezon, koszty i decyzja wyjazdowa.`,
+        headline: `${guide.destination.city} w ${monthInfl} - pogoda, budżet, czy warto`,
+        description: `Praktyczny przewodnik po ${guide.destination.city} w ${monthInfl}: średnia temperatura, sezon, koszty i decyzja wyjazdówa.`,
         url: `${baseUrl}/kierunki/${slug}/${monthSlug}`,
         inLanguage: "pl-PL",
-        about: {
-          "@type": "TouristDestination",
-          name: `${guide.destination.city}, ${guide.destination.country}`,
-        },
+        about: { "@type": "TouristDestination", name: `${guide.destination.city}, ${guide.destination.country}` },
       },
       {
         "@type": "BreadcrumbList",
@@ -139,38 +139,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           { "@type": "ListItem", position: 1, name: "Start", item: `${baseUrl}/` },
           { "@type": "ListItem", position: 2, name: "Kierunki", item: `${baseUrl}/kierunki` },
           { "@type": "ListItem", position: 3, name: guide.destination.city, item: `${baseUrl}/kierunki/${slug}` },
-          {
-            "@type": "ListItem",
-            position: 4,
-            name: `${guide.destination.city} w ${monthInfl}`,
-            item: `${baseUrl}/kierunki/${slug}/${monthSlug}`,
-          },
-        ],
-      },
-      {
-        "@type": "FAQPage",
-        mainEntity: [
-          {
-            "@type": "Question",
-            name: `Jaka pogoda jest w ${guide.destination.city} w ${monthInfl}?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: `Srednia temperatura w ${monthInfl} wynosi okolo ${temp}°C — ${weather}.`,
-            },
-          },
-          {
-            "@type": "Question",
-            name: `Czy warto leciec do ${guide.destination.city} w ${monthInfl}?`,
-            acceptedAnswer: { "@type": "Answer", text: verdict },
-          },
-          {
-            "@type": "Question",
-            name: `Ile kosztuje wyjazd do ${guide.destination.city} w ${monthInfl}?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: `Orientacyjny budzet dla 2 osob na 4 dni: ${budget.min}-${budget.max} PLN (loty, nocleg, jedzenie, transport lokalny).`,
-            },
-          },
+          { "@type": "ListItem", position: 4, name: `${guide.destination.city} w ${monthInfl}`, item: `${baseUrl}/kierunki/${slug}/${monthSlug}` },
         ],
       },
     ],
@@ -198,24 +167,22 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           {guide.destination.city} w {monthInfl} — kiedy leciec, ile to kosztuje i czy warto.
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-          Konkretna decyzja na bazie danych pogodowych, kosztow i profilu kierunku — zamiast ogolnikow w stylu &bdquo;mozna jechac caly rok&rdquo;.
+          Konkretna decyzja na bazie danych pogodowych, kosztów i profilu kierunku.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Srednia temperatura</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Średnia temperatura</p>
             <p className="mt-1 text-3xl font-bold text-emerald-950">{temp}°C</p>
             <p className="mt-1 text-xs text-emerald-900/70">{weather}</p>
           </div>
           <div className="rounded-2xl bg-emerald-50 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Pozycja w roku</p>
             <p className="mt-1 text-3xl font-bold text-emerald-950 capitalize">{tempPosition}</p>
-            <p className="mt-1 text-xs text-emerald-900/70">
-              Roczny zakres: {yearMin}-{yearMax}°C
-            </p>
+            <p className="mt-1 text-xs text-emerald-900/70">Roczny zakres: {yearMin}-{yearMax}°C</p>
           </div>
           <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Budzet 2 os / 4 dni</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Budżet 2 os / 4 dni</p>
             <p className="mt-1 text-2xl font-bold text-emerald-950">
               {budget.min.toLocaleString("pl-PL")}-{budget.max.toLocaleString("pl-PL")} PLN
             </p>
@@ -227,9 +194,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
         <h2 className="font-display text-3xl text-emerald-950">Czy warto leciec do {guide.destination.city} w {monthInfl}?</h2>
         <p className="mt-3 max-w-3xl text-base leading-8 text-emerald-900/80">{verdict}</p>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/72">
-          {guide.overview}
-        </p>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/72">{guide.overview}</p>
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-emerald-50/72 p-6">
@@ -256,24 +221,31 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* 2-CTA block per master spec section 2: hotele (internal LiteAPI) + loty (Aviasales). */}
       <section className="grid gap-5 lg:grid-cols-2">
-        <Stay22Widget
+        <article className="flex flex-col justify-between rounded-[1.8rem] border border-emerald-900/10 bg-emerald-700 p-6 text-white shadow-[0_18px_42px_rgba(7,31,18,0.18)]">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Hotele</p>
+            <h2 className="mt-2 font-display text-3xl leading-tight">
+              Sprawdź hotele w {guide.destination.city} na ten termin
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-emerald-50/85">
+              Ceny w PLN, finalna płatność u dostawcy. Bez wychodzenia ze strony.
+            </p>
+          </div>
+          <Link
+            href={internalHotelHref}
+            className="mt-5 inline-flex w-fit items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100"
+          >
+            Sprawdź hotele
+          </Link>
+        </article>
+        <AviasalesCta
           city={guide.destination.city}
           country={guide.destination.country}
-          aid={config.stay22Aid}
           campaign={affiliateCampaign}
+          flightHours={guide.destination.typicalFlightHoursFromPL}
         />
-        <div className="flex flex-col gap-4">
-          <AviasalesCta
-            city={guide.destination.city}
-            country={guide.destination.country}
-            campaign={affiliateCampaign}
-            flightHours={guide.destination.typicalFlightHoursFromPL}
-          />
-          {showYesim ? (
-            <YesimCta country={guide.destination.country} campaign={affiliateCampaign} />
-          ) : null}
-        </div>
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
@@ -283,13 +255,13 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
             href={`/kierunki/${slug}`}
             className="rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
           >
-            Pelny przewodnik po {guide.destination.city}
+            Pełny przewodnik po {guide.destination.city}
           </Link>
           <Link
-            href={`/planner?destination=${encodeURIComponent(guide.destination.city)}`}
+            href={internalHotelHref}
             className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Zaplanuj wyjazd w plannerze
+            Sprawdź hotele i loty
           </Link>
           <Link
             href="/kierunki"

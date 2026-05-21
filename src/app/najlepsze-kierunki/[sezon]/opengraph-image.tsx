@@ -15,10 +15,10 @@ const seasonGradients: Record<Season, string> = {
 };
 
 const seasonHeroes: Record<Season, string> = {
-  wiosna: "Sezon na ciepliejsze poludnie Europy bez tlumow",
-  lato: "Pelnia plazy i komfortowa temperatura w celu",
-  jesien: "Cieple kierunki bez kolejek i za rozsadne pieniadze",
-  zima: "Ucieczki w cieplo i atmosferyczne city breaki",
+  wiosna: "Sezon na cieplejsze południe Europy bez tłumów",
+  lato: "Pełnia plaży i komfortowa temperatura w celu",
+  jesien: "Ciepłe kierunki bez kolejek i za rozsądne pieniądze",
+  zima: "Ucieczki w ciepło i atmosferyczne city breaki",
 };
 
 function isSeason(value: string): value is Season {

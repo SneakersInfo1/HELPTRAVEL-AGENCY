@@ -12,7 +12,7 @@ interface Toast {
 }
 
 // Agregatowe komunikaty (bez imion / fake'owych "Anna z Krakowa") — brzmia
-// jak statystyki analityczne, nie wymyslone historyjki. Dzieki temu mniej
+// jak statystyki analityczne, nie wymysłone historyjki. Dzieki temu mniej
 // ryzyka prawnego (UOKIK) i bardziej wiarygodne dla uzytkownika.
 const DESTINATIONS = ["Malaga", "Barcelona", "Rzym", "Lizbona", "Ateny", "Walencja", "Funchal", "Istambul"] as const;
 
@@ -27,19 +27,19 @@ function buildToasts(seed: number): Toast[] {
       kind: "deal",
       icon: "🔥",
       title: `${randomFrom(DESTINATIONS, s + 3)} — ceny spadly o ${18 + (s % 24)}%`,
-      subtitle: "sprawdz zanim wroca w gore",
+      subtitle: "sprawdź zanim wroca w gore",
     },
     {
       kind: "trust",
       icon: "⭐",
-      title: "4.8/5 · 2341 planow w tym miesiacu",
-      subtitle: "srednia z ocen polskich podroznikow",
+      title: "4.8/5 · 2341 planow w tym miesiącu",
+      subtitle: "średnia z ocen polskich podróżników",
     },
     {
       kind: "deal",
       icon: "⏰",
-      title: "Ceny lotow aktualizowane 3 min temu",
-      subtitle: `${randomFrom(DESTINATIONS, s + 5)} · nowe oferty dostepne`,
+      title: "Ceny lotów aktualizowane 3 min temu",
+      subtitle: `${randomFrom(DESTINATIONS, s + 5)} · nowe oferty dostępne`,
     },
   ];
 }
