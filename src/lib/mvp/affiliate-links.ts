@@ -1,13 +1,18 @@
+// Phase 1 affiliate-links — only Aviasales flights survive.
+// Hotels link points to internal /hotele (LiteAPI booking flow, Phase 2+).
+// `attractions` and `cars` are deprecated outbound paths — kept on the type
+// for backward compatibility but resolve to "" (empty) so consumers can detect
+// "no link" and hide the CTA. Master spec section 2: those affiliate programs
+// are PURGED.
+
 import type { AffiliateLinks } from "./types";
-import { buildCjStayLinks } from "./cj-stays";
-import { getStay22OverrideLink } from "./stay22-link-overrides";
+import { buildAviasalesLink } from "./affiliate-config";
 
-type AffiliateKind = keyof AffiliateLinks;
-
-interface AffiliateTemplateInput {
+interface AffiliateContextInput {
   city: string;
   country: string;
   originCity?: string;
+  originIata?: string;
   departureDate?: string;
   checkInDate?: string;
   checkOutDate?: string;
@@ -15,96 +20,27 @@ interface AffiliateTemplateInput {
   rooms?: number;
 }
 
-const TEMPLATE_BY_KIND: Record<AffiliateKind, string | undefined> = {
-  flights: process.env.AFFILIATE_FLIGHTS_TEMPLATE?.trim(),
-  stays: process.env.AFFILIATE_STAYS_TEMPLATE?.trim(),
-  attractions: process.env.AFFILIATE_ATTRACTIONS_TEMPLATE?.trim(),
-  cars: process.env.AFFILIATE_CARS_TEMPLATE?.trim(),
-};
-
-function fallbackLink(kind: AffiliateKind, place: string): string {
-  if (kind === "flights") {
-    return `https://www.google.com/search?q=${encodeURIComponent(`loty z Polski do ${place}`)}`;
-  }
-  if (kind === "stays") {
-    return `https://www.booking.com/searchresults.pl.html?ss=${encodeURIComponent(place)}&selected_currency=PLN&lang=pl`;
-  }
-  if (kind === "cars") {
-    return `https://www.google.com/search?q=${encodeURIComponent(`wynajem samochodu ${place}`)}`;
-  }
-  return `https://www.google.com/search?q=${encodeURIComponent(`${place} atrakcje`)}`;
+function buildInternalHotelHref(input: AffiliateContextInput): string {
+  const params = new URLSearchParams();
+  if (input.city) params.set("destination", input.city);
+  if (input.country) params.set("country", input.country);
+  if (input.checkInDate) params.set("checkin", input.checkInDate);
+  if (input.checkOutDate) params.set("checkout", input.checkOutDate);
+  if (input.passengers) params.set("travelers", String(input.passengers));
+  if (input.rooms) params.set("rooms", String(input.rooms));
+  return `/hotele/szukaj?${params.toString()}`;
 }
 
-function interpolateTemplate(template: string, input: AffiliateTemplateInput, kind: AffiliateKind): string {
-  const city = input.city.trim();
-  const country = input.country.trim();
-  const originCity = input.originCity?.trim() || "Warszawa";
-  const cityCountry = [city, country].filter(Boolean).join(" ").trim();
-  const departureDate = input.departureDate?.trim() || "";
-  const checkInDate = input.checkInDate?.trim() || departureDate;
-  const checkOutDate = input.checkOutDate?.trim() || "";
-  const passengers = String(input.passengers ?? 2);
-  const rooms = String(input.rooms ?? 1);
-
-  const replacements: Record<string, string> = {
-    city,
-    country,
-    originCity,
-    cityCountry,
-    cityEncoded: encodeURIComponent(city),
-    countryEncoded: encodeURIComponent(country),
-    originEncoded: encodeURIComponent(originCity),
-    cityCountryEncoded: encodeURIComponent(cityCountry),
-    departureDate,
-    departureDateEncoded: encodeURIComponent(departureDate),
-    returnDate: checkOutDate,
-    returnDateEncoded: encodeURIComponent(checkOutDate),
-    checkInDate,
-    checkInDateEncoded: encodeURIComponent(checkInDate),
-    checkOutDate,
-    checkOutDateEncoded: encodeURIComponent(checkOutDate),
-    passengers,
-    rooms,
-    flightsQuery: `loty z Polski do ${cityCountry}`,
-    flightsQueryEncoded: encodeURIComponent(`loty z Polski do ${cityCountry}`),
-    staysQuery: cityCountry,
-    staysQueryEncoded: encodeURIComponent(cityCountry),
-    attractionsQuery: `${cityCountry} atrakcje`,
-    attractionsQueryEncoded: encodeURIComponent(`${cityCountry} atrakcje`),
-    carsQuery: `${cityCountry} wynajem samochodu`,
-    carsQueryEncoded: encodeURIComponent(`${cityCountry} wynajem samochodu`),
-  };
-
-  const fallback = fallbackLink(kind, cityCountry);
-  const resolved = template.replaceAll(/\{([a-zA-Z0-9]+)\}/g, (_, key: string) => replacements[key] ?? "");
-  if (!resolved.startsWith("https://")) return fallback;
-  return resolved;
-}
-
-function buildAffiliateLink(kind: AffiliateKind, input: AffiliateTemplateInput): string {
-  const place = [input.city, input.country].filter(Boolean).join(" ").trim();
-  const override = getStay22OverrideLink(kind, input.city, input.country);
-  if (override) {
-    return override;
-  }
-  const template = TEMPLATE_BY_KIND[kind];
-  if (!template) return fallbackLink(kind, place);
-  return interpolateTemplate(template, input, kind);
-}
-
-export function buildAffiliateLinksWithContext(input: AffiliateTemplateInput): AffiliateLinks {
-  const cjStayLinks = buildCjStayLinks(input.city, input.country, {
-    checkIn: input.checkInDate,
-    checkOut: input.checkOutDate,
-    adults: input.passengers,
-    rooms: input.rooms,
+export function buildAffiliateLinksWithContext(input: AffiliateContextInput): AffiliateLinks {
+  const flights = buildAviasalesLink({
+    origin: { iata: input.originIata, city: input.originCity },
+    campaign: `dest_${input.city.toLowerCase().replace(/\s+/g, "_")}`,
   });
-
   return {
-    flights: buildAffiliateLink("flights", input),
-    stays: cjStayLinks?.hotels ?? buildAffiliateLink("stays", input),
-    attractions: buildAffiliateLink("attractions", input),
-    cars: buildAffiliateLink("cars", input),
+    flights,
+    stays: buildInternalHotelHref(input),
+    attractions: "",
+    cars: "",
   };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import type { MouseEvent } from "react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
@@ -50,6 +51,25 @@ export function HomePageSections({ locale: localeOverride }: HomePageSectionsPro
   const locale = localeOverride ?? localeFromPathname(pathname) ?? contextLocale;
   const text = copy[locale];
 
+  function handleStartNowClick(event: MouseEvent<HTMLAnchorElement>) {
+    const isHomePage = pathname === "/" || pathname === "/en";
+    if (!isHomePage) {
+      return;
+    }
+
+    const hero = document.getElementById("hero");
+    if (!hero) {
+      return;
+    }
+
+    event.preventDefault();
+    hero.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    window.setTimeout(() => {
+      document.querySelector<HTMLInputElement>("[data-mini-planner-destination]")?.focus({ preventScroll: true });
+    }, 450);
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 px-4 sm:px-6 xl:px-8">
       <section className="relative overflow-hidden rounded-[2.2rem] border border-emerald-900/20 bg-emerald-950 px-6 py-8 text-white shadow-[0_28px_80px_rgba(6,29,16,0.22)] sm:px-10 sm:py-10">
@@ -84,8 +104,9 @@ export function HomePageSections({ locale: localeOverride }: HomePageSectionsPro
 
           <div className="mt-7">
             <LocalizedLink
-              href="/planner?mode=standard"
+              href="/#hero"
               locale={locale}
+              onClick={handleStartNowClick}
               className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 px-6 py-3 text-sm font-bold uppercase tracking-[0.1em] text-emerald-950 shadow-[0_12px_40px_rgba(234,88,12,0.45)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_50px_rgba(234,88,12,0.6)]"
             >
               {text.cta}

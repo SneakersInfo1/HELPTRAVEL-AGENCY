@@ -93,17 +93,17 @@ export async function CategoryPage({ slug }: { slug: string }) {
         <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] text-emerald-950">{category.title}</h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{category.description}</p>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-900/72">
-          To szybki skrot do najlepszych materialow i kierunków dla jednego scenariusza wyjazdu. Nie musisz przeklikiwac calego serwisu, żeby zacząć.
+          To szybki skrót do najlepszych materiałów i kierunków dla jednego scenariusza wyjazdu. Nie musisz przeklikiwać całego serwisu, żeby zacząć.
         </p>
         <div className="mt-5 flex flex-wrap gap-3 text-sm text-emerald-900/70">
           <span className="rounded-full bg-emerald-50 px-3 py-1.5">{articles.length} artykułów w tej kategorii</span>
           <span className="rounded-full bg-emerald-50 px-3 py-1.5">
-            {destinations.filter(Boolean).length} powiazanych kierunków
+            {destinations.filter(Boolean).length} powiązanych kierunków
           </span>
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href="/planner?mode=discovery"
+            href="/kierunki"
             className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
             Pokaż kierunki dla tego scenariusza
@@ -152,10 +152,10 @@ export async function CategoryPage({ slug }: { slug: string }) {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane tematy</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Jeśli to jest dobry trop, sprawdź tez te strony.</h2>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Jeśli to jest dobry trop, sprawdź też te strony.</h2>
           </div>
           <Link href="/mapa-serwisu" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-            Pelna mapa serwisu
+            Pełna mapa serwisu
           </Link>
         </div>
         <div className="mt-6 flex flex-wrap gap-2">

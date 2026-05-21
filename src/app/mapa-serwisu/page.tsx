@@ -44,9 +44,9 @@ export default function SiteMapPage() {
           <h2 className="text-2xl font-bold text-emerald-950">Start i planner</h2>
           <div className="mt-4 flex flex-col gap-3 text-sm text-emerald-900/78">
             <Link href="/" className="hover:text-emerald-700">Start</Link>
-            <Link href="/planner" className="hover:text-emerald-700">Planner</Link>
-            <Link href="/planner?mode=discovery" className="hover:text-emerald-700">Pomóż mi wybrać</Link>
-            <Link href="/planner?mode=standard" className="hover:text-emerald-700">Mam kierunek</Link>
+          <Link href="/hotele" className="hover:text-emerald-700">Hotele</Link>
+          <Link href="/hotele/szukaj" className="hover:text-emerald-700">Wyszukiwarka hoteli</Link>
+          <Link href="/kierunki" className="hover:text-emerald-700">Mam kierunek</Link>
             <Link href="/kierunki" className="hover:text-emerald-700">Katalog kierunków</Link>
             <Link href="/inspiracje" className="hover:text-emerald-700">Pomysły na wyjazd</Link>
           </div>

@@ -1,0 +1,175 @@
+name: Build destinations seed (LiteAPI production)
+
+# Runs `pnpm build:destinations -- --full` against LiteAPI PRODUCTION
+# inventory. Sandbox harvest caps at ~190 verified destinations; prod is
+# expected to yield 1500-2000+. Output is committed to a new branch and
+# opened as a PR against `phase-1-purge-affiliate-pivot` for review.
+#
+# Triggers:
+#   - workflow_dispatch: manual run from Actions tab (or `gh workflow run`)
+#   - schedule cron: 05:00 UTC daily (= 07:00 Europe/Warsaw in summer DST)
+#
+# Secrets required (configure once in repo Settings → Secrets → Actions):
+#   - LITEAPI_PROD_PUBLIC_KEY   (production read-side key, starts with prod_)
+#   - LITEAPI_PROD_PRIVATE_KEY  (production booking key — same prefix)
+#   - LITEAPI_BASE_URL          (e.g. https://api.liteapi.travel/v3.0)
+#   - LITEAPI_BOOK_BASE_URL     (e.g. https://book.liteapi.travel/v3.0)
+#   - TRAVELPAYOUTS_API_TOKEN   (for validator's flight-coverage probe)
+
+on:
+  # Schedule cron intentionally OMITTED — owner runs the harvest manually
+  # from a local terminal (`pnpm build:destinations -- --full`) with the
+  # production keys already in their .env.local. This workflow stays as a
+  # manual rerun option (Actions tab → Run workflow) once GitHub secrets
+  # are configured, or as a CI fallback if local runs become impractical.
+  workflow_dispatch:
+    inputs:
+      per_country:
+        description: "Max cities per country to evaluate"
+        default: "30"
+        required: false
+      countries:
+        description: "Comma-separated ISO-2 country codes (blank = tourism allowlist)"
+        default: ""
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: build-destinations
+  cancel-in-progress: false
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout phase-1 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-1-purge-affiliate-pivot
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "9"
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Write .env.local from secrets
+        # The harvest script reads via `tsx --env-file=.env.local`. We
+        # rebuild it on the runner with production keys. No secrets ever
+        # land in committed files — `.env.local` stays gitignored.
+        env:
+          LITEAPI_PROD_PUBLIC_KEY: ${{ secrets.LITEAPI_PROD_PUBLIC_KEY }}
+          LITEAPI_PROD_PRIVATE_KEY: ${{ secrets.LITEAPI_PROD_PRIVATE_KEY }}
+          LITEAPI_BASE_URL: ${{ secrets.LITEAPI_BASE_URL }}
+          LITEAPI_BOOK_BASE_URL: ${{ secrets.LITEAPI_BOOK_BASE_URL }}
+          TRAVELPAYOUTS_API_TOKEN: ${{ secrets.TRAVELPAYOUTS_API_TOKEN }}
+        run: |
+          {
+            echo "LITEAPI_ENV=production"
+            echo "LITEAPI_PROD_PUBLIC_KEY=${LITEAPI_PROD_PUBLIC_KEY}"
+            echo "LITEAPI_PROD_PRIVATE_KEY=${LITEAPI_PROD_PRIVATE_KEY}"
+            echo "LITEAPI_BASE_URL=${LITEAPI_BASE_URL}"
+            echo "LITEAPI_BOOK_BASE_URL=${LITEAPI_BOOK_BASE_URL}"
+            echo "TRAVELPAYOUTS_API_TOKEN=${TRAVELPAYOUTS_API_TOKEN}"
+          } > .env.local
+          # Validate that the prod key resolved (sand_ prefix would mean
+          # the secret wasn't set or still points at sandbox).
+          if grep -q "^LITEAPI_PROD_PUBLIC_KEY=prod_" .env.local; then
+            echo "✓ Production LiteAPI key detected"
+          else
+            echo "✗ LITEAPI_PROD_PUBLIC_KEY missing or not prod_-prefixed"
+            echo "  Configure secrets at: repo Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+
+      - name: Run harvest (production inventory)
+        run: |
+          PER_COUNTRY="${{ github.event.inputs.per_country || '30' }}"
+          COUNTRIES="${{ github.event.inputs.countries || '' }}"
+          ARGS="--full --per-country=${PER_COUNTRY}"
+          if [ -n "${COUNTRIES}" ]; then
+            ARGS="${ARGS} --countries=${COUNTRIES}"
+          fi
+          echo "Running: pnpm build:destinations -- ${ARGS}"
+          pnpm build:destinations -- ${ARGS}
+
+      - name: Verify output
+        run: |
+          if [ ! -s data/destinations.json ]; then
+            echo "data/destinations.json is empty or missing"; exit 1
+          fi
+          COUNT=$(node -e "console.log(require('./data/destinations.json').destinations.length)")
+          echo "destinations: ${COUNT}"
+          if [ "${COUNT}" -lt 100 ]; then
+            echo "Harvest yielded fewer than 100 destinations — failing for review"; exit 1
+          fi
+
+      - name: Quick validator pass (5 random)
+        env:
+          # tsx --env-file=.env.local stays in effect via the pnpm script
+          LITEAPI_ENV: production
+        run: |
+          pnpm test:destinations -- --n=5 || {
+            echo "::warning::Validator failed on at least one of 5 sampled destinations — review the harvest PR carefully"
+          }
+
+      - name: Open PR if data changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- data/destinations.json data/destinations.index.json; then
+            echo "No changes to destinations data — skipping PR"
+            exit 0
+          fi
+          STAMP=$(date -u +%Y%m%d-%H%M)
+          BRANCH="auto/destinations-prod-${STAMP}"
+          git config user.name  "helptravel-bot"
+          git config user.email "bot@helptravel.local"
+          git checkout -b "${BRANCH}"
+          git add data/destinations.json data/destinations.index.json
+          COUNT=$(node -e "console.log(require('./data/destinations.json').destinations.length)")
+          PL_HIT=$(node -e "const d=require('./data/destinations.json').destinations; const m=d.filter(x=>x.city.pl && x.city.pl!==x.city.en).length; console.log(Math.round(m/d.length*100)+'% ('+m+'/'+d.length+')')")
+          git commit -m "chore(seed): production-LiteAPI destinations refresh (${COUNT})
+
+          Auto-generated by .github/workflows/build-destinations.yml on
+          $(date -u +%Y-%m-%dT%H:%MZ). Source: \`pnpm build:destinations
+          -- --full --per-country=${{ github.event.inputs.per_country || '30' }}\`
+          against LITEAPI_ENV=production.
+
+          Polish coverage (different EN/PL): ${PL_HIT}"
+          git push origin "${BRANCH}"
+          gh pr create \
+            --base phase-1-purge-affiliate-pivot \
+            --head "${BRANCH}" \
+            --title "Destinations refresh (prod): ${COUNT} entries" \
+            --body "$(cat <<EOF
+          Auto-generated by \`build-destinations\` GitHub Action.
+
+          - **Total destinations**: ${COUNT}
+          - **Polish coverage**: ${PL_HIT}
+          - **Source**: LiteAPI **production** (\`LITEAPI_ENV=production\`)
+          - **Run**: ${{ github.run_id }} (workflow_dispatch / cron)
+
+          ## Reviewer checklist
+          - [ ] Spot-check 3 random destinations from \`data/destinations.json\`
+                — IATAs sane, Polish names correct, hotelCount ≥ 15
+          - [ ] Run \`pnpm test:destinations -- --n=10\` locally
+          - [ ] If pass: merge to \`phase-1-purge-affiliate-pivot\`
+          - [ ] Live verify \`/hotele/szukaj?destination=<sample>\` renders OK
+          EOF
+          )"

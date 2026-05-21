@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 
 import { getAnalyticsSummary } from "@/lib/mvp/analytics";
 
+// Admin pages hit Prisma — force dynamic so prerender doesn't run with the
+// placeholder DATABASE_URL. Real DB wiring lands in Phase 4.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Analityka",
   robots: {

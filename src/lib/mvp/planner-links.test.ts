@@ -6,23 +6,23 @@ import { buildPlannerLink } from "./planner-links";
 describe("buildPlannerLink", () => {
   it("zwraca URL z minimalnymi parametrami (destination, origin)", () => {
     const url = buildPlannerLink({ destination: "Malaga", origin: "Warszawa" });
-    assert.match(url, /^\/planner\?/);
+    assert.match(url, /^\/hotele\/szukaj\?/);
     const qs = new URLSearchParams(url.split("?")[1]);
-    assert.equal(qs.get("mode"), "standard");
     assert.equal(qs.get("destination"), "Malaga");
     assert.equal(qs.get("origin"), "Warszawa");
-    assert.equal(qs.get("nights"), "4");
-    assert.equal(qs.get("travelers"), "2");
+    assert.equal(qs.get("adults"), "2");
+    assert.equal(qs.get("rooms"), "1");
   });
 
-  it("dodaje startDate jezeli podany", () => {
+  it("dodaje daty pobytu, jezeli podano startDate", () => {
     const url = buildPlannerLink({
       destination: "Barcelona",
       origin: "Warszawa",
       startDate: "2026-06-08",
     });
     const qs = new URLSearchParams(url.split("?")[1]);
-    assert.equal(qs.get("startDate"), "2026-06-08");
+    assert.equal(qs.get("checkin"), "2026-06-08");
+    assert.equal(qs.get("checkout"), "2026-06-12");
   });
 
   it("pomija destination jezeli puste (discovery mode)", () => {
@@ -32,27 +32,26 @@ describe("buildPlannerLink", () => {
     assert.equal(qs.get("origin"), "Warszawa");
   });
 
-  it("przyjmuje budget i q jako opcjonalne", () => {
+  it("przyjmuje country jako opcjonalne", () => {
     const url = buildPlannerLink({
       destination: "Rzym",
+      country: "Italy",
       origin: "Warszawa",
-      budget: 3500,
-      q: "Rzym",
     });
     const qs = new URLSearchParams(url.split("?")[1]);
-    assert.equal(qs.get("budget"), "3500");
-    assert.equal(qs.get("q"), "Rzym");
+    assert.equal(qs.get("country"), "Italy");
   });
 
-  it("nadpisuje nights i travelers jezeli przekazane", () => {
+  it("nadpisuje checkout i liczbe doroslych jezeli przekazane", () => {
     const url = buildPlannerLink({
       destination: "Lizbona",
       origin: "Warszawa",
-      nights: 7,
+      startDate: "2026-09-10",
+      endDate: "2026-09-15",
       travelers: 4,
     });
     const qs = new URLSearchParams(url.split("?")[1]);
-    assert.equal(qs.get("nights"), "7");
-    assert.equal(qs.get("travelers"), "4");
+    assert.equal(qs.get("checkout"), "2026-09-15");
+    assert.equal(qs.get("adults"), "4");
   });
 });

@@ -1,11 +1,11 @@
 // Wyselekcjonowane pary porownawcze pod realne intencje wyszukiwania.
-// Slugi sa znormalizowane alfabetycznie, zeby uniknac duplikowanych URL-i.
+// Slugi sa znormalizowane alfabetycznie, żeby uniknac duplikowanych URL-i.
 
 export interface ComparisonPair {
   slug: string; // np. "barcelona-spain-vs-valencia-spain"
   a: string; // slug kierunku
   b: string;
-  intent: string; // krotki opis intencji
+  intent: string; // krótki opis intencji
 }
 
 function makePair(a: string, b: string, intent: string): ComparisonPair {
@@ -15,9 +15,9 @@ function makePair(a: string, b: string, intent: string): ComparisonPair {
 
 export const comparisonPairs: ComparisonPair[] = [
   // Hiszpania - city break
-  makePair("barcelona-spain", "valencia-spain", "Drugie miasto Hiszpanii — porownanie pod city break"),
-  makePair("barcelona-spain", "malaga-spain", "Plaza i miasto: kierunki katalonskie kontra Andaluzja"),
-  makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat plazowo-miejski"),
+  makePair("barcelona-spain", "valencia-spain", "Drugie miasto Hiszpanii — porównańie pod city break"),
+makePair("barcelona-spain", "malaga-spain", "Plaża i miasto: kierunki katalońskie kontra Andaluzja"),
+makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat plażowo-miejski"),
 
   // Iberia: Portugalia + Hiszpania
   makePair("lisbon-portugal", "barcelona-spain", "Dwie ikony Iberii — co lepiej pod 4 dni"),
@@ -31,8 +31,8 @@ export const comparisonPairs: ComparisonPair[] = [
   // Wschodnie srodziemnomorze
   makePair("athens-greece", "istanbul-turkey", "Antyk kontra metropolia — Grecja vs Turcja"),
   makePair("antalya-turkey", "larnaca-cyprus", "Wakacje all-inclusive: Turcja vs Cypr"),
-  makePair("larnaca-cyprus", "valletta-malta", "Wyspy poludnia: Cypr kontra Malta"),
-  makePair("athens-greece", "valletta-malta", "Krotki wyjazd nad cieplym morzem"),
+  makePair("larnaca-cyprus", "valletta-malta", "Wyspy południa: Cypr kontra Malta"),
+  makePair("athens-greece", "valletta-malta", "Krotki wyjazd nad ciepłym morzem"),
 
   // Tanie city breaki Europy Srodkowej
   makePair("budapest-hungary", "prague-czechia", "Klasyczny duet city breaku Europy Srodkowej"),
@@ -44,19 +44,19 @@ export const comparisonPairs: ComparisonPair[] = [
 
   // Pln Europa
   makePair("amsterdam-netherlands", "berlin-germany", "Dwa rowne city breaki w Europie Zachodniej"),
-  makePair("dublin-ireland", "london-uk", "Wyspy Brytyjskie — gdzie krotki wypad"),
+  makePair("dublin-ireland", "london-uk", "Wyspy Brytyjskie — gdzie krótki wypad"),
   makePair("amsterdam-netherlands", "london-uk", "Krotki lot, mocny city break"),
 
   // Maroko
-  makePair("agadir-morocco", "marrakesh-morocco", "Maroko: plaza Atlantyku kontra Medyna"),
+  makePair("agadir-morocco", "marrakesh-morocco", "Maroko: plaża Atlantyku kontra Medyna"),
   makePair("istanbul-turkey", "marrakesh-morocco", "Bizancjum kontra Maghreb — egzotyczny city break"),
 
   // Cieplo zima — wyspy
   makePair("funchal-portugal", "las-palmas-spain", "Madera kontra Wyspy Kanaryjskie zima"),
   makePair("agadir-morocco", "las-palmas-spain", "Cieplo zimowe: Maroko kontra Kanary"),
 
-  // Plaza poludnia
-  makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plazowe lata"),
+// Plaża południa
+makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plażowe lata"),
 ];
 
 export function getComparisonPairBySlug(slug: string): ComparisonPair | undefined {

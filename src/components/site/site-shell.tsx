@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
@@ -22,7 +21,6 @@ import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
 const copy = {
   pl: {
     nav: [
-      { href: "/planner", label: "Planner" },
       { href: "/kierunki", label: "Kierunki" },
       { href: "/inspiracje", label: "Pomysły na wyjazd" },
       { href: "/jak-pracujemy", label: "Jak to działa" },
@@ -44,7 +42,7 @@ const copy = {
       {
         title: "Start",
         links: [
-          { href: "/planner", label: "Planner" },
+          { href: "/hotele", label: "Hotele" },
           { href: "/kierunki", label: "Katalog kierunków" },
           { href: "/inspiracje", label: "Pomysły na wyjazd" },
           { href: "/city-breaki", label: "City breaki" },
@@ -78,7 +76,6 @@ const copy = {
   },
   en: {
     nav: [
-      { href: "/planner", label: "Planner" },
       { href: "/kierunki", label: "Destinations" },
       { href: "/inspiracje", label: "Trip ideas" },
       { href: "/jak-pracujemy", label: "How it works" },
@@ -100,7 +97,7 @@ const copy = {
       {
         title: "Start",
         links: [
-          { href: "/planner", label: "Planner" },
+          { href: "/hotele", label: "Hotele" },
           { href: "/kierunki", label: "Destination catalog" },
           { href: "/inspiracje", label: "Trip ideas" },
           { href: "/city-breaki", label: "City breaks" },
@@ -144,25 +141,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const effectiveLocale = localeFromPathname(pathname) ?? locale;
   const text = copy[effectiveLocale];
-  const shouldLoadStay22 = !pathname.startsWith("/admin");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-4 sm:px-6 lg:px-8">
-      {shouldLoadStay22 ? (
-        <Script id="stay22-letmeallez" strategy="afterInteractive">
-          {`(function (s, t, a, y, twenty, two) {
-  s.Stay22 = s.Stay22 || {};
-  s.Stay22.params = { lmaID: "69dbaa5050e44cb3cb21c07e" };
-  twenty = t.createElement(a);
-  two = t.getElementsByTagName(a)[0];
-  twenty.async = 1;
-  twenty.src = y;
-  two.parentNode.insertBefore(twenty, two);
-})(window, document, "script", "https://scripts.stay22.com/letmeallez.js");`}
-        </Script>
-      ) : null}
-
       <a
         href="#main-content"
         className="sr-only rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
@@ -208,7 +190,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               );
             })}
             <LocalizedLink
-              href="/planner?mode=standard"
+              href="/#hero"
               className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
               {text.plannerCta}
@@ -260,7 +242,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               ))}
             </div>
             <LocalizedLink
-              href="/planner?mode=standard"
+              href="/#hero"
               onClick={() => setMobileMenuOpen(false)}
               className="inline-flex min-h-11 items-center justify-center rounded-[1.2rem] bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
             >

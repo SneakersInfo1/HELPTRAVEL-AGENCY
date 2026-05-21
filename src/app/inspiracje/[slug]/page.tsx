@@ -155,10 +155,10 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
           </div>
           <div className="mt-5">
             <Link
-              href={`/planner?mode=discovery&q=${encodeURIComponent(article.plannerPrompt)}`}
+              href="/hotele/szukaj"
               className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
-              Uruchom planner dla tego scenariusza
+              Przejdź do wyszukiwarki hoteli
             </Link>
           </div>
         </article>
@@ -238,16 +238,16 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href={`/planner?mode=discovery&q=${encodeURIComponent(article.plannerPrompt)}`}
+              href="/hotele/szukaj"
               className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
             >
-              Uruchom planner
+              Sprawdź hotele
             </Link>
             <Link
-              href="/planner?mode=standard"
+              href="/kierunki"
               className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
             >
-              Mam już kierunek
+              Wybiorę kierunek
             </Link>
           </div>
         </article>

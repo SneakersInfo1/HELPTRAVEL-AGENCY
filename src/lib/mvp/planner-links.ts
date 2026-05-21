@@ -1,39 +1,43 @@
-// Buduje URL do /planner z query params kompatybilnymi z PlannerClient.
-// Centralizuje logike uzywana w: MiniPlannerForm (homepage), DestinationTile (homepage),
-// KierunkiHeroCta (strony kierunkowe), potencjalnie w [miesiac] i /kierunki list.
-//
-// Flag `mode=standard` + pole `destination` (lub `q`) triggeruje autoRunStandardSearch
-// w PlannerClient (patrz src/app/planner/page.tsx).
+// Buduje kanoniczny URL do wyszukiwarki hoteli. Nazwa funkcji zostaje dla
+// kompatybilności starszych importów, ale publiczny produkt nie prowadzi już
+// użytkownika do wycofanego `/planner`.
 
 export interface PlannerLinkOptions {
   destination: string;
+  country?: string;
   origin: string;
   startDate?: string;
+  endDate?: string;
   nights?: number;
   travelers?: number;
+  rooms?: number;
   budget?: number;
   q?: string;
 }
 
+function addDaysIso(startDate: string, days: number): string | null {
+  const date = new Date(`${startDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export function buildPlannerLink(opts: PlannerLinkOptions): string {
-  const params = new URLSearchParams({
-    mode: "standard",
-    origin: opts.origin,
-    nights: String(opts.nights ?? 4),
-    travelers: String(opts.travelers ?? 2),
-  });
+  const params = new URLSearchParams();
   const trimmedDestination = opts.destination.trim();
   if (trimmedDestination.length > 0) {
     params.set("destination", trimmedDestination);
   }
+  if (opts.country?.trim()) {
+    params.set("country", opts.country.trim());
+  }
+  params.set("origin", opts.origin || "Warszawa");
   if (opts.startDate) {
-    params.set("startDate", opts.startDate);
+    params.set("checkin", opts.startDate);
+    const checkout = opts.endDate ?? addDaysIso(opts.startDate, opts.nights ?? 4);
+    if (checkout) params.set("checkout", checkout);
   }
-  if (typeof opts.budget === "number") {
-    params.set("budget", String(opts.budget));
-  }
-  if (opts.q) {
-    params.set("q", opts.q);
-  }
-  return `/planner?${params.toString()}`;
+  params.set("adults", String(opts.travelers ?? 2));
+  params.set("rooms", String(opts.rooms ?? 1));
+  return `/hotele/szukaj?${params.toString()}`;
 }

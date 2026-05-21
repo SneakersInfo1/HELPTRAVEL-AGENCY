@@ -1,6 +1,6 @@
 // Popularne kierunki + popularne trasy origin->destination dla SEO.
-// Linki w stopce na kazdej stronie = lepszy "internal link graph" dla Google
-// + dluzszy ogon zapytan (long-tail) typu "tani lot Krakow Malaga".
+// Linki w stopce na każdej stronie = lepszy "internal link graph" dla Google
+// + dłuższy ogon zapytań (long-tail) typu "tani lot Kraków Malaga".
 
 export interface PopularDestination {
   slug: string;
@@ -13,20 +13,21 @@ export interface PopularDestination {
 export interface PopularRoute {
   origin: string; // miasto wylotu
   destination: string; // miasto docelowe
+  destinationCountry: string;
   destinationSlug: string;
-  // Pelny anchor SEO ("Tani lot Krakow -> Malaga")
+  // Pełny anchor SEO ("Tani lot Kraków -> Malaga")
   anchor: string;
 }
 
 export const POPULAR_DESTINATIONS_PL: PopularDestination[] = [
   { slug: "malaga-spain", city: "Malaga", country: "Hiszpania", anchor: "Tani wyjazd do Malagi" },
   { slug: "barcelona-spain", city: "Barcelona", country: "Hiszpania", anchor: "Tani wyjazd do Barcelony" },
-  { slug: "rome-italy", city: "Rzym", country: "Wlochy", anchor: "Tani wyjazd do Rzymu" },
+  { slug: "rome-italy", city: "Rzym", country: "Włochy", anchor: "Tani wyjazd do Rzymu" },
   { slug: "lisbon-portugal", city: "Lizbona", country: "Portugalia", anchor: "Tani wyjazd do Lizbony" },
   { slug: "athens-greece", city: "Ateny", country: "Grecja", anchor: "Tani wyjazd do Aten" },
   { slug: "valencia-spain", city: "Walencja", country: "Hiszpania", anchor: "Tani wyjazd do Walencji" },
-  { slug: "istanbul-turkey", city: "Stambul", country: "Turcja", anchor: "Tani wyjazd do Stambulu" },
-  { slug: "funchal-portugal", city: "Funchal", country: "Madera", anchor: "Tani wyjazd na Madere" },
+  { slug: "istanbul-turkey", city: "Stambuł", country: "Turcja", anchor: "Tani wyjazd do Stambułu" },
+  { slug: "funchal-portugal", city: "Funchal", country: "Madera", anchor: "Tani wyjazd na Maderę" },
 ];
 
 export const POPULAR_DESTINATIONS_EN: PopularDestination[] = [
@@ -40,35 +41,35 @@ export const POPULAR_DESTINATIONS_EN: PopularDestination[] = [
   { slug: "funchal-portugal", city: "Funchal", country: "Madeira", anchor: "Cheap trips to Madeira" },
 ];
 
-// Trasy origin->destination - mocno szukane dlugie ogony
-// (np. "tani lot Krakow Malaga", "lot Warszawa Barcelona")
+// Trasy origin->destination - mocno szukane długie ogony
+// (np. "tani lot Kraków Malaga", "lot Warszawa Barcelona")
 export const POPULAR_ROUTES_PL: PopularRoute[] = [
-  { origin: "Krakow", destination: "Malaga", destinationSlug: "malaga-spain", anchor: "Lot Krakow -> Malaga" },
-  { origin: "Warszawa", destination: "Barcelona", destinationSlug: "barcelona-spain", anchor: "Lot Warszawa -> Barcelona" },
-  { origin: "Gdansk", destination: "Rzym", destinationSlug: "rome-italy", anchor: "Lot Gdansk -> Rzym" },
-  { origin: "Wroclaw", destination: "Lizbona", destinationSlug: "lisbon-portugal", anchor: "Lot Wroclaw -> Lizbona" },
-  { origin: "Katowice", destination: "Ateny", destinationSlug: "athens-greece", anchor: "Lot Katowice -> Ateny" },
-  { origin: "Poznan", destination: "Stambul", destinationSlug: "istanbul-turkey", anchor: "Lot Poznan -> Stambul" },
+  { origin: "Kraków", destination: "Malaga", destinationCountry: "Spain", destinationSlug: "malaga-spain", anchor: "Lot Kraków -> Malaga" },
+  { origin: "Warszawa", destination: "Barcelona", destinationCountry: "Spain", destinationSlug: "barcelona-spain", anchor: "Lot Warszawa -> Barcelona" },
+  { origin: "Gdańsk", destination: "Rzym", destinationCountry: "Italy", destinationSlug: "rome-italy", anchor: "Lot Gdańsk -> Rzym" },
+  { origin: "Wrocław", destination: "Lizbona", destinationCountry: "Portugal", destinationSlug: "lisbon-portugal", anchor: "Lot Wrocław -> Lizbona" },
+  { origin: "Katowice", destination: "Ateny", destinationCountry: "Greece", destinationSlug: "athens-greece", anchor: "Lot Katowice -> Ateny" },
+  { origin: "Poznań", destination: "Stambuł", destinationCountry: "Turkey", destinationSlug: "istanbul-turkey", anchor: "Lot Poznań -> Stambuł" },
 ];
 
 export const POPULAR_ROUTES_EN: PopularRoute[] = [
-  { origin: "Krakow", destination: "Malaga", destinationSlug: "malaga-spain", anchor: "Krakow -> Malaga flight" },
-  { origin: "Warsaw", destination: "Barcelona", destinationSlug: "barcelona-spain", anchor: "Warsaw -> Barcelona flight" },
-  { origin: "Gdansk", destination: "Rome", destinationSlug: "rome-italy", anchor: "Gdansk -> Rome flight" },
-  { origin: "Wroclaw", destination: "Lisbon", destinationSlug: "lisbon-portugal", anchor: "Wroclaw -> Lisbon flight" },
-  { origin: "Katowice", destination: "Athens", destinationSlug: "athens-greece", anchor: "Katowice -> Athens flight" },
-  { origin: "Poznan", destination: "Istanbul", destinationSlug: "istanbul-turkey", anchor: "Poznan -> Istanbul flight" },
+  { origin: "Krakow", destination: "Malaga", destinationCountry: "Spain", destinationSlug: "malaga-spain", anchor: "Krakow -> Malaga flight" },
+  { origin: "Warsaw", destination: "Barcelona", destinationCountry: "Spain", destinationSlug: "barcelona-spain", anchor: "Warsaw -> Barcelona flight" },
+  { origin: "Gdansk", destination: "Rome", destinationCountry: "Italy", destinationSlug: "rome-italy", anchor: "Gdansk -> Rome flight" },
+  { origin: "Wroclaw", destination: "Lisbon", destinationCountry: "Portugal", destinationSlug: "lisbon-portugal", anchor: "Wroclaw -> Lisbon flight" },
+  { origin: "Katowice", destination: "Athens", destinationCountry: "Greece", destinationSlug: "athens-greece", anchor: "Katowice -> Athens flight" },
+  { origin: "Poznan", destination: "Istanbul", destinationCountry: "Turkey", destinationSlug: "istanbul-turkey", anchor: "Poznan -> Istanbul flight" },
 ];
 
 export function buildRouteHref(route: PopularRoute): string {
   const params = new URLSearchParams({
-    mode: "standard",
     origin: route.origin,
     destination: route.destination,
-    nights: "4",
-    travelers: "2",
+    country: route.destinationCountry,
+    adults: "2",
+    rooms: "1",
   });
-  return `/planner?${params.toString()}`;
+  return `/hotele/szukaj?${params.toString()}`;
 }
 
 export function buildDestinationHref(dest: PopularDestination): string {

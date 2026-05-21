@@ -5,6 +5,7 @@ import {
   formatPricePLN,
   getDestinationSocialProof,
 } from "@/lib/mvp/destination-social-proof";
+import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { DEFAULT_ORIGIN_CITY } from "@/lib/mvp/origin-cities";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
@@ -21,14 +22,21 @@ export function DestinationTile({
   defaultNights = 4,
   defaultTravelers = 2,
 }: DestinationTileProps) {
+  // Sesja C1 FIX 7: chips link directly to the unified results page with
+  // destination + country pre-filled. No dates → page renders the empty
+  // prompt with the sticky search form ready for the user to pick dates.
+  // (Old `/planner?mode=standard&...` shape was bouncing through middleware
+  // 308 to /hotele/szukaj which didn't understand mode/nights, leaving the
+  // user on a 404-feeling empty page.)
+  void defaultNights; // dates intentionally not pre-filled — user picks them
   const params = new URLSearchParams({
-    mode: "standard",
     destination: destination.city,
+    country: destination.country,
     origin: DEFAULT_ORIGIN_CITY,
-    nights: String(defaultNights),
-    travelers: String(defaultTravelers),
+    adults: String(defaultTravelers),
+    rooms: "1",
   });
-  const href = `/planner?${params.toString()}`;
+  const href = `/hotele/szukaj?${params.toString()}`;
   const flightHoursLabel = `~${destination.typicalFlightHoursFromPL.toFixed(1)} h z PL`;
 
   const sp = getDestinationSocialProof(destination.slug);
@@ -79,7 +87,7 @@ export function DestinationTile({
       <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.9)_55%,rgba(5,18,11,0.95)_100%)] p-3 text-white">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-            {destination.country}
+            {localizeCountry(destination.country)}
           </p>
           <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-100 backdrop-blur-sm">
             <span className="relative flex h-1.5 w-1.5">

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 
 import { useLanguage } from "@/components/site/language-provider";
-import { DEFAULT_ORIGIN_CITY } from "@/lib/mvp/origin-cities";
 
 interface MoodChip {
   key: string;
@@ -13,12 +12,12 @@ interface MoodChip {
 }
 
 const MOODS: readonly MoodChip[] = [
-  { key: "beach", icon: "🏖️", label: "Plaza", q: "plaza cieply kierunek morze" },
+  { key: "beach", icon: "🏖️", label: "Plaża", q: "plaża ciepły kierunek morze" },
   { key: "city", icon: "🌃", label: "City break", q: "city break kultura zwiedzanie" },
   { key: "mountains", icon: "🏔️", label: "Gory", q: "gory trekking natura" },
   { key: "culture", icon: "🏛️", label: "Kultura", q: "kultura zabytki historia" },
-  { key: "budget", icon: "💰", label: "Budzet", q: "tanio budzet najtaniej" },
-  { key: "sun", icon: "☀️", label: "Slonce zima", q: "cieply kierunek zima slonce" },
+  { key: "budget", icon: "💰", label: "Budżet", q: "tanio budżet najtaniej" },
+  { key: "sun", icon: "☀️", label: "Słońce zimą", q: "ciepły kierunek zima słońce" },
 ] as const;
 
 export function MoodChips() {
@@ -26,21 +25,21 @@ export function MoodChips() {
   const { locale } = useLanguage();
   const prefix = locale === "en" ? "/en" : "";
 
+  // Sesja C1 FIX 7: mood chips no longer route to /planner (gone). The
+  // discovery free-text mode lived only there; on /hotele/szukaj users
+  // pick a concrete destination. Send chip clicks to the hero form
+  // instead — anchor scroll + the chosen mood remembered as a hint
+  // (`?intent=…`) the hero can pick up later if we wire mood→catalog
+  // filtering. For now the user lands focused on the destination input.
   function go(q: string) {
-    const params = new URLSearchParams({
-      mode: "standard",
-      origin: DEFAULT_ORIGIN_CITY,
-      nights: "4",
-      travelers: "2",
-      q,
-    });
-    router.push(`${prefix}/planner?${params.toString()}`);
+    void q; // intent ignored until /hotele search supports mood filters
+    router.push(`${prefix}/#hero`);
   }
 
   return (
     <div
       role="group"
-      aria-label="Szybki wybor nastroju wyjazdu"
+      aria-label="Szybki wybór nastroju wyjazdu"
       className="flex flex-wrap justify-center gap-2"
     >
       {MOODS.map((mood) => (
