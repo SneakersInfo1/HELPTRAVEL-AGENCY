@@ -243,17 +243,17 @@ test("rate limit exceeded → 429", async () => {
   });
 });
 
-test("session expired → 410", async () => {
+test("session expired (no payment evidence) → 410 session_expired, no recovery record", async () => {
   await withEnv(LIVE_ENV, async () => {
     const fake = makeFakeRedis();
-    // Pre-seed an expired session (createdAt far in the past).
+    // Pre-seed an expired session (createdAt > 24h in the past — new TTL).
     fake.store.set("booking:v1:session:expired-sess", {
       prebookId: "pb_x",
       transactionId: "tx_x",
       offerId: "o",
       hotelSummary: { name: "H" },
       rateSummary: { checkin: "2026-07-15", checkout: "2026-07-18" },
-      createdAt: Date.now() - 3 * 3600 * 1000,
+      createdAt: Date.now() - 25 * 3600 * 1000,
     });
     __setBookingRedisForTests(fake);
     const restore = mockFetch(() => ({ status: 200, body: BOOK_OK }));
@@ -264,11 +264,96 @@ test("session expired → 410", async () => {
           sessionId: "expired-sess",
           holder: HOLDER,
           guests: GUESTS,
+          // NO paymentIntentId — caller is not a fresh Stripe redirect.
         }),
       );
       assert.equal(r.status, 410);
       assert.equal((await r.json()).error, "session_expired");
       assert.equal(fetchCalls.length, 0, "no LiteAPI book call for an expired session");
+      assert.equal(
+        fake.store.has("booking:v1:failed:expired-sess"),
+        false,
+        "no recovery record without payment evidence — benign session expiry",
+      );
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("session expired WITH payment_intent → 410 book_failed + recovery record persisted", async () => {
+  // The real-money loss path (sid 3124f752, 2026-05-23): Stripe redirected the
+  // user back AFTER capturing the charge, but our Redis session had already
+  // expired during the SCA flow. Pre-fix we returned 410 session_expired and
+  // walked away — Stripe charge orphaned, LiteAPI never called. Post-fix: when
+  // the return page forwards `payment_intent`, we persist a recovery record
+  // and surface the BOOK_FAILED_AFTER_PAYMENT recovery message.
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    fake.store.set("booking:v1:session:lost-sess", {
+      prebookId: "pb_lost",
+      transactionId: "tx_lost",
+      offerId: "o",
+      hotelSummary: { name: "H" },
+      rateSummary: { checkin: "2026-07-15", checkout: "2026-07-18" },
+      createdAt: Date.now() - 25 * 3600 * 1000,
+    });
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch(() => ({ status: 200, body: BOOK_OK }));
+    try {
+      const { POST } = await import("./book/route");
+      const r = await POST(
+        post("http://t/api/booking/book", {
+          sessionId: "lost-sess",
+          paymentIntentId: "pi_3OqW7m_test",
+          holder: HOLDER,
+          guests: GUESTS,
+        }),
+      );
+      assert.equal(r.status, 410);
+      const j = (await r.json()) as Record<string, unknown>;
+      assert.equal(j.error, "book_failed");
+      assert.equal(j.recoveryId, "lost-sess");
+      assert.match(String(j.message), /Skontaktuj się z nami/);
+      assert.equal(fetchCalls.length, 0, "must NOT call LiteAPI book — session is gone");
+      const rec = fake.store.get("booking:v1:failed:lost-sess") as
+        | Record<string, unknown>
+        | undefined;
+      assert.ok(rec, "recovery record MUST be persisted (NON-NEGOTIABLE RULE 6)");
+      assert.equal(rec.paymentIntentId, "pi_3OqW7m_test");
+      assert.equal(rec.errorCode, "BOOK_FAILED_AFTER_PAYMENT");
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("session missing entirely WITH payment_intent → 410 book_failed + recovery (24h+ Redis eviction)", async () => {
+  // Variant of the above where Redis no longer holds the session at all
+  // (eviction, manual flush, multi-region inconsistency). Recovery must still
+  // fire — the sessionId + paymentIntentId alone are enough.
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch(() => ({ status: 200, body: BOOK_OK }));
+    try {
+      const { POST } = await import("./book/route");
+      const r = await POST(
+        post("http://t/api/booking/book", {
+          sessionId: "ghost-sess",
+          paymentIntentId: "pi_ghost_test",
+        }),
+      );
+      assert.equal(r.status, 410);
+      const j = (await r.json()) as Record<string, unknown>;
+      assert.equal(j.recoveryId, "ghost-sess");
+      const rec = fake.store.get("booking:v1:failed:ghost-sess") as
+        | Record<string, unknown>
+        | undefined;
+      assert.ok(rec, "recovery record MUST persist even with no prior session");
+      assert.equal(rec.paymentIntentId, "pi_ghost_test");
     } finally {
       restore();
       __resetBookingRedisForTests();
