@@ -30,10 +30,18 @@ export const dynamic = "force-dynamic";
 // holder/guests are optional in the body: the Phase 3 redirect return page
 // only has `sid`, so guest data is read from the session (stored at prebook).
 // Phase 2 callers may still pass them in the body — body wins if present.
+// `paymentIntentId` is the Stripe PaymentIntent forwarded by the return page
+// from `?payment_intent=…` in the redirect URL. When the Redis session has
+// already expired (24h TTL exceeded, Upstash flap, etc.) and we therefore
+// cannot finalize `/rates/book`, presence of this field tells us a charge MAY
+// already exist on Stripe — we then persist a recovery record + emit a
+// [CRITICAL] log so support can reconcile manually instead of silently
+// dropping the user with a generic "session expired" page.
 const BodySchema = z.object({
   sessionId: z.string().min(8),
   holder: LiteApiHolderSchema.optional(),
   guests: z.array(LiteApiGuestSchema).min(1).optional(),
+  paymentIntentId: z.string().optional(),
 });
 const GuestsSchema = z.array(LiteApiGuestSchema).min(1);
 
@@ -72,7 +80,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const { sessionId } = parsed.data;
+  const { sessionId, paymentIntentId } = parsed.data;
 
   let session;
   try {
@@ -87,6 +95,43 @@ export async function POST(request: NextRequest) {
     throw err;
   }
   if (!session || isSessionExpired(session)) {
+    // Two distinct cases collapse onto HTTP 410:
+    //   (a) Stripe return-page POST with `payment_intent` in the URL → user
+    //       paid but our session is gone. NON-NEGOTIABLE RULE 6: never silently
+    //       drop a paid user. Persist a recovery record and emit [CRITICAL] so
+    //       ops can reconcile via Stripe + the LiteAPI dashboard. Surface the
+    //       recovery-style message, not the "choose offer again" message.
+    //   (b) Stale session without payment evidence (user refreshed an old tab,
+    //       robot, etc.) → benign session expiry, original behavior preserved.
+    if (paymentIntentId) {
+      const message = `Płatność została zarejestrowana, ale rezerwacja wymaga ręcznego potwierdzenia. Skontaktuj się z nami: ${SUPPORT_EMAIL}.`;
+      try {
+        await saveFailed({
+          sessionId,
+          // Session is gone → we cannot fill prebookId/transactionId/holder/guests.
+          // The recovery record holds only what survives the redirect: the Stripe
+          // PaymentIntent ID (support looks it up to confirm the charge state).
+          paymentIntentId,
+          errorCode: "BOOK_FAILED_AFTER_PAYMENT",
+          message: "session_expired_after_payment",
+          createdAt: Date.now(),
+        });
+      } catch (persistErr) {
+        console.error(
+          `[liteapi][booking][CRITICAL] recovery_record_persist_failed sessionId=${sessionId} paymentIntentId=${paymentIntentId} — manual recovery required (persist error: ${persistErr instanceof Error ? persistErr.message : String(persistErr)})`,
+        );
+      }
+      console.error(
+        `[liteapi][booking][CRITICAL] session_expired_after_payment sessionId=${sessionId} paymentIntentId=${paymentIntentId} ip=${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"} — manual recovery required (Stripe charge may have been captured; LiteAPI /rates/book never called)`,
+      );
+      const body = {
+        error: "book_failed",
+        message,
+        recoveryId: sessionId,
+      };
+      if (idemKey) await setIdempotent(idemKey, 410, body);
+      return NextResponse.json(body, { status: 410 });
+    }
     return NextResponse.json(
       { error: "session_expired", message: "Sesja rezerwacji wygasła. Wybierz ofertę ponownie." },
       { status: 410 },
