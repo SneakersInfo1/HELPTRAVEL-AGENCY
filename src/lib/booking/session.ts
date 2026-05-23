@@ -14,7 +14,18 @@ import { Redis } from "@upstash/redis";
 import { BookingError } from "@/lib/liteapi";
 
 const KEY_VERSION = "v1";
-export const SESSION_TTL_SECONDS = 1800; // decision #3 — LiteAPI returns no expiresAt (Q2)
+// 24h — was 1800s (30 min), which proved too short to survive Stripe SCA in EU.
+// PSD2 strong-customer-authentication regularly takes >30 min when the bank's
+// push lands late or the user task-switches; we hit a real-money loss on
+// 2026-05-23 (sid 3124f752) because the Redis session expired between
+// `/api/booking/prebook` and the return-page `/api/booking/book` call, so the
+// charge was captured by Stripe but `/rates/book` never fired and LiteAPI
+// eventually auto-refunded. 24h is generous enough to cover bank back-and-forth
+// without holding stale rates indefinitely — LiteAPI's own rate-lock TTL is
+// shorter (typically minutes), so the *useful* upper bound on completing a
+// booking is bounded by LiteAPI regardless of our session window; this just
+// removes our local TTL as the single point of failure.
+export const SESSION_TTL_SECONDS = 24 * 60 * 60;
 const RECORD_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
 const IDEM_TTL_SECONDS = 300; // 5 min
 
@@ -97,10 +108,21 @@ export interface CompletedRecord {
 }
 export interface FailedRecord {
   sessionId: string;
-  prebookId: string;
-  transactionId: string;
-  holder: unknown;
-  guests: unknown;
+  // prebookId / transactionId / holder / guests are present when the failure
+  // occurred mid-flow (post-payment book call threw) — i.e. the Redis session
+  // was still alive. They are ABSENT in the session_expired-after-payment
+  // recovery branch (Redis TTL fired before the return-page POST landed), where
+  // the only client-side breadcrumb is the Stripe `paymentIntentId`. Support
+  // recovery flow handles both shapes — manual operators reconcile via Stripe
+  // and the LiteAPI dashboard.
+  prebookId?: string;
+  transactionId?: string;
+  holder?: unknown;
+  guests?: unknown;
+  // Stripe PaymentIntent ID smuggled through the redirect's query string
+  // (`?payment_intent=…`). Lets support look up the charge directly in Stripe
+  // when the Redis session is no longer available to provide our internal IDs.
+  paymentIntentId?: string;
   errorCode: string;
   message: string;
   createdAt: number;
