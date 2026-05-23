@@ -9,6 +9,7 @@
 
 import { ZodError, type ZodTypeAny, type z } from "zod";
 import {
+  LiteApiError,
   LiteApiNetworkError,
   LiteApiTimeoutError,
   LiteApiUnknownError,
@@ -186,7 +187,19 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
   const apiKey = (isPrivate ? env.privateKey : env.publicKey) ?? null;
   if (!apiKey) throw new LiteApiUnknownError(`Missing LiteAPI ${opts.keyMode ?? "public"} key in env`);
 
-  const url = buildUrl(base, opts.path, opts.query);
+  // buildUrl can throw on malformed URL components (defensive — `path` is
+  // hard-coded by our wrappers, but `opts.query` values come from callers and
+  // could in theory be coerced badly). Wrap to keep ALL pre-fetch errors
+  // typed; otherwise a TypeError from `new URL(...)` would escape unwrapped.
+  let url: string;
+  try {
+    url = buildUrl(base, opts.path, opts.query);
+  } catch (err) {
+    throw new LiteApiUnknownError(
+      `Failed to build LiteAPI URL for ${opts.path}: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
+  }
   const timeoutMs = opts.timeoutMs ?? 30_000;
   const maxRetries = opts.retries ?? 3;
 
@@ -252,21 +265,45 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
       return parsed.data;
     } catch (err) {
       lastError = err;
-      const isAbort = err instanceof DOMException && err.name === "AbortError";
+      // Broader AbortError detection. Node 22 + undici's fetch sometimes throws
+      // AbortError as a plain `Error` (name === "AbortError"), not as a
+      // DOMException — happens under Vercel's serverless runtime and other
+      // wrapper layers. The narrow check that only matched DOMException would
+      // let the abort escape as a bare Error → bookHotel sees underlying_code=
+      // UNKNOWN with no liteApiStatus/Code/Body. Caused diagnostic-blind
+      // booking failure on 2026-05-24 (sid d9eaa09e).
+      const isAbort =
+        (err instanceof DOMException && err.name === "AbortError") ||
+        (err instanceof Error && err.name === "AbortError");
       if (isAbort) {
         if (opts.signal?.aborted) throw new LiteApiTimeoutError("Request aborted by caller");
         if (attempt < maxRetries) continue;
         throw new LiteApiTimeoutError(`Timed out after ${timeoutMs}ms`);
       }
       if (err instanceof TypeError) {
-        // network fetch error
+        // network fetch error (undici wraps ECONNRESET/ENOTFOUND/etc. as
+        // TypeError("fetch failed") with cause set to the underlying error).
         if (attempt < maxRetries) {
           await new Promise((r) => setTimeout(r, jitter(2 ** attempt * 200)));
           continue;
         }
         throw new LiteApiNetworkError(err.message, { cause: err });
       }
-      throw err;
+      // Pass our typed errors through unchanged (already correctly classified).
+      if (err instanceof LiteApiError) throw err;
+      // Catch-all: ANY other thrown value gets wrapped as LiteApiUnknownError
+      // so downstream `liteApiDiag()` always has structured info to log. Before
+      // this branch a non-LiteApiError / non-TypeError / non-AbortError would
+      // escape as a raw Error and degenerate the [CRITICAL] log to
+      // `underlying_code=UNKNOWN` with no liteApiStatus / liteApiCode /
+      // liteApiBody — operator-blind. We keep the cause + original class name
+      // so the next failure is fully self-diagnosable in Vercel logs.
+      const errClass = err instanceof Error ? err.constructor.name : typeof err;
+      const errMessage = err instanceof Error ? err.message : String(err);
+      throw new LiteApiUnknownError(
+        `Unhandled error from fetch (${errClass}): ${errMessage}`,
+        { cause: err },
+      );
     } finally {
       clearTimeout(timer);
     }

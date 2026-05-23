@@ -248,6 +248,107 @@ test("CRITICAL: book() failing AFTER payment throws BookFailedAfterPaymentError 
   });
 });
 
+test("CRITICAL: book() failing with a plain Error → wrapped as LiteApiUnknownError + errorDiag in log", async () => {
+  // Regression for the 2026-05-24 diagnostic-blind failure (sid d9eaa09e):
+  // a non-LiteApiError, non-TypeError, non-AbortError throw inside fetch would
+  // escape unwrapped from liteApiRequest, leaving the [CRITICAL] log line with
+  // `underlying_code=UNKNOWN` and no liteApiStatus/liteApiCode/liteApiBody —
+  // operator-blind. Post-fix: client.ts wraps anything else as
+  // LiteApiUnknownError + booking.ts logs errClass/errName/errMessage/cause.
+  const { bookHotel } = await import("./booking");
+  const { BookFailedAfterPaymentError } = await import("./booking-errors");
+  await withEnv(BASE_ENV, async () => {
+    class WeirdNonStandardError extends Error {
+      constructor() {
+        super("simulated platform glitch");
+        this.name = "WeirdNonStandardError";
+      }
+    }
+    const m = mockFetchReject(new WeirdNonStandardError());
+    const cc = captureConsoleError();
+    try {
+      await assert.rejects(
+        () =>
+          bookHotel({
+            prebookId: "pb_123",
+            transactionId: "tx_123",
+            clientReference: "cr-1",
+            guests: GUESTS,
+            holder: HOLDER,
+          }),
+        (err: unknown) => {
+          assert.ok(err instanceof BookFailedAfterPaymentError);
+          return true;
+        },
+      );
+      const critical = cc.lines.find((l) => l.includes("[liteapi][booking][CRITICAL]"));
+      assert.ok(critical, "expected a [CRITICAL] log line");
+      // errorDiag MUST surface the underlying class + message even though
+      // the err wasn't a LiteApiError originally.
+      assert.match(
+        critical!,
+        /errClass=LiteApiUnknownError/,
+        "outer error must be wrapped LiteApiUnknownError after client.ts catch-all",
+      );
+      assert.match(
+        critical!,
+        /errCauseClass=WeirdNonStandardError/,
+        "cause chain must preserve the original error class",
+      );
+      assert.match(
+        critical!,
+        /errCauseMessage=simulated platform glitch/,
+        "cause message must be preserved verbatim",
+      );
+    } finally {
+      cc.restore();
+      m.restore();
+    }
+  });
+});
+
+test("CRITICAL: Node 22 plain-Error AbortError → mapped to LiteApiTimeoutError (not UNKNOWN)", async () => {
+  // Some Node 22 + undici configurations throw AbortError as a plain Error
+  // (name === "AbortError"), not as a DOMException. The original narrow check
+  // would skip the AbortError branch and fall through to the catch-all → log
+  // shape would lose the timeout signal. Verify the broader detector catches
+  // both shapes.
+  const { bookHotel } = await import("./booking");
+  const { BookFailedAfterPaymentError } = await import("./booking-errors");
+  await withEnv(BASE_ENV, async () => {
+    const abortErr = new Error("The operation was aborted");
+    abortErr.name = "AbortError";
+    const m = mockFetchReject(abortErr);
+    const cc = captureConsoleError();
+    try {
+      await assert.rejects(
+        () =>
+          bookHotel({
+            prebookId: "pb_123",
+            transactionId: "tx_123",
+            clientReference: "cr-1",
+            guests: GUESTS,
+            holder: HOLDER,
+          }),
+        (err: unknown) => {
+          assert.ok(err instanceof BookFailedAfterPaymentError);
+          return true;
+        },
+      );
+      const critical = cc.lines.find((l) => l.includes("[liteapi][booking][CRITICAL]"));
+      assert.ok(critical, "expected a [CRITICAL] log line");
+      assert.match(
+        critical!,
+        /liteApiCode=LITEAPI_TIMEOUT/,
+        "plain-Error AbortError must be recognized as timeout, not UNKNOWN",
+      );
+    } finally {
+      cc.restore();
+      m.restore();
+    }
+  });
+});
+
 test("BOOKING_FLOW_MODE feature flag: default disabled; 'live' only when set", async () => {
   const { getBookingFlowMode, isBookingLive } = await import("@/lib/config/featureFlags");
   await withEnv({ BOOKING_FLOW_MODE: undefined }, async () => {
