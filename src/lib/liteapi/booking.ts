@@ -107,6 +107,37 @@ function liteApiDiag(err: unknown): {
   };
 }
 
+// Type-agnostic diagnostic — captures class / name / message / cause chain for
+// ANY thrown value, even plain Errors. Complements liteApiDiag(), which only
+// fires when the error is one of our typed LiteApiError subclasses. Caused a
+// real production failure on 2026-05-24 (sid d9eaa09e) where the [CRITICAL]
+// log line had `underlying_code=UNKNOWN` and no liteApi* fields — we had
+// nothing to grep in Vercel logs to identify the failure class. Now even
+// non-LiteApiError throws leave a class+message trail.
+function errorDiag(err: unknown): {
+  errClass?: string;
+  errName?: string;
+  errMessage?: string;
+  errCauseClass?: string;
+  errCauseMessage?: string;
+} {
+  if (err === null || err === undefined) return { errClass: "null" };
+  if (!(err instanceof Error)) {
+    return { errClass: typeof err, errMessage: String(err).slice(0, 200) };
+  }
+  const cause = (err as { cause?: unknown }).cause;
+  return {
+    errClass: err.constructor.name,
+    // `Error.name` can differ from `constructor.name` (AbortError is `Error`
+    // with name === "AbortError" in some Node 22 / undici configurations).
+    errName: err.name !== err.constructor.name ? err.name : undefined,
+    errMessage: err.message ? err.message.slice(0, 200) : undefined,
+    errCauseClass: cause instanceof Error ? cause.constructor.name : undefined,
+    errCauseMessage:
+      cause instanceof Error && cause.message ? cause.message.slice(0, 200) : undefined,
+  };
+}
+
 export async function prebookHotel(input: PrebookHotelInput): Promise<PrebookResult> {
   const startedAt = Date.now();
   try {
@@ -155,6 +186,7 @@ export async function prebookHotel(input: PrebookHotelInput): Promise<PrebookRes
         status: "error",
         code: mapped.code,
         ...diag,
+        ...errorDiag(err),
       })}`,
     );
     throw mapped;
@@ -194,6 +226,7 @@ export async function bookHotel(input: BookHotelInput): Promise<BookResult> {
         underlying_code: underlying.code,
         elapsed_ms: Date.now() - startedAt,
         ...liteApiDiag(err),
+        ...errorDiag(err),
       })} — manual recovery required`,
     );
     throw new BookFailedAfterPaymentError(
