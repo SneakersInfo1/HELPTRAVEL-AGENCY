@@ -65,9 +65,18 @@ function Shell({
 export default async function ReturnPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sid?: string }>;
+  // Stripe always appends `payment_intent`, `payment_intent_client_secret`, and
+  // `redirect_status` to the returnUrl when the Payment Element completes — we
+  // smuggle `sid` (booking sessionId) ourselves. We forward `payment_intent` to
+  // /api/booking/book so the route can persist a recovery record if our Redis
+  // session is already gone (24h TTL exhausted or Upstash flap mid-redirect).
+  searchParams: Promise<{
+    sid?: string;
+    payment_intent?: string;
+    redirect_status?: string;
+  }>;
 }) {
-  const { sid } = await searchParams;
+  const { sid, payment_intent: paymentIntentId } = await searchParams;
   if (!sid) {
     return (
       <Shell tone="err" title="Brak identyfikatora sesji">
@@ -75,6 +84,9 @@ export default async function ReturnPage({
           Nie możemy powiązać tej płatności z rezerwacją. Jeśli pieniądze
           zostały pobrane, napisz do nas — pomożemy.
         </p>
+        {paymentIntentId ? (
+          <p className="font-mono text-xs">Stripe PaymentIntent: {paymentIntentId}</p>
+        ) : null}
       </Shell>
     );
   }
@@ -85,7 +97,10 @@ export default async function ReturnPage({
     const res = await fetch(`${getSiteUrl()}/api/booking/book`, {
       method: "POST",
       headers: { "content-type": "application/json", "idempotency-key": sid },
-      body: JSON.stringify({ sessionId: sid }),
+      body: JSON.stringify({
+        sessionId: sid,
+        ...(paymentIntentId ? { paymentIntentId } : {}),
+      }),
       cache: "no-store",
     });
     status = res.status;
@@ -126,7 +141,36 @@ export default async function ReturnPage({
     );
   }
 
+  // A `recoveryId` in the response means the server has persisted a recovery
+  // record and treats this as paid-but-unbooked — always show the recovery UI
+  // regardless of status (410 with paymentIntentId AND 502 both carry this).
+  if (typeof data.recoveryId === "string") {
+    const message =
+      typeof data.message === "string"
+        ? data.message
+        : "Płatność mogła zostać zarejestrowana, ale rezerwacja wymaga ręcznego potwierdzenia.";
+    return (
+      <Shell tone="warn" title="Rezerwacja wymaga potwierdzenia">
+        <p>{message}</p>
+        <p>
+          Identyfikator do kontaktu: <span className="font-mono text-xs">{data.recoveryId}</span>
+        </p>
+        {paymentIntentId ? (
+          <p className="text-xs text-neutral-500">
+            Stripe PaymentIntent: <span className="font-mono">{paymentIntentId}</span>
+          </p>
+        ) : null}
+        <p className="text-neutral-500">
+          Nie ponawiaj płatności — skontaktuj się z nami, a dokończymy rezerwację
+          ręcznie.
+        </p>
+      </Shell>
+    );
+  }
+
   if (status === 410) {
+    // Benign session expiry — no payment evidence on the request. User hit this
+    // page without a fresh Stripe redirect (refreshed an old tab, bookmark, etc.).
     return (
       <Shell tone="warn" title="Sesja rezerwacji wygasła">
         <p>
@@ -139,17 +183,16 @@ export default async function ReturnPage({
     );
   }
 
-  // 502 book_failed (paid but not booked) or any other non-success.
+  // Any other non-success without a recoveryId — defensive fallback.
   const message =
     typeof data.message === "string"
       ? data.message
       : "Płatność mogła zostać zarejestrowana, ale rezerwacja wymaga ręcznego potwierdzenia.";
-  const recoveryId = typeof data.recoveryId === "string" ? data.recoveryId : sid;
   return (
     <Shell tone="warn" title="Rezerwacja wymaga potwierdzenia">
       <p>{message}</p>
       <p>
-        Identyfikator do kontaktu: <span className="font-mono text-xs">{recoveryId}</span>
+        Identyfikator do kontaktu: <span className="font-mono text-xs">{sid}</span>
       </p>
       <p className="text-neutral-500">
         Nie ponawiaj płatności — skontaktuj się z nami, a dokończymy rezerwację
