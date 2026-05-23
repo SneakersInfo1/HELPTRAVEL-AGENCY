@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getSiteUrl } from "@/lib/mvp/site";
+import { ConfettiBurst } from "./_components/confetti-burst";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +122,7 @@ export default async function ReturnPage({
     const hotel = (data.hotelSummary as { name?: string; city?: string }) ?? {};
     return (
       <Shell tone="ok" title="Rezerwacja potwierdzona 🎉">
+        <ConfettiBurst />
         <p>
           Dziękujemy! Twoja rezerwacja w <strong>{hotel.name ?? "wybranym hotelu"}</strong>
           {hotel.city ? `, ${hotel.city}` : ""} została potwierdzona.
