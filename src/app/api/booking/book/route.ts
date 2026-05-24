@@ -12,6 +12,7 @@ import {
   LiteApiGuestSchema,
   LiteApiHolderSchema,
   bookHotel,
+  listBookingsByClientReference,
 } from "@/lib/liteapi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
@@ -170,6 +171,52 @@ export async function POST(request: NextRequest) {
   const country = request.headers.get("x-vercel-ip-country") || "PL";
   const userAgent = request.headers.get("user-agent") || "unknown";
 
+  // Pre-flight reconciliation against LiteAPI's authoritative state. If a
+  // previous attempt for this sessionId already committed a booking on
+  // LiteAPI's side (e.g. Vercel killed our function before we could read the
+  // /rates/book response — observed 2026-05-24 with 9.777s LiteAPI latency
+  // against a 10s default function timeout), this returns the existing
+  // booking without ever calling /rates/book again. `clientReference` is
+  // LiteAPI's documented idempotency key — confirmed by their support
+  // 2026-05-24. Failure to reconcile is non-fatal: we fall through to the
+  // normal book path. Worst case is a duplicate call that LiteAPI itself
+  // dedupes by clientReference.
+  try {
+    const existing = await listBookingsByClientReference(sessionId);
+    if (existing.length > 0) {
+      const booking = existing[0]!;
+      console.log(
+        `[booking][book] reconciled existing bookingId=${booking.bookingId} status=${booking.status} for clientReference=${sessionId} (no /rates/book call needed)`,
+      );
+      await saveCompleted({
+        bookingId: booking.bookingId,
+        confirmationCode: booking.hotelConfirmationCode,
+        status: booking.status,
+        hotelSummary: session.hotelSummary,
+        rateSummary: session.rateSummary,
+        price: session.price,
+        currency: session.currency,
+        createdAt: Date.now(),
+      });
+      await deleteSession(sessionId);
+      const body = {
+        bookingId: booking.bookingId,
+        confirmationCode: booking.hotelConfirmationCode ?? null,
+        hotelSummary: session.hotelSummary,
+        status: "confirmed" as const,
+      };
+      if (idemKey) await setIdempotent(idemKey, 200, body);
+      return NextResponse.json(body, { status: 200 });
+    }
+  } catch (reconcileErr) {
+    // Reconciliation lookup failed — fall through to normal book path.
+    // bookHotel itself handles the post-failure reconciliation in its
+    // catch block (below) as a second safety net.
+    console.warn(
+      `[booking][book] pre-flight reconcile failed for sessionId=${sessionId}, falling through: ${reconcileErr instanceof Error ? reconcileErr.message : String(reconcileErr)}`,
+    );
+  }
+
   try {
     const booking = await bookHotel({
       prebookId: session.prebookId,
@@ -203,6 +250,45 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json(body, { status: 200 });
   } catch (err) {
+    // SECOND safety net: bookHotel threw — but the call MAY have committed
+    // on LiteAPI's side (response dropped mid-read). Query their state by
+    // clientReference one more time before declaring failure. If it exists,
+    // recover into the success path.
+    try {
+      const recovered = await listBookingsByClientReference(sessionId);
+      if (recovered.length > 0) {
+        const booking = recovered[0]!;
+        console.log(
+          `[booking][book] post-failure reconcile RECOVERED bookingId=${booking.bookingId} status=${booking.status} for clientReference=${sessionId} (book() threw but LiteAPI has the booking)`,
+        );
+        await saveCompleted({
+          bookingId: booking.bookingId,
+          confirmationCode: booking.hotelConfirmationCode,
+          status: booking.status,
+          hotelSummary: session.hotelSummary,
+          rateSummary: session.rateSummary,
+          price: session.price,
+          currency: session.currency,
+          createdAt: Date.now(),
+        });
+        await deleteSession(sessionId);
+        const body = {
+          bookingId: booking.bookingId,
+          confirmationCode: booking.hotelConfirmationCode ?? null,
+          hotelSummary: session.hotelSummary,
+          status: "confirmed" as const,
+        };
+        if (idemKey) await setIdempotent(idemKey, 200, body);
+        return NextResponse.json(body, { status: 200 });
+      }
+    } catch (recoverErr) {
+      console.warn(
+        `[booking][book] post-failure reconcile lookup also failed for sessionId=${sessionId}: ${recoverErr instanceof Error ? recoverErr.message : String(recoverErr)}`,
+      );
+    }
+    // Reconciliation also confirms no booking exists — fall through to the
+    // normal failure path below (save recovery record, return 502).
+
     // Pattern A: the charge already succeeded. bookHotel() throws
     // BookFailedAfterPaymentError on ANY failure and already logged [CRITICAL].
     const code = err instanceof BookingError ? err.code : "BOOK_FAILED_AFTER_PAYMENT";
