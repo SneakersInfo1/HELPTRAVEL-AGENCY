@@ -73,7 +73,7 @@ const sections: Section[] = [
     ord: "§ 1",
     title: "Postanowienia ogólne",
     paragraphs: [
-      `Niniejszy regulamin (dalej: „Regulamin") określa zasady korzystania z serwisu internetowego ${SITE_NAME} dostępnego pod adresem ${SITE_DOMAIN} (dalej: „Serwis") oraz zasady świadczenia usług drogą elektroniczną przez Operatora Serwisu.`,
+      `Niniejszy regulamin (dalej: „Regulamin”) określa zasady korzystania z serwisu internetowego ${SITE_NAME} dostępnego pod adresem ${SITE_DOMAIN} (dalej: „Serwis”) oraz zasady świadczenia usług drogą elektroniczną przez Operatora Serwisu.`,
       `Regulamin został sporządzony na podstawie powszechnie obowiązujących przepisów prawa polskiego, w szczególności Kodeksu cywilnego, ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną, ustawy z dnia 30 maja 2014 r. o prawach konsumenta oraz rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 (RODO).`,
       `Korzystanie z Serwisu oznacza akceptację niniejszego Regulaminu w wersji obowiązującej w chwili rozpoczęcia korzystania.`,
       `Regulamin udostępniany jest nieodpłatnie, w sposób umożliwiający jego pozyskanie, odtwarzanie i utrwalanie w każdym czasie pod adresem ${SITE_DOMAIN}/regulamin.`,
@@ -239,7 +239,7 @@ const sections: Section[] = [
       { body: "Użytkownik wybiera obiekt i stawkę spośród prezentowanych w Serwisie wyników wyszukiwania." },
       {
         body:
-          "Operator wykonuje techniczną operację „prebookingu" u Partnera Rezerwacyjnego, w której Partner potwierdza dostępność obiektu i ostateczną cenę dla wybranych warunków.",
+          "Operator wykonuje techniczną operację „prebookingu” u Partnera Rezerwacyjnego, w której Partner potwierdza dostępność obiektu i ostateczną cenę dla wybranych warunków.",
       },
       {
         body:
@@ -277,7 +277,7 @@ const sections: Section[] = [
     ord: "§ 10",
     title: "Zmiany, anulacje i zwroty",
     paragraphs: [
-      "Polityka anulacji, modyfikacji oraz zwrotu środków każdorazowo wynika z warunków Partnera Rezerwacyjnego dla wybranej stawki (m.in. „refundable" / „non-refundable") i jest prezentowana Użytkownikowi przed potwierdzeniem rezerwacji.",
+      "Polityka anulacji, modyfikacji oraz zwrotu środków każdorazowo wynika z warunków Partnera Rezerwacyjnego dla wybranej stawki (m.in. „refundable” / „non-refundable”) i jest prezentowana Użytkownikowi przed potwierdzeniem rezerwacji.",
       "Anulacji lub zmiany Rezerwacji Hotelowej Użytkownik może dokonać kontaktując się z Partnerem Rezerwacyjnym, korzystając z odpowiedniej funkcji w Serwisie (jeżeli jest dostępna) lub zwracając się do Operatora pod adresem kontaktowym Operatora, który przekaże dyspozycję Partnerowi.",
       "Zwrot środków, jeżeli przysługuje, dokonywany jest przez ten sam kanał płatności, którym dokonano płatności pierwotnej, w terminach wynikających z polityki Partnera Rezerwacyjnego oraz przepisów dostawcy usług płatniczych. Operator nie odpowiada za terminy księgowania zwrotu po stronie banku Użytkownika.",
     ],
@@ -300,7 +300,7 @@ const sections: Section[] = [
     intro:
       "Reklamacje dotyczące działania Serwisu (np. błędów technicznych, nieprawidłowości w funkcjonowaniu Planera, problemów z przebiegiem rezerwacji po stronie Operatora) Użytkownik może składać:",
     numbered: [
-      { body: `pocztą elektroniczną na adres ${operator.email}, z dopiskiem „Reklamacja";` },
+      { body: `pocztą elektroniczną na adres ${operator.email}, z dopiskiem „Reklamacja”;` },
       { body: "korzystając z formularza kontaktowego dostępnego na stronie /kontakt." },
     ],
     paragraphs: [
