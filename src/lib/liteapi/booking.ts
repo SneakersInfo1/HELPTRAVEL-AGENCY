@@ -64,22 +64,32 @@ function logLine(parts: Record<string, string | number | undefined>): string {
 
 // Pull a short, log-safe snippet from a LiteAPI error body. The body is
 // already PII-redacted by client.ts. We prefer common shapes (`{error:{...}}`,
-// `{message:""}`, plain strings) and cap to 200 chars so log lines stay
-// readable.
+// `{message:""}`, plain strings) and cap to 400 chars so log lines stay
+// readable while still surfacing LiteAPI's detailed field-level diagnostics
+// (their `description` is the operational gold — e.g.
+// "Key: 'BookRequest.X' Error: Field validation for 'X' failed on the 'required' tag"
+// — which previously got dropped because we only read `error.message`).
 function summarizeLiteApiBody(body: unknown): string | undefined {
   if (body === null || body === undefined) return undefined;
-  const clamp = (s: string) => (s.length > 200 ? `${s.slice(0, 200)}…` : s);
+  const clamp = (s: string) => (s.length > 400 ? `${s.slice(0, 400)}…` : s);
   if (typeof body === "string") return clamp(body);
   if (typeof body === "object") {
     const obj = body as {
-      error?: { message?: string; code?: string } | string;
+      error?: { message?: string; code?: string | number; description?: string } | string;
       message?: string;
+      description?: string;
     };
     if (typeof obj.error === "object") {
-      const parts = [obj.error.code, obj.error.message].filter(Boolean).join(": ");
+      // LiteAPI uses `description` for the detailed field-level diagnostic
+      // and `message` for the human-friendly summary — prefer description
+      // since that's what tells operators which field is bad. Fall back to
+      // message when description is absent.
+      const detail = obj.error.description ?? obj.error.message;
+      const parts = [obj.error.code, detail].filter(Boolean).join(": ");
       if (parts) return clamp(parts);
     }
     if (typeof obj.error === "string") return clamp(obj.error);
+    if (typeof obj.description === "string") return clamp(obj.description);
     if (typeof obj.message === "string") return clamp(obj.message);
     try {
       return clamp(JSON.stringify(body));
