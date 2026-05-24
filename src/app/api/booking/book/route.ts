@@ -26,6 +26,17 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// LiteAPI POST /rates/book has been observed taking up to 9.777s in production
+// (real LiteAPI dashboard log, 2026-05-24). Our `book.ts` client uses an
+// AbortController timeout of 60s, but Vercel's PLATFORM-level function timeout
+// defaults to 10s on Node.js — which means the function gets killed at the
+// 10s mark regardless of what our AbortController says. That's the exact
+// failure mode we kept hitting: LiteAPI finished the booking at ~9.8s with
+// HTTP 200, but Vercel killed our handler at 10s before we could read the
+// response, persist `completed`, and return success — so the error path ran
+// instead and the user saw the recovery screen. Bump to 60s so we always
+// have headroom over LiteAPI's slow tail.
+export const maxDuration = 60;
 
 // holder/guests are optional in the body: the Phase 3 redirect return page
 // only has `sid`, so guest data is read from the session (stored at prebook).

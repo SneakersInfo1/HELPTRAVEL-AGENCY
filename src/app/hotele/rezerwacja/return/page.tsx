@@ -13,6 +13,12 @@ import { getSiteUrl } from "@/lib/mvp/site";
 import { ConfettiBurst } from "./_components/confetti-burst";
 
 export const dynamic = "force-dynamic";
+// Return page server-renders by awaiting /api/booking/book, which in turn
+// awaits LiteAPI /rates/book — observed up to 9.777s. Without an explicit
+// maxDuration, Vercel kills the function at the 10s default. Bump to 60s so
+// the entire render chain (fetch → /api/booking/book → LiteAPI → render
+// confirmation UI) always has headroom.
+export const maxDuration = 60;
 
 export const metadata: Metadata = {
   title: "Potwierdzenie rezerwacji | HelpTravel",
