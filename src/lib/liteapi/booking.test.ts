@@ -429,6 +429,49 @@ test("CRITICAL: Node 22 plain-Error AbortError → mapped to LiteApiTimeoutError
   });
 });
 
+test("bookHotel: accepts a minimal /rates/book response with ONLY bookingId — no status/checkin/hotel required", async () => {
+  // Regression for 2026-05-24 (sid d66b741f, prebookId b8hFNzW_b). LiteAPI
+  // returned HTTP 200 with a successful booking but our strict Zod schema
+  // rejected the response shape (required `status` enum + `checkin` +
+  // `checkout` + `hotel.hotelId`), turning a real success into
+  // BookFailedAfterPaymentError and showing the recovery UI to the user even
+  // though the booking was committed at LiteAPI. The schema is now lenient —
+  // bookingId is the only required field, everything else optional, all extras
+  // passed through.
+  const { bookHotel } = await import("./booking");
+  await withEnv(BASE_ENV, async () => {
+    const MINIMAL_RESPONSE = {
+      data: {
+        bookingId: "bk_minimal_42",
+        // Deliberately omit status, checkin, checkout, hotel, etc.
+        // Add an unknown extra field to verify .passthrough() tolerance.
+        weirdExtraField: { nested: "shape" },
+        // Status as a NON-ENUM string (e.g. a future state LiteAPI introduces).
+        status: "TENTATIVE_HOLD",
+      },
+    };
+    const m = mockFetchOnce(MINIMAL_RESPONSE);
+    try {
+      const res = await bookHotel({
+        prebookId: "pb_123",
+        transactionId: "tx_123",
+        clientReference: "cr-1",
+        guests: GUESTS,
+        holder: HOLDER,
+      });
+      assert.equal(res.bookingId, "bk_minimal_42");
+      assert.equal(res.status, "TENTATIVE_HOLD", "non-enum status must pass through");
+      assert.equal(
+        (res as Record<string, unknown>).weirdExtraField !== undefined,
+        true,
+        "unknown fields must pass through",
+      );
+    } finally {
+      m.restore();
+    }
+  });
+});
+
 test("BOOKING_FLOW_MODE feature flag: default disabled; 'live' only when set", async () => {
   const { getBookingFlowMode, isBookingLive } = await import("@/lib/config/featureFlags");
   await withEnv({ BOOKING_FLOW_MODE: undefined }, async () => {
