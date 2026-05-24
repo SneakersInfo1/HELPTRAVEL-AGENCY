@@ -191,7 +191,11 @@ export async function POST(request: NextRequest) {
       await saveCompleted({
         bookingId: booking.bookingId,
         confirmationCode: booking.hotelConfirmationCode,
-        status: booking.status,
+        // booking.status is now `string | undefined` after the schema relaxation
+        // (LiteAPI sometimes omits it or returns values outside our prior enum).
+        // Default to "CONFIRMED" — bookHotel only reaches here on LiteAPI 200,
+        // which per their docs means the booking is committed.
+        status: booking.status ?? "CONFIRMED",
         hotelSummary: session.hotelSummary,
         rateSummary: session.rateSummary,
         price: session.price,
@@ -229,7 +233,10 @@ export async function POST(request: NextRequest) {
     await saveCompleted({
       bookingId: booking.bookingId,
       confirmationCode: booking.hotelConfirmationCode,
-      status: booking.status,
+      // booking.status is `string | undefined` after schema relaxation.
+      // Reaching this branch means LiteAPI returned 200, which per their
+      // docs means the booking is committed — default to "CONFIRMED".
+      status: booking.status ?? "CONFIRMED",
       hotelSummary: session.hotelSummary,
       rateSummary: session.rateSummary,
       price: session.price,
@@ -264,7 +271,11 @@ export async function POST(request: NextRequest) {
         await saveCompleted({
           bookingId: booking.bookingId,
           confirmationCode: booking.hotelConfirmationCode,
-          status: booking.status,
+          // booking.status is now `string | undefined` after the schema relaxation
+        // (LiteAPI sometimes omits it or returns values outside our prior enum).
+        // Default to "CONFIRMED" — bookHotel only reaches here on LiteAPI 200,
+        // which per their docs means the booking is committed.
+        status: booking.status ?? "CONFIRMED",
           hotelSummary: session.hotelSummary,
           rateSummary: session.rateSummary,
           price: session.price,
