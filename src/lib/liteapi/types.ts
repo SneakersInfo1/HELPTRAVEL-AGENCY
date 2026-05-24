@@ -160,59 +160,121 @@ export const LiteApiHolderSchema = z.object({
 });
 export type LiteApiHolder = z.infer<typeof LiteApiHolderSchema>;
 
-// IMPORTANT: lenient by design. The ONLY field we treat as required is
-// `bookingId` — that's the canonical handle for a LiteAPI booking and the one
-// piece of state we cannot proceed without. Every other field is optional and
-// we passthrough unknown ones, because:
+// Principled schema for `POST /v3.0/rates/book` 200 response — based on the
+// canonical version LiteAPI support provided 2026-05-24 after the real
+// on-wire shape was diagnosed against our previous strict schema.
 //
-// 1. LiteAPI's real `/rates/book` 200 response shape drifts from their docs
-//    (status enum text, presence/absence of `hotel`, `checkin`/`checkout` top-
-//    level vs nested under bookedRooms, additional fields like `commission`,
-//    `cancellationPolicies` with different sub-shapes, etc.).
+// Design rules confirmed with LiteAPI:
+//  1. ONLY `data.bookingId` is a true invariant — that's the canonical handle.
+//  2. `status` is a STRING (not an enum). Documented values across endpoints
+//     include "CONFIRMED", "CANCELED", "CANCELLED_WITH_CHARGES". Treat as
+//     opaque; route layer interprets business meaning.
+//  3. `holder.phone` may come back as "" (empty) — DO NOT enforce min length
+//     here, that constraint belongs in the INPUT schema (where the user types).
+//  4. `hotel.parentHotelId` appears on the wire but is not in the OpenAPI —
+//     allow unknown keys via `.passthrough()` at every nested level.
+//  5. `sandbox` is sometimes boolean, sometimes 0|1 across endpoints.
 //
-// 2. A strict schema turned a real production success (LiteAPI 200 OK with a
-//    booking actually created on their side) into our `LiteApiValidationError`
-//    → `BookFailedAfterPaymentError` → user sees recovery UI even though the
-//    booking is committed (2026-05-24, prebookId b8hFNzW_b, sessionId
-//    d66b741f). That's a worse failure mode than accepting an under-specified
-//    response.
-//
-// 3. The downstream code only reads `bookingId`, `status`, `hotelConfirmationCode`,
-//    `checkin`, `checkout`, `hotel` — and all of those are safe to be missing
-//    (we have `session.hotelSummary` / `session.rateSummary` as fallback).
-//
-// Validation of business-meaningful state (status != "FAILED" etc.) happens
-// at the route layer, not in the schema.
+// This shape rejects no real success response we've seen from LiteAPI and
+// stays forward-compatible.
+const LiteApiBookingHolderResponseSchema = z
+  .object({
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    email: z.string().optional(),
+    // Lenient by design — LiteAPI returns "" here even when the input was a
+    // valid phone. We do NOT enforce `min(4)` on the response.
+    phone: z.string().optional().nullable(),
+  })
+  .passthrough();
+
+const LiteApiBookingHotelResponseSchema = z
+  .object({
+    hotelId: z.string().optional(),
+    name: z.string().optional(),
+    parentHotelId: z.string().optional(), // observed on-wire, undocumented
+  })
+  .passthrough();
+
+const LiteApiBookedRoomResponseSchema = z
+  .object({
+    // LiteAPI uses both camelCase and snake_case across responses — accept both.
+    occupancy_number: z.number().int().optional(),
+    occupancyNumber: z.number().int().optional(),
+    room_id: z.string().optional(),
+    amount: z.number().optional(),
+    currency: z.string().optional(),
+    roomType: z
+      .object({ roomTypeId: z.string().optional(), name: z.string().optional() })
+      .passthrough()
+      .optional(),
+    rate: z
+      .object({
+        rateId: z.string().optional(),
+        // sub-shapes differ across endpoints — accept anything.
+        retailRate: z.unknown().optional(),
+        cancellationPolicies: z.unknown().optional(),
+        maxOccupancy: z.number().optional(),
+        remarks: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    guests: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+
 export const LiteApiBookingSchema = z
   .object({
     bookingId: z.string(),
+
     clientReference: z.string().optional(),
     supplierBookingId: z.string().optional(),
+    supplierBookingName: z.string().optional(),
+    supplier: z.string().optional(),
+    supplierId: z.number().int().optional(),
+
     status: z.string().optional(),
     hotelConfirmationCode: z.string().optional(),
+
     checkin: z.string().optional(),
     checkout: z.string().optional(),
-    hotel: z
-      .object({ hotelId: z.string().optional(), name: z.string().optional() })
-      .passthrough()
-      .optional(),
-    // The response's nested arrays/objects can have arbitrary shapes. We do
-    // not process them downstream beyond passing through `bookingId`,
-    // `status`, `hotelConfirmationCode` — so accept anything here rather than
-    // failing the whole booking parse on a sub-field mismatch.
-    bookedRooms: z.array(z.unknown()).optional(),
-    guests: z.array(z.unknown()).optional(),
-    holder: z.unknown().optional(),
+
+    hotel: LiteApiBookingHotelResponseSchema.optional(),
+    holder: LiteApiBookingHolderResponseSchema.optional(),
+
+    bookedRooms: z.array(LiteApiBookedRoomResponseSchema).optional(),
+    // Some endpoints also expose a flat `rooms` array — accept either.
+    rooms: z.array(z.unknown()).optional(),
+
+    paymentStatus: z.string().optional(),
+    paymentTransactionId: z.string().optional(),
+    prebookId: z.string().optional(),
+
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    refundedAt: z.string().nullable().optional(),
+    cancelledAt: z.string().nullable().optional(),
+    amountRefunded: z.number().optional(),
+    refundType: z.string().optional(),
+
+    remarks: z.string().optional(),
+    currency: z.string().optional(),
     price: z.number().optional(),
     commission: z.number().optional(),
-    currency: z.string().optional(),
     cancellationPolicies: z.unknown().optional(),
-    createdAt: z.string().optional(),
   })
   .passthrough();
 export type LiteApiBooking = z.infer<typeof LiteApiBookingSchema>;
 
-export const LiteApiBookResponseSchema = z.object({ data: LiteApiBookingSchema });
+// Top-level envelope. LiteAPI sometimes adds `guestLevel`, `sandbox`, and
+// other meta fields at the top level alongside `data`. Allow them through.
+export const LiteApiBookResponseSchema = z
+  .object({
+    data: LiteApiBookingSchema,
+    guestLevel: z.number().int().optional(),
+    sandbox: z.boolean().or(z.number().int()).optional(),
+  })
+  .passthrough();
 export type LiteApiBookResponse = z.infer<typeof LiteApiBookResponseSchema>;
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -228,20 +290,41 @@ export const LiteApiCancellationSchema = z.object({
 export type LiteApiCancellation = z.infer<typeof LiteApiCancellationSchema>;
 
 // ────────────────────────────────────────────────────────────────────────────
-// Webhook payload
-
-export const LiteApiWebhookEventSchema = z.object({
-  type: z.enum([
-    "payment_success",
-    "payment_failed",
-    "booking_confirmed",
-    "booking_cancelled",
-    "booking_modified",
-  ]),
-  timestamp: z.string(),
-  data: z.unknown(), // refine per event type at handler boundary
-});
+// Webhook payload (canonical envelope confirmed by LiteAPI support 2026-05-24)
+//
+// Every event share the same envelope:
+//   - event_id      unique delivery ID (use for dedupe / idempotency)
+//   - event_name    e.g. "booking.book", "booking.refund", "booking.cancel"
+//   - request       stringified JSON of the original request body
+//   - response      stringified JSON of LiteAPI's response body
+//   - sandbox       boolean — true for sandbox, false for production
+//
+// Auth: `Authorization` header with the shared token configured in the LiteAPI
+// dashboard (Developer tools → Webhooks). NOT HMAC-SHA256 — our previous
+// implementation assumed HMAC and would have rejected every real event.
+export const LiteApiWebhookEventSchema = z
+  .object({
+    event_id: z.string(),
+    event_name: z.string(),
+    // request + response are STRINGIFIED JSON. Caller must JSON.parse() before
+    // working with them. Kept as strings here to match the on-wire shape exactly.
+    request: z.string().optional(),
+    response: z.string().optional(),
+    sandbox: z.boolean().or(z.number().int()).optional(),
+  })
+  .passthrough();
 export type LiteApiWebhookEvent = z.infer<typeof LiteApiWebhookEventSchema>;
+
+// Helper to parse the embedded stringified JSON safely. Returns null on parse
+// failure (caller decides what to do with malformed sub-payloads).
+export function parseWebhookEmbeddedJson<T = unknown>(value: string | undefined): T | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Search input (our normalized search params, not LiteAPI's raw shape)
