@@ -29,6 +29,11 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Mirror the book route's maxDuration. Prebook normally completes in
+// ~700ms but we've seen LiteAPI tail-latency reach multi-second on heavy
+// suppliers; 60s removes Vercel's 10s default as a possible cause of
+// silent kills on the prebook path too.
+export const maxDuration = 60;
 
 const BodySchema = z.object({
   offerId: z.string().min(8),
