@@ -104,6 +104,18 @@ export default async function ReservationPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
+      {/*
+        Preconnect to the Stripe + LiteAPI widget hosts BEFORE the
+        Payment SDK script loads. Shaves ~100-200ms off widget mount by
+        warming DNS + TCP + TLS for the hosts the widget will hit:
+        payment-wrapper.liteapi.travel (widget JS + /config endpoint) and
+        js.stripe.com (Stripe Elements bundle the widget imports). Plain
+        <link> tags are CSP-safe (no script content).
+      */}
+      <link rel="preconnect" href="https://payment-wrapper.liteapi.travel" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://api.stripe.com" crossOrigin="anonymous" />
+      <link rel="dns-prefetch" href="https://hooks.stripe.com" />
       <section className="mx-auto max-w-2xl px-4 py-8">
         <h1 className="text-2xl font-bold text-neutral-900">Twoja rezerwacja</h1>
         <p className="mt-1 text-sm text-neutral-600">
