@@ -34,6 +34,22 @@ export async function book(input: BookInput): Promise<LiteApiBookResponse> {
   // production prior to those two failures. LiteAPI rejects the wrong value
   // with HTTP 400 + error code 4002 "required request field is missing or
   // wrong input" within ~180ms (validation, no upstream call).
+  // LiteAPI 4002 (confirmed live 2026-05-24): `guests[*].email` is REQUIRED on
+  // /rates/book even though our internal `LiteApiGuestSchema` marks it
+  // optional and the booking form only collects email at the holder level.
+  // The full LiteAPI error was:
+  //   "Key: 'BookRequest.Guests[0].Email' Error: Field validation for 'Email'
+  //    failed on the 'required' tag"
+  // Fill the gap at the boundary: any guest without their own email inherits
+  // the holder's email. Holder.email is required by LiteApiHolderSchema so
+  // the fallback always has a value. This is the right semantic — for the
+  // common single-occupancy booking, guest = holder, and even for multi-
+  // occupancy LiteAPI primarily uses the holder's email as the booking-wide
+  // confirmation contact; per-guest emails are mostly for record-keeping.
+  const guests = input.guests.map((g) => ({
+    ...g,
+    email: g.email ?? input.holder.email,
+  }));
   const body = {
     holder: input.holder,
     payment: {
@@ -41,7 +57,7 @@ export async function book(input: BookInput): Promise<LiteApiBookResponse> {
       transactionId: input.transactionId,
     },
     prebookId: input.prebookId,
-    guests: input.guests,
+    guests,
     clientReference: input.clientReference,
   };
   return liteApiRequest({
