@@ -139,7 +139,7 @@ test("prebookHotel: hits booking host with private key, sends offerId + usePayme
   });
 });
 
-test("bookHotel: hits booking host, sends payment.method TRANSACTION (LiteAPI Payment SDK), returns confirmation", async () => {
+test("bookHotel: hits booking host, sends payment.method TRANSACTION_ID (LiteAPI Payment SDK), returns confirmation", async () => {
   const { bookHotel } = await import("./booking");
   await withEnv(BASE_ENV, async () => {
     const m = mockFetchOnce(BOOK_OK);
@@ -157,12 +157,15 @@ test("bookHotel: hits booking host, sends payment.method TRANSACTION (LiteAPI Pa
       assert.equal(req.headers["x-api-key"], "prod_test_private");
       const body = req.body as Record<string, unknown>;
       const payment = body.payment as Record<string, unknown>;
-      // Locked to the EXACT LiteAPI-documented enum value. Two real-card
-      // production failures (sids d9eaa09e, db11dc23) traced back to sending
-      // "TRANSACTION_ID" here instead of the documented "TRANSACTION" —
-      // LiteAPI rejects with HTTP 400 + code 4002. This assertion fails the
-      // test if anyone reverts to the wrong value.
-      assert.equal(payment.method, "TRANSACTION");
+      // Locked to the EXACT enum value confirmed by LiteAPI support on
+      // 2026-05-24 with a corrected example request. Valid values per their
+      // Booking API schema: ACC_CREDIT_CARD, WALLET, CREDIT, TRANSACTION_ID.
+      // For Payment SDK flow with usePaymentSdk=true on prebook, the correct
+      // value is TRANSACTION_ID. An earlier change to "TRANSACTION" was a
+      // regression based on a WebFetch summarization that truncated "_ID";
+      // LiteAPI then returned HTTP 400 4000 "missing or not supported
+      // payment method". This assertion fails if anyone reverts that.
+      assert.equal(payment.method, "TRANSACTION_ID");
       assert.equal(payment.transactionId, "tx_123");
       assert.equal(body.prebookId, "pb_123");
       assert.equal(res.bookingId, "bk_999");
