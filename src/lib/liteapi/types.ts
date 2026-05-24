@@ -160,24 +160,56 @@ export const LiteApiHolderSchema = z.object({
 });
 export type LiteApiHolder = z.infer<typeof LiteApiHolderSchema>;
 
-export const LiteApiBookingSchema = z.object({
-  bookingId: z.string(),
-  clientReference: z.string().optional(),
-  supplierBookingId: z.string().optional(),
-  status: z.enum(["CONFIRMED", "PENDING", "FAILED", "CANCELLED"]),
-  hotelConfirmationCode: z.string().optional(),
-  checkin: z.string(),
-  checkout: z.string(),
-  hotel: z.object({ hotelId: z.string(), name: z.string().optional() }).passthrough(),
-  bookedRooms: z.array(z.unknown()).optional(),
-  guests: z.array(LiteApiGuestSchema).optional(),
-  holder: LiteApiHolderSchema.optional(),
-  price: z.number().optional(),
-  commission: z.number().optional(),
-  currency: CurrencyCodeSchema.optional(),
-  cancellationPolicies: LiteApiCancellationPolicySchema.optional(),
-  createdAt: z.string().optional(),
-});
+// IMPORTANT: lenient by design. The ONLY field we treat as required is
+// `bookingId` — that's the canonical handle for a LiteAPI booking and the one
+// piece of state we cannot proceed without. Every other field is optional and
+// we passthrough unknown ones, because:
+//
+// 1. LiteAPI's real `/rates/book` 200 response shape drifts from their docs
+//    (status enum text, presence/absence of `hotel`, `checkin`/`checkout` top-
+//    level vs nested under bookedRooms, additional fields like `commission`,
+//    `cancellationPolicies` with different sub-shapes, etc.).
+//
+// 2. A strict schema turned a real production success (LiteAPI 200 OK with a
+//    booking actually created on their side) into our `LiteApiValidationError`
+//    → `BookFailedAfterPaymentError` → user sees recovery UI even though the
+//    booking is committed (2026-05-24, prebookId b8hFNzW_b, sessionId
+//    d66b741f). That's a worse failure mode than accepting an under-specified
+//    response.
+//
+// 3. The downstream code only reads `bookingId`, `status`, `hotelConfirmationCode`,
+//    `checkin`, `checkout`, `hotel` — and all of those are safe to be missing
+//    (we have `session.hotelSummary` / `session.rateSummary` as fallback).
+//
+// Validation of business-meaningful state (status != "FAILED" etc.) happens
+// at the route layer, not in the schema.
+export const LiteApiBookingSchema = z
+  .object({
+    bookingId: z.string(),
+    clientReference: z.string().optional(),
+    supplierBookingId: z.string().optional(),
+    status: z.string().optional(),
+    hotelConfirmationCode: z.string().optional(),
+    checkin: z.string().optional(),
+    checkout: z.string().optional(),
+    hotel: z
+      .object({ hotelId: z.string().optional(), name: z.string().optional() })
+      .passthrough()
+      .optional(),
+    // The response's nested arrays/objects can have arbitrary shapes. We do
+    // not process them downstream beyond passing through `bookingId`,
+    // `status`, `hotelConfirmationCode` — so accept anything here rather than
+    // failing the whole booking parse on a sub-field mismatch.
+    bookedRooms: z.array(z.unknown()).optional(),
+    guests: z.array(z.unknown()).optional(),
+    holder: z.unknown().optional(),
+    price: z.number().optional(),
+    commission: z.number().optional(),
+    currency: z.string().optional(),
+    cancellationPolicies: z.unknown().optional(),
+    createdAt: z.string().optional(),
+  })
+  .passthrough();
 export type LiteApiBooking = z.infer<typeof LiteApiBookingSchema>;
 
 export const LiteApiBookResponseSchema = z.object({ data: LiteApiBookingSchema });
