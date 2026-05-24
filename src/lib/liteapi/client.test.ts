@@ -393,8 +393,9 @@ test("contract: book (POST /rates/book) sends guests (NOT guestInfo) + payment.m
       assert.ok(Array.isArray(body.guests), "expected `guests` array at boundary");
       assert.equal(body.guestInfo, undefined, "guestInfo leaked across boundary");
       const payment = body.payment as Record<string, unknown>;
-      // LiteAPI Payment SDK requires the literal value "TRANSACTION" (see book.ts).
-      assert.equal(payment.method, "TRANSACTION");
+      // LiteAPI Payment SDK requires the literal value "TRANSACTION_ID" — see
+      // book.ts JSDoc for the enum spec confirmed by LiteAPI support 2026-05-24.
+      assert.equal(payment.method, "TRANSACTION_ID");
       assert.equal(payment.transactionId, "tx_1");
       assert.equal(body.prebookId, "pb_1");
       assert.equal(req.headers["x-api-key"], "sand_test_private");
