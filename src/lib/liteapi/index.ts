@@ -25,6 +25,11 @@ export {
   type BookingErrorCode,
 } from "./booking-errors";
 export { getPaymentSdkConfig, type UserPaymentSdkConfig, type ClientSdkInitInput } from "./payments";
-export { verifyWebhookSignature, type VerifyWebhookInput } from "./webhook";
+export {
+  verifyWebhookAuthToken,
+  verifyWebhookSignature,
+  parseWebhookEmbeddedJson,
+  type VerifyWebhookInput,
+} from "./webhook";
 export { getBooking, listBookingsByClientReference } from "./retrieve";
 export { cancelBooking } from "./cancel";
