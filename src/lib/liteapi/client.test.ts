@@ -388,7 +388,11 @@ test("contract: book (POST /rates/book) sends guests (NOT guestInfo) + payment.m
         holder: { firstName: "Jan", lastName: "Kowalski", email: "j@k.pl", phone: "+48500111222" },
       });
       const req = m.captured[0];
-      assert.equal(req.url, "https://book.liteapi.travel/v3.0/rates/book");
+      // `?timeout=60` is an explicit LiteAPI-side timeout (confirmed by their
+      // support 2026-05-24) telling their backend to wait up to 60s for the
+      // supplier upstream instead of returning early. Pin both the path and
+      // the query param.
+      assert.equal(req.url, "https://book.liteapi.travel/v3.0/rates/book?timeout=60");
       const body = req.body as Record<string, unknown>;
       assert.ok(Array.isArray(body.guests), "expected `guests` array at boundary");
       assert.equal(body.guestInfo, undefined, "guestInfo leaked across boundary");

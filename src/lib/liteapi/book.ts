@@ -70,6 +70,12 @@ export async function book(input: BookInput): Promise<LiteApiBookResponse> {
     keyMode: "private",
     body,
     schema: LiteApiBookResponseSchema,
+    // Explicit `?timeout=60` query param confirmed by LiteAPI support
+    // 2026-05-24 — tells LiteAPI's own backend to wait up to 60s for the
+    // supplier upstream instead of returning early. Combined with our 60s
+    // AbortController + Vercel maxDuration=60, the whole chain has matching
+    // bounds and no surprise truncation.
+    query: { timeout: 60 },
     timeoutMs: 60_000,
     retries: 1,
   });

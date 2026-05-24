@@ -153,7 +153,8 @@ test("bookHotel: hits booking host, sends payment.method TRANSACTION_ID (LiteAPI
       });
       const req = m.captured[0];
       assert.equal(req.method, "POST");
-      assert.equal(req.url, "https://book.liteapi.travel/v3.0/rates/book");
+      // `?timeout=60` query param per book.ts — explicit LiteAPI-side timeout.
+      assert.equal(req.url, "https://book.liteapi.travel/v3.0/rates/book?timeout=60");
       assert.equal(req.headers["x-api-key"], "prod_test_private");
       const body = req.body as Record<string, unknown>;
       const payment = body.payment as Record<string, unknown>;
