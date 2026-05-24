@@ -173,6 +173,77 @@ test("bookHotel: hits booking host, sends payment.method TRANSACTION (LiteAPI Pa
   });
 });
 
+test("bookHotel: missing guest email is filled from holder.email at the boundary", async () => {
+  // Regression for the 2026-05-24 production failure (sid 41dfe194). LiteAPI
+  // requires `guests[0].email` on POST /rates/book — our form only collects
+  // email at the holder level, so guests came through without email and LiteAPI
+  // rejected with 4002 "Key: 'BookRequest.Guests[0].Email' Error: Field validation
+  // for 'Email' failed on the 'required' tag". Fix: book.ts fills missing guest
+  // emails from holder.email. This assertion locks the behavior.
+  const { bookHotel } = await import("./booking");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce(BOOK_OK);
+    try {
+      const GUESTS_NO_EMAIL = [
+        { occupancyNumber: 1, firstName: "Jakub", lastName: "Ogrodniczuk" },
+        { occupancyNumber: 1, firstName: "Anna", lastName: "Nowak" },
+      ];
+      await bookHotel({
+        prebookId: "pb_123",
+        transactionId: "tx_123",
+        clientReference: "cr-1",
+        guests: GUESTS_NO_EMAIL,
+        holder: HOLDER,
+      });
+      const req = m.captured[0];
+      const body = req.body as { guests: Array<{ email?: string }> };
+      assert.equal(
+        body.guests[0].email,
+        HOLDER.email,
+        "guest[0] email must be filled from holder when missing",
+      );
+      assert.equal(
+        body.guests[1].email,
+        HOLDER.email,
+        "all guests missing email must inherit holder.email",
+      );
+    } finally {
+      m.restore();
+    }
+  });
+});
+
+test("bookHotel: explicit guest email is preserved (not overwritten by holder.email)", async () => {
+  // Symmetric guarantee: when a caller DOES provide per-guest email (e.g. a
+  // future multi-guest form that asks each guest separately), we must not
+  // overwrite it with the holder.
+  const { bookHotel } = await import("./booking");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce(BOOK_OK);
+    try {
+      await bookHotel({
+        prebookId: "pb_123",
+        transactionId: "tx_123",
+        clientReference: "cr-1",
+        guests: [
+          {
+            occupancyNumber: 1,
+            firstName: "Anna",
+            lastName: "Nowak",
+            email: "anna@example.com",
+          },
+        ],
+        holder: HOLDER,
+      });
+      const req = m.captured[0];
+      const body = req.body as { guests: Array<{ email?: string }> };
+      assert.equal(body.guests[0].email, "anna@example.com");
+    } finally {
+      m.restore();
+    }
+  });
+});
+
 test("prebookHotel: LiteAPI 401 maps to BookingError code LITEAPI_DOWN (not a crash)", async () => {
   const { prebookHotel } = await import("./booking");
   const { BookingError } = await import("./booking-errors");
