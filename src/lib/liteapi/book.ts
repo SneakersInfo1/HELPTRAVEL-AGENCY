@@ -24,16 +24,20 @@ export async function book(input: BookInput): Promise<LiteApiBookResponse> {
   //   { prebookId, guests[], holder, payment{method,transactionId}, clientReference }
   // Internal field stays `guests` — matches LiteAPI's request key 1:1.
   //
-  // CRITICAL: `payment.method` MUST be the literal string "TRANSACTION" (NOT
-  // "TRANSACTION_ID") when paying via the User Payment SDK. Verified 2026-05-24
-  // from LiteAPI's own llms.txt docs after this exact value caused two real-
-  // card production failures (sids d9eaa09e and db11dc23):
-  //   "TRANSACTION — Use when using Payment SDK (provide transactionId)"
-  // The previous "TRANSACTION_ID" came from an unverified assumption in
-  // BOOKING_AUDIT.md §3 and was never exercised against live /rates/book in
-  // production prior to those two failures. LiteAPI rejects the wrong value
-  // with HTTP 400 + error code 4002 "required request field is missing or
-  // wrong input" within ~180ms (validation, no upstream call).
+  // CRITICAL: `payment.method` MUST be the literal string "TRANSACTION_ID" when
+  // paying via the User Payment SDK. Confirmed by LiteAPI support directly on
+  // 2026-05-24 with a corrected example request. The full list of valid enum
+  // values per LiteAPI's Booking API schema is:
+  //   • "ACC_CREDIT_CARD"
+  //   • "WALLET"
+  //   • "CREDIT"
+  //   • "TRANSACTION_ID"  ← THIS ONE when usePaymentSdk=true on prebook
+  // History to prevent re-regression: an earlier commit changed this to
+  // "TRANSACTION" based on a WebFetch summarization of LiteAPI's llms.txt that
+  // had truncated "_ID" off the value. LiteAPI then returned HTTP 400 4000
+  // "missing or not supported payment method". That commit was reverted in
+  // f72d83b. Do NOT change this value again without a direct LiteAPI support
+  // confirmation or a verified screenshot from their dashboard / OpenAPI spec.
   // LiteAPI 4002 (confirmed live 2026-05-24): `guests[*].email` is REQUIRED on
   // /rates/book even though our internal `LiteApiGuestSchema` marks it
   // optional and the booking form only collects email at the holder level.
@@ -53,7 +57,7 @@ export async function book(input: BookInput): Promise<LiteApiBookResponse> {
   const body = {
     holder: input.holder,
     payment: {
-      method: "TRANSACTION",
+      method: "TRANSACTION_ID",
       transactionId: input.transactionId,
     },
     prebookId: input.prebookId,
