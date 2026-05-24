@@ -544,3 +544,174 @@ test("Phase 3: book with neither body nor session guest data → 400", async () 
     }
   });
 });
+
+// ── /api/booking/webhook — LiteAPI lifecycle event receiver ───────────────────
+
+function makeWebhookRequest(body: string, authHeader: string | null): NextRequest {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (authHeader !== null) headers["authorization"] = authHeader;
+  return new NextRequest("http://t/api/booking/webhook", {
+    method: "POST",
+    headers,
+    body,
+  });
+}
+
+test("webhook: missing Authorization → 401, nothing persisted", async () => {
+  await withEnv(
+    { ...LIVE_ENV, LITEAPI_WEBHOOK_AUTH_TOKEN: "dashboard-token" },
+    async () => {
+      const fake = makeFakeRedis();
+      __setBookingRedisForTests(fake);
+      try {
+        const { POST } = await import("./webhook/route");
+        const body = JSON.stringify({
+          event_id: "e1",
+          event_name: "booking.book",
+          request: "{}",
+          response: '{"data":{"bookingId":"bk_evil"}}',
+        });
+        const r = await POST(makeWebhookRequest(body, null));
+        assert.equal(r.status, 401);
+        assert.equal(fake.store.has("booking:v1:completed:bk_evil"), false);
+      } finally {
+        __resetBookingRedisForTests();
+      }
+    },
+  );
+});
+
+test("webhook: wrong Authorization → 401, nothing persisted", async () => {
+  await withEnv(
+    { ...LIVE_ENV, LITEAPI_WEBHOOK_AUTH_TOKEN: "dashboard-token" },
+    async () => {
+      const fake = makeFakeRedis();
+      __setBookingRedisForTests(fake);
+      try {
+        const { POST } = await import("./webhook/route");
+        const body = JSON.stringify({
+          event_id: "e2",
+          event_name: "booking.book",
+          request: "{}",
+          response: '{"data":{"bookingId":"bk_evil2"}}',
+        });
+        const r = await POST(makeWebhookRequest(body, "wrong-token"));
+        assert.equal(r.status, 401);
+        assert.equal(fake.store.has("booking:v1:completed:bk_evil2"), false);
+      } finally {
+        __resetBookingRedisForTests();
+      }
+    },
+  );
+});
+
+test("webhook: valid Authorization + booking.book → persist completed record", async () => {
+  await withEnv(
+    { ...LIVE_ENV, LITEAPI_WEBHOOK_AUTH_TOKEN: "dashboard-token" },
+    async () => {
+      const fake = makeFakeRedis();
+      __setBookingRedisForTests(fake);
+      try {
+        const { POST } = await import("./webhook/route");
+        const body = JSON.stringify({
+          event_id: "e3",
+          event_name: "booking.book",
+          request: '{"prebookId":"pb_1"}',
+          response: JSON.stringify({
+            data: {
+              bookingId: "bk_via_webhook",
+              status: "CONFIRMED",
+              hotelConfirmationCode: "",
+              checkin: "2026-07-15",
+              checkout: "2026-07-18",
+              hotel: { hotelId: "lp1", name: "Seventy Barcelona" },
+              price: 3628.89,
+              currency: "PLN",
+            },
+          }),
+          sandbox: false,
+        });
+        const r = await POST(makeWebhookRequest(body, "dashboard-token"));
+        assert.equal(r.status, 200);
+        assert.equal((await r.json()).status, "ok");
+        const persisted = fake.store.get("booking:v1:completed:bk_via_webhook") as
+          | Record<string, unknown>
+          | undefined;
+        assert.ok(persisted, "webhook MUST persist a completed record");
+        assert.equal(persisted.bookingId, "bk_via_webhook");
+        assert.equal(persisted.status, "CONFIRMED");
+        assert.equal(persisted.price, 3628.89);
+      } finally {
+        __resetBookingRedisForTests();
+      }
+    },
+  );
+});
+
+test("webhook: unknown event_name → 200 no-op (don't retry-storm)", async () => {
+  await withEnv(
+    { ...LIVE_ENV, LITEAPI_WEBHOOK_AUTH_TOKEN: "dashboard-token" },
+    async () => {
+      const fake = makeFakeRedis();
+      __setBookingRedisForTests(fake);
+      try {
+        const { POST } = await import("./webhook/route");
+        const body = JSON.stringify({
+          event_id: "e4",
+          event_name: "foo.unknown",
+          request: "{}",
+          response: "{}",
+        });
+        const r = await POST(makeWebhookRequest(body, "dashboard-token"));
+        assert.equal(r.status, 200);
+        assert.equal(fake.store.size, 0);
+      } finally {
+        __resetBookingRedisForTests();
+      }
+    },
+  );
+});
+
+test("webhook: malformed envelope after valid auth → 200 accepted_with_parse_error (no retry storm)", async () => {
+  await withEnv(
+    { ...LIVE_ENV, LITEAPI_WEBHOOK_AUTH_TOKEN: "dashboard-token" },
+    async () => {
+      const fake = makeFakeRedis();
+      __setBookingRedisForTests(fake);
+      try {
+        const { POST } = await import("./webhook/route");
+        // event_id is required by envelope schema — sending without it
+        const body = JSON.stringify({ event_name: "booking.book" });
+        const r = await POST(makeWebhookRequest(body, "dashboard-token"));
+        assert.equal(r.status, 200);
+        assert.equal((await r.json()).status, "accepted_with_parse_error");
+      } finally {
+        __resetBookingRedisForTests();
+      }
+    },
+  );
+});
+
+test("webhook: booking.book without data.bookingId in embedded response → 200 noop (logged warn)", async () => {
+  await withEnv(
+    { ...LIVE_ENV, LITEAPI_WEBHOOK_AUTH_TOKEN: "dashboard-token" },
+    async () => {
+      const fake = makeFakeRedis();
+      __setBookingRedisForTests(fake);
+      try {
+        const { POST } = await import("./webhook/route");
+        const body = JSON.stringify({
+          event_id: "e5",
+          event_name: "booking.book",
+          request: "{}",
+          response: "{}", // empty — no data.bookingId
+        });
+        const r = await POST(makeWebhookRequest(body, "dashboard-token"));
+        assert.equal(r.status, 200);
+        assert.equal(fake.store.size, 0, "must not persist anything without bookingId");
+      } finally {
+        __resetBookingRedisForTests();
+      }
+    },
+  );
+});

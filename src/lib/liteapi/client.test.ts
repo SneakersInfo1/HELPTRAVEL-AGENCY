@@ -19,7 +19,7 @@ import { resolveCountryCode } from "./search";
 import { getEnv } from "./client";
 import { LiteApiHotelsListResponseSchema, LiteApiPrebookResponseSchema } from "./types";
 import { addMinor, fromMinor, mulMinor, subMinor, toMinor } from "../money";
-import { verifyWebhookSignature } from "./webhook";
+import { verifyWebhookSignature, verifyWebhookAuthToken } from "./webhook";
 import { createHmac } from "node:crypto";
 
 test("liteApiErrorFromResponse maps statuses", () => {
@@ -125,7 +125,17 @@ test("money arithmetic stays in bigint", () => {
 
 test("verifyWebhookSignature rejects bad signature", () => {
   const secret = "test-secret";
-  const body = JSON.stringify({ type: "payment_success", timestamp: "2026-01-01T00:00:00Z", data: {} });
+  // Envelope updated 2026-05-24: LiteAPI confirmed canonical shape is
+  // { event_id, event_name, request, response, sandbox }. HMAC path is kept
+  // for legacy/custom senders, but the envelope MUST match the new schema
+  // regardless of which verification method we use.
+  const body = JSON.stringify({
+    event_id: "evt_test",
+    event_name: "booking.book",
+    request: "{}",
+    response: "{}",
+    sandbox: false,
+  });
   assert.throws(() =>
     verifyWebhookSignature({ rawBody: body, signatureHeader: "deadbeef", secret }),
   );
@@ -230,10 +240,91 @@ test("getEnv mode is driven by API key prefix", () => {
 
 test("verifyWebhookSignature accepts a correct signature", () => {
   const secret = "test-secret";
-  const body = JSON.stringify({ type: "payment_success", timestamp: "2026-01-01T00:00:00Z", data: { ok: true } });
+  const body = JSON.stringify({
+    event_id: "evt_test",
+    event_name: "booking.book",
+    request: "{}",
+    response: "{}",
+    sandbox: false,
+  });
   const sig = createHmac("sha256", secret).update(body).digest("hex");
   const event = verifyWebhookSignature({ rawBody: body, signatureHeader: sig, secret });
-  assert.equal(event.type, "payment_success");
+  assert.equal(event.event_name, "booking.book");
+  assert.equal(event.event_id, "evt_test");
+});
+
+// ── verifyWebhookAuthToken (canonical, per LiteAPI 2026-05-24) ───────────────
+
+test("verifyWebhookAuthToken accepts when Authorization header == token", () => {
+  const token = "shared-secret-from-liteapi-dashboard";
+  const body = JSON.stringify({
+    event_id: "evt_abc",
+    event_name: "booking.refund",
+    request: '{"bookingId":"r1"}',
+    response: '{"amountRefunded":99}',
+    sandbox: false,
+  });
+  const event = verifyWebhookAuthToken({
+    rawBody: body,
+    authorizationHeader: token,
+    authToken: token,
+  });
+  assert.equal(event.event_name, "booking.refund");
+});
+
+test("verifyWebhookAuthToken accepts Bearer prefix (defensive — LiteAPI doesn't use it, but tolerant)", () => {
+  const token = "shared-secret-2";
+  const body = JSON.stringify({
+    event_id: "evt_xyz",
+    event_name: "booking.book",
+    request: "{}",
+    response: "{}",
+  });
+  const event = verifyWebhookAuthToken({
+    rawBody: body,
+    authorizationHeader: `Bearer ${token}`,
+    authToken: token,
+  });
+  assert.equal(event.event_id, "evt_xyz");
+});
+
+test("verifyWebhookAuthToken rejects when Authorization header is missing or mismatches", () => {
+  const token = "right-token";
+  const body = JSON.stringify({
+    event_id: "e",
+    event_name: "booking.book",
+    request: "{}",
+    response: "{}",
+  });
+  assert.throws(() =>
+    verifyWebhookAuthToken({ rawBody: body, authorizationHeader: null, authToken: token }),
+  );
+  assert.throws(() =>
+    verifyWebhookAuthToken({
+      rawBody: body,
+      authorizationHeader: "wrong-token",
+      authToken: token,
+    }),
+  );
+});
+
+test("verifyWebhookAuthToken throws when LITEAPI_WEBHOOK_AUTH_TOKEN is unconfigured", () => {
+  // No authToken override AND no env var → fail closed.
+  const body = JSON.stringify({
+    event_id: "e",
+    event_name: "booking.book",
+    request: "{}",
+    response: "{}",
+  });
+  const prior = process.env.LITEAPI_WEBHOOK_AUTH_TOKEN;
+  delete process.env.LITEAPI_WEBHOOK_AUTH_TOKEN;
+  try {
+    assert.throws(() =>
+      verifyWebhookAuthToken({ rawBody: body, authorizationHeader: "anything" }),
+    );
+  } finally {
+    if (prior !== undefined) process.env.LITEAPI_WEBHOOK_AUTH_TOKEN = prior;
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
