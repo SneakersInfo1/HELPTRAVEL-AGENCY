@@ -12,6 +12,7 @@
     "test": "node --import tsx --test src/lib/mvp/parser.test.ts src/lib/mvp/scoring.test.ts src/lib/mvp/planner-links.test.ts src/lib/mvp/featured-destinations.test.ts src/lib/mvp/travelpayouts-flights.test.ts src/lib/mvp/airport-groups.test.ts src/lib/mvp/tp-airport-directory.test.ts src/lib/html/sanitize.test.ts src/lib/liteapi/client.test.ts src/lib/liteapi/booking.test.ts src/lib/hotels/rate-cache.test.ts src/app/api/booking/booking-routes.test.ts",
     "smoke:liteapi": "tsx --env-file=.env.local scripts/smoke-liteapi.ts",
     "booking:smoke": "tsx --env-file=.env.local scripts/booking-smoke.ts",
+    "booking:recover": "tsx --env-file=.env.local scripts/persist-recovered-booking.ts",
     "build:destinations": "tsx --env-file=.env.local scripts/build-destinations-seed.ts",
     "test:destinations": "tsx --env-file=.env.local scripts/test-destinations-sample.ts",
     "postinstall": "prisma generate",
