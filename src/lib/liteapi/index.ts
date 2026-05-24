@@ -26,5 +26,5 @@ export {
 } from "./booking-errors";
 export { getPaymentSdkConfig, type UserPaymentSdkConfig, type ClientSdkInitInput } from "./payments";
 export { verifyWebhookSignature, type VerifyWebhookInput } from "./webhook";
-export { getBooking } from "./retrieve";
+export { getBooking, listBookingsByClientReference } from "./retrieve";
 export { cancelBooking } from "./cancel";
