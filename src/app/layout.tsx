@@ -5,6 +5,8 @@ import "./globals.css";
 import { LanguageProvider } from "@/components/site/language-provider";
 import { SiteShell } from "@/components/site/site-shell";
 import { WebVitalsReporter } from "@/components/site/web-vitals-reporter";
+import { CookieConsentBanner } from "@/components/site/cookie-consent-banner";
+import { ConsentProvider } from "@/lib/consent/context";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 const siteUrl = getSiteUrl();
@@ -164,10 +166,13 @@ export default function RootLayout({
           Przejdź do głównej treści
         </a>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
-        <LanguageProvider>
-          <WebVitalsReporter />
-          <SiteShell>{children}</SiteShell>
-        </LanguageProvider>
+        <ConsentProvider>
+          <LanguageProvider>
+            <WebVitalsReporter />
+            <SiteShell>{children}</SiteShell>
+            <CookieConsentBanner />
+          </LanguageProvider>
+        </ConsentProvider>
       </body>
     </html>
   );
