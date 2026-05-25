@@ -15,6 +15,7 @@ import {
   listBookingsByClientReference,
 } from "@/lib/liteapi";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { notifyCritical } from "@/lib/alerting/notify";
 import {
   deleteSession,
   getIdempotent,
@@ -136,6 +137,13 @@ export async function POST(request: NextRequest) {
       console.error(
         `[liteapi][booking][CRITICAL] session_expired_after_payment sessionId=${sessionId} paymentIntentId=${paymentIntentId} ip=${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"} — manual recovery required (Stripe charge may have been captured; LiteAPI /rates/book never called)`,
       );
+      // Fire-and-forget Slack/Discord alert. Don't await — banner UX already shows.
+      notifyCritical({
+        source: "booking",
+        title: "Session expired after payment",
+        body: "Customer's Stripe charge may have been captured, but our session expired before /rates/book was called. Manual recovery required.",
+        fields: { sessionId, paymentIntentId, errorCode: "BOOK_FAILED_AFTER_PAYMENT" },
+      }).catch(() => {});
       const body = {
         error: "book_failed",
         message,
@@ -318,7 +326,25 @@ export async function POST(request: NextRequest) {
       console.error(
         `[liteapi][booking][CRITICAL] recovery_record_persist_failed sessionId=${sessionId} transactionId=${session.transactionId} — manual recovery required (persist error: ${persistErr instanceof Error ? persistErr.message : String(persistErr)})`,
       );
+      notifyCritical({
+        source: "booking",
+        title: "Recovery record persist FAILED",
+        body: "bookHotel() failed AND we couldn't even save the recovery record. Booking state is now invisible to admin. Reconcile via LiteAPI dashboard.",
+        fields: { sessionId, transactionId: session.transactionId, prebookId: session.prebookId },
+      }).catch(() => {});
     }
+    notifyCritical({
+      source: "booking",
+      title: "Booking failed after payment",
+      body: "bookHotel() threw post-payment. Recovery record persisted; user shown recovery UI. Reconcile required.",
+      fields: {
+        sessionId,
+        prebookId: session.prebookId,
+        transactionId: session.transactionId,
+        errorCode: code,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      },
+    }).catch(() => {});
     const body = {
       error: "book_failed",
       message: `Płatność została zarejestrowana, ale rezerwacja wymaga ręcznego potwierdzenia. Skontaktuj się z nami: ${SUPPORT_EMAIL}.`,
