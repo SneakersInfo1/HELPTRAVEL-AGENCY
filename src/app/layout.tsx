@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/components/site/language-provider";
 import { SiteShell } from "@/components/site/site-shell";
 import { WebVitalsReporter } from "@/components/site/web-vitals-reporter";
 import { CookieConsentBanner } from "@/components/site/cookie-consent-banner";
+import { GoogleAnalytics } from "@/components/site/google-analytics";
 import { ConsentProvider } from "@/lib/consent/context";
 import { getSiteUrl } from "@/lib/mvp/site";
 
@@ -168,6 +169,7 @@ export default function RootLayout({
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         <ConsentProvider>
           <LanguageProvider>
+            <GoogleAnalytics />
             <WebVitalsReporter />
             <SiteShell>{children}</SiteShell>
             <CookieConsentBanner />
