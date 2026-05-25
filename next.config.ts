@@ -65,6 +65,14 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Custom loader bypasses Vercel's /_next/image entirely. Every <Image> in
+    // the app now ships a CDN URL straight to the browser — zero Vercel image
+    // transformations, zero cache writes. Local files (/public/*) and CDN
+    // images (Pexels, Unsplash, LiteAPI/Cupid) are handled by the loader at
+    // src/lib/images/cdn-loader.ts. See the file's header for the per-host
+    // strategy and the rationale (free-tier quota exhaustion 2026-05-25).
+    loader: "custom",
+    loaderFile: "./src/lib/images/cdn-loader.ts",
     // Next 16 wymaga jawnej listy dozwolonych wartosci `quality`. Hero
     // backdrop uzywa 70 (perf), reszta domyslnie 75.
     qualities: [70, 75],
