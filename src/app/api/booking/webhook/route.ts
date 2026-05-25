@@ -29,6 +29,7 @@ import {
   verifyWebhookAuthToken,
 } from "@/lib/liteapi";
 import { saveCompleted, type CompletedRecord } from "@/lib/booking/session";
+import { notifyCritical, notifyWarning } from "@/lib/alerting/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -168,6 +169,17 @@ export async function POST(request: NextRequest) {
         console.error(
           `[liteapi][webhook][CRITICAL] saveCompleted FAILED for bookingId=${data.bookingId} event_id=${event.event_id} — manual recovery required (persist error: ${persistErr instanceof Error ? persistErr.message : String(persistErr)})`,
         );
+        notifyCritical({
+          source: "webhook",
+          title: "Webhook saveCompleted FAILED",
+          body: "LiteAPI sent us a booking confirmation but we couldn't persist it. Booking is live on their side, invisible to our admin.",
+          fields: {
+            bookingId: data.bookingId,
+            eventId: event.event_id,
+            eventName,
+            error: persistErr instanceof Error ? persistErr.message : String(persistErr),
+          },
+        }).catch(() => {});
       }
       break;
     }
@@ -179,9 +191,19 @@ export async function POST(request: NextRequest) {
       // surfaces the LiteAPI state separately. We log here for ops visibility
       // and so an alert can pick this up.
       const embedded = parseWebhookEmbeddedJson<EmbeddedBookingResponse>(event.response);
+      const bookingId = embedded?.data?.bookingId ?? "unknown";
       console.warn(
-        `[liteapi][webhook] ${eventName} bookingId=${embedded?.data?.bookingId ?? "unknown"} event_id=${event.event_id} — ops review`,
+        `[liteapi][webhook] ${eventName} bookingId=${bookingId} event_id=${event.event_id} — ops review`,
       );
+      // Refunds and cancellations are not failures, but ops should know. Use
+      // warning level so they aren't silently ignored by anyone filtering on
+      // [CRITICAL] only.
+      notifyWarning({
+        source: "webhook",
+        title: `LiteAPI ${eventName.replace("booking.", "Booking ")}`,
+        body: "A refund or cancellation was processed. Verify it matches a user request; if not, investigate.",
+        fields: { bookingId, eventId: event.event_id, eventName },
+      }).catch(() => {});
       break;
     }
     default:
