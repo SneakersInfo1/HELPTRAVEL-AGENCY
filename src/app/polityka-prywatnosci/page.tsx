@@ -303,6 +303,12 @@ const sections: Section[] = [
           "Kanada (decyzja stwierdzająca odpowiedni stopień ochrony)",
           "Mapy noclegowe + afiliacja Booking.com / Airbnb",
         ],
+        [
+          "Google LLC (Google Analytics 4)",
+          "Procesor (po wyrażeniu zgody na cookies analityczne)",
+          "USA (Standardowe Klauzule Umowne + EU-U.S. Data Privacy Framework)",
+          "Anonimowa analityka ruchu i interakcji. Aktywne wyłącznie po zgodzie; IP anonimizowane (anonymize_ip).",
+        ],
       ],
     },
     paragraphs: [
