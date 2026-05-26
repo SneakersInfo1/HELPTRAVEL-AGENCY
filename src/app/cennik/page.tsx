@@ -39,6 +39,22 @@ export default function PricingPage() {
           Pomagamy planować wyjazd i prowadzimy do kolejnych kroków. Gdy przechodzisz do konkretnej oferty, cena i
           warunki są już po stronie partnera rezerwacyjnego.
         </p>
+        {/* Prominent above-the-fold CTA — landings from Google SERP sitelinks
+            need an immediate path to the search, not buried at the bottom. */}
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/hotele/szukaj"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            Otwórz wyszukiwarkę hoteli →
+          </Link>
+          <Link
+            href="/kierunki"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            Nie wiem dokąd lecieć
+          </Link>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -69,7 +85,7 @@ export default function PricingPage() {
             <Link href="/linki-partnerskie" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
               Linki partnerskie
             </Link>
-          <Link href="/hotele" className="rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800">
+          <Link href="/hotele/szukaj" className="rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800">
             Otwórz wyszukiwarkę hoteli
           </Link>
           </div>
