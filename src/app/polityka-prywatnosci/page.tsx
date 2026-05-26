@@ -679,7 +679,7 @@ export default function PrivacyPolicyPage() {
           </a>
           . Termin odpowiedzi: do 30 dni od dnia otrzymania żądania.
         </p>
-        <p className="mt-3 text-xs leading-6 text-emerald-900/68">
+        <p className="mt-3 text-xs leading-6 text-emerald-900/80">
           Wersja Polityki: {EFFECTIVE_DATE}. Administrator: {admin.name}
           {admin.nip ? `, NIP ${admin.nip}` : ""}
           {admin.address ? `, ${admin.address}` : ""}.

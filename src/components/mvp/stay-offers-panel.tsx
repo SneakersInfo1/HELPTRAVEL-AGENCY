@@ -274,7 +274,7 @@ function StayCard({ offer, nights, locale, t, isCheapest, alternativeCount }: {
             ) : null}
           </div>
           <p className="mt-1 line-clamp-1 text-xs text-emerald-900/64">{offer.address}</p>
-          <p className="mt-2 text-[11px] text-emerald-900/56">
+          <p className="mt-2 text-[11px] text-emerald-900/80">
             {t.nights(nights)}
             {alternativeCount > 0 ? <> · <span className="font-semibold text-emerald-700">{t.moreOptions(alternativeCount + 1)}</span></> : null}
           </p>
@@ -290,7 +290,7 @@ function StayCard({ offer, nights, locale, t, isCheapest, alternativeCount }: {
                 {formatPrice(Math.round(offer.total_amount / Math.max(1, nights)), offer.currency, locale)}
                 <span className="ml-0.5 text-xs font-semibold text-emerald-700/80">{t.perNight}</span>
               </p>
-              <p className="mt-0.5 whitespace-nowrap text-[11px] text-emerald-900/56">
+              <p className="mt-0.5 whitespace-nowrap text-[11px] text-emerald-900/80">
                 {t.totalForNights(formatPrice(offer.total_amount, offer.currency, locale), nights)}
               </p>
             </div>
@@ -481,7 +481,7 @@ export function StayOffersPanel(props: {
             <div className="mt-4 rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
               {error ? <p className="text-xs text-emerald-900/48">{error}</p> : null}
               <p className="mt-2 text-sm text-emerald-900/72">{data?.error || t.empty}</p>
-              <p className="mt-1 text-xs text-emerald-900/56">{t.emptyAdvice}</p>
+              <p className="mt-1 text-xs text-emerald-900/80">{t.emptyAdvice}</p>
             </div>
           )}
         </div>

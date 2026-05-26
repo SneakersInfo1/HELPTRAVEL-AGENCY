@@ -86,7 +86,7 @@ export default function SiteMapPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kierunki</p>
             <h2 className="mt-2 font-display text-4xl text-emerald-950">Strony kierunkowe</h2>
           </div>
-          <p className="text-sm text-emerald-900/68">{destinations.length} kierunków</p>
+          <p className="text-sm text-emerald-900/80">{destinations.length} kierunków</p>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {featuredDestinations.map((destination) => (
@@ -129,7 +129,7 @@ export default function SiteMapPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Inspiracje</p>
             <h2 className="mt-2 font-display text-4xl text-emerald-950">Artykuły i scenariusze wyjazdów</h2>
           </div>
-          <p className="text-sm text-emerald-900/68">{articles.length} artykułów</p>
+          <p className="text-sm text-emerald-900/80">{articles.length} artykułów</p>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {articles.map((article) => (

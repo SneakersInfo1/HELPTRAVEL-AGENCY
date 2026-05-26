@@ -528,7 +528,7 @@ export default function TermsPage() {
           </a>
           . Czas odpowiedzi na reklamacje: do 14 dni od dnia otrzymania zgłoszenia.
         </p>
-        <p className="mt-3 text-xs leading-6 text-emerald-900/68">
+        <p className="mt-3 text-xs leading-6 text-emerald-900/80">
           Wersja Regulaminu: {EFFECTIVE_DATE}. Operator: {operator.name}
           {operator.nip ? `, NIP ${operator.nip}` : ""}
           {operator.address ? `, ${operator.address}` : ""}.

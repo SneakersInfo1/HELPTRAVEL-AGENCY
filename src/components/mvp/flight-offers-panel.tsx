@@ -312,7 +312,7 @@ function FlightCard({ offer, locale, t, isDeal, ctaUrl }: {
           <p className="whitespace-nowrap text-xl font-bold text-emerald-950">
             {formatPrice(offer.total_amount, offer.currency, locale)}
           </p>
-          <p className="text-[10px] text-emerald-900/56">{t.perPerson}</p>
+          <p className="text-[10px] text-emerald-900/80">{t.perPerson}</p>
         </div>
         {ctaUrl ? (
           <a
@@ -639,7 +639,7 @@ function FlightLeg({
           <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
             {formatDayShort(departureTime, locale)}
           </p>
-          <p className="text-[11px] text-emerald-900/56" title={formatAirport(origin)}>
+          <p className="text-[11px] text-emerald-900/80" title={formatAirport(origin)}>
             {formatAirport(origin)}
           </p>
           {altOriginHint ? (
@@ -657,14 +657,14 @@ function FlightLeg({
             </span>
             <span className="h-px flex-1 bg-emerald-200" />
           </div>
-          <p className="text-[10px] text-emerald-900/56 sm:hidden">{airline}</p>
+          <p className="text-[10px] text-emerald-900/80 sm:hidden">{airline}</p>
         </div>
         <div className="text-center">
           <p className="text-base font-bold text-emerald-950">{formatTime(arrivalTime, locale)}</p>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
             {formatDayShort(arrivalTime, locale)}
           </p>
-          <p className="text-[11px] text-emerald-900/56" title={formatAirport(destination)}>
+          <p className="text-[11px] text-emerald-900/80" title={formatAirport(destination)}>
             {formatAirport(destination)}
           </p>
           {altDestinationHint ? (
