@@ -71,7 +71,21 @@ export default function InspirationsIndexPage() {
           Znajdziesz tu praktyczne scenariusze wyjazdów, porównania kierunków i poradniki dla osób, które chcą
           najpierw przeczytać i porównać, a dopiero potem kliknąć w planner albo ofertę.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3 text-sm text-emerald-900/70">
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/hotele/szukaj"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            Otwórz wyszukiwarkę hoteli →
+          </Link>
+          <Link
+            href="/kierunki"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            Katalog kierunków
+          </Link>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3 text-sm text-emerald-900/70">
           <span className="rounded-full bg-emerald-50 px-3 py-1.5">{articles.length} artykułów praktycznych</span>
           <span className="rounded-full bg-emerald-50 px-3 py-1.5">{categories.length} główne kategorie tematyczne</span>
         </div>
