@@ -90,6 +90,20 @@ export default function FaqPage() {
           To miejsce dla osób, które chcą szybko sprawdzić, jak działa planner, gdzie trafia finalna rezerwacja i co
           warto wiedzieć przed kliknięciem w ofertę.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/hotele/szukaj"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            Otwórz wyszukiwarkę hoteli →
+          </Link>
+          <Link
+            href="/kontakt"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            Nie ma tu odpowiedzi — napisz
+          </Link>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">

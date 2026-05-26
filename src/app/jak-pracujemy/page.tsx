@@ -27,6 +27,21 @@ export default function HowItWorksPage() {
           Nie trzeba zaczynać od idealnego planu. Możesz mieć gotowy kierunek albo tylko ogólny pomysł typu
           &quot;ciepły wypad na 5 dni&quot;. Serwis ma pomóc uporządkować to w lekkiej i czytelnej kolejności.
         </p>
+        {/* Above-the-fold CTAs — SERP landings shouldn't have to scroll to find the search. */}
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/hotele/szukaj"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            Otwórz wyszukiwarkę hoteli →
+          </Link>
+          <Link
+            href="/kierunki"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            Nie wiem dokąd lecieć
+          </Link>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -59,8 +74,8 @@ export default function HowItWorksPage() {
             <p>Nie chowamy przed użytkownikiem tego, że końcowy krok rezerwacji może prowadzić do partnera.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-        <Link href="/hotele" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
-          Otwórz hotele
+        <Link href="/hotele/szukaj" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+          Otwórz wyszukiwarkę hoteli →
         </Link>
             <Link href="/linki-partnerskie" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
               Zobacz zasady partnerów

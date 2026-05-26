@@ -70,7 +70,10 @@ export default function AboutPage() {
             <p>Ceny i warunki zawsze warto sprawdzić w ostatnim kroku po stronie partnera.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/linki-partnerskie" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+            <Link href="/hotele/szukaj" className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+              Otwórz wyszukiwarkę hoteli →
+            </Link>
+            <Link href="/linki-partnerskie" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">
               Jak działają linki partnerskie
             </Link>
             <Link href="/faq" className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100">

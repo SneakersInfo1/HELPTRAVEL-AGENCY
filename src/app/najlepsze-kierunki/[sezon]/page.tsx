@@ -151,7 +151,15 @@ export default async function SeasonRankingPage({ params }: PageProps) {
           {seasonHeading[sezon]}
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{seasonIntro[sezon]}</p>
-        <div className="mt-5 flex flex-wrap gap-2 text-xs">
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link
+            href="/hotele/szukaj"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            Otwórz wyszukiwarkę hoteli →
+          </Link>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs">
           {seasonSlugs
             .filter((s) => s !== sezon)
             .map((s) => (
@@ -216,10 +224,10 @@ export default async function SeasonRankingPage({ params }: PageProps) {
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
-            href="/hotele"
+            href="/hotele/szukaj"
             className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
-            Przejdź do hoteli
+            Otwórz wyszukiwarkę hoteli →
           </Link>
           <Link
             href="/kierunki"
