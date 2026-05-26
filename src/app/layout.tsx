@@ -33,10 +33,11 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: siteUrl,
-    languages: {
-      "pl-PL": siteUrl,
-      "en-US": `${siteUrl}/en`,
-    },
+    // hreflang.languages intentionally NOT declared at root: /en/* paths are
+    // permanent-redirected to the Polish root by middleware.ts, so advertising
+    // them as alternate-language canonicals would point Google at a redirect
+    // chain and cause the hreflang cluster to be dropped. Once real EN
+    // content ships (own metadata + non-redirected route), restore this.
     types: {
       "application/rss+xml": `${siteUrl}/feed.xml`,
     },
