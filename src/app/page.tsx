@@ -28,10 +28,9 @@ export function getHomeMetadata(locale: SiteLocale): Metadata {
       : "Zaplanuj wyjazd w 3 minuty: lot, hotel i gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe - płacisz tylko za rezerwacje u partnerów.",
     alternates: {
       canonical: locale === "en" ? "/en" : "/",
-      languages: {
-        "pl-PL": "/",
-        "en-US": "/en",
-      },
+      // hreflang.languages omitted — /en/* paths 308-redirect to Polish root,
+      // hreflang to redirect chains is dropped by Google. Restore when real
+      // EN content ships.
     },
     openGraph: {
       title: isEnglish
