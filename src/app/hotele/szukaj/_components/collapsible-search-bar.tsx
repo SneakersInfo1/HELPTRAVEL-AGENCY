@@ -82,7 +82,7 @@ export function CollapsibleSearchBar({ initial, valid }: Props) {
             {summary || "Wybierz kierunek i daty"}
           </div>
           {initial.destinationCountry && (
-            <div className="text-[11px] text-emerald-900/56">
+            <div className="text-[11px] text-emerald-900/80">
               {localizeCountry(initial.destinationCountry)}
             </div>
           )}

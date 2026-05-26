@@ -36,6 +36,7 @@ export function OptionalGuestsAccordion({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls="co-guests-panel"
         className="flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800"
       >
         <span
@@ -49,33 +50,43 @@ export function OptionalGuestsAccordion({
       </button>
 
       {open && (
-        <div className="mt-3 space-y-3">
+        <div id="co-guests-panel" className="mt-3 space-y-3">
           <p className="text-xs text-neutral-500">
             Wystarczą dane osoby rezerwującej. Imiona pozostałych gości pomagają
             hotelowi przy odprawie, ale nie są wymagane.
           </p>
-          {Array.from({ length: slots }).map((_, i) => (
-            <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className={labelCls}>Imię gościa {i + 2}</label>
-                <input
-                  className={inputCls}
-                  value={value[i]?.firstName ?? ""}
-                  onChange={(e) => onChange(i, "firstName", e.target.value)}
-                  disabled={disabled}
-                />
+          {Array.from({ length: slots }).map((_, i) => {
+            const firstNameId = `co-guest-${i + 2}-first-name`;
+            const lastNameId = `co-guest-${i + 2}-last-name`;
+            return (
+              <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor={firstNameId} className={labelCls}>Imię gościa {i + 2}</label>
+                  <input
+                    id={firstNameId}
+                    name={firstNameId}
+                    className={inputCls}
+                    value={value[i]?.firstName ?? ""}
+                    onChange={(e) => onChange(i, "firstName", e.target.value)}
+                    disabled={disabled}
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={lastNameId} className={labelCls}>Nazwisko gościa {i + 2}</label>
+                  <input
+                    id={lastNameId}
+                    name={lastNameId}
+                    className={inputCls}
+                    value={value[i]?.lastName ?? ""}
+                    onChange={(e) => onChange(i, "lastName", e.target.value)}
+                    disabled={disabled}
+                    autoComplete="off"
+                  />
+                </div>
               </div>
-              <div>
-                <label className={labelCls}>Nazwisko gościa {i + 2}</label>
-                <input
-                  className={inputCls}
-                  value={value[i]?.lastName ?? ""}
-                  onChange={(e) => onChange(i, "lastName", e.target.value)}
-                  disabled={disabled}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
