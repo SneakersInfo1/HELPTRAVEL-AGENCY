@@ -189,7 +189,19 @@ export async function POST(request: NextRequest) {
   // 2026-05-24. Failure to reconcile is non-fatal: we fall through to the
   // normal book path. Worst case is a duplicate call that LiteAPI itself
   // dedupes by clientReference.
-  try {
+  //
+  // GATED: the reconciliation call adds 400-1500ms of LiteAPI latency, so we
+  // only run it when the request looks like a retry. Signal: either the
+  // `X-Booking-Retry: 1` header is set by the return page on its second hit,
+  // OR a `paymentIntentId` arrived in the body (the return page only smuggles
+  // that field when bouncing back from Stripe SCA — i.e. a recovery flow).
+  // First-attempt calls skip the pre-flight entirely and go straight to
+  // bookHotel; the post-failure catch block below acts as the second safety
+  // net for the rare server-killed case.
+  const isRetry =
+    request.headers.get("x-booking-retry") === "1" || Boolean(paymentIntentId);
+  if (isRetry) {
+    try {
     const existing = await listBookingsByClientReference(sessionId);
     if (existing.length > 0) {
       const booking = existing[0]!;
@@ -220,13 +232,14 @@ export async function POST(request: NextRequest) {
       if (idemKey) await setIdempotent(idemKey, 200, body);
       return NextResponse.json(body, { status: 200 });
     }
-  } catch (reconcileErr) {
-    // Reconciliation lookup failed — fall through to normal book path.
-    // bookHotel itself handles the post-failure reconciliation in its
-    // catch block (below) as a second safety net.
-    console.warn(
-      `[booking][book] pre-flight reconcile failed for sessionId=${sessionId}, falling through: ${reconcileErr instanceof Error ? reconcileErr.message : String(reconcileErr)}`,
-    );
+    } catch (reconcileErr) {
+      // Reconciliation lookup failed — fall through to normal book path.
+      // bookHotel itself handles the post-failure reconciliation in its
+      // catch block (below) as a second safety net.
+      console.warn(
+        `[booking][book] pre-flight reconcile failed for sessionId=${sessionId}, falling through: ${reconcileErr instanceof Error ? reconcileErr.message : String(reconcileErr)}`,
+      );
+    }
   }
 
   try {

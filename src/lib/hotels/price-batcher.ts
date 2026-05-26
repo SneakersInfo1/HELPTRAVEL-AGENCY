@@ -26,12 +26,17 @@ export interface PriceQuery {
   currency: string;
 }
 
-// LiteAPI rates run ~1-2s/hotel, so batch size dominates first-price
-// latency. Small batches + higher concurrency → first prices in a few
-// seconds while the rest stream in. (The page itself is already
-// interactive — this only governs how fast prices fill.)
-const BATCH_SIZE = 3;
-const MAX_CONCURRENT = 6;
+// LiteAPI rates run ~1-2s/hotel, but the API itself happily handles
+// hotelIds[] arrays much larger than 3 — the bottleneck was our batching,
+// not the upstream. Audit 2026-05-26 showed that 30 hotels × BATCH_SIZE=3
+// = 10 sequential batches × ~800ms LiteAPI latency was ~4× slower than a
+// single batch of 12-15. Bumped to 12 (and concurrency lowered to 3 since
+// each batch now does more work). The audit also raised the /api/hotels/
+// rates/batch hotelIds cap to 30 so this isn't artificially clipped.
+//
+// If LiteAPI ever returns batch-size-related 4xx, drop this back to 8.
+const BATCH_SIZE = 12;
+const MAX_CONCURRENT = 3;
 const WINDOW_MS = 60; // coalescing window
 
 type Pending = {
