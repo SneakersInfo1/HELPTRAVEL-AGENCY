@@ -25,6 +25,80 @@ function isPlannerPath(pathname: string): boolean {
   );
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Admin auth — HTTP Basic Auth via Edge middleware.
+//
+// Why Basic Auth: zero UI to build, browser shows native login prompt, fully
+// stateless, works through Vercel cache without cookies. The trade-off is that
+// once the user enters credentials, the browser will send them with EVERY
+// request to /admin/* until the tab is closed — that's the correct default
+// for an internal-only ops panel and matches how everyone runs a /admin/*
+// behind a quick gate.
+//
+// Constant-time compare is implemented manually because Edge runtime doesn't
+// expose `crypto.timingSafeEqual`. ADMIN_SECRET should be a long random
+// string; anything ≥32 random characters makes the comparison trivially safe.
+//
+// Fail-closed: if ADMIN_SECRET is not configured we return 503 — never let
+// /admin/* be reachable due to a missing env.
+// ────────────────────────────────────────────────────────────────────────────
+
+const ADMIN_BASIC_USER = "admin";
+
+function safeStringEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function requireAdminAuth(request: NextRequest): NextResponse | null {
+  const expected = process.env.ADMIN_SECRET?.trim();
+  if (!expected) {
+    return new NextResponse(
+      "Admin panel is not configured (ADMIN_SECRET missing).",
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const auth = request.headers.get("authorization");
+  if (!auth || !auth.startsWith("Basic ")) {
+    return new NextResponse("Authentication required", {
+      status: 401,
+      headers: {
+        "WWW-Authenticate": 'Basic realm="HelpTravel Admin", charset="UTF-8"',
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
+  const encoded = auth.slice("Basic ".length).trim();
+  // btoa requires Latin-1; ADMIN_SECRET must be ASCII (enforced operationally).
+  let expectedEncoded: string;
+  try {
+    expectedEncoded = btoa(`${ADMIN_BASIC_USER}:${expected}`);
+  } catch {
+    return new NextResponse(
+      "Admin secret contains non-ASCII characters; rotate it.",
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  if (!safeStringEqual(encoded, expectedEncoded)) {
+    return new NextResponse("Unauthorized", {
+      status: 401,
+      headers: {
+        "WWW-Authenticate": 'Basic realm="HelpTravel Admin", charset="UTF-8"',
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
+  return null;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
@@ -42,9 +116,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(nextUrl, 308);
   }
 
+  // Gate every /admin/* route (page + any future API). Fail-closed.
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const denied = requireAdminAuth(request);
+    if (denied) return denied;
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/en", "/en/:path*", "/planner", "/planner/:path*"],
+  matcher: [
+    "/en",
+    "/en/:path*",
+    "/planner",
+    "/planner/:path*",
+    "/admin",
+    "/admin/:path*",
+  ],
 };
