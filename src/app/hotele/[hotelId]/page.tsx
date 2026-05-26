@@ -187,6 +187,22 @@ export default async function HotelDetailPage({
       url: `${siteUrl}/hotele/${hotelId}?${searchQuery}`,
     };
   }
+  // schema.org AggregateRating — surfaces star ratings in Google SERP rich
+  // results for hotels. Requires both ratingValue and reviewCount (≥ 1) per
+  // Google's structured-data guidelines. If LiteAPI only provided a rating
+  // without a count, we omit AggregateRating entirely rather than fake the
+  // count — Google penalises bogus review-count claims.
+  if (detail.rating != null && detail.reviewCount != null && detail.reviewCount > 0) {
+    hotelJsonLd.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: Number(detail.rating.toFixed(1)),
+      // LiteAPI's rating scale is 0-10. schema.org allows any bestRating, but
+      // declaring it explicitly removes ambiguity for Google.
+      bestRating: 10,
+      worstRating: 0,
+      reviewCount: detail.reviewCount,
+    };
+  }
 
   // Photo gallery (top 6)
   const photos = (detail.hotelImages ?? [])
