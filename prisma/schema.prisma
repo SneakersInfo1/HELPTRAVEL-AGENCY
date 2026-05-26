@@ -7,6 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Foreign-key columns are NOT auto-indexed by Postgres. Every `findMany`
+// filtered by sessionId / tripRequestId / destinationId would otherwise do a
+// sequential scan. Indexes added 2026-05-26 (post-launch audit). All FK +
+// frequently-filtered columns are now covered.
+//
+// After pulling this PR run:
+//   pnpm dlx prisma migrate dev --name add_fk_indexes
+// and commit the generated prisma/migrations/<ts>_add_fk_indexes/ folder.
+// Vercel does NOT run `prisma migrate deploy` automatically — either add
+// `prisma migrate deploy` to the build command or run it manually:
+//   vercel env pull && pnpm dlx prisma migrate deploy
+
 model AnonymousSession {
   id         String   @id
   createdAt  DateTime @default(now())
@@ -16,6 +28,9 @@ model AnonymousSession {
   savedTrips      SavedTrip[]
   affiliateClicks AffiliateClick[]
   events          Event[]
+
+  @@index([createdAt])
+  @@index([lastSeenAt])
 }
 
 model TripRequest {
@@ -29,6 +44,10 @@ model TripRequest {
   session           AnonymousSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   destinationScores DestinationScore[]
   itineraryResults  ItineraryResult[]
+
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([mode])
 }
 
 model Destination {
@@ -51,6 +70,9 @@ model Destination {
 
   destinationScores DestinationScore[]
   itineraryResults  ItineraryResult[]
+
+  @@index([country])
+  @@index([visaForPL])
 }
 
 model DestinationScore {
@@ -64,6 +86,10 @@ model DestinationScore {
 
   tripRequest TripRequest @relation(fields: [tripRequestId], references: [id], onDelete: Cascade)
   destination Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@index([tripRequestId])
+  @@index([destinationId])
+  @@index([tripRequestId, rank])
 }
 
 model ItineraryResult {
@@ -79,6 +105,9 @@ model ItineraryResult {
   destination     Destination      @relation(fields: [destinationId], references: [id], onDelete: Cascade)
   savedTrips      SavedTrip[]
   affiliateClicks AffiliateClick[]
+
+  @@index([tripRequestId])
+  @@index([destinationId])
 }
 
 model SavedTrip {
@@ -90,6 +119,10 @@ model SavedTrip {
 
   session         AnonymousSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   itineraryResult ItineraryResult  @relation(fields: [itineraryResultId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([itineraryResultId])
+  @@index([sessionId, createdAt])
 }
 
 model AffiliateClick {
@@ -103,6 +136,11 @@ model AffiliateClick {
 
   session         AnonymousSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   itineraryResult ItineraryResult? @relation(fields: [itineraryResultId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([itineraryResultId])
+  @@index([provider])
+  @@index([createdAt])
 }
 
 model Event {
@@ -113,4 +151,9 @@ model Event {
   createdAt   DateTime @default(now())
 
   session AnonymousSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([eventType, createdAt])
 }
