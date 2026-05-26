@@ -7,7 +7,9 @@ export { liteApiRequest } from "./client";
 export { fetchHotelsList, searchHotels, resolveCountryCode } from "./search";
 export { getRates, type GetRatesInput } from "./rates";
 export { getHotelDetail } from "./hotel";
-export { autocompletePlaces, type PlacesAutocompleteInput } from "./places";
+// `autocompletePlaces` removed 2026-05-26 — was a TODO stub returning [] with
+// zero production callers. Destination autocomplete lives in /api/destinations/
+// suggest + lib/mvp/destination-suggestions instead.
 export { prebook, type PrebookInput } from "./prebook";
 export { book, type BookInput } from "./book";
 export {
