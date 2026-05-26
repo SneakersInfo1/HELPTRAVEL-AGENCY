@@ -153,12 +153,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-4 sm:px-6 lg:px-8">
-      <a
-        href="#main-content"
-        className="sr-only rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
-      >
-        {text.skipToContent}
-      </a>
+      {/* Skip link removed 2026-05-26 — it duplicated the one already rendered
+          by src/app/layout.tsx (both pointed at #main-content, creating two
+          competing focus targets for keyboard/AT users). Layout's skip link
+          is canonical; this site-shell only owns the #main-content wrapper. */}
 
       <header className="sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 px-3 py-2 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-4">
         <div className="flex items-center justify-between gap-3">
@@ -210,6 +208,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             onClick={() => setMobileMenuOpen((value) => !value)}
             className="inline-flex min-h-10 items-center rounded-full border border-emerald-900/10 bg-white px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-50 lg:hidden"
             aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav-panel"
             aria-label={mobileMenuOpen ? text.menuClose : text.menuOpen}
           >
             {mobileMenuOpen ? text.menuClose : text.menuOpen}
@@ -217,7 +216,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
         </div>
 
         {mobileMenuOpen ? (
-          <div className="mt-4 grid gap-3 border-t border-emerald-900/10 pt-4 lg:hidden">
+          <div
+            id="mobile-nav-panel"
+            role="region"
+            aria-label="Menu mobilne"
+            className="mt-4 grid gap-3 border-t border-emerald-900/10 pt-4 lg:hidden"
+          >
             <p className="text-sm leading-6 text-emerald-900/70">{text.headerNote}</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {text.nav.map((item) => {
@@ -362,7 +366,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
         </section>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/10 pt-4 text-xs text-emerald-900/62">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/10 pt-4 text-xs text-emerald-900/80">
           <p>{text.footerMetaLeft}</p>
           <p>{text.footerMetaRight}</p>
         </div>

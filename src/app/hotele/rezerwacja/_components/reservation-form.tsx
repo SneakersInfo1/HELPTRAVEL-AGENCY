@@ -239,43 +239,66 @@ export function ReservationForm({
       <fieldset disabled={step === "submitting"} className="space-y-6">
         <div>
           <h2 className="text-lg font-bold text-neutral-900">Osoba rezerwująca</h2>
+          {/* WCAG 2.1 SC 1.3.1 + 4.1.2 — every input must have a
+              programmatically-associated label. Each label uses `htmlFor`
+              pointing at the input's `id`. Without this, screen readers
+              announce "edit text, blank" for each field of the booking form
+              — the only revenue-critical form on the site. */}
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelCls}>Imię</label>
+              <label htmlFor="holder-first-name" className={labelCls}>Imię</label>
               <input
+                id="holder-first-name"
+                name="holderFirstName"
                 className={inputCls}
                 value={holder.firstName}
                 onChange={(e) => setHolder({ ...holder, firstName: e.target.value })}
                 autoComplete="given-name"
+                required
+                aria-required="true"
               />
             </div>
             <div>
-              <label className={labelCls}>Nazwisko</label>
+              <label htmlFor="holder-last-name" className={labelCls}>Nazwisko</label>
               <input
+                id="holder-last-name"
+                name="holderLastName"
                 className={inputCls}
                 value={holder.lastName}
                 onChange={(e) => setHolder({ ...holder, lastName: e.target.value })}
                 autoComplete="family-name"
+                required
+                aria-required="true"
               />
             </div>
             <div>
-              <label className={labelCls}>E-mail</label>
+              <label htmlFor="holder-email" className={labelCls}>E-mail</label>
               <input
+                id="holder-email"
+                name="holderEmail"
                 type="email"
                 className={inputCls}
                 value={holder.email}
                 onChange={(e) => setHolder({ ...holder, email: e.target.value })}
                 autoComplete="email"
+                required
+                aria-required="true"
+                inputMode="email"
               />
             </div>
             <div>
-              <label className={labelCls}>Telefon</label>
+              <label htmlFor="holder-phone" className={labelCls}>Telefon</label>
               <input
+                id="holder-phone"
+                name="holderPhone"
                 type="tel"
                 className={inputCls}
                 value={holder.phone}
                 onChange={(e) => setHolder({ ...holder, phone: e.target.value })}
                 autoComplete="tel"
+                required
+                aria-required="true"
+                inputMode="tel"
                 placeholder="+48…"
               />
             </div>
