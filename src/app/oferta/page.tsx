@@ -39,6 +39,20 @@ export default function OfferPage() {
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
           Nie trzeba znać całej trasy od razu. Możesz zacząć od miasta albo tylko od potrzeby, a dalej przejść do noclegów, lotów i rzeczy, które pomagają domknąć wyjazd.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/hotele/szukaj"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            Otwórz wyszukiwarkę hoteli →
+          </Link>
+          <Link
+            href="/kierunki"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+          >
+            Nie wiem dokąd lecieć
+          </Link>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -57,7 +71,7 @@ export default function OfferPage() {
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <h2 className="text-2xl font-bold text-emerald-950">Najprostsze wejścia do serwisu</h2>
           <div className="mt-4 grid gap-3 text-sm">
-              <Link href="/hotele" className="rounded-2xl bg-white px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
+              <Link href="/hotele/szukaj" className="rounded-2xl bg-white px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
                 Mam kierunek
               </Link>
             <Link href="/kierunki" className="rounded-2xl bg-white px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">

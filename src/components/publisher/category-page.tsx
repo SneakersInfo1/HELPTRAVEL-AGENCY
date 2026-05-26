@@ -102,9 +102,18 @@ export async function CategoryPage({ slug }: { slug: string }) {
           </span>
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
+          {/* Primary CTA: direct to hotel search. SERP landings on category
+              pages (Google sitelinks) need an immediate path to bookable
+              inventory, not just to another catalog page. */}
+          <Link
+            href="/hotele/szukaj"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            Otwórz wyszukiwarkę hoteli →
+          </Link>
           <Link
             href="/kierunki"
-            className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
           >
             Pokaż kierunki dla tego scenariusza
           </Link>
