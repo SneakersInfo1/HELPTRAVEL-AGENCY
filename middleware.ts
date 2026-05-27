@@ -116,8 +116,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(nextUrl, 308);
   }
 
-  // Gate every /admin/* route (page + any future API). Fail-closed.
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+  // Gate every /admin/* route AND /api/admin/* (admin pages + admin APIs).
+  // Fail-closed. The same Basic Auth credentials apply to both surfaces —
+  // admin uses curl with `-u admin:SECRET` to hit any /api/admin/* route.
+  if (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname.startsWith("/api/admin/")
+  ) {
     const denied = requireAdminAuth(request);
     if (denied) return denied;
   }
@@ -133,5 +139,6 @@ export const config = {
     "/planner/:path*",
     "/admin",
     "/admin/:path*",
+    "/api/admin/:path*",
   ],
 };
