@@ -9,15 +9,20 @@ type LimiterKey =
   | "flights-search"
   | "activities-search"
   | "booking-prebook"
-  | "booking-book";
+  | "booking-book"
+  | "admin-email-test";
 
 const LIMIT_PER_MINUTE = 20;
 
 // Per-key overrides. Existing keys keep the default 20/min (no behavior change);
 // booking endpoints are tighter per BOOKING_FLOW_PROMPT Phase 2 (10/min/IP).
+// admin-email-test is even tighter — even an authenticated operator should
+// not be able to spray arbitrary recipients via the test endpoint (defense
+// in depth against credential leaks / shared screens).
 const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   "booking-prebook": 10,
   "booking-book": 10,
+  "admin-email-test": 5,
 };
 
 let warnedMissingEnv = false;
