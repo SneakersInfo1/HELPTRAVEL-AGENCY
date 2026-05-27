@@ -16,6 +16,7 @@ import {
 } from "@/lib/liteapi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { notifyCritical } from "@/lib/alerting/notify";
+import { sendBookingConfirmation } from "@/lib/email/send-booking-confirmation";
 import {
   deleteSession,
   getIdempotent,
@@ -77,6 +78,11 @@ export async function POST(request: NextRequest) {
   const idemKey = request.headers.get("idempotency-key")?.trim() || null;
   if (idemKey) {
     const cached = await getIdempotent(idemKey);
+    // Idempotent replay: short-circuit and return the original outcome.
+    // Note: this path deliberately does NOT re-send the confirmation email —
+    // the customer's first booking attempt already triggered it (or skipped
+    // it for a documented reason). Replays here are typically double-submits
+    // from the browser, not new bookings.
     if (cached) return NextResponse.json(cached.body, { status: cached.status });
   }
 
@@ -230,6 +236,18 @@ export async function POST(request: NextRequest) {
         status: "confirmed" as const,
       };
       if (idemKey) await setIdempotent(idemKey, 200, body);
+      // Fire-and-forget courtesy email. Never blocks the response; failures
+      // are logged + warning-alerted by sendBookingConfirmation itself.
+      void sendBookingConfirmation({
+        bookingId: booking.bookingId,
+        confirmationCode: booking.hotelConfirmationCode,
+        hotelSummary: session.hotelSummary,
+        rateSummary: session.rateSummary,
+        price: session.price,
+        currency: session.currency,
+        holder,
+        guestCount: guests.length,
+      }).catch(() => {});
       return NextResponse.json(body, { status: 200 });
     }
     } catch (reconcileErr) {
@@ -276,6 +294,18 @@ export async function POST(request: NextRequest) {
     console.log(
       `[booking][book] confirmed bookingId=${booking.bookingId} ip=${ip} country=${country} ua_len=${userAgent.length}`,
     );
+    // Fire-and-forget courtesy email. Never blocks the response; failures
+    // are logged + warning-alerted by sendBookingConfirmation itself.
+    void sendBookingConfirmation({
+      bookingId: booking.bookingId,
+      confirmationCode: booking.hotelConfirmationCode,
+      hotelSummary: session.hotelSummary,
+      rateSummary: session.rateSummary,
+      price: session.price,
+      currency: session.currency,
+      holder,
+      guestCount: guests.length,
+    }).catch(() => {});
     return NextResponse.json(body, { status: 200 });
   } catch (err) {
     // SECOND safety net: bookHotel threw — but the call MAY have committed
@@ -311,6 +341,18 @@ export async function POST(request: NextRequest) {
           status: "confirmed" as const,
         };
         if (idemKey) await setIdempotent(idemKey, 200, body);
+        // Fire-and-forget courtesy email. Never blocks the response; failures
+        // are logged + warning-alerted by sendBookingConfirmation itself.
+        void sendBookingConfirmation({
+          bookingId: booking.bookingId,
+          confirmationCode: booking.hotelConfirmationCode,
+          hotelSummary: session.hotelSummary,
+          rateSummary: session.rateSummary,
+          price: session.price,
+          currency: session.currency,
+          holder,
+          guestCount: guests.length,
+        }).catch(() => {});
         return NextResponse.json(body, { status: 200 });
       }
     } catch (recoverErr) {
