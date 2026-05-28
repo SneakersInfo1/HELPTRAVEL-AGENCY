@@ -20,18 +20,20 @@ const LIMIT_PER_MINUTE = 20;
 // not be able to spray arbitrary recipients via the test endpoint (defense
 // in depth against credential leaks / shared screens).
 //
-// stays-search is bumped to 60/min because /hotele/szukaj now fetches rates
-// for the full destination pool (up to ~1000 hotels) progressively from the
-// client: 1000 ÷ BATCH_SIZE(24) ≈ 42 calls per fresh search. At 20/min the
-// user would 429 themselves after card #20 every time they opened a city
-// page. 60/min lets a single fresh scan complete (~7s) and still leaves
-// headroom for a couple of paginations / refinements per minute. Read-only
-// abuse risk is negligible (LiteAPI rate-limits us anyway upstream).
+// stays-search is bumped to 200/min because /hotele/szukaj fetches rates
+// for the full destination pool (up to ~1000 hotels) progressively from
+// the client. With the perf follow-up (BATCH_SIZE 24→50, MAX_CONCURRENT
+// 5→10) a single fresh scan still fires ~20 calls in ~1.5s — well under
+// the cap — but a user bouncing between 3-4 cities in the same minute
+// would have hit the previous 60/min cap. 200/min leaves comfortable
+// headroom for legitimate exploration without making the endpoint a
+// useful abuse vector (it's read-only and LiteAPI rate-limits us upstream
+// anyway).
 const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   "booking-prebook": 10,
   "booking-book": 10,
   "admin-email-test": 5,
-  "stays-search": 60,
+  "stays-search": 200,
 };
 
 let warnedMissingEnv = false;
