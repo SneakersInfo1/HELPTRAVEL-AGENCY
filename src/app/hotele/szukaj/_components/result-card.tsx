@@ -1,5 +1,18 @@
 // Hotel result card. Reused brand DNA from /components/mvp/stay-offers-panel
 // (white card, green CTA, badges). Server-rendered per result.
+//
+// UX: the ENTIRE card is one big Next.js Link — clicking the photo, the
+// hotel name, the rating chip, the price, the CTA, ANYTHING navigates to
+// /hotele/[hotelId]. Previously only the small "Zobacz pokoje" button was
+// a Link, so users who clicked the photo or hotel name (the natural target)
+// got no feedback and had to aim at the button — a "two clicks to open
+// the offer" complaint we hit 2026-05-28.
+//
+// `hover:-translate-y-0.5` was also removed because a transform on the
+// click target during hover can race with the click event (mousedown vs.
+// mouseup hitting subtly different positions on some browsers). The hover
+// border + shadow change is enough to signal interactivity without any
+// layout motion.
 
 import type { ReactNode } from "react";
 import Image from "next/image";
@@ -105,7 +118,11 @@ export function ResultCard({
   const isFreeCancel = (rate?.refundableTag === "RFN" || badges?.freeCancel) ?? false;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(16,84,48,0.12)] sm:flex-row">
+    <Link
+      href={`/hotele/${encodeURIComponent(offer.hotelId)}?${searchQuery}`}
+      aria-label={`Zobacz ofertę: ${offer.name}, ${offer.city}`}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.06)] transition-colors transition-shadow duration-200 hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(16,84,48,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:flex-row"
+    >
       {/* Image */}
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-neutral-100 sm:aspect-[1/1] sm:w-64">
         {offer.thumbnailUrl ? (
@@ -209,14 +226,18 @@ export function ResultCard({
           ) : (
             <div className="min-w-[10rem]">{priceSlot}</div>
           )}
-          <Link
-            href={`/hotele/${encodeURIComponent(offer.hotelId)}?${searchQuery}`}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700"
+          {/* CTA is now a styled span (NOT a nested Link) — the parent
+              Link already handles navigation. The visual button stays so
+              the user has an obvious call-to-action target; the whole
+              card is clickable but the green button anchors the eye. */}
+          <span
+            aria-hidden
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors group-hover:bg-emerald-700"
           >
             Zobacz pokoje
-          </Link>
+          </span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }

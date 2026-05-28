@@ -19,16 +19,22 @@ import { FiltersSidebar } from "./_components/filters-sidebar";
 import { ResultsList } from "./_components/results-list";
 import { ResultsError } from "./_components/results-error";
 import { ResultsSkeleton } from "./_components/results-skeleton";
-import { HotelPagination } from "./_components/hotel-pagination";
 
 export const revalidate = 300;
 
-// Hotel metadata (/data/hotels) is cheap, so we pull a deep pool for
-// pagination depth. Rates are expensive, so we fetch them only for the
-// current page (see Results). The user browses 30 at a time via
-// server-side pagination (?strona=N).
-const HOTEL_POOL_SIZE = 200;
-const RESULTS_PER_PAGE = 30;
+// Hotel metadata (/data/hotels) is cheap, so we pull the LiteAPI cap so
+// every available property in the destination is eligible. Rates are
+// expensive — those are fetched client-side via /api/hotels/rates/batch.
+// The full pool is shipped to the client so sort-by-price and the
+// "hide unavailable" filter operate GLOBALLY (not just per current page).
+//
+// Page sizing: 20/page (down from 30) — fewer DOM nodes, faster card
+// images render, and the user can see the next page faster without a
+// long scroll. LiteAPI returns up to 1000 metadata records per /data/hotels
+// call, so cities like Barcelona (~500-600 properties) fit in one fetch
+// without paginating the upstream.
+const HOTEL_POOL_SIZE = 1000;
+const RESULTS_PER_PAGE = 20;
 
 interface SP {
   destination?: string;
@@ -202,57 +208,40 @@ async function Results({ sp }: { sp: SP }) {
     name: string;
     city: string;
     country?: string;
-    address?: string;
     stars?: number;
     rating?: number;
     reviewCount?: number;
     thumbnailUrl?: string;
   }
 
-  let metaOffers: MetaOffer[] = [];
+  let metaPool: MetaOffer[] = [];
   let errorMessage: string | null = null;
-  let poolCount = 0;
-  let page = 1;
-  let totalPages = 1;
 
   try {
-    // Progressive pricing: /data/hotels is cheap metadata, so the page
-    // renders instantly. Live rates are fetched per card on the client
-    // (CardPrice → /api/hotels/rates/batch) because LiteAPI rates run
-    // ~0.6s/hotel — pricing a whole page synchronously blocked it ~22s.
+    // Server-side: pull the FULL metadata pool for the destination (up to
+    // LiteAPI's 1000 cap). Metadata is cheap (just names, photos, stars) —
+    // the expensive part is the per-hotel rate lookup, which is done on the
+    // client via /api/hotels/rates/batch + the existing price-store. The
+    // ResultsList client component then owns filter / sort / paginate over
+    // the WHOLE pool so:
+    //   • "price ascending" is a global ladder (cheapest in the destination
+    //     first, not just cheapest among the current 20 cards).
+    //   • Hotels that come back unavailable for the chosen dates are HIDDEN
+    //     entirely — no more "Brak miejsc w tym terminie" cards.
+    //   • The count line reflects ACTUAL availability ("511 dostępnych
+    //     obiektów"), not the metadata count.
     const list = await fetchHotelsList({ city: destination, country, limit: HOTEL_POOL_SIZE });
-    let pool = list.data ?? [];
-
-    // Metadata-capable filters/sort run here; price/board/cancel filters
-    // and price sort now live with the client-side prices (follow-up).
-    const q = sp.q?.trim().toLowerCase();
-    if (q) pool = pool.filter((h) => `${h.name} ${h.city}`.toLowerCase().includes(q));
-    const minStars = sp.minStars ? Number(sp.minStars) : 0;
-    if (minStars) pool = pool.filter((h) => (h.stars ?? 0) >= minStars);
-    const minRating = sp.minRating ? Number(sp.minRating) : 0;
-    if (minRating) pool = pool.filter((h) => (h.rating ?? 0) >= minRating);
-    if (sp.sort === "rating") pool = [...pool].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-    else if (sp.sort === "stars") pool = [...pool].sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
-
-    poolCount = pool.length;
-    totalPages = Math.max(1, Math.ceil(poolCount / RESULTS_PER_PAGE));
-    const requestedPage = Number(sp.strona);
-    page = Number.isFinite(requestedPage)
-      ? Math.min(Math.max(1, Math.trunc(requestedPage)), totalPages)
-      : 1;
-    metaOffers = pool
-      .slice((page - 1) * RESULTS_PER_PAGE, page * RESULTS_PER_PAGE)
-      .map((h) => ({
-        hotelId: h.id,
-        name: h.name,
-        city: h.city,
-        country: h.country,
-        address: h.address,
-        stars: h.stars ?? undefined,
-        rating: h.rating ?? undefined,
-        reviewCount: h.reviewCount ?? undefined,
-        thumbnailUrl: h.main_photo ?? h.thumbnail,
-      }));
+    const raw = list.data ?? [];
+    metaPool = raw.map((h) => ({
+      hotelId: h.id,
+      name: h.name,
+      city: h.city,
+      country: h.country,
+      stars: h.stars ?? undefined,
+      rating: h.rating ?? undefined,
+      reviewCount: h.reviewCount ?? undefined,
+      thumbnailUrl: h.main_photo ?? h.thumbnail,
+    }));
   } catch (err) {
     errorMessage = err instanceof LiteApiError ? err.userMessagePl : "Coś poszło nie tak. Spróbuj ponownie.";
   }
@@ -272,7 +261,7 @@ async function Results({ sp }: { sp: SP }) {
     );
   }
 
-  if (poolCount === 0) {
+  if (metaPool.length === 0) {
     return (
       <EmptyResults
         destination={cityPl}
@@ -305,32 +294,45 @@ async function Results({ sp }: { sp: SP }) {
   // Shared search context for the client price islands.
   const priceCtx = { checkin, checkout, adults, children, rooms, currency: "PLN" };
 
+  // Parse URL-driven filters/sort once at the boundary; ResultsList stays
+  // a pure consumer of these props.
+  const requestedPage = Number(sp.strona);
+  const pageFromUrl = Number.isFinite(requestedPage)
+    ? Math.max(1, Math.trunc(requestedPage))
+    : 1;
+  const propertyTypeList = sp.propertyType
+    ? sp.propertyType.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+  const boardList = sp.board
+    ? sp.board.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-xl font-bold text-neutral-900 sm:text-2xl">
           Hotele w {destination}
         </h1>
-        <div className="text-sm text-neutral-500">
-          {poolCount >= HOTEL_POOL_SIZE ? `${HOTEL_POOL_SIZE}+` : poolCount}{" "}
-          {poolCount === 1 ? "obiekt" : "obiektów"} · {nights}{" "}
-          {nights === 1 ? "noc" : nights < 5 ? "noce" : "nocy"} · {adults}{" "}
-          {adults === 1 ? "dorosły" : "dorosłych"}
-          {totalPages > 1 ? ` · Strona ${page} z ${totalPages}` : ""}
-        </div>
       </header>
 
       <ResultsList
-        offers={metaOffers}
+        pool={metaPool}
         ctx={priceCtx}
         nights={nights}
         childParams={childParams.toString()}
+        baseQuery={pageBaseQuery}
+        pageFromUrl={pageFromUrl}
+        pageSize={RESULTS_PER_PAGE}
         sort={sp.sort}
         minPrice={sp.minPrice ? Number(sp.minPrice) : undefined}
         maxPrice={sp.maxPrice ? Number(sp.maxPrice) : undefined}
+        minStars={sp.minStars ? Number(sp.minStars) : undefined}
+        minRating={sp.minRating ? Number(sp.minRating) : undefined}
+        cancel={sp.cancel}
+        q={sp.q}
+        propertyType={propertyTypeList}
+        board={boardList}
       />
-
-      <HotelPagination page={page} totalPages={totalPages} baseQuery={pageBaseQuery} />
     </div>
   );
 }

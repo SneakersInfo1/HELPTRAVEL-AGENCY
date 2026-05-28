@@ -18,6 +18,22 @@ import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/no
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { getSiteUrl } from "@/lib/mvp/site";
 
+// LiteAPI is asked for `language=pl` (see lib/liteapi/hotel.ts), but for
+// many hotels they don't actually have a Polish translation on file and
+// fall back to English upstream. A Polish site rendering English content
+// looks broken to the user (see Vincci Larios Diez, Málaga — 2026-05-28
+// report). Heuristic: a long-form description (>= 80 chars of plain text)
+// with ZERO Polish-specific characters is essentially never Polish — even
+// short Polish paragraphs almost always include one of ą/ć/ę/ł/ń/ó/ś/ź/ż.
+// When we detect this, swap the foreign-language description for a clean
+// Polish placeholder that still tells the user where to find details.
+function descriptionIsLikelyNotPolish(html: string | undefined | null): boolean {
+  if (!html) return false;
+  const text = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (text.length < 80) return false; // too short to judge reliably
+  return !/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(text);
+}
+
 import { BookingWidget } from "./_components/booking-widget";
 import { RoomsSection } from "./_components/rooms-section";
 
@@ -324,8 +340,13 @@ export default async function HotelDetailPage({
             <section id="overview" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
               <h2 className="text-lg font-bold text-neutral-900">Przegląd</h2>
               {(() => {
-                const sanitized = sanitizeHotelDescription(detail.hotelDescription ?? detail.description);
-                if (sanitized) {
+                const raw = detail.hotelDescription ?? detail.description;
+                const sanitized = sanitizeHotelDescription(raw);
+                // Show LiteAPI's description ONLY when it actually came back
+                // in Polish. English (or other-language) content gets swapped
+                // for a clean Polish placeholder — better than dumping foreign
+                // copy onto a Polish-speaking user.
+                if (sanitized && !descriptionIsLikelyNotPolish(sanitized)) {
                   return (
                     <div
                       className="mt-3 space-y-3 text-sm leading-relaxed text-neutral-700 [&_p]:mt-0 [&_strong]:font-semibold [&_strong]:text-neutral-900 [&_em]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1"
@@ -333,8 +354,42 @@ export default async function HotelDetailPage({
                     />
                   );
                 }
+                // Fallback: synthesize a short Polish overview from the
+                // structured data we DO have (stars, city, rating). This is
+                // better than "no description" because it still helps the
+                // user decide whether to keep reading.
+                const summaryBits: string[] = [];
+                if (detail.stars && detail.stars > 0) {
+                  summaryBits.push(`${Math.round(detail.stars)}-gwiazdkowy hotel`);
+                } else {
+                  summaryBits.push("Hotel");
+                }
+                if (detail.city) summaryBits.push(`w mieście ${detail.city}`);
+                const opener = summaryBits.join(" ") + ".";
+                const ratingLine =
+                  detail.rating != null && detail.rating > 0
+                    ? `Goście oceniają obiekt na ${detail.rating.toFixed(1)}/10${
+                        detail.reviewCount && detail.reviewCount > 0
+                          ? ` (${detail.reviewCount.toLocaleString("pl-PL")} ${
+                              detail.reviewCount === 1
+                                ? "opinia"
+                                : detail.reviewCount < 5
+                                  ? "opinie"
+                                  : "opinii"
+                            })`
+                          : ""
+                      }.`
+                    : null;
                 return (
-                  <p className="mt-3 text-sm text-neutral-500">Opis hotelu nie jest dostępny u dostawcy.</p>
+                  <div className="mt-3 space-y-3 text-sm leading-relaxed text-neutral-700">
+                    <p>{opener}</p>
+                    {ratingLine && <p>{ratingLine}</p>}
+                    <p className="text-xs text-neutral-500">
+                      Pełny opis hotelu po polsku nie jest dostępny u dostawcy.
+                      Szczegóły znajdziesz w sekcjach „Udogodnienia", „Lokalizacja"
+                      i „Polityka hotelu" poniżej.
+                    </p>
+                  </div>
                 );
               })()}
             </section>
