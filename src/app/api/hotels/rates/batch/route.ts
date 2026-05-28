@@ -20,11 +20,15 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 
 const BodySchema = z.object({
-  // Raised from 12 → 30 to match the bumped client-side BATCH_SIZE in
-  // lib/hotels/price-batcher.ts (audit 2026-05-26). LiteAPI handles arrays
-  // up to ~30 hotelIds per call comfortably; the previous 12 cap forced the
-  // client to fan out into ~3× more sequential batches than needed.
-  hotelIds: z.array(z.string().min(1)).min(1).max(30),
+  // Raised 30 → 50 in lockstep with the bumped client-side BATCH_SIZE
+  // (2026-05-28 perf follow-up — the user reported ~5s cold scans on
+  // /hotele/szukaj). LiteAPI's /hotels/rates per-call latency is roughly
+  // O(1) in the hotelIds array length within reason — they parallelise
+  // internally — so doubling the batch size halves the round-trips.
+  // 50 also keeps each response payload manageable (~25MB raw → ~3-4MB
+  // gzipped over the wire to LiteAPI). If LiteAPI ever returns
+  // batch-size-related 4xx, drop back to 30.
+  hotelIds: z.array(z.string().min(1)).min(1).max(50),
   checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   adults: z.number().int().min(1).max(8).default(2),
