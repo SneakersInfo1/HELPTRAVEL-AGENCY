@@ -304,7 +304,7 @@ export function buildLocalizedAvoidNotes(guide: DestinationGuideContent, locale:
     notes.push(
       locale === "en"
         ? "Harder to defend when the budget is extremely tight and cheaper alternatives can deliver a similar climate or trip style."
-        : "Przy bardzo twardym budżecie łatwiej obronić tansze alternatywy w podobnym klimacie.",
+        : "Przy bardzo twardym budżecie łatwiej obronić tańsze alternatywy w podobnym klimacie.",
     );
   }
   if (guide.destination.beachScore < 0.45) {
@@ -318,7 +318,7 @@ export function buildLocalizedAvoidNotes(guide: DestinationGuideContent, locale:
     notes.push(
       locale === "en"
         ? "It becomes weaker when the brief expects a dense, high-intensity city break with many landmarks packed into a short stay."
-        : "Slabiej broni się, gdy szukasz bardzo intensywnego city breaku z duza liczba punktów do zwiedzania.",
+        : "Slabiej broni się, gdy szukasz bardzo intensywnego city breaku z duża liczba punktów do zwiedzania.",
     );
   }
 
@@ -392,7 +392,7 @@ export function buildLocalizedComparisonSignals(
             ? `${destination.city} mocniej pracuje jako klasyczny city break z gestszym zwiedzaniem.`
             : destination.natureScore > current.natureScore + 0.12
               ? `${destination.city} daje spokojniejszy, bardziej widokówy rytm niż ${current.city}.`
-              : `${current.city} jest bardziej równym wybórem, gdy chcesz połączyć kilka potrzeb bez dużych kompromisów.`;
+              : `${current.city} jest bardziej równym wyborem, gdy chcesz połączyć kilka potrzeb bez dużych kompromisów.`;
 
     return {
       slug: destination.slug,

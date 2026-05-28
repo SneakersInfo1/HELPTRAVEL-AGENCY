@@ -158,7 +158,7 @@ export function ContactForm({ contactEmail }: { contactEmail?: string | null }) 
             onChange={(event) => setMessage(event.target.value)}
             required
             rows={6}
-            placeholder="Napisz, co sie stalo, gdzie to widzisz i czego oczekiwales."
+            placeholder="Napisz, co się stalo, gdzie to widzisz i czego oczekiwales."
             className="mt-2 min-h-36 w-full rounded-2xl border border-emerald-900/12 bg-white px-4 py-3 text-sm leading-6 text-emerald-950 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200/70"
           />
         </label>

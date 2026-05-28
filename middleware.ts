@@ -113,7 +113,19 @@ export function middleware(request: NextRequest) {
     const nextUrl = request.nextUrl.clone();
     nextUrl.pathname = stripEnPrefix(pathname);
     nextUrl.search = search;
-    return NextResponse.redirect(nextUrl, 308);
+    const res = NextResponse.redirect(nextUrl, 308);
+    // Defense-in-depth: if any crawler or indexer captures the /en/* URL
+    // BEFORE following the 308, the X-Robots-Tag instructs them to drop
+    // it from their index regardless. GSC was still showing /en/* URLs
+    // with impressions (helsinki-finland: 46 wyśw., paris-france: 37,
+    // rotterdam-netherlands: 35) two months after the redirect shipped,
+    // meaning Google's cache still ranks the old URL. This header
+    // accelerates deindexing.
+    res.headers.set("X-Robots-Tag", "noindex, follow");
+    // Mark as cacheable redirect so Vercel/edge CDNs don't keep re-hitting
+    // our origin — the redirect itself never needs revalidation.
+    res.headers.set("Cache-Control", "public, max-age=86400, immutable");
+    return res;
   }
 
   // Gate every /admin/* route AND /api/admin/* (admin pages + admin APIs).
