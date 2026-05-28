@@ -19,10 +19,19 @@ const LIMIT_PER_MINUTE = 20;
 // admin-email-test is even tighter — even an authenticated operator should
 // not be able to spray arbitrary recipients via the test endpoint (defense
 // in depth against credential leaks / shared screens).
+//
+// stays-search is bumped to 60/min because /hotele/szukaj now fetches rates
+// for the full destination pool (up to ~1000 hotels) progressively from the
+// client: 1000 ÷ BATCH_SIZE(24) ≈ 42 calls per fresh search. At 20/min the
+// user would 429 themselves after card #20 every time they opened a city
+// page. 60/min lets a single fresh scan complete (~7s) and still leaves
+// headroom for a couple of paginations / refinements per minute. Read-only
+// abuse risk is negligible (LiteAPI rate-limits us anyway upstream).
 const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   "booking-prebook": 10,
   "booking-book": 10,
   "admin-email-test": 5,
+  "stays-search": 60,
 };
 
 let warnedMissingEnv = false;
