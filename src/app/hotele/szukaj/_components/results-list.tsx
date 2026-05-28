@@ -109,10 +109,33 @@ export function ResultsList(props: ResultsListProps) {
   const poolIdSig = pool.map((o) => o.hotelId).join(",");
 
   useEffect(() => {
-    for (const o of pool) {
-      ensurePrice({ hotelId: o.hotelId, ...ctx });
+    // Priority queue: enqueue the hotels CURRENTLY VISIBLE first so the
+    // batcher's first flush (within WINDOW_MS = 60ms) ships their prices
+    // back ahead of the off-screen pool. ensurePrice is a no-op for ids
+    // already in flight, so calling it twice for the same hotel is safe.
+    //
+    // Why this matters: a Barcelona-sized scan moves ~20 batches over
+    // ~1.5s. Without prioritisation, hotels on metadata-page 1 (indices
+    // 0-49) always go in batch #1 regardless of which page the user is
+    // actually looking at — landing on ?strona=5 meant waiting for
+    // batches 5-6 before seeing the page's prices. With this ordering,
+    // the visible page's 20 prices arrive in the FIRST batch every time.
+    const currentPageStart = Math.max(0, (pageFromUrl - 1) * pageSize);
+    const currentPageEnd = currentPageStart + pageSize;
+    for (let i = currentPageStart; i < Math.min(pool.length, currentPageEnd); i++) {
+      ensurePrice({ hotelId: pool[i].hotelId, ...ctx });
+    }
+    // Everything off the current page, in metadata order. Skipping the
+    // current-page slice avoids re-calling ensurePrice (cheap dedup but
+    // still preserves the FIFO order we just set up).
+    for (let i = 0; i < pool.length; i++) {
+      if (i >= currentPageStart && i < currentPageEnd) continue;
+      ensurePrice({ hotelId: pool[i].hotelId, ...ctx });
     }
     // ctxSig + the hotel id list capture every meaningful change.
+    // pageFromUrl/pageSize intentionally omitted: ensurePrice is idempotent
+    // (dedup by store key), so re-firing on page nav would only re-order
+    // an already-mostly-resolved queue without helping the user.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctxSig, poolIdSig]);
 

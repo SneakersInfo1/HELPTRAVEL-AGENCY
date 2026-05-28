@@ -34,18 +34,26 @@ export interface PriceQuery {
 // each batch now does more work). The audit also raised the /api/hotels/
 // rates/batch hotelIds cap to 30 so this isn't artificially clipped.
 //
-// 2026-05-28 follow-up: results page now ships the FULL meta pool (up to
-// 1000 hotels) to enable global price sort + "hide unavailable". To finish
-// a fresh scan in ~6-8s instead of ~22s we bump:
-//   • BATCH_SIZE   12 → 24  (route accepts up to 30 — 24 keeps headroom)
-//   • MAX_CONCURRENT 3 → 5   (paired with the stays-search limit bump
-//                             from 20 → 60/min so we don't 429 ourselves)
-// For 1000 hotels: ~42 batches × 5 concurrent ≈ 9 rounds × ~800ms ≈ 7s
-// at worst (rate cache hits drop this dramatically for warm destinations).
+// 2026-05-28 follow-up #1: results page ships the FULL meta pool (up to
+// 1000 hotels). Bumped to BATCH_SIZE=24, MAX_CONCURRENT=5 → ~7s for a
+// cold Barcelona-sized scan.
 //
-// If LiteAPI ever returns batch-size-related 4xx, drop BATCH_SIZE back to 12.
-const BATCH_SIZE = 24;
-const MAX_CONCURRENT = 5;
+// 2026-05-28 follow-up #2 ("aktualnie około 5 sekund ładuje wszystkie
+// obiekty" — user wants it faster): the LiteAPI call latency is fixed at
+// ~600-800ms per batch regardless of size (their backend parallelises
+// internally over hotelIds). Round-trips are what cost us, so:
+//   • BATCH_SIZE   24 → 50  (route cap is raised in lockstep to 50)
+//   • MAX_CONCURRENT 5 → 10 (paired with the stays-search limit bump
+//                             from 60 → 200/min so a power user searching
+//                             multiple cities in a row doesn't 429)
+// For 1000 hotels: 1000/50 = 20 batches / 10 concurrent ≈ 2 rounds ×
+// ~700ms ≈ 1.4s for a fully-cold scan. Warm Redis hits drop this to
+// well under 300ms because the route short-circuits without ever
+// calling LiteAPI.
+//
+// If LiteAPI ever returns batch-size-related 4xx, drop BATCH_SIZE back to 24.
+const BATCH_SIZE = 50;
+const MAX_CONCURRENT = 10;
 const WINDOW_MS = 60; // coalescing window
 
 type Pending = {
