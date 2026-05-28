@@ -422,7 +422,7 @@ test("contract: getRates (POST /hotels/rates) sends documented body keys", async
   });
 });
 
-test("contract: getHotelDetail (GET /data/hotel) sends hotelId query", async () => {
+test("contract: getHotelDetail (GET /data/hotel) sends hotelId + language=pl by default", async () => {
   const { getHotelDetail } = await import("./hotel");
   await withEnv(BASE_ENV, async () => {
     const m = mockFetchOnce({
@@ -432,7 +432,30 @@ test("contract: getHotelDetail (GET /data/hotel) sends hotelId query", async () 
       await getHotelDetail("lp1");
       const req = m.captured[0];
       assert.equal(req.method, "GET");
-      assert.match(req.url, /^https:\/\/api\.liteapi\.travel\/v3\.0\/data\/hotel\?hotelId=lp1$/);
+      // Default language is "pl" — the entire site is Polish, so we always
+      // ask LiteAPI for the Polish localization (falls back to English
+      // upstream when the supplier hasn't translated a field).
+      assert.match(
+        req.url,
+        /^https:\/\/api\.liteapi\.travel\/v3\.0\/data\/hotel\?hotelId=lp1&language=pl$/,
+      );
+    } finally { m.restore(); }
+  });
+});
+
+test("contract: getHotelDetail respects an explicit language override", async () => {
+  const { getHotelDetail } = await import("./hotel");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce({
+      data: { id: "lp1", name: "X", city: "Malaga", main_photo: "https://x/y.jpg" },
+    });
+    try {
+      await getHotelDetail("lp1", { language: "en" });
+      const req = m.captured[0];
+      assert.match(
+        req.url,
+        /^https:\/\/api\.liteapi\.travel\/v3\.0\/data\/hotel\?hotelId=lp1&language=en$/,
+      );
     } finally { m.restore(); }
   });
 });
