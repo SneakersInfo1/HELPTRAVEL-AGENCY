@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getSiteUrl } from "@/lib/mvp/site";
+import { TrackView } from "@/components/analytics/track-view";
 import { ConfettiBurst } from "./_components/confetti-burst";
 
 export const dynamic = "force-dynamic";
@@ -129,6 +130,23 @@ export default async function ReturnPage({
     return (
       <Shell tone="ok" title="Rezerwacja potwierdzona 🎉">
         <ConfettiBurst />
+        {/* GA4 conversion — fires ONCE, ONLY in the confirmed-success branch
+            (status 200). This is the key event to mark as a conversion in
+            GA4. `value` is intentionally omitted for now: session.price units
+            (major vs minor) aren't unambiguous here, and a wrong revenue
+            number would corrupt GA4 reporting — the conversion still COUNTS
+            without it. Add value once units are confirmed (then ROAS works
+            for paid campaigns). Display/tracking only — does not touch the
+            booking/payment flow (RULE 6). */}
+        {data.bookingId ? (
+          <TrackView
+            event="booking_complete"
+            params={{
+              booking_id: String(data.bookingId),
+              currency: typeof data.currency === "string" ? data.currency : "PLN",
+            }}
+          />
+        ) : null}
         <p>
           Dziękujemy! Twoja rezerwacja w <strong>{hotel.name ?? "wybranym hotelu"}</strong>
           {hotel.city ? `, ${hotel.city}` : ""} została potwierdzona.
