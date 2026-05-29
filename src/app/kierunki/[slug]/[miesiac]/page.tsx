@@ -4,6 +4,7 @@ import Script from "next/script";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
+import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import {
@@ -16,7 +17,7 @@ import {
 } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
-import { addDaysToIsoDate, defaultTravelStartDate } from "@/lib/mvp/travel-dates";
+import { addDaysToIsoDate } from "@/lib/mvp/travel-dates";
 
 export const revalidate = 86400;
 
@@ -57,6 +58,57 @@ function suitabilityVerdict(temp: number, beachScore: number) {
   if (temp >= 18) return "Tak — komfortowy termin na city break i sensowne zwiedzanie.";
   if (temp >= 12) return "Warto, jeśli akceptujesz chłodniejszą pogodę i nie liczysz na plażę.";
   return "Możliwe, ale to nie najmocniejszy termin — lepiej traktować jako city break poza sezonem.";
+}
+
+// Sea-surface temperature model for coastal destinations. The sea lags air
+// temperature by ~1-2 months (thermal mass) and holds summer heat into
+// autumn — so we weight the current + two previous months. Makes Sept/Oct
+// sea warmer than the air (true for the Med) and June sea cooler than the
+// June air. Only meaningful for beach-forward destinations; for inland
+// cities sea temp is nonsense and is suppressed at the call site.
+function estimateSeaTemperature(avgTempByMonth: number[], monthIndex: number): number {
+  const m0 = avgTempByMonth[monthIndex];
+  const m1 = avgTempByMonth[(monthIndex + 11) % 12];
+  const m2 = avgTempByMonth[(monthIndex + 10) % 12];
+  const modeled = m0 * 0.45 + m1 * 0.33 + m2 * 0.22;
+  return Math.min(29, Math.max(10, Math.round(modeled)));
+}
+
+type SeasonTier = "peak" | "shoulder" | "low";
+
+// Tourist-season classifier — powers the "kiedy taniej / mniej tłoczno"
+// content that converts informational visitors (people planning a trip)
+// into booking-funnel clicks. Beach destinations peak in high summer; city
+// breaks peak late-spring→summer plus festive December.
+function classifySeason(temp: number, monthIndex: number, beachScore: number): SeasonTier {
+  const highSummer = monthIndex >= 5 && monthIndex <= 8; // czerwiec–wrzesień
+  if (beachScore >= 0.6) {
+    if (temp >= 24 && highSummer) return "peak";
+    if (temp >= 20) return "shoulder";
+    return "low";
+  }
+  if ((monthIndex >= 4 && monthIndex <= 8) || monthIndex === 11) {
+    return temp >= 18 ? "peak" : "shoulder";
+  }
+  return temp >= 14 ? "shoulder" : "low";
+}
+
+const seasonCopy: Record<SeasonTier, { label: string; crowd: string; price: string }> = {
+  peak: { label: "Wysoki sezon", crowd: "najwięcej turystów", price: "ceny w szczycie" },
+  shoulder: { label: "Sezon przejściowy", crowd: "umiarkowany ruch", price: "ceny umiarkowane" },
+  low: { label: "Poza sezonem", crowd: "najspokojniej", price: "ceny najniższe" },
+};
+
+// Month-accurate check-in for the booking-funnel link: the 10th of the
+// target month — this year if still ≥3 days ahead, otherwise next year.
+// Pre-filling the RIGHT month means "sprawdź hotele w czerwcu" lands on
+// June availability — materially better conversion than a generic default.
+function monthCheckinIso(monthIndex: number): string {
+  const now = new Date();
+  const tenthThisYear = Date.UTC(now.getUTCFullYear(), monthIndex, 10);
+  const useNextYear = tenthThisYear < now.getTime() + 3 * 24 * 60 * 60 * 1000;
+  const year = useNextYear ? now.getUTCFullYear() + 1 : now.getUTCFullYear();
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-10`;
 }
 
 // SEO title format (tested 2026-05-28): match informational intent ("pogoda")
@@ -131,7 +183,21 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
   const weather = describeWeather(temp);
   const baseUrl = getSiteUrl();
   const affiliateCampaign = `month-${slug}-${monthSlug}`;
-  const startDate = defaultTravelStartDate();
+
+  // Per-month unique signals (data-driven → scale across 2800 pages without
+  // hand-writing): sea temp for the coast, tourist season, and the
+  // warmest/cheapest months for internal "kiedy taniej" cross-linking.
+  const beachForward = guide.destination.beachScore >= 0.6;
+  const seaTemp = beachForward ? estimateSeaTemperature(yearTemps, monthIndex) : null;
+  const season = classifySeason(temp, monthIndex, guide.destination.beachScore);
+  const seasonInfo = seasonCopy[season];
+  const warmestSlug = polishMonthSlugs[yearTemps.indexOf(yearMax)];
+  const coldestSlug = polishMonthSlugs[yearTemps.indexOf(yearMin)];
+  // Funnel into the high-intent commercial landing page when one exists.
+  const commercialCity = findCommercialCityByDestinationId(guide.destination.slug);
+
+  // Month-accurate dates so the search lands on availability for THIS month.
+  const startDate = monthCheckinIso(monthIndex);
   const checkout = addDaysToIsoDate(startDate, 4);
   const internalHotelHref = `/hotele/szukaj?${new URLSearchParams({
     destination: guide.destination.city,
@@ -217,6 +283,26 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
               text: verdict,
             },
           },
+          ...(seaTemp !== null
+            ? [
+                {
+                  "@type": "Question",
+                  name: `Jaka jest temperatura morza w ${guide.destination.city} w ${monthInfl}?`,
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: `Temperatura morza w ${guide.destination.city} w ${monthInfl} to orientacyjnie około ${seaTemp}°C (na podstawie wieloletnich średnich).`,
+                  },
+                },
+              ]
+            : []),
+          {
+            "@type": "Question",
+            name: `Kiedy jest najtaniej i najmniej turystów w ${guide.destination.city}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Najwięcej turystów i najwyższe ceny przypadają na najcieplejsze miesiące (${polishMonthLabels[warmestSlug].toLowerCase()}). Najspokojniej i zwykle najtaniej jest w ${polishMonthLabels[coldestSlug].toLowerCase()}. ${monthLabel.charAt(0).toUpperCase()}${monthLabel.slice(1)} to ${seasonInfo.label.toLowerCase()} — ${seasonInfo.crowd}, ${seasonInfo.price}.`,
+            },
+          },
           {
             "@type": "Question",
             name: `Jak długo trwa lot z Polski do ${guide.destination.city}?`,
@@ -252,7 +338,9 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           {guide.destination.city} w {monthInfl} — pogoda {temp}°C, hotele i kiedy lecieć
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-          Konkretne dane: średnia temperatura, orientacyjny budżet 2 osób na 4 dni, kiedy warto lecieć
+          W {monthInfl} w {guide.destination.city} jest {weather} (śr. {temp}°C
+          {seaTemp !== null ? `, morze ~${seaTemp}°C` : ""}). To {seasonInfo.label.toLowerCase()} —{" "}
+          {seasonInfo.crowd}, {seasonInfo.price}. Poniżej orientacyjny budżet, najlepszy termin
           i bezpośrednie przejście do hoteli z cenami w PLN.
         </p>
 
@@ -281,6 +369,60 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
         <h2 className="font-display text-3xl text-emerald-950">Czy warto lecieć do {guide.destination.city} w {monthInfl}?</h2>
         <p className="mt-3 max-w-3xl text-base leading-8 text-emerald-900/80">{verdict}</p>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/72">{guide.overview}</p>
+      </section>
+
+      {/* Season / prices / sea — unique per city×month (fixes thin-content
+          indexing) + drives "kiedy taniej" intent into the booking funnel. */}
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <h2 className="font-display text-3xl text-emerald-950">
+          Sezon, ceny i morze w {guide.destination.city} w {monthInfl}
+        </h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl bg-emerald-50 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Sezon</p>
+            <p className="mt-1 text-xl font-bold text-emerald-950">{seasonInfo.label}</p>
+            <p className="mt-1 text-xs text-emerald-900/70">
+              {seasonInfo.crowd}, {seasonInfo.price}
+            </p>
+          </div>
+          {seaTemp !== null && (
+            <div className="rounded-2xl bg-emerald-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                Temperatura morza
+              </p>
+              <p className="mt-1 text-3xl font-bold text-emerald-950">~{seaTemp}°C</p>
+              <p className="mt-1 text-xs text-emerald-900/70">Orientacyjnie, ze średnich wieloletnich.</p>
+            </div>
+          )}
+          <div className="rounded-2xl bg-emerald-50 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              Najcieplejszy miesiąc
+            </p>
+            <p className="mt-1 text-xl font-bold capitalize text-emerald-950">
+              {polishMonthLabels[warmestSlug]}
+            </p>
+            <p className="mt-1 text-xs text-emerald-900/70">Szczyt temperatur ({yearMax}°C)</p>
+          </div>
+        </div>
+        <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-900/78">
+          {monthLabel.charAt(0).toUpperCase()}
+          {monthLabel.slice(1)} to w {guide.destination.city} {seasonInfo.label.toLowerCase()} (
+          {seasonInfo.crowd}, {seasonInfo.price}). Najcieplej jest w{" "}
+          <Link
+            href={`/kierunki/${slug}/${warmestSlug}`}
+            className="font-semibold text-emerald-700 underline-offset-2 hover:underline"
+          >
+            {polishMonthLabels[warmestSlug].toLowerCase()}
+          </Link>
+          , a najspokojniej i zwykle najtaniej w{" "}
+          <Link
+            href={`/kierunki/${slug}/${coldestSlug}`}
+            className="font-semibold text-emerald-700 underline-offset-2 hover:underline"
+          >
+            {polishMonthLabels[coldestSlug].toLowerCase()}
+          </Link>
+          . Jeśli zależy Ci na niższej cenie, rozważ termin poza szczytem sezonu.
+        </p>
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-emerald-50/72 p-6">
@@ -313,18 +455,29 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Hotele</p>
             <h2 className="mt-2 font-display text-3xl leading-tight">
-              Sprawdź hotele w {guide.destination.city} na ten termin
+              Sprawdź hotele w {guide.destination.city} w {monthInfl}
             </h2>
             <p className="mt-3 text-sm leading-7 text-emerald-50/85">
-              Ceny w PLN, finalna płatność u dostawcy. Bez wychodzenia ze strony.
+              Wyszukiwarka ustawiona na {monthInfl} — ceny w PLN, finalna płatność u dostawcy.
+              Bez wychodzenia ze strony.
             </p>
           </div>
-          <Link
-            href={internalHotelHref}
-            className="mt-5 inline-flex w-fit items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100"
-          >
-            Sprawdź hotele
-          </Link>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              href={internalHotelHref}
+              className="inline-flex w-fit items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100"
+            >
+              Sprawdź hotele w {monthInfl}
+            </Link>
+            {commercialCity && (
+              <Link
+                href={`/hotele/w/${commercialCity.slug}`}
+                className="inline-flex w-fit items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                Przewodnik: hotele {commercialCity.preposition} {commercialCity.cityLocative}
+              </Link>
+            )}
+          </div>
         </article>
         <AviasalesCta
           city={guide.destination.city}
