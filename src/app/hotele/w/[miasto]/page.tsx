@@ -75,17 +75,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const budget = buildBudgetEstimate(city);
   const year = new Date().getFullYear();
+  // "w Barcelonie" / "na Teneryfie" — preposition lives on the city record
+  // so island H1s stay grammatical when that batch lands.
+  const inLoc = `${city.preposition} ${city.cityLocative}`;
   // Title: matches the head query ("hotele {city}") + commercial hook
   // (od X zł) + year freshness. ~58 chars before brand tail.
-  const title = `Hotele w ${city.cityLocative} ${year}: od ${budget.perNight} zł/noc, sprawdź ${commercialCities.length > 1 ? "oferty" : "ofertę"}`;
-  const description = `Hotele w ${city.cityLocative} (${city.countryLocative}) — ceny w PLN od ${budget.perNight} zł za noc. Bezpłatna anulacja w wybranych ofertach, prawdziwe ceny dostępne online, polskie wsparcie. Sprawdź dostępność i zarezerwuj w 2 minuty.`;
+  const title = `Hotele ${inLoc} ${year}: od ${budget.perNight} zł/noc, sprawdź ${commercialCities.length > 1 ? "oferty" : "ofertę"}`;
+  const description = `Hotele ${inLoc} (${city.countryLocative}) — ceny w PLN od ${budget.perNight} zł za noc. Bezpłatna anulacja w wybranych ofertach, prawdziwe ceny dostępne online, polskie wsparcie. Sprawdź dostępność i zarezerwuj w 2 minuty.`;
 
   return {
     title,
     description,
     keywords: [
       `hotele ${city.cityNominative}`,
-      `hotele w ${city.cityLocative}`,
+      `hotele ${inLoc}`,
       `noclegi ${city.cityNominative}`,
       `wakacje ${city.cityNominative}`,
       `tanie hotele ${city.cityNominative}`,
@@ -94,7 +97,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ].join(", "),
     alternates: { canonical: `/hotele/w/${city.slug}` },
     openGraph: {
-      title: `Hotele w ${city.cityLocative} ${year} od ${budget.perNight} zł/noc`,
+      title: `Hotele ${inLoc} ${year} od ${budget.perNight} zł/noc`,
       description,
       url: `${getSiteUrl()}/hotele/w/${city.slug}`,
       type: "website",
@@ -102,8 +105,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     twitter: {
       card: "summary_large_image",
-      title: `Hotele w ${city.cityLocative} ${year} od ${budget.perNight} zł/noc`,
-      description: `${city.cityLocative}: hotele od ${budget.perNight} zł. Ceny w PLN, bezpłatna anulacja, polskie wsparcie.`,
+      title: `Hotele ${inLoc} ${year} od ${budget.perNight} zł/noc`,
+      description: `Hotele ${inLoc}: od ${budget.perNight} zł. Ceny w PLN, bezpłatna anulacja, polskie wsparcie.`,
     },
   };
 }
@@ -139,6 +142,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
   const profile = getAllDestinationProfiles().find((d) => d.slug === city.destinationId);
   const budget = buildBudgetEstimate(city);
   const year = new Date().getFullYear();
+  const inLoc = `${city.preposition} ${city.cityLocative}`;
   const media = profile
     ? await resolveDestinationMedia({
         ...profile,
@@ -176,7 +180,17 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
   // Cross-link cluster — other commercial cities + 2 month pages for THIS
   // city (current month + 1 ahead). Internal linking distributes equity
   // across the cluster and helps Google understand the topical authority.
-  const otherCities = commercialCities.filter((c) => c.slug !== city.slug).slice(0, 6);
+  // Cross-link cluster — same-country cities first (stronger topical
+  // relevance + matches user intent: "po Hiszpanii" travellers), then the
+  // rest. Up to 8 so the cluster scales with the city list.
+  const otherCities = [...commercialCities]
+    .filter((c) => c.slug !== city.slug)
+    .sort((a, b) => {
+      const aSame = a.countryNominative === city.countryNominative ? 0 : 1;
+      const bSame = b.countryNominative === city.countryNominative ? 0 : 1;
+      return aSame - bSame;
+    })
+    .slice(0, 8);
   const currentMonthIdx = new Date().getMonth();
   const nextMonthIdx = (currentMonthIdx + 1) % 12;
   const monthLinks = profile
@@ -200,8 +214,8 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
     "@graph": [
       {
         "@type": "Article",
-        headline: `Hotele w ${city.cityLocative} ${year} — sprawdź ceny w PLN`,
-        description: `Hotele w ${city.cityLocative} (${city.countryLocative}) od ${budget.perNight} zł/noc. Bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`,
+        headline: `Hotele ${inLoc} ${year} — sprawdź ceny w PLN`,
+        description: `Hotele ${inLoc} (${city.countryLocative}) od ${budget.perNight} zł/noc. Bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`,
         url: `${baseUrl}/hotele/w/${city.slug}`,
         inLanguage: "pl-PL",
         datePublished: "2026-01-01T00:00:00.000Z",
@@ -222,7 +236,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           {
             "@type": "ListItem",
             position: 3,
-            name: `Hotele w ${city.cityLocative}`,
+            name: `Hotele ${inLoc}`,
             item: `${baseUrl}/hotele/w/${city.slug}`,
           },
         ],
@@ -236,7 +250,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
         availability: "https://schema.org/InStock",
         itemOffered: {
           "@type": "LodgingReservation",
-          name: `Hotel w ${city.cityLocative}`,
+          name: `Hotel ${inLoc}`,
         },
         seller: { "@id": `${baseUrl}/#organization` },
       },
@@ -245,10 +259,10 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
         mainEntity: [
           {
             "@type": "Question",
-            name: `Ile kosztują hotele w ${city.cityLocative}?`,
+            name: `Ile kosztują hotele ${inLoc}?`,
             acceptedAnswer: {
               "@type": "Answer",
-              text: `Ceny hoteli w ${city.cityLocative} zaczynają się od około ${budget.perNight} zł za noc dla 2 osób. Orientacyjny całkowity budżet wyjazdu na 4 dni: ${budget.min}-${budget.max} zł (loty, nocleg, jedzenie, transport lokalny).`,
+              text: `Ceny hoteli ${inLoc} zaczynają się od około ${budget.perNight} zł za noc dla 2 osób. Orientacyjny całkowity budżet wyjazdu na 4 dni: ${budget.min}-${budget.max} zł (loty, nocleg, jedzenie, transport lokalny).`,
             },
           },
           {
@@ -285,6 +299,16 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               text: profile
                 ? `Lot z Polski do ${city.cityGenitive} zajmuje około ${profile.typicalFlightHoursFromPL.toFixed(1)} h.`
                 : `Sprawdź dostępne loty z Polski w wyszukiwarce.`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `W której okolicy ${inLoc} najlepiej szukać hotelu?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Popularne okolice na nocleg ${inLoc}: ${city.neighborhoods
+                .map((n) => n.name)
+                .join(", ")}. Najwygodniej zatrzymać się blisko centrum — wtedy większość atrakcji obejdziesz pieszo lub komunikacją miejską.`,
             },
           },
         ],
@@ -328,7 +352,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           {media?.heroImage ? (
             <Image
               src={media.heroImage}
-              alt={`Hotele w ${city.cityLocative}, ${city.countryNominative}`}
+              alt={`Hotele ${inLoc}, ${city.countryNominative}`}
               fill
               priority
               className="object-cover"
@@ -344,18 +368,17 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               items={[
                 { label: "Start", href: "/" },
                 { label: "Hotele", href: "/hotele" },
-                { label: `Hotele w ${city.cityLocative}` },
+                { label: `Hotele ${inLoc}` },
               ]}
             />
             <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
-              Najlepsze hotele w {city.cityLocative}
+              Najlepsze hotele {inLoc}
             </p>
             <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] sm:text-6xl">
-              Hotele w {city.cityLocative} {year}
+              Hotele {inLoc} {year}
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-white/86">
-              Sprawdź ceny w PLN, porównaj oferty i zarezerwuj w 2 minuty. Bezpłatna anulacja
-              w wybranych ofertach, polskie wsparcie, prawdziwe ceny bez ukrytych opłat.
+              {city.intro}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
@@ -426,10 +449,10 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                Najlepsze hotele w {city.cityLocative}
+                Najlepsze hotele {inLoc}
               </p>
               <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">
-                Polecane hotele w {city.cityLocative}
+                Polecane hotele {inLoc}
               </h2>
               <p className="mt-2 text-sm leading-6 text-emerald-900/72">
                 Wybrane z {profile?.city ? "naszej bazy" : "katalogu"} — sprawdź szczegóły i ceny na żywo.
@@ -560,6 +583,43 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
         </section>
       )}
 
+      {/* GDZIE SIĘ ZATRZYMAĆ — unique per-city editorial (anti-doorway) +
+          high-intent "hotele {miasto} centrum / gdzie się zatrzymać" copy */}
+      <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
+          Gdzie się zatrzymać
+        </p>
+        <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">
+          Najlepsze okolice na hotel {inLoc}
+        </h2>
+        <p className="mt-2 max-w-3xl text-sm leading-7 text-emerald-900/72">
+          Każda dzielnica ma swój charakter i cenę. Oto gdzie najczęściej szukają noclegu
+          podróżni — od centrum po spokojniejsze okolice.
+        </p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          {city.neighborhoods.map((area) => (
+            <article
+              key={area.name}
+              className="flex gap-3 rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-4"
+            >
+              <span aria-hidden className="mt-0.5 text-lg leading-none text-emerald-600">
+                📍
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-emerald-950">{area.name}</h3>
+                <p className="mt-1 text-xs leading-6 text-emerald-900/72">{area.blurb}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+        <Link
+          href={searchHref}
+          className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 text-sm font-bold text-white transition hover:bg-emerald-800"
+        >
+          Zobacz hotele {inLoc} →
+        </Link>
+      </section>
+
       {/* FAQ */}
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
         <h2 className="font-display text-3xl text-emerald-950">Najczęściej zadawane pytania</h2>
@@ -605,7 +665,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
             >
               <div>
                 <p className="text-sm font-bold text-emerald-950 group-hover:text-emerald-700">
-                  Hotele w {c.cityLocative}
+                  Hotele {c.preposition} {c.cityLocative}
                 </p>
                 <p className="text-xs text-emerald-900/60">{c.countryNominative}</p>
               </div>
@@ -641,7 +701,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               Gotowy do rezerwacji?
             </p>
             <h2 className="mt-2 font-display text-3xl">
-              Sprawdź dostępne hotele w {city.cityLocative} na wybrany termin
+              Sprawdź dostępne hotele {inLoc} na wybrany termin
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-white/80">
               Konkretne ceny w PLN, prawdziwa dostępność. Rezerwacja w 2 minuty.
