@@ -67,7 +67,7 @@ Sprint 1 (ten): diakrytyki, meta intent-match, /en redirect, sitemap, schema, 10
 **Target:** CTR 1.8%, kliknięcia 280/mies, revenue 8-12K.
 
 ### Sierpień 2026 — SCALE
-- Top 30 month pages → unique content (lokalne wydarzenia, święta, live ceny LiteAPI)
+- ✅ Month pages → unikalny content data-driven (sezon, morze, kiedy-taniej) na CAŁYM szablonie ~2800 stron (PR #70, zrobione wcześniej). NEXT opcjonalnie: lokalne wydarzenia/święta + live ceny LiteAPI na top 30.
 - Link building outreach (10 inquiries/tydzień): travelovista, kobieta-na-walizkach, HARO PL
 **Target:** kliknięcia 600/mies, revenue 18-25K.
 
@@ -130,6 +130,17 @@ Sprint 1 (ten): diakrytyki, meta intent-match, /en redirect, sitemap, schema, 10
 - ✅ **Cross-linking same-country-first** (do 8 sąsiadów zamiast 6) + sitemap auto-publikuje nowe miasta (priority 0.95, bez zmian w kodzie sitemap — czyta `commercialCitySlugs()`).
 - Build clean, testy **113/113**, 0 nowych błędów TS (jedyny błąd to pre-existing `booking-confirmation.test.ts` TS5097 — niezwiązany).
 
+### ZROBIONE — Sprint 1.2 (month-page enrichment, fix P1-5) — PR #70
+
+Cel: **zmonetyzować ruch, który JUŻ mamy** (18 600 wyświetleń na stronach miesięcznych — np. kos-greece/czerwiec 271 wyśw./0 klik.) + naprawić 228 „scanned not indexed" unikalnym, data-driven contentem. Szablon `/kierunki/[slug]/[miesiac]/page.tsx` (~2800 stron):
+
+- ✅ **Model temperatury morza** (coastal, `beachScore ≥ 0.6`) — lag 1-2 mies. od temp. powietrza; pokazywany tylko dla kierunków plażowych (dla inland suppressed). Trafia w intent „czy morze ciepłe w {miesiącu}".
+- ✅ **Klasyfikacja sezonu** (peak/shoulder/low) → content „kiedy taniej / mniej turystów" konwertujący researcherów w klikających do bookingu.
+- ✅ **Daty wyszukiwarki dopasowane do miesiąca** — „Sprawdź hotele w czerwcu" ląduje na dostępności NA czerwiec (lepsza konwersja niż generyczna data). 10. dnia miesiąca, w tym roku jeśli ≥3 dni do przodu, inaczej rok następny.
+- ✅ **Link do commercial landing** (gdy miasto je ma, np. Praga → `/hotele/w/praga`) + cross-linki do najcieplejszego/najtańszego miesiąca (internal linking + „kiedy najtaniej" intent).
+- ✅ **Unikalny intro + sekcja „Sezon, ceny i morze" + 2 nowe FAQ** (morze, kiedy najtaniej) per miasto×miesiąc → różnicowanie treści = indeksacja (fix P1-5).
+- Build 2800+ month pages OK, testy **113/113**, typecheck clean. Zweryfikowane na kos-greece/czerwiec (morze, sezon, daty czerwiec) i prague-czechia/styczen (brak morza, link commercial, daty 2027).
+
 ### DEFERRED — wymaga osobnego PR + Twojego inputu
 
 - ⬜ **D4 — Hotel detail conversion** (`src/app/hotele/[hotelId]/`): save-for-later (localStorage, lead signal) + UCZCIWY social proof (prawdziwy rating + liczba opinii z LiteAPI, eksponowane). **ŚWIADOMIE odłożone** — dotyka obszaru booking funnel (NON-NEGOTIABLE RULE 6) i fabrykowana pilność ("23 osoby oglądają") to dark pattern ryzykowny prawnie/brandowo. Zrobić jako osobny PR po ustaleniu z userem co jest uczciwym social proof przy realnym ruchu. Booking.com mierzył +15-25% conversion, ale tylko uczciwe sygnały.
@@ -145,7 +156,7 @@ Sprint 1 (ten): diakrytyki, meta intent-match, /en redirect, sitemap, schema, 10
 | P0-2 | Title/meta nie matchują intencji | ✅ DONE | #68 |
 | P0-3 | Brak commercial landing pages | ✅ DONE (25) | #68/#69 |
 | P0-4 | /en/* w Google mimo redirectu | ✅ DONE | #68 |
-| P1-5 | 228 "scanned not indexed" | 🟡 PART (sitemap prio↓, treść TODO sierpień) | #68 |
+| P1-5 | 228 "scanned not indexed" | ✅ DONE (unikalny content/miesiąc) | #68/#70 |
 | P1-6 | Słaby CTR przez ubogie snippety | ✅ DONE (schema Offer+FAQ) | #68 |
 | P1-7 | Crawl budget tracony (~4500 URLs) | ✅ DONE (search URLs usunięte) | #68 |
 | P1-8 | Brak conversion elements na hotel detail | ⬜ DEFERRED (D4, osobny PR) | — |
