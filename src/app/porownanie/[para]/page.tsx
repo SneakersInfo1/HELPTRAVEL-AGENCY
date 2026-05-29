@@ -172,7 +172,7 @@ export default async function ComparisonPage({ params }: PageProps) {
       av: `${avgYear(a.avgTempByMonth)}°C`,
       bv: `${avgYear(b.avgTempByMonth)}°C`,
     },
-    { label: "Lato (cze-sie)", av: `${summerAvg(a.avgTempByMonth)}°C`, bv: `${summerAvg(b.avgTempByMonth)}°C` },
+    { label: "Lato (cze-się)", av: `${summerAvg(a.avgTempByMonth)}°C`, bv: `${summerAvg(b.avgTempByMonth)}°C` },
     { label: "Zima (gru-lut)", av: `${winterAvg(a.avgTempByMonth)}°C`, bv: `${winterAvg(b.avgTempByMonth)}°C` },
     {
       label: "Budżet 2 os. / 4 dni",

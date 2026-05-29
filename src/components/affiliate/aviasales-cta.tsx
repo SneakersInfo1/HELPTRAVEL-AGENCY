@@ -1,4 +1,5 @@
 import { AffiliateDisclosure } from "./affiliate-disclosure";
+import { TrackedAffiliateLink } from "@/components/analytics/tracked-affiliate-link";
 import { buildAviasalesLink, getAffiliateConfig } from "@/lib/mvp/affiliate-config";
 
 interface AviasalesCtaProps {
@@ -36,14 +37,15 @@ export function AviasalesCta({ city, campaign = "destination", flightHours }: Av
         <AffiliateDisclosure inline />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <a
+        <TrackedAffiliateLink
           href={link}
-          target="_blank"
-          rel="noopener nofollow sponsored noreferrer"
+          provider="aviasales"
+          destination={city}
+          campaign={campaign}
           className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
         >
           Sprawdź loty w Aviasales
-        </a>
+        </TrackedAffiliateLink>
       </div>
     </div>
   );

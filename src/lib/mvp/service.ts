@@ -125,7 +125,7 @@ async function runVirtualStandard(input: StandardRequestInput, sessionId: string
     "System utrzymuje ten kierunek jako glowny punkt dalszego planowania.",
   ];
   const tradeoffs = [
-    "Pełny ranking redakcyjny dla tego miasta może byc jeszcze bardziej ograniczony niz dla głównych hubow serwisu.",
+    "Pełny ranking redakcyjny dla tego miasta może być jeszcze bardziej ograniczony niz dla głównych hubow serwisu.",
   ];
   const breakdown = {
     budgetFit: 0.78,

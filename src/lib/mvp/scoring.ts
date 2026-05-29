@@ -161,7 +161,7 @@ function buildTradeoffs(dest: DestinationProfile, breakdown: ScoreBreakdown, pre
   const tradeoffs: string[] = [];
 
   if (dest.typicalFlightHoursFromPL > 4.5) {
-    tradeoffs.push("Dluzszy lot obniza wygodę przy krótszym wyjezdzie.");
+    tradeoffs.push("Dluzszy lot obniza wygodę przy krótszym wyjeździe.");
   }
   if (dest.costIndex > 1.45) {
     tradeoffs.push("Na miejscu może być wyraznie drozej niż w najmocniejszych alternatywach.");
