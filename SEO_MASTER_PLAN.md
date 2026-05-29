@@ -141,10 +141,16 @@ Cel: **zmonetyzować ruch, który JUŻ mamy** (18 600 wyświetleń na stronach m
 - ✅ **Unikalny intro + sekcja „Sezon, ceny i morze" + 2 nowe FAQ** (morze, kiedy najtaniej) per miasto×miesiąc → różnicowanie treści = indeksacja (fix P1-5).
 - Build 2800+ month pages OK, testy **113/113**, typecheck clean. Zweryfikowane na kos-greece/czerwiec (morze, sezon, daty czerwiec) i prague-czechia/styczen (brak morza, link commercial, daty 2027).
 
-### DEFERRED — wymaga osobnego PR + Twojego inputu
+### ZROBIONE — Sprint 1.3 (D4 conversion na hotel detail) — PR #71
 
-- ⬜ **D4 — Hotel detail conversion** (`src/app/hotele/[hotelId]/`): save-for-later (localStorage, lead signal) + UCZCIWY social proof (prawdziwy rating + liczba opinii z LiteAPI, eksponowane). **ŚWIADOMIE odłożone** — dotyka obszaru booking funnel (NON-NEGOTIABLE RULE 6) i fabrykowana pilność ("23 osoby oglądają") to dark pattern ryzykowny prawnie/brandowo. Zrobić jako osobny PR po ustaleniu z userem co jest uczciwym social proof przy realnym ruchu. Booking.com mierzył +15-25% conversion, ale tylko uczciwe sygnały.
-  - Spec: (1) przycisk „Zapisz na później" → localStorage + `destination_save` event; (2) eksponowany blok rating+reviewCount gdy `detail.rating` i `detail.reviewCount` > 0; (3) prawdziwy „Bezpłatna anulacja do {data}" już jest w PriceView — wzmocnić wizualnie.
+Cel: podnieść współczynnik konwersji na stronie hotelu — lift mnoży KAŻDĄ rezerwację z całego ruchu. Wersja **uczciwa i bezpieczna** (user dał zielone światło na autonomię + „najlepsza konwersja"):
+
+- ✅ **Uczciwy social proof**: eksponowany blok z PRAWDZIWYM ratingiem LiteAPI (0-10) + etykieta jakościowa (Wyjątkowy/Świetny/Bardzo dobry/Dobry/Przyzwoity) + liczba opinii (poprawna polska odmiana opinia/opinie/opinii). Pokazywane TYLKO gdy realne dane istnieją — zero fabrykacji.
+- ✅ **„Zapisz na później"** (`save-hotel-button.tsx`): localStorage + event `hotel_save`. Sygnał intencji/lead. Zero PII, zero backendu, **nie dotyka booking/payment** (RULE 6 nietknięte).
+- ✅ **Uczciwy trust strip** pod tytułem: „Ceny finalne w PLN · Bezpłatna anulacja w wybranych ofertach · Polskie wsparcie" (wszystko prawdziwe site-wide).
+- ✅ Nowy typ eventu `hotel_save` w `track.ts`. Build OK (`/hotele/[hotelId]` dynamic ƒ), testy 113/113.
+- ⛔ **ŚWIADOMIE NIE zrobione (dark patterns)**: fabrykowana pilność („23 osoby oglądają", fałszywe odliczanie, „ostatni pokój" bez pokrycia w danych). Nigdy — ryzyko prawne/brandowe.
+- ⬜ NEXT (osobny, ostrożny pass — nie dotyka paymentu): wzmocnić wizualnie prawdziwe „Bezpłatna anulacja do {data}" per-rate w PriceView/booking-widget.
 
 ---
 
@@ -159,7 +165,7 @@ Cel: **zmonetyzować ruch, który JUŻ mamy** (18 600 wyświetleń na stronach m
 | P1-5 | 228 "scanned not indexed" | ✅ DONE (unikalny content/miesiąc) | #68/#70 |
 | P1-6 | Słaby CTR przez ubogie snippety | ✅ DONE (schema Offer+FAQ) | #68 |
 | P1-7 | Crawl budget tracony (~4500 URLs) | ✅ DONE (search URLs usunięte) | #68 |
-| P1-8 | Brak conversion elements na hotel detail | ⬜ DEFERRED (D4, osobny PR) | — |
+| P1-8 | Brak conversion elements na hotel detail | ✅ DONE (uczciwy social proof + save) | #71 |
 | P2-9 | Brak measurement (funnel events) | ✅ DONE (track.ts + beacony) | #68 |
 | P2-10 | Core Web Vitals | 🟡 sprawdzić w GSC po deploy | — |
 | P2-11 | Brak link buildingu / authority | ⬜ TODO (sierpień) | — |
