@@ -52,7 +52,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const destinationRoutes = destinationProfiles.map((destination) => `/kierunki/${destination.slug}`);
   const articleRoutes = getEditorialArticles().map((article) => `/inspiracje/${article.slug}`);
 
-  // Commercial landing pages — /hotele/w/[miasto] — curated top-10
+  // Commercial landing pages — /hotele/w/[miasto] — curated high-volume
   // Polish-search cities. Highest commercial intent → highest priority.
   const commercialCityRoutes = commercialCitySlugs().map((slug) => `/hotele/w/${slug}`);
 
@@ -105,8 +105,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency = "daily";
       priority = 1.0;
     } else if (isCommercialCityRoute) {
-      // Top-10 commercial landing pages — highest revenue potential
-      // (head queries "hotele barcelona" et al. at 11-33k mies. PL each).
+      // Commercial landing pages — highest revenue potential
+      // (head queries "hotele barcelona" et al. at 7-33k mies. PL each).
       changeFrequency = "daily";
       priority = 0.95;
     } else if (route === "/kierunki" || route === "/inspiracje" || categoryRoutes.includes(route)) {
