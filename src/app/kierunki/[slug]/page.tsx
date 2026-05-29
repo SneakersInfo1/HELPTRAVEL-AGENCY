@@ -9,6 +9,7 @@ import { EditorialArticleCard } from "@/components/publisher/editorial-article-c
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { buildAviasalesLink } from "@/lib/mvp/affiliate-config";
+import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
   buildLocalizedAvoidNotes,
@@ -195,6 +196,11 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     rooms: "1",
   }).toString()}`;
   const flightAffiliateHref = buildAviasalesLink({ campaign: `kierunki_${guide.destination.slug}` });
+  // If this destination has a dedicated commercial landing page
+  // (/hotele/w/[miasto]), link to it — passes link equity from this guide
+  // into the high-intent money page and gives the user a direct "hotele w X"
+  // entry point. SEO master plan D6.
+  const commercialCity = findCommercialCityByDestinationId(guide.destination.slug);
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -309,9 +315,23 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         </div>
       </section>
 
+      {commercialCity && (
+        <LocalizedLink
+          href={`/hotele/w/${commercialCity.slug}`}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-700 bg-emerald-700 px-6 py-4 text-white shadow-[0_14px_36px_rgba(7,31,18,0.18)] transition hover:bg-emerald-800"
+        >
+          <span className="text-base font-bold sm:text-lg">
+            🏨 Zobacz najlepsze hotele w {commercialCity.cityLocative} — ceny w PLN, od ręki
+          </span>
+          <span className="shrink-0 rounded-full bg-white px-5 py-2 text-sm font-bold text-emerald-800">
+            Hotele w {commercialCity.cityLocative} →
+          </span>
+        </LocalizedLink>
+      )}
+
       <EditorialMetaBar
         eyebrow="Na start"
-        title="Najważniejsze rzeczy przed decyzja o wyjeździe"
+        title="Najważniejsze rzeczy przed decyzją o wyjeździe"
         items={[
           `${guide.destination.city} z Polski`,
           `${guide.destination.typicalFlightHoursFromPL.toFixed(1)} h lotu`,

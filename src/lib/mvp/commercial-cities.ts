@@ -222,6 +222,16 @@ export function findCommercialCityBySlug(slug: string): CommercialCity | undefin
   return commercialCities.find((c) => c.slug === slug);
 }
 
+// Reverse lookup by the destinations.json id (e.g. "barcelona-spain").
+// Used by the destination guide page (/kierunki/[slug]) to surface an
+// internal link to the matching commercial landing page — passing link
+// equity from ~235 guide pages into the 10 high-intent money pages.
+export function findCommercialCityByDestinationId(
+  destinationId: string,
+): CommercialCity | undefined {
+  return commercialCities.find((c) => c.destinationId === destinationId);
+}
+
 export function commercialCitySlugs(): string[] {
   return commercialCities.map((c) => c.slug);
 }

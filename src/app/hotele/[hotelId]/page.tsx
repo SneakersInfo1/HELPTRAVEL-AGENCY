@@ -34,6 +34,8 @@ function descriptionIsLikelyNotPolish(html: string | undefined | null): boolean 
   return !/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(text);
 }
 
+import { TrackView } from "@/components/analytics/track-view";
+
 import { BookingWidget } from "./_components/booking-widget";
 import { RoomsSection } from "./_components/rooms-section";
 
@@ -229,6 +231,14 @@ export default async function HotelDetailPage({
 
   return (
     <main className="min-h-screen bg-neutral-50 pb-24 lg:pb-0">
+      <TrackView
+        event="hotel_detail_view"
+        params={{
+          hotel_id: hotelId,
+          destination: detail.city ?? undefined,
+          has_price: cheapestTotal !== undefined,
+        }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}

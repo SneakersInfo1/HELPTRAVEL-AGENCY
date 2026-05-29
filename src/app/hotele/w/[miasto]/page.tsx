@@ -27,6 +27,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
+import { TrackView } from "@/components/analytics/track-view";
 import { commercialCities, findCommercialCityBySlug, type CommercialCity } from "@/lib/mvp/commercial-cities";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { fetchHotelsList } from "@/lib/liteapi/search";
@@ -316,6 +317,10 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
       <Script id={`hotele-${city.slug}-jsonld`} type="application/ld+json">
         {JSON.stringify(structuredData)}
       </Script>
+      <TrackView
+        event="landing_view"
+        params={{ city_slug: city.slug, monthly_volume: city.monthlySearchVolumePL }}
+      />
 
       {/* HERO */}
       <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
