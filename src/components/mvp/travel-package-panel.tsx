@@ -16,7 +16,7 @@ function postJson<T>(url: string, body: unknown): Promise<T> {
   }).then(async (response) => {
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? `Zapytanie nie powiodlo sie (${response.status}).`);
+      throw new Error(payload?.error ?? `Zapytanie nie powiodlo się (${response.status}).`);
     }
     return (await response.json()) as T;
   });
@@ -137,7 +137,7 @@ export function TravelPackagePanel(props: {
           }
         } catch (err) {
           if (!cancelled) {
-            setError(err instanceof Error ? err.message : "Nie udalo sie pobrac pakietow.");
+            setError(err instanceof Error ? err.message : "Nie udalo się pobrac pakietow.");
             setFlights(null);
             setStays(null);
           }

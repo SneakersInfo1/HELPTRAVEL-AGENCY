@@ -131,7 +131,7 @@ const sections: Section[] = [
       {
         label: "Partner Rezerwacyjny",
         body:
-          "podmiot zewnętrzny (m.in. hotel, sieć hotelowa, agregator rezerwacyjny, operator platformy bookingowej, w tym LiteAPI Travel Ltd. wraz z dostawcami noclegów), za pomocą którego Użytkownik finalizuje rezerwację noclegu i z którym Użytkownik zawiera właściwą umowę o świadczenie usługi noclegowej.",
+          "podmiot zewnętrzny (m.in. hotel, sięć hotelowa, agregator rezerwacyjny, operator platformy bookingowej, w tym LiteAPI Travel Ltd. wraz z dostawcami noclegów), za pomocą którego Użytkownik finalizuje rezerwację noclegu i z którym Użytkownik zawiera właściwą umowę o świadczenie usługi noclegowej.",
       },
       {
         label: "Partner Afiliacyjny",

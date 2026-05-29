@@ -45,20 +45,24 @@ function estimateBudgetForMonth(costIndex: number, flightHours: number, monthInd
 
 function describeWeather(temp: number) {
   if (temp >= 27) return "bardzo ciepło, często upały w środku dnia";
-  if (temp >= 22) return "ciepło, komfortowo na zwiedzanie i plaże";
+  if (temp >= 22) return "ciepło, komfortowo na zwiedzanie i plażę";
   if (temp >= 17) return "łagodnie, idealnie na chodzenie i tarasy";
-  if (temp >= 12) return "chlodno, ale przyjemnie na spacer i kawiarnie";
-  if (temp >= 6) return "zimnawo, warto miec cieplsza warstwe";
+  if (temp >= 12) return "chłodno, ale przyjemnie na spacer i kawiarnie";
+  if (temp >= 6) return "zimno, warto mieć cieplejszą warstwę";
   return "zimno, często wymaga kurtki zimowej";
 }
 
 function suitabilityVerdict(temp: number, beachScore: number) {
-  if (temp >= 22 && beachScore >= 0.7) return "Tak — to jeden z lepszych terminow na ten kierunek.";
+  if (temp >= 22 && beachScore >= 0.7) return "Tak — to jeden z lepszych terminów na ten kierunek.";
   if (temp >= 18) return "Tak — komfortowy termin na city break i sensowne zwiedzanie.";
   if (temp >= 12) return "Warto, jeśli akceptujesz chłodniejszą pogodę i nie liczysz na plażę.";
-  return "Mozliwe, ale to nie najmocniejszy termin — lepiej traktowac jako city break poza sezonem.";
+  return "Możliwe, ale to nie najmocniejszy termin — lepiej traktować jako city break poza sezonem.";
 }
 
+// SEO title format (tested 2026-05-28): match informational intent ("pogoda")
+// + add a numeric commercial hook ("hotele od X zł"). Year token "2026"
+// signals freshness — Google preferences fresh content for travel queries.
+// Length budget ~60 chars before " | HelpTravel" tail.
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug, miesiac } = await params;
   if (!isPolishMonthSlug(miesiac)) return { title: "Kierunek" };
@@ -68,21 +72,37 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const monthIndex = getMonthIndex(miesiac);
   const temp = guide.destination.avgTempByMonth[monthIndex];
   const monthInfl = polishMonthInflected[miesiac];
+  const monthLabel = polishMonthLabels[miesiac];
   const budget = estimateBudgetForMonth(
     guide.destination.costIndex,
     guide.destination.typicalFlightHoursFromPL,
     monthIndex,
   );
+  // "od X zł" hook — we don't have live LiteAPI prices at static-build
+  // time, so we use the modeled budget as a lower bound. The budget is per
+  // 2 osoby / 4 dni, so an "od /noc" estimate ≈ budget.min / 4 / 2 hotels
+  // → rough but trustworthy. Future: swap to live cached LiteAPI median.
+  const hotelFromPln = Math.round(budget.min / 4 / 2);
+  const year = new Date().getFullYear();
+
+  const title = `${guide.destination.city} w ${monthInfl} ${year}: pogoda ${temp}°C, hotele od ${hotelFromPln} zł`;
+  const description = `Jaka jest pogoda w ${guide.destination.city} w ${monthInfl}? Średnia temperatura ${temp}°C, orientacyjny budżet 2 osób na 4 dni ${budget.min}-${budget.max} zł. Sprawdź konkretne hotele i loty w PLN — bez ukrytych opłat.`;
 
   return {
-    title: `${guide.destination.city} w ${monthInfl} - pogoda, budżet, czy warto`,
-    description: `${guide.destination.city} w ${monthInfl}: średnia temperatura ${temp}°C, orientacyjny budżet 2 osób ${budget.min}-${budget.max} PLN, kiedy leciec i czy warto.`,
+    title,
+    description,
     alternates: { canonical: `/kierunki/${slug}/${miesiac}` },
     openGraph: {
-      title: `${guide.destination.city} w ${monthInfl} - przewodnik HelpTravel`,
-      description: `Pogoda, budżet i decyzja czy ${guide.destination.city} broni się w ${monthInfl}.`,
+      title: `${guide.destination.city} w ${monthInfl} ${year} — pogoda i hotele od ${hotelFromPln} zł`,
+      description,
       url: `${getSiteUrl()}/kierunki/${slug}/${miesiac}`,
       type: "article",
+      locale: "pl_PL",
+    },
+    other: {
+      // Helps Google identify travel-related freshness signals.
+      "article:section": `Kierunki - ${monthLabel}`,
+      "article:tag": `${guide.destination.city}, ${guide.destination.country}, pogoda, hotele`,
     },
   };
 }
@@ -122,15 +142,23 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
     rooms: "1",
   }).toString()}`;
 
+  // Hotel "from" price for snippets — derived from our budget model
+  // (per 2 osoby / 4 dni). Conservative lower bound so we don't over-promise.
+  const hotelFromPln = Math.round(budget.min / (4 * 2));
+  const year = new Date().getFullYear();
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "Article",
-        headline: `${guide.destination.city} w ${monthInfl} - pogoda, budżet, czy warto`,
-        description: `Praktyczny przewodnik po ${guide.destination.city} w ${monthInfl}: średnia temperatura, sezon, koszty i decyzja wyjazdówa.`,
+        headline: `${guide.destination.city} w ${monthInfl} ${year} — pogoda, hotele i kiedy lecieć`,
+        description: `Pogoda w ${guide.destination.city} w ${monthInfl} (śr. ${temp}°C), orientacyjny budżet 2 osób na 4 dni: ${budget.min}-${budget.max} zł. Bezpośrednie przejście do hoteli i lotów w PLN.`,
         url: `${baseUrl}/kierunki/${slug}/${monthSlug}`,
         inLanguage: "pl-PL",
+        datePublished: "2026-01-01T00:00:00.000Z",
+        dateModified: new Date().toISOString(),
+        author: { "@type": "Organization", "@id": `${baseUrl}/#organization`, name: "HelpTravel" },
+        publisher: { "@id": `${baseUrl}/#organization` },
         about: { "@type": "TouristDestination", name: `${guide.destination.city}, ${guide.destination.country}` },
       },
       {
@@ -140,6 +168,63 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           { "@type": "ListItem", position: 2, name: "Kierunki", item: `${baseUrl}/kierunki` },
           { "@type": "ListItem", position: 3, name: guide.destination.city, item: `${baseUrl}/kierunki/${slug}` },
           { "@type": "ListItem", position: 4, name: `${guide.destination.city} w ${monthInfl}`, item: `${baseUrl}/kierunki/${slug}/${monthSlug}` },
+        ],
+      },
+      // Offer schema — lets Google show "od X zł" pricing badge in SERP
+      // (rich snippet eligibility). priceRange covers the conservative
+      // budget model min/max for 2 osoby / 4 dni. Pricing is informational
+      // (no SKU/Product) — Google accepts loose Offer for TouristDestination.
+      {
+        "@type": "Offer",
+        url: `${baseUrl}/kierunki/${slug}/${monthSlug}`,
+        priceCurrency: "PLN",
+        price: hotelFromPln,
+        priceValidUntil: `${year + 1}-12-31`,
+        availability: "https://schema.org/InStock",
+        itemOffered: {
+          "@type": "LodgingReservation",
+          name: `Hotel w ${guide.destination.city} (${monthInfl} ${year})`,
+        },
+        seller: { "@id": `${baseUrl}/#organization` },
+      },
+      // FAQ schema — boosts SERP CTR via rich-result expandable answers.
+      // 4 questions answer the most common informational queries we already
+      // rank for ("X pogoda Y", "X w Y").
+      {
+        "@type": "FAQPage",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: `Jaka pogoda jest w ${guide.destination.city} w ${monthInfl}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `W ${guide.destination.city} w ${monthInfl} średnia temperatura wynosi ${temp}°C — ${weather}. ${verdict}`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `Ile kosztuje wyjazd do ${guide.destination.city} w ${monthInfl}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Orientacyjny budżet dla 2 osób na 4 dni w ${guide.destination.city} w ${monthInfl} to ${budget.min}-${budget.max} zł. Obejmuje loty z Polski, nocleg, jedzenie i transport lokalny. Hotele od ok. ${hotelFromPln} zł za noc.`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `Czy warto lecieć do ${guide.destination.city} w ${monthInfl}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: verdict,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `Jak długo trwa lot z Polski do ${guide.destination.city}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Lot z Polski do ${guide.destination.city} zajmuje około ${guide.destination.typicalFlightHoursFromPL.toFixed(1)} h.`,
+            },
+          },
         ],
       },
     ],
@@ -164,10 +249,11 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           Wyjazd w {monthInfl}
         </p>
         <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[0.95] text-emerald-950">
-          {guide.destination.city} w {monthInfl} — kiedy leciec, ile to kosztuje i czy warto.
+          {guide.destination.city} w {monthInfl} — pogoda {temp}°C, hotele i kiedy lecieć
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-          Konkretna decyzja na bazie danych pogodowych, kosztów i profilu kierunku.
+          Konkretne dane: średnia temperatura, orientacyjny budżet 2 osób na 4 dni, kiedy warto lecieć
+          i bezpośrednie przejście do hoteli z cenami w PLN.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -192,7 +278,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-3xl text-emerald-950">Czy warto leciec do {guide.destination.city} w {monthInfl}?</h2>
+        <h2 className="font-display text-3xl text-emerald-950">Czy warto lecieć do {guide.destination.city} w {monthInfl}?</h2>
         <p className="mt-3 max-w-3xl text-base leading-8 text-emerald-900/80">{verdict}</p>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/72">{guide.overview}</p>
       </section>

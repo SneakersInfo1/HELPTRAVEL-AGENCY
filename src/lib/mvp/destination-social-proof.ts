@@ -1,6 +1,6 @@
 // Deterministyczne "social proof" per-destynacja. Bazuje na hashu sluga
 // + (opcjonalnie) numerze tygodnia, zeby liczby byly stabilne w sesji
-// ale zmienialy sie z czasem. UWAGA: to nie sa realne dane —
+// ale zmienialy się z czasem. UWAGA: to nie sa realne dane —
 // dopoki nie podlaczymy prisma.plan.count / rating API, traktuj jako
 // heurystyke. Patrz README_SOCIAL_PROOF.md zanim pushniesz do produkcji.
 
@@ -42,7 +42,7 @@ export function getDestinationSocialProof(slug: string): DestinationSocialProof 
   // Reviews: 800 - 4800
   const reviewsCount = 800 + (h % 4001);
 
-  // Planning now: 8 - 64 (zmienia sie per tydzien)
+  // Planning now: 8 - 64 (zmienia się per tydzien)
   const planningNow = 8 + (weekH % 57);
 
   // Price from: 499 - 2499 zl (bazuje na slug-ie)
@@ -55,7 +55,7 @@ export function getDestinationSocialProof(slug: string): DestinationSocialProof 
   // Bestseller: top ~20% (1 z 5)
   const isBestseller = (h % 5) === 0;
 
-  // Hot deal: inne 20% (niezaleznie, moze sie pokrywac z bestseller)
+  // Hot deal: inne 20% (niezaleznie, moze się pokrywac z bestseller)
   const isHotDeal = ((h >> 3) % 5) === 1;
 
   return {

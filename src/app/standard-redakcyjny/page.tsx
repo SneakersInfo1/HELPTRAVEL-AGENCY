@@ -11,14 +11,14 @@ export const metadata: Metadata = {
 
 const standards = [
   {
-    title: "Kazda strona musi miec realny powod istnienia",
+    title: "Kazda strona musi mieć realny powod istnienia",
     body:
       "Nie budujemy pustych landingow tylko po to, by zwiekszyc liczbę URL-i. Kazda strona ma odpowiadac na konkretna potrzebę: wybór kierunku, porównańie formatu wyjazdu, przewodnik po miescie albo przejście do planera.",
   },
   {
-    title: "Treści mają byc praktyczne i czytelne",
+    title: "Treści mają być praktyczne i czytelne",
     body:
-      "Kazdy material powinien miec krótkie wprowadzenie, sekcje tematyczne, FAQ, sensowne linkowanie wewnetrzne i jasny kolejny krok. Chodzi o uzytecznosc, nie o sztuczne napompowanie tekstu.",
+      "Kazdy material powinien mieć krótkie wprowadzenie, sekcje tematyczne, FAQ, sensowne linkowanie wewnetrzne i jasny kolejny krok. Chodzi o uzytecznosc, nie o sztuczne napompowanie tekstu.",
   },
   {
     title: "Nie pokazujemy fikcyjnej wiarygodnosci",
@@ -45,7 +45,7 @@ export default function EditorialStandardPage() {
         </h1>
         <p className="mt-4 max-w-4xl text-base leading-8 text-emerald-900/78">
           To proste wyjasnienie, jak przygotowujemy treści w HelpTravel. Zalezy nam, żeby użytkownik wiedzial, skąd
-          biorą sie opisy kierunków, jak podchodzimy do porównań i dlaczego nie wypełniamy serwisu pustymi stronami.
+          biorą się opisy kierunków, jak podchodzimy do porównań i dlaczego nie wypełniamy serwisu pustymi stronami.
         </p>
       </section>
 

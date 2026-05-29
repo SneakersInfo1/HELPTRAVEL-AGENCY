@@ -6,7 +6,7 @@ export function AffiliateDisclosure({ inline = false }: { inline?: boolean }) {
       <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-700/70">
         Linki partnerskie —{" "}
         <Link href="/linki-partnerskie" className="underline hover:text-emerald-800">
-          dowiedz sie wiecej
+          dowiedz się wiecej
         </Link>
       </p>
     );

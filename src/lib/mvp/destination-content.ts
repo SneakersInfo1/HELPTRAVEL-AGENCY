@@ -186,7 +186,7 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 3,
         title: "Morze i oddech",
-        description: "Promenada, plażę i plan, który nie meczy nawet przy krótkim wyjezdzie.",
+        description: "Promenada, plażę i plan, który nie meczy nawet przy krótkim wyjeździe.",
       },
     ],
     bestFor: ["plażą + miasto", "optymalny city break", "spokojny rytm", "bardzo dobra relacja ceny do jakości"],
@@ -213,7 +213,7 @@ function genericStory(destination: DestinationProfile): DestinationStory {
       destination.accessScore > 0.8 ? "łatwy dojazd z Polski" : "trochę spokojniejszy rytm podróży",
     ],
     attractions: [
-      destination.sightseeingScore > 0.8 ? "stare miasto i główna dzielnica spacerówa" : "centralna czesc miasta i okolice na pierwszy spacer",
+      destination.sightseeingScore > 0.8 ? "stare miasto i główna dzielnica spacerówa" : "centralna część miasta i okolice na pierwszy spacer",
       destination.beachScore > 0.6 ? "plażą i promenada" : "punkty widokowe",
       destination.sightseeingScore > 0.8 ? "najmocniejsze zabytki i muzea" : "lokalne dzielnice i spokojniejsze trasy",
     ],

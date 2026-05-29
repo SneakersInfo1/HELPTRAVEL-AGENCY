@@ -9,6 +9,7 @@ import { EditorialArticleCard } from "@/components/publisher/editorial-article-c
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { buildAviasalesLink } from "@/lib/mvp/affiliate-config";
+import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import {
   buildLocalizedAvoidNotes,
@@ -103,17 +104,40 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
   const localizedGuide = getLocalizedDestinationGuide(guide, story, "pl");
   const budget = estimateBudget(guide.destination.costIndex, guide.destination.typicalFlightHoursFromPL);
   const tripLength = idealTripLength(guide.destination.typicalFlightHoursFromPL);
+  // SEO title: commercial intent ("hotele od X zł") + freshness ("2026") +
+  // brand tail. Replaces the old informational-only "kiedy lecieć, gdzie
+  // spać" which lost SERP CTR to competitors with concrete prices.
+  // Length budget: city + " 2026: hotele od X zł, loty od Y h i przewodnik" ≈ 60 chars.
+  const hotelFromPln = Math.round(budget.min / (4 * 2)); // budget is per 2 osoby / 4 dni
+  const year = new Date().getFullYear();
+  const flightHoursFmt = guide.destination.typicalFlightHoursFromPL.toFixed(1);
+
   return {
-    title: `${guide.destination.city} - kiedy lecieć, gdzie spać i czy warto`,
-    description: `${localizedGuide.overview} Idealnie na ${tripLength}. Orientacyjny budżet dla 2 osób: ${budget.min}-${budget.max} PLN.`,
+    title: `${guide.destination.city} ${year}: hotele od ${hotelFromPln} zł, lot ${flightHoursFmt} h, przewodnik`,
+    description: `Sprawdź ${guide.destination.city} — najlepsze terminy, hotele od ${hotelFromPln} zł, lot z Polski ${flightHoursFmt} h. Orientacyjny budżet dla 2 osób na ${tripLength}: ${budget.min}-${budget.max} zł. Praktyczny przewodnik + przejście do oferty w PLN.`,
+    keywords: [
+      `${guide.destination.city}`,
+      `${guide.destination.city} ${year}`,
+      `hotele ${guide.destination.city}`,
+      `wakacje ${guide.destination.city}`,
+      `${guide.destination.city} przewodnik`,
+      `tanie loty ${guide.destination.city}`,
+      `${guide.destination.country}`,
+    ].join(", "),
     alternates: {
       canonical: `/kierunki/${guide.destination.slug}`,
     },
     openGraph: {
-      title: `${guide.destination.city} - kiedy lecieć, gdzie spać i jak zaplanować wyjazd`,
-      description: `${localizedGuide.overview} Sprawdź najlepszy czas, budżet, noclegi i kolejne kroki do planera.`,
+      title: `${guide.destination.city} ${year} — hotele od ${hotelFromPln} zł, lot ${flightHoursFmt} h`,
+      description: `${guide.destination.city}: najlepsze terminy, ceny w PLN, lot ${flightHoursFmt} h z Polski. Hotele, loty, przewodnik.`,
       url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
       type: "article",
+      locale: "pl_PL",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${guide.destination.city} ${year}: hotele od ${hotelFromPln} zł`,
+      description: `Lot ${flightHoursFmt} h, budżet od ${budget.min} zł. Sprawdź konkretne oferty w PLN.`,
     },
   };
 }
@@ -172,6 +196,11 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     rooms: "1",
   }).toString()}`;
   const flightAffiliateHref = buildAviasalesLink({ campaign: `kierunki_${guide.destination.slug}` });
+  // If this destination has a dedicated commercial landing page
+  // (/hotele/w/[miasto]), link to it — passes link equity from this guide
+  // into the high-intent money page and gives the user a direct "hotele w X"
+  // entry point. SEO master plan D6.
+  const commercialCity = findCommercialCityByDestinationId(guide.destination.slug);
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -286,9 +315,23 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         </div>
       </section>
 
+      {commercialCity && (
+        <LocalizedLink
+          href={`/hotele/w/${commercialCity.slug}`}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-700 bg-emerald-700 px-6 py-4 text-white shadow-[0_14px_36px_rgba(7,31,18,0.18)] transition hover:bg-emerald-800"
+        >
+          <span className="text-base font-bold sm:text-lg">
+            🏨 Zobacz najlepsze hotele w {commercialCity.cityLocative} — ceny w PLN, od ręki
+          </span>
+          <span className="shrink-0 rounded-full bg-white px-5 py-2 text-sm font-bold text-emerald-800">
+            Hotele w {commercialCity.cityLocative} →
+          </span>
+        </LocalizedLink>
+      )}
+
       <EditorialMetaBar
         eyebrow="Na start"
-        title="Najważniejsze rzeczy przed decyzja o wyjezdzie"
+        title="Najważniejsze rzeczy przed decyzją o wyjeździe"
         items={[
           `${guide.destination.city} z Polski`,
           `${guide.destination.typicalFlightHoursFromPL.toFixed(1)} h lotu`,
@@ -329,8 +372,8 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <div className="rounded-2xl bg-white px-4 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Dojazd i logistyka</p>
               <p className="mt-2 text-sm leading-7 text-emerald-900/78">
-                Lot z Polski zwykle zajmuje okolo {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h. Kierunek
-                najlepiej wyglada zwykle w miesiacach: {bestMonths.slice(0, 4).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+                Lot z Polski zwykle zajmuje około {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h. Kierunek
+                najlepiej wygląda zwykle w miesiącach: {bestMonths.slice(0, 4).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
               </p>
             </div>
           </div>
@@ -428,29 +471,29 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Szybka ocena kierunku</p>
-          <h2 className="mt-2 font-display text-4xl text-emerald-950">Najważniejsze sygnaly przed decyzja o wyjezdzie</h2>
+          <h2 className="mt-2 font-display text-4xl text-emerald-950">Najważniejsze sygnały przed decyzja o wyjeździe</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Najlepszy format</p>
               <p className="mt-2 text-lg font-bold text-emerald-950">{tripProfile}</p>
               <p className="mt-2 text-sm leading-6 text-emerald-900/78">
                 To kierunek, który najmocniej pracuje wtedy, gdy planujesz {tripLength} i chcesz sensownego balansu
-                wysilku do efektu.
+                wysiłku do efektu.
               </p>
             </div>
             <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Dojazd z Polski</p>
               <p className="mt-2 text-lg font-bold text-emerald-950">{routeComfort}</p>
               <p className="mt-2 text-sm leading-6 text-emerald-900/78">
-                Lot zwykle zajmuje okolo {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h, wiec łatwiej ocenic
-                czy to kierunek na szybki wypad, czy na troche dluzszy pobyt.
+                Lot zwykle zajmuje około {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h, więc łatwiej ocenić
+                czy to kierunek na szybki wypad, czy na troche dłuższy pobyt.
               </p>
             </div>
             <div className="rounded-2xl bg-emerald-50/75 px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Najlepsza dlugosc</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Najlepsza długość</p>
               <p className="mt-2 text-lg font-bold text-emerald-950">{tripLength}</p>
               <p className="mt-2 text-sm leading-6 text-emerald-900/78">
-                Ten scenariusz zwykle daje najlepszy stosunek kosztu do wygody, bez poczućia, ze wyjazd jest za krótki
+                Ten scenariusz zwykle daje najlepszy stosunek kosztu do wygody, bez poczucia, ze wyjazd jest za krótki
                 albo niepotrzebnie rozciagniety.
               </p>
             </div>
@@ -466,7 +509,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Scenariusze i dalsze kroki</p>
-          <h2 className="mt-2 font-display text-4xl text-emerald-950">Ten kierunek dobrze łączy sie z tymi potrzebami i kolejnymi klikami.</h2>
+          <h2 className="mt-2 font-display text-4xl text-emerald-950">Ten kierunek dobrze łączy się z tymi potrzebami i kolejnymi klikami.</h2>
           {relatedCategories.length > 0 ? (
             <div className="mt-5 flex flex-wrap gap-2">
               {relatedCategories.map((category) => (
@@ -482,10 +525,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           ) : null}
           <div className="mt-5 space-y-3 text-sm leading-7 text-emerald-900/78">
             <p>
-              Ta strona ma pomoc zdecydowac, czy kierunek pasuje do stylu wyjazdu, budżetu i realnej logistyki z Polski.
+              Ta strona ma pomoc zdecydować, czy kierunek pasuje do stylu wyjazdu, budżetu i realnej logistyki z Polski.
             </p>
             <p>
-              Jeśli miasto wyglada dobrze, przechodzisz dalej do planera i gotowych przejść do pobytu, lotu, atrakcji
+              Jeśli miasto wygląda dobrze, przechodzisz dalej do planera i gotowych przejść do pobytu, lotu, atrakcji
               i kolejnych kroków dla tego samego terminu.
             </p>
           </div>
@@ -510,9 +553,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="max-w-3xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kiedy ten kierunek wygrywa</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Trzy sytuacje, w których {guide.destination.city} najczęściej okazuje sie dobrym wybórem.</h2>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Trzy sytuacje, w których {guide.destination.city} najczęściej okazuje się dobrym wyborem.</h2>
             <p className="mt-3 text-sm leading-7 text-emerald-900/78">
-              Ten blok ma pomoc ocenic, czy brief pasuje do kierunku zanim klikniesz w hotel albo lot.
+              Ten blok ma pomoc ocenić, czy brief pasuje do kierunku zanim klikniesz w hotel albo lot.
             </p>
           </div>
           <LocalizedLink
@@ -554,7 +597,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
         <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kiedy odpuścić</p>
-          <h2 className="mt-2 font-display text-4xl text-emerald-950">Dla kogo ten kierunek może byc slabszym wybórem.</h2>
+          <h2 className="mt-2 font-display text-4xl text-emerald-950">Dla kogo ten kierunek może być słabszym wyborem.</h2>
           <div className="mt-5 space-y-3">
             {avoidNotes.length > 0 ? (
               avoidNotes.map((item) => (
@@ -564,7 +607,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               ))
             ) : (
               <div className="rounded-2xl bg-white px-4 py-4 text-sm leading-7 text-emerald-900/78">
-                Kierunek wypada bardzo rowno. W praktyce slabiej sprawdźi sie tylko wtedy, gdy brief jest skrajnie budżetowy albo wymaga bardzo specyficznej logistyki.
+                Kierunek wypada bardzo równo. W praktyce słabiej sprawdzi się tylko wtedy, gdy brief jest skrajnie budżetowy albo wymaga bardzo specyficznej logistyki.
               </div>
             )}
           </div>
@@ -644,7 +687,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Planner i partnerzy</p>
           <h2 className="mt-3 font-display text-4xl">Przejdź z przewodnika do konkretnego planu wyjazdu.</h2>
           <p className="mt-4 text-sm leading-7 text-white/82">
-            Ten przewodnik nie konczy sie na inspiracji. Od razu przechodzisz dalej do noclegów, lotów, atrakcji i
+            Ten przewodnik nie kończy się na inspiracji. Od razu przechodzisz dalej do noclegów, lotów, atrakcji i
             kolejnych decyzji dopasowanych do tego konkretnego kierunku.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">

@@ -29,7 +29,7 @@ function Spinner() {
 
 const copy = {
   pl: {
-    requestError: "Nie udalo sie pobrac lokalnych miejsc.",
+    requestError: "Nie udalo się pobrac lokalnych miejsc.",
     openPlace: "Otwórz miejsce",
     eyebrow: "Miejsca na miejscu",
     title: "Co warto zobaczyc w",
