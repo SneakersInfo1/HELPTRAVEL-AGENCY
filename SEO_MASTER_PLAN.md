@@ -99,7 +99,7 @@ Sprint 1 (ten): diakrytyki, meta intent-match, /en redirect, sitemap, schema, 10
 - stays-search limit 60→200/min
 - Priority queue: bieżąca strona ładuje ceny pierwsza
 
-**PR #68** (OPEN — czeka na merge) — SEO Sprint 1, część 1:
+**PR #68** (merged `81c29c8`) — SEO Sprint 1, część 1:
 - ✅ Diakrytyki: 159 zamian w 18 plikach (`leciec→lecieć`, `Mozliwe→Możliwe`, etc.)
 - ✅ Titles/meta intent-match `/kierunki/[slug]/[miesiac]` (~2800 stron): `"Palermo w czerwcu 2026: pogoda 26°C, hotele od 1450 zł"`
 - ✅ Titles/meta `/kierunki/[slug]` (~235 stron): `"Malaga 2026: hotele od 950 zł, lot 4.1 h, przewodnik"`
@@ -121,6 +121,15 @@ Sprint 1 (ten): diakrytyki, meta intent-match, /en redirect, sitemap, schema, 10
   - **GA4 setup po stronie usera:** oznaczyć `booking_complete` i `affiliate_click` jako key events (Admin → Events → mark as key event) żeby liczyły się jako konwersje.
 - ✅ **D6 — Internal linking guide→commercial**: `findCommercialCityByDestinationId()` + prominentny baner na `/kierunki/[slug]` linkujący do `/hotele/w/[miasto]` gdy istnieje. Przekazuje link equity z ~235 guide pages do 10 money pages. Commercial landing pages już cross-linkują między sobą (6 sąsiadów każda) + do month pages.
 
+### ZROBIONE — Sprint 1.1 (commercial expansion) — PR #69
+
+- ✅ **Commercial landing pages 10 → 25**: dodane Wiedeń, Mediolan, Wenecja, Florencja, Neapol, Amsterdam, Porto, Malaga, Walencja, Sewilla, Antalya, Hurghada, Split, Dubrownik, Marrakesz. Wszystkie z poprawną deklinacją PL (locative/genitive) i przyimkiem „w". Każda ma realny profil (hero image, klimat, czas lotu) — zweryfikowane w buildzie (25/25 prerendered).
+- ✅ **Unikalny content per miasto (ANTI-DOORWAY)**: nowe pola w `commercial-cities.ts` — `intro` (2-3 zdania, unikalny hook) + `neighborhoods` (3-4 dzielnice „Gdzie się zatrzymać" z opisem) + 6. pytanie FAQ o okolice. To różnicuje strony (broni przed „scanned, not indexed"/doorway-page przy skalowaniu) i trafia w intent „hotele {miasto} centrum".
+- ✅ **FIX BUGA: Londyn renderował się zdegradowany** — `destinationId` był „london-united-kingdom", ale profil ma slug „london-uk" (jedyny curated z niestandardowym slugiem; reszta używa konwencji `city-country`). Skutek na produkcji: brak hero image, klimatu, czasu lotu, month-pickera ORAZ brak banera commercial na `/kierunki/london-uk`. Naprawione (`destinationId` → „london-uk"). Potwierdzone gripem na prerendered HTML (sekcje profile-gated renderują się).
+- ✅ **`preposition` field** ("w"/"na") wprowadzone i przewleczone przez WSZYSTKIE nagłówki locative (H1, meta, OG, schema, FAQ, cross-linki) — gotowe pod batch wysp ("na Teneryfie", "na Rodos") bez łamania gramatyki.
+- ✅ **Cross-linking same-country-first** (do 8 sąsiadów zamiast 6) + sitemap auto-publikuje nowe miasta (priority 0.95, bez zmian w kodzie sitemap — czyta `commercialCitySlugs()`).
+- Build clean, testy **113/113**, 0 nowych błędów TS (jedyny błąd to pre-existing `booking-confirmation.test.ts` TS5097 — niezwiązany).
+
 ### DEFERRED — wymaga osobnego PR + Twojego inputu
 
 - ⬜ **D4 — Hotel detail conversion** (`src/app/hotele/[hotelId]/`): save-for-later (localStorage, lead signal) + UCZCIWY social proof (prawdziwy rating + liczba opinii z LiteAPI, eksponowane). **ŚWIADOMIE odłożone** — dotyka obszaru booking funnel (NON-NEGOTIABLE RULE 6) i fabrykowana pilność ("23 osoby oglądają") to dark pattern ryzykowny prawnie/brandowo. Zrobić jako osobny PR po ustaleniu z userem co jest uczciwym social proof przy realnym ruchu. Booking.com mierzył +15-25% conversion, ale tylko uczciwe sygnały.
@@ -134,7 +143,7 @@ Sprint 1 (ten): diakrytyki, meta intent-match, /en redirect, sitemap, schema, 10
 |---|---|---|---|
 | P0-1 | Brak diakrytyków (191+ w 30 plikach) | ✅ DONE | #68 |
 | P0-2 | Title/meta nie matchują intencji | ✅ DONE | #68 |
-| P0-3 | Brak commercial landing pages | ✅ DONE (10) | #68 |
+| P0-3 | Brak commercial landing pages | ✅ DONE (25) | #68/#69 |
 | P0-4 | /en/* w Google mimo redirectu | ✅ DONE | #68 |
 | P1-5 | 228 "scanned not indexed" | 🟡 PART (sitemap prio↓, treść TODO sierpień) | #68 |
 | P1-6 | Słaby CTR przez ubogie snippety | ✅ DONE (schema Offer+FAQ) | #68 |
@@ -198,7 +207,7 @@ Setup: Google Looker Studio (free) agregujący GSC + GA4 + LiteAPI events.
 
 ## 🔮 BACKLOG (po Sprincie 1)
 
-- Rozszerzyć `commercial-cities.ts` do 30-50 miast (lipiec)
+- ✅ commercial-cities → 25 miast (PR #69). **NEXT: batch wysp** (`preposition: "na"`): Teneryfa, Kreta (Heraklion), Rodos, Majorka (Palma), Malta, Cypr (Larnaka/Pafos) — najwyższy wolumen beach-package PL; wymaga obsługi „na" także w genitive/accusative ("wyjazd na Teneryfę", nie "do Teneryfy"). Potem dalej do 40-50.
 - Pre-warm Redis cron dla top 20 kierunków (sub-1s scan)
 - Unique content na top 30 month pages (sierpień, fix P1-5)
 - AggregateRating schema gdy będą prawdziwe recenzje
