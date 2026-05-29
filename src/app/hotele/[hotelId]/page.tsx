@@ -38,6 +38,28 @@ import { TrackView } from "@/components/analytics/track-view";
 
 import { BookingWidget } from "./_components/booking-widget";
 import { RoomsSection } from "./_components/rooms-section";
+import { SaveHotelButton } from "./_components/save-hotel-button";
+
+// Honest qualitative label for LiteAPI's 0-10 guest rating. A pure mapping
+// of the REAL score — no inflation, shown only when a rating exists. Mirrors
+// the bands travellers recognise from booking sites.
+function ratingLabel(rating: number): string {
+  if (rating >= 9) return "Wyjątkowy";
+  if (rating >= 8) return "Świetny";
+  if (rating >= 7) return "Bardzo dobry";
+  if (rating >= 6) return "Dobry";
+  return "Przyzwoity";
+}
+
+// Polish plural for "opinia": 1 → opinia; 2-4 (except 12-14) → opinie;
+// otherwise → opinii.
+function pluralizeOpinie(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (n === 1) return "opinia";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "opinie";
+  return "opinii";
+}
 
 export const revalidate = 21600; // ISR 6h per spec
 
@@ -311,17 +333,54 @@ export default async function HotelDetailPage({
 
       <section className="mx-auto max-w-7xl px-4 py-6">
         <header>
-          <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{detail.name}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{detail.name}</h1>
+            <SaveHotelButton
+              hotelId={hotelId}
+              name={detail.name}
+              city={detail.city ?? undefined}
+              href={`/hotele/${hotelId}?${searchQuery}`}
+            />
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-neutral-600">
             {detail.stars ? <span className="text-amber-500">{"★".repeat(Math.round(detail.stars))}</span> : null}
             <span>
               {[detail.address, detail.city, detail.country].filter(Boolean).join(", ")}
             </span>
-            {detail.rating ? (
-              <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                Ocena gości: {detail.rating.toFixed(1)}
+          </div>
+
+          {/* Honest social proof — real LiteAPI rating + qualitative label +
+              review count. Shown only when a real rating exists; review count
+              only when LiteAPI provides one. No fabricated numbers. */}
+          {detail.rating != null && detail.rating > 0 && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2">
+              <span className="rounded-md bg-emerald-700 px-2 py-1 text-sm font-bold text-white">
+                {detail.rating.toFixed(1)}
               </span>
-            ) : null}
+              <span className="text-sm">
+                <span className="font-semibold text-emerald-900">{ratingLabel(detail.rating)}</span>
+                {detail.reviewCount != null && detail.reviewCount > 0 && (
+                  <span className="text-emerald-800/80">
+                    {" "}
+                    · {detail.reviewCount.toLocaleString("pl-PL")} {pluralizeOpinie(detail.reviewCount)}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+
+          {/* Honest trust strip — all three hold site-wide; no scarcity, no
+              fabricated urgency (those would be dark patterns). */}
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
+            <span className="inline-flex items-center gap-1">
+              <span className="text-emerald-600">✓</span> Ceny finalne w PLN
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="text-emerald-600">✓</span> Bezpłatna anulacja w wybranych ofertach
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="text-emerald-600">✓</span> Polskie wsparcie
+            </span>
           </div>
         </header>
 
@@ -380,13 +439,7 @@ export default async function HotelDetailPage({
                   detail.rating != null && detail.rating > 0
                     ? `Goście oceniają obiekt na ${detail.rating.toFixed(1)}/10${
                         detail.reviewCount && detail.reviewCount > 0
-                          ? ` (${detail.reviewCount.toLocaleString("pl-PL")} ${
-                              detail.reviewCount === 1
-                                ? "opinia"
-                                : detail.reviewCount < 5
-                                  ? "opinie"
-                                  : "opinii"
-                            })`
+                          ? ` (${detail.reviewCount.toLocaleString("pl-PL")} ${pluralizeOpinie(detail.reviewCount)})`
                           : ""
                       }.`
                     : null;

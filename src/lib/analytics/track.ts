@@ -103,6 +103,10 @@ export interface TrackEventMap {
     slug: string;
     city?: string;
   };
+  hotel_save: {
+    hotel_id: string;
+    destination?: string;
+  };
 }
 
 export type TrackEventName = keyof TrackEventMap;
