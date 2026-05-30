@@ -161,6 +161,18 @@ Cel: podnieść współczynnik konwersji na stronie hotelu — lift mnoży KAŻD
 - ✅ **Fix tracking: `booking_complete`** był zdefiniowany, ale NIGDY nie odpalany → naprawione (fire-once na potwierdzeniu rezerwacji, PR #72). Bez tego konwersja w GA4 = 0.
 - Build OK (31/31 commercial prerendered), testy 113/113, 0 nowych błędów TS.
 
+### ZROBIONE — Sprint 1.5 (redesign 3 stron contentowych) — PR #79
+
+Cel: `/o-nas`, `/jak-pracujemy`, `/inspiracje` były „ścianą tekstu" bez zdjęć i CTA. Przebudowane do poziomu wizualnego homepage (realne foto Pexels, gradient amber→orange→rose, dark sekcje, glass cards, konwersyjne CTA, responsywne mobile).
+
+- ✅ **Wspólne komponenty**: `MediaHero` (foto hero + gradient, jak commercial landing; min-h+flex → brak clippingu H1 na mobile) + `FinalCtaBanner` (dark emerald z gradientowym CTA jak homepage „Zacznij teraz").
+- ✅ **/o-nas**: hero (Barcelona) + sekcja misji + pasek statystyk + 3 karty (dla kogo/co/czego nie) + ścieżka 3 kroki + uczciwy model + kafelki realnych kierunków (`DestinationTile` → konwersja) + final CTA.
+- ✅ **/jak-pracujemy**: hero (Rzym) + 3-krokowy timeline + „co dostajesz" grid + przykład na żywo (foto Lizbony + konkretne kroki + CTA) + „czego nie robimy" + FAQ accordion (**FAQPage schema**) + final CTA.
+- ✅ **/inspiracje**: hero (Ateny) + 6 kafelków kategorii ZE ZDJĘCIAMI + galeria artykułów ZE ZDJĘCIAMI (`EditorialArticleCard` rozszerzony o opcjonalny `imageUrl`, zachowuje click-tracking) + kafelki kierunków + final CTA. JSON-LD (CollectionPage/ItemList) zachowane.
+- ✅ **FIX BUGA: `/tanie-podroze` renderowała się PUSTA** + `/cieple-kierunki` miała 0 artykułów — slug danych miał diakrytyki („tanie-podróże", „ciepłe-kierunki") niezgodne z ASCII-route. Nowy `foldCategorySlug` (`category-slug.ts`) → diacritic-insensitive lookup w `getEditorialCategoryBySlug`/`getArticlesForCategory`. Naprawia OBA site-wide BEZ zmiany slugów danych. Wszystkie linki kategorii (kafelki + chipsy artykułów) teraz ASCII.
+- ⬜ NEXT (osobny task): pełna rekoncyliacja slugów kategorii w danych (diakrytyki vs ASCII — `tanie-podróże`/`ciepłe-kierunki` rozsiane w 7+/11+ miejscach: dane, localization, inferDestinationCategorySlugs).
+- Build OK (3 strony async ISR z Pexels), testy 113/113, typecheck clean. Zweryfikowane wizualnie desktop + mobile (375px) w Preview — hero, kafelki, galeria, CTA, brak błędów konsoli.
+
 ---
 
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
