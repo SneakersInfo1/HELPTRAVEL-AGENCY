@@ -87,7 +87,7 @@ export default function PartnersPage() {
         <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="p-6 sm:p-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Współpraca</p>
-            <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[0.95] text-emerald-950">
+            <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
               Współpraca z HelpTravel
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">

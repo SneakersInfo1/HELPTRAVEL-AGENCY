@@ -447,7 +447,7 @@ export default function TermsPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
           Warunki korzystania z Serwisu
         </p>
-        <h1 className="mt-3 font-display text-5xl leading-[0.95] text-emerald-950">Regulamin</h1>
+        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">Regulamin</h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/82">
           Niniejszy dokument określa zasady świadczenia usług drogą elektroniczną w serwisie {SITE_NAME}, w tym usług
           informacyjnych, działania Planera, korzystania z Linków Afiliacyjnych oraz pośrednictwa technologicznego w

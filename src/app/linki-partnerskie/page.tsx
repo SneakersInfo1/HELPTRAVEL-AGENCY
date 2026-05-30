@@ -18,7 +18,7 @@ export default function AffiliateDisclosurePage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <h1 className="font-display text-5xl leading-[0.95] text-emerald-950">Informacja o linkach partnerskich</h1>
+        <h1 className="font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">Informacja o linkach partnerskich</h1>
         <div className="mt-5 space-y-4 text-sm leading-7 text-emerald-900/78">
           <p>
             Na stronie mogą pojawiać się linki partnerskie i przyciski przekierowujące do zewnętrznych partnerów.
