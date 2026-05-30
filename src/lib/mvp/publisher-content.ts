@@ -1,3 +1,4 @@
+import { foldCategorySlug } from "./category-slug";
 import { getDestinationStory } from "./destination-content";
 import { allDestinationProfiles, getDestinationProfileBySlug } from "./destinations";
 import type { DestinationProfile } from "./types";
@@ -1906,7 +1907,8 @@ export function getEditorialCategories(): EditorialCategory[] {
 }
 
 export function getEditorialCategoryBySlug(slug: string): EditorialCategory | undefined {
-  return editorialCategories.find((category) => category.slug === slug);
+  const key = foldCategorySlug(slug);
+  return editorialCategories.find((category) => foldCategorySlug(category.slug) === key);
 }
 
 export function getCategoriesForDestination(slug: string): EditorialCategory[] {
@@ -1920,7 +1922,8 @@ export function getCategoriesForDestination(slug: string): EditorialCategory[] {
 }
 
 export function getArticlesForCategory(slug: string): EditorialArticle[] {
-  return editorialArticles.filter((article) => article.categorySlugs.includes(slug));
+  const key = foldCategorySlug(slug);
+  return editorialArticles.filter((article) => article.categorySlugs.some((c) => foldCategorySlug(c) === key));
 }
 
 export function getArticlesForDestination(slug: string): EditorialArticle[] {
