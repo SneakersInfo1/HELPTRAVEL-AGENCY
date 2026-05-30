@@ -78,10 +78,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // "w Barcelonie" / "na Teneryfie" — preposition lives on the city record
   // so island H1s stay grammatical when that batch lands.
   const inLoc = `${city.preposition} ${city.cityLocative}`;
+  // Omit the country parens for island-countries (Malta/Cypr) where city ===
+  // country, to avoid a redundant "Hotele na Malcie (na Malcie)".
+  const countrySuffix =
+    city.cityNominative === city.countryNominative ? "" : ` (${city.countryLocative})`;
   // Title: matches the head query ("hotele {city}") + commercial hook
   // (od X zł) + year freshness. ~58 chars before brand tail.
   const title = `Hotele ${inLoc} ${year}: od ${budget.perNight} zł/noc, sprawdź ${commercialCities.length > 1 ? "oferty" : "ofertę"}`;
-  const description = `Hotele ${inLoc} (${city.countryLocative}) — ceny w PLN od ${budget.perNight} zł za noc. Bezpłatna anulacja w wybranych ofertach, prawdziwe ceny dostępne online, polskie wsparcie. Sprawdź dostępność i zarezerwuj w 2 minuty.`;
+  const description = `Hotele ${inLoc}${countrySuffix} — ceny w PLN od ${budget.perNight} zł za noc. Bezpłatna anulacja w wybranych ofertach, prawdziwe ceny dostępne online, polskie wsparcie. Sprawdź dostępność i zarezerwuj w 2 minuty.`;
 
   return {
     title,
@@ -143,6 +147,12 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
   const budget = buildBudgetEstimate(city);
   const year = new Date().getFullYear();
   const inLoc = `${city.preposition} ${city.cityLocative}`;
+  // Direction phrase: mainland "do {dopełniacz}" (do Barcelony) vs island
+  // "na {biernik}" (na Kretę). Keeps every "wyjazd/lot do X" grammatical.
+  const dirPrep = city.preposition === "na" ? "na" : "do";
+  const dirForm = city.preposition === "na" ? city.cityAccusative ?? city.cityNominative : city.cityGenitive;
+  const countrySuffix =
+    city.cityNominative === city.countryNominative ? "" : ` (${city.countryLocative})`;
   const media = profile
     ? await resolveDestinationMedia({
         ...profile,
@@ -215,7 +225,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
       {
         "@type": "Article",
         headline: `Hotele ${inLoc} ${year} — sprawdź ceny w PLN`,
-        description: `Hotele ${inLoc} (${city.countryLocative}) od ${budget.perNight} zł/noc. Bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`,
+        description: `Hotele ${inLoc}${countrySuffix} od ${budget.perNight} zł/noc. Bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`,
         url: `${baseUrl}/hotele/w/${city.slug}`,
         inLanguage: "pl-PL",
         datePublished: "2026-01-01T00:00:00.000Z",
@@ -267,11 +277,11 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           },
           {
             "@type": "Question",
-            name: `Kiedy najlepiej jechać do ${city.cityGenitive}?`,
+            name: `Kiedy najlepiej jechać ${dirPrep} ${dirForm}?`,
             acceptedAnswer: {
               "@type": "Answer",
               text: bestMonths.length > 0
-                ? `Najprzyjemniejsze miesiące na wyjazd do ${city.cityGenitive} to ${bestMonths.slice(0, 6).join(", ")} — temperatury 18-30°C komfortowe na zwiedzanie.`
+                ? `Najprzyjemniejsze miesiące na wyjazd ${dirPrep} ${dirForm} to ${bestMonths.slice(0, 6).join(", ")} — temperatury 18-30°C komfortowe na zwiedzanie.`
                 : `Sprawdź sezony i temperatury w naszym przewodniku po ${city.cityLocative}.`,
             },
           },
@@ -293,11 +303,11 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           },
           {
             "@type": "Question",
-            name: `Jak długi jest lot z Polski do ${city.cityGenitive}?`,
+            name: `Jak długi jest lot z Polski ${dirPrep} ${dirForm}?`,
             acceptedAnswer: {
               "@type": "Answer",
               text: profile
-                ? `Lot z Polski do ${city.cityGenitive} zajmuje około ${profile.typicalFlightHoursFromPL.toFixed(1)} h.`
+                ? `Lot z Polski ${dirPrep} ${dirForm} zajmuje około ${profile.typicalFlightHoursFromPL.toFixed(1)} h.`
                 : `Sprawdź dostępne loty z Polski w wyszukiwarce.`,
             },
           },
@@ -526,7 +536,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               Kiedy jechać
             </p>
             <h2 className="mt-2 font-display text-3xl text-emerald-950">
-              Najlepszy termin na wyjazd do {city.cityGenitive}
+              Najlepszy termin na wyjazd {dirPrep} {dirForm}
             </h2>
             <p className="mt-3 text-sm leading-7 text-emerald-900/78">
               Najbardziej komfortowe miesiące (temperatury 18-30°C):
@@ -590,7 +600,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           Gdzie się zatrzymać
         </p>
         <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">
-          Najlepsze okolice na hotel {inLoc}
+          Najlepsze okolice {inLoc}
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-7 text-emerald-900/72">
           Każda dzielnica ma swój charakter i cenę. Oto gdzie najczęściej szukają noclegu
