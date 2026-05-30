@@ -402,6 +402,28 @@ export const curatedDestinations: DestinationProfile[] = [
     typicalFlightHoursFromPL: 5.4,
     affiliateLinks: links("Funchal", "Portugal"),
   },
+  {
+    // Curated so /hotele/w/teneryfa + month pages use real Canary climate
+    // (year-round ~20-29°C), not the mainland-Spain "Southern Europe"
+    // regional fallback that would wrongly show ~11°C in winter. Slug matches
+    // the catalog entry ("Santa Cruz de Tenerife", "Spain") so it overrides it.
+    id: "dest_tenerife",
+    slug: "santa-cruz-de-tenerife-spain",
+    city: "Santa Cruz de Tenerife",
+    country: "Spain",
+    visaForPL: true,
+    avgTempByMonth: [20, 20, 21, 22, 24, 26, 28, 29, 27, 25, 23, 21],
+    costIndex: 1.18,
+    beachScore: 0.93,
+    cityScore: 0.6,
+    sightseeingScore: 0.66,
+    nightlifeScore: 0.6,
+    natureScore: 0.85,
+    safetyScore: 0.85,
+    accessScore: 0.5,
+    typicalFlightHoursFromPL: 5.7,
+    affiliateLinks: links("Santa Cruz de Tenerife", "Spain"),
+  },
 ];
 
 const regionalTemperatureProfiles: Record<string, number[]> = {

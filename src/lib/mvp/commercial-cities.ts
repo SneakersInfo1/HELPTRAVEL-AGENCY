@@ -46,6 +46,10 @@ export interface CommercialCity {
   cityNominative: string; // "Barcelona"
   cityLocative: string; // "Barcelonie" — after the preposition
   cityGenitive: string; // "Barcelony" — after "do" / "z"
+  /** Accusative — used after "na" for island direction phrases ("na Kretę").
+   *  Only needed when preposition === "na"; mainland uses cityGenitive after
+   *  "do". */
+  cityAccusative?: string;
   /** Preposition before the locative ("w Barcelonie" / "na Teneryfie"). */
   preposition: "w" | "na";
   countryNominative: string;
@@ -714,6 +718,170 @@ export const commercialCities: CommercialCity[] = [
       "tanie loty Marrakesz",
     ],
     monthlySearchVolumePL: 9000,
+  },
+
+  // ── Wyspy (przyimek "na") — najwyższy wolumen pakietów wakacyjnych PL ──
+  {
+    slug: "teneryfa",
+    destinationId: "santa-cruz-de-tenerife-spain",
+    cityNominative: "Teneryfa",
+    cityLocative: "Teneryfie",
+    cityGenitive: "Teneryfy",
+    cityAccusative: "Teneryfę",
+    preposition: "na",
+    countryNominative: "Hiszpania",
+    countryLocative: "Hiszpanii",
+    countryGenitive: "Hiszpanii",
+    intro:
+      "Teneryfa to wieczna wiosna — największa z Wysp Kanaryjskich kusi plażami, wulkanem Teide i ciepłem przez cały rok. Hotele od kurortów all inclusive na południu po spokojniejszą, zieloną północ dopasujesz do stylu wyjazdu.",
+    neighborhoods: [
+      { name: "Costa Adeje", blurb: "Eleganckie kurorty i najlepsze plaże południa — najwięcej hoteli 4-5*." },
+      { name: "Playa de las Américas", blurb: "Tętniące centrum turystyczne: plaże, restauracje i nocne życie." },
+      { name: "Los Cristianos", blurb: "Spokojniej i rodzinnie, port z promami na sąsiednie wyspy." },
+      { name: "Puerto de la Cruz", blurb: "Zielona północ z basenami Martiánez i lokalnym klimatem." },
+    ],
+    aliasQueries: [
+      "wakacje Teneryfa 2026",
+      "Teneryfa all inclusive",
+      "tanie loty Teneryfa",
+      "wczasy Teneryfa",
+    ],
+    monthlySearchVolumePL: 27000,
+  },
+  {
+    slug: "kreta",
+    destinationId: "heraklion-greece",
+    cityNominative: "Kreta",
+    cityLocative: "Krecie",
+    cityGenitive: "Krety",
+    cityAccusative: "Kretę",
+    preposition: "na",
+    countryNominative: "Grecja",
+    countryLocative: "Grecji",
+    countryGenitive: "Grecji",
+    intro:
+      "Kreta to największa grecka wyspa — długie plaże, ruiny minojskie i tawerny z dala od pośpiechu. Hotele od Heraklionu po zachodnią Chanię łączą wypoczynek z odkrywaniem wyspy.",
+    neighborhoods: [
+      { name: "Heraklion", blurb: "Stolica wyspy z lotniskiem i pałacem w Knossos w pobliżu." },
+      { name: "Chania", blurb: "Wenecki port i klimatyczna starówka na zachodzie — najpiękniejsza." },
+      { name: "Rethymno", blurb: "Złoty środek wyspy: starówka, długa plaża i kurorty." },
+      { name: "Agios Nikolaos", blurb: "Eleganckie kurorty nad zatoką Mirabello na wschodzie." },
+    ],
+    aliasQueries: [
+      "wakacje Kreta 2026",
+      "Kreta all inclusive",
+      "tanie loty Kreta",
+      "wczasy Kreta",
+    ],
+    monthlySearchVolumePL: 30000,
+  },
+  {
+    slug: "rodos",
+    destinationId: "rhodes-greece",
+    cityNominative: "Rodos",
+    cityLocative: "Rodos",
+    cityGenitive: "Rodos",
+    cityAccusative: "Rodos",
+    preposition: "na",
+    countryNominative: "Grecja",
+    countryLocative: "Grecji",
+    countryGenitive: "Grecji",
+    intro:
+      "Rodos to słoneczna wyspa Dodekanezu — średniowieczne stare miasto, szerokie plaże i ciepło od maja do października. Hotele od kurortów w Faliraki po klimatyczne stare miasto dopasujesz do stylu.",
+    neighborhoods: [
+      { name: "Rodos (miasto)", blurb: "Średniowieczne stare miasto UNESCO i plaże tuż obok." },
+      { name: "Faliraki", blurb: "Najpopularniejszy kurort z szerokimi plażami i życiem nocnym." },
+      { name: "Lindos", blurb: "Malownicze białe miasteczko z akropolem nad zatoką." },
+      { name: "Ixia / Ialyssos", blurb: "Hotele 4-5* i raj dla windsurferów na zachodnim wybrzeżu." },
+    ],
+    aliasQueries: [
+      "wakacje Rodos 2026",
+      "Rodos all inclusive",
+      "tanie loty Rodos",
+      "wczasy Rodos",
+    ],
+    monthlySearchVolumePL: 22000,
+  },
+  {
+    slug: "majorka",
+    destinationId: "palma-spain",
+    cityNominative: "Majorka",
+    cityLocative: "Majorce",
+    cityGenitive: "Majorki",
+    cityAccusative: "Majorkę",
+    preposition: "na",
+    countryNominative: "Hiszpania",
+    countryLocative: "Hiszpanii",
+    countryGenitive: "Hiszpanii",
+    intro:
+      "Majorka łączy turkusowe zatoczki, góry Tramuntana i tętniącą Palmę. Największa z Balearów oferuje hotele od miejskich w Palmie po kurorty all inclusive nad zatokami.",
+    neighborhoods: [
+      { name: "Palma", blurb: "Stolica wyspy: katedra, starówka i miejskie plaże." },
+      { name: "Alcúdia", blurb: "Długa piaszczysta plaża i rodzinne kurorty na północy." },
+      { name: "Magaluf / Palmanova", blurb: "Kurorty z życiem nocnym blisko Palmy." },
+      { name: "Cala d'Or", blurb: "Malownicze zatoczki i spokojniejszy wschód wyspy." },
+    ],
+    aliasQueries: [
+      "wakacje Majorka 2026",
+      "Majorka all inclusive",
+      "tanie loty Majorka",
+      "wczasy Majorka",
+    ],
+    monthlySearchVolumePL: 18000,
+  },
+  {
+    slug: "malta",
+    destinationId: "valletta-malta",
+    cityNominative: "Malta",
+    cityLocative: "Malcie",
+    cityGenitive: "Malty",
+    cityAccusative: "Maltę",
+    preposition: "na",
+    countryNominative: "Malta",
+    countryLocative: "Malcie",
+    countryGenitive: "Malty",
+    intro:
+      "Malta to skąpana w słońcu wyspa na Morzu Śródziemnym — barokowa Valletta, lazurowe zatoki i historia na każdym kroku. Hotele od tętniącego Sliema i St. Julian's po spokojniejszą północ dopasujesz do stylu.",
+    neighborhoods: [
+      { name: "Sliema / St. Julian's", blurb: "Główne centrum turystyczne: hotele, restauracje i nocne życie." },
+      { name: "Valletta", blurb: "Barokowa stolica UNESCO z klimatem i widokiem na port." },
+      { name: "Mellieħa", blurb: "Najlepsze piaszczyste plaże wyspy na północy." },
+      { name: "Buġibba / Qawra", blurb: "Budżetowe kurorty nad zatoką św. Pawła." },
+    ],
+    aliasQueries: [
+      "wakacje Malta 2026",
+      "Malta all inclusive",
+      "tanie loty Malta",
+      "wczasy Malta",
+    ],
+    monthlySearchVolumePL: 14000,
+  },
+  {
+    slug: "cypr",
+    destinationId: "larnaca-cyprus",
+    cityNominative: "Cypr",
+    cityLocative: "Cyprze",
+    cityGenitive: "Cypru",
+    cityAccusative: "Cypr",
+    preposition: "na",
+    countryNominative: "Cypr",
+    countryLocative: "Cyprze",
+    countryGenitive: "Cypru",
+    intro:
+      "Cypr to słońce niemal przez cały rok, ciepłe morze i plaże nagradzane Błękitną Flagą. Hotele od tętniącej Ajia Napa po spokojniejszą Pafos i Larnakę dopasujesz do stylu wyjazdu.",
+    neighborhoods: [
+      { name: "Larnaka", blurb: "Lotnisko, palmowa promenada i plaże w zasięgu spaceru." },
+      { name: "Ajia Napa / Protaras", blurb: "Najpiękniejsze plaże i życie nocne na wschodzie." },
+      { name: "Pafos", blurb: "Zabytki UNESCO, klimatyczny port i kurorty na zachodzie." },
+      { name: "Limassol", blurb: "Największy kurort z mariną, hotelami i rozrywką." },
+    ],
+    aliasQueries: [
+      "wakacje Cypr 2026",
+      "Cypr all inclusive",
+      "tanie loty Cypr",
+      "wczasy Cypr",
+    ],
+    monthlySearchVolumePL: 20000,
   },
 ];
 
