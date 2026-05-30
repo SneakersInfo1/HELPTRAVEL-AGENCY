@@ -64,7 +64,7 @@ export default function InspirationsIndexPage() {
       </Script>
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pomysły na wyjazd</p>
-        <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] text-emerald-950">
+        <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
           Poradniki i scenariusze, z których łatwo przejść do konkretnego planu.
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">

@@ -147,7 +147,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
           Ranking sezonowy
         </p>
-        <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[0.95] text-emerald-950">
+        <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
           {seasonHeading[sezon]}
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{seasonIntro[sezon]}</p>

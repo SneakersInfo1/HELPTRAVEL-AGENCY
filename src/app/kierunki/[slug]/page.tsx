@@ -272,10 +272,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
       <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
-        <div className="relative h-[26rem]">
+        <div className="relative flex min-h-[24rem] flex-col justify-end sm:min-h-[26rem]">
           <Image src={media.heroImage} alt={`${guide.destination.city}, ${guide.destination.country}`} fill priority className="object-cover" sizes="100vw" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.12)_0%,rgba(5,18,11,0.72)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
+          <div className="relative z-10 p-6 text-white sm:p-8">
             <Breadcrumbs
               locale="pl"
               items={[
@@ -285,7 +285,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               ]}
             />
             <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Kierunek z Polski na prostszy plan wyjazdu</p>
-            <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] sm:text-6xl">{guide.destination.city}</h1>
+            <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">{guide.destination.city}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/86">{localizedGuide.overview}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <span className="rounded-full bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white">

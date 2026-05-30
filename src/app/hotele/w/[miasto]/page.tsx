@@ -358,7 +358,11 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
 
       {/* HERO */}
       <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
-        <div className="relative h-[24rem]">
+        {/* min-h + flex/justify-end (not a fixed height with absolute
+            content): on mobile the H1 + intro + CTAs are taller than 24rem,
+            so a fixed height with overflow-hidden CLIPPED the H1. Now the
+            hero grows to fit and the image (fill) covers the grown box. */}
+        <div className="relative flex min-h-[22rem] flex-col justify-end sm:min-h-[24rem]">
           {media?.heroImage ? (
             <Image
               src={media.heroImage}
@@ -369,10 +373,10 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               sizes="100vw"
             />
           ) : (
-            <div className="h-full w-full bg-gradient-to-br from-emerald-700 to-emerald-950" />
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-700 to-emerald-950" />
           )}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.12)_0%,rgba(5,18,11,0.78)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
+          <div className="relative z-10 p-6 text-white sm:p-8">
             <Breadcrumbs
               locale="pl"
               items={[
@@ -384,7 +388,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
             <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
               Najlepsze hotele {inLoc}
             </p>
-            <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] sm:text-6xl">
+            <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">
               Hotele {inLoc} {year}
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-white/86">
