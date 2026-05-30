@@ -152,6 +152,15 @@ Cel: podnieść współczynnik konwersji na stronie hotelu — lift mnoży KAŻD
 - ⛔ **ŚWIADOMIE NIE zrobione (dark patterns)**: fabrykowana pilność („23 osoby oglądają", fałszywe odliczanie, „ostatni pokój" bez pokrycia w danych). Nigdy — ryzyko prawne/brandowe.
 - ⬜ NEXT (osobny, ostrożny pass — nie dotyka paymentu): wzmocnić wizualnie prawdziwe „Bezpłatna anulacja do {data}" per-rate w PriceView/booking-widget.
 
+### ZROBIONE — Sprint 1.4 (batch wysp) — PR #73
+
+- ✅ **+6 wysp commercial** (`/hotele/w/{teneryfa,kreta,rodos,majorka,malta,cypr}`) — najwyższy wolumen pakietów wakacyjnych PL (Kreta 30K, Teneryfa 27K, Rodos 22K, Cypr 20K, Majorka 18K, Malta 14K). Razem **31 commercial pages**.
+- ✅ **Gramatyka „na"** zrobiona porządnie: pole `preposition` + nowe `cityAccusative`. Template rozróżnia kierunek: mainland „do {dopełniacz}" (do Barcelony) vs wyspa „na {biernik}" (na Kretę, lot z Polski na Cypr). Zweryfikowane w prerendered HTML — 0 błędnych „do Krety".
+- ✅ **Dedup parens dla wysp-państw** (Malta/Cypr, gdzie miasto == kraj): brak redundancji „Hotele na Cyprze (na Cyprze)". Mainland bez zmian („… (Hiszpanii)").
+- ✅ **Curated klimat Teneryfy** w `destinations.ts` (Kanary ~20-29°C cały rok, nie mainland-Spain ~11°C zimą) — poprawne budżety/sezon także na stronach miesięcznych.
+- ✅ **Fix tracking: `booking_complete`** był zdefiniowany, ale NIGDY nie odpalany → naprawione (fire-once na potwierdzeniu rezerwacji, PR #72). Bez tego konwersja w GA4 = 0.
+- Build OK (31/31 commercial prerendered), testy 113/113, 0 nowych błędów TS.
+
 ---
 
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
@@ -160,7 +169,7 @@ Cel: podnieść współczynnik konwersji na stronie hotelu — lift mnoży KAŻD
 |---|---|---|---|
 | P0-1 | Brak diakrytyków (191+ w 30 plikach) | ✅ DONE | #68 |
 | P0-2 | Title/meta nie matchują intencji | ✅ DONE | #68 |
-| P0-3 | Brak commercial landing pages | ✅ DONE (25) | #68/#69 |
+| P0-3 | Brak commercial landing pages | ✅ DONE (31, +6 wysp) | #68/#69/#73 |
 | P0-4 | /en/* w Google mimo redirectu | ✅ DONE | #68 |
 | P1-5 | 228 "scanned not indexed" | ✅ DONE (unikalny content/miesiąc) | #68/#70 |
 | P1-6 | Słaby CTR przez ubogie snippety | ✅ DONE (schema Offer+FAQ) | #68 |
@@ -224,7 +233,7 @@ Setup: Google Looker Studio (free) agregujący GSC + GA4 + LiteAPI events.
 
 ## 🔮 BACKLOG (po Sprincie 1)
 
-- ✅ commercial-cities → 25 miast (PR #69). **NEXT: batch wysp** (`preposition: "na"`): Teneryfa, Kreta (Heraklion), Rodos, Majorka (Palma), Malta, Cypr (Larnaka/Pafos) — najwyższy wolumen beach-package PL; wymaga obsługi „na" także w genitive/accusative ("wyjazd na Teneryfę", nie "do Teneryfy"). Potem dalej do 40-50.
+- ✅ commercial-cities → **31 miast** (PR #69 + wyspy #73). Wyspy: Teneryfa, Kreta, Rodos, Majorka, Malta, Cypr — z poprawnym „na" (locative + biernik dla kierunku „na Kretę") oraz curated klimatem Teneryfy (Kanary, nie mainland-Spain). **NEXT:** dalej do 40-50 (Alicante, Faro, Sycylia/Palermo, Costa Brava, Zanzibar…) + warianty „all inclusive".
 - Pre-warm Redis cron dla top 20 kierunków (sub-1s scan)
 - Unique content na top 30 month pages (sierpień, fix P1-5)
 - AggregateRating schema gdy będą prawdziwe recenzje
