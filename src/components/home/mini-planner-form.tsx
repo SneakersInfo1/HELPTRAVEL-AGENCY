@@ -33,18 +33,6 @@ function toISO(date: Date): string {
     .slice(0, 10);
 }
 
-function defaultStartDate(): string {
-  const now = new Date();
-  const target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 14));
-  return toISO(target);
-}
-
-function defaultEndDate(): string {
-  const now = new Date();
-  const target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 18));
-  return toISO(target);
-}
-
 function diffNights(start: string, end: string): number {
   if (!start || !end) return 4;
   const ms = new Date(end).getTime() - new Date(start).getTime();
@@ -71,9 +59,12 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
   const [destFetching, setDestFetching] = useState(false);
   const [destConfirmed, setDestConfirmed] = useState(Boolean(initial?.destination));
   const [destError, setDestError] = useState("");
-  const [startDate, setStartDate] = useState(initial?.startDate ?? defaultStartDate);
-  const [endDate, setEndDate] = useState(initial?.endDate ?? defaultEndDate);
+  // No default dates — the user must pick them (homepage + results bar).
+  // Empty string keeps the native date input blank until chosen.
+  const [startDate, setStartDate] = useState(initial?.startDate ?? "");
+  const [endDate, setEndDate] = useState(initial?.endDate ?? "");
   const [travelers, setTravelers] = useState(initial?.travelers ?? 2);
+  const [dateError, setDateError] = useState("");
 
   useEffect(() => {
     // After user picks a suggestion (destConfirmed=true), don't refetch with
@@ -157,6 +148,12 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
       return;
     }
     setDestError("");
+    // Daty są wymagane — użytkownik musi je wybrać (brak domyślnych).
+    if (!startDate || !endDate) {
+      setDateError("Wybierz datę wyjazdu i powrotu.");
+      return;
+    }
+    setDateError("");
     const nights = diffNights(startDate, endDate);
     const trimmedDestination = destination.trim();
     // Sesja C pkt 2: route directly to /hotele/szukaj — the unified results
@@ -301,6 +298,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
             min={dateMin}
             onChange={(e) => {
               setStartDate(e.target.value);
+              setDateError("");
               // Jesli powrot jest wczesniejszy niz nowy wylot, przesun go o 4 dni.
               if (e.target.value && endDate && new Date(endDate) <= new Date(e.target.value)) {
                 const d = new Date(e.target.value);
@@ -321,7 +319,10 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
             type="date"
             value={endDate}
             min={endMin}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              setDateError("");
+            }}
             className={fieldCls}
           />
         </label>
@@ -369,6 +370,12 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
           />
         </button>
       </div>
+
+      {dateError && (
+        <p className="mt-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
+          {dateError}
+        </p>
+      )}
 
       {!compact && (
         <p className="mt-3 text-[11px] text-emerald-900/70">

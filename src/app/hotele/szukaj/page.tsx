@@ -161,7 +161,7 @@ export default async function HotelResultsPage({
           )}
 
           {!valid ? (
-            <EmptyPrompt />
+            <EmptyPrompt hasDestination={Boolean(sp.destination)} />
           ) : (
             <Suspense fallback={<ResultsSkeleton count={6} />}>
               <Results sp={sp} />
@@ -337,7 +337,19 @@ async function Results({ sp }: { sp: SP }) {
   );
 }
 
-function EmptyPrompt() {
+function EmptyPrompt({ hasDestination }: { hasDestination: boolean }) {
+  // City is already set (e.g. arrived from a homepage tile) — the only thing
+  // missing is the dates, so prompt for THOSE, not for a city.
+  if (hasDestination) {
+    return (
+      <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center">
+        <h2 className="text-lg font-semibold text-neutral-900">Wybierz datę, aby zobaczyć hotele</h2>
+        <p className="mt-1 text-sm text-neutral-600">
+          Uzupełnij pola „Wylot” i „Powrót” w pasku powyżej, a pokażemy dostępne hotele.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center">
       <h2 className="text-lg font-semibold text-neutral-900">Wpisz miasto, aby zacząć</h2>
