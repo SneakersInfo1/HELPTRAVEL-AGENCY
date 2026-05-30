@@ -167,7 +167,7 @@ Cel: podnieść współczynnik konwersji na stronie hotelu — lift mnoży KAŻD
 
 | # | Problem | Status | PR |
 |---|---|---|---|
-| P0-1 | Brak diakrytyków (191+ w 30 plikach) | ✅ DONE | #68 |
+| P0-1 | Brak diakrytyków (191+ w 30 plikach; +2 duże pliki content MVP: destination/publisher) | ✅ DONE | #68/#76 |
 | P0-2 | Title/meta nie matchują intencji | ✅ DONE | #68 |
 | P0-3 | Brak commercial landing pages | ✅ DONE (31, +6 wysp) | #68/#69/#73 |
 | P0-4 | /en/* w Google mimo redirectu | ✅ DONE | #68 |

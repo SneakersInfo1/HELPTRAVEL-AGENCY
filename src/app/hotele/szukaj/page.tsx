@@ -105,6 +105,13 @@ export default async function HotelResultsPage({
           on mobile; sm: bumps to ≈ 84px because logo is sm:h-14. */}
       <div className="sticky top-[72px] z-20 shadow-sm sm:top-[84px]">
         <CollapsibleSearchBar
+          // Re-key per search so the bar REMOUNTS on every submit and
+          // re-derives `expanded` from the new `valid`. Without this, the
+          // `useState(!valid)` init runs only once: arriving from a tile
+          // (no dates → invalid → expanded), then picking dates + ZAPLANUJ
+          // keeps the form expanded (user had to hit "Anuluj edycję"). On
+          // remount with dates present, valid=true → collapsed → results.
+          key={`sb-${sp.destination ?? ""}-${sp.country ?? ""}-${sp.checkin ?? ""}-${sp.checkout ?? ""}-${sp.adults ?? ""}-${sp.origin ?? ""}`}
           valid={Boolean(valid)}
           initial={{
             origin: sp.origin,
