@@ -41,7 +41,7 @@ const CATEGORY_IMAGE_SLUG: Record<string, string> = {
   "city-breaki": "rome-italy",
   "cieple-kierunki": "valencia-spain",
   "bez-wizy": "marrakesh-morocco",
-  "tanie-podróże": "budapest-hungary",
+  "tanie-podroze": "budapest-hungary",
   "weekendowe-wyjazdy": "prague-czechia",
 };
 

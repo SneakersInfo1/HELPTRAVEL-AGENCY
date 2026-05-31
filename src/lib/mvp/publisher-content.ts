@@ -820,7 +820,7 @@ const editorialArticles: EditorialArticle[] = [
       "To jeden z najmocniejszych tematow dla polskiego odbiorcy: ciepło, bez zbednych formalnosci i kierunki, które da się ogarnac w rozsądnym budżecie.",
     plannerPrompt:
       "Chce do ciepłego kraju bez wizy, 5 dni, budżet do 2500 zl, najlepiej z Polski, plaża i cos do zwiedzania.",
-    categorySlugs: ["ciepłe-kierunki", "bez-wizy", "przewodniki"],
+    categorySlugs: ["cieple-kierunki", "bez-wizy", "przewodniki"],
     destinationSlugs: ["marrakesh-morocco", "agadir-morocco", "antalya-turkey", "larnaca-cyprus", "las-palmas-spain"],
     practicalBullets: [
       "Sprawdź realny czas lotu, a nie tylko sam koszt biletu.",
@@ -877,7 +877,7 @@ const editorialArticles: EditorialArticle[] = [
       "Weekendowy wyjazd nie musi być przypadkowy. Najlepiej działaja kierunki, które są blisko, mają prosty układ miasta i nie wymagają wielkiej logistyki.",
     plannerPrompt:
       "Szukam taniego city breaku na weekend, 2-3 dni, z Polski, dużo zwiedzania i budżet do 1800 zl.",
-    categorySlugs: ["city-breaki", "tanie-podróże", "weekendowe-wyjazdy"],
+    categorySlugs: ["city-breaki", "tanie-podroze", "weekendowe-wyjazdy"],
     destinationSlugs: ["budapest-hungary", "prague-czechia", "rome-italy", "malaga-spain"],
     practicalBullets: [
       "Na 2-3 dni premiuj kierunki z szybkim transferem z lotniska.",
@@ -974,7 +974,7 @@ const editorialArticles: EditorialArticle[] = [
       "Budżet do 2000 zl wciąż pozwala zaplanować sensowny wyjazd, ale wymaga lepszego filtrowania kierunku i unikania miejsc, które na starcie są po prostu zbyt drogie.",
     plannerPrompt:
       "Gdzie poleciec do 2000 zl z Polski, 3-4 dni, najlepiej dobre jedzenie i zwiedzanie.",
-    categorySlugs: ["tanie-podróże", "city-breaki"],
+    categorySlugs: ["tanie-podroze", "city-breaki"],
     destinationSlugs: ["budapest-hungary", "prague-czechia", "athens-greece", "malaga-spain"],
     practicalBullets: [
       "Przy takim budżecie wybieraj krótsze wyjazdy i mocno patrz na lot plus nocleg, nie tylko na sama destynacje.",
@@ -1064,7 +1064,7 @@ const editorialArticles: EditorialArticle[] = [
       "Najlepsze kierunki na krótki urlop to te, które nie wymagają duzej logistyki, a jednocześnie dają realne odciecie od codzieńnosci.",
     plannerPrompt:
       "Szukam kierunku na krótki urlop 5-6 dni, ciepło albo miejski klimat, z Polski, budżet do 3000 zl.",
-    categorySlugs: ["przewodniki", "ciepłe-kierunki"],
+    categorySlugs: ["przewodniki", "cieple-kierunki"],
     destinationSlugs: ["malaga-spain", "athens-greece", "larnaca-cyprus", "funchal-portugal", "antalya-turkey"],
     practicalBullets: [
       "W tym formacie szczególnie liczy się balans czasu lotu do czasu pobytu.",
@@ -1109,7 +1109,7 @@ const editorialArticles: EditorialArticle[] = [
       "Najciekawsze tanie kierunki z Polski to te, które nie tylko mają dobry bilet, ale jeszcze pozwalają sensownie spędzić czas bez przepalania budżetu na miejscu.",
     plannerPrompt:
       "Tanie kierunki z Polski, 4 dni, budżet do 2200 zl, zwiedzanie i dobry dojazd.",
-    categorySlugs: ["tanie-podróże", "przewodniki"],
+    categorySlugs: ["tanie-podroze", "przewodniki"],
     destinationSlugs: ["budapest-hungary", "prague-czechia", "istanbul-turkey", "athens-greece", "malaga-spain"],
     practicalBullets: [
       "Nie patrz tylko na stolice. Czasem lepiej wypada miasto o słabiej rozpoznawalnej marce, ale lepszym budżecie.",
@@ -1154,7 +1154,7 @@ const editorialArticles: EditorialArticle[] = [
       "Wlasnie takie kierunki najczęściej wygrywają w praktyce: dają i ladne miasto, i prawdziwy oddech przy wodzie. To wygodne, komercyjnie mocne i bardzo zrozumiale dla odbiorcy.",
     plannerPrompt:
       "Szukam kierunku z plażą i zwiedzaniem, 4-5 dni, z Polski, słońce i miasto w jednym.",
-    categorySlugs: ["ciepłe-kierunki", "city-breaki"],
+    categorySlugs: ["cieple-kierunki", "city-breaki"],
     destinationSlugs: ["malaga-spain", "barcelona-spain", "valletta-malta", "athens-greece", "larnaca-cyprus"],
     practicalBullets: [
       "Najlepiej wybierać kierunki, gdzie plaża nie wymaga wyjazdu daleko poza miasto.",
@@ -1244,7 +1244,7 @@ const editorialArticles: EditorialArticle[] = [
       "To dobry moment, by pokazać sile serwisu jako wydawniczego przewodnika i narzedzia jednocześnie. Jesieńne kierunki dobrze łączą ruch SEO z intencja zakupowa.",
     plannerPrompt:
       "Gdzie poleciec jesienią z Polski, 5 dni, najlepiej ciepło i bez bardzo wysokiego budżetu.",
-    categorySlugs: ["ciepłe-kierunki", "przewodniki"],
+    categorySlugs: ["cieple-kierunki", "przewodniki"],
     destinationSlugs: ["malaga-spain", "lisbon-portugal", "valletta-malta", "marrakesh-morocco", "funchal-portugal"],
     practicalBullets: [
       "Jesieńia warto grac na kierunki, które nadal mają pogodę, ale nie są już w szcżycie sezonu.",
@@ -1289,7 +1289,7 @@ const editorialArticles: EditorialArticle[] = [
       "Zimowe kierunki bardzo dobrze łączą się z afiliacja, bo stoi za nimi konkretna potrzeba: słońce, reset i sensowny plan na 4-7 dni bez czekania do lata.",
     plannerPrompt:
       "Gdzie poleciec zima z Polski, najlepiej ciepło, 5 dni, budżet do 3000 zl, bez komplikacji.",
-    categorySlugs: ["ciepłe-kierunki", "przewodniki"],
+    categorySlugs: ["cieple-kierunki", "przewodniki"],
     destinationSlugs: ["las-palmas-spain", "marrakesh-morocco", "agadir-morocco", "malaga-spain", "funchal-portugal"],
     practicalBullets: [
       "Zima najmocniej premiuje kierunki, które mają przewidywalna pogodę i sensowny czas lotu.",
@@ -1334,7 +1334,7 @@ const editorialArticles: EditorialArticle[] = [
       "Krotkie wakacje w Europie to jeden z najmocniejszych formatow dla startupu travelowego. Ludzie szukają czegos szybkiego, ale nadal wartosciowego i dobrze uzasadnionego.",
     plannerPrompt:
       "Krotkie wakacje w Europie, 5-6 dni, budżet do 3200 zl, najlepiej plaże albo ladne miasto.",
-    categorySlugs: ["ciepłe-kierunki", "weekendowe-wyjazdy"],
+    categorySlugs: ["cieple-kierunki", "weekendowe-wyjazdy"],
     destinationSlugs: ["valletta-malta", "larnaca-cyprus", "funchal-portugal", "malaga-spain", "athens-greece"],
     practicalBullets: [
       "Najlepiej wybierać kierunki, które pozwalają i odpocząć, i cos zobaczyć.",
@@ -1436,7 +1436,7 @@ const editorialArticles: EditorialArticle[] = [
       "To bardzo mocny temat dla serwisu travelowego, bo łączy wysoką intencje, dobra pogodę i praktyczne pytanie o to, gdzie najlepiej wykorzystac kilka dni wolnego.",
     plannerPrompt:
       "Gdzie poleciec w maju z Polski, 4-5 dni, najlepiej ciepło i cos do zwiedzania, budżet do 3000 zl.",
-    categorySlugs: ["ciepłe-kierunki", "przewodniki"],
+    categorySlugs: ["cieple-kierunki", "przewodniki"],
     destinationSlugs: ["malaga-spain", "valencia-spain", "athens-greece", "larnaca-cyprus", "valletta-malta"],
     practicalBullets: [
       "Maj premiuje kierunki, które mają już pogodę, ale jeszcze nie są w pełnym szcżycie sezonu.",
@@ -1492,7 +1492,7 @@ const editorialArticles: EditorialArticle[] = [
       "To temat o wysokiej intencji, bo wiele osób ma właśnie 5 dni i chce wybrać miejsce, które wykorzysta ten czas najlepiej: bez chaosu, ale z realnym efektem wyjazdu.",
     plannerPrompt:
       "Szukam kierunku w Europie na 5 dni, z Polski, budżet do 3200 zl, zwiedzanie albo plaża plus miasto.",
-    categorySlugs: ["przewodniki", "ciepłe-kierunki", "city-breaki"],
+    categorySlugs: ["przewodniki", "cieple-kierunki", "city-breaki"],
     destinationSlugs: ["lisbon-portugal", "valencia-spain", "athens-greece", "valletta-malta", "funchal-portugal"],
     practicalBullets: [
       "5 dni to dobry format na wyjazdy, które potrzebuja trochę więcej oddechu niż klasyczny city break.",
@@ -1548,7 +1548,7 @@ const editorialArticles: EditorialArticle[] = [
       "To scenariusz bardzo komercyjny i bardzo praktyczny jednocześnie: kilka dni, słońce, dobra logistyka i kierunek, który nie rozczarowuje po przylocie.",
     plannerPrompt:
       "Gdzie poleciec latem na krotko z Polski, 3-5 dni, słońce, plaża albo ladne miasto, budżet do 3000 zl.",
-    categorySlugs: ["ciepłe-kierunki", "weekendowe-wyjazdy", "przewodniki"],
+    categorySlugs: ["cieple-kierunki", "weekendowe-wyjazdy", "przewodniki"],
     destinationSlugs: ["malaga-spain", "valencia-spain", "larnaca-cyprus", "valletta-malta", "las-palmas-spain"],
     practicalBullets: [
       "Latem szczególnie liczy się to, żeby kierunek dawal efekt już przy krótkim pobyćie.",
@@ -1664,7 +1664,7 @@ const editorialCategories: EditorialCategory[] = [
     destinationSlugs: ["marrakesh-morocco", "agadir-morocco", "antalya-turkey", "larnaca-cyprus", "tirana-albania"],
   },
   {
-    slug: "tanie-podróże",
+    slug: "tanie-podroze",
     title: "Tanie podróże",
     description:
       "Treść dla osób, które chcą dobrze wydac budżet, a nie tylko szukać najniższej cyfry za wszelka cene.",
@@ -1692,10 +1692,10 @@ function inferDestinationCategorySlugs(destination: DestinationProfile): string[
     categories.add("city-breaki");
   }
   if (destination.beachScore >= 0.62 || (destination.avgTempByMonth[4] ?? 0) >= 22) {
-    categories.add("ciepłe-kierunki");
+    categories.add("cieple-kierunki");
   }
   if (destination.costIndex <= 1.02) {
-    categories.add("tanie-podróże");
+    categories.add("tanie-podroze");
   }
   if (destination.typicalFlightHoursFromPL <= 3.3) {
     categories.add("weekendowe-wyjazdy");
@@ -1917,8 +1917,8 @@ export function getCategoriesForDestination(slug: string): EditorialCategory[] {
     return [];
   }
 
-  const inferredCategories = inferDestinationCategorySlugs(destination);
-  return editorialCategories.filter((category) => inferredCategories.includes(category.slug));
+  const inferredCategories = inferDestinationCategorySlugs(destination).map(foldCategorySlug);
+  return editorialCategories.filter((category) => inferredCategories.includes(foldCategorySlug(category.slug)));
 }
 
 export function getArticlesForCategory(slug: string): EditorialArticle[] {
@@ -1937,9 +1937,9 @@ export function getArticlesForDestination(slug: string): EditorialArticle[] {
     return [];
   }
 
-  const inferredCategories = inferDestinationCategorySlugs(destination);
+  const inferredCategories = inferDestinationCategorySlugs(destination).map(foldCategorySlug);
   return editorialArticles.filter((article) =>
-    article.categorySlugs.some((categorySlug) => inferredCategories.includes(categorySlug)),
+    article.categorySlugs.some((categorySlug) => inferredCategories.includes(foldCategorySlug(categorySlug))),
   );
 }
 
