@@ -6,11 +6,26 @@ export interface ComparisonPair {
   a: string; // slug kierunku
   b: string;
   intent: string; // krótki opis intencji
+  // Opcjonalna nazwa wyświetlana — gdy slug kierunku to miasto-lotnisko
+  // ("santa-cruz-de-tenerife-spain"), a użytkownik szuka nazwy wyspy
+  // ("Teneryfa"). Funkcjonalne linki (LiteAPI, /kierunki) nadal używają
+  // profilu; te pola podmieniają tylko tekst widoczny + meta/H1/schema.
+  labelA?: string;
+  labelB?: string;
 }
 
-function makePair(a: string, b: string, intent: string): ComparisonPair {
+// `labels` jest kluczowane slugiem kierunku (nie pozycją), bo makePair sortuje
+// a/b alfabetycznie — dzięki temu etykieta zawsze trafia do właściwej strony.
+function makePair(a: string, b: string, intent: string, labels?: Record<string, string>): ComparisonPair {
   const [first, second] = [a, b].sort();
-  return { slug: `${first}-vs-${second}`, a: first, b: second, intent };
+  return {
+    slug: `${first}-vs-${second}`,
+    a: first,
+    b: second,
+    intent,
+    labelA: labels?.[first],
+    labelB: labels?.[second],
+  };
 }
 
 export const comparisonPairs: ComparisonPair[] = [
@@ -57,6 +72,27 @@ makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat
 
 // Plaża południa
 makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plażowe lata"),
+
+  // Wyspy — najwyższy wolumen pakietów wakacyjnych z Polski. Slug kierunku to
+  // miasto-lotnisko, więc etykiety pokazują nazwę wyspy (intencja wyszukiwania).
+  makePair(
+    "santa-cruz-de-tenerife-spain",
+    "las-palmas-spain",
+    "Dwie Wyspy Kanaryjskie na ciepły wyjazd przez cały rok — którą wybrać",
+    { "santa-cruz-de-tenerife-spain": "Teneryfa", "las-palmas-spain": "Gran Canaria" },
+  ),
+  makePair(
+    "heraklion-greece",
+    "rhodes-greece",
+    "Dwie greckie wyspy na wakacje nad ciepłym morzem — co lepsze pod plażę i zwiedzanie",
+    { "heraklion-greece": "Kreta", "rhodes-greece": "Rodos" },
+  ),
+  makePair(
+    "palma-spain",
+    "heraklion-greece",
+    "Baleary kontra Grecja — Majorka czy Kreta na wakacje nad morzem",
+    { "palma-spain": "Majorka", "heraklion-greece": "Kreta" },
+  ),
 ];
 
 export function getComparisonPairBySlug(slug: string): ComparisonPair | undefined {

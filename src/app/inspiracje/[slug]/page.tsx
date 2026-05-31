@@ -77,18 +77,40 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
   );
   const heroDestination = destinationCards.find(Boolean);
   const heroImage = heroDestination?.media.heroImage ?? "/branding/helptravel-logo.png";
+  const siteUrl = getSiteUrl();
+  const articleUrl = `${siteUrl}/inspiracje/${article.slug}`;
+  // Hero to absolutny URL z Pexels albo lokalny fallback — schema wymaga
+  // adresu absolutnego, więc dopinamy origin do ścieżek względnych.
+  const articleImage = heroImage.startsWith("http") ? heroImage : `${siteUrl}${heroImage}`;
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "Article",
+        "@type": "BlogPosting",
         headline: article.title,
         description: article.description,
-        mainEntityOfPage: `${getSiteUrl()}/inspiracje/${article.slug}`,
+        url: articleUrl,
+        mainEntityOfPage: articleUrl,
+        image: articleImage,
         inLanguage: "pl-PL",
+        // Model treści nie ma per-artykuł daty: datePublished stałe (era startu
+        // serwisu, jak na commercial landingach), dateModified bieżące (ISR
+        // regeneruje stronę) — świeżość dla Google bez fabrykowania dat.
+        datePublished: "2026-01-01T00:00:00.000Z",
+        dateModified: new Date().toISOString(),
+        author: { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "HelpTravel" },
+        publisher: { "@id": `${siteUrl}/#organization` },
         articleSection: categoryLabels,
         keywords: [...article.categorySlugs, ...article.destinationSlugs].join(", "),
         about: article.destinationSlugs.map((destinationSlug) => destinationSlug.replace(/-/g, " ")),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Start", item: `${siteUrl}/` },
+          { "@type": "ListItem", position: 2, name: "Inspiracje", item: `${siteUrl}/inspiracje` },
+          { "@type": "ListItem", position: 3, name: article.title, item: articleUrl },
+        ],
       },
       {
         "@type": "FAQPage",
