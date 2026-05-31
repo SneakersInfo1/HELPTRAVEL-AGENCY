@@ -83,8 +83,10 @@ async function finalizeAndRespond(args: {
   holder: { firstName: string; lastName: string; email: string };
   guestCount: number;
   idemKey: string | null;
+  /** bookHotel() latency in ms (normal path); omitted on reconcile paths. */
+  bookMs?: number;
 }): Promise<NextResponse> {
-  const { booking, session, sessionId, holder, guestCount, idemKey } = args;
+  const { booking, session, sessionId, holder, guestCount, idemKey, bookMs } = args;
 
   await saveCompleted({
     bookingId: booking.bookingId,
@@ -104,6 +106,7 @@ async function finalizeAndRespond(args: {
   // (RULE 6); `ok` is the only signal we surface. Skips silently (returns
   // ok:false) when RESEND_API_KEY is unset — we then never claim a mail went
   // out.
+  const emailStart = Date.now();
   const emailResult = await sendBookingConfirmation({
     bookingId: booking.bookingId,
     confirmationCode: booking.hotelConfirmationCode,
@@ -115,6 +118,11 @@ async function finalizeAndRespond(args: {
     guestCount,
   });
   const emailSent = emailResult.ok === true;
+  // Latency breakdown so we can see where the booking time goes (LiteAPI book
+  // vs email) on the next real booking, straight from Vercel logs.
+  console.log(
+    `[booking][book] timing bookingId=${booking.bookingId} book_ms=${bookMs ?? "n/a"} email_ms=${Date.now() - emailStart} emailSent=${emailSent}`,
+  );
 
   const body = {
     bookingId: booking.bookingId,
@@ -269,16 +277,21 @@ export async function POST(request: NextRequest) {
   // normal book path. Worst case is a duplicate call that LiteAPI itself
   // dedupes by clientReference.
   //
-  // GATED: the reconciliation call adds 400-1500ms of LiteAPI latency, so we
-  // only run it when the request looks like a retry. Signal: either the
-  // `X-Booking-Retry: 1` header is set by the return page on its second hit,
-  // OR a `paymentIntentId` arrived in the body (the return page only smuggles
-  // that field when bouncing back from Stripe SCA — i.e. a recovery flow).
-  // First-attempt calls skip the pre-flight entirely and go straight to
-  // bookHotel; the post-failure catch block below acts as the second safety
-  // net for the rare server-killed case.
-  const isRetry =
-    request.headers.get("x-booking-retry") === "1" || Boolean(paymentIntentId);
+  // Pre-flight reconcile is OPT-IN via the explicit `X-Booking-Retry: 1` header
+  // — it does NOT run on the normal first-attempt flow. PERF: Stripe ALWAYS
+  // appends `payment_intent` to the return URL, so the old
+  // `|| Boolean(paymentIntentId)` made this LiteAPI `GET /bookings` lookup
+  // (10s timeout + 1 retry → up to ~20s) fire on EVERY booking, always
+  // returning empty on a first attempt — pure dead weight that dominated the
+  // ~37s booking time. Safe to skip because:
+  //   • maxDuration is now 60s (was 10s), so the function is no longer killed
+  //     mid-`/rates/book` — the original reason this pre-flight existed.
+  //   • `clientReference` is LiteAPI's idempotency key (their words: "prevents
+  //     duplicate bookings"), so a retried bookHotel with the same sessionId
+  //     can never double-book or double-charge.
+  //   • the post-failure reconcile in the catch block below still recovers a
+  //     "threw but actually committed" booking.
+  const isRetry = request.headers.get("x-booking-retry") === "1";
   if (isRetry) {
     try {
     const existing = await listBookingsByClientReference(sessionId);
@@ -307,6 +320,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const bookStart = Date.now();
     const booking = await bookHotel({
       prebookId: session.prebookId,
       transactionId: session.transactionId,
@@ -314,9 +328,10 @@ export async function POST(request: NextRequest) {
       guests,
       holder,
     });
+    const bookMs = Date.now() - bookStart;
 
     console.log(
-      `[booking][book] confirmed bookingId=${booking.bookingId} ip=${ip} country=${country} ua_len=${userAgent.length}`,
+      `[booking][book] confirmed bookingId=${booking.bookingId} book_ms=${bookMs} ip=${ip} country=${country} ua_len=${userAgent.length}`,
     );
     return finalizeAndRespond({
       booking,
@@ -325,6 +340,7 @@ export async function POST(request: NextRequest) {
       holder,
       guestCount: guests.length,
       idemKey,
+      bookMs,
     });
   } catch (err) {
     // SECOND safety net: bookHotel threw — but the call MAY have committed
