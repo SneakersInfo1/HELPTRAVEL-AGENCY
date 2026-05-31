@@ -4,7 +4,7 @@
 > Czytaj to JAKO PIERWSZE po czyszczeniu kontekstu. Aktualizuj sekcję
 > "Status" po każdej zmianie. Plik jest w repo (git) → przeżywa kompakcję.
 
-**Ostatnia aktualizacja:** 2026-05-29
+**Ostatnia aktualizacja:** 2026-05-31
 **Właściciel biznesowy:** kuba.ogra123@gmail.com
 **Stack:** Next.js 16.2.1 (App Router, Turbopack), React 19, Tailwind v4, LiteAPI (hotele), Aviasales/Travelpayouts (loty), Upstash Redis, Resend (email), Vercel.
 
@@ -15,7 +15,7 @@
 1. **Homepage nietykalna** — NIE modyfikować `src/app/page.tsx` ani `src/components/home/**` bez wyraźnej prośby użytkownika.
 2. **Planer = tylko Travelpayouts** — loty przez Aviasales/Travelpayouts, hotele przez LiteAPI (już w kodzie). Nie wprowadzać nowych integracji (Duffel/Hotelbeds wycofane).
 3. **NON-NEGOTIABLE RULE 6** — nigdy po cichu nie gubić rekordów paid-but-unbooked.
-4. Build MUSI być clean, testy MUSZĄ przechodzić (113/113) przed każdym merge.
+4. Build MUSI być clean, testy MUSZĄ przechodzić (114/114) przed każdym merge.
 
 ---
 
@@ -172,6 +172,20 @@ Cel: `/o-nas`, `/jak-pracujemy`, `/inspiracje` były „ścianą tekstu" bez zdj
 - ✅ **FIX BUGA: `/tanie-podroze` renderowała się PUSTA** + `/cieple-kierunki` miała 0 artykułów — slug danych miał diakrytyki („tanie-podróże", „ciepłe-kierunki") niezgodne z ASCII-route. Nowy `foldCategorySlug` (`category-slug.ts`) → diacritic-insensitive lookup w `getEditorialCategoryBySlug`/`getArticlesForCategory`. Naprawia OBA site-wide BEZ zmiany slugów danych. Wszystkie linki kategorii (kafelki + chipsy artykułów) teraz ASCII.
 - ⬜ NEXT (osobny task): pełna rekoncyliacja slugów kategorii w danych (diakrytyki vs ASCII — `tanie-podróże`/`ciepłe-kierunki` rozsiane w 7+/11+ miejscach: dane, localization, inferDestinationCategorySlugs).
 - Build OK (3 strony async ISR z Pexels), testy 113/113, typecheck clean. Zweryfikowane wizualnie desktop + mobile (375px) w Preview — hero, kafelki, galeria, CTA, brak błędów konsoli.
+
+### ZROBIONE — Sprint 1.6 (redesign huba /kierunki) — PR #84
+
+Cel: `/kierunki` (hub katalogu, NIE month/guide pages) był płaski — biały hero bez zdjęcia + obronny ton „nie wszystko ma opis". Przebudowany na konwersyjny, mocno wizualny hub kierujący link equity + użytkowników do 31 commercial money pages.
+
+- ✅ **MediaHero** (foto Barcelony) + gradientowy H1 + 2 CTA (wyszukiwarka, #style) + chipy danych (235+ kierunków, hotele od X zł, loty z 22 lotnisk, ceny w PLN) + chipy kategorii.
+- ✅ **„Popularne kierunki w {miesiącu}"** — siatka 8× `DestinationTile` (foto + ocena + „od X zł" + czas lotu → `/hotele/szukaj`). Miesiąc w poprawnym miejscowniku (tabela, nie hack „+u").
+- ✅ **„Hotele w popularnych miastach i na wyspach"** — KLUCZOWA sekcja SEO/konwersji: dark emerald-950 + 12 kart commercial (sortowane po `monthlySearchVolumePL`) → `/hotele/w/[miasto]` z foto + „od X zł" + czas lotu + temp. teraz. Przekazuje link equity z huba do money pages (wzmacnia D6).
+- ✅ **Kafelki kategorii ze zdjęciami** (diacritic-safe `foldCategorySlug` — naprawia też latentny bug linków kategorii z diakrytykami na /kierunki) + **kafelki sezonowe** (4, ze zdjęciami → `/najlepsze-kierunki/[sezon]`).
+- ✅ **Pełne przewodniki** (`DestinationGuideCard`) + **katalog wg regionu** (12 miast/region) zachowane i odświeżone.
+- ✅ **FAQ (FAQPage schema)** — 6 pytań high-intent (city break, ciepło zimą, koszt wakacji, bez wizy, morze latem, skąd loty) z linkami wewnętrznymi.
+- ✅ **Mocniejsze SEO**: intent-match title („Kierunki na wakacje i city break 2026 — hotele od 499 zł") + opis, rozbudowany JSON-LD (CollectionPage + BreadcrumbList + ItemList[commercial+guides] + FAQPage). Kontrakt bilingual (`DestinationsIndexPageView`/`getDestinationsIndexMetadata`) zachowany; EN niezmieniony (noindex, brak route).
+- Build OK (`/kierunki` prerender ○ ISR, 3178/3178 stron), testy **114/114**, tsc + eslint clean. Zweryfikowane w Preview: hero (desktop), pełna kompozycja (tall viewport) — 8 sekcji, 55 obrazów załadowanych, 0 błędów konsoli. (Screenshot toolu miał problem ze scrollowaną, bardzo wysoką stroną — nie defekt strony; potwierdzone DOM + SSR.)
+- ⬜ NEXT (opcjonalnie): dorzucić więcej kart commercial gdy lista urośnie do 40-50 miast; rozważyć sekcję „najtańsze teraz" gdy podłączymy live ceny LiteAPI.
 
 ---
 
