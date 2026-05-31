@@ -198,9 +198,20 @@ already env-stubbed) and the `pnpm booking:tail` monitor.
 | Click → confirmation | <60 s incl. typing | n/a | Human e2e. |
 
 Other known limitations: redirect-only widget (no JS callback — return-URL
-flow); no email confirmation in MVP (on-screen confirmation + `recoveryId` +
-support mailto only); wallets (Apple/Google Pay) disabled by
-`Permissions-Policy: payment=()` — intentional, card-only MVP.
+flow); wallets (Apple/Google Pay) disabled by `Permissions-Policy: payment=()`
+— intentional, card-only MVP.
+
+**Email confirmation (live as of 2026-05-31):** on a confirmed booking the
+`/api/booking/book` route now awaits `sendBookingConfirmation` (Resend) and
+returns `emailSent` + `emailTo` in the response body; the return page shows the
+full booking details and an honest "Potwierdzenie wysłaliśmy na …" line.
+Awaited (not fire-and-forget) so the page can report status truthfully — the
+booking is persisted to `completed` BEFORE the send, so a slow/failed email
+never risks a paid-but-unbooked record (RULE 6). **Requires `RESEND_API_KEY` in
+Vercel** (Production + Preview); without it the send is skipped and the page
+falls back to the "zachowaj numer rezerwacji" message — it never falsely claims
+a mail was sent. Optional `EMAIL_FROM` (branded sender, once the domain is
+verified in Resend), `EMAIL_REPLY_TO`, `EMAIL_BCC`. See `.env.example`.
 
 ---
 
