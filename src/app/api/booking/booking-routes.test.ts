@@ -93,6 +93,14 @@ const LIVE_ENV: Record<string, string | undefined> = {
   UPSTASH_REDIS_REST_URL: undefined,
   UPSTASH_REDIS_REST_TOKEN: undefined,
   BOOKING_FLOW_MODE: "live",
+  // Keep the confirmation-email send fully inert during tests regardless of the
+  // developer's real shell env: with no RESEND_API_KEY the sender hits its
+  // documented skip path (no network, no `fetch`), so `emailSent` is false and
+  // the `fetchCalls.length === 0` assertions stay deterministic.
+  RESEND_API_KEY: undefined,
+  EMAIL_FROM: undefined,
+  EMAIL_REPLY_TO: undefined,
+  EMAIL_BCC: undefined,
 };
 
 const PREBOOK_REQ_BODY = {
@@ -173,6 +181,49 @@ test("happy path: prebook → session persisted (no transactionId leaked) → bo
       assert.equal(j2.bookingId, "bk_1");
       assert.ok(fake.store.has("booking:v1:completed:bk_1"));
       assert.equal(fake.store.has(`booking:v1:session:${sessionId}`), false, "session deleted");
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("confirmed book response carries booking details + emailSent flag (for the confirmation page)", async () => {
+  // The return page renders trustworthy post-payment details (dates, board,
+  // price, guests) and an honest "email sent" line from THIS response body.
+  // With no RESEND_API_KEY in the test env the email is skipped, so emailSent
+  // MUST be false (we never claim a mail went out when it did not).
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch((url) =>
+      url.includes("/rates/prebook")
+        ? { status: 200, body: PREBOOK_OK }
+        : { status: 200, body: BOOK_OK },
+    );
+    try {
+      const { POST: prebookPOST } = await import("./prebook/route");
+      const r1 = await prebookPOST(
+        post("http://t/api/booking/prebook", { ...PREBOOK_REQ_BODY, holder: HOLDER, guests: GUESTS }),
+      );
+      const sessionId = (await r1.json()).sessionId as string;
+
+      const { POST: bookPOST } = await import("./book/route");
+      const r2 = await bookPOST(post("http://t/api/booking/book", { sessionId }));
+      assert.equal(r2.status, 200);
+      const j = (await r2.json()) as Record<string, unknown>;
+
+      assert.equal(j.status, "confirmed");
+      assert.equal(j.bookingId, "bk_1");
+      const rate = j.rateSummary as Record<string, unknown> | undefined;
+      assert.ok(rate, "rateSummary must be returned so the page can show dates/board");
+      assert.equal(rate.checkin, "2026-07-15");
+      assert.equal(rate.checkout, "2026-07-18");
+      assert.equal(j.currency, "PLN");
+      assert.equal(typeof j.price, "number");
+      assert.equal(j.guestCount, 1);
+      assert.equal(j.emailSent, false, "no RESEND_API_KEY → must not claim email sent");
+      assert.equal(j.emailTo ?? null, null, "no recipient echoed when email not sent");
     } finally {
       restore();
       __resetBookingRedisForTests();

@@ -121,15 +121,15 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   if (!targetUrl) {
     // Either no target was given, the URL was malformed, the protocol wasn't
-    // https, or the host is not on the affiliate whitelist. We log and
-    // safely redirect back to /hotele instead of leaking the rejection cause.
+    // https, or the host is not on the affiliate whitelist. We log and safely
+    // redirect back to the homepage instead of leaking the rejection cause.
     const rawTarget = request.nextUrl.searchParams.get("url");
     if (rawTarget) {
       console.warn(
         `[redirect] rejected target — provider=${resolvedParams.provider} rawTarget=${rawTarget.slice(0, 200)}`,
       );
     }
-    const response = NextResponse.redirect(new URL("/hotele", request.url));
+    const response = NextResponse.redirect(new URL("/", request.url));
     if (resolvedSession.isNew) {
       attachSessionCookie(response, resolvedSession.sessionId);
     }
