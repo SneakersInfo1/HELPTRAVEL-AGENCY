@@ -39,7 +39,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
           <h1 className="text-xl font-bold text-neutral-900">{title}</h1>
           <div className="mt-3 text-sm text-neutral-600">{children}</div>
           <Link
-            href="/hotele"
+            href="/"
             className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
           >
             Wróć do wyszukiwania

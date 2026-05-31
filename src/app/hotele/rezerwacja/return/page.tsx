@@ -29,6 +29,63 @@ export const metadata: Metadata = {
 const SUPPORT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "pomoc@helptravel.pl";
 
+// Display helpers — kept byte-for-byte consistent with the booking-confirmation
+// email template (src/lib/email/templates/booking-confirmation.ts) so the dates,
+// nights, guest count and amount shown on this page exactly match the email.
+function formatPlDate(iso?: string): string | null {
+  if (!iso) return null;
+  // Anchor bare YYYY-MM-DD at noon UTC so Europe/Warsaw never rolls the day.
+  const stamp = iso.length === 10 ? `${iso}T12:00:00Z` : iso;
+  const d = new Date(stamp);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("pl-PL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Warsaw",
+  }).format(d);
+}
+
+function nightsBetween(checkin?: string, checkout?: string): number | null {
+  if (!checkin || !checkout) return null;
+  const a = new Date(checkin.length === 10 ? `${checkin}T00:00:00Z` : checkin);
+  const b = new Date(checkout.length === 10 ? `${checkout}T00:00:00Z` : checkout);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  const days = Math.round((b.getTime() - a.getTime()) / 86_400_000);
+  return days > 0 ? days : null;
+}
+
+function plNights(n: number): string {
+  if (n === 1) return "1 noc";
+  const d = n % 10;
+  const dd = n % 100;
+  if (dd >= 12 && dd <= 14) return `${n} nocy`;
+  if (d >= 2 && d <= 4) return `${n} noce`;
+  return `${n} nocy`;
+}
+
+function plGuests(n: number): string {
+  if (n === 1) return "1 osoba";
+  const d = n % 10;
+  const dd = n % 100;
+  if (dd >= 12 && dd <= 14) return `${n} osób`;
+  if (d >= 2 && d <= 4) return `${n} osoby`;
+  return `${n} osób`;
+}
+
+function fmtMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("pl-PL", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency}`;
+  }
+}
+
 function Shell({
   tone,
   title,
@@ -52,10 +109,10 @@ function Shell({
           <div className="mt-3 space-y-3 text-sm text-neutral-700">{children}</div>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href="/hotele"
+              href="/"
               className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
             >
-              Wróć do hoteli
+              Wróć na stronę główną
             </Link>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
@@ -127,6 +184,37 @@ export default async function ReturnPage({
 
   if (status === 200) {
     const hotel = (data.hotelSummary as { name?: string; city?: string }) ?? {};
+    const rate =
+      (data.rateSummary as { boardName?: string; checkin?: string; checkout?: string }) ?? {};
+    const price = typeof data.price === "number" ? data.price : undefined;
+    const currency = typeof data.currency === "string" ? data.currency : "PLN";
+    const guestCount = typeof data.guestCount === "number" ? data.guestCount : undefined;
+    // Honest signal from the book route: true ONLY when Resend actually
+    // accepted the message. When RESEND_API_KEY is unset the send is skipped
+    // and this stays false — we then never claim a mail was sent.
+    const emailSent = data.emailSent === true;
+    const emailTo = typeof data.emailTo === "string" ? data.emailTo : undefined;
+    const bookingId = String(data.bookingId ?? "");
+    const confirmationCode =
+      typeof data.confirmationCode === "string" && data.confirmationCode
+        ? data.confirmationCode
+        : null;
+
+    const checkinFmt = formatPlDate(rate.checkin);
+    const checkoutFmt = formatPlDate(rate.checkout);
+    const nights = nightsBetween(rate.checkin, rate.checkout);
+    const moneyFmt = price && price > 0 ? fmtMoney(price, currency) : null;
+
+    const rows: Array<{ label: string; value: string }> = [];
+    if (hotel.name) {
+      rows.push({ label: "Hotel", value: hotel.city ? `${hotel.name}, ${hotel.city}` : hotel.name });
+    }
+    if (checkinFmt) rows.push({ label: "Przyjazd", value: checkinFmt });
+    if (checkoutFmt) rows.push({ label: "Wyjazd", value: checkoutFmt });
+    if (nights) rows.push({ label: "Długość pobytu", value: plNights(nights) });
+    if (guestCount) rows.push({ label: "Goście", value: plGuests(guestCount) });
+    if (rate.boardName) rows.push({ label: "Pakiet", value: rate.boardName });
+
     return (
       <Shell tone="ok" title="Rezerwacja potwierdzona 🎉">
         <ConfettiBurst />
@@ -138,30 +226,80 @@ export default async function ReturnPage({
             without it. Add value once units are confirmed (then ROAS works
             for paid campaigns). Display/tracking only — does not touch the
             booking/payment flow (RULE 6). */}
-        {data.bookingId ? (
-          <TrackView
-            event="booking_complete"
-            params={{
-              booking_id: String(data.bookingId),
-              currency: typeof data.currency === "string" ? data.currency : "PLN",
-            }}
-          />
+        {bookingId ? (
+          <TrackView event="booking_complete" params={{ booking_id: bookingId, currency }} />
         ) : null}
+
         <p>
-          Dziękujemy! Twoja rezerwacja w <strong>{hotel.name ?? "wybranym hotelu"}</strong>
+          Dziękujemy! Twoja rezerwacja w{" "}
+          <strong>{hotel.name ?? "wybranym hotelu"}</strong>
           {hotel.city ? `, ${hotel.city}` : ""} została potwierdzona.
         </p>
-        {data.confirmationCode ? (
-          <p>
-            Kod potwierdzenia: <strong>{String(data.confirmationCode)}</strong>
-          </p>
-        ) : null}
-        <p>
-          Numer rezerwacji: <span className="font-mono text-xs">{String(data.bookingId)}</span>
-        </p>
-        <p className="text-neutral-500">
-          Potwierdzenie nie jest wysyłane e-mailem na tym etapie — zachowaj ten
-          numer. W razie pytań napisz do nas.
+
+        {/* Honest email status — only claims a send when one actually happened. */}
+        {emailSent ? (
+          <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
+            <span aria-hidden className="mt-0.5 text-base leading-none">✉️</span>
+            <p className="text-sm leading-relaxed">
+              Potwierdzenie wysłaliśmy na adres{" "}
+              <strong className="font-semibold break-all">{emailTo}</strong>. Jeśli nie widzisz
+              wiadomości w ciągu kilku minut, sprawdź folder ze spamem lub ofertami.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+            <p className="text-sm leading-relaxed">
+              Zachowaj numer rezerwacji poniżej — wystarczy przy meldowaniu i w kontakcie z nami.
+              W razie pytań napisz na {SUPPORT_EMAIL}.
+            </p>
+          </div>
+        )}
+
+        {/* Booking details — concrete post-payment info so the page reads as a
+            real confirmation, not just a code. */}
+        {rows.length > 0 && (
+          <dl className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            {rows.map((r) => (
+              <div
+                key={r.label}
+                className="flex justify-between gap-4 border-b border-neutral-100 px-4 py-2.5 last:border-b-0"
+              >
+                <dt className="text-sm text-neutral-500">{r.label}</dt>
+                <dd className="text-right text-sm font-semibold text-neutral-900">{r.value}</dd>
+              </div>
+            ))}
+            {moneyFmt && (
+              <div className="flex items-center justify-between gap-4 bg-emerald-50/70 px-4 py-3">
+                <dt className="text-sm font-medium text-emerald-900">Kwota zapłacona</dt>
+                <dd className="text-right text-base font-bold text-emerald-700">{moneyFmt}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+
+        {/* Reference numbers */}
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-lg bg-neutral-100 px-4 py-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+              Numer rezerwacji
+            </div>
+            <div className="mt-0.5 break-all font-mono text-sm text-neutral-900">{bookingId}</div>
+          </div>
+          {confirmationCode && (
+            <div className="rounded-lg bg-neutral-100 px-4 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                Numer w hotelu
+              </div>
+              <div className="mt-0.5 break-all font-mono text-sm text-neutral-900">
+                {confirmationCode}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-neutral-500">
+          Hotel może poprosić o dokument tożsamości oraz kartę użytą do płatności. Standardowe
+          zameldowanie to zwykle ok. 15:00, a wymeldowanie do 11:00.
         </p>
       </Shell>
     );

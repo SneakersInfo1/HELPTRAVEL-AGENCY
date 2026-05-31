@@ -25,6 +25,7 @@ import {
   saveCompleted,
   saveFailed,
   setIdempotent,
+  type SessionRecord,
 } from "@/lib/booking/session";
 
 export const runtime = "nodejs";
@@ -63,6 +64,78 @@ const SUPPORT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() ||
   process.env.EMAIL_REPLY_TO?.trim() ||
   "pomoc@helptravel.pl";
+
+// All three success paths (pre-flight reconcile, fresh book, post-failure
+// reconcile) converge here: persist the completed record, drop the session,
+// send the confirmation email, and return the SAME enriched body the
+// confirmation page renders. Centralised so the three paths can never drift.
+//
+// Ordering is load-bearing for NON-NEGOTIABLE RULE 6: `saveCompleted` is
+// awaited BEFORE the email, so a slow or failing email can never turn a
+// confirmed, persisted booking into a lost one. We `await` the email (rather
+// than fire-and-forget) ONLY so we can honestly report `emailSent` to the
+// page — `sendBookingConfirmation` never throws and self-bounds at 5s, well
+// within this route's 60s maxDuration.
+async function finalizeAndRespond(args: {
+  booking: { bookingId: string; hotelConfirmationCode?: string; status?: string };
+  session: SessionRecord;
+  sessionId: string;
+  holder: { firstName: string; lastName: string; email: string };
+  guestCount: number;
+  idemKey: string | null;
+}): Promise<NextResponse> {
+  const { booking, session, sessionId, holder, guestCount, idemKey } = args;
+
+  await saveCompleted({
+    bookingId: booking.bookingId,
+    confirmationCode: booking.hotelConfirmationCode,
+    // LiteAPI sometimes omits status or returns a value outside our prior enum;
+    // reaching here means a LiteAPI 200, i.e. the booking is committed.
+    status: booking.status ?? "CONFIRMED",
+    hotelSummary: session.hotelSummary,
+    rateSummary: session.rateSummary,
+    price: session.price,
+    currency: session.currency,
+    createdAt: Date.now(),
+  });
+  await deleteSession(sessionId);
+
+  // Courtesy confirmation email. The booking is ALREADY persisted above
+  // (RULE 6); `ok` is the only signal we surface. Skips silently (returns
+  // ok:false) when RESEND_API_KEY is unset — we then never claim a mail went
+  // out.
+  const emailResult = await sendBookingConfirmation({
+    bookingId: booking.bookingId,
+    confirmationCode: booking.hotelConfirmationCode,
+    hotelSummary: session.hotelSummary,
+    rateSummary: session.rateSummary,
+    price: session.price,
+    currency: session.currency,
+    holder,
+    guestCount,
+  });
+  const emailSent = emailResult.ok === true;
+
+  const body = {
+    bookingId: booking.bookingId,
+    confirmationCode: booking.hotelConfirmationCode ?? null,
+    hotelSummary: session.hotelSummary,
+    // Surfaced so the confirmation page can render real post-payment details
+    // (dates, board, price, guests) instead of just an ID — looks credible.
+    rateSummary: session.rateSummary,
+    price: session.price,
+    currency: session.currency,
+    guestCount,
+    status: "confirmed" as const,
+    emailSent,
+    // The holder's own address, echoed back to them on their own noindex
+    // confirmation page so we can show "wysłaliśmy potwierdzenie na …". Only
+    // when the send actually succeeded — never a false claim.
+    emailTo: emailSent ? holder.email : null,
+  };
+  if (idemKey) await setIdempotent(idemKey, 200, body);
+  return NextResponse.json(body, { status: 200 });
+}
 
 export async function POST(request: NextRequest) {
   if (!isBookingLive()) {
@@ -214,41 +287,14 @@ export async function POST(request: NextRequest) {
       console.log(
         `[booking][book] reconciled existing bookingId=${booking.bookingId} status=${booking.status} for clientReference=${sessionId} (no /rates/book call needed)`,
       );
-      await saveCompleted({
-        bookingId: booking.bookingId,
-        confirmationCode: booking.hotelConfirmationCode,
-        // booking.status is now `string | undefined` after the schema relaxation
-        // (LiteAPI sometimes omits it or returns values outside our prior enum).
-        // Default to "CONFIRMED" — bookHotel only reaches here on LiteAPI 200,
-        // which per their docs means the booking is committed.
-        status: booking.status ?? "CONFIRMED",
-        hotelSummary: session.hotelSummary,
-        rateSummary: session.rateSummary,
-        price: session.price,
-        currency: session.currency,
-        createdAt: Date.now(),
-      });
-      await deleteSession(sessionId);
-      const body = {
-        bookingId: booking.bookingId,
-        confirmationCode: booking.hotelConfirmationCode ?? null,
-        hotelSummary: session.hotelSummary,
-        status: "confirmed" as const,
-      };
-      if (idemKey) await setIdempotent(idemKey, 200, body);
-      // Fire-and-forget courtesy email. Never blocks the response; failures
-      // are logged + warning-alerted by sendBookingConfirmation itself.
-      void sendBookingConfirmation({
-        bookingId: booking.bookingId,
-        confirmationCode: booking.hotelConfirmationCode,
-        hotelSummary: session.hotelSummary,
-        rateSummary: session.rateSummary,
-        price: session.price,
-        currency: session.currency,
+      return finalizeAndRespond({
+        booking,
+        session,
+        sessionId,
         holder,
         guestCount: guests.length,
-      }).catch(() => {});
-      return NextResponse.json(body, { status: 200 });
+        idemKey,
+      });
     }
     } catch (reconcileErr) {
       // Reconciliation lookup failed — fall through to normal book path.
@@ -269,44 +315,17 @@ export async function POST(request: NextRequest) {
       holder,
     });
 
-    await saveCompleted({
-      bookingId: booking.bookingId,
-      confirmationCode: booking.hotelConfirmationCode,
-      // booking.status is `string | undefined` after schema relaxation.
-      // Reaching this branch means LiteAPI returned 200, which per their
-      // docs means the booking is committed — default to "CONFIRMED".
-      status: booking.status ?? "CONFIRMED",
-      hotelSummary: session.hotelSummary,
-      rateSummary: session.rateSummary,
-      price: session.price,
-      currency: session.currency,
-      createdAt: Date.now(),
-    });
-    await deleteSession(sessionId);
-
-    const body = {
-      bookingId: booking.bookingId,
-      confirmationCode: booking.hotelConfirmationCode ?? null,
-      hotelSummary: session.hotelSummary,
-      status: "confirmed" as const,
-    };
-    if (idemKey) await setIdempotent(idemKey, 200, body);
     console.log(
       `[booking][book] confirmed bookingId=${booking.bookingId} ip=${ip} country=${country} ua_len=${userAgent.length}`,
     );
-    // Fire-and-forget courtesy email. Never blocks the response; failures
-    // are logged + warning-alerted by sendBookingConfirmation itself.
-    void sendBookingConfirmation({
-      bookingId: booking.bookingId,
-      confirmationCode: booking.hotelConfirmationCode,
-      hotelSummary: session.hotelSummary,
-      rateSummary: session.rateSummary,
-      price: session.price,
-      currency: session.currency,
+    return finalizeAndRespond({
+      booking,
+      session,
+      sessionId,
       holder,
       guestCount: guests.length,
-    }).catch(() => {});
-    return NextResponse.json(body, { status: 200 });
+      idemKey,
+    });
   } catch (err) {
     // SECOND safety net: bookHotel threw — but the call MAY have committed
     // on LiteAPI's side (response dropped mid-read). Query their state by
@@ -319,41 +338,14 @@ export async function POST(request: NextRequest) {
         console.log(
           `[booking][book] post-failure reconcile RECOVERED bookingId=${booking.bookingId} status=${booking.status} for clientReference=${sessionId} (book() threw but LiteAPI has the booking)`,
         );
-        await saveCompleted({
-          bookingId: booking.bookingId,
-          confirmationCode: booking.hotelConfirmationCode,
-          // booking.status is now `string | undefined` after the schema relaxation
-        // (LiteAPI sometimes omits it or returns values outside our prior enum).
-        // Default to "CONFIRMED" — bookHotel only reaches here on LiteAPI 200,
-        // which per their docs means the booking is committed.
-        status: booking.status ?? "CONFIRMED",
-          hotelSummary: session.hotelSummary,
-          rateSummary: session.rateSummary,
-          price: session.price,
-          currency: session.currency,
-          createdAt: Date.now(),
-        });
-        await deleteSession(sessionId);
-        const body = {
-          bookingId: booking.bookingId,
-          confirmationCode: booking.hotelConfirmationCode ?? null,
-          hotelSummary: session.hotelSummary,
-          status: "confirmed" as const,
-        };
-        if (idemKey) await setIdempotent(idemKey, 200, body);
-        // Fire-and-forget courtesy email. Never blocks the response; failures
-        // are logged + warning-alerted by sendBookingConfirmation itself.
-        void sendBookingConfirmation({
-          bookingId: booking.bookingId,
-          confirmationCode: booking.hotelConfirmationCode,
-          hotelSummary: session.hotelSummary,
-          rateSummary: session.rateSummary,
-          price: session.price,
-          currency: session.currency,
+        return finalizeAndRespond({
+          booking,
+          session,
+          sessionId,
           holder,
           guestCount: guests.length,
-        }).catch(() => {});
-        return NextResponse.json(body, { status: 200 });
+          idemKey,
+        });
       }
     } catch (recoverErr) {
       console.warn(
