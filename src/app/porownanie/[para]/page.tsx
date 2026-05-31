@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { notFound } from "next/navigation";
@@ -7,6 +8,7 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { comparisonPairs, getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 import { getArticlesForDestination, getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
+import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
 import type { DestinationProfile } from "@/lib/mvp/types";
@@ -209,6 +211,11 @@ export default async function ComparisonPage({ params }: PageProps) {
   const faq = buildFaq(a, b, nameA, nameB);
   const baseUrl = getSiteUrl();
 
+  // Hero "vs" + image dla schema — realne foto Pexels obu kierunków (cache + ISR).
+  // Obrazy są widoczne na stronie (zgodnie z wytycznymi Google dla pola image).
+  const [mediaA, mediaB] = await Promise.all([resolveDestinationMedia(a), resolveDestinationMedia(b)]);
+  const images = [mediaA.heroImage, mediaB.heroImage].filter((u): u is string => Boolean(u));
+
   // Powiązane artykuły dla obu kierunków (dedup, do 3) — wewnętrzne linki.
   const relatedArticles: EditorialArticle[] = [];
   const seenArticle = new Set<string>();
@@ -230,6 +237,7 @@ export default async function ComparisonPage({ params }: PageProps) {
         description: pair.intent,
         url: `${baseUrl}/porownanie/${pair.slug}`,
         mainEntityOfPage: `${baseUrl}/porownanie/${pair.slug}`,
+        image: images,
         inLanguage: "pl-PL",
         author: { "@type": "Organization", "@id": `${baseUrl}/#organization`, name: "HelpTravel" },
         publisher: { "@id": `${baseUrl}/#organization` },
@@ -301,19 +309,45 @@ export default async function ComparisonPage({ params }: PageProps) {
         {JSON.stringify(structuredData)}
       </Script>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
-        <Breadcrumbs
-          items={[
-            { label: "Start", href: "/" },
-            { label: "Kierunki", href: "/kierunki" },
-            { label: `${nameA} vs ${nameB}` },
-          ]}
-        />
-        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Porównanie kierunków</p>
-        <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
-          {nameA} czy {nameB}? Porównanie pod realną decyzję wyjazdową.
-        </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{pair.intent}.</p>
+      <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white/95 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
+        {/* Split "vs" hero — realne foto obu kierunków (widoczne + w schema image). */}
+        <div className="relative grid grid-cols-2">
+          {[
+            { media: mediaA, name: nameA, align: "left-4" },
+            { media: mediaB, name: nameB, align: "right-4" },
+          ].map(({ media, name, align }) => (
+            <div key={align} className="relative h-32 sm:h-44 md:h-52">
+              {media.heroImage ? (
+                <Image src={media.heroImage} alt={name} fill priority sizes="50vw" className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-emerald-900" />
+              )}
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.05)_0%,rgba(5,18,11,0.62)_100%)]" />
+              <span
+                className={`absolute bottom-3 ${align} font-display text-xl text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] sm:text-2xl`}
+              >
+                {name}
+              </span>
+            </div>
+          ))}
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-white/95 px-3.5 py-1 text-xs font-bold uppercase tracking-[0.1em] text-emerald-900 shadow-lg">
+            vs
+          </span>
+        </div>
+        <div className="p-6 sm:p-8">
+          <Breadcrumbs
+            items={[
+              { label: "Start", href: "/" },
+              { label: "Kierunki", href: "/kierunki" },
+              { label: `${nameA} vs ${nameB}` },
+            ]}
+          />
+          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Porównanie kierunków</p>
+          <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
+            {nameA} czy {nameB}? Porównanie pod realną decyzję wyjazdową.
+          </h1>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{pair.intent}.</p>
+        </div>
       </section>
 
       {/* TABELA RÓŻNIC */}
