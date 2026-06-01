@@ -205,6 +205,17 @@ Seria poprawek zgłoszonych przez właściciela przed startem promocji:
 
 ---
 
+### ZROBIONE — Sprint 1.8 (lokalizacja nazw miast + rollout treści guide) — PR #89
+
+Po pre-launch polish — dwie rzeczy podbijające SEO organiczne:
+- ✅ **Lokalizacja nazw miast na `/kierunki/[slug]`**: tytuł, H1, opis, OG/Twitter, breadcrumb, schema (Article/TouristDestination/Breadcrumb), keywords, alt → polskie nazwy przez `localizeCity` (Athens→Ateny, Rome→Rzym, Venice→Wenecja…). Trafia w realne zapytania PL. **Tylko mianownik** (tytuł/H1 są w mianowniku — poprawne); konteksty odmienione („hotele **w** {miasto}", „loty **do** {miasto}") zostawione po ang., żeby NIE generować błędów typu „w Ateny" zamiast „w Atenach" (deklinacja to osobny temat — commercial pages już ją mają przez cityLocative/Genitive).
+- ✅ **Wyspy używają kuratorowanej nazwy** (np. `/kierunki/heraklion-greece` → H1 „Kreta", nie „Heraklion"): `getStoryBySlug(slug)?.name ?? localizeCity(city)`.
+- ✅ **Rollout kuratorowanej treści: +16 kierunków** (Rzym, Mediolan, Wenecja, Florencja, Neapol, Madryt, Sewilla, Porto, Paryż, Londyn, Praga, Wiedeń, Stambuł, Kreta, Rodos, Teneryfa) → **21 kuratorowanych** łącznie. Napisane przez 2 agentów-copywriterów (real specifics, poprawna polszczyzna + diakrytyki, island-aware), zweryfikowane i zintegrowane przeze mnie. `DestinationStory` ma teraz opcjonalne media (zawsze nadpisywane przez `getDestinationStory`). Naprawione literówki cudzysłowów (typograficzne).
+- Build clean (3178/3178), testy 114/114, tsc + eslint clean. Zweryfikowane w Preview: tytuły PL (Ateny/Rzym/Wenecja/Kreta), treść kuratorowana (Koloseum/Murano/Knossos), brak generycznego fallbacku.
+- ⬜ NEXT: kolejne kuratorowane (Majorka, Cypr, Malta, Antalya, Hurghada, Split, Dubrownik, Marrakesz, Amsterdam, Dubaj) + lokalizacja nazw na month pages (2800) **z deklinacją** (locative/genitive — wymaga mapy odmian lub reużycia commercial-cities).
+
+---
+
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
 
 | # | Problem | Status | PR |
