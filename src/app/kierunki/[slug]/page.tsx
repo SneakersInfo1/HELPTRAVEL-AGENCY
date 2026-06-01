@@ -10,7 +10,8 @@ import { SaveDestinationButton } from "@/components/publisher/save-destination-b
 import { LocalizedLink } from "@/components/site/localized-link";
 import { buildAviasalesLink } from "@/lib/mvp/affiliate-config";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
-import { getDestinationStory } from "@/lib/mvp/destination-content";
+import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
+import { getDestinationStory, getStoryBySlug } from "@/lib/mvp/destination-content";
 import {
   buildLocalizedAvoidNotes,
   buildLocalizedComparisonSignals,
@@ -100,8 +101,6 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
     };
   }
 
-  const story = getDestinationStory(guide.destination);
-  const localizedGuide = getLocalizedDestinationGuide(guide, story, "pl");
   const budget = estimateBudget(guide.destination.costIndex, guide.destination.typicalFlightHoursFromPL);
   const tripLength = idealTripLength(guide.destination.typicalFlightHoursFromPL);
   // SEO title: commercial intent ("hotele od X zł") + freshness ("2026") +
@@ -111,32 +110,38 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
   const hotelFromPln = Math.round(budget.min / (4 * 2)); // budget is per 2 osoby / 4 dni
   const year = new Date().getFullYear();
   const flightHoursFmt = guide.destination.typicalFlightHoursFromPL.toFixed(1);
+  // Polish display name for title/meta/SEO. Prefer the curated editorial name
+  // (so island guides read "Kreta"/"Majorka", not the airport city
+  // "Heraklion"/"Palma"); otherwise fall back to the city exonym (Athens →
+  // Ateny). The canonical English city name stays as the LiteAPI search key.
+  const cityPl = getStoryBySlug(guide.destination.slug)?.name ?? localizeCity(guide.destination.city);
+  const countryPl = localizeCountry(guide.destination.country);
 
   return {
-    title: `${guide.destination.city} ${year}: hotele od ${hotelFromPln} zł, lot ${flightHoursFmt} h, przewodnik`,
-    description: `Sprawdź ${guide.destination.city} — najlepsze terminy, hotele od ${hotelFromPln} zł, lot z Polski ${flightHoursFmt} h. Orientacyjny budżet dla 2 osób na ${tripLength}: ${budget.min}-${budget.max} zł. Praktyczny przewodnik + przejście do oferty w PLN.`,
+    title: `${cityPl} ${year}: hotele od ${hotelFromPln} zł, lot ${flightHoursFmt} h, przewodnik`,
+    description: `${cityPl} ${year}: najlepsze terminy, hotele od ${hotelFromPln} zł, lot z Polski ${flightHoursFmt} h. Orientacyjny budżet dla 2 osób na ${tripLength}: ${budget.min}-${budget.max} zł. Praktyczny przewodnik + przejście do oferty w PLN.`,
     keywords: [
-      `${guide.destination.city}`,
-      `${guide.destination.city} ${year}`,
-      `hotele ${guide.destination.city}`,
-      `wakacje ${guide.destination.city}`,
-      `${guide.destination.city} przewodnik`,
-      `tanie loty ${guide.destination.city}`,
-      `${guide.destination.country}`,
+      `${cityPl}`,
+      `${cityPl} ${year}`,
+      `hotele ${cityPl}`,
+      `wakacje ${cityPl}`,
+      `${cityPl} przewodnik`,
+      `tanie loty ${cityPl}`,
+      `${countryPl}`,
     ].join(", "),
     alternates: {
       canonical: `/kierunki/${guide.destination.slug}`,
     },
     openGraph: {
-      title: `${guide.destination.city} ${year} — hotele od ${hotelFromPln} zł, lot ${flightHoursFmt} h`,
-      description: `${guide.destination.city}: najlepsze terminy, ceny w PLN, lot ${flightHoursFmt} h z Polski. Hotele, loty, przewodnik.`,
+      title: `${cityPl} ${year} — hotele od ${hotelFromPln} zł, lot ${flightHoursFmt} h`,
+      description: `${cityPl}: najlepsze terminy, ceny w PLN, lot ${flightHoursFmt} h z Polski. Hotele, loty, przewodnik.`,
       url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
       type: "article",
       locale: "pl_PL",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${guide.destination.city} ${year}: hotele od ${hotelFromPln} zł`,
+      title: `${cityPl} ${year}: hotele od ${hotelFromPln} zł`,
       description: `Lot ${flightHoursFmt} h, budżet od ${budget.min} zł. Sprawdź konkretne oferty w PLN.`,
     },
   };
@@ -150,6 +155,11 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
   const media = await resolveDestinationMedia(guide.destination);
   const story = getDestinationStory({ ...guide.destination, media });
   const localizedGuide = getLocalizedDestinationGuide(guide, story, "pl");
+  // Polish display name. Curated editorial name first (island guides →
+  // "Kreta"/"Majorka", not "Heraklion"/"Palma"), else city exonym
+  // (Athens → Ateny). English `guide.destination.city` stays only in the
+  // LiteAPI search hrefs below (the canonical search key).
+  const cityPl = getStoryBySlug(guide.destination.slug)?.name ?? localizeCity(guide.destination.city);
   const relatedArticles = getArticlesForDestination(slug).slice(0, 4);
   const relatedCategories = getCategoriesForDestination(slug).slice(0, 4);
   const similarDestinations = await Promise.all(
@@ -212,7 +222,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           {
             "@type": "ListItem",
             position: 3,
-            name: guide.destination.city,
+            name: cityPl,
             item: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
           },
         ],
@@ -230,7 +240,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       },
       {
         "@type": "Article",
-        headline: `${guide.destination.city} - przewodnik`,
+        headline: `${cityPl} - przewodnik`,
         description: localizedGuide.overview,
         inLanguage: "pl-PL",
         mainEntityOfPage: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
@@ -243,12 +253,12 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           name: "HelpTravel",
         },
         publisher: { "@id": `${getSiteUrl()}/#organization` },
-        about: [guide.destination.city, guide.destination.country, "city break", "planowanie podróży"],
+        about: [cityPl, localizeCountry(guide.destination.country), "city break", "planowanie podróży"],
       },
       {
         "@type": "TouristDestination",
         "@id": `${getSiteUrl()}/kierunki/${guide.destination.slug}#destination`,
-        name: guide.destination.city,
+        name: cityPl,
         description: localizedGuide.overview,
         touristType: Array.isArray(localizedGuide.whoFor) ? localizedGuide.whoFor : [localizedGuide.whoFor],
         url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
@@ -256,7 +266,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         address: {
           "@type": "PostalAddress",
           addressCountry: guide.destination.country,
-          addressLocality: guide.destination.city,
+          addressLocality: cityPl,
         },
         includesAttraction: localizedGuide.bestForTags.slice(0, 6).map((tag) => ({
           "@type": "TouristAttraction",
@@ -273,7 +283,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
       <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
         <div className="relative flex min-h-[24rem] flex-col justify-end sm:min-h-[26rem]">
-          <Image src={media.heroImage} alt={`${guide.destination.city}, ${guide.destination.country}`} fill priority className="object-cover" sizes="100vw" />
+          <Image src={media.heroImage} alt={`${cityPl}, ${localizeCountry(guide.destination.country)}`} fill priority className="object-cover" sizes="100vw" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.12)_0%,rgba(5,18,11,0.72)_100%)]" />
           <div className="relative z-10 p-6 text-white sm:p-8">
             <Breadcrumbs
@@ -281,11 +291,11 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               items={[
                 { label: "Start", href: "/" },
                 { label: "Kierunki", href: "/kierunki" },
-                { label: guide.destination.city },
+                { label: cityPl },
               ]}
             />
             <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Kierunek z Polski na prostszy plan wyjazdu</p>
-            <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">{guide.destination.city}</h1>
+            <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">{cityPl}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/86">{localizedGuide.overview}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <span className="rounded-full bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white">
@@ -333,7 +343,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         eyebrow="Na start"
         title="Najważniejsze rzeczy przed decyzją o wyjeździe"
         items={[
-          `${guide.destination.city} z Polski`,
+          `${cityPl} z Polski`,
           `${guide.destination.typicalFlightHoursFromPL.toFixed(1)} h lotu`,
           localizedGuide.tripLength,
           "noclegi, loty i dalsze kroki",
@@ -553,7 +563,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="max-w-3xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kiedy ten kierunek wygrywa</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Trzy sytuacje, w których {guide.destination.city} najczęściej okazuje się dobrym wyborem.</h2>
+            <h2 className="mt-2 font-display text-4xl text-emerald-950">Trzy sytuacje, w których {cityPl} najczęściej okazuje się dobrym wyborem.</h2>
             <p className="mt-3 text-sm leading-7 text-emerald-900/78">
               Ten blok ma pomoc ocenić, czy brief pasuje do kierunku zanim klikniesz w hotel albo lot.
             </p>
@@ -643,7 +653,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Porównanie z alternatywami</p>
-              <h2 className="mt-2 font-display text-4xl text-emerald-950">Jak {guide.destination.city} wypada na tle podobnych opcji</h2>
+              <h2 className="mt-2 font-display text-4xl text-emerald-950">Jak {cityPl} wypada na tle podobnych opcji</h2>
             </div>
             <LocalizedLink
               href="/kierunki"
