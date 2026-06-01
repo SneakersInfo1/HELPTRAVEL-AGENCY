@@ -100,12 +100,12 @@ const destinationStories: Record<string, DestinationStory> = {
     miniPlan: [
       {
         day: 1,
-        title: "Wejscie w rytm miasta",
+        title: "Wejście w rytm miasta",
         description: "Spacer po centrum, wieczór w El Born i pierwszy kontakt z energią Barcelony.",
       },
       {
         day: 2,
-        title: "Architektura i główną trasą",
+        title: "Architektura i główna trasa",
         description: "Gaudi, Passeig de Gracia i najmocniejsze miejsca, które budują efekt wow.",
       },
       {
@@ -119,15 +119,15 @@ const destinationStories: Record<string, DestinationStory> = {
   "lisbon-portugal": buildStory({
     slug: "lisbon-portugal",
     name: "Lizbona",
-    tagline: "Wzgorza, widoki i miejski rytm z charakterem.",
+    tagline: "Wzgórza, widoki i miejski rytm z charakterem.",
     summary:
       "Lizbona wypada mocno, gdy szukasz klimatu, spacerów, punktów widokowych i spokojniejszego rytmu niż w najbardziej intensywnych stolicach. To kierunek, który zostaje w pamięci i dobrze działa na 4-5 dni.",
-    vibe: "widokówo, klimatycznie i z oddechem",
+    vibe: "widokowo, klimatycznie i z oddechem",
     heroImage: lisbonMedia.heroImage,
     gallery: lisbonMedia.gallery,
     heroVideoPoster: lisbonMedia.poster,
     highlights: [
-      "tramwaj 28 i pocztowkowe wzgorza",
+      "tramwaj 28 i pocztówkowe wzgórza",
       "Alfama z lokalnym klimatem",
       "Belém i spacer nad Tagiem",
       "mocny food + city break mix",
@@ -138,7 +138,7 @@ const destinationStories: Record<string, DestinationStory> = {
     miniPlan: [
       {
         day: 1,
-        title: "Wzgorza i punkty widokowe",
+        title: "Wzgórza i punkty widokowe",
         description: "Pierwszy spacer po mieście, miradouros i wejście w rytm Lizbony bez pośpiechu.",
       },
       {
