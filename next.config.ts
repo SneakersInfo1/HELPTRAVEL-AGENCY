@@ -62,6 +62,15 @@ const nextConfig: NextConfig = {
         destination: "/:path*",
         permanent: true,
       },
+      // The bare /hotele landing duplicated the homepage hero; we funnel
+      // everyone to the (nicer) homepage instead. EXACT match only — the
+      // sub-routes /hotele/szukaj, /hotele/[hotelId], /hotele/rezerwacja and
+      // /hotele/w/[miasto] are NOT affected (they have their own path segment).
+      {
+        source: "/hotele",
+        destination: "/",
+        permanent: true,
+      },
     ];
   },
   images: {

@@ -29,16 +29,16 @@ export default function GlobalError({
       >
         <main style={{ maxWidth: 640, textAlign: "center" }}>
           <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "#dc2626" }}>
-            Krytyczny blad
+            Krytyczny błąd
           </p>
           <h1 style={{ fontSize: 48, lineHeight: 1.05, color: "#022c22", margin: "16px 0", fontWeight: 700 }}>
-            Cos poszlo bardzo nie tak.
+            Coś poszło bardzo nie tak.
           </h1>
           <p style={{ fontSize: 16, lineHeight: 1.6, color: "#064e3b" }}>
-            Strona nie moze sie zaladowac. Odswiez przegladarke. Jesli to nie pomoze, sprobuj za chwile.
+            Strona nie może się załadować. Odśwież przeglądarkę. Jeśli to nie pomoże, spróbuj za chwilę.
           </p>
           {error.digest ? (
-            <p style={{ fontSize: 12, color: "#6b7280", marginTop: 16 }}>ID bledu: {error.digest}</p>
+            <p style={{ fontSize: 12, color: "#6b7280", marginTop: 16 }}>ID błędu: {error.digest}</p>
           ) : null}
           <button
             type="button"

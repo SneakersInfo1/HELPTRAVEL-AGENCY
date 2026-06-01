@@ -207,8 +207,8 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           <a href={aviasalesHref} target="_blank" rel="noopener nofollow sponsored noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
             Sprawdź loty w Aviasales
           </a>
-          <Link href="/hotele" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-            Wróć do hoteli
+          <Link href="/" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
+            Wróć na stronę główną
           </Link>
         </div>
       </section>
