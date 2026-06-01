@@ -14,7 +14,7 @@ interface Toast {
 // Agregatowe komunikaty (bez imion / fake'owych "Anna z Krakowa") — brzmia
 // jak statystyki analityczne, nie wymysłone historyjki. Dzieki temu mniej
 // ryzyka prawnego (UOKIK) i bardziej wiarygodne dla uzytkownika.
-const DESTINATIONS = ["Malaga", "Barcelona", "Rzym", "Lizbona", "Ateny", "Walencja", "Funchal", "Istambul"] as const;
+const DESTINATIONS = ["Malaga", "Barcelona", "Rzym", "Lizbona", "Ateny", "Walencja", "Funchal", "Stambuł"] as const;
 
 function randomFrom<T>(arr: readonly T[], seed: number): T {
   return arr[Math.abs(seed) % arr.length];
@@ -26,13 +26,13 @@ function buildToasts(seed: number): Toast[] {
     {
       kind: "deal",
       icon: "🔥",
-      title: `${randomFrom(DESTINATIONS, s + 3)} — ceny spadly o ${18 + (s % 24)}%`,
-      subtitle: "sprawdź zanim wroca w gore",
+      title: `${randomFrom(DESTINATIONS, s + 3)} — ceny spadły o ${18 + (s % 24)}%`,
+      subtitle: "sprawdź, zanim wrócą w górę",
     },
     {
       kind: "trust",
       icon: "⭐",
-      title: "4.8/5 · 2341 planow w tym miesiącu",
+      title: "4.8/5 · 2341 planów w tym miesiącu",
       subtitle: "średnia z ocen polskich podróżników",
     },
     {
@@ -67,16 +67,24 @@ export function ConversionToasts() {
     let idx = 0;
     let timeout: number;
 
+    // Cadence (deliberately unobtrusive): first toast after 8s, visible 5s,
+    // then a long ~26s gap → roughly one toast every ~31s instead of the old
+    // ~14s. Frequent toasts read as spammy; a calm pace keeps the social proof
+    // without nagging the visitor.
+    const VISIBLE_MS = 5000;
+    const GAP_MS = 26000;
+    const INITIAL_DELAY_MS = 8000;
+
     const showNext = () => {
       setVisible(toasts[idx % toasts.length]);
       idx += 1;
       timeout = window.setTimeout(() => {
         setVisible(null);
-        timeout = window.setTimeout(showNext, 8000);
-      }, 6500);
+        timeout = window.setTimeout(showNext, GAP_MS);
+      }, VISIBLE_MS);
     };
 
-    timeout = window.setTimeout(showNext, 4000);
+    timeout = window.setTimeout(showNext, INITIAL_DELAY_MS);
     return () => window.clearTimeout(timeout);
   }, [closed]);
 

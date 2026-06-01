@@ -32,10 +32,10 @@ export default function NotFound() {
           Zobacz kierunki
         </Link>
         <Link
-          href="/hotele"
+          href="/hotele/szukaj"
           className="rounded-full border border-emerald-900/15 bg-white px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
         >
-          Otwórz hotele
+          Szukaj hoteli
         </Link>
       </div>
     </main>

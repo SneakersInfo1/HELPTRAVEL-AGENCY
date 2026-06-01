@@ -242,7 +242,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
         "@type": "BreadcrumbList",
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "Start", item: `${baseUrl}/` },
-          { "@type": "ListItem", position: 2, name: "Hotele", item: `${baseUrl}/hotele` },
+          { "@type": "ListItem", position: 2, name: "Kierunki", item: `${baseUrl}/kierunki` },
           {
             "@type": "ListItem",
             position: 3,
@@ -381,7 +381,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               locale="pl"
               items={[
                 { label: "Start", href: "/" },
-                { label: "Hotele", href: "/hotele" },
+                { label: "Kierunki", href: "/kierunki" },
                 { label: `Hotele ${inLoc}` },
               ]}
             />

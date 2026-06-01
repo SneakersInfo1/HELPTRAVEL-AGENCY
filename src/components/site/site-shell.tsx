@@ -45,7 +45,7 @@ const copy = {
       {
         title: "Start",
         links: [
-          { href: "/hotele", label: "Hotele" },
+          { href: "/", label: "Hotele" },
           { href: "/kierunki", label: "Katalog kierunków" },
           { href: "/inspiracje", label: "Pomysły na wyjazd" },
           { href: "/city-breaki", label: "City breaki" },
@@ -65,7 +65,7 @@ const copy = {
         links: [
           { href: "/cennik", label: "Cennik" },
           { href: "/linki-partnerskie", label: "Linki partnerskie" },
-          { href: "/polityka-prywatnosci", label: "Polityka prywatnosci" },
+          { href: "/polityka-prywatnosci", label: "Polityka prywatności" },
           { href: "/regulamin", label: "Regulamin" },
           { href: "/dla-partnerow", label: "Dla partnerów" },
           { href: "/standard-redakcyjny", label: "Standard redakcyjny" },
@@ -76,7 +76,7 @@ const copy = {
     resourcesTitle: "Oficjalne źródła przed wyjazdem",
     partnerTitle: "Partnerzy rezerwacyjni",
     footerMetaLeft: "Planner, kierunki i pomysły na wyjazd dla osób z Polski.",
-    footerMetaRight: "Transparentny serwis afiliacyjny. Nie jestesmy biurem podróży.",
+    footerMetaRight: "Transparentny serwis afiliacyjny. Nie jesteśmy biurem podróży.",
   },
   en: {
     nav: [
@@ -104,7 +104,7 @@ const copy = {
       {
         title: "Start",
         links: [
-          { href: "/hotele", label: "Hotele" },
+          { href: "/", label: "Hotele" },
           { href: "/kierunki", label: "Destination catalog" },
           { href: "/inspiracje", label: "Trip ideas" },
           { href: "/city-breaki", label: "City breaks" },

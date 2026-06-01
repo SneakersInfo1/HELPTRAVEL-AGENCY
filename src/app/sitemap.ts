@@ -24,7 +24,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseLastModified = new Date();
   const staticRoutes = [
     "",
-    "/hotele",
+    // "/hotele" intentionally omitted — it 308-redirects to "/" (the homepage
+    // is the canonical hotel landing). Listing a redirecting URL would waste
+    // crawl budget and split equity.
     "/kierunki",
     "/inspiracje",
     "/przewodniki",
