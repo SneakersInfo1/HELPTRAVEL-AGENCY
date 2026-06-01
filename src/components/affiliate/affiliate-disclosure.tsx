@@ -6,17 +6,17 @@ export function AffiliateDisclosure({ inline = false }: { inline?: boolean }) {
       <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-700/70">
         Linki partnerskie —{" "}
         <Link href="/linki-partnerskie" className="underline hover:text-emerald-800">
-          dowiedz się wiecej
+          dowiedz się więcej
         </Link>
       </p>
     );
   }
   return (
     <div className="rounded-2xl border border-emerald-900/10 bg-emerald-50/72 px-4 py-3 text-xs leading-6 text-emerald-900/82">
-      <strong className="font-semibold">Linki partnerskie:</strong> niektore linki na tej stronie to linki afiliacyjne. Klikajac
-      w nie i dokonujac zakupu, mozesz wesprzec HelpTravel — nie placisz nic wiecej, a my dostajemy niewielka prowizje.{" "}
+      <strong className="font-semibold">Linki partnerskie:</strong> niektóre linki na tej stronie to linki afiliacyjne. Klikając
+      w nie i dokonując zakupu, możesz wesprzeć HelpTravel — nie płacisz nic więcej, a my dostajemy niewielką prowizję.{" "}
       <Link href="/linki-partnerskie" className="underline">
-        Pelna informacja
+        Pełna informacja
       </Link>
       .
     </div>

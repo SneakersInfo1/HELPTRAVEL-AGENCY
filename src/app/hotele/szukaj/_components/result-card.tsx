@@ -15,10 +15,10 @@
 // layout motion.
 
 import type { ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
+import { HotelCardImage } from "./hotel-card-image";
 
 interface OfferCard {
   hotelId: string;
@@ -125,22 +125,13 @@ export function ResultCard({
     >
       {/* Image */}
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-neutral-100 sm:aspect-[1/1] sm:w-64">
-        {offer.thumbnailUrl ? (
-          <Image
-            src={offer.thumbnailUrl}
-            alt={offer.name}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            priority={imagePriority}
-            fetchPriority={imagePriority ? "high" : undefined}
-            loading={imagePriority ? undefined : "lazy"}
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-neutral-300">
-            <span className="text-sm">Brak zdjęcia</span>
-          </div>
-        )}
+        <HotelCardImage
+          thumbnailUrl={offer.thumbnailUrl}
+          name={offer.name}
+          city={offer.city}
+          country={offer.country}
+          priority={imagePriority}
+        />
         {/* Subtle gradient at top for badge readability */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/30 to-transparent" />
         <div className="absolute left-2 top-2 flex flex-col gap-1">

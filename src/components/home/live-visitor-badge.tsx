@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 
 // Deterministyczna liczba "online" — oparta na czasie (zmienia sie co ~8s),
-// w zakresie 450-780. Nie zmysla z powietrza — uzywa pory dnia jako signal.
+// trzymana w wiarygodnym zakresie ~100-200 (wcześniej ~450-780, co przy
+// realnym ruchu wyglądało nieprawdziwie). Używa pory dnia jako sygnału, ale
+// wynik jest twardo klamrowany do [100, 200].
 function computeOnline(now: number): number {
   const hour = new Date(now).getHours();
-  // Peak: 18-22 (wieczorem ludzie planuja), dip: 3-6
+  // Peak: 18-22 (wieczorem ludzie planują), dip: 3-6
   const peakFactor =
-    hour >= 18 && hour <= 22 ? 1.25 : hour >= 8 && hour <= 17 ? 1.0 : hour >= 3 && hour <= 6 ? 0.55 : 0.8;
-  const base = 480 * peakFactor;
-  const drift = Math.sin(now / 8000) * 60 + Math.cos(now / 13000) * 40;
-  return Math.round(base + drift);
+    hour >= 18 && hour <= 22 ? 1.25 : hour >= 8 && hour <= 17 ? 1.0 : hour >= 3 && hour <= 6 ? 0.7 : 0.85;
+  const base = 150 * peakFactor;
+  const drift = Math.sin(now / 8000) * 22 + Math.cos(now / 13000) * 14;
+  return Math.max(100, Math.min(200, Math.round(base + drift)));
 }
 
 export function LiveVisitorBadge() {

@@ -7,7 +7,6 @@
 // embed with nearby POIs, reviews block.
 
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -37,6 +36,7 @@ function descriptionIsLikelyNotPolish(html: string | undefined | null): boolean 
 import { TrackView } from "@/components/analytics/track-view";
 
 import { BookingWidget } from "./_components/booking-widget";
+import { HotelGallery } from "./_components/hotel-gallery";
 import { RoomsSection } from "./_components/rooms-section";
 import { SaveHotelButton } from "./_components/save-hotel-button";
 
@@ -182,7 +182,7 @@ export default async function HotelDetailPage({
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Strona główna", item: siteUrl },
-      { "@type": "ListItem", position: 2, name: "Hotele", item: `${siteUrl}/hotele` },
+      { "@type": "ListItem", position: 2, name: "Kierunki", item: `${siteUrl}/kierunki` },
       ...(detail.city
         ? [
             {
@@ -244,12 +244,16 @@ export default async function HotelDetailPage({
     };
   }
 
-  // Photo gallery (top 6)
-  const photos = (detail.hotelImages ?? [])
-    .map((p) => p.urlHd ?? p.url)
-    .filter((u): u is string => Boolean(u))
-    .slice(0, 6);
-  if (photos.length === 0 && detail.main_photo) photos.push(detail.main_photo);
+  // Photo gallery — surface ALL hotel photos (deduped, capped at 15) for the
+  // auto-rotating carousel, with main_photo first as the LCP image.
+  const photos = Array.from(
+    new Set(
+      [
+        detail.main_photo,
+        ...(detail.hotelImages ?? []).map((p) => p.urlHd ?? p.url),
+      ].filter((u): u is string => Boolean(u)),
+    ),
+  ).slice(0, 15);
 
   return (
     <main className="min-h-screen bg-neutral-50 pb-24 lg:pb-0">
@@ -275,7 +279,7 @@ export default async function HotelDetailPage({
         <ol className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2 text-xs text-neutral-500">
           <li><Link href="/" className="hover:text-emerald-700">Strona główna</Link></li>
           <li>›</li>
-          <li><Link href="/hotele" className="hover:text-emerald-700">Hotele</Link></li>
+          <li><Link href="/kierunki" className="hover:text-emerald-700">Kierunki</Link></li>
           {detail.city && (
             <>
               <li>›</li>
@@ -296,39 +300,9 @@ export default async function HotelDetailPage({
         </ol>
       </nav>
 
-      {/* Photo gallery */}
+      {/* Photo gallery — auto-rotating carousel + thumbnail strip */}
       <section className="mx-auto max-w-7xl px-4 pt-4">
-        {photos.length > 0 ? (
-          <div className="grid h-[260px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl sm:h-[420px]">
-            <div className="relative col-span-4 row-span-2 sm:col-span-2">
-              <Image
-                src={photos[0]}
-                alt={detail.name}
-                fill
-                sizes="(max-width: 640px) 100vw, 50vw"
-                className="object-cover"
-                priority
-                fetchPriority="high"
-              />
-            </div>
-            {photos.slice(1, 5).map((url, i) => (
-              <div key={i} className="relative hidden sm:block">
-                <Image
-                  src={url}
-                  alt={`${detail.name} – zdjęcie ${i + 2}`}
-                  fill
-                  sizes="(max-width: 1024px) 50vw, 25vw"
-                  loading="lazy"
-                  className="object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex h-64 items-center justify-center rounded-2xl bg-neutral-200 text-neutral-400">
-            Brak zdjęć
-          </div>
-        )}
+        <HotelGallery photos={photos} alt={detail.name} />
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-6">
@@ -449,8 +423,8 @@ export default async function HotelDetailPage({
                     {ratingLine && <p>{ratingLine}</p>}
                     <p className="text-xs text-neutral-500">
                       Pełny opis hotelu po polsku nie jest dostępny u dostawcy.
-                      Szczegóły znajdziesz w sekcjach „Udogodnienia", „Lokalizacja"
-                      i „Polityka hotelu" poniżej.
+                      Szczegóły znajdziesz w sekcjach „Udogodnienia”, „Lokalizacja”
+                      i „Polityka hotelu” poniżej.
                     </p>
                   </div>
                 );

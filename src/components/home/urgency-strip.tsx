@@ -29,11 +29,11 @@ export function UrgencyStrip() {
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] sm:text-xs">
         <span className="flex items-center gap-1.5">
           <span aria-hidden className="animate-pulse">⚡</span>
-          Ceny aktualizowane co godzine
+          Ceny aktualizowane co godzinę
         </span>
         <span className="hidden h-3 w-px bg-white/40 sm:block" />
         <span>
-          Nastepna aktualizacja za{" "}
+          Następna aktualizacja za{" "}
           <span className="rounded-md bg-white/20 px-1.5 py-0.5 tabular-nums">
             {pad(mins)}:{pad(secs)}
           </span>

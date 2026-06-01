@@ -96,7 +96,7 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
           Najczęściej wybierane w tym tygodniu
             </p>
-            <span className="text-[11px] text-white/60">aktualizacja: co godzine</span>
+            <span className="text-[11px] text-white/60">aktualizacja: co godzinę</span>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {featured.map((tile) => (
