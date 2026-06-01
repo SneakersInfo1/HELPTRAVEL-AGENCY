@@ -189,6 +189,22 @@ Cel: `/kierunki` (hub katalogu, NIE month/guide pages) był płaski — biały h
 
 ---
 
+### ZROBIONE — Sprint 1.7 (pre-launch polish, przed promocją FB) — PR #83-#87
+
+Seria poprawek zgłoszonych przez właściciela przed startem promocji:
+- ✅ **Booking e-mail + ekran potwierdzenia** (#83): mail wysyłany od razu (Resend), ekran pokazuje pełne szczegóły + „wysłaliśmy na <email>". Wymaga `RESEND_API_KEY` w Vercel (ustawione, działa).
+- ✅ **Instant nav hotelu** (#83): `loading.tsx` dla `/hotele/[hotelId]` — koniec „podwójnego kliknięcia".
+- ✅ **Redesign huba `/kierunki`** (#84): MediaHero, 12 kart commercial → money pages, FAQ schema, mocne SEO.
+- ✅ **Czas rezerwacji ~37s → bookHotel-bound** (#85): usunięty zbędny pre-flight reconcile (do ~20s) z każdej rezerwacji + logi `book_ms`/`email_ms`.
+- ✅ **Galeria hotelu = karuzela** (#86): auto-przewijanie ~2,2s, do 15 zdjęć, miniatury (LiteAPI nie ma zdjęć per-pokój).
+- ✅ **Fallback zdjęć w wynikach** (#86): `onError` → brandowy placeholder, koniec „złamanych" obrazków.
+- ✅ **Mniej alertów** (#86): ~co 14s → ~co 31s. **Live-visitor 100-200** (było ~600).
+- ✅ **`/hotele` wycofane** (#86): 308 → `/`, usunięte z sitemap, wszystkie linki przepięte (breadcrumby → `/kierunki`).
+- ✅ **Diakrytyki** (#86): toasty, error/global-error, stopka, affiliate-disclosure, hero.
+- ✅ **Treść guide pages — start (#87)**: tylko 4 kierunki miały kuratorowany content (reszta = generyczny fallback). Dodany bogaty, ekspercki wpis dla **Aten** (Akropol, Koukaki, Plaka, Pireus…) + naprawione literówki w istniejących (Barcelona/Malaga/Lizbona/Walencja). **NEXT (rekomendacja):** rozszerzyć kuratorowane `DestinationStory` na top ~25 kierunków (NIE masowo generować 235 — ryzyko „helpful content"/spam u Google). Osobno: zlokalizować nazwy miast (Athens→Ateny, Rome→Rzym) w tytułach/H1.
+
+---
+
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
 
 | # | Problem | Status | PR |

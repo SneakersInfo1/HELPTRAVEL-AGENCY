@@ -33,6 +33,7 @@ const malagaMedia = getDestinationMediaBySlug("malaga-spain", { city: "Malaga", 
 const barcelonaMedia = getDestinationMediaBySlug("barcelona-spain", { city: "Barcelona", country: "Spain" });
 const lisbonMedia = getDestinationMediaBySlug("lisbon-portugal", { city: "Lizbona", country: "Portugal" });
 const valenciaMedia = getDestinationMediaBySlug("valencia-spain", { city: "Walencja", country: "Spain" });
+const athensMedia = getDestinationMediaBySlug("athens-greece", { city: "Ateny", country: "Greece" });
 
 function buildStory(params: Omit<DestinationStory, "slug"> & { slug: string }): DestinationStory {
   return params;
@@ -45,14 +46,14 @@ const destinationStories: Record<string, DestinationStory> = {
     tagline: "Słoneczny city break z plażą, jedzeniem i łatwym rytmem wyjazdu.",
     summary:
       "Malaga łączy nadmorski odpoczynek z wygodnym centrum, kultura i bardzo prostym planowaniem. To jeden z najmocniejszych kierunków, gdy chcesz mieć plażę, zwiedzanie i dobry standard wyjazdu bez zbędnej logistyki.",
-    vibe: "słonecznie, lekko i bez pospiechu",
+    vibe: "słonecznie, lekko i bez pośpiechu",
     heroImage: malagaMedia.heroImage,
     gallery: malagaMedia.gallery,
     heroVideoPoster: malagaMedia.poster,
     highlights: [
       "La Malagueta i spacery nad morzem",
-      "Alcazaba oraz punkt widokówy Gibralfaro",
-      "centrum z tapas i więczórnym rytmem miasta",
+      "Alcazaba oraz punkt widokowy Gibralfaro",
+      "centrum z tapas i wieczornym rytmem miasta",
       "dobra baza wypadowa na 3-5 dni",
     ],
     attractions: ["Alcazaba", "Castillo de Gibralfaro", "Muelle Uno", "Museo Picasso", "Mercado Atarazanas", "La Malagueta"],
@@ -67,7 +68,7 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 2,
         title: "Historia i najlepsze widoki",
-        description: "Alcazaba, Gibralfaro i stare miasto z przerwami na tapas i kawiarie.",
+        description: "Alcazaba, Gibralfaro i stare miasto z przerwami na tapas i kawiarnie.",
       },
       {
         day: 3,
@@ -82,7 +83,7 @@ const destinationStories: Record<string, DestinationStory> = {
     name: "Barcelona",
     tagline: "Miasto, architektura i morze w jednym mocnym city breaku.",
     summary:
-      "Barcelona daje bardzo silny miks architektury, energii dużego miasta i nadmorskiego klimatu. To dobry wybór, gdy chcesz mieć mocne first impression, więcej tempa i dużo opcji na więczór.",
+      "Barcelona daje bardzo silny miks architektury, energii dużego miasta i nadmorskiego klimatu. To dobry wybór, gdy chcesz mieć mocne first impression, więcej tempa i dużo opcji na wieczór.",
     vibe: "dynamicznie, stylowo i bardzo miejsko",
     heroImage: barcelonaMedia.heroImage,
     gallery: barcelonaMedia.gallery,
@@ -90,37 +91,37 @@ const destinationStories: Record<string, DestinationStory> = {
     highlights: [
       "ikony Gaudiego i rozpoznawalna architektura",
       "Barceloneta oraz nadmorski reset po mieście",
-      "El Born i gotyckie uliczki na więczór",
+      "El Born i gotyckie uliczki na wieczór",
       "silny klimat dla par i grup",
     ],
     attractions: ["Sagrada Familia", "Park Guell", "Barceloneta", "El Born", "Bunkers del Carmel", "La Boqueria"],
-    foodSpots: ["tapas bary w El Born", "miejsca z vermutem", "lokalne sniadania i seafood przy morzu"],
+    foodSpots: ["tapas bary w El Born", "miejsca z vermutem", "lokalne śniadania i seafood przy morzu"],
     districts: ["Eixample", "Barceloneta", "El Born", "Gracia"],
     miniPlan: [
       {
         day: 1,
         title: "Wejscie w rytm miasta",
-        description: "Spacer po centrum, więczór w El Born i pierwszy kontakt z energia Barcelony.",
+        description: "Spacer po centrum, wieczór w El Born i pierwszy kontakt z energią Barcelony.",
       },
       {
         day: 2,
         title: "Architektura i główną trasą",
-        description: "Gaudi, Passeig de Gracia i najmocniejsze miejsca, które buduja efekt wow.",
+        description: "Gaudi, Passeig de Gracia i najmocniejsze miejsca, które budują efekt wow.",
       },
       {
         day: 3,
         title: "Morze i miejski reset",
-        description: "Barceloneta, promenada i punkt widokówy domykajacy plan na 3-4 dni.",
+        description: "Barceloneta, promenada i punkt widokowy domykający plan na 3-4 dni.",
       },
     ],
-    bestFor: ["miasto + morze", "architektura", "więczórne wyjścia", "intensywny city break"],
+    bestFor: ["miasto + morze", "architektura", "wieczorne wyjścia", "intensywny city break"],
   }),
   "lisbon-portugal": buildStory({
     slug: "lisbon-portugal",
     name: "Lizbona",
     tagline: "Wzgorza, widoki i miejski rytm z charakterem.",
     summary:
-      "Lizbona wypada mocno, gdy szukasz klimatu, spacerów, punktów widokówych i spokojniejszego rytmu niż w najbardziej intensywnych stolicach. To kierunek, który zostaje w pamięci i dobrze działa na 4-5 dni.",
+      "Lizbona wypada mocno, gdy szukasz klimatu, spacerów, punktów widokowych i spokojniejszego rytmu niż w najbardziej intensywnych stolicach. To kierunek, który zostaje w pamięci i dobrze działa na 4-5 dni.",
     vibe: "widokówo, klimatycznie i z oddechem",
     heroImage: lisbonMedia.heroImage,
     gallery: lisbonMedia.gallery,
@@ -138,7 +139,7 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 1,
         title: "Wzgorza i punkty widokowe",
-        description: "Pierwszy spacer po mieście, miradouros i wejście w rytm Lizbony bez pospiechu.",
+        description: "Pierwszy spacer po mieście, miradouros i wejście w rytm Lizbony bez pośpiechu.",
       },
       {
         day: 2,
@@ -148,7 +149,7 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 3,
         title: "Belém i dobry finał",
-        description: "Rzeka, lokalne smaki i więczór, który zamyka wyjazd bardziej klimatem niż odhaczaniem punktów.",
+        description: "Rzeka, lokalne smaki i wieczór, który zamyka wyjazd bardziej klimatem niż odhaczaniem punktów.",
       },
     ],
     bestFor: ["widoki", "spacery", "kierunek z charakterem", "dobre jedzenie"],
@@ -156,7 +157,7 @@ const destinationStories: Record<string, DestinationStory> = {
   "valencia-spain": buildStory({
     slug: "valencia-spain",
     name: "Walencja",
-    tagline: "Najbardziej zbalansowany miks plaży, miasta i oplacalnosci.",
+    tagline: "Najbardziej zbalansowany miks plaży, miasta i opłacalności.",
     summary:
       "Walencja jest mocna, gdy chcesz mieć plażę, dobre jedzenie, miasto i sensowny koszt wyjazdu bez takiego tłoku jak w Barcelonie. To jeden z najlepszych kierunków dla osób szukających bardzo dobrego balansu.",
     vibe: "jasno, wygodnie i bez przesadnego tłoku",
@@ -176,12 +177,12 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 1,
         title: "Centrum i pierwszy rytm miasta",
-        description: "Stare miasto, kawa, spokojny więczór i wejście w bardziej lokalną Walencję.",
+        description: "Stare miasto, kawa, spokojny wieczór i wejście w bardziej lokalną Walencję.",
       },
       {
         day: 2,
         title: "Architektura i park",
-        description: "Mocna warstwa nowoczesna, Turia i najbardziej charakterystyczne przestrzeńie miasta.",
+        description: "Mocna warstwa nowoczesna, Turia i najbardziej charakterystyczne przestrzenie miasta.",
       },
       {
         day: 3,
@@ -190,6 +191,65 @@ const destinationStories: Record<string, DestinationStory> = {
       },
     ],
     bestFor: ["plażą + miasto", "optymalny city break", "spokojny rytm", "bardzo dobra relacja ceny do jakości"],
+  }),
+  "athens-greece": buildStory({
+    slug: "athens-greece",
+    name: "Ateny",
+    tagline: "Kolebka Europy, w której antyk sąsiaduje z żywym, nocnym miastem — i z bramą na greckie wyspy.",
+    summary:
+      "Ateny to rzadki przypadek miasta, w którym z dachowego baru patrzysz na oświetlony Partenon, a kwadrans później jesz świeże souvlaki w gwarnej Monastiraki. To kierunek na 3-4 dni z konkretem: Akropol i światowej klasy Muzeum Akropolu rano, leniwe popołudnia w cieniu uliczek Plaki, a jeśli masz dzień więcej — port w Pireusie i prom na Eginę lub Saronik. Tanio, słonecznie niemal przez cały rok i bez znużenia.",
+    vibe: "antyk, słońce i miejska energia w jednym",
+    heroImage: athensMedia.heroImage,
+    gallery: athensMedia.gallery,
+    heroVideoPoster: athensMedia.poster,
+    highlights: [
+      "Akropol i Partenon — najważniejszy zabytek antycznej Europy",
+      "Muzeum Akropolu ze szklaną podłogą nad wykopaliskami",
+      "Plaka i Monastiraki — uliczki, tawerny i nocne życie u stóp wzgórza",
+      "dachowe bary z widokiem na podświetlony Akropol o zachodzie słońca",
+      "Pireus jako brama na promy do wysp Zatoki Sarońskiej",
+    ],
+    attractions: [
+      "Akropol i Partenon",
+      "Muzeum Akropolu",
+      "Agora Antyczna i Świątynia Hefajstosa",
+      "wzgórze Likawitos (najlepsza panorama miasta)",
+      "Plaka i Anafiotika",
+      "targ Varvakios i bazar Monastiraki",
+    ],
+    foodSpots: [
+      "souvlaki i gyros w Monastiraki",
+      "rodzinne tawerny w Place i Psyri",
+      "dachowe bary z mezze i widokiem na Akropol",
+      "kawa frappé i loukoumades na deser",
+    ],
+    districts: [
+      "Koukaki — modne, spokojne i tuż pod Akropolem; najlepszy wybór na pierwszy nocleg",
+      "Plaka / Monastiraki — w samym sercu starówki, blisko wszystkiego, gwarnie do późna",
+      "Syntagma — centrum komunikacyjne z metrem z/na lotnisko",
+      "Kolonaki — elegancka dzielnica z kawiarniami u stóp Likawitu",
+    ],
+    miniPlan: [
+      {
+        day: 1,
+        title: "Akropol i starówka",
+        description:
+          "Wejdź na Akropol tuż po otwarciu (mniejszy tłum i upał), potem Muzeum Akropolu, a wieczór spędź w uliczkach Plaki i na dachowym barze z widokiem na podświetlony Partenon.",
+      },
+      {
+        day: 2,
+        title: "Antyczne miasto i panorama",
+        description:
+          "Agora Antyczna i Świątynia Hefajstosa, lunch w Psyri, a o zachodzie słońca podejście na Likawitos po najlepszą panoramę Aten.",
+      },
+      {
+        day: 3,
+        title: "Morze albo wyspy",
+        description:
+          "Z Pireusu prom na Eginę lub do Zatoki Sarońskiej, albo riwiera ateńska (Glyfada) na plażowe popołudnie — domyka wyjazd morzem.",
+      },
+    ],
+    bestFor: ["antyk i historia", "city break z charakterem", "brama na greckie wyspy", "słońce poza sezonem"],
   }),
 };
 
@@ -223,7 +283,7 @@ function genericStory(destination: DestinationProfile): DestinationStory {
       {
         day: 1,
         title: "Przyjazd i orientacja",
-        description: `Pierwszy spacer po ${destination.city}, lekki plan na więczór i poznanie głównej osi miasta.`,
+        description: `Pierwszy spacer po ${destination.city}, lekki plan na wieczór i poznanie głównej osi miasta.`,
       },
       {
         day: 2,
