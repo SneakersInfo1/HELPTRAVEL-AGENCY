@@ -216,6 +216,20 @@ Po pre-launch polish — dwie rzeczy podbijające SEO organiczne:
 
 ---
 
+### ZROBIONE — Sprint 1.9 (mood landing pages + fixy UX zgłoszone przez użytkownika) — 2026-06-02
+
+Cztery rzeczy z bezpośredniego zgłoszenia (priorytet: krytyczny bug + nowe strony SEO):
+- 🐞 **KRYTYCZNY FIX — strona hotelu „skakała do góry"**: karuzela galerii co rotację wołała `el.scrollIntoView({block:"nearest"})`, które przewija CAŁY łańcuch przodków → gdy użytkownik zjechał w dół i pasek miniatur wyszedł z viewportu, okno było szarpane do góry co kilka sekund (strona nie do użycia). Zamienione na `strip.scrollBy({left})` — przewija tylko poziomy pasek, nigdy okna. Zweryfikowane A/B na żywym DOM: stary mechanizm = okno -1301px, nowy = 0px. `src/app/hotele/[hotelId]/_components/hotel-gallery.tsx`.
+- 🐞 **FIX — wyniki hoteli „przeskakiwały" podczas ładowania**: `ResultsList` re-sortował całą listę przy każdym dochodzącym cenniku → karty zmieniały pozycję pod kursorem. Dodany stabilny porządek (akumulacja): raz pokazana karta trzyma miejsce, nowo wycenione dopisują się na końcu; pełny re-sort tylko przy zmianie kontrolki (sort/filtr/daty) — `controlSig`. Zweryfikowane: 4 próbki przez 7 s = pozycje stałe. `src/app/hotele/szukaj/_components/results-list.tsx`.
+- ✅ **Hotel detail — DUŻO więcej prawdziwych informacji**: schemat Zod zrzucał najbogatsze pola LiteAPI (`hotelFacilities`, `facilities`, `hotelImportantInformation`, rozszerzone godziny check-in) — `amenities` bywa puste, stąd „mało informacji". Teraz: scalone + odszumione + zlokalizowane na PL + pogrupowane udogodnienia (zweryfikowane: **69 udogodnień** w 6 grupach vs stary limit 30), kafelki „Najważniejsze informacje" (godziny, ocena, liczba zdjęć/udogodnień), pełna polityka (bez limitu 6) + „Ważne informacje". Wszystko 100% z danych dostawcy (brak fabrykowania — kafelek bez danych po prostu się nie pokazuje). `src/lib/liteapi/types.ts`, `src/lib/liteapi/facilities.ts`, `src/app/hotele/[hotelId]/page.tsx`.
+- ✅ **Galeria: auto-przewijanie co 5 s + większe zdjęcia** (stage 440→560px na lg, większe miniatury). Mniej „przyciętego" wrażenia.
+- 🆕 **6 stron landingowych „nastrojów" `/wyjazdy/[typ]`** (SEO) — pod chipy z homepage (Plaża, City break, Góry, Kultura, Budżet, Słońce zimą), które wcześniej NIC nie robiły (scroll do `#hero`). Dobór kierunków **data-driven** z realnych score'ów (`beachScore`, `cityScore`, `natureScore`, `sightseeingScore`, `costIndex`, `avgTempByMonth`) — zweryfikowane, że ranking plaży ≠ ranking „słońce zimą". Reużywają kuratorowanych opisów (`DestinationGuideCard` → CTA do hoteli z `origin` = loty). Futurystyczny hero, sekcje contentowe (ręcznie pisana polszczyzna, nie generyk AI), FAQ + JSON-LD (CollectionPage/ItemList/FAQPage/Breadcrumb), wzajemne linkowanie nastrojów. Chipy podpięte (`mood-chips.tsx`), dodane do `sitemap.ts` (priority 0.8). `src/lib/mvp/travel-moods.ts`, `src/components/publisher/mood-landing.tsx`, `src/app/wyjazdy/[typ]/page.tsx`.
+- tsc clean (jedyny błąd to wcześniej-istniejący w pliku testowym `.ts`-import, nie z tej zmiany). Zweryfikowane w Preview: `/wyjazdy/plaza` + `/wyjazdy/slonce-zima` 200, brak błędów konsoli, chipy linkują.
+- ⚠️ **Homepage:** dotknięty wyłącznie `mood-chips.tsx` (przyciski → linki) na wyraźną prośbę użytkownika; hero i reszta homepage NIE ruszane.
+- ⬜ NEXT (deploy): odpalić build, sprawdzić indeksację `/wyjazdy/*` w GSC; rozważyć link z `/inspiracje` do nastrojów.
+
+---
+
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
 
 | # | Problem | Status | PR |

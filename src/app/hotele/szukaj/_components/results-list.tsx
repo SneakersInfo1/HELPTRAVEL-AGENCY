@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import type { PriceQuery, SlimRate } from "@/lib/hotels/price-batcher";
 import { ensurePrice, getPrice, getVersion, subscribe, type PriceEntry } from "@/lib/hotels/price-store";
@@ -81,6 +81,13 @@ function isPriced(entry: PriceEntry | undefined): entry is SlimRate {
 export function ResultsList(props: ResultsListProps) {
   // Re-render whenever any price lands.
   useSyncExternalStore(subscribe, getVersion, () => 0);
+
+  // Stable display order (anti-jump). Holds the hotel-id order currently on
+  // screen so cards keep their position as prices stream in; only a user
+  // control change (captured by controlSig) triggers a fresh re-sort. See the
+  // detailed note inside the `view` memo below.
+  const displayOrderRef = useRef<string[]>([]);
+  const controlSigRef = useRef<string | null>(null);
 
   const {
     pool,
@@ -198,11 +205,57 @@ export function ResultsList(props: ResultsListProps) {
       .map((p) => byId.get(p._hotelId))
       .filter((r): r is Row => r !== undefined);
 
-    const total = filteredRows.length;
+    // ── Stable display order (anti-jump) ──────────────────────────────────
+    // `filteredRows` is the freshly filtered+sorted list, recomputed on every
+    // price tick. Rendering it directly made cards leap to new positions while
+    // the user was reading them — "a hotel caught my eye, then it jumped to
+    // another" (user report 2026-06). Instead we keep an ACCUMULATED order:
+    // once a hotel has a slot it stays put as more prices arrive; newly-priced
+    // hotels are appended at the end. A genuine re-sort happens only when the
+    // user changes a control (sort / filters / dates / occupancy) — captured
+    // by `controlSig`, which is exactly when a reorder is expected. Pagination
+    // is intentionally NOT part of the signature: paging just re-slices the
+    // already-stable order.
+    const controlSig = [
+      sort ?? "",
+      minPrice ?? "",
+      maxPrice ?? "",
+      minStars ?? "",
+      minRating ?? "",
+      cancel ?? "",
+      q ?? "",
+      propertyType?.join(".") ?? "",
+      board?.join(".") ?? "",
+      ctxSig,
+    ].join("|");
+
+    const sortedIds = filteredRows.map((r) => r.offer.hotelId);
+    let orderedIds: string[];
+    if (controlSigRef.current !== controlSig) {
+      // User changed something (or first run) → honour the fresh sort.
+      controlSigRef.current = controlSig;
+      orderedIds = sortedIds;
+    } else {
+      // Same controls, more prices landed → preserve existing positions and
+      // append the newcomers. Drop ids that are no longer eligible (filtered
+      // out or confirmed unavailable).
+      const sortedSet = new Set(sortedIds);
+      const kept = displayOrderRef.current.filter((id) => sortedSet.has(id));
+      const keptSet = new Set(kept);
+      const appended = sortedIds.filter((id) => !keptSet.has(id));
+      orderedIds = [...kept, ...appended];
+    }
+    displayOrderRef.current = orderedIds;
+
+    const orderedRows = orderedIds
+      .map((id) => byId.get(id))
+      .filter((r): r is Row => r !== undefined);
+
+    const total = orderedRows.length;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const safePage = Math.min(Math.max(1, pageFromUrl), totalPages);
     const sliceStart = (safePage - 1) * pageSize;
-    const slicedPriced = filteredRows.slice(sliceStart, sliceStart + pageSize);
+    const slicedPriced = orderedRows.slice(sliceStart, sliceStart + pageSize);
 
     // Pad with loading rows so the page never paints empty during the scan.
     // Without this, initial SSR (store empty → every row "scanning") would
