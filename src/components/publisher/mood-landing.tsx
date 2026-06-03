@@ -171,15 +171,21 @@ export async function MoodLanding({ slug }: { slug: string }) {
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
               href="/hotele/szukaj"
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-bold text-emerald-950 shadow-lg transition hover:bg-emerald-50"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-400 px-5 py-3 text-sm font-bold shadow-lg transition hover:bg-amber-300"
             >
-              Otwórz wyszukiwarkę hoteli →
+              {/* Label in a <span>: globals.css has an UNLAYERED
+                  `a { color: inherit }`, which in Tailwind v4 beats the
+                  text-* utilities (they sit in @layer utilities). On an <a>
+                  that made the label inherit the hero's white text → an
+                  invisible white-on-white button. A <span> isn't an <a>, so
+                  text-emerald-950 applies normally. */}
+              <span className="text-emerald-950">Otwórz wyszukiwarkę hoteli →</span>
             </Link>
             <Link
               href="/kierunki"
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/25 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold backdrop-blur-md transition hover:bg-white/20"
             >
-              Wszystkie kierunki
+              <span className="text-white">Wszystkie kierunki</span>
             </Link>
           </div>
         </div>

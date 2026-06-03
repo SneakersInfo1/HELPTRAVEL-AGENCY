@@ -58,9 +58,10 @@ export function MoodDestinationCard({
         <div className="mt-auto flex flex-wrap gap-2 pt-5">
           <Link
             href={hotelsHref}
-            className="inline-flex min-h-10 items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
+            className="inline-flex min-h-10 items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold transition hover:bg-emerald-800"
           >
-            Zobacz hotele i loty →
+            {/* span keeps the label white despite the global a{color:inherit} */}
+            <span className="text-white">Zobacz hotele i loty →</span>
           </Link>
           {guideHref && (
             <Link

@@ -30,6 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // crawl budget and split equity.
     "/kierunki",
     "/inspiracje",
+    "/porownanie",
     "/przewodniki",
     "/oferta",
     "/faq",
@@ -118,7 +119,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       // (head queries "hotele barcelona" et al. at 7-33k mies. PL each).
       changeFrequency = "daily";
       priority = 0.95;
-    } else if (route === "/kierunki" || route === "/inspiracje" || categoryRoutes.includes(route)) {
+    } else if (
+      route === "/kierunki" ||
+      route === "/inspiracje" ||
+      route === "/porownanie" ||
+      categoryRoutes.includes(route)
+    ) {
       changeFrequency = "daily";
       priority = 0.95;
     } else if (route.startsWith("/kierunki/") && !isMonthRoute) {

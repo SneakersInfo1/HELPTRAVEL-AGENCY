@@ -93,6 +93,25 @@ makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plażowe lata"),
     "Baleary kontra Grecja — Majorka czy Kreta na wakacje nad morzem",
     { "palma-spain": "Majorka", "heraklion-greece": "Kreta" },
   ),
+
+  // ── Wyspy i wakacje plażowe — najwyższy wolumen zapytań „X czy Y" z Polski.
+  // Slugi miast-lotnisk dostają etykiety nazw wysp (intencja wyszukiwania).
+  makePair("antalya-turkey", "heraklion-greece", "Turcja czy Kreta na wakacje all-inclusive nad ciepłym morzem", { "heraklion-greece": "Kreta" }),
+  makePair("antalya-turkey", "rhodes-greece", "Antalya czy Rodos — gdzie lepsze wakacje nad morzem", { "rhodes-greece": "Rodos" }),
+  makePair("antalya-turkey", "palma-spain", "Turcja czy Majorka na rodzinne wakacje plażowe", { "palma-spain": "Majorka" }),
+  makePair("larnaca-cyprus", "palma-spain", "Cypr czy Majorka — którą wyspę wybrać na wakacje", { "palma-spain": "Majorka" }),
+  makePair("heraklion-greece", "larnaca-cyprus", "Kreta czy Cypr na wakacje nad ciepłym morzem", { "heraklion-greece": "Kreta" }),
+  makePair("larnaca-cyprus", "rhodes-greece", "Cypr czy Rodos — porównanie pod plażę i pogodę", { "rhodes-greece": "Rodos" }),
+  makePair("agadir-morocco", "antalya-turkey", "Maroko czy Turcja — ciepły kierunek plażowy w dobrej cenie"),
+  makePair("larnaca-cyprus", "malaga-spain", "Andaluzja czy Cypr — plaża, słońce i koszty"),
+  makePair("funchal-portugal", "santa-cruz-de-tenerife-spain", "Madera czy Teneryfa na zimową ucieczkę w ciepło", { "funchal-portugal": "Madera", "santa-cruz-de-tenerife-spain": "Teneryfa" }),
+
+  // ── Klasyki city break — wysoka intencja zwiedzania ──
+  makePair("athens-greece", "rome-italy", "Ateny czy Rzym — antyczna stolica na zwiedzanie"),
+  makePair("lisbon-portugal", "rome-italy", "Lizbona czy Rzym na city break we dwoje"),
+  makePair("athens-greece", "naples-italy", "Ateny czy Neapol — śródziemnomorski city break z charakterem"),
+  makePair("amsterdam-netherlands", "barcelona-spain", "Amsterdam czy Barcelona — który city break na 4 dni"),
+  makePair("amsterdam-netherlands", "dublin-ireland", "Amsterdam czy Dublin — klimatyczny weekend w Europie"),
 ];
 
 export function getComparisonPairBySlug(slug: string): ComparisonPair | undefined {

@@ -4,7 +4,7 @@
 > Czytaj to JAKO PIERWSZE po czyszczeniu kontekstu. Aktualizuj sekcję
 > "Status" po każdej zmianie. Plik jest w repo (git) → przeżywa kompakcję.
 
-**Ostatnia aktualizacja:** 2026-05-31
+**Ostatnia aktualizacja:** 2026-06-03
 **Właściciel biznesowy:** kuba.ogra123@gmail.com
 **Stack:** Next.js 16.2.1 (App Router, Turbopack), React 19, Tailwind v4, LiteAPI (hotele), Aviasales/Travelpayouts (loty), Upstash Redis, Resend (email), Vercel.
 
@@ -227,6 +227,19 @@ Cztery rzeczy z bezpośredniego zgłoszenia (priorytet: krytyczny bug + nowe str
 - tsc + eslint clean (jedyny błąd to wcześniej-istniejący w pliku testowym `.ts`-import, nie z tej zmiany). Zweryfikowane w Preview: **wszystkie 6** stron `/wyjazdy/*` → 200, po 6 kart, brak błędów konsoli, JSON-LD w SSR HTML, chipy linkują, CTA z datami + slugami guide poprawne.
 - ⚠️ **Homepage:** dotknięty wyłącznie `mood-chips.tsx` (przyciski → linki) na wyraźną prośbę użytkownika; hero i reszta homepage NIE ruszane.
 - ⬜ NEXT (deploy): odpalić build, sprawdzić indeksację `/wyjazdy/*` w GSC; rozważyć link z `/inspiracje` do nastrojów.
+
+### ZROBIONE — Sprint 1.10 (SEO milestone: porównania + lokalizacja + fixy widoczności) — 2026-06-03 — PR #90 (kontynuacja)
+
+Trzy zadania zgłoszone z PRODUKCJI (helptravel.pl działa już na gałęzi #90) + krok milowy SEO pod organiczne pozyskiwanie klientów:
+- ✅ **Udogodnienia hotelu w 100% po polsku**: słownik EN→PL rozszerzony z ~60 do **~180 haseł** (cała częsta paleta LiteAPI/Cupid: internet, parking, transport, jedzenie, basen/wellness, usługi, **bezpieczeństwo/higiena**, wyposażenie pokoi, rodzina, dostępność, widoki). Dodatkowy **dedup po polskiej etykiecie** — znikają duplikaty „Restauracja ×2"/„Basen ×2" (LiteAPI zwraca wariant EN i PL tego samego). Zweryfikowane na żywym hotelu: **0 angielskich pozostałości** z listy kontrolnej. `src/lib/liteapi/facilities.ts`.
+- ✅ **Fix niewidocznych białych przycisków** (zgłoszone: na `/wyjazdy/*` przycisk „Otwórz wyszukiwarkę" był biały-na-białym). **Root cause:** `globals.css` ma **nielayerowaną** regułę `a { color: inherit }`, która w Tailwind v4 bije utility `text-*` (są w `@layer utilities`) → link dziedziczył biały tekst hero. Fix **bez ruszania globalnego CSS/homepage**: etykiety CTA owinięte w `<span class="text-...">` (span nie jest `<a>`, więc utility działa) + primary CTA zmieniony na **bursztynowy** (wysoki kontrast, on-brand). Ten sam latentny bug naprawiony na kartach nastrojów i na stronach porównań (białe „Zobacz hotele"). `mood-landing.tsx`, `mood-destination-card.tsx`, `porownanie/[para]/page.tsx`.
+- ✅ **Porównania — krok milowy SEO** (najwyższy CTR w GSC = 4.4%, 2× średnia → skalujemy ostrożnie i jakościowo):
+  - **+14 par o wysokiej intencji** (28 → **42**), głównie „X czy Y" wakacje plażowe z Polski: Kreta/Rodos/Majorka vs Turcja/Cypr, Madera vs Teneryfa, oraz klasyki city break (Rzym vs Ateny, Lizbona vs Rzym). Każda **różnicowana realnymi danymi** (pogoda/koszt/plaża/dolot) → zgodne z polityką Google (NIE „scaled content abuse"). Wszystkie 14 zweryfikowane = 200.
+  - **Blok „Szybka odpowiedź"** u góry każdej strony — bezpośredni werdykt składany z danych (plaża/miasto/budżet/dolot) → **pod featured snippet i wysoki CTR**.
+  - **Nowy hub `/porownanie`** — rankowalny landing („porównanie kierunków") + węzeł linkowania wewnętrznego do wszystkich par (CollectionPage/ItemList/BreadcrumbList JSON-LD). Dodany do `sitemap.ts` (priority 0.95) i podlinkowany z każdej strony porównania. `src/app/porownanie/page.tsx`.
+- **Zgodność z polityką Google (świadomie zastosowane):** people-first/helpful content (każda strona realnie pomaga w decyzji), brak doorway/scaled-content (różnicowanie danymi), E-E-A-T (Organization author, konkrety zamiast lania wody), structured data (Article+FAQPage+Breadcrumb+CollectionPage+ItemList), internal linking hub-and-spoke, featured-snippet optimization (blok „Szybka odpowiedź"), poprawne title/meta/canonical/H1.
+- tsc + eslint clean. Zweryfikowane (fetch SSR): hotel 0× EN, `/wyjazdy/slonce-zima` przycisk bursztynowy, 14 nowych par = 200, `/porownanie` = 200.
+- ⬜ NEXT: link `/kierunki/[slug]` → powiązane porównania (`getComparisonsForDestination` już istnieje, podpiąć baner); rozważyć kolejne 10-15 par po nowych kuratorowanych kierunkach; A/B title na top porównaniach.
 
 ---
 
