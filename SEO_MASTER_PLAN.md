@@ -4,7 +4,7 @@
 > Czytaj to JAKO PIERWSZE po czyszczeniu kontekstu. Aktualizuj sekcję
 > "Status" po każdej zmianie. Plik jest w repo (git) → przeżywa kompakcję.
 
-**Ostatnia aktualizacja:** 2026-05-31
+**Ostatnia aktualizacja:** 2026-06-03
 **Właściciel biznesowy:** kuba.ogra123@gmail.com
 **Stack:** Next.js 16.2.1 (App Router, Turbopack), React 19, Tailwind v4, LiteAPI (hotele), Aviasales/Travelpayouts (loty), Upstash Redis, Resend (email), Vercel.
 
@@ -213,6 +213,42 @@ Po pre-launch polish — dwie rzeczy podbijające SEO organiczne:
 - ✅ **Rollout kuratorowanej treści: +16 kierunków** (Rzym, Mediolan, Wenecja, Florencja, Neapol, Madryt, Sewilla, Porto, Paryż, Londyn, Praga, Wiedeń, Stambuł, Kreta, Rodos, Teneryfa) → **21 kuratorowanych** łącznie. Napisane przez 2 agentów-copywriterów (real specifics, poprawna polszczyzna + diakrytyki, island-aware), zweryfikowane i zintegrowane przeze mnie. `DestinationStory` ma teraz opcjonalne media (zawsze nadpisywane przez `getDestinationStory`). Naprawione literówki cudzysłowów (typograficzne).
 - Build clean (3178/3178), testy 114/114, tsc + eslint clean. Zweryfikowane w Preview: tytuły PL (Ateny/Rzym/Wenecja/Kreta), treść kuratorowana (Koloseum/Murano/Knossos), brak generycznego fallbacku.
 - ⬜ NEXT: kolejne kuratorowane (Majorka, Cypr, Malta, Antalya, Hurghada, Split, Dubrownik, Marrakesz, Amsterdam, Dubaj) + lokalizacja nazw na month pages (2800) **z deklinacją** (locative/genitive — wymaga mapy odmian lub reużycia commercial-cities).
+
+---
+
+### ZROBIONE — Sprint 1.9 (mood landing pages + fixy UX zgłoszone przez użytkownika) — 2026-06-03 — PR #90
+
+Cztery rzeczy z bezpośredniego zgłoszenia (priorytet: krytyczny bug + nowe strony SEO):
+- 🐞 **KRYTYCZNY FIX — strona hotelu „skakała do góry"**: karuzela galerii co rotację wołała `el.scrollIntoView({block:"nearest"})`, które przewija CAŁY łańcuch przodków → gdy użytkownik zjechał w dół i pasek miniatur wyszedł z viewportu, okno było szarpane do góry co kilka sekund (strona nie do użycia). Zamienione na `strip.scrollBy({left})` — przewija tylko poziomy pasek, nigdy okna. Zweryfikowane A/B na żywym DOM: stary mechanizm = okno -1301px, nowy = 0px. `src/app/hotele/[hotelId]/_components/hotel-gallery.tsx`.
+- 🐞 **FIX — wyniki hoteli „przeskakiwały" podczas ładowania**: `ResultsList` re-sortował całą listę przy każdym dochodzącym cenniku → karty zmieniały pozycję pod kursorem. Dodany stabilny porządek (akumulacja): raz pokazana karta trzyma miejsce, nowo wycenione dopisują się na końcu; pełny re-sort tylko przy zmianie kontrolki (sort/filtr/daty) — `controlSig`. Zweryfikowane: 4 próbki przez 7 s = pozycje stałe. `src/app/hotele/szukaj/_components/results-list.tsx`.
+- ✅ **Hotel detail — DUŻO więcej prawdziwych informacji**: schemat Zod zrzucał najbogatsze pola LiteAPI (`hotelFacilities`, `facilities`, `hotelImportantInformation`, rozszerzone godziny check-in) — `amenities` bywa puste, stąd „mało informacji". Teraz: scalone + odszumione + zlokalizowane na PL + pogrupowane udogodnienia (zweryfikowane: **69 udogodnień** w 6 grupach vs stary limit 30), kafelki „Najważniejsze informacje" (godziny, ocena, liczba zdjęć/udogodnień), pełna polityka (bez limitu 6) + „Ważne informacje". Wszystko 100% z danych dostawcy (brak fabrykowania — kafelek bez danych po prostu się nie pokazuje). `src/lib/liteapi/types.ts`, `src/lib/liteapi/facilities.ts`, `src/app/hotele/[hotelId]/page.tsx`.
+- ✅ **Galeria: auto-przewijanie co 5 s + większe zdjęcia** (stage 440→560px na lg, większe miniatury). Mniej „przyciętego" wrażenia.
+- 🆕 **6 stron landingowych „nastrojów" `/wyjazdy/[typ]`** (SEO) — pod chipy z homepage (Plaża, City break, Góry, Kultura, Budżet, Słońce zimą), które wcześniej NIC nie robiły (scroll do `#hero`). Każdy nastrój ma **kuratorowaną listę 6 kierunków** (ręcznie pisane 1-zdaniowe opisy, tagi, najlepszy sezon) — pełna kontrola redakcyjna i spójny wygląd. **Góry mają realne kierunki górskie** (rozwiązany problem „za bardzo śródziemnomorskie"): Innsbruck (Alpy Tyrolskie), Teneryfa (Teide), Madera, Tirana (Alpy Albańskie), Bergen (fiordy), Lublana (Alpy Julijskie). `slug` ustawiany tylko gdy istnieje guide → CTA „Przewodnik"; CTA „Zobacz hotele i loty" z domyślnymi datami (+30/+34 dni) ląduje na realnych wynikach (LiteAPI rozwiązuje dowolne miasto). Zdjęcia: real profile z recipe gdy slug, inaczej syntetyczny profil → Pexels po nazwie lub bezpieczny fallback. Futurystyczny hero, sekcje + 3× FAQ (ręczna polszczyzna), JSON-LD w SSR HTML (CollectionPage/ItemList/FAQPage/Breadcrumb), switcher nastrojów. Nowa karta `MoodDestinationCard`. Dodane do `sitemap.ts` (priority 0.8). `src/lib/mvp/travel-moods.ts`, `src/components/publisher/mood-landing.tsx`, `src/components/publisher/mood-destination-card.tsx`, `src/app/wyjazdy/[typ]/page.tsx`.
+- tsc + eslint clean (jedyny błąd to wcześniej-istniejący w pliku testowym `.ts`-import, nie z tej zmiany). Zweryfikowane w Preview: **wszystkie 6** stron `/wyjazdy/*` → 200, po 6 kart, brak błędów konsoli, JSON-LD w SSR HTML, chipy linkują, CTA z datami + slugami guide poprawne.
+- ⚠️ **Homepage:** dotknięty wyłącznie `mood-chips.tsx` (przyciski → linki) na wyraźną prośbę użytkownika; hero i reszta homepage NIE ruszane.
+- ⬜ NEXT (deploy): odpalić build, sprawdzić indeksację `/wyjazdy/*` w GSC; rozważyć link z `/inspiracje` do nastrojów.
+
+### ZROBIONE — Sprint 1.10 (SEO milestone: porównania + lokalizacja + fixy widoczności) — 2026-06-03 — PR #90 (kontynuacja)
+
+Trzy zadania zgłoszone z PRODUKCJI (helptravel.pl działa już na gałęzi #90) + krok milowy SEO pod organiczne pozyskiwanie klientów:
+- ✅ **Udogodnienia hotelu w 100% po polsku**: słownik EN→PL rozszerzony z ~60 do **~180 haseł** (cała częsta paleta LiteAPI/Cupid: internet, parking, transport, jedzenie, basen/wellness, usługi, **bezpieczeństwo/higiena**, wyposażenie pokoi, rodzina, dostępność, widoki). Dodatkowy **dedup po polskiej etykiecie** — znikają duplikaty „Restauracja ×2"/„Basen ×2" (LiteAPI zwraca wariant EN i PL tego samego). Zweryfikowane na żywym hotelu: **0 angielskich pozostałości** z listy kontrolnej. `src/lib/liteapi/facilities.ts`.
+- ✅ **Fix niewidocznych białych przycisków** (zgłoszone: na `/wyjazdy/*` przycisk „Otwórz wyszukiwarkę" był biały-na-białym). **Root cause:** `globals.css` ma **nielayerowaną** regułę `a { color: inherit }`, która w Tailwind v4 bije utility `text-*` (są w `@layer utilities`) → link dziedziczył biały tekst hero. Fix **bez ruszania globalnego CSS/homepage**: etykiety CTA owinięte w `<span class="text-...">` (span nie jest `<a>`, więc utility działa) + primary CTA zmieniony na **bursztynowy** (wysoki kontrast, on-brand). Ten sam latentny bug naprawiony na kartach nastrojów i na stronach porównań (białe „Zobacz hotele"). `mood-landing.tsx`, `mood-destination-card.tsx`, `porownanie/[para]/page.tsx`.
+- ✅ **Porównania — krok milowy SEO** (najwyższy CTR w GSC = 4.4%, 2× średnia → skalujemy ostrożnie i jakościowo):
+  - **+14 par o wysokiej intencji** (28 → **42**), głównie „X czy Y" wakacje plażowe z Polski: Kreta/Rodos/Majorka vs Turcja/Cypr, Madera vs Teneryfa, oraz klasyki city break (Rzym vs Ateny, Lizbona vs Rzym). Każda **różnicowana realnymi danymi** (pogoda/koszt/plaża/dolot) → zgodne z polityką Google (NIE „scaled content abuse"). Wszystkie 14 zweryfikowane = 200.
+  - **Blok „Szybka odpowiedź"** u góry każdej strony — bezpośredni werdykt składany z danych (plaża/miasto/budżet/dolot) → **pod featured snippet i wysoki CTR**.
+  - **Nowy hub `/porownanie`** — rankowalny landing („porównanie kierunków") + węzeł linkowania wewnętrznego do wszystkich par (CollectionPage/ItemList/BreadcrumbList JSON-LD). Dodany do `sitemap.ts` (priority 0.95) i podlinkowany z każdej strony porównania. `src/app/porownanie/page.tsx`.
+- **Zgodność z polityką Google (świadomie zastosowane):** people-first/helpful content (każda strona realnie pomaga w decyzji), brak doorway/scaled-content (różnicowanie danymi), E-E-A-T (Organization author, konkrety zamiast lania wody), structured data (Article+FAQPage+Breadcrumb+CollectionPage+ItemList), internal linking hub-and-spoke, featured-snippet optimization (blok „Szybka odpowiedź"), poprawne title/meta/canonical/H1.
+- tsc + eslint clean. Zweryfikowane (fetch SSR): hotel 0× EN, `/wyjazdy/slonce-zima` przycisk bursztynowy, 14 nowych par = 200, `/porownanie` = 200.
+- ⬜ NEXT: link `/kierunki/[slug]` → powiązane porównania (`getComparisonsForDestination` już istnieje, podpiąć baner); rozważyć kolejne 10-15 par po nowych kuratorowanych kierunkach; A/B title na top porównaniach.
+
+### ZROBIONE — Sprint 1.11 (internal linking przewodnik→porównanie + skala porównań + PL tytuły) — 2026-06-03 — PR #90 (kontynuacja)
+
+Domknięcie NEXT-ów ze Sprintu 1.10 — wszystkie 3 rzeczy zgłoszone przez użytkownika:
+- ✅ **Baner „Porównaj X z innym kierunkiem" na `/kierunki/[slug]`** (235 przewodników) — sekcja z linkami do realnych stron `/porownanie/[para]` dla danego kierunku (`getComparisonsForDestination`). Wcześniej linki „Porównaj kierunki" prowadziły tylko do `/kierunki` (indeks). Teraz przekazują link equity z przewodników do wysoko-CTR-owych porównań i łapią intencję „X czy Y". Zweryfikowane: Malaga → 5 linków porównań. `src/app/kierunki/[slug]/page.tsx`.
+- ✅ **+13 par porównań (42 → 55)** z istniejącej puli przewodników: Kreta/Rodos/Majorka vs Malta, Barcelona/Berlin vs Londyn, Stambuł vs Rzym, Ateny vs Lizbona, Maroko vs Cypr/Kanary, Agadir vs Teneryfa/Madera. Wszystkie 13 = 200, dane-różnicowane (Google-policy OK). `src/lib/mvp/comparisons.ts`.
+- ✅ **A/B tytułów porównań**: ulepszony domyślny szablon (świeżość = rok + korzyści): `„{A} czy {B}? Porównanie 2026 (pogoda, ceny)"` + pole `metaTitle?` na ręczne dopracowanie top stron (np. Malaga vs Walencja) — wariant „B" do pomiaru CTR w GSC.
+- ✅ **FIX SEO: polskie nazwy miast w porównaniach.** Strony porównań pokazywały ang. nazwy („Athens czy Rome") zamiast pol. („Ateny czy Rzym") — tytuł/H1/tabela/FAQ/schema. Teraz `pair.label ?? getStoryBySlug().name ?? localizeCity()` (jak na przewodnikach). Łapie realne zapytania PL „Ateny czy Rzym". Zweryfikowane: title+H1 = „Ateny czy Rzym", „Stambuł czy Rzym".
+- tsc + eslint clean. `/porownanie` hub: **54-55 par**.
 
 ---
 

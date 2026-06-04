@@ -54,10 +54,30 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   description: z.string().optional(),
   hotelDescription: z.string().optional(),
   amenities: z.array(z.string()).optional(),
+  // LiteAPI exposes the bulk of a property's REAL feature list under
+  // `hotelFacilities` / `facilities`, NOT `amenities` (which is frequently
+  // empty). Supplier shapes vary — plain strings for some, `{ name }` objects
+  // for others — so we keep them as `unknown[]` and normalise defensively in
+  // the UI (see lib/liteapi/facilities.ts). Parsing these away is exactly why
+  // detail pages looked sparse: the richest, 100%-true data never reached the
+  // page. (2026-06)
+  hotelFacilities: z.array(z.unknown()).optional(),
+  facilities: z.array(z.unknown()).optional(),
   hotelImages: z.array(z.object({ url: z.string().url(), urlHd: z.string().url().optional() })).optional(),
   policies: z.array(z.object({ name: z.string(), description: z.string() })).optional(),
-  checkinCheckoutTimes: z.object({ checkin: z.string().optional(), checkout: z.string().optional() }).optional(),
-  facilities: z.array(z.unknown()).optional(),
+  // Free-text "important information" block (check-in instructions, deposits,
+  // mandatory fees…). Shape is usually a string but kept as unknown so an
+  // array/object variant can never break the parse — coerced in the UI.
+  hotelImportantInformation: z.unknown().optional(),
+  checkinCheckoutTimes: z
+    .object({
+      checkin: z.string().optional(),
+      checkout: z.string().optional(),
+      checkinStart: z.string().optional(),
+      checkinEnd: z.string().optional(),
+    })
+    .optional(),
+  currency: z.string().optional(),
 });
 export type LiteApiHotelDetail = z.infer<typeof LiteApiHotelDetailSchema>;
 

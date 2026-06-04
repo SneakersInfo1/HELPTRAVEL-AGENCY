@@ -15,6 +15,7 @@ import { getHotelDetail, getRates, LiteApiError, type LiteApiRoomType } from "@/
 import { isBookingLive } from "@/lib/config/featureFlags";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
+import { normalizeFacilities, groupFacilities, coerceImportantInfo } from "@/lib/liteapi/facilities";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 // LiteAPI is asked for `language=pl` (see lib/liteapi/hotel.ts), but for
@@ -255,6 +256,26 @@ export default async function HotelDetailPage({
     ),
   ).slice(0, 15);
 
+  // Merge every REAL facility source LiteAPI returned (`amenities` is often the
+  // sparsest of the three), de-dupe, localise to Polish and bucket for display.
+  const facilityGroups = groupFacilities(
+    normalizeFacilities(detail.amenities, detail.hotelFacilities, detail.facilities),
+  );
+  const facilityCount = facilityGroups.reduce((sum, g) => sum + g.items.length, 0);
+  const importantInfo = coerceImportantInfo(detail.hotelImportantInformation);
+  const checkinTime = detail.checkinCheckoutTimes?.checkin ?? detail.checkinCheckoutTimes?.checkinStart;
+  const checkoutTime = detail.checkinCheckoutTimes?.checkout;
+
+  // At-a-glance facts — every value is real structured data; tiles with no
+  // backing data are simply omitted (never faked).
+  const keyFacts: { label: string; value: string }[] = [];
+  if (checkinTime) keyFacts.push({ label: "Zameldowanie", value: `od ${checkinTime}` });
+  if (checkoutTime) keyFacts.push({ label: "Wymeldowanie", value: `do ${checkoutTime}` });
+  if (detail.stars && detail.stars > 0) keyFacts.push({ label: "Standard", value: `${Math.round(detail.stars)}★` });
+  if (detail.rating && detail.rating > 0) keyFacts.push({ label: "Ocena gości", value: `${detail.rating.toFixed(1)}/10` });
+  if (facilityCount > 0) keyFacts.push({ label: "Udogodnienia", value: String(facilityCount) });
+  if (photos.length > 0) keyFacts.push({ label: "Zdjęcia", value: String(photos.length) });
+
   return (
     <main className="min-h-screen bg-neutral-50 pb-24 lg:pb-0">
       <TrackView
@@ -365,7 +386,7 @@ export default async function HotelDetailPage({
               {[
                 { id: "overview", label: "Przegląd" },
                 { id: "rooms", label: "Pokoje" },
-                { id: "amenities", label: "Udogodnienia" },
+                ...(facilityCount > 0 ? [{ id: "amenities", label: "Udogodnienia" }] : []),
                 { id: "location", label: "Lokalizacja" },
                 { id: "policies", label: "Polityka" },
               ].map((t) => (
@@ -382,6 +403,16 @@ export default async function HotelDetailPage({
             {/* Overview */}
             <section id="overview" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
               <h2 className="text-lg font-bold text-neutral-900">Przegląd</h2>
+              {keyFacts.length > 0 && (
+                <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {keyFacts.map((f) => (
+                    <div key={f.label} className="rounded-xl bg-neutral-50 px-3 py-2 ring-1 ring-neutral-100">
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">{f.label}</dt>
+                      <dd className="mt-0.5 text-sm font-semibold text-neutral-900">{f.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
               {(() => {
                 const raw = detail.hotelDescription ?? detail.description;
                 const sanitized = sanitizeHotelDescription(raw);
@@ -441,18 +472,36 @@ export default async function HotelDetailPage({
               bookingLive={isBookingLive()}
             />
 
-            {/* Amenities */}
-            {detail.amenities && detail.amenities.length > 0 && (
+            {/* Amenities — merged from amenities + hotelFacilities + facilities,
+                localised to Polish and grouped. Shows ALL real facilities
+                (previously capped at 30 and sourced only from the sparse
+                `amenities` field). */}
+            {facilityGroups.length > 0 && (
               <section id="amenities" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
-                <h2 className="text-lg font-bold text-neutral-900">Udogodnienia</h2>
-                <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-neutral-700 sm:grid-cols-2">
-                  {detail.amenities.slice(0, 30).map((a, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-emerald-600">✓</span>
-                      <span>{a}</span>
-                    </li>
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="text-lg font-bold text-neutral-900">Udogodnienia</h2>
+                  <span className="shrink-0 text-xs text-neutral-500">
+                    {facilityCount} {facilityCount === 1 ? "udogodnienie" : "udogodnień"}
+                  </span>
+                </div>
+                <div className="mt-4 space-y-5">
+                  {facilityGroups.map((g) => (
+                    <div key={g.key}>
+                      <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-800">
+                        <span aria-hidden className="text-base">{g.icon}</span>
+                        {g.label}
+                      </h3>
+                      <ul className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm text-neutral-700 sm:grid-cols-2 lg:grid-cols-3">
+                        {g.items.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="mt-0.5 text-emerald-600">✓</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </section>
             )}
 
@@ -474,25 +523,46 @@ export default async function HotelDetailPage({
               )}
             </section>
 
-            {/* Policies */}
+            {/* Policies — check-in/out window, all property policies (no longer
+                capped at 6) and LiteAPI's free-text important information. */}
             <section id="policies" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
               <h2 className="text-lg font-bold text-neutral-900">Polityka hotelu</h2>
-              {detail.checkinCheckoutTimes && (
-                <p className="mt-2 text-sm text-neutral-700">
-                  {detail.checkinCheckoutTimes.checkin && (
-                    <>Zameldowanie od {detail.checkinCheckoutTimes.checkin}. </>
+              {(checkinTime || checkoutTime) && (
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {checkinTime && (
+                    <div className="rounded-xl bg-neutral-50 px-3 py-2 ring-1 ring-neutral-100">
+                      <div className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Zameldowanie</div>
+                      <div className="mt-0.5 text-sm font-semibold text-neutral-900">
+                        od {checkinTime}
+                        {detail.checkinCheckoutTimes?.checkinEnd ? ` do ${detail.checkinCheckoutTimes.checkinEnd}` : ""}
+                      </div>
+                    </div>
                   )}
-                  {detail.checkinCheckoutTimes.checkout && (
-                    <>Wymeldowanie do {detail.checkinCheckoutTimes.checkout}.</>
+                  {checkoutTime && (
+                    <div className="rounded-xl bg-neutral-50 px-3 py-2 ring-1 ring-neutral-100">
+                      <div className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Wymeldowanie</div>
+                      <div className="mt-0.5 text-sm font-semibold text-neutral-900">do {checkoutTime}</div>
+                    </div>
                   )}
-                </p>
+                </div>
               )}
-              {(detail.policies ?? []).slice(0, 6).map((p, i) => (
+              {(detail.policies ?? []).map((p, i) => (
                 <div key={i} className="mt-3">
                   <div className="text-sm font-semibold text-neutral-800">{p.name}</div>
                   <p className="mt-1 text-sm text-neutral-600">{p.description}</p>
                 </div>
               ))}
+              {importantInfo && (
+                <div className="mt-4 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-100">
+                  <div className="text-sm font-semibold text-amber-900">Ważne informacje</div>
+                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-amber-900/80">{importantInfo}</p>
+                </div>
+              )}
+              {!checkinTime && !checkoutTime && (detail.policies ?? []).length === 0 && !importantInfo && (
+                <p className="mt-2 text-sm text-neutral-500">
+                  Szczegółowe zasady pobytu potwierdzisz na etapie rezerwacji.
+                </p>
+              )}
             </section>
           </div>
 
