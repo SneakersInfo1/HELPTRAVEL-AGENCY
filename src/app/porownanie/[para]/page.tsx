@@ -7,6 +7,8 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { comparisonPairs, getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 import { getArticlesForDestination, getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
+import { getStoryBySlug } from "@/lib/mvp/destination-content";
+import { localizeCity } from "@/lib/mvp/i18n-geo";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -167,6 +169,32 @@ function buildFaq(
   ];
 }
 
+// Zwięzła, bezpośrednia odpowiedź na zapytanie „X czy Y" — pod featured
+// snippet i wysoki CTR. Składana z realnych danych profilu (bez fabrykacji).
+function buildQuickAnswer(
+  a: DestinationProfile,
+  b: DestinationProfile,
+  nameA: string,
+  nameB: string,
+): string {
+  const beach = a.beachScore >= b.beachScore ? nameA : nameB;
+  const city = a.cityScore + a.sightseeingScore >= b.cityScore + b.sightseeingScore ? nameA : nameB;
+  const budgetA = budget(a);
+  const budgetB = budget(b);
+  const cheaper = budgetA === budgetB ? null : budgetA < budgetB ? nameA : nameB;
+  const easier = a.accessScore >= b.accessScore ? nameA : nameB;
+  const sumA = summerAvg(a.avgTempByMonth);
+  const sumB = summerAvg(b.avgTempByMonth);
+  const warmer = sumA === sumB ? null : sumA > sumB ? nameA : nameB;
+
+  const budgetLine = cheaper
+    ? `Taniej zwykle wychodzi ${cheaper}`
+    : "Budżetowo oba kierunki są podobne";
+  const warmLine = warmer ? ` Latem cieplej bywa w kierunku ${warmer}.` : "";
+
+  return `${nameA} czy ${nameB}? Na plażę i wypoczynek nad morzem lepszy jest ${beach}, a na zwiedzanie i miejski klimat — ${city}. ${budgetLine}, a najprostszy dolot z Polski ma ${easier}.${warmLine}`;
+}
+
 export async function generateStaticParams() {
   return comparisonPairs.map((pair) => ({ para: pair.slug }));
 }
@@ -179,12 +207,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const gb = getDestinationGuideBySlug(pair.b);
   if (!ga || !gb) return { title: "Porównanie kierunków" };
 
-  const nameA = pair.labelA ?? ga.destination.city;
-  const nameB = pair.labelB ?? gb.destination.city;
+  const nameA = pair.labelA ?? getStoryBySlug(pair.a)?.name ?? localizeCity(ga.destination.city);
+  const nameB = pair.labelB ?? getStoryBySlug(pair.b)?.name ?? localizeCity(gb.destination.city);
+  const year = new Date().getFullYear();
 
   return {
-    title: `${nameA} czy ${nameB}? Porównanie pod krótki wyjazd`,
-    description: `${nameA} kontra ${nameB}: pogoda, koszty, dolot z Polski i charakter wyjazdu. ${pair.intent}.`,
+    // Ulepszony szablon (świeżość = rok + konkretne korzyści) podbija CTR vs
+    // stary "pod krótki wyjazd". Top strony mają ręcznie dopracowany override
+    // (pair.metaTitle) — wariant „B" do zmierzenia w GSC.
+    title: pair.metaTitle ?? `${nameA} czy ${nameB}? Porównanie ${year} (pogoda, ceny)`,
+    description: `${nameA} czy ${nameB} ${year}: pogoda miesiąc po miesiącu, orientacyjny budżet na 4 dni, plaże i dolot z Polski. Sprawdź, który kierunek wybrać. ${pair.intent}.`,
     alternates: { canonical: `/porownanie/${pair.slug}` },
     openGraph: {
       title: `${nameA} vs ${nameB} — porównanie HelpTravel`,
@@ -205,10 +237,11 @@ export default async function ComparisonPage({ params }: PageProps) {
 
   const a = ga.destination;
   const b = gb.destination;
-  const nameA = pair.labelA ?? a.city;
-  const nameB = pair.labelB ?? b.city;
+  const nameA = pair.labelA ?? getStoryBySlug(pair.a)?.name ?? localizeCity(a.city);
+  const nameB = pair.labelB ?? getStoryBySlug(pair.b)?.name ?? localizeCity(b.city);
   const verdicts = buildVerdict(a, b, nameA, nameB);
   const faq = buildFaq(a, b, nameA, nameB);
+  const quickAnswer = buildQuickAnswer(a, b, nameA, nameB);
   const baseUrl = getSiteUrl();
 
   // Hero "vs" + image dla schema — realne foto Pexels obu kierunków (cache + ISR).
@@ -350,6 +383,12 @@ export default async function ComparisonPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* SZYBKA ODPOWIEDŹ — bezpośredni werdykt pod featured snippet + wysoki CTR */}
+      <section className="rounded-[2rem] border border-emerald-300/50 bg-emerald-50/80 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Szybka odpowiedź</p>
+        <p className="mt-2 max-w-3xl text-base leading-8 text-emerald-950 sm:text-lg">{quickAnswer}</p>
+      </section>
+
       {/* TABELA RÓŻNIC */}
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] overflow-x-auto">
         <h2 className="mb-4 font-display text-2xl text-emerald-950">{nameA} vs {nameB} — tabela różnic</h2>
@@ -470,9 +509,9 @@ export default async function ComparisonPage({ params }: PageProps) {
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 href={`/kierunki/${dest.slug}`}
-                className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-800"
+                className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold transition hover:bg-emerald-800"
               >
-                Pełny przewodnik
+                <span className="text-white">Pełny przewodnik</span>
               </Link>
               <Link
                 href={`/hotele/szukaj?${new URLSearchParams({
@@ -505,9 +544,12 @@ export default async function ComparisonPage({ params }: PageProps) {
                 </p>
                 <Link
                   href={hotelHref}
-                  className="mt-4 inline-flex w-fit rounded-full bg-white px-5 py-2.5 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100"
+                  className="mt-4 inline-flex w-fit rounded-full bg-white px-5 py-2.5 text-sm font-bold transition hover:bg-emerald-100"
                 >
-                  Zobacz hotele: {name}
+                  {/* span: bg is white inside an emerald-700 (text-white) card,
+                      so without it the global a{color:inherit} makes the label
+                      white-on-white. */}
+                  <span className="text-emerald-900">Zobacz hotele: {name}</span>
                 </Link>
               </article>
               <AviasalesCta
@@ -554,7 +596,12 @@ export default async function ComparisonPage({ params }: PageProps) {
 
       {/* INNE PORÓWNANIA */}
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-2xl text-emerald-950">Inne porównania</h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-display text-2xl text-emerald-950">Inne porównania</h2>
+          <Link href="/porownanie" className="text-sm font-semibold text-emerald-700 transition hover:text-emerald-800">
+            Wszystkie porównania →
+          </Link>
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {comparisonPairs
             .filter((p) => p.slug !== pair.slug)
