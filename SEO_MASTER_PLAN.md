@@ -241,6 +241,15 @@ Trzy zadania zgłoszone z PRODUKCJI (helptravel.pl działa już na gałęzi #90)
 - tsc + eslint clean. Zweryfikowane (fetch SSR): hotel 0× EN, `/wyjazdy/slonce-zima` przycisk bursztynowy, 14 nowych par = 200, `/porownanie` = 200.
 - ⬜ NEXT: link `/kierunki/[slug]` → powiązane porównania (`getComparisonsForDestination` już istnieje, podpiąć baner); rozważyć kolejne 10-15 par po nowych kuratorowanych kierunkach; A/B title na top porównaniach.
 
+### ZROBIONE — Sprint 1.11 (internal linking przewodnik→porównanie + skala porównań + PL tytuły) — 2026-06-03 — PR #90 (kontynuacja)
+
+Domknięcie NEXT-ów ze Sprintu 1.10 — wszystkie 3 rzeczy zgłoszone przez użytkownika:
+- ✅ **Baner „Porównaj X z innym kierunkiem" na `/kierunki/[slug]`** (235 przewodników) — sekcja z linkami do realnych stron `/porownanie/[para]` dla danego kierunku (`getComparisonsForDestination`). Wcześniej linki „Porównaj kierunki" prowadziły tylko do `/kierunki` (indeks). Teraz przekazują link equity z przewodników do wysoko-CTR-owych porównań i łapią intencję „X czy Y". Zweryfikowane: Malaga → 5 linków porównań. `src/app/kierunki/[slug]/page.tsx`.
+- ✅ **+13 par porównań (42 → 55)** z istniejącej puli przewodników: Kreta/Rodos/Majorka vs Malta, Barcelona/Berlin vs Londyn, Stambuł vs Rzym, Ateny vs Lizbona, Maroko vs Cypr/Kanary, Agadir vs Teneryfa/Madera. Wszystkie 13 = 200, dane-różnicowane (Google-policy OK). `src/lib/mvp/comparisons.ts`.
+- ✅ **A/B tytułów porównań**: ulepszony domyślny szablon (świeżość = rok + korzyści): `„{A} czy {B}? Porównanie 2026 (pogoda, ceny)"` + pole `metaTitle?` na ręczne dopracowanie top stron (np. Malaga vs Walencja) — wariant „B" do pomiaru CTR w GSC.
+- ✅ **FIX SEO: polskie nazwy miast w porównaniach.** Strony porównań pokazywały ang. nazwy („Athens czy Rome") zamiast pol. („Ateny czy Rzym") — tytuł/H1/tabela/FAQ/schema. Teraz `pair.label ?? getStoryBySlug().name ?? localizeCity()` (jak na przewodnikach). Łapie realne zapytania PL „Ateny czy Rzym". Zweryfikowane: title+H1 = „Ateny czy Rzym", „Stambuł czy Rzym".
+- tsc + eslint clean. `/porownanie` hub: **54-55 par**.
+
 ---
 
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)

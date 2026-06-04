@@ -7,6 +7,8 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { comparisonPairs, getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 import { getArticlesForDestination, getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
+import { getStoryBySlug } from "@/lib/mvp/destination-content";
+import { localizeCity } from "@/lib/mvp/i18n-geo";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -205,12 +207,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const gb = getDestinationGuideBySlug(pair.b);
   if (!ga || !gb) return { title: "Porównanie kierunków" };
 
-  const nameA = pair.labelA ?? ga.destination.city;
-  const nameB = pair.labelB ?? gb.destination.city;
+  const nameA = pair.labelA ?? getStoryBySlug(pair.a)?.name ?? localizeCity(ga.destination.city);
+  const nameB = pair.labelB ?? getStoryBySlug(pair.b)?.name ?? localizeCity(gb.destination.city);
+  const year = new Date().getFullYear();
 
   return {
-    title: `${nameA} czy ${nameB}? Porównanie pod krótki wyjazd`,
-    description: `${nameA} kontra ${nameB}: pogoda, koszty, dolot z Polski i charakter wyjazdu. ${pair.intent}.`,
+    // Ulepszony szablon (świeżość = rok + konkretne korzyści) podbija CTR vs
+    // stary "pod krótki wyjazd". Top strony mają ręcznie dopracowany override
+    // (pair.metaTitle) — wariant „B" do zmierzenia w GSC.
+    title: pair.metaTitle ?? `${nameA} czy ${nameB}? Porównanie ${year} (pogoda, ceny)`,
+    description: `${nameA} czy ${nameB} ${year}: pogoda miesiąc po miesiącu, orientacyjny budżet na 4 dni, plaże i dolot z Polski. Sprawdź, który kierunek wybrać. ${pair.intent}.`,
     alternates: { canonical: `/porownanie/${pair.slug}` },
     openGraph: {
       title: `${nameA} vs ${nameB} — porównanie HelpTravel`,
@@ -231,8 +237,8 @@ export default async function ComparisonPage({ params }: PageProps) {
 
   const a = ga.destination;
   const b = gb.destination;
-  const nameA = pair.labelA ?? a.city;
-  const nameB = pair.labelB ?? b.city;
+  const nameA = pair.labelA ?? getStoryBySlug(pair.a)?.name ?? localizeCity(a.city);
+  const nameB = pair.labelB ?? getStoryBySlug(pair.b)?.name ?? localizeCity(b.city);
   const verdicts = buildVerdict(a, b, nameA, nameB);
   const faq = buildFaq(a, b, nameA, nameB);
   const quickAnswer = buildQuickAnswer(a, b, nameA, nameB);

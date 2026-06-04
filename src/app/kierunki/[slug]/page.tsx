@@ -9,6 +9,7 @@ import { EditorialArticleCard } from "@/components/publisher/editorial-article-c
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { buildAviasalesLink } from "@/lib/mvp/affiliate-config";
+import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import { getDestinationStory, getStoryBySlug } from "@/lib/mvp/destination-content";
@@ -187,6 +188,22 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     "pl",
   );
   const winningScenarios = buildLocalizedWinningScenarios(guide, "pl");
+  // Internal links to this destination's 1:1 comparison pages (/porownanie/…).
+  // Passes equity from the ~235 guide pages into the high-CTR comparison pages
+  // and gives "X czy Y" searchers a direct entry. SEO master plan D6 (extended).
+  const comparisonLinks = getComparisonsForDestination(slug)
+    .map((pair) => {
+      const otherSlug = pair.a === slug ? pair.b : pair.a;
+      const otherGuide = getDestinationGuideBySlug(otherSlug);
+      if (!otherGuide) return null;
+      const thisLabel = (pair.a === slug ? pair.labelA : pair.labelB) ?? cityPl;
+      const otherLabel =
+        (pair.a === slug ? pair.labelB : pair.labelA) ??
+        getStoryBySlug(otherSlug)?.name ??
+        localizeCity(otherGuide.destination.city);
+      return { href: `/porownanie/${pair.slug}`, thisLabel, otherLabel };
+    })
+    .filter((x): x is { href: string; thisLabel: string; otherLabel: string } => x !== null);
   const destinationSearchHref = `/hotele/szukaj?${new URLSearchParams({
     destination: guide.destination.city,
     country: guide.destination.country,
@@ -675,6 +692,37 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                   Otwórz ten kierunek
                 </LocalizedLink>
               </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {comparisonLinks.length > 0 ? (
+        <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="max-w-3xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Porównania 1:1</p>
+              <h2 className="mt-2 font-display text-4xl text-emerald-950">Porównaj {cityPl} z innym kierunkiem</h2>
+              <p className="mt-3 text-sm leading-7 text-emerald-900/78">
+                Wahasz się między dwoma kierunkami? Zobacz bezpośrednie porównanie obok siebie — pogoda miesiąc po miesiącu, orientacyjny budżet, plaże i dolot z Polski.
+              </p>
+            </div>
+            <LocalizedLink
+              href="/porownanie"
+              className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+            >
+              Wszystkie porównania
+            </LocalizedLink>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {comparisonLinks.map((c) => (
+              <LocalizedLink
+                key={c.href}
+                href={c.href}
+                className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 transition hover:border-emerald-300 hover:bg-emerald-100"
+              >
+                {c.thisLabel} vs {c.otherLabel} →
+              </LocalizedLink>
             ))}
           </div>
         </section>
