@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Script from "next/script";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
@@ -84,9 +83,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <Script id={`category-${slug}-jsonld`} type="application/ld+json">
-        {JSON.stringify(structuredData)}
-      </Script>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
         <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: category.title }]} />
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{category.eyebrow}</p>

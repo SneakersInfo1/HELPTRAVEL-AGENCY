@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
@@ -17,6 +16,9 @@ import {
 } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
+import { AuthorByline } from "@/components/publisher/author-byline";
+import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
+import { isMonthIndexable } from "@/lib/mvp/month-index-policy";
 import { addDaysToIsoDate } from "@/lib/mvp/travel-dates";
 
 export const revalidate = 86400;
@@ -122,6 +124,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!guide) return { title: "Kierunek" };
 
   const monthIndex = getMonthIndex(miesiac);
+  // Slimming policy: thin long-tail month pages are kept live but noindexed
+  // (and dropped from the sitemap) to remove site-wide thin-content drag.
+  const indexable = isMonthIndexable(guide.destination, monthIndex);
   const temp = guide.destination.avgTempByMonth[monthIndex];
   const monthInfl = polishMonthInflected[miesiac];
   const monthLabel = polishMonthLabels[miesiac];
@@ -143,6 +148,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
+    robots: indexable ? undefined : { index: false, follow: true },
     alternates: { canonical: `/kierunki/${slug}/${miesiac}` },
     openGraph: {
       title: `${guide.destination.city} w ${monthInfl} ${year} — pogoda i hotele od ${hotelFromPln} zł`,
@@ -223,7 +229,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
         inLanguage: "pl-PL",
         datePublished: "2026-01-01T00:00:00.000Z",
         dateModified: new Date().toISOString(),
-        author: { "@type": "Organization", "@id": `${baseUrl}/#organization`, name: "HelpTravel" },
+        author: personSchema(EDITOR_IN_CHIEF),
         publisher: { "@id": `${baseUrl}/#organization` },
         about: { "@type": "TouristDestination", name: `${guide.destination.city}, ${guide.destination.country}` },
       },
@@ -318,9 +324,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <Script id={`monthly-${slug}-${monthSlug}-jsonld`} type="application/ld+json">
-        {JSON.stringify(structuredData)}
-      </Script>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
         <Breadcrumbs
@@ -343,6 +347,8 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           {seasonInfo.crowd}, {seasonInfo.price}. Poniżej orientacyjny budżet, najlepszy termin
           i bezpośrednie przejście do hoteli z cenami w PLN.
         </p>
+
+        <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} className="mt-5" />
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-emerald-50 p-4">

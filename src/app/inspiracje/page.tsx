@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import Script from "next/script";
 
 import { MediaHero } from "@/components/site/media-hero";
 import { FinalCtaBanner } from "@/components/site/final-cta-banner";
@@ -115,9 +114,7 @@ export default async function InspirationsIndexPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <Script id="inspirations-index-jsonld" type="application/ld+json">
-        {JSON.stringify(structuredData)}
-      </Script>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
       <MediaHero
         imageUrl={heroImage}

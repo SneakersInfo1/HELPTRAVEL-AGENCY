@@ -4,7 +4,7 @@
 > Czytaj to JAKO PIERWSZE po czyszczeniu kontekstu. Aktualizuj sekcję
 > "Status" po każdej zmianie. Plik jest w repo (git) → przeżywa kompakcję.
 
-**Ostatnia aktualizacja:** 2026-06-03
+**Ostatnia aktualizacja:** 2026-06-04
 **Właściciel biznesowy:** kuba.ogra123@gmail.com
 **Stack:** Next.js 16.2.1 (App Router, Turbopack), React 19, Tailwind v4, LiteAPI (hotele), Aviasales/Travelpayouts (loty), Upstash Redis, Resend (email), Vercel.
 
@@ -249,6 +249,21 @@ Domknięcie NEXT-ów ze Sprintu 1.10 — wszystkie 3 rzeczy zgłoszone przez uż
 - ✅ **A/B tytułów porównań**: ulepszony domyślny szablon (świeżość = rok + korzyści): `„{A} czy {B}? Porównanie 2026 (pogoda, ceny)"` + pole `metaTitle?` na ręczne dopracowanie top stron (np. Malaga vs Walencja) — wariant „B" do pomiaru CTR w GSC.
 - ✅ **FIX SEO: polskie nazwy miast w porównaniach.** Strony porównań pokazywały ang. nazwy („Athens czy Rome") zamiast pol. („Ateny czy Rzym") — tytuł/H1/tabela/FAQ/schema. Teraz `pair.label ?? getStoryBySlug().name ?? localizeCity()` (jak na przewodnikach). Łapie realne zapytania PL „Ateny czy Rzym". Zweryfikowane: title+H1 = „Ateny czy Rzym", „Stambuł czy Rzym".
 - tsc + eslint clean. `/porownanie` hub: **54-55 par**.
+
+---
+
+### ZROBIONE — Sprint 1.12 (E-E-A-T + odchudzanie + raport danych + fix JSON-LD SSR) — 2026-06-04
+
+Po pełnym audycie SEO (Google 2026: „scaled content abuse" = priorytet egzekucji marcowego core update, Helpful Content = sygnał **site-wide**, Experience = najważniejszy element E-E-A-T). 4 zlecone działania (A-D) + 1 odkryty bug krytyczny:
+
+- ✅ **A. Warstwa E-E-A-T (autor-człowiek + Person schema + bylines).** Nowy `src/lib/mvp/authors.ts` (EDITOR_IN_CHIEF = założyciel „Kuba", uczciwe bio + metodologia; **⚠️ EDIT-ME**: nazwisko/zdjęcie/sameAs do uzupełnienia — nie fabrykuję osoby), `personSchema()` (Person ↔ Organization przez `worksFor`), komponent `AuthorByline`, nowa strona **`/redakcja`** (ProfilePage + Person + sekcja „skąd biorą się dane"). Autor w schemacie zmieniony Organization → **Person** na przewodnikach (235), porównaniach, month pages, commercial, raporcie + widoczny byline. Sitewide link do `/redakcja` w stopce (PL+EN). Plik: `authors.ts`, `components/publisher/author-byline.tsx`, `app/redakcja/page.tsx`.
+- ✅ **B. „Operacja odchudzanie" month pages (zbalansowane ~top 35%).** `src/lib/mvp/month-index-policy.ts` — `isMonthIndexable(dest, monthIndex)` zostawia w indeksie tylko realnie intencyjne (kuratorowane/commercial w ciepłych mies., plaże ≥22°C, mocne city-breaki 16-32°C, świąteczny grudzień), resztę **`noindex` + usunięte z sitemap**. Zmierzone: **1039/2820 = 36,8%** indeksowalnych (test `month-index-policy.test.ts`, 3 asercje). Zdejmuje site-wide thin-content drag bez utraty wygrywających stron. Zweryfikowane: berlin/styczeń=noindex, berlin/lipiec + antalya/lipiec=index; sitemap wyklucza noindex.
+- ✅ **C. Pogłębienie top 15 porównań (information gain).** `live-hotel-stats.ts` + `topComparisonSlugs`. Sekcja „Realne hotele w naszej bazie" z PRAWDZIWYMI danymi LiteAPI (liczba obiektów + średnia ocena gości z N + wysoko oceniane). **Świadomie BEZ live „od X zł"**: /hotels/rates zwraca 2-9 MB (>2 MB limit cache Next) a min z top-rated zawyżałby „od" (mylące → łamie 100% prawdziwe). Aktualne ceny zostają na wyszukiwarce/stronie hotelu (link). Cacheable (/data/hotels 24h), w pełni graceful.
+- ✅ **D. Pierwszy linkowalny asset (digital PR).** `reports.ts` (ranking liczony z własnych danych 235+ kierunków) + hub **`/raporty`** + **`/raporty/gdzie-cieplo-i-tanio-2026`**. Autorski ranking „ciepło i tanio" (top 30) + 3 cytowalne findings (Najdłużej ciepło: **Agadir** 12 mies.; Najtaniej + Najbliżej: **Tirana**), metodologia, blok „Cytuj ten raport" (gotowy cytat + CTA), **Dataset + Article(Person) + Breadcrumb** schema, linki do przewodników. W sitemap (0.85) + stopce.
+- 🐞 **FIX KRYTYCZNY (odkryty w trakcie): structured data NIE renderowała się server-side.** ~12 szablonów używało `next/script <Script type="application/ld+json">` → JSON-LD wstrzykiwany po hydracji (klient), poza surowym HTML = zawodne dla crawlera. Zamienione na `<script dangerouslySetInnerHTML>` (jak layout/guide, Google-recommended) w: porównania, month, commercial, `/kierunki` hub, `/inspiracje` hub, faq, jak-pracujemy, najlepsze-kierunki, category-page + nowe redakcja/raporty. **Zweryfikowane: ld+json bloki obecne w SSR HTML** (Article/FAQPage/Person/Dataset/ProfilePage). Realny site-wide zysk rich-results.
+- Build clean (3215/3215), tsc clean, eslint clean (moje pliki), **testy 117/117**. Zweryfikowane na produkcyjnym serwerze (`next start`): wszystkie znaczniki zielone.
+- ⚠️ **Pre-existing lint (NIE moje, nie blokuje buildu)**: react-hooks errors w `save-hotel-button`/`cookie-consent-banner`/`google-analytics`/`results-list` — osobny sprint.
+- ⬜ **NEXT (właściciel):** (1) uzupełnij `authors.ts` o prawdziwe nazwisko/zdjęcie/profile (max E-E-A-T); (2) GSC: zgłoś `/redakcja`, `/raporty/gdzie-cieplo-i-tanio-2026`, re-submit `sitemap.xml`; (3) digital PR: roześlij raport (HARO PL, blogi travel, dziennikarze) — to silnik backlinków; (4) commit/push gdy zaakceptujesz (zmiany NIE są jeszcze zacommitowane).
 
 ---
 

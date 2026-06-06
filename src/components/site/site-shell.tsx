@@ -56,6 +56,8 @@ const copy = {
         links: [
           { href: "/jak-pracujemy", label: "Jak to działa" },
           { href: "/o-nas", label: "O serwisie" },
+          { href: "/redakcja", label: "Redakcja" },
+          { href: "/raporty", label: "Raporty i dane" },
           { href: "/faq", label: "FAQ" },
           { href: "/kontakt", label: "Kontakt" },
         ],
@@ -115,6 +117,8 @@ const copy = {
         links: [
           { href: "/jak-pracujemy", label: "How it works" },
           { href: "/o-nas", label: "About" },
+          { href: "/redakcja", label: "Editorial team" },
+          { href: "/raporty", label: "Reports & data" },
           { href: "/faq", label: "FAQ" },
           { href: "/kontakt", label: "Contact" },
         ],
