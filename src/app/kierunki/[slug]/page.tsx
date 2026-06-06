@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+import { AuthorByline } from "@/components/publisher/author-byline";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
@@ -9,6 +10,7 @@ import { EditorialArticleCard } from "@/components/publisher/editorial-article-c
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { buildAviasalesLink } from "@/lib/mvp/affiliate-config";
+import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
@@ -264,11 +266,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         image: media.heroImage,
         datePublished: "2026-01-01T00:00:00.000Z",
         dateModified: new Date().toISOString(),
-        author: {
-          "@type": "Organization",
-          "@id": `${getSiteUrl()}/#organization`,
-          name: "HelpTravel",
-        },
+        author: personSchema(EDITOR_IN_CHIEF),
         publisher: { "@id": `${getSiteUrl()}/#organization` },
         about: [cityPl, localizeCountry(guide.destination.country), "city break", "planowanie podróży"],
       },
@@ -355,6 +353,11 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </span>
         </LocalizedLink>
       )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-900/10 bg-white/95 px-5 py-3 shadow-[0_10px_30px_rgba(16,84,48,0.05)]">
+        <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} />
+        <span className="text-xs text-emerald-900/55">Oparte na realnych danych o cenach, pogodzie i lotach</span>
+      </div>
 
       <EditorialMetaBar
         eyebrow="Na start"

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import Script from "next/script";
 import { notFound } from "next/navigation";
 
+import { AuthorByline } from "@/components/publisher/author-byline";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
-import { comparisonPairs, getComparisonPairBySlug } from "@/lib/mvp/comparisons";
+import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
+import { comparisonPairs, getComparisonPairBySlug, isTopComparison } from "@/lib/mvp/comparisons";
+import { getCityHotelStats } from "@/lib/mvp/live-hotel-stats";
 import { getArticlesForDestination, getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { getStoryBySlug } from "@/lib/mvp/destination-content";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
@@ -244,6 +246,18 @@ export default async function ComparisonPage({ params }: PageProps) {
   const quickAnswer = buildQuickAnswer(a, b, nameA, nameB);
   const baseUrl = getSiteUrl();
 
+  // Audit action C — flagship comparisons get REAL, current data from our
+  // LiteAPI inventory (genuine information gain). Best-effort + fully graceful:
+  // a LiteAPI hiccup degrades to the modelled content, never breaks the page.
+  const isTop = isTopComparison(pair.slug);
+  const [statsA, statsB] = isTop
+    ? await Promise.all([getCityHotelStats(a.city, a.country), getCityHotelStats(b.city, b.country)])
+    : [null, null];
+  const liveAsOf = statsA?.asOfISO ?? statsB?.asOfISO ?? null;
+  const liveDateLabel = liveAsOf
+    ? new Date(liveAsOf).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" })
+    : null;
+
   // Hero "vs" + image dla schema — realne foto Pexels obu kierunków (cache + ISR).
   // Obrazy są widoczne na stronie (zgodnie z wytycznymi Google dla pola image).
   const [mediaA, mediaB] = await Promise.all([resolveDestinationMedia(a), resolveDestinationMedia(b)]);
@@ -272,7 +286,7 @@ export default async function ComparisonPage({ params }: PageProps) {
         mainEntityOfPage: `${baseUrl}/porownanie/${pair.slug}`,
         image: images,
         inLanguage: "pl-PL",
-        author: { "@type": "Organization", "@id": `${baseUrl}/#organization`, name: "HelpTravel" },
+        author: personSchema(EDITOR_IN_CHIEF),
         publisher: { "@id": `${baseUrl}/#organization` },
       },
       {
@@ -338,9 +352,7 @@ export default async function ComparisonPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <Script id={`compare-${pair.slug}-jsonld`} type="application/ld+json">
-        {JSON.stringify(structuredData)}
-      </Script>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
       <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white/95 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
         {/* Split "vs" hero — realne foto obu kierunków (widoczne + w schema image). */}
@@ -380,6 +392,7 @@ export default async function ComparisonPage({ params }: PageProps) {
             {nameA} czy {nameB}? Porównanie pod realną decyzję wyjazdową.
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{pair.intent}.</p>
+          <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} className="mt-5" />
         </div>
       </section>
 
@@ -388,6 +401,70 @@ export default async function ComparisonPage({ params }: PageProps) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Szybka odpowiedź</p>
         <p className="mt-2 max-w-3xl text-base leading-8 text-emerald-950 sm:text-lg">{quickAnswer}</p>
       </section>
+
+      {/* NA ŻYWO Z NASZEJ BAZY — realne, aktualne dane (audit action C, top porównania).
+          Informacja, której nie ma żadna statyczna strona konkurencji. 100% prawdziwe:
+          gdy LiteAPI nie odpowie, sekcja po prostu się nie pokazuje. */}
+      {isTop && (statsA || statsB) && (
+        <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
+                Na żywo z naszej bazy
+              </p>
+              <h2 className="mt-2 font-display text-2xl text-emerald-950 sm:text-3xl">
+                Realne hotele w naszej bazie: {nameA} vs {nameB}
+              </h2>
+            </div>
+            {liveDateLabel && <span className="text-xs text-emerald-900/55">Dane z {liveDateLabel}</span>}
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {[
+              { stats: statsA, name: nameA },
+              { stats: statsB, name: nameB },
+            ].map(({ stats, name }) => (
+              <article key={name} className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
+                <h3 className="font-display text-xl text-emerald-950">{name}</h3>
+                {stats ? (
+                  <>
+                    <dl className="mt-3 grid grid-cols-2 gap-3">
+                      <div>
+                        <dt className="text-[11px] uppercase tracking-[0.14em] text-emerald-700">Hotele w bazie</dt>
+                        <dd className="mt-1 text-2xl font-bold text-emerald-950">
+                          {stats.propertyCount.toLocaleString("pl-PL")}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-[11px] uppercase tracking-[0.14em] text-emerald-700">Średnia ocena gości</dt>
+                        <dd className="mt-1 text-2xl font-bold text-emerald-950">
+                          {stats.avgGuestRating ? `${stats.avgGuestRating}/10` : "—"}
+                          {stats.avgGuestRating && stats.ratedCount > 0 ? (
+                            <span className="ml-1 text-xs font-normal text-emerald-900/55">z {stats.ratedCount}</span>
+                          ) : null}
+                        </dd>
+                      </div>
+                    </dl>
+                    {stats.topHotels.length > 0 && (
+                      <p className="mt-3 text-xs leading-6 text-emerald-900/60">
+                        <span className="font-semibold text-emerald-800">Wysoko oceniane:</span>{" "}
+                        {stats.topHotels.slice(0, 3).map((h) => h.name).join(", ")}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-emerald-900/60">
+                    Dane na żywo chwilowo niedostępne — sprawdź aktualne oferty w wyszukiwarce poniżej.
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-6 text-emerald-900/55">
+            Liczba obiektów i oceny gości pochodzą na żywo z naszej bazy (LiteAPI) i mogą się zmieniać. Aktualne ceny
+            dla Twoich dat sprawdzisz w wyszukiwarce poniżej.
+          </p>
+        </section>
+      )}
 
       {/* TABELA RÓŻNIC */}
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] overflow-x-auto">
