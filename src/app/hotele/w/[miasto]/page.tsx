@@ -22,10 +22,10 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+import { AuthorByline } from "@/components/publisher/author-byline";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { TrackView } from "@/components/analytics/track-view";
 import { commercialCities, findCommercialCityBySlug, type CommercialCity } from "@/lib/mvp/commercial-cities";
@@ -34,6 +34,7 @@ import { fetchHotelsList } from "@/lib/liteapi/search";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { addDaysToIsoDate, defaultTravelStartDate } from "@/lib/mvp/travel-dates";
 
 export const revalidate = 86400; // 24h ISR
@@ -230,7 +231,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
         inLanguage: "pl-PL",
         datePublished: "2026-01-01T00:00:00.000Z",
         dateModified: new Date().toISOString(),
-        author: { "@type": "Organization", "@id": `${baseUrl}/#organization`, name: "HelpTravel" },
+        author: personSchema(EDITOR_IN_CHIEF),
         publisher: { "@id": `${baseUrl}/#organization` },
         image: media?.heroImage,
         about: {
@@ -348,9 +349,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <Script id={`hotele-${city.slug}-jsonld`} type="application/ld+json">
-        {JSON.stringify(structuredData)}
-      </Script>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <TrackView
         event="landing_view"
         params={{ city_slug: city.slug, monthly_volume: city.monthlySearchVolumePL }}
@@ -421,6 +420,11 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           </div>
         </div>
       </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-900/10 bg-white px-5 py-3 shadow-[0_10px_30px_rgba(16,84,48,0.05)]">
+        <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} />
+        <span className="text-xs text-emerald-900/55">Ceny i dostępność hoteli na żywo z naszej bazy</span>
+      </div>
 
       {/* WHY US */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

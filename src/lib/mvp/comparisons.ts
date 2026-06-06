@@ -139,6 +139,34 @@ makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plażowe lata"),
   makePair("barcelona-spain", "istanbul-turkey", "Barcelona czy Stambuł — energiczny city break"),
 ];
 
+// Flagship comparison pages (highest PL search intent) that receive the
+// "deep" treatment — live LiteAPI hotel stats + real prices (see audit
+// action C / live-hotel-stats.ts). Slugs are the alphabetically-sorted
+// makePair() output; every entry must exist in `comparisonPairs` above.
+// We deepen the top ~15 instead of all 55: real information gain where it
+// matters, without 55× live fetches on every build.
+export const topComparisonSlugs: readonly string[] = [
+  "antalya-turkey-vs-heraklion-greece", // Turcja vs Kreta
+  "heraklion-greece-vs-rhodes-greece", // Kreta vs Rodos
+  "antalya-turkey-vs-rhodes-greece", // Antalya vs Rodos
+  "heraklion-greece-vs-larnaca-cyprus", // Kreta vs Cypr
+  "antalya-turkey-vs-palma-spain", // Turcja vs Majorka
+  "larnaca-cyprus-vs-palma-spain", // Cypr vs Majorka
+  "heraklion-greece-vs-palma-spain", // Kreta vs Majorka
+  "funchal-portugal-vs-santa-cruz-de-tenerife-spain", // Madera vs Teneryfa
+  "las-palmas-spain-vs-santa-cruz-de-tenerife-spain", // Gran Canaria vs Teneryfa
+  "athens-greece-vs-rome-italy", // Ateny vs Rzym
+  "istanbul-turkey-vs-rome-italy", // Stambuł vs Rzym
+  "lisbon-portugal-vs-rome-italy", // Lizbona vs Rzym
+  "barcelona-spain-vs-london-uk", // Barcelona vs Londyn
+  "malaga-spain-vs-valencia-spain", // Malaga vs Walencja
+  "heraklion-greece-vs-valletta-malta", // Kreta vs Malta
+];
+
+export function isTopComparison(slug: string): boolean {
+  return topComparisonSlugs.includes(slug);
+}
+
 export function getComparisonPairBySlug(slug: string): ComparisonPair | undefined {
   return comparisonPairs.find((pair) => pair.slug === slug);
 }

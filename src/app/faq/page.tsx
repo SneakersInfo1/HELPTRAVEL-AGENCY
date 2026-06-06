@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 
 import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
 
@@ -79,9 +78,7 @@ export default function FaqPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <Script id="faq-jsonld" type="application/ld+json">
-        {JSON.stringify(structuredData)}
-      </Script>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pomoc i przejrzystość</p>
