@@ -162,7 +162,13 @@ export function PaymentSlot({ prebook, returnBaseUrl, onMountFail }: Props) {
         returnUrl,
         targetElement: "#payment-element",
         appearance: { theme: "flat" },
-        options: { business: { name: "helptravel.pl" } },
+        // Business name shown in the LiteAPI/Stripe Payment Element header.
+        // NOTE: this only relabels the checkout FORM. The card-authorisation
+        // screen in the user's bank/wallet (e.g. Revolut "NUITEE TRAVEL") shows
+        // the MERCHANT OF RECORD — Nuitee Travel (LiteAPI's payment entity) —
+        // which is set in their Stripe account, NOT here, and cannot be changed
+        // from the SDK. We reassure the user about this on the page itself.
+        options: { business: { name: "Help Travel" } },
         amount: prebook.amount,
         currency: prebook.currency,
         submitButton: { text: "Zapłać teraz" },

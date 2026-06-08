@@ -202,10 +202,23 @@ export function ReservationForm({
           currency={pay.currency}
         />
         <h2 className="text-lg font-bold text-neutral-900">Płatność</h2>
-        <p className="mb-4 mt-1 text-sm text-neutral-600">
+        <p className="mb-3 mt-1 text-sm text-neutral-600">
           Wprowadź dane karty w bezpiecznym formularzu. Po opłaceniu wrócisz tu
           z potwierdzeniem.
         </p>
+        {/* Trust note: the bank/wallet authorisation screen shows the merchant
+            of record (Nuitee Travel / LiteAPI), not "Help Travel". Explaining
+            it up-front removes the "is this a scam?" surprise that was costing
+            us conversions at the payment step. */}
+        <div className="mb-4 flex gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
+          <span aria-hidden className="text-base leading-6">🔒</span>
+          <p>
+            Płatność bezpiecznie obsługuje nasz partner rezerwacyjny{" "}
+            <strong>Nuitee Travel</strong> (LiteAPI). Na potwierdzeniu z banku lub w aplikacji
+            płatniczej (np. Revolut) zobaczysz nazwę <strong>NUITEE TRAVEL</strong> — to
+            prawidłowe i w pełni bezpieczne.
+          </p>
+        </div>
         <PaymentSlot
           prebook={pay}
           returnBaseUrl={returnBaseUrl}
