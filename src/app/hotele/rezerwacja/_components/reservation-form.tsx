@@ -206,18 +206,48 @@ export function ReservationForm({
           Wprowadź dane karty w bezpiecznym formularzu. Po opłaceniu wrócisz tu
           z potwierdzeniem.
         </p>
-        {/* Trust note: the bank/wallet authorisation screen shows the merchant
-            of record (Nuitee Travel / LiteAPI), not "Help Travel". Explaining
-            it up-front removes the "is this a scam?" surprise that was costing
-            us conversions at the payment step. */}
-        <div className="mb-4 flex gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
-          <span aria-hidden className="text-base leading-6">🔒</span>
-          <p>
-            Płatność bezpiecznie obsługuje nasz partner rezerwacyjny{" "}
-            <strong>Nuitee Travel</strong> (LiteAPI). Na potwierdzeniu z banku lub w aplikacji
-            płatniczej (np. Revolut) zobaczysz nazwę <strong>NUITEE TRAVEL</strong> — to
-            prawidłowe i w pełni bezpieczne.
-          </p>
+        {/* Strong trust card (payment step). Every claim is true + verifiable:
+            Stripe is the processor (PCI DSS L1), card data never hits our
+            server, 3D Secure happens in the user's bank app, and Nuitee Travel
+            (LiteAPI) is the merchant of record — which is WHY the bank/Revolut
+            screen reads "NUITEE TRAVEL". Stating it up-front removes the
+            "is this a scam?" surprise that was costing conversions here. */}
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4">
+          <div className="flex items-center gap-2">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-4 w-4 shrink-0 text-emerald-700">
+              <path
+                fillRule="evenodd"
+                d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1Zm3 8V5.5a3 3 0 10-6 0V9h6Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <p className="text-sm font-bold text-emerald-900">Bezpieczna, szyfrowana płatność</p>
+          </div>
+          <ul className="mt-2.5 space-y-1.5 text-[13px] leading-5 text-emerald-900/85">
+            <li className="flex gap-2">
+              <span aria-hidden className="text-emerald-600">✓</span>
+              <span>Dane karty wpisujesz w formularzu <strong>Stripe</strong> (PCI DSS Level 1) — my ich nie widzimy ani nie przechowujemy.</span>
+            </li>
+            <li className="flex gap-2">
+              <span aria-hidden className="text-emerald-600">✓</span>
+              <span>Płatność potwierdzasz w aplikacji swojego banku (<strong>3D&nbsp;Secure</strong>).</span>
+            </li>
+            <li className="flex gap-2">
+              <span aria-hidden className="text-emerald-600">✓</span>
+              <span>Rozliczenie obsługuje nasz partner rezerwacyjny <strong>Nuitee&nbsp;Travel (LiteAPI)</strong> — dlatego na ekranie banku lub w aplikacji (np. Revolut) zobaczysz <strong>NUITEE&nbsp;TRAVEL</strong>. To prawidłowe i bezpieczne.</span>
+            </li>
+          </ul>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-emerald-200/70 pt-3">
+            {["Visa", "Mastercard", "Stripe"].map((badge) => (
+              <span
+                key={badge}
+                className="rounded border border-emerald-900/15 bg-white px-2 py-0.5 text-[11px] font-semibold text-emerald-900/80"
+              >
+                {badge}
+              </span>
+            ))}
+            <span className="ml-auto text-[11px] text-emerald-900/55">Szyfrowanie SSL/TLS</span>
+          </div>
         </div>
         <PaymentSlot
           prebook={pay}
