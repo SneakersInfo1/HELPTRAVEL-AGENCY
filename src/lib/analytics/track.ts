@@ -69,6 +69,36 @@ export interface TrackEventMap {
     price?: number;
     currency?: string;
   };
+  /** /hotele/rezerwacja rendered with a complete offer link. The step
+      between hotel_detail_view and booking_prebook_start — without it the
+      checkout was a measurement black hole (70+ "Zarezerwuj" clicks, zero
+      visibility into where they stalled). */
+  checkout_view: {
+    hotel_id: string;
+    price?: number;
+    currency?: string;
+  };
+  /** Prebook attempt failed (rate gone, provider error, rate limit…). The
+      `code` is our booking-domain taxonomy — lets GA4 split technical
+      failures from abandonment. */
+  booking_prebook_error: {
+    hotel_id: string;
+    code?: string;
+    http_status?: number;
+  };
+  /** The Stripe/LiteAPI payment widget actually painted (user saw card
+      fields). checkout_view minus this = prebook friction; this minus
+      booking_complete = payment-step abandonment. */
+  booking_payment_shown: {
+    amount?: number;
+    currency?: string;
+  };
+  /** Checkout opened inside an in-app webview (TikTok/Instagram/Facebook)
+      where 3-D Secure redirects are flaky — measures how much traffic is
+      structurally at risk before any fix. */
+  checkout_webview_detected: {
+    app: string;
+  };
   booking_complete: {
     /** GA4 ecommerce-style. Used as a key event / conversion. */
     booking_id: string;

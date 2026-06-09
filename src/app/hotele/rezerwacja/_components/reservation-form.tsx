@@ -6,8 +6,10 @@
 //
 // Layout per docs/superpowers/specs/2026-05-20-booking-ui-polish-design.md.
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 
+import { track } from "@/lib/analytics/track";
 import { LiteApiGuestSchema, LiteApiHolderSchema } from "@/lib/liteapi";
 
 import { OptionalGuestsAccordion } from "./optional-guests-accordion";
@@ -17,6 +19,7 @@ import { PaymentSlot, type PaymentSlotPrebook } from "./payment-slot";
 import { TrustStrip } from "./trust-strip";
 
 interface Props {
+  hotelId: string;
   offerId: string;
   hotelName: string;
   hotelCity?: string;
@@ -28,6 +31,57 @@ interface Props {
   adults: number;
   publicKey: string;
   returnBaseUrl: string;
+  /** Deep link back to the hotel page (same dates/occupancy) — the recovery
+      path when the offer can't be prebooked anymore. */
+  backToHotelHref: string;
+}
+
+// Structured prebook error: `repick` decides whether the recovery panel
+// promotes "pick a fresh offer" (deterministic failures — retrying the same
+// offerId cannot succeed) over plain retry (transient failures).
+interface FormError {
+  message: string;
+  repick: boolean;
+}
+
+// code → recovery classification for /api/booking/prebook failures.
+// PREBOOK_EXPIRED / RATE_UNAVAILABLE: the offer is gone — only a fresh rate
+// helps. LITEAPI_DOWN is ALSO classified repick: production logs (2026-06-09)
+// show it firing deterministically for specific offers (supplier rejected /
+// price drifted), and the user who retried it 4× hit the same wall each
+// time — while picking another offer worked on the first try.
+function classifyPrebookError(
+  code: string | undefined,
+  httpStatus: number,
+  apiMessage: string | undefined,
+): FormError {
+  switch (code) {
+    case "PREBOOK_EXPIRED":
+    case "RATE_UNAVAILABLE":
+      return {
+        message:
+          apiMessage ??
+          "Ta oferta nie jest już dostępna. Wybierz ofertę ponownie na stronie hotelu.",
+        repick: true,
+      };
+    case "LITEAPI_DOWN":
+    case "prebook_no_payment_session":
+      return {
+        message:
+          "Nie udało się potwierdzić tej oferty u dostawcy — najczęściej oznacza to, że cena lub dostępność właśnie się zmieniła. Wybierz ofertę ponownie, to zajmie chwilę.",
+        repick: true,
+      };
+    case "RATE_LIMIT_EXCEEDED":
+      return {
+        message: apiMessage ?? "Zbyt wiele prób w krótkim czasie. Odczekaj chwilę i spróbuj ponownie.",
+        repick: false,
+      };
+    default:
+      return {
+        message: apiMessage ?? "Nie udało się rozpocząć rezerwacji. Spróbuj ponownie.",
+        repick: httpStatus >= 500,
+      };
+  }
 }
 
 const inputCls =
@@ -41,6 +95,7 @@ function freshIdemKey(): string {
 }
 
 export function ReservationForm({
+  hotelId,
   offerId,
   hotelName,
   hotelCity,
@@ -52,6 +107,7 @@ export function ReservationForm({
   adults,
   publicKey,
   returnBaseUrl,
+  backToHotelHref,
 }: Props) {
   const occupancy = Math.max(1, adults);
   const [holder, setHolder] = useState({
@@ -69,7 +125,7 @@ export function ReservationForm({
     })),
   );
   const [step, setStep] = useState<"form" | "submitting" | "paying">("form");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormError | null>(null);
   const [pay, setPay] = useState<PaymentSlotPrebook | null>(null);
   // Lazily generated in onSubmit (never during render — keeps the component
   // pure for the React Compiler / react-hooks/purity).
@@ -107,12 +163,13 @@ export function ReservationForm({
     if (step !== "form") return; // double-submit guard (Idempotency-Key on backend too)
     const v = validate();
     if (v) {
-      setError(v);
+      setError({ message: v, repick: false });
       return;
     }
     if (!idemKey.current) idemKey.current = freshIdemKey();
     setError(null);
     setStep("submitting");
+    track("booking_prebook_start", { hotel_id: hotelId, price, currency });
     try {
       // guests[0] = holder (always); rows with both fields filled appended.
       // Result length is between 1 and occupancy.
@@ -162,11 +219,14 @@ export function ReservationForm({
           "[booking][prebook] failed",
           { httpStatus: res.status, body: data },
         );
+        track("booking_prebook_error", {
+          hotel_id: hotelId,
+          code: data.error,
+          http_status: res.status,
+        });
         // New attempt must use a fresh idempotency key.
         idemKey.current = freshIdemKey();
-        setError(
-          data.message ?? "Nie udało się rozpocząć rezerwacji. Spróbuj ponownie.",
-        );
+        setError(classifyPrebookError(data.error, res.status, data.message));
         setStep("form");
         return;
       }
@@ -182,9 +242,12 @@ export function ReservationForm({
         widgetEnv: data.widgetEnv ?? (publicKey === "live" ? "live" : "sandbox"),
       });
     } catch {
-      setError(
-        "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
-      );
+      track("booking_prebook_error", { hotel_id: hotelId, code: "network" });
+      setError({
+        message:
+          "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
+        repick: false,
+      });
       setStep("form");
     }
   }
@@ -237,6 +300,21 @@ export function ReservationForm({
               <span aria-hidden className="text-emerald-600">✓</span>
               <span>Rozliczenie obsługuje nasz partner rezerwacyjny <strong>Nuitee&nbsp;Travel (LiteAPI)</strong> — dlatego na ekranie banku lub w aplikacji (np. Revolut) zobaczysz <strong>NUITEE&nbsp;TRAVEL</strong>. To prawidłowe i bezpieczne.</span>
             </li>
+            <li className="flex gap-2">
+              <span aria-hidden className="text-emerald-600">✓</span>
+              <span>
+                Jesteśmy zweryfikowaną firmą na{" "}
+                <a
+                  href="https://pl.trustpilot.com/review/helptravel.pl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold underline decoration-emerald-400 underline-offset-2 hover:text-emerald-700"
+                >
+                  Trustpilot ↗
+                </a>
+                {" "}— możesz sprawdzić nas przed płatnością.
+              </span>
+            </li>
           </ul>
           <PaymentBrands />
         </div>
@@ -244,9 +322,11 @@ export function ReservationForm({
           prebook={pay}
           returnBaseUrl={returnBaseUrl}
           onMountFail={() => {
-            setError(
-              "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
-            );
+            setError({
+              message:
+                "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
+              repick: false,
+            });
             setStep("form");
             setPay(null);
           }}
@@ -347,12 +427,24 @@ export function ReservationForm({
         />
 
         {error && (
-          <p
+          <div
             role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3"
           >
-            {error}
-          </p>
+            <p className="text-sm text-red-700">{error.message}</p>
+            {/* Deterministic failures (offer gone / provider rejected it):
+                retrying the same offerId is a dead end — promote the path
+                that actually works: fresh rates on the hotel page, same
+                dates and guests already in the link. */}
+            {error.repick && (
+              <Link
+                href={backToHotelHref}
+                className="mt-3 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                Wybierz ofertę ponownie →
+              </Link>
+            )}
+          </div>
         )}
 
         <button
