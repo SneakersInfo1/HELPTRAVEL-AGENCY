@@ -101,9 +101,25 @@ export class LiteApiUnknownError extends LiteApiError {
   }
 }
 
+// LiteAPI signals an expired/withdrawn offer on PREBOOK as HTTP 400 with
+// `{error:{code:4002,message:"invalid offerId"}}` (verified live 2026-06-09;
+// no 409 involved). Without this carve-out a dead offer fell through to
+// LITEAPI_UNKNOWN → "chwilowy problem po stronie dostawcy, spróbuj ponownie"
+// — a dead-end retry loop on an offer that can never prebook again
+// (production: 4 consecutive 503s from one user before bouncing).
+function isInvalidOfferBody(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const err = (body as { error?: { code?: unknown; message?: unknown } }).error;
+  if (!err || typeof err !== "object") return false;
+  if (err.code === 4002) return true;
+  return typeof err.message === "string" && /invalid\s*offer\s*id/i.test(err.message);
+}
+
 // Map an HTTP status + body to the right error subclass.
 export function liteApiErrorFromResponse(status: number, body: unknown): LiteApiError {
   const opts = { status, body };
+  if (status === 400 && isInvalidOfferBody(body))
+    return new LiteApiRateExpiredError("Invalid/expired offerId (4002)", opts);
   if (status === 401 || status === 403) return new LiteApiAuthError(`HTTP ${status}`, opts);
   if (status === 408) return new LiteApiTimeoutError(`HTTP ${status}`, opts);
   if (status === 409) return new LiteApiRateExpiredError(`HTTP ${status}`, opts);
