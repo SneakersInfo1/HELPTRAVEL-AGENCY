@@ -12,6 +12,7 @@ import { LiteApiGuestSchema, LiteApiHolderSchema } from "@/lib/liteapi";
 
 import { OptionalGuestsAccordion } from "./optional-guests-accordion";
 import { OrderSummaryBanner } from "./order-summary-banner";
+import { PaymentBrands } from "./payment-brands";
 import { PaymentSlot, type PaymentSlotPrebook } from "./payment-slot";
 import { TrustStrip } from "./trust-strip";
 
@@ -237,17 +238,7 @@ export function ReservationForm({
               <span>Rozliczenie obsługuje nasz partner rezerwacyjny <strong>Nuitee&nbsp;Travel (LiteAPI)</strong> — dlatego na ekranie banku lub w aplikacji (np. Revolut) zobaczysz <strong>NUITEE&nbsp;TRAVEL</strong>. To prawidłowe i bezpieczne.</span>
             </li>
           </ul>
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-emerald-200/70 pt-3">
-            {["Visa", "Mastercard", "Stripe"].map((badge) => (
-              <span
-                key={badge}
-                className="rounded border border-emerald-900/15 bg-white px-2 py-0.5 text-[11px] font-semibold text-emerald-900/80"
-              >
-                {badge}
-              </span>
-            ))}
-            <span className="ml-auto text-[11px] text-emerald-900/55">Szyfrowanie SSL/TLS</span>
-          </div>
+          <PaymentBrands />
         </div>
         <PaymentSlot
           prebook={pay}
