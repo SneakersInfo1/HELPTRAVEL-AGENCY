@@ -7,6 +7,7 @@ import { SiteShell } from "@/components/site/site-shell";
 import { WebVitalsReporter } from "@/components/site/web-vitals-reporter";
 import { CookieConsentBanner } from "@/components/site/cookie-consent-banner";
 import { GoogleAnalytics } from "@/components/site/google-analytics";
+import { MicrosoftClarity } from "@/components/site/microsoft-clarity";
 import { ConsentProvider } from "@/lib/consent/context";
 import { getSiteUrl } from "@/lib/mvp/site";
 
@@ -171,6 +172,7 @@ export default function RootLayout({
         <ConsentProvider>
           <LanguageProvider>
             <GoogleAnalytics />
+            <MicrosoftClarity />
             <WebVitalsReporter />
             <SiteShell>{children}</SiteShell>
             <CookieConsentBanner />
