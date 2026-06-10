@@ -39,6 +39,29 @@ test("liteApiErrorFromResponse exposes Polish user-facing message", () => {
   assert.equal(e.internalCode, "LITEAPI_RATE_EXPIRED");
 });
 
+// Regression for production 2026-06-09: LiteAPI answers HTTP 400 with body
+// `{error:{code:4002,message:"invalid offerId"}}` when a prebook references
+// an offer that expired or was withdrawn. Mapping it to LITEAPI_UNKNOWN →
+// LITEAPI_DOWN told users "chwilowy problem po stronie dostawcy — spróbuj
+// ponownie", sending them into a dead-end retry loop on the same dead offer
+// (observed: 4 consecutive 503s from one user, then bounce). It must map to
+// RATE_EXPIRED so the UI can route the user to re-pick a fresh offer.
+test("liteApiErrorFromResponse: 400 'invalid offerId' (code 4002) → RateExpired", () => {
+  const e = liteApiErrorFromResponse(400, {
+    error: { code: 4002, message: "invalid offerId" },
+  });
+  assert.ok(e instanceof LiteApiRateExpiredError);
+  assert.equal(e.internalCode, "LITEAPI_RATE_EXPIRED");
+  // Message variant without the numeric code must also be recognized.
+  const e2 = liteApiErrorFromResponse(400, {
+    error: { message: "Invalid OfferId provided" },
+  });
+  assert.ok(e2 instanceof LiteApiRateExpiredError);
+  // A generic 400 (no offer marker) keeps the existing UNKNOWN mapping.
+  const e3 = liteApiErrorFromResponse(400, { error: { message: "bad request" } });
+  assert.equal(e3.internalCode, "LITEAPI_UNKNOWN");
+});
+
 test("resolveCountryCode handles common variants", () => {
   assert.equal(resolveCountryCode("Spain"), "ES");
   assert.equal(resolveCountryCode("United Kingdom"), "GB");

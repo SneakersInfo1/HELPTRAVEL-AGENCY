@@ -128,44 +128,11 @@ export default async function HotelResultsPage({
         <FiltersSidebar />
 
         <section className="space-y-6">
-          {/* Sesja C1 FIX 6 — prominent flight banner above hotels.
-              Plane icon + bolded route + subtitle + larger CTA. */}
-          {valid && sp.origin && (
-            <a
-              href="#planner-flights"
-              className="flex flex-col gap-3 rounded-2xl border border-emerald-900/12 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-            >
-              <div className="flex items-center gap-4">
-                <span
-                  aria-hidden
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white shadow-md sm:h-14 sm:w-14"
-                >
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <div className="text-base font-bold text-emerald-950 sm:text-lg">
-                    Loty {sp.origin} → {sp.destination}
-                  </div>
-                  <div className="text-sm text-emerald-900/72">
-                    Najlepsze połączenia · ceny w obie strony · sortowane po wartości
-                  </div>
-                </div>
-              </div>
-              <span className="inline-flex h-11 shrink-0 items-center justify-center self-stretch rounded-full bg-emerald-700 px-6 text-sm font-bold text-white shadow-md transition hover:bg-emerald-800 sm:self-center">
-                Zobacz loty →
-              </span>
-            </a>
-          )}
-          {valid && !sp.origin && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              <div className="font-semibold">Dodaj miasto wylotu, by zobaczyć loty.</div>
-              <div className="mt-0.5 text-xs text-amber-800">
-                Kliknij pole „Skąd” w pasku wyszukiwania powyżej.
-              </div>
-            </div>
-          )}
+          {/* Flight CTA card removed (2026-06-09): Clarity showed a heavy
+              drop-off on the "Zobacz loty" banner that sat ABOVE the hotel
+              results — it pulled users out of the hotel funnel before they
+              saw a single hotel. Flights remain fully available in the
+              FlightOffersPanel below the results (#planner-flights). */}
 
           {!valid ? (
             <EmptyPrompt hasDestination={Boolean(sp.destination)} />

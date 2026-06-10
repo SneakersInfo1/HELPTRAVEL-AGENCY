@@ -267,6 +267,20 @@ Po pełnym audycie SEO (Google 2026: „scaled content abuse" = priorytet egzeku
 
 ---
 
+### ZROBIONE — Sprint 1.13 (audyt konwersji: fix lejka rezerwacji + UX wyników) — 2026-06-09 — branch `feat/conversion-funnel-fixes`
+
+Pełny audyt po danych GA (316 userów/7 dni, 26 na checkout, 0 realnych rezerwacji) + GSC + logi produkcyjne Vercel:
+
+- 🐞 **ROOT CAUSE „70 kliknięć Zarezerwuj → 0 rezerwacji" (część techniczna):** LiteAPI na prebook z wygasłym/wycofanym offerId odpowiada **HTTP 400 `{code:4002, "invalid offerId"}`** → mapowane na `LITEAPI_UNKNOWN` → `LITEAPI_DOWN` → 503 z komunikatem „Chwilowy problem po stronie dostawcy. **Spróbuj ponownie**" → użytkownik ponawiał MARTWĄ ofertę (produkcja 2026-06-09: 4×503 w 70 s od jednego usera, potem odbicie). **Fix:** (1) `errors.ts` — celowane mapowanie 400+4002 → `LITEAPI_RATE_EXPIRED` (test w `client.test.ts`, suite 118/118); (2) `reservation-form.tsx` — klasyfikacja błędów prebook: dla deterministycznych (expired/unavailable/provider-reject) panel z CTA **„Wybierz ofertę ponownie →"** (deep-link do hotelu z datami/osobami). Zweryfikowane e2e na dev: realny prebook z martwym offerId → „Cena tej oferty wygasła…" + działający przycisk.
+- 📊 **Checkout przestaje być czarną dziurą analityczną** — nowe eventy GA4: `checkout_view`, `booking_prebook_start`, `booking_prebook_error` (z kodem), `booking_payment_shown` (widget faktycznie namalowany), `checkout_webview_detected`. Dotąd między `hotel_detail_view` a `booking_complete` nie było NIC.
+- 📱 **Webview escape-hatch**: checkout w przeglądarce in-app (TikTok/IG/FB — wykrycie po UA) pokazuje baner „otwórz w Chrome/Safari" + „Kopiuj link" — 3D Secure w webview to klasyczny silent-killer płatności przy ruchu z TikToka (72% ruchu = mobile).
+- ⭐ **Trustpilot** (konto zweryfikowane): kafelek w TrustStrip + punkt w karcie zaufania kroku płatności → `pl.trustpilot.com/review/helptravel.pl`.
+- 🔎 **Wyniki wyszukiwania:** (1) usunięta zielona karta „Zobacz loty" nad hotelami (Clarity: duży drop-off; panel lotów na dole strony zostaje); (2) przycisk „Filtry i sortowanie" na mobile = **pływający FAB** na dole viewportu (wcześniej uciekał przy scrollu — trzeba było wracać na górę, zgłoszenie właściciela).
+- Testy **118/118**, tsc bez nowych błędów (jedyny = pre-existing TS5097 w pliku testowym), eslint clean na zmienionych plikach. Zweryfikowane wizualnie: mobile 375px (FAB, sheet filtrów, panel błędu, trust strip) + desktop 1280px (sidebar wraca, FAB znika).
+- ⬜ NEXT (rekomendacje z audytu, NIE zrobione): landing `/tiktok` pod link w bio (oferta z wideo ≠ homepage), GA4 oznaczyć `checkout_view`/`booking_payment_shown` w lejku eksploracji, rozważyć BLIK/Przelewy24 (LiteAPI roadmap?), obserwować `booking_prebook_error` po deployu.
+
+---
+
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
 
 | # | Problem | Status | PR |

@@ -21,6 +21,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { track } from "@/lib/analytics/track";
+
 const WIDGET_SRC =
   "https://payment-wrapper.liteapi.travel/dist/liteAPIPayment.js?v=a1";
 const SKELETON_FALLBACK_MS = 3000;
@@ -101,6 +103,13 @@ export function PaymentSlot({ prebook, returnBaseUrl, onMountFail }: Props) {
       if (cancelled) return;
       teardownMountWatchers();
       setWidgetMounted(true);
+      // Funnel beacon: the user actually SAW payment fields. The gap between
+      // checkout_view → this event is prebook/widget friction; between this
+      // and booking_complete is payment-step abandonment.
+      track("booking_payment_shown", {
+        amount: prebook.amount,
+        currency: prebook.currency,
+      });
     };
 
     async function initWidget() {
