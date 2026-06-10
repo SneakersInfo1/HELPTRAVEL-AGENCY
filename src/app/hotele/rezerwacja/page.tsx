@@ -12,6 +12,7 @@ import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { TrackView } from "@/components/analytics/track-view";
 
+import { formatStayRange } from "./_components/order-summary-banner";
 import { ReservationForm } from "./_components/reservation-form";
 import { WebviewHint } from "./_components/webview-hint";
 
@@ -33,6 +34,8 @@ interface SP {
   price?: string;
   cur?: string;
   board?: string;
+  cancel?: string;
+  cancelUntil?: string;
 }
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -99,6 +102,13 @@ export default async function ReservationPage({
   const price = sp.price ? Number(sp.price) : undefined;
   const currency = (sp.cur || "PLN").toUpperCase();
   const adults = sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 1;
+  // Cancellation badge data (set by the hotel-page rate link; absent on old
+  // links). Values are validated — anything unexpected renders no badge.
+  const cancel = sp.cancel === "free" || sp.cancel === "nrf" ? sp.cancel : undefined;
+  const cancelUntil =
+    cancel === "free" && sp.cancelUntil && /^\d{4}-\d{2}-\d{2}/.test(sp.cancelUntil)
+      ? sp.cancelUntil
+      : undefined;
 
   // Deep link back to THIS hotel with the same stay parameters. Used by the
   // prebook-error recovery panel: when LiteAPI rejects the offer (price
@@ -144,8 +154,7 @@ export default async function ReservationPage({
         <h1 className="text-2xl font-bold text-neutral-900">Twoja rezerwacja</h1>
         <p className="mt-1 text-sm text-neutral-600">
           {hotelName}
-          {hotelCity ? `, ${hotelCity}` : ""} · {checkin} → {checkout}
-          {Number.isFinite(price) ? ` · ${Math.round(price as number)} ${currency}` : ""}
+          {hotelCity ? `, ${hotelCity}` : ""} · {formatStayRange(checkin, checkout)}
         </p>
         <WebviewHint />
         <ReservationForm
@@ -162,6 +171,8 @@ export default async function ReservationPage({
           publicKey={publicKey}
           returnBaseUrl={returnBaseUrl}
           backToHotelHref={backToHotelHref}
+          cancel={cancel}
+          cancelUntil={cancelUntil}
         />
       </section>
     </main>

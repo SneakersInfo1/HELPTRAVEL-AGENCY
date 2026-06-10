@@ -34,6 +34,9 @@ interface Props {
   /** Deep link back to the hotel page (same dates/occupancy) — the recovery
       path when the offer can't be prebooked anymore. */
   backToHotelHref: string;
+  /** Cancellation badge for the summary banner (from the rate link). */
+  cancel?: "free" | "nrf";
+  cancelUntil?: string;
 }
 
 // Structured prebook error: `repick` decides whether the recovery panel
@@ -108,6 +111,8 @@ export function ReservationForm({
   publicKey,
   returnBaseUrl,
   backToHotelHref,
+  cancel,
+  cancelUntil,
 }: Props) {
   const occupancy = Math.max(1, adults);
   const [holder, setHolder] = useState({
@@ -264,6 +269,8 @@ export function ReservationForm({
           checkout={checkout}
           price={pay.amount}
           currency={pay.currency}
+          cancel={cancel}
+          cancelUntil={cancelUntil}
         />
         <h2 className="text-lg font-bold text-neutral-900">Płatność</h2>
         <p className="mb-3 mt-1 text-sm text-neutral-600">
@@ -349,6 +356,8 @@ export function ReservationForm({
         checkout={checkout}
         price={price}
         currency={currency}
+        cancel={cancel}
+        cancelUntil={cancelUntil}
       />
       <fieldset disabled={step === "submitting"} className="space-y-6">
         <div>

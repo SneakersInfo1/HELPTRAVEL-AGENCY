@@ -202,6 +202,12 @@ function RateRow({
   params.set("cur", rateCurrency);
   const boardLabel = rate.boardName ?? rate.boardType ?? "";
   if (boardLabel) params.set("board", boardLabel);
+  // Cancellation policy travels WITH the offer link — previously it vanished
+  // between the hotel page and the checkout, so the buyer lost the single
+  // strongest reassurance ("I can still cancel") at the moment of paying.
+  params.set("cancel", free ? "free" : "nrf");
+  const cancelDeadlineIso = rateCancellationDeadline(rate);
+  if (free && cancelDeadlineIso) params.set("cancelUntil", cancelDeadlineIso);
   const reservationHref = `/hotele/rezerwacja?${params.toString()}`;
 
   return (
