@@ -11,6 +11,7 @@ import Link from "next/link";
 
 import { getSiteUrl } from "@/lib/mvp/site";
 import { TrackView } from "@/components/analytics/track-view";
+import { CheckoutSteps } from "../_components/checkout-steps";
 import { ConfettiBurst } from "./_components/confetti-burst";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +105,10 @@ function Shell({
   return (
     <main className="min-h-screen bg-neutral-50">
       <section className="mx-auto max-w-2xl px-4 py-12">
+        {/* Confirmed success = step 3 of the checkout indicator (the same
+            component the form and payment views render). Error/warn shells
+            skip it — a failed flow isn't "completed". */}
+        {tone === "ok" && <CheckoutSteps current={3} />}
         <div className={`rounded-2xl border bg-white p-8 ${ring.replace(/bg-\S+/, "")}`}>
           <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
           <div className="mt-3 space-y-3 text-sm text-neutral-700">{children}</div>

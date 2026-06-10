@@ -12,7 +12,6 @@ import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { TrackView } from "@/components/analytics/track-view";
 
-import { formatStayRange } from "./_components/order-summary-banner";
 import { ReservationForm } from "./_components/reservation-form";
 import { WebviewHint } from "./_components/webview-hint";
 
@@ -89,11 +88,20 @@ export default async function ReservationPage({
 
   let hotelName = "Wybrany hotel";
   let hotelCity: string | undefined;
+  let photoUrl: string | undefined;
+  let stars: number | undefined;
+  let rating: number | undefined;
+  let reviewCount: number | undefined;
   try {
     const detail = await getHotelDetail(hotelId);
     if (detail) {
       hotelName = detail.name;
       hotelCity = detail.city;
+      // Summary-card extras — same already-cached call, zero new requests.
+      photoUrl = detail.main_photo ?? undefined;
+      stars = detail.stars ?? undefined;
+      rating = detail.rating ?? undefined;
+      reviewCount = detail.reviewCount ?? undefined;
     }
   } catch {
     /* non-fatal — prebook uses offerId; name is display-only */
@@ -142,7 +150,10 @@ export default async function ReservationPage({
       <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
       <link rel="preconnect" href="https://api.stripe.com" crossOrigin="anonymous" />
       <link rel="dns-prefetch" href="https://hooks.stripe.com" />
-      <section className="mx-auto max-w-2xl px-4 py-8">
+      {/* max-w-5xl: the redesigned checkout is two-column on lg (form +
+          sticky summary card); heading + steps live in ReservationForm
+          because the step number is client state (form ↔ payment). */}
+      <section className="mx-auto max-w-5xl px-4 py-8">
         <TrackView
           event="checkout_view"
           params={{
@@ -151,17 +162,16 @@ export default async function ReservationPage({
             currency,
           }}
         />
-        <h1 className="text-2xl font-bold text-neutral-900">Twoja rezerwacja</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          {hotelName}
-          {hotelCity ? `, ${hotelCity}` : ""} · {formatStayRange(checkin, checkout)}
-        </p>
         <WebviewHint />
         <ReservationForm
           hotelId={hotelId}
           offerId={offerId}
           hotelName={hotelName}
           hotelCity={hotelCity}
+          photoUrl={photoUrl}
+          stars={stars}
+          rating={rating}
+          reviewCount={reviewCount}
           checkin={checkin}
           checkout={checkout}
           price={Number.isFinite(price) ? (price as number) : undefined}
