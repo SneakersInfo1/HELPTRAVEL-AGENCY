@@ -47,6 +47,9 @@ export interface PaymentSlotPrebook {
 interface Props {
   prebook: PaymentSlotPrebook;
   returnBaseUrl: string;
+  /** Pay-button label inside the widget — pass the exact amount ("Zapłać
+      2060 zł") so the buyer sees precisely what leaves the card. */
+  submitText?: string;
   onMountFail: () => void;
 }
 
@@ -72,7 +75,7 @@ function loadWidgetScript(): Promise<void> {
   });
 }
 
-export function PaymentSlot({ prebook, returnBaseUrl, onMountFail }: Props) {
+export function PaymentSlot({ prebook, returnBaseUrl, submitText, onMountFail }: Props) {
   const [widgetMounted, setWidgetMounted] = useState(false);
 
   // Ref pattern: parents may pass an inline arrow as onMountFail; reading the
@@ -180,7 +183,7 @@ export function PaymentSlot({ prebook, returnBaseUrl, onMountFail }: Props) {
         options: { business: { name: "Help Travel" } },
         amount: prebook.amount,
         currency: prebook.currency,
-        submitButton: { text: "Zapłać teraz" },
+        submitButton: { text: submitText ?? "Zapłać teraz" },
       }).handlePayment();
     }
 
@@ -191,7 +194,7 @@ export function PaymentSlot({ prebook, returnBaseUrl, onMountFail }: Props) {
       if (rafHandle) cancelAnimationFrame(rafHandle);
       teardownMountWatchers();
     };
-  }, [prebook, returnBaseUrl]);
+  }, [prebook, returnBaseUrl, submitText]);
 
   return (
     <div className="relative min-h-[280px]">
