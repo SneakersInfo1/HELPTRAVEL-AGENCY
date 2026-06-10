@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
-import { PartnerLogoWordmark, TRUSTED_PARTNERS } from "@/components/site/partner-logo";
 import { useLanguage } from "@/components/site/language-provider";
 import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
 import {
@@ -16,7 +15,6 @@ import {
   buildDestinationHref,
   buildRouteHref,
 } from "@/lib/mvp/popular-routes";
-import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
 
 const copy = {
   pl: {
@@ -75,8 +73,6 @@ const copy = {
         ],
       },
     ],
-    resourcesTitle: "Oficjalne źródła przed wyjazdem",
-    partnerTitle: "Partnerzy rezerwacyjni",
     footerMetaLeft: "Planner, kierunki i pomysły na wyjazd dla osób z Polski.",
     footerMetaRight: "Transparentny serwis afiliacyjny. Nie jesteśmy biurem podróży.",
   },
@@ -136,8 +132,6 @@ const copy = {
         ],
       },
     ],
-    resourcesTitle: "Official resources before a trip",
-    partnerTitle: "Booking partners",
     footerMetaLeft: "Planner, destinations and trip ideas for short leisure travel.",
     footerMetaRight: "Transparent affiliate website. Not a travel agency.",
   },
@@ -148,12 +142,62 @@ function isActivePath(pathname: string, href: string) {
   return normalizedPathname === href || normalizedPathname.startsWith(`${href}/`);
 }
 
+// Destination + route chip wall (SEO internal links). Rendered twice in the
+// full footer — inside a collapsed <details> on mobile, always-open on lg —
+// so it's one source of truth for both.
+function FooterLinkChips({ locale }: { locale: "pl" | "en" }) {
+  return (
+    <div className="mt-4 grid gap-6 lg:grid-cols-2 lg:gap-6">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          {locale === "en" ? "Popular destinations" : "Popularne kierunki"}
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {(locale === "en" ? POPULAR_DESTINATIONS_EN : POPULAR_DESTINATIONS_PL).map((dest) => (
+            <li key={dest.slug}>
+              <LocalizedLink
+                href={buildDestinationHref(dest)}
+                className="inline-flex items-center rounded-full border border-emerald-900/10 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+              >
+                {dest.anchor}
+              </LocalizedLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          {locale === "en" ? "Popular routes" : "Popularne trasy"}
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {(locale === "en" ? POPULAR_ROUTES_EN : POPULAR_ROUTES_PL).map((route) => (
+            <li key={`${route.origin}-${route.destinationSlug}`}>
+              <LocalizedLink
+                href={buildRouteHref(route)}
+                className="inline-flex items-center rounded-full border border-amber-300/50 bg-amber-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:border-amber-400 hover:bg-amber-100"
+              >
+                <span aria-hidden className="mr-1 text-amber-600">✈</span>
+                {route.anchor}
+              </LocalizedLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export function SiteShell({ children }: { children: ReactNode }) {
   const { locale } = useLanguage();
   const pathname = usePathname();
   const effectiveLocale = localeFromPathname(pathname) ?? locale;
   const text = copy[effectiveLocale];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Checkout funnel (guest data → payment → confirmation) gets a MINIMAL
+  // footer: Clarity showed the full footer's link wall (destinations, routes,
+  // external resources) pulling buyers out of the flow right before payment.
+  // Booking/Airbnb do the same — legal links only past this point.
+  const isCheckout = stripLocalePrefix(pathname).startsWith("/hotele/rezerwacja");
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-4 sm:px-6 lg:px-8">
@@ -272,6 +316,53 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {children}
       </div>
 
+      {isCheckout ? (
+        /* Minimal checkout footer — logo, legal links, disclaimer. Nothing
+           that can pull the buyer back out of the funnel. */
+        <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
+            <Image
+              src="/branding/helptravel-logo.png"
+              alt="HelpTravel"
+              width={150}
+              height={93}
+              className="h-auto w-[120px]"
+            />
+            <nav
+              aria-label={effectiveLocale === "en" ? "Legal" : "Dokumenty"}
+              className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
+            >
+              {(effectiveLocale === "en"
+                ? [
+                    { href: "/regulamin", label: "Terms" },
+                    { href: "/polityka-prywatnosci", label: "Privacy" },
+                    { href: "/cennik", label: "Pricing" },
+                    { href: "/kontakt", label: "Contact" },
+                    { href: "#cookie-settings", label: "Cookies" },
+                  ]
+                : [
+                    { href: "/regulamin", label: "Regulamin" },
+                    { href: "/polityka-prywatnosci", label: "Polityka prywatności" },
+                    { href: "/cennik", label: "Cennik" },
+                    { href: "/kontakt", label: "Kontakt" },
+                    { href: "#cookie-settings", label: "Ustawienia cookies" },
+                  ]
+              ).map((link) => (
+                <LocalizedLink
+                  key={link.href}
+                  href={link.href}
+                  className="text-xs font-medium text-emerald-900/78 transition hover:text-emerald-700"
+                >
+                  {link.label}
+                </LocalizedLink>
+              ))}
+            </nav>
+          </div>
+          <p className="mt-4 border-t border-emerald-900/10 pt-3 text-center text-[11px] text-emerald-900/60 sm:text-left">
+            {text.footerMetaRight}
+          </p>
+        </footer>
+      ) : (
       <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr]">
           <div>
@@ -280,10 +371,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
               alt="HelpTravel"
               width={220}
               height={136}
-              className="h-auto w-[180px] sm:w-[220px]"
+              className="h-auto w-[140px] sm:w-[200px]"
             />
-            <h2 className="mt-3 text-2xl font-bold leading-tight text-emerald-950">{text.footerLead}</h2>
-            <p className="mt-3 text-sm leading-7 text-emerald-900/76">{text.footerBody}</p>
+            <p className="mt-3 text-base font-bold leading-snug text-emerald-950 sm:text-lg">{text.footerLead}</p>
+            <p className="mt-2 hidden text-sm leading-6 text-emerald-900/76 sm:block">{text.footerBody}</p>
           </div>
 
           {text.footerColumns.map((column) => (
@@ -304,77 +395,29 @@ export function SiteShell({ children }: { children: ReactNode }) {
           ))}
         </div>
 
-        {/* SEO internal links: top kierunki + top trasy origin->destination */}
-        <section className="mt-8 grid gap-6 border-t border-emerald-900/10 pt-6 lg:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              {effectiveLocale === "en" ? "Popular destinations" : "Popularne kierunki"}
-            </p>
-            <ul className="mt-4 flex flex-wrap gap-2">
-              {(effectiveLocale === "en" ? POPULAR_DESTINATIONS_EN : POPULAR_DESTINATIONS_PL).map((dest) => (
-                <li key={dest.slug}>
-                  <LocalizedLink
-                    href={buildDestinationHref(dest)}
-                    className="inline-flex items-center rounded-full border border-emerald-900/10 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
-                  >
-                    {dest.anchor}
-                  </LocalizedLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              {effectiveLocale === "en" ? "Popular routes" : "Popularne trasy"}
-            </p>
-            <ul className="mt-4 flex flex-wrap gap-2">
-              {(effectiveLocale === "en" ? POPULAR_ROUTES_EN : POPULAR_ROUTES_PL).map((route) => (
-                <li key={`${route.origin}-${route.destinationSlug}`}>
-                  <LocalizedLink
-                    href={buildRouteHref(route)}
-                    className="inline-flex items-center rounded-full border border-amber-300/50 bg-amber-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:border-amber-400 hover:bg-amber-100"
-                  >
-                    <span aria-hidden className="mr-1 text-amber-600">✈</span>
-                    {route.anchor}
-                  </LocalizedLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section className="mt-8 grid gap-6 border-t border-emerald-900/10 pt-6 lg:grid-cols-[1fr_1fr]">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.resourcesTitle}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {TRUSTED_TRAVEL_RESOURCES.slice(0, 4).map((resource) => (
-                <a
-                  key={resource.href}
-                  href={resource.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full border border-emerald-900/10 bg-emerald-50/70 px-3 py-2 text-xs font-semibold text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
-                >
-                  {resource.label[effectiveLocale]}
-                </a>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{text.partnerTitle}</p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {TRUSTED_PARTNERS.map((partner) => (
-                <PartnerLogoWordmark key={partner} brand={partner} />
-              ))}
-            </div>
-          </div>
+        {/* SEO internal links: top kierunki + trasy. On mobile they collapse
+            into a <details> (the open chip wall was 2 screens of distraction
+            per Clarity); desktop keeps them visible. Links stay in the DOM in
+            both variants, so crawlers see them either way. */}
+        <details className="mt-6 border-t border-emerald-900/10 pt-4 lg:hidden">
+          <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            {effectiveLocale === "en" ? "Popular destinations and routes ▾" : "Popularne kierunki i trasy ▾"}
+          </summary>
+          <FooterLinkChips locale={effectiveLocale} />
+        </details>
+        <section className="mt-8 hidden border-t border-emerald-900/10 pt-6 lg:block">
+          <FooterLinkChips locale={effectiveLocale} />
         </section>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/10 pt-4 text-xs text-emerald-900/80">
           <p>{text.footerMetaLeft}</p>
-          <p>{text.footerMetaRight}</p>
+          <p>
+            {text.footerMetaRight}{" "}
+            {effectiveLocale === "en" ? "Flight booking partner: Aviasales." : "Partner rezerwacji lotów: Aviasales."}
+          </p>
         </div>
       </footer>
+      )}
     </div>
   );
 }
