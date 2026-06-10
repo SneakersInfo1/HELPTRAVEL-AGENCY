@@ -10,8 +10,10 @@ import { isBookingLive } from "@/lib/config/featureFlags";
 import { getHotelDetail } from "@/lib/liteapi";
 import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { TrackView } from "@/components/analytics/track-view";
 
 import { ReservationForm } from "./_components/reservation-form";
+import { WebviewHint } from "./_components/webview-hint";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,8 @@ interface SP {
   checkin?: string;
   checkout?: string;
   adults?: string;
+  rooms?: string;
+  children?: string;
   price?: string;
   cur?: string;
   board?: string;
@@ -96,6 +100,18 @@ export default async function ReservationPage({
   const currency = (sp.cur || "PLN").toUpperCase();
   const adults = sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 1;
 
+  // Deep link back to THIS hotel with the same stay parameters. Used by the
+  // prebook-error recovery panel: when LiteAPI rejects the offer (price
+  // changed / sold out / provider hiccup), retrying the same dead offerId is
+  // futile — the productive path is re-picking a fresh rate on the hotel
+  // page. Production logs 2026-06-09 show a user retrying the same offer
+  // 4× into a 503 wall and bouncing; this gives that user a working exit.
+  const backToHotelParams = new URLSearchParams({ checkin, checkout });
+  if (sp.adults) backToHotelParams.set("adults", sp.adults);
+  if (sp.rooms) backToHotelParams.set("rooms", sp.rooms);
+  if (sp.children) backToHotelParams.set("children", sp.children);
+  const backToHotelHref = `/hotele/${encodeURIComponent(hotelId)}?${backToHotelParams.toString()}`;
+
   // Per LiteAPI support (19 May 2026): the widget `publicKey` is an ENVIRONMENT
   // FLAG ("live" | "sandbox"), NOT our LiteAPI API public key. Passing the
   // prod_ key here made the widget POST it to .../config → HTTP 400.
@@ -117,13 +133,23 @@ export default async function ReservationPage({
       <link rel="preconnect" href="https://api.stripe.com" crossOrigin="anonymous" />
       <link rel="dns-prefetch" href="https://hooks.stripe.com" />
       <section className="mx-auto max-w-2xl px-4 py-8">
+        <TrackView
+          event="checkout_view"
+          params={{
+            hotel_id: hotelId,
+            price: Number.isFinite(price) ? (price as number) : undefined,
+            currency,
+          }}
+        />
         <h1 className="text-2xl font-bold text-neutral-900">Twoja rezerwacja</h1>
         <p className="mt-1 text-sm text-neutral-600">
           {hotelName}
           {hotelCity ? `, ${hotelCity}` : ""} · {checkin} → {checkout}
           {Number.isFinite(price) ? ` · ${Math.round(price as number)} ${currency}` : ""}
         </p>
+        <WebviewHint />
         <ReservationForm
+          hotelId={hotelId}
           offerId={offerId}
           hotelName={hotelName}
           hotelCity={hotelCity}
@@ -135,6 +161,7 @@ export default async function ReservationPage({
           adults={adults}
           publicKey={publicKey}
           returnBaseUrl={returnBaseUrl}
+          backToHotelHref={backToHotelHref}
         />
       </section>
     </main>

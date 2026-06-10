@@ -166,12 +166,29 @@ export function FiltersSidebar() {
 
   return (
     <>
-      {/* Mobile trigger */}
+      {/* Mobile trigger — FLOATING action button, fixed to the bottom of the
+          viewport so it stays reachable while the user scrolls the results
+          (previously it sat in-flow above the list: after one swipe it was
+          gone and users had to scroll back up to filter — Clarity/owner
+          report 2026-06-09). z-30 sits above cards, below the open sheet
+          (z-40). bottom uses max() so iOS home-indicator never covers it. */}
       <button
         type="button"
         onClick={() => setOpenOnMobile(true)}
-        className="mb-3 inline-flex h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-800 lg:hidden"
+        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-30 inline-flex h-12 -translate-x-1/2 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-emerald-700 px-6 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(6,78,59,0.35)] transition hover:bg-emerald-800 lg:hidden"
       >
+        <svg
+          aria-hidden
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        >
+          <path d="M4 6h16M7 12h10M10 18h4" />
+        </svg>
         Filtry i sortowanie {stagedCount > 0 ? `(${stagedCount})` : ""}
       </button>
 

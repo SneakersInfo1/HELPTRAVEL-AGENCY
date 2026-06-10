@@ -27,6 +27,19 @@ export function TrustStrip() {
         <Tile icon="🔒">Połączenie szyfrowane TLS</Tile>
         <Tile icon="💳">Stripe (PCI DSS Level 1)</Tile>
         <Tile icon="🏨">LiteAPI · partner hotelu</Tile>
+        {/* Verified Trustpilot business profile (owner-confirmed 2026-06-09).
+            Outbound link, opens in a new tab — the user can vet us without
+            losing the half-filled form. */}
+        <Tile icon="⭐">
+          <a
+            href="https://pl.trustpilot.com/review/helptravel.pl"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-neutral-300 underline-offset-2 hover:text-neutral-800"
+          >
+            Opinie na Trustpilot
+          </a>
+        </Tile>
       </div>
       <p className="mx-auto mt-2 max-w-md text-center text-[11px] text-neutral-400">
         Dane karty wpisujesz w bezpiecznym formularzu Stripe — helptravel.pl
