@@ -4,7 +4,18 @@
 // /api/booking/prebook → hand-off to <PaymentSlot/>, which owns the LiteAPI
 // Payment widget (B5 race fix + B6 env binding + skeleton-tiles fix).
 //
-// Layout per docs/superpowers/specs/2026-05-20-booking-ui-polish-design.md.
+// 2026-06-10 redesign (Fazy 2-3, wzór Booking.com):
+//   • CheckoutSteps (1 Dane → 2 Płatność → 3 Potwierdzenie) on both views.
+//   • BookingSummaryCard — photo/stars/rating/dates/price — sticky right
+//     column on lg, above the form on mobile, on BOTH steps (the buyer never
+//     loses sight of what they're paying for). On the payment step the card
+//     shows the PREBOOK price (authoritative).
+//   • Inline blur validation with Polish messages + focus-first-error.
+//   • Payment step: the wall-of-text trust box is reduced to one line +
+//     a collapsed "Co zobaczę na wyciągu z banku?" <details> (a big block
+//     explaining yourself BEFORE payment seeds doubt instead of killing it).
+//   • Pay CTA shows the exact amount ("Zapłać 2060 zł") via the SDK's
+//     submitButton.text.
 
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -12,9 +23,10 @@ import { useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
 import { LiteApiGuestSchema, LiteApiHolderSchema } from "@/lib/liteapi";
 
+import { BookingSummaryCard } from "./booking-summary-card";
+import { CheckoutSteps } from "./checkout-steps";
 import { OptionalGuestsAccordion } from "./optional-guests-accordion";
-import { OrderSummaryBanner } from "./order-summary-banner";
-import { PaymentBrands } from "./payment-brands";
+import { PaymentBrandsInline } from "./payment-brands";
 import { PaymentSlot, type PaymentSlotPrebook } from "./payment-slot";
 import { TrustStrip } from "./trust-strip";
 
@@ -23,6 +35,12 @@ interface Props {
   offerId: string;
   hotelName: string;
   hotelCity?: string;
+  /** Hotel photo / category / guest score for the summary card (all from the
+      already-fetched getHotelDetail — no extra API calls). */
+  photoUrl?: string;
+  stars?: number;
+  rating?: number;
+  reviewCount?: number;
   checkin: string;
   checkout: string;
   price?: number;
@@ -34,6 +52,9 @@ interface Props {
   /** Deep link back to the hotel page (same dates/occupancy) — the recovery
       path when the offer can't be prebooked anymore. */
   backToHotelHref: string;
+  /** Cancellation badge for the summary card (from the rate link). */
+  cancel?: "free" | "nrf";
+  cancelUntil?: string;
 }
 
 // Structured prebook error: `repick` decides whether the recovery panel
@@ -84,9 +105,44 @@ function classifyPrebookError(
   }
 }
 
+// ── Inline (blur) validation ────────────────────────────────────────────────
+// UX layer only — LiteApiHolderSchema stays the authoritative gate on submit.
+
+type HolderField = "firstName" | "lastName" | "email" | "phone";
+
+const FIELD_ORDER: HolderField[] = ["firstName", "lastName", "email", "phone"];
+
+const FIELD_IDS: Record<HolderField, string> = {
+  firstName: "holder-first-name",
+  lastName: "holder-last-name",
+  email: "holder-email",
+  phone: "holder-phone",
+};
+
+function fieldError(field: HolderField, value: string): string | null {
+  const v = value.trim();
+  switch (field) {
+    case "firstName":
+      return v ? null : "Podaj imię.";
+    case "lastName":
+      return v ? null : "Podaj nazwisko.";
+    case "email":
+      return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)
+        ? null
+        : "Podaj poprawny adres e-mail — wyślemy na niego potwierdzenie.";
+    case "phone":
+      return v.replace(/[^\d]/g, "").length >= 4
+        ? null
+        : "Podaj numer telefonu (np. +48 600 000 000).";
+  }
+}
+
 const inputCls =
-  "w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-neutral-50";
-const labelCls = "mb-1 block text-[11px] font-medium uppercase text-neutral-500";
+  "w-full rounded-lg border px-3 py-2.5 text-sm transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-neutral-50";
+const inputOk =
+  "border-neutral-300 focus:border-emerald-500 focus:ring-emerald-100";
+const inputBad = "border-red-400 bg-red-50/40 focus:border-red-500 focus:ring-red-100";
+const labelCls = "mb-1 block text-[11px] font-medium uppercase tracking-wide text-neutral-500";
 
 function freshIdemKey(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID
@@ -94,11 +150,27 @@ function freshIdemKey(): string {
     : `idem-${Date.now()}-${Math.random()}`;
 }
 
+function formatAmount(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("pl-PL", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${Math.round(amount)} ${currency}`;
+  }
+}
+
 export function ReservationForm({
   hotelId,
   offerId,
   hotelName,
   hotelCity,
+  photoUrl,
+  stars,
+  rating,
+  reviewCount,
   checkin,
   checkout,
   price,
@@ -108,6 +180,8 @@ export function ReservationForm({
   publicKey,
   returnBaseUrl,
   backToHotelHref,
+  cancel,
+  cancelUntil,
 }: Props) {
   const occupancy = Math.max(1, adults);
   const [holder, setHolder] = useState({
@@ -126,6 +200,7 @@ export function ReservationForm({
   );
   const [step, setStep] = useState<"form" | "submitting" | "paying">("form");
   const [error, setError] = useState<FormError | null>(null);
+  const [touched, setTouched] = useState<Partial<Record<HolderField, boolean>>>({});
   const [pay, setPay] = useState<PaymentSlotPrebook | null>(null);
   // Lazily generated in onSubmit (never during render — keeps the component
   // pure for the React Compiler / react-hooks/purity).
@@ -135,6 +210,15 @@ export function ReservationForm({
     setCoGuests((g) =>
       g.map((row, idx) => (idx === i ? { ...row, [field]: v } : row)),
     );
+
+  // Per-field inline errors (only for touched fields — no red wall on load).
+  const inlineErrors: Partial<Record<HolderField, string>> = {};
+  for (const f of FIELD_ORDER) {
+    if (touched[f]) {
+      const err = fieldError(f, holder[f]);
+      if (err) inlineErrors[f] = err;
+    }
+  }
 
   function validate(): string | null {
     const h = LiteApiHolderSchema.safeParse(holder);
@@ -161,6 +245,16 @@ export function ReservationForm({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (step !== "form") return; // double-submit guard (Idempotency-Key on backend too)
+
+    // Inline pass first: mark every field touched, surface per-field messages
+    // and move focus to the first offender (WCAG 3.3.1 + Booking pattern).
+    setTouched({ firstName: true, lastName: true, email: true, phone: true });
+    const firstBad = FIELD_ORDER.find((f) => fieldError(f, holder[f]));
+    if (firstBad) {
+      document.getElementById(FIELD_IDS[firstBad])?.focus();
+      return;
+    }
+
     const v = validate();
     if (v) {
       setError({ message: v, repick: false });
@@ -241,6 +335,10 @@ export function ReservationForm({
         // (B6 key-mode heuristic) if the API didn't include it.
         widgetEnv: data.widgetEnv ?? (publicKey === "live" ? "live" : "sandbox"),
       });
+      // The payment view replaces the form while the viewport is still parked
+      // at the submit button — jump to the top so what the buyer sees is the
+      // step indicator ("2 Płatność") + heading, like a fresh page load.
+      window.scrollTo({ top: 0, behavior: "auto" });
     } catch {
       track("booking_prebook_error", { hotel_id: hotelId, code: "network" });
       setError({
@@ -252,212 +350,283 @@ export function ReservationForm({
     }
   }
 
-  // Paying view — widget owns the form; we render the banner above, the
-  // PaymentSlot in the middle, and the truthful trust strip below.
-  if (step === "paying" && pay) {
-    return (
-      <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6">
-        <OrderSummaryBanner
-          hotelName={hotelName}
-          hotelCity={hotelCity}
-          checkin={checkin}
-          checkout={checkout}
-          price={pay.amount}
-          currency={pay.currency}
-        />
-        <h2 className="text-lg font-bold text-neutral-900">Płatność</h2>
-        <p className="mb-3 mt-1 text-sm text-neutral-600">
-          Wprowadź dane karty w bezpiecznym formularzu. Po opłaceniu wrócisz tu
-          z potwierdzeniem.
-        </p>
-        {/* Strong trust card (payment step). Every claim is true + verifiable:
-            Stripe is the processor (PCI DSS L1), card data never hits our
-            server, 3D Secure happens in the user's bank app, and Nuitee Travel
-            (LiteAPI) is the merchant of record — which is WHY the bank/Revolut
-            screen reads "NUITEE TRAVEL". Stating it up-front removes the
-            "is this a scam?" surprise that was costing conversions here. */}
-        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4">
-          <div className="flex items-center gap-2">
-            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-4 w-4 shrink-0 text-emerald-700">
-              <path
-                fillRule="evenodd"
-                d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1Zm3 8V5.5a3 3 0 10-6 0V9h6Z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <p className="text-sm font-bold text-emerald-900">Bezpieczna, szyfrowana płatność</p>
-          </div>
-          <ul className="mt-2.5 space-y-1.5 text-[13px] leading-5 text-emerald-900/85">
-            <li className="flex gap-2">
-              <span aria-hidden className="text-emerald-600">✓</span>
-              <span>Dane karty wpisujesz w formularzu <strong>Stripe</strong> (PCI DSS Level 1) — my ich nie widzimy ani nie przechowujemy.</span>
-            </li>
-            <li className="flex gap-2">
-              <span aria-hidden className="text-emerald-600">✓</span>
-              <span>Płatność potwierdzasz w aplikacji swojego banku (<strong>3D&nbsp;Secure</strong>).</span>
-            </li>
-            <li className="flex gap-2">
-              <span aria-hidden className="text-emerald-600">✓</span>
-              <span>Rozliczenie obsługuje nasz partner rezerwacyjny <strong>Nuitee&nbsp;Travel (LiteAPI)</strong> — dlatego na ekranie banku lub w aplikacji (np. Revolut) zobaczysz <strong>NUITEE&nbsp;TRAVEL</strong>. To prawidłowe i bezpieczne.</span>
-            </li>
-            <li className="flex gap-2">
-              <span aria-hidden className="text-emerald-600">✓</span>
-              <span>
-                Jesteśmy zweryfikowaną firmą na{" "}
-                <a
-                  href="https://pl.trustpilot.com/review/helptravel.pl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold underline decoration-emerald-400 underline-offset-2 hover:text-emerald-700"
-                >
-                  Trustpilot ↗
-                </a>
-                {" "}— możesz sprawdzić nas przed płatnością.
-              </span>
-            </li>
-          </ul>
-          <PaymentBrands />
-        </div>
-        <PaymentSlot
-          prebook={pay}
-          returnBaseUrl={returnBaseUrl}
-          onMountFail={() => {
-            setError({
-              message:
-                "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
-              repick: false,
-            });
-            setStep("form");
-            setPay(null);
-          }}
-        />
-        <TrustStrip />
-      </div>
-    );
-  }
+  const paying = step === "paying" && pay !== null;
 
-  // Form view.
+  // Shared two-column shell: card sticky right on lg, stacked-first on mobile.
+  // On the payment step the card switches to the PREBOOK price (authoritative
+  // — if LiteAPI repriced, the buyer sees the real amount, same as the CTA).
+  const summaryCard = (
+    <BookingSummaryCard
+      hotelName={hotelName}
+      hotelCity={hotelCity}
+      photoUrl={photoUrl}
+      stars={stars}
+      rating={rating}
+      reviewCount={reviewCount}
+      checkin={checkin}
+      checkout={checkout}
+      adults={adults}
+      board={board}
+      price={paying ? pay!.amount : price}
+      currency={paying ? pay!.currency : currency}
+      cancel={cancel}
+      cancelUntil={cancelUntil}
+    />
+  );
+
   return (
-    <form
-      onSubmit={onSubmit}
-      className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6"
-    >
-      <OrderSummaryBanner
-        hotelName={hotelName}
-        hotelCity={hotelCity}
-        checkin={checkin}
-        checkout={checkout}
-        price={price}
-        currency={currency}
-      />
-      <fieldset disabled={step === "submitting"} className="space-y-6">
-        <div>
-          <h2 className="text-lg font-bold text-neutral-900">Osoba rezerwująca</h2>
-          {/* WCAG 2.1 SC 1.3.1 + 4.1.2 — every input must have a
-              programmatically-associated label. Each label uses `htmlFor`
-              pointing at the input's `id`. Without this, screen readers
-              announce "edit text, blank" for each field of the booking form
-              — the only revenue-critical form on the site. */}
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor="holder-first-name" className={labelCls}>Imię</label>
-              <input
-                id="holder-first-name"
-                name="holderFirstName"
-                className={inputCls}
-                value={holder.firstName}
-                onChange={(e) => setHolder({ ...holder, firstName: e.target.value })}
-                autoComplete="given-name"
-                required
-                aria-required="true"
-              />
-            </div>
-            <div>
-              <label htmlFor="holder-last-name" className={labelCls}>Nazwisko</label>
-              <input
-                id="holder-last-name"
-                name="holderLastName"
-                className={inputCls}
-                value={holder.lastName}
-                onChange={(e) => setHolder({ ...holder, lastName: e.target.value })}
-                autoComplete="family-name"
-                required
-                aria-required="true"
-              />
-            </div>
-            <div>
-              <label htmlFor="holder-email" className={labelCls}>E-mail</label>
-              <input
-                id="holder-email"
-                name="holderEmail"
-                type="email"
-                className={inputCls}
-                value={holder.email}
-                onChange={(e) => setHolder({ ...holder, email: e.target.value })}
-                autoComplete="email"
-                required
-                aria-required="true"
-                inputMode="email"
-              />
-            </div>
-            <div>
-              <label htmlFor="holder-phone" className={labelCls}>Telefon</label>
-              <input
-                id="holder-phone"
-                name="holderPhone"
-                type="tel"
-                className={inputCls}
-                value={holder.phone}
-                onChange={(e) => setHolder({ ...holder, phone: e.target.value })}
-                autoComplete="tel"
-                required
-                aria-required="true"
-                inputMode="tel"
-                placeholder="+48…"
-              />
-            </div>
-          </div>
+    <div className="mt-5">
+      <CheckoutSteps current={paying ? 2 : 1} />
+
+      <h1 className="text-2xl font-bold text-neutral-900">
+        {paying ? "Płatność" : "Już prawie gotowe! Uzupełnij dane"}
+      </h1>
+      <p className="mt-1 text-sm text-neutral-600">
+        {paying
+          ? "Zapłać w bezpiecznym formularzu Stripe. Po opłaceniu wrócisz tu z potwierdzeniem."
+          : "Zajmie Ci to mniej niż minutę. Potwierdzenie wyślemy na e-mail."}
+      </p>
+
+      <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
+        {/* Summary card — first in DOM (mobile order), sticky on desktop. */}
+        <div className="mb-5 lg:sticky lg:top-[104px] lg:order-2 lg:mb-0">
+          {summaryCard}
         </div>
 
-        <OptionalGuestsAccordion
-          occupancy={occupancy}
-          value={coGuests}
-          onChange={setCoGuest}
-          disabled={step === "submitting"}
-        />
+        <div className="lg:order-1">
+          {paying ? (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6">
+              {/* One-line trust row — Booking-style brevity. The long
+                  explainer lives in the <details> below. */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-neutral-600">
+                <span className="inline-flex items-center gap-1.5 font-medium text-neutral-800">
+                  <span aria-hidden>🔒</span>
+                  Bezpieczna płatność Stripe · 3D Secure
+                </span>
+                <PaymentBrandsInline />
+              </div>
 
-        {error && (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3"
-          >
-            <p className="text-sm text-red-700">{error.message}</p>
-            {/* Deterministic failures (offer gone / provider rejected it):
-                retrying the same offerId is a dead end — promote the path
-                that actually works: fresh rates on the hotel page, same
-                dates and guests already in the link. */}
-            {error.repick && (
-              <Link
-                href={backToHotelHref}
-                className="mt-3 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                Wybierz ofertę ponownie →
-              </Link>
-            )}
-          </div>
-        )}
+              <div className="mt-4">
+                <PaymentSlot
+                  prebook={pay!}
+                  returnBaseUrl={returnBaseUrl}
+                  submitText={`Zapłać ${formatAmount(pay!.amount, pay!.currency)}`}
+                  onMountFail={() => {
+                    setError({
+                      message:
+                        "Nie udało się uruchomić płatności. Odśwież stronę i spróbuj ponownie — Twoja karta nie została obciążona.",
+                      repick: false,
+                    });
+                    setStep("form");
+                    setPay(null);
+                  }}
+                />
+              </div>
 
-        <button
-          type="submit"
-          disabled={step === "submitting"}
-          className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-600/60"
-        >
-          {step === "submitting"
-            ? "Rezerwujemy pokój… To może potrwać do 30 sekund"
-            : "Przejdź do płatności"}
-        </button>
-      </fieldset>
-      <TrustStrip />
-    </form>
+              {/* The NUITEE TRAVEL statement-descriptor explainer, collapsed.
+                  Everyone who needs it finds it; nobody else reads a wall of
+                  text right before typing card numbers. */}
+              <details className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-3.5 py-2.5">
+                <summary className="cursor-pointer text-xs font-semibold text-neutral-700">
+                  Co zobaczę na wyciągu z banku?
+                </summary>
+                <p className="mt-2 text-xs leading-5 text-neutral-600">
+                  Rozliczenie obsługuje nasz partner rezerwacyjny Nuitee Travel
+                  (LiteAPI), dlatego w aplikacji banku i na wyciągu zobaczysz
+                  pozycję <strong>NUITEE&nbsp;TRAVEL</strong>. To prawidłowe i
+                  bezpieczne — Twoja rezerwacja jest powiązana z helptravel.pl,
+                  a potwierdzenie dostaniesz od nas e-mailem.
+                </p>
+              </details>
+
+              <TrustStrip />
+            </div>
+          ) : (
+            <form
+              onSubmit={onSubmit}
+              noValidate
+              className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6"
+            >
+              <fieldset disabled={step === "submitting"} className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-neutral-900">Osoba rezerwująca</h2>
+                  {/* WCAG 2.1 SC 1.3.1 + 4.1.2 — every input must have a
+                      programmatically-associated label (htmlFor → id). Inline
+                      errors are tied via aria-describedby + aria-invalid. */}
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="holder-first-name" className={labelCls}>Imię</label>
+                      <input
+                        id="holder-first-name"
+                        name="holderFirstName"
+                        className={`${inputCls} ${inlineErrors.firstName ? inputBad : inputOk}`}
+                        value={holder.firstName}
+                        onChange={(e) => setHolder({ ...holder, firstName: e.target.value })}
+                        onBlur={() => setTouched((t) => ({ ...t, firstName: true }))}
+                        autoComplete="given-name"
+                        required
+                        aria-required="true"
+                        aria-invalid={inlineErrors.firstName ? true : undefined}
+                        aria-describedby={inlineErrors.firstName ? "holder-first-name-error" : undefined}
+                      />
+                      {inlineErrors.firstName && (
+                        <p id="holder-first-name-error" className="mt-1 text-xs text-red-600">
+                          {inlineErrors.firstName}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="holder-last-name" className={labelCls}>Nazwisko</label>
+                      <input
+                        id="holder-last-name"
+                        name="holderLastName"
+                        className={`${inputCls} ${inlineErrors.lastName ? inputBad : inputOk}`}
+                        value={holder.lastName}
+                        onChange={(e) => setHolder({ ...holder, lastName: e.target.value })}
+                        onBlur={() => setTouched((t) => ({ ...t, lastName: true }))}
+                        autoComplete="family-name"
+                        required
+                        aria-required="true"
+                        aria-invalid={inlineErrors.lastName ? true : undefined}
+                        aria-describedby={inlineErrors.lastName ? "holder-last-name-error" : undefined}
+                      />
+                      {inlineErrors.lastName && (
+                        <p id="holder-last-name-error" className="mt-1 text-xs text-red-600">
+                          {inlineErrors.lastName}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="holder-email" className={labelCls}>E-mail</label>
+                      <input
+                        id="holder-email"
+                        name="holderEmail"
+                        type="email"
+                        className={`${inputCls} ${inlineErrors.email ? inputBad : inputOk}`}
+                        value={holder.email}
+                        onChange={(e) => setHolder({ ...holder, email: e.target.value })}
+                        onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                        autoComplete="email"
+                        required
+                        aria-required="true"
+                        inputMode="email"
+                        aria-invalid={inlineErrors.email ? true : undefined}
+                        aria-describedby={inlineErrors.email ? "holder-email-error" : undefined}
+                      />
+                      {inlineErrors.email ? (
+                        <p id="holder-email-error" className="mt-1 text-xs text-red-600">
+                          {inlineErrors.email}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-neutral-400">
+                          Tu wyślemy potwierdzenie rezerwacji.
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="holder-phone" className={labelCls}>Telefon</label>
+                      <input
+                        id="holder-phone"
+                        name="holderPhone"
+                        type="tel"
+                        className={`${inputCls} ${inlineErrors.phone ? inputBad : inputOk}`}
+                        value={holder.phone}
+                        onChange={(e) => setHolder({ ...holder, phone: e.target.value })}
+                        onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
+                        autoComplete="tel"
+                        required
+                        aria-required="true"
+                        inputMode="tel"
+                        placeholder="+48 600 000 000"
+                        aria-invalid={inlineErrors.phone ? true : undefined}
+                        aria-describedby={inlineErrors.phone ? "holder-phone-error" : "holder-phone-hint"}
+                      />
+                      {inlineErrors.phone ? (
+                        <p id="holder-phone-error" className="mt-1 text-xs text-red-600">
+                          {inlineErrors.phone}
+                        </p>
+                      ) : (
+                        <p id="holder-phone-hint" className="mt-1 text-[11px] text-neutral-400">
+                          Użyjemy go tylko w razie problemów z rezerwacją.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <OptionalGuestsAccordion
+                  occupancy={occupancy}
+                  value={coGuests}
+                  onChange={setCoGuest}
+                  disabled={step === "submitting"}
+                />
+
+                {error && (
+                  <div
+                    role="alert"
+                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-3"
+                  >
+                    <p className="text-sm text-red-700">{error.message}</p>
+                    {/* Deterministic failures (offer gone / provider rejected
+                        it): retrying the same offerId is a dead end — promote
+                        the path that actually works: fresh rates on the hotel
+                        page, same dates and guests already in the link. */}
+                    {error.repick && (
+                      <Link
+                        href={backToHotelHref}
+                        className="mt-3 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
+                      >
+                        Wybierz ofertę ponownie →
+                      </Link>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <button
+                    type="submit"
+                    disabled={step === "submitting"}
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-600/60"
+                  >
+                    {step === "submitting" ? (
+                      <>
+                        <svg
+                          aria-hidden
+                          className="h-4 w-4 animate-spin motion-reduce:hidden"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.3" strokeWidth="3" />
+                          <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                        </svg>
+                        Rezerwujemy pokój… To może potrwać do 30 sekund
+                      </>
+                    ) : (
+                      "Przejdź do płatności →"
+                    )}
+                  </button>
+                  <p className="mt-2 text-center text-xs text-neutral-500">
+                    <span aria-hidden>🔒</span> Za chwilę przejdziesz do bezpiecznej
+                    płatności. Nic jeszcze nie pobieramy.
+                  </p>
+                  <p className="mt-2 text-center text-[11px] text-neutral-400">
+                    Przechodząc dalej, akceptujesz{" "}
+                    <Link href="/regulamin" target="_blank" className="underline underline-offset-2 hover:text-neutral-600">
+                      Regulamin
+                    </Link>{" "}
+                    i{" "}
+                    <Link href="/polityka-prywatnosci" target="_blank" className="underline underline-offset-2 hover:text-neutral-600">
+                      Politykę prywatności
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </fieldset>
+              <TrustStrip />
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

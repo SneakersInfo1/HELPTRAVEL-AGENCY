@@ -33,6 +33,8 @@ interface SP {
   price?: string;
   cur?: string;
   board?: string;
+  cancel?: string;
+  cancelUntil?: string;
 }
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -86,11 +88,20 @@ export default async function ReservationPage({
 
   let hotelName = "Wybrany hotel";
   let hotelCity: string | undefined;
+  let photoUrl: string | undefined;
+  let stars: number | undefined;
+  let rating: number | undefined;
+  let reviewCount: number | undefined;
   try {
     const detail = await getHotelDetail(hotelId);
     if (detail) {
       hotelName = detail.name;
       hotelCity = detail.city;
+      // Summary-card extras — same already-cached call, zero new requests.
+      photoUrl = detail.main_photo ?? undefined;
+      stars = detail.stars ?? undefined;
+      rating = detail.rating ?? undefined;
+      reviewCount = detail.reviewCount ?? undefined;
     }
   } catch {
     /* non-fatal — prebook uses offerId; name is display-only */
@@ -99,6 +110,13 @@ export default async function ReservationPage({
   const price = sp.price ? Number(sp.price) : undefined;
   const currency = (sp.cur || "PLN").toUpperCase();
   const adults = sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 1;
+  // Cancellation badge data (set by the hotel-page rate link; absent on old
+  // links). Values are validated — anything unexpected renders no badge.
+  const cancel = sp.cancel === "free" || sp.cancel === "nrf" ? sp.cancel : undefined;
+  const cancelUntil =
+    cancel === "free" && sp.cancelUntil && /^\d{4}-\d{2}-\d{2}/.test(sp.cancelUntil)
+      ? sp.cancelUntil
+      : undefined;
 
   // Deep link back to THIS hotel with the same stay parameters. Used by the
   // prebook-error recovery panel: when LiteAPI rejects the offer (price
@@ -132,7 +150,14 @@ export default async function ReservationPage({
       <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
       <link rel="preconnect" href="https://api.stripe.com" crossOrigin="anonymous" />
       <link rel="dns-prefetch" href="https://hooks.stripe.com" />
-      <section className="mx-auto max-w-2xl px-4 py-8">
+      {/* max-w-5xl: the redesigned checkout is two-column on lg (form +
+          sticky summary card); heading + steps live in ReservationForm
+          because the step number is client state (form ↔ payment).
+          Top padding is deliberately tight (pt-3/pt-5) so the step
+          indicator is in view immediately on load — owner report
+          2026-06-11: with py-8 the progress bar landed below the fold
+          edge on some screens. */}
+      <section className="mx-auto max-w-5xl px-4 pb-10 pt-3 sm:pt-5">
         <TrackView
           event="checkout_view"
           params={{
@@ -141,18 +166,16 @@ export default async function ReservationPage({
             currency,
           }}
         />
-        <h1 className="text-2xl font-bold text-neutral-900">Twoja rezerwacja</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          {hotelName}
-          {hotelCity ? `, ${hotelCity}` : ""} · {checkin} → {checkout}
-          {Number.isFinite(price) ? ` · ${Math.round(price as number)} ${currency}` : ""}
-        </p>
         <WebviewHint />
         <ReservationForm
           hotelId={hotelId}
           offerId={offerId}
           hotelName={hotelName}
           hotelCity={hotelCity}
+          photoUrl={photoUrl}
+          stars={stars}
+          rating={rating}
+          reviewCount={reviewCount}
           checkin={checkin}
           checkout={checkout}
           price={Number.isFinite(price) ? (price as number) : undefined}
@@ -162,6 +185,8 @@ export default async function ReservationPage({
           publicKey={publicKey}
           returnBaseUrl={returnBaseUrl}
           backToHotelHref={backToHotelHref}
+          cancel={cancel}
+          cancelUntil={cancelUntil}
         />
       </section>
     </main>

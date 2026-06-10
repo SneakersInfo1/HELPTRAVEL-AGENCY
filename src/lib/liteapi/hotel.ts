@@ -17,11 +17,7 @@ const ResponseSchema = z.object({ data: LiteApiHotelDetailSchema });
 // Caveat: language is part of the cache key implicitly (different query →
 // different fetch URL → different Next Data Cache entry), so switching
 // languages does NOT cross-contaminate cached entries.
-export async function getHotelDetail(
-  hotelId: string,
-  options: { language?: string } = {},
-): Promise<LiteApiHotelDetail> {
-  const language = options.language ?? "pl";
+async function fetchDetail(hotelId: string, language: string): Promise<LiteApiHotelDetail> {
   const res = await liteApiRequest({
     path: "/data/hotel",
     method: "GET",
@@ -37,4 +33,27 @@ export async function getHotelDetail(
     nextCache: { revalidate: 86_400, tags: ["liteapi", "liteapi-hotel-detail", `hotel:${hotelId}`] },
   });
   return res.data;
+}
+
+export async function getHotelDetail(
+  hotelId: string,
+  options: { language?: string } = {},
+): Promise<LiteApiHotelDetail> {
+  const language = options.language ?? "pl";
+  if (language === "en") return fetchDetail(hotelId, "en");
+
+  // PROPER NOUNS ARE NEVER TRANSLATED. With language=pl LiteAPI machine-
+  // translates the hotel NAME too — verified live 2026-06-10 on lp27a0d8:
+  // pl → "Siedemdziesiąt Barcelona", en → "Seventy Barcelona". That broken
+  // name then leaked into the detail H1/title/schema, the checkout, the
+  // confirmation e-mail and the bank-facing booking. Fix at the single
+  // source every consumer shares: fetch PL content + EN name in parallel
+  // (both 24h-cached) and keep ONLY `name` from the EN payload. If the EN
+  // call fails we degrade to the PL name rather than failing the page.
+  const plPromise = fetchDetail(hotelId, "pl");
+  const enName = await fetchDetail(hotelId, "en")
+    .then((d) => d.name)
+    .catch(() => null);
+  const pl = await plPromise;
+  return enName ? { ...pl, name: enName } : pl;
 }

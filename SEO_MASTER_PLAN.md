@@ -281,6 +281,20 @@ Pełny audyt po danych GA (316 userów/7 dni, 26 na checkout, 0 realnych rezerwa
 
 ---
 
+### ZROBIONE — Sprint 1.14 (redesign checkout na wzór Booking.com) — 2026-06-10 — PR #96
+
+Pełny redesign `/hotele/rezerwacja` (4 fazy wg briefu właściciela; cel: konwersja checkout→booking w stronę 20%):
+
+- 🐞 **FIX KRYTYCZNY: nazwy własne hoteli były maszynowo tłumaczone** („Siedemdziesiąt Barcelona") — LiteAPI `/data/hotel?language=pl` tłumaczy też pole `name` (zweryfikowane live: pl→„Siedemdziesiąt", en→„Seventy"). Fix w `getHotelDetail`: treść PL + nazwa z równoległego callu EN (oba cache 24h, graceful degradation). Naprawia H1/title/schema hotelu, checkout, płatność i mail potwierdzający. 3 testy regresyjne (`hotel.test.ts`), suite 121/121.
+- ✅ **Krok „Dane"**: wskaźnik kroków 1→2→3 (`checkout-steps.tsx`), karta podsumowania jak prawy panel Booking (`booking-summary-card.tsx`: zdjęcie, gwiazdki, ocena 0–10 + liczba opinii, termin „15–17 lip 2026", goście, wyżywienie, badge anulacji, rozbicie „N nocy × Y zł" + Razem; sticky na lg, nad formularzem na mobile, na OBU krokach — na płatności cena z prebooka). Nagłówek „Już prawie gotowe! Uzupełnij dane", walidacja inline przy blur (PL komunikaty, aria-invalid/describedby, focus-first-error), hinty pól (telefon: „tylko w razie problemów"), CTA „Przejdź do płatności →" + „🔒 Nic jeszcze nie pobieramy" + jednolinijkowa akceptacja Regulaminu.
+- ✅ **Krok „Płatność"**: wielki zielony box zaufania → JEDNA linijka „🔒 Bezpieczna płatność Stripe · 3D Secure" + małe Visa/MC; wyjaśnienie NUITEE TRAVEL w zwijanym `<details>` „Co zobaczę na wyciągu z banku?"; przycisk widgetu = **„Zapłać {kwota} zł"** (submitButton.text SDK). Potwierdzenie = krok 3 wskaźnika.
+- ✅ **Polityka anulowania w lejku**: `cancel=free|nrf` + `cancelUntil` w linku oferty (rooms-section) → badge na karcie (wcześniej ginęła między stroną hotelu a checkoutem).
+- ✅ **Footer**: minimalny na `/hotele/rezerwacja*` (logo + 5 linków prawnych — zero wyjść z lejka); globalnie usunięte „Oficjalne źródła" (4 zewn. linki) i sekcja partnerów (→ 1 linijka w meta), chipy kierunków/tras na mobile w `<details>` (linki w DOM = SEO bez strat).
+- Logika prebook/book/eventów GA4 NIETKNIĘTA (RULE 6). Zweryfikowane na dev z realnym prebookiem (390px + 1440px): widget zamontowany, kwota na przycisku, walidacja, sticky karta.
+- ⬜ NEXT (właściciel): test prawdziwej płatności na preview, GPay na realnym Androidzie, Lighthouse na preview/prod (dev niemiarodajny), mail z LiteAPI: BLIK + „is holder.phone optional on /rates/book?" (wtedy telefon → opcjonalny).
+
+---
+
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
 
 | # | Problem | Status | PR |
