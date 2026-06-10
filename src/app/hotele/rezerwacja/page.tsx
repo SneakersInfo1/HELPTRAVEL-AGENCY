@@ -152,8 +152,12 @@ export default async function ReservationPage({
       <link rel="dns-prefetch" href="https://hooks.stripe.com" />
       {/* max-w-5xl: the redesigned checkout is two-column on lg (form +
           sticky summary card); heading + steps live in ReservationForm
-          because the step number is client state (form ↔ payment). */}
-      <section className="mx-auto max-w-5xl px-4 py-8">
+          because the step number is client state (form ↔ payment).
+          Top padding is deliberately tight (pt-3/pt-5) so the step
+          indicator is in view immediately on load — owner report
+          2026-06-11: with py-8 the progress bar landed below the fold
+          edge on some screens. */}
+      <section className="mx-auto max-w-5xl px-4 pb-10 pt-3 sm:pt-5">
         <TrackView
           event="checkout_view"
           params={{

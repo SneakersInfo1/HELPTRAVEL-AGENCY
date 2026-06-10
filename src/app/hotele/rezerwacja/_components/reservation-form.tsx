@@ -335,6 +335,10 @@ export function ReservationForm({
         // (B6 key-mode heuristic) if the API didn't include it.
         widgetEnv: data.widgetEnv ?? (publicKey === "live" ? "live" : "sandbox"),
       });
+      // The payment view replaces the form while the viewport is still parked
+      // at the submit button — jump to the top so what the buyer sees is the
+      // step indicator ("2 Płatność") + heading, like a fresh page load.
+      window.scrollTo({ top: 0, behavior: "auto" });
     } catch {
       track("booking_prebook_error", { hotel_id: hotelId, code: "network" });
       setError({
