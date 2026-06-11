@@ -286,18 +286,6 @@ video {
   }
 }
 
-/* Conversion toast slide-in z lewej */
-@keyframes ht-toast-slide {
-  0% {
-    transform: translateX(-120%);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
 /* ─────────────────────────────────────────────────────────────────────
  * LiteAPI Payment widget — submit CTA promotion.
  *
