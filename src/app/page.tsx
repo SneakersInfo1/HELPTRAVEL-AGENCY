@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { HomePageSections } from "@/components/home/home-page-sections";
-import { getPublishedDestinations } from "@/lib/mvp/publisher-content";
+import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -67,10 +67,13 @@ const heroDestinationSlugs = [
 ] as const;
 
 export async function HomePageView({ locale }: { locale: SiteLocale }) {
-  const publishedDestinations = getPublishedDestinations();
-
+  // Tiles link to the search results, not to publisher guides — so they only
+  // need a destination PROFILE (photo recipe, flight time), not membership in
+  // the curated publishedDestinationSlugs list. Resolving profiles directly
+  // lets the 12-tile set include cities without a guide (Paris, Porto,
+  // Heraklion), which the previous published-only filter silently dropped.
   const selectedHeroDestinations = heroDestinationSlugs
-    .map((slug) => publishedDestinations.find((destination) => destination.slug === slug))
+    .map((slug) => getDestinationProfileBySlug(slug))
     .filter((destination): destination is DestinationProfile => Boolean(destination));
 
   const resolvedHeroDestinations = await Promise.all(
