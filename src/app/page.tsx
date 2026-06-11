@@ -10,8 +10,8 @@ import type { DestinationProfile } from "@/lib/mvp/types";
 
 const siteUrl = getSiteUrl();
 
-// Homepage perf: ISR. Without this the page does `await Promise.all(6×
-// resolveDestinationMedia)` (6 blocking Pexels calls) on every request,
+// Homepage perf: ISR. Without this the page does `await Promise.all(12×
+// resolveDestinationMedia)` (12 blocking Pexels calls) on every request,
 // which dominated TTFB and pushed LCP to ~7s. Serving from the static
 // cache and regenerating hourly removes Pexels from the critical path.
 export const revalidate = 3600;
@@ -49,6 +49,8 @@ export function getHomeMetadata(locale: SiteLocale): Metadata {
 
 export const metadata: Metadata = getHomeMetadata("pl");
 
+// 12 popular-destination tiles (owner-approved set, 2026-06-11). Order is
+// editorial — the section header says "Popularne kierunki", NOT a ranking.
 const heroDestinationSlugs = [
   "malaga-spain",
   "barcelona-spain",
@@ -58,6 +60,10 @@ const heroDestinationSlugs = [
   "athens-greece",
   "istanbul-turkey",
   "funchal-portugal",
+  "paris-france",
+  "porto-portugal",
+  "naples-italy",
+  "heraklion-greece",
 ] as const;
 
 export async function HomePageView({ locale }: { locale: SiteLocale }) {
@@ -74,7 +80,7 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
     })),
   );
 
-  const featuredTiles = resolvedHeroDestinations.slice(0, 6).map((item) => ({
+  const featuredTiles = resolvedHeroDestinations.slice(0, 12).map((item) => ({
     destination: item.destination,
     heroImage: item.media.heroImage,
   }));

@@ -13,7 +13,6 @@ import { getLocalizedCategoryTitle, getLocalizedDestinationGuide } from "@/lib/m
 import { getAllDestinationProfiles, getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import { getDestinationGuideBySlug, getEditorialCategories, getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
-import { getDestinationSocialProof, formatPricePLN } from "@/lib/mvp/destination-social-proof";
 import { commercialCities } from "@/lib/mvp/commercial-cities";
 import { foldCategorySlug } from "@/lib/mvp/category-slug";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -24,7 +23,7 @@ export const revalidate = 86400;
 
 const pageCopy = {
   pl: {
-    title: "Kierunki na wakacje i city break 2026 — hotele od 499 zł",
+    title: "Kierunki na wakacje i city break 2026 — przewodniki, hotele, loty",
     description:
       "Ponad 235 kierunków na city break, wakacje nad morzem i ciepłe wyjazdy z Polski. Realne ceny hoteli w PLN, czas lotu, pogoda i przejście prosto do rezerwacji.",
     ogDescription:
@@ -33,7 +32,7 @@ const pageCopy = {
     metaDescription: "Katalog kierunków HelpTravel",
   },
   en: {
-    title: "Destinations for city breaks & holidays 2026 — hotels from 499 zł",
+    title: "Destinations for city breaks & holidays 2026 — guides, hotels, flights",
     description:
       "200+ destinations for city breaks, beach holidays and warm escapes from Poland: real hotel prices in PLN, flight time, weather and a one-click path to booking.",
     ogDescription:
@@ -107,15 +106,15 @@ const MONTHS_LOCATIVE_PL = [
 const flightLabel = (h?: number) => (typeof h === "number" ? `~${h.toFixed(1)} h z PL` : null);
 
 // Compact card for a COMMERCIAL money-page (/hotele/w/[slug]) — image + real
-// data (od X zł, czas lotu, pogoda teraz). This is the SEO/conversion spine:
-// it passes link equity from the hub to the head-term landing pages and pulls
-// commercial-intent users one click from booking.
+// data (czas lotu, pogoda teraz). This is the SEO/conversion spine: it passes
+// link equity from the hub to the head-term landing pages and pulls
+// commercial-intent users one click from booking. ("od X zł" removed
+// 2026-06-11 — the number came from a hash, not from any real offer.)
 function CommercialCityCard({
   slug,
   city,
   country,
   image,
-  priceFrom,
   flightHours,
   tempNow,
 }: {
@@ -123,7 +122,6 @@ function CommercialCityCard({
   city: string;
   country: string;
   image: string | null;
-  priceFrom: number;
   flightHours?: number;
   tempNow?: number;
 }) {
@@ -148,9 +146,6 @@ function CommercialCityCard({
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">{country}</p>
         <h3 className="mt-0.5 font-display text-2xl leading-tight">{city}</h3>
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
-          <span className="rounded-full bg-amber-300/95 px-2 py-0.5 text-emerald-950">
-            od {formatPricePLN(priceFrom)} zł
-          </span>
           {flightLabel(flightHours) && (
             <span className="rounded-full bg-white/15 px-2 py-0.5 text-white backdrop-blur-sm">
               ✈ {flightLabel(flightHours)}
@@ -231,19 +226,16 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
     .slice(0, 12)
     .map((c) => {
       const profile = getDestinationProfileBySlug(c.destinationId);
-      const sp = getDestinationSocialProof(c.destinationId);
       return {
         slug: c.slug,
         city: c.cityNominative,
         country: c.countryNominative,
         image: imageBySlug.get(c.destinationId) ?? null,
-        priceFrom: sp.priceFromPLN,
         flightHours: profile?.typicalFlightHoursFromPL,
         tempNow: profile?.avgTempByMonth?.[monthIdx],
       };
     });
 
-  const priceFloor = Math.min(...commercialCards.map((c) => c.priceFrom));
   const heroImage = imageBySlug.get(HERO_SLUG) ?? null;
 
   // Season tiles.
@@ -263,7 +255,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
     },
     {
       q: "Ile kosztują wakacje w Grecji albo Hiszpanii?",
-      a: `Hotele na popularnych kierunkach zaczynają się od ok. ${formatPricePLN(priceFloor)} zł, a loty z Polski to zwykle 3–4 h. Realne, finalne ceny w PLN dla wybranych dat zobaczysz po wejściu na stronę miasta, np. hotele na Krecie czy w Barcelonie.`,
+      a: "Cena zależy od sezonu, terminu i standardu hotelu, a loty z Polski to zwykle 3–4 h. Realne, finalne ceny w PLN dla wybranych dat zobaczysz po wejściu na stronę miasta, np. hotele na Krecie czy w Barcelonie.",
     },
     {
       q: "Które kierunki są bez wizy dla obywateli Polski?",
@@ -361,7 +353,6 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
         </div>
         <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90">
           <span className="rounded-full bg-white/12 px-3 py-1">{allDestinations.length}+ kierunków</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">hotele od {formatPricePLN(priceFloor)} zł</span>
           <span className="rounded-full bg-white/12 px-3 py-1">loty z 22 lotnisk w PL</span>
           <span className="rounded-full bg-white/12 px-3 py-1">ceny finalne w PLN</span>
         </div>
