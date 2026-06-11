@@ -1,22 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
+import { DateRangeField } from "@/components/search/date-range-field";
+import { GuestsField } from "@/components/search/guests-field";
+import { OriginCombobox, exactOriginMatch } from "@/components/search/origin-combobox";
 import { useLanguage } from "@/components/site/language-provider";
+import { track } from "@/lib/analytics/track";
 import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
-import {
-  DEFAULT_ORIGIN_CITY,
-  EUROPEAN_ORIGIN_CITIES,
-  POLISH_ORIGIN_CITIES,
-} from "@/lib/mvp/origin-cities";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
 interface MiniPlannerFormProps {
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
   compact?: boolean;
-  /** Initial values when reusing the bar on results pages. Sesja C pkt 2. */
+  /** Initial values when reusing the bar on results pages. Sesja C pkt 2.
+      `travelers` is the TOTAL guest count from the `adults` URL param (sum of
+      adults+children — product decision); `kids` is the informational
+      breakdown from the new `kids` param so "Edytuj" can restore the
+      Dorośli/Dzieci split. Old links without `kids` show everyone as adults. */
   initial?: Partial<{
     origin: string;
     destination: string;
@@ -24,13 +27,8 @@ interface MiniPlannerFormProps {
     startDate: string;
     endDate: string;
     travelers: number;
+    kids: number;
   }>;
-}
-
-function toISO(date: Date): string {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
-    .toISOString()
-    .slice(0, 10);
 }
 
 function diffNights(start: string, end: string): number {
@@ -46,7 +44,12 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
   const listboxId = useId();
   const destInputRef = useRef<HTMLInputElement>(null);
   const destListRef = useRef<HTMLUListElement>(null);
-  const [origin, setOrigin] = useState(initial?.origin || DEFAULT_ORIGIN_CITY);
+  // "Skąd" is OPTIONAL now (zadanie 1): no default airport. `origin` holds a
+  // CONFIRMED city from the list (or ""), `originQuery` the visible text —
+  // same confirmed/query split the destination combobox uses.
+  const [origin, setOrigin] = useState(initial?.origin ?? "");
+  const [originQuery, setOriginQuery] = useState(initial?.origin ?? "");
+  const [originError, setOriginError] = useState("");
   const [destination, setDestination] = useState(initial?.destination ?? "");
   const [destinationCountry, setDestinationCountry] = useState(initial?.destinationCountry ?? "");
   // Visible input gets the Polish exonym (e.g. "Lizbona") so collapsing back
@@ -60,10 +63,15 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
   const [destConfirmed, setDestConfirmed] = useState(Boolean(initial?.destination));
   const [destError, setDestError] = useState("");
   // No default dates — the user must pick them (homepage + results bar).
-  // Empty string keeps the native date input blank until chosen.
   const [startDate, setStartDate] = useState(initial?.startDate ?? "");
   const [endDate, setEndDate] = useState(initial?.endDate ?? "");
-  const [travelers, setTravelers] = useState(initial?.travelers ?? 2);
+  // Adults/children split. URL `adults` carries the SUM (initial.travelers);
+  // `kids` (informational param) restores the split on the results bar.
+  const initialKids = Math.max(0, Math.min(6, initial?.kids ?? 0));
+  const [childCount, setChildCount] = useState(initialKids);
+  const [adults, setAdults] = useState(
+    Math.max(1, Math.min(9, (initial?.travelers ?? 2) - initialKids)),
+  );
   const [dateError, setDateError] = useState("");
 
   useEffect(() => {
@@ -131,14 +139,6 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     }
   }
 
-  const dateMin = useMemo(() => toISO(new Date()), []);
-  const endMin = useMemo(() => {
-    if (!startDate) return dateMin;
-    const d = new Date(startDate);
-    const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
-    return toISO(next);
-  }, [startDate, dateMin]);
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     // Jeśli user coś wpisał ale nie wybrał z listy → pokaż błąd
@@ -148,6 +148,22 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
       return;
     }
     setDestError("");
+    // "Skąd" is optional — but typed-and-unmatched text must not silently
+    // turn into "no flights". Exact single match auto-confirms ("krakow" →
+    // Kraków); anything else asks the user to pick or clear.
+    let resolvedOrigin = origin;
+    if (originQuery.trim() && !resolvedOrigin) {
+      const match = exactOriginMatch(originQuery);
+      if (match) {
+        resolvedOrigin = match.city;
+        setOrigin(match.city);
+        setOriginQuery(match.city);
+      } else {
+        setOriginError("Wybierz lotnisko z listy albo zostaw pole puste.");
+        return;
+      }
+    }
+    setOriginError("");
     // Daty są wymagane — użytkownik musi je wybrać (brak domyślnych).
     if (!startDate || !endDate) {
       setDateError("Wybierz datę wyjazdu i powrotu.");
@@ -156,26 +172,45 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     setDateError("");
     const nights = diffNights(startDate, endDate);
     const trimmedDestination = destination.trim();
+    // PRODUCT DECISION (zadanie 1): children count as adults downstream —
+    // LiteAPI occupancies and the flights search both read the summed
+    // `adults` param. `kids` is informational only (restores the UI split).
+    const totalGuests = adults + childCount;
     // Sesja C pkt 2: route directly to /hotele/szukaj — the unified results
     // page that composes hotels (LiteAPI) + flights (Travelpayouts).
-    // Old /planner is gone; middleware 308s any stragglers but submitting
-    // here goes straight to the canonical URL.
     const params = new URLSearchParams({
       destination: trimmedDestination,
       country: destinationCountry,
       checkin: startDate,
       checkout: endDate,
-      adults: String(travelers),
+      adults: String(totalGuests),
       rooms: "1",
-      origin: origin || DEFAULT_ORIGIN_CITY,
     });
+    if (childCount > 0) params.set("kids", String(childCount));
+    // Empty "Skąd" → no origin param at all; the results page already hides
+    // the flights section when sp.origin is absent.
+    if (resolvedOrigin) params.set("origin", resolvedOrigin);
     sendClientEvent("mini_planner_submitted", {
-      origin: origin || DEFAULT_ORIGIN_CITY,
+      origin: resolvedOrigin || null,
       destination: trimmedDestination || null,
       country: destinationCountry || null,
       nights,
-      travelers,
+      travelers: totalGuests,
       hasDestination: trimmedDestination.length > 0,
+    });
+    // GA4 funnel event — hotel_search_submit was defined in the catalogue but
+    // never fired anywhere (faza 0 finding); wired here with the two new
+    // params from the brief.
+    track("hotel_search_submit", {
+      destination: trimmedDestination,
+      country: destinationCountry || undefined,
+      checkin: startDate,
+      checkout: endDate,
+      adults: totalGuests,
+      rooms: 1,
+      source: "search_bar",
+      children_count: childCount,
+      origin_provided: Boolean(resolvedOrigin),
     });
     const prefix = locale === "en" ? "/en" : "";
     router.push(`${prefix}/hotele/szukaj?${params.toString()}`);
@@ -191,31 +226,29 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
       onSubmit={handleSubmit}
       className="rounded-3xl border border-white/40 bg-white/80 p-4 shadow-[0_24px_60px_rgba(16,84,48,0.24)] backdrop-blur-xl sm:p-5"
     >
-      <div className="grid gap-3 lg:grid-cols-[1.1fr_1.4fr_1fr_1fr_0.9fr_auto] lg:items-end">
-        {/* SKAD */}
-        <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Skąd</span>
-          <select
-            value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
-            className={fieldCls}
-          >
-            <optgroup label="Polska">
-              {POLISH_ORIGIN_CITIES.map((city) => (
-                <option key={city.iata} value={city.city}>
-                  {city.city}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Europa (polska diaspora)">
-              {EUROPEAN_ORIGIN_CITIES.map((city) => (
-                <option key={city.iata} value={city.city}>
-                  {city.city}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-        </label>
+      <div className="grid gap-3 lg:grid-cols-[1.1fr_1.4fr_1.3fr_1fr_auto] lg:items-end">
+        {/* SKAD — optional searchable combobox over the static airport list */}
+        <OriginCombobox
+          query={originQuery}
+          onQueryChange={(value) => {
+            setOriginQuery(value);
+            setOrigin("");
+            setOriginError("");
+          }}
+          onSelect={(city) => {
+            setOrigin(city.city);
+            setOriginQuery(city.city);
+            setOriginError("");
+          }}
+          onClear={() => {
+            setOrigin("");
+            setOriginQuery("");
+            setOriginError("");
+          }}
+          error={originError}
+          fieldClassName={fieldCls}
+          labelClassName={labelCls}
+        />
 
         {/* DOKAD — autocomplete combobox */}
         <div className="relative flex flex-col gap-1.5">
@@ -289,71 +322,30 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
           )}
         </div>
 
-        {/* WYLOT */}
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Wylot</span>
-          <input
-            type="date"
-            value={startDate}
-            min={dateMin}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setDateError("");
-              // Jesli powrot jest wczesniejszy niz nowy wylot, przesun go o 4 dni.
-              if (e.target.value && endDate && new Date(endDate) <= new Date(e.target.value)) {
-                const d = new Date(e.target.value);
-                const next = new Date(
-                  Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 4),
-                );
-                setEndDate(toISO(next));
-              }
-            }}
-            className={fieldCls}
-          />
-        </label>
+        {/* TERMIN — single field, Booking-style range calendar */}
+        <DateRangeField
+          checkin={startDate}
+          checkout={endDate}
+          onChange={(nextStart, nextEnd) => {
+            setStartDate(nextStart);
+            setEndDate(nextEnd);
+            setDateError("");
+          }}
+          fieldClassName={fieldCls}
+          labelClassName={labelCls}
+        />
 
-        {/* POWROT */}
-        <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Powrót</span>
-          <input
-            type="date"
-            value={endDate}
-            min={endMin}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setDateError("");
-            }}
-            className={fieldCls}
-          />
-        </label>
-
-        {/* OSOBY - stepper */}
-        <div className="flex flex-col gap-1.5">
-          <span className={labelCls}>Osoby</span>
-          <div className="flex h-12 items-center justify-between rounded-xl border border-white/60 bg-white/95 px-2 shadow-inner">
-            <button
-              type="button"
-              onClick={() => setTravelers((v) => Math.max(1, v - 1))}
-                  aria-label="Zmniejsz liczbę osób"
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-lg font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-40"
-              disabled={travelers <= 1}
-            >
-              −
-            </button>
-            <span className="min-w-[24px] text-center text-base font-bold text-emerald-950 tabular-nums">
-              {travelers}
-            </span>
-            <button
-              type="button"
-              onClick={() => setTravelers((v) => Math.min(8, v + 1))}
-                  aria-label="Zwiększ liczbę osób"
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-lg font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-40"
-              disabled={travelers >= 8}
-            >
-              +
-            </button>
-          </div>
-        </div>
+        {/* GOŚCIE — popover with Dorośli / Dzieci steppers */}
+        <GuestsField
+          adults={adults}
+          childCount={childCount}
+          onChange={(nextAdults, nextChildren) => {
+            setAdults(nextAdults);
+            setChildCount(nextChildren);
+          }}
+          fieldClassName={fieldCls}
+          labelClassName={labelCls}
+        />
 
         {/* CTA */}
         <button

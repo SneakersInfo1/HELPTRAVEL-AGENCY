@@ -109,7 +109,8 @@ export default async function ReservationPage({
 
   const price = sp.price ? Number(sp.price) : undefined;
   const currency = (sp.cur || "PLN").toUpperCase();
-  const adults = sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 1;
+  // Cap 15 = 9 adults + 6 children from the guests popover (zadanie 1).
+  const adults = sp.adults ? Math.max(1, Math.min(15, Number(sp.adults))) : 1;
   // Cancellation badge data (set by the hotel-page rate link; absent on old
   // links). Values are validated — anything unexpected renders no badge.
   const cancel = sp.cancel === "free" || sp.cancel === "nrf" ? sp.cancel : undefined;

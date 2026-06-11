@@ -152,7 +152,8 @@ export default async function HotelDetailPage({
 
   const checkin = sp.checkin && /^\d{4}-\d{2}-\d{2}$/.test(sp.checkin) ? sp.checkin : plusDaysIso(14);
   const checkout = sp.checkout && /^\d{4}-\d{2}-\d{2}$/.test(sp.checkout) ? sp.checkout : plusDaysIso(18);
-  const adults = sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 2;
+  // Cap 15 = 9 adults + 6 children from the guests popover (zadanie 1).
+  const adults = sp.adults ? Math.max(1, Math.min(15, Number(sp.adults))) : 2;
   const rooms = sp.rooms ? Math.max(1, Math.min(5, Number(sp.rooms))) : 1;
   const children = sp.children
     ? sp.children.split(",").map((s) => Number(s)).filter((n) => Number.isFinite(n) && n >= 0 && n < 18)

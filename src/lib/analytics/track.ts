@@ -38,10 +38,15 @@ export interface TrackEventMap {
     country?: string;
     checkin?: string;
     checkout?: string;
+    /** SUM of adults+children (product decision: children count as adults). */
     adults?: number;
     rooms?: number;
     /** Where the search was launched from. */
     source?: "search_bar" | "landing_cta" | "destination_guide" | "month_page" | "homepage";
+    /** Children picked in the guests popover (informational split). */
+    children_count?: number;
+    /** Whether the optional "Skąd" field was filled. */
+    origin_provided?: boolean;
   };
   hotel_results_loaded: {
     destination: string;

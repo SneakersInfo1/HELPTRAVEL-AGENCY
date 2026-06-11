@@ -10,7 +10,7 @@ const flightSearchSchema = z.object({
   destinationIata: z.string().trim().length(3).optional(),
   departureDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
   returnDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  passengers: z.coerce.number().int().min(1).max(8).default(2),
+  passengers: z.coerce.number().int().min(1).max(15).default(2), // 15 = 9 adults + 6 children (guests popover)
   cabinClass: z.enum(["economy", "premium_economy", "business", "first"]).default("economy"),
   sortBy: z.enum(["cheap", "balance", "direct"]).default("balance"),
 });
