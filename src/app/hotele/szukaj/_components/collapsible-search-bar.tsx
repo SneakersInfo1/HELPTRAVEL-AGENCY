@@ -17,7 +17,11 @@ interface Props {
     destinationCountry?: string;
     startDate?: string;
     endDate?: string;
+    /** Total guests (the summed `adults` URL param). */
     travelers?: number;
+    /** Children share of the total (informational `kids` param) — lets the
+        expanded form restore the Dorośli/Dzieci split. */
+    kids?: number;
   };
   // True only when URL has destination + country + valid checkin + checkout.
   // The summary collapses only when there's something meaningful to show.

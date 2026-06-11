@@ -45,6 +45,8 @@ interface SP {
   adults?: string;
   rooms?: string;
   children?: string;
+  /** Informational: children share of `adults` (UI split restore only). */
+  kids?: string;
   minPrice?: string;
   maxPrice?: string;
   minStars?: string;
@@ -120,6 +122,7 @@ export default async function HotelResultsPage({
             startDate: sp.checkin,
             endDate: sp.checkout,
             travelers: sp.adults ? Number(sp.adults) : undefined,
+            kids: sp.kids ? Number(sp.kids) : undefined,
           }}
         />
       </div>
@@ -154,7 +157,7 @@ export default async function HotelResultsPage({
             destinationCountry={sp.country ?? ""}
             departureDate={sp.checkin}
             returnDate={sp.checkout}
-            passengers={sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 2}
+            passengers={sp.adults ? Math.max(1, Math.min(15, Number(sp.adults))) : 2}
             destinationIata={destinationRecord?.airports[0] ?? null}
             destinationLat={destinationRecord?.lat ?? null}
             destinationLng={destinationRecord?.lng ?? null}
@@ -170,7 +173,8 @@ async function Results({ sp }: { sp: SP }) {
   const country = sp.country!;
   const checkin = sp.checkin!;
   const checkout = sp.checkout!;
-  const adults = sp.adults ? Math.max(1, Math.min(8, Number(sp.adults))) : 2;
+  // Cap 15 = 9 adults + 6 children from the guests popover (zadanie 1).
+  const adults = sp.adults ? Math.max(1, Math.min(15, Number(sp.adults))) : 2;
   const rooms = sp.rooms ? Math.max(1, Math.min(5, Number(sp.rooms))) : 1;
   const children = sp.children
     ? sp.children.split(",").map((s) => Number(s)).filter((n) => Number.isFinite(n) && n >= 0 && n < 18)

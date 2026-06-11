@@ -20,7 +20,7 @@ const QuerySchema = z.object({
   country: z.string().min(2),
   checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  adults: z.coerce.number().int().min(1).max(8).default(2),
+  adults: z.coerce.number().int().min(1).max(15).default(2), // 15 = 9 adults + 6 children (guests popover)
   children: z.string().optional(), // comma-separated ages
   rooms: z.coerce.number().int().min(1).max(5).default(1),
   currency: z.string().length(3).default("PLN"),
