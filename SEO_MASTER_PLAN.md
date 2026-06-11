@@ -295,6 +295,14 @@ Pełny redesign `/hotele/rezerwacja` (4 fazy wg briefu właściciela; cel: konwe
 
 ---
 
+### ZROBIONE — Sprint 1.15 (zadania właściciela: homepage cleanup + wyszukiwarka Booking-style) — 2026-06-11 — PR #97 + #98
+
+- ✅ **Zadanie 3 (PR #97, live):** zero fake social proof na homepage — usunięte ConversionToasts/LiveVisitorBadge/UrgencyStrip/badge „4.8/5·2341"/„Bezpieczne płatności u partnerów" + generator `destination-social-proof.ts` (oceny/ceny/opinie = hash sluga). `DestinationTile` (/, /kierunki, /o-nas, /inspiracje): tylko zdjęcie+kraj+miasto+czas lotu. 6→12 kart (+Stambuł, Funchal, Paryż, Porto, Neapol, Heraklion). `/kierunki`: title bez fikcyjnego „od 499 zł", karty commercial i FAQ bez zmyślonych kwot. −397 linii.
+- ✅ **Zadanie 1 (PR #98):** wyszukiwarka jak Booking — `react-day-picker` v9 + `date-fns/pl` (lazy): jedno pole dat, 2 miesiące na desktopie / pełnoekranowy sheet na mobile, logika klik-klik z restartem; popover gości Dorośli(1-9)/Dzieci(0-6) z polską odmianą, **`adults` w URL = suma** (decyzja produktowa, dzieci jak dorośli dla LiteAPI/lotów) + informacyjny `kids=N`; „Skąd" opcjonalne (combobox 22 lotnisk, diakrytyki+IATA, puste = wyniki bez sekcji lotów). GA4: `hotel_search_submit` wreszcie podpięty (+`children_count`, `origin_provided`) — **właściciel: sprawdź DebugView po deployu**. Limit osób 8→15 end-to-end. Komponenty: `src/components/search/*`.
+- ⬜ NEXT: zadanie 4 (polskie nazwy pokoi), zadanie 5 (weryfikacja stanu grupowania taryf), zadanie 2 (wyspy — po 1).
+
+---
+
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
 
 | # | Problem | Status | PR |

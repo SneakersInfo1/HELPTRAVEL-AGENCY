@@ -16,7 +16,7 @@ const BodySchema = z.object({
   hotelId: z.string().min(1),
   checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  adults: z.number().int().min(1).max(8).default(2),
+  adults: z.number().int().min(1).max(15).default(2), // 15 = 9 adults + 6 children (guests popover)
   children: z.array(z.number().int().min(0).max(17)).default([]),
   rooms: z.number().int().min(1).max(5).default(1),
   currency: z.string().length(3).default("PLN"),
