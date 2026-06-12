@@ -68,13 +68,26 @@ export function DateRangeField({
   const [open, setOpen] = useState(false);
   // Desktop vs mobile decided when the picker opens (lg breakpoint, brief).
   const [isDesktop, setIsDesktop] = useState(true);
+  // Desktop popover flips ABOVE the field when there's not enough room below
+  // (hero form sits at the bottom of the viewport — owner request 2026-06-11:
+  // "na komputerze pole ma pojawiać się nad paskiem").
+  const [flipUp, setFlipUp] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const value: RangeValue = { from: isoToDate(checkin), to: isoToDate(checkout) };
   const label = checkin && checkout ? formatRangeLabel(checkin, checkout) : null;
 
+  // Two months side by side ≈ 420px tall incl. footer.
+  const POPOVER_HEIGHT_PX = 440;
+
   const openPicker = () => {
     setIsDesktop(window.matchMedia("(min-width: 1024px)").matches);
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (rect) {
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      setFlipUp(spaceBelow < POPOVER_HEIGHT_PX && spaceAbove > spaceBelow);
+    }
     setOpen(true);
   };
 
@@ -142,7 +155,9 @@ export function DateRangeField({
         <div
           role="dialog"
           aria-label="Kalendarz wyboru terminu"
-          className="absolute left-1/2 top-[calc(100%+6px)] z-50 -translate-x-1/2 rounded-2xl border border-emerald-900/10 bg-white p-4 shadow-[0_18px_48px_rgba(16,84,48,0.16)]"
+          className={`absolute left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-emerald-900/10 bg-white p-4 shadow-[0_18px_48px_rgba(16,84,48,0.16)] ${
+            flipUp ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"
+          }`}
         >
           <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={2} />
           <div className="mt-2 flex items-center justify-between border-t border-emerald-900/8 pt-3">
