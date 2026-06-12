@@ -301,13 +301,21 @@ Pełny redesign `/hotele/rezerwacja` (4 fazy wg briefu właściciela; cel: konwe
 - ✅ **Zadanie 1 (PR #98):** wyszukiwarka jak Booking — `react-day-picker` v9 + `date-fns/pl` (lazy): jedno pole dat, 2 miesiące na desktopie / pełnoekranowy sheet na mobile, logika klik-klik z restartem; popover gości Dorośli(1-9)/Dzieci(0-6) z polską odmianą, **`adults` w URL = suma** (decyzja produktowa, dzieci jak dorośli dla LiteAPI/lotów) + informacyjny `kids=N`; „Skąd" opcjonalne (combobox 22 lotnisk, diakrytyki+IATA, puste = wyniki bez sekcji lotów). GA4: `hotel_search_submit` wreszcie podpięty (+`children_count`, `origin_provided`) — **właściciel: sprawdź DebugView po deployu**. Limit osób 8→15 end-to-end. Komponenty: `src/components/search/*`.
 - ⬜ NEXT: zadanie 4 (polskie nazwy pokoi), zadanie 5 (weryfikacja stanu grupowania taryf), zadanie 2 (wyspy — po 1).
 
-### ZROBIONE — Sprint 1.17 (zadanie 2: wyspy i regiony + submit bez wyboru z listy) — 2026-06-12 — PR (branch `feat/region-search`, PREVIEW, bez merge)
+### ZROBIONE — Sprint 1.17 (zadanie 2: wyspy i regiony + submit bez wyboru z listy) — 2026-06-12 — PR #100 (PREVIEW, bez merge)
 
 - ✅ **Wyspy/regiony (zadanie 2, strategia A):** LiteAPI `/data/hotels` przyjmuje `placeId` z `/data/places` — zweryfikowane empirycznie (Majorka 1000 hoteli/cap, Gozo 170). Słownik 20 wysp w `data/regions.ts` (placeId + aliasy PL/EN + archipelagi kanary/baleary + IATA + filterPoints), czyste funkcje w `src/lib/hotels/regions.ts` (matchRegions/isInRegion). URL: `/hotele/szukaj?region=<slug>`; nagłówek „Hotele: Majorka"; loty po IATA wyspy.
 - ✅ **Filtr haversine + countryCode** tnie zmierzone przecieki placeId-search: Gozo→Malta (80 szt.), Sycylia→Malta (383!), Korfu→Albania (Ksamil 2 km od Kassiopi — geometria nie wystarcza, rozstrzyga countryCode). Promienie briefu skorygowane na żywych danych (Teneryfa 45→55 — Anaga; Sardynia +Oristano; Cypr +Larnaka/Nikozja; Lanzarote 2 punkty — cieśnina 12 km do Fuerteventury). Po korektach drop = wyłącznie sąsiednie wyspy/kraje.
 - ✅ **Submit jak Booking (uwaga właściciela):** wpisany tekst bez wyboru z listy NIE blokuje — submit bierze najlepszą podpowiedź („warszaw"→Warszawa, „gozo"→wyspa); błąd tylko przy zerze podpowiedzi. Suggest API: wyspy nad miastami z metką „wyspa · kraj", dedupe duplikatu miasta o nazwie wyspy. Nagłówek wyników miast: polska nazwa („Hotele w Rzym", nie „w Rome").
 - ✅ Weryfikacja: testy 8/8 (regions) + 129/129 całość, build czysty, smoke na dev: Majorka 548 dostępnych, Gozo 37, regresja Barcelona/Rzym OK, konsola bez błędów. Cache: Next Data Cache 24h kluczem placeId (osobne wpisy per region); **warming w GH Actions nie istnieje** (założenie briefu — jest tylko build-destinations.yml).
-- ℹ️ Sprint 1.16 (grupowanie taryf + fix kalendarza) czeka w PR #99 na test płatności właściciela — wpis w SEO_MASTER_PLAN na tamtej gałęzi.
+- ℹ️ 2026-06-13: właściciel sam wypromował preview PR #99 na produkcję w Vercelu (git/prod rozjazd) → PR #99 zmergowany do main dla spójności, main wmergowany do `feat/region-search` — preview PR #100 zawiera od teraz KOMPLET (grupowanie + wyspy).
+
+---
+
+### ZROBIONE — Sprint 1.16 (zadanie 5: grupowanie taryf + fix kalendarza) — 2026-06-12 — PR #99 (✅ MERGED 2026-06-13; na produkcji od promote'a właściciela)
+
+- ✅ **Grupowanie taryf jak Booking** (`lib/hotels/group-rates.ts` + przebudowa `rooms-section.tsx`): LiteAPI zwraca każdy wariant cenowy jako osobny offer (zmierzone: 200 ofert / 25 nazw na hotelu, „superior double room" ×19; roomTypeId unikalny PER OFERTA — nie skleja). Grupowanie po znormalizowanej oryginalnej nazwie EN + maks. gości, dedupe identycznych warunków (wyżywienie+anulacja per dzień+pojemność) do najtańszej, sort po cenie, 1 globalny badge „Najtańsza opcja", max 3 opcje + „Pokaż wszystkie". **Prezentacja-only**: każdy wiersz linkuje WŁASNYM offerId, payload checkout bajt-w-bajt. Przed/po: 200→25 grup/62 opcje (zbite 138), 88→25/47, 18→3/9; najtańsze ceny identyczne. Realny prebook przez opcję z rozwiniętej listy = success. 6 testów (suite 127/127), build clean.
+- ✅ **Fix kalendarza (zgłoszenie właściciela):** (1) „Wyczyść" nie czyściło zaznaczenia — DayPicker v9 bez `onSelect` nie jest controlled; teraz onSelect + selected zawsze zdefiniowane (7 aria-selected → 0). (2) Desktop: popover otwiera się NAD polem, gdy poniżej brak ~440 px (formularz na dole hero).
+- ⬜ NEXT: zadanie 4 (polskie nazwy pokoi — nagłówki grup gotowe na tłumaczenie, grupowanie po EN); zadanie 2 (wyspy) czeka w PR #100 na test właściciela.
 
 ---
 

@@ -1,43 +1,27 @@
 "use client";
 
-// Rooms section — groups by roomType.offerId per master spec §5.3. Each rate
-// row CTA links to /hotele/rezerwacja with offerId (NOT rateId — see
-// FIXES_LOG.md prebook hotfix).
+// Rooms section — Booking-style grouping (zadanie 5, 2026-06-11).
 //
-// Sesja C pkt 6A: cap each room type to top-3 cheapest rates by default,
-// dedupe identical (boardName + refundableTag) combinations from different
-// suppliers (LiteAPI emits a row per supplier even when terms are identical),
-// and offer "Pokaż wszystkie X opcji" expansion. Avoids the "50 booking
-// options" UX collapse the user reported.
+// LiteAPI returns EVERY price variant as its own roomType/offer (faza 0:
+// 200 offers / 25 room names on one hotel), so the old "card per roomType"
+// render produced walls of identical cards. Now: groupRates() (pure,
+// presentation-only — lib/hotels/group-rates.ts) folds offers into ONE CARD
+// PER ROOM (normalized original name + capacity), dedupes condition-identical
+// offers to the cheapest, and each option row links to the checkout with ITS
+// OWN source offerId — the navigation contract is byte-identical to before.
+//
+// Collapsing: 3 cheapest options visible per group, the rest behind
+// "Pokaż wszystkie opcje (N)". Exactly one option in the whole hotel wears
+// the "Najtańsza opcja" badge.
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import type { LiteApiRate, LiteApiRoomType } from "@/lib/liteapi";
-import { rateTotalMinor, isFreeCancellation, rateCancellationDeadline } from "@/lib/hotels/normalize";
+import type { LiteApiRoomType } from "@/lib/liteapi";
+import { groupRates, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
 import { fromMinor } from "@/lib/money";
 
-const VISIBLE_RATES_DEFAULT = 3;
-
-function dedupeRates(rates: LiteApiRate[]): LiteApiRate[] {
-  // Cheapest first.
-  const sorted = [...rates].sort((a, b) => {
-    const aMin = rateTotalMinor(a);
-    const bMin = rateTotalMinor(b);
-    if (aMin === null) return 1;
-    if (bMin === null) return -1;
-    return aMin < bMin ? -1 : aMin > bMin ? 1 : 0;
-  });
-  const seen = new Set<string>();
-  const out: LiteApiRate[] = [];
-  for (const r of sorted) {
-    const key = `${(r.boardName ?? r.boardType ?? "").toLowerCase()}|${r.refundableTag ?? ""}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(r);
-  }
-  return out;
-}
+const VISIBLE_OPTIONS_DEFAULT = 3;
 
 interface Props {
   hotelId: string;
@@ -73,6 +57,9 @@ const polishBoard = (raw?: string): string => {
   return raw;
 };
 
+const optionsNoun = (n: number): string =>
+  n === 1 ? "opcja" : n < 5 ? "opcje" : "opcji";
+
 export function RoomsSection({
   hotelId,
   roomTypes,
@@ -81,7 +68,10 @@ export function RoomsSection({
   currency,
   bookingLive,
 }: Props) {
-  if (!roomTypes.length) {
+  // Pure presentation-layer fold — recomputed only when fresh rates arrive.
+  const { groups } = useMemo(() => groupRates(roomTypes), [roomTypes]);
+
+  if (!groups.length) {
     return (
       <section id="rooms" className="rounded-2xl border border-neutral-200 bg-white p-6">
         <h2 className="text-xl font-bold text-neutral-900">Pokoje</h2>
@@ -95,11 +85,11 @@ export function RoomsSection({
   return (
     <section id="rooms" className="space-y-4">
       <h2 className="text-xl font-bold text-neutral-900">Pokoje i ceny</h2>
-      {roomTypes.map((rt, i) => (
-        <RoomTypeCard
-          key={`${rt.offerId}-${i}`}
+      {groups.map((group) => (
+        <RoomGroupCard
+          key={group.key}
           hotelId={hotelId}
-          roomType={rt}
+          group={group}
           searchQuery={searchQuery}
           nights={nights}
           currency={currency}
@@ -110,38 +100,50 @@ export function RoomsSection({
   );
 }
 
-function RoomTypeCard({
+function RoomGroupCard({
   hotelId,
-  roomType,
+  group,
   searchQuery,
   nights,
   currency,
   bookingLive,
 }: {
   hotelId: string;
-  roomType: LiteApiRoomType;
+  group: RoomGroup;
   searchQuery: string;
   nights: number;
   currency: string;
   bookingLive: boolean;
 }) {
-  const deduped = dedupeRates(roomType.rates);
-  const headerName = deduped[0]?.name ?? roomType.rates[0]?.name ?? "Pokój";
   const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? deduped : deduped.slice(0, VISIBLE_RATES_DEFAULT);
-  const hidden = deduped.length - visible.length;
+  const visible = expanded ? group.options : group.options.slice(0, VISIBLE_OPTIONS_DEFAULT);
+  const hidden = group.options.length - visible.length;
+  const fromLabel =
+    group.cheapestMinor !== null
+      ? `od ${formatPLN(fromMinor(group.cheapestMinor), currency)}`
+      : null;
+
   return (
     <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-      <header className="border-b border-neutral-100 bg-neutral-50 px-5 py-3">
-        <h3 className="text-base font-semibold text-neutral-900">{headerName}</h3>
+      <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-neutral-100 bg-neutral-50 px-5 py-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold text-neutral-900">{group.name}</h3>
+          {typeof group.maxOccupancy === "number" && group.maxOccupancy > 0 && (
+            <p className="mt-0.5 text-xs text-neutral-500">Maks. gości: {group.maxOccupancy}</p>
+          )}
+        </div>
+        <p className="shrink-0 text-xs font-medium text-neutral-600">
+          {[fromLabel, `${group.options.length} ${optionsNoun(group.options.length)}`]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       </header>
       <ul className="divide-y divide-neutral-100">
-        {visible.map((rate, idx) => (
-          <RateRow
-            key={`${rate.rateId}-${idx}`}
+        {visible.map((option) => (
+          <OptionRow
+            key={option.offerId}
             hotelId={hotelId}
-            offerId={roomType.offerId}
-            rate={rate}
+            option={option}
             searchQuery={searchQuery}
             nights={nights}
             currency={currency}
@@ -155,10 +157,10 @@ function RoomTypeCard({
           onClick={() => setExpanded(true)}
           className="w-full border-t border-neutral-100 bg-neutral-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 hover:text-emerald-800"
         >
-          Pokaż wszystkie {deduped.length} {deduped.length === 1 ? "opcję" : deduped.length < 5 ? "opcje" : "opcji"} ↓
+          Pokaż wszystkie opcje ({group.options.length}) ↓
         </button>
       )}
-      {expanded && deduped.length > VISIBLE_RATES_DEFAULT && (
+      {expanded && group.options.length > VISIBLE_OPTIONS_DEFAULT && (
         <button
           type="button"
           onClick={() => setExpanded(false)}
@@ -171,63 +173,64 @@ function RoomTypeCard({
   );
 }
 
-function RateRow({
+function OptionRow({
   hotelId,
-  offerId,
-  rate,
+  option,
   searchQuery,
   nights,
   currency,
   bookingLive,
 }: {
   hotelId: string;
-  offerId: string;
-  rate: LiteApiRate;
+  option: RoomOption;
   searchQuery: string;
   nights: number;
   currency: string;
   bookingLive: boolean;
 }) {
-  const minor = rateTotalMinor(rate);
-  const total = minor !== null ? fromMinor(minor) : null;
+  const { rate } = option;
+  const total = option.totalMinor !== null ? fromMinor(option.totalMinor) : null;
   const perNight = total !== null && nights > 0 ? Math.round(total / nights) : null;
-  const free = isFreeCancellation(rate);
-  const cancelDate = formatDate(rateCancellationDeadline(rate));
+  const cancelDate = formatDate(option.cancellationDeadline);
   const rateCurrency = rate.retailRate?.total?.[0]?.currency ?? currency;
 
+  // Checkout link — identical contract as before grouping: the option's OWN
+  // offerId + display params (price/cur/board/cancel) on top of searchQuery.
   const params = new URLSearchParams(searchQuery);
   params.set("hotelId", hotelId);
-  params.set("offerId", offerId);
+  params.set("offerId", option.offerId);
   if (total !== null) params.set("price", String(Math.round(total)));
   params.set("cur", rateCurrency);
   const boardLabel = rate.boardName ?? rate.boardType ?? "";
   if (boardLabel) params.set("board", boardLabel);
-  // Cancellation policy travels WITH the offer link — previously it vanished
-  // between the hotel page and the checkout, so the buyer lost the single
-  // strongest reassurance ("I can still cancel") at the moment of paying.
-  params.set("cancel", free ? "free" : "nrf");
-  const cancelDeadlineIso = rateCancellationDeadline(rate);
-  if (free && cancelDeadlineIso) params.set("cancelUntil", cancelDeadlineIso);
+  params.set("cancel", option.freeCancellation ? "free" : "nrf");
+  if (option.freeCancellation && option.cancellationDeadline) {
+    params.set("cancelUntil", option.cancellationDeadline);
+  }
   const reservationHref = `/hotele/rezerwacja?${params.toString()}`;
 
   return (
     <li className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-neutral-900">{polishBoard(rate.boardName ?? rate.boardType)}</div>
-        <div className="mt-1 text-xs">
-          {free ? (
-            <span className="font-medium text-emerald-700">
-              Bezpłatna anulacja{cancelDate ? ` do ${cancelDate}` : ""}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-neutral-900">
+            {polishBoard(rate.boardName ?? rate.boardType)}
+          </span>
+          {option.cheapestOfHotel && (
+            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+              Najtańsza opcja
             </span>
-          ) : (
-            <span className="text-neutral-500">Bezzwrotne — najtańsza opcja</span>
           )}
         </div>
-        {rate.maxOccupancy && (
-          <div className="mt-1 text-xs text-neutral-500">
-            Maks. gości: {rate.maxOccupancy}
-          </div>
-        )}
+        <div className="mt-1 text-xs">
+          {option.freeCancellation ? (
+            <span className="font-medium text-emerald-700">
+              Bezpłatne odwołanie{cancelDate ? ` do ${cancelDate}` : ""}
+            </span>
+          ) : (
+            <span className="text-neutral-500">Oferta bezzwrotna</span>
+          )}
+        </div>
       </div>
       <div className="flex flex-col items-end">
         {total !== null ? (
@@ -247,7 +250,7 @@ function RateRow({
             href={reservationHref}
             className="mt-2 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
           >
-            Zarezerwuj
+            Wybierz
           </Link>
         ) : (
           <span

@@ -64,8 +64,16 @@ export function RangeCalendar({ value, onChange, numberOfMonths }: Props) {
     <DayPicker
       mode="range"
       required={false}
-      selected={value.from ? { from: value.from, to: value.to } : undefined}
-      onDayClick={handleDayClick}
+      // Fully CONTROLLED selection (owner bug report 2026-06-11: "Wyczyść"
+      // cleared the field but the grid kept the highlight). Two parts matter:
+      // 1) `onSelect` must be provided — with only `onDayClick` DayPicker v9
+      //    keeps its own internal selection and ignores `selected` updates;
+      // 2) `selected` is ALWAYS a defined object (never `undefined`), so the
+      //    component can't flip back into uncontrolled mode.
+      // We ignore DayPicker's proposed range and run our own click-click
+      // logic (restart rule) off the trigger date.
+      selected={{ from: value.from, to: value.to }}
+      onSelect={(_, triggerDate) => handleDayClick(triggerDate)}
       onDayMouseEnter={(day) => setHovered(day)}
       onDayMouseLeave={() => setHovered(undefined)}
       modifiers={
