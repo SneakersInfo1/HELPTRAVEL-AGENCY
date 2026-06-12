@@ -309,6 +309,13 @@ Pełny redesign `/hotele/rezerwacja` (4 fazy wg briefu właściciela; cel: konwe
 - ✅ Weryfikacja: testy 8/8 (regions) + 129/129 całość, build czysty, smoke na dev: Majorka 548 dostępnych, Gozo 37, regresja Barcelona/Rzym OK, konsola bez błędów. Cache: Next Data Cache 24h kluczem placeId (osobne wpisy per region); **warming w GH Actions nie istnieje** (założenie briefu — jest tylko build-destinations.yml).
 - ℹ️ 2026-06-13: właściciel sam wypromował preview PR #99 na produkcję w Vercelu (git/prod rozjazd) → PR #99 zmergowany do main dla spójności, main wmergowany do `feat/region-search` — preview PR #100 zawiera od teraz KOMPLET (grupowanie + wyspy).
 
+### ZROBIONE — Sprint 1.18 (Clarity: performance + UX kalendarza) — 2026-06-13 — PR #100 (PREVIEW)
+
+- ✅ **Obrazki hoteli przez wsrv.nl (kluczowy fix perf):** cdn-loader przepuszczał cupid.travel bez rozmiaru, a ich CDN nie wspiera renditionów (zmierzone: `/hotels/640x480/…` → 404) — telefony ściągały oryginały ~400–516 KB/zdjęcie. Teraz proxy wsrv.nl (w= z next/image, q75, webp, `default`=oryginał przy awarii): zmierzone 515 792 B → 16 296 B (−97%). CSP img-src + wsrv.nl. Clarity kontekst: LCP 2,35 s, pojedyncze 20,9 s, P.score 65.
+- ✅ **Kalendarz:** pierwsza wybrana data od razu ciemnozielona (modifier `pickedStart`, emerald-700) — zgłoszenie właściciela.
+- ✅ **Pomiar CLS po zmianach (dev, mobile):** /hotele/szukaj 0,005, strona hotelu 0,021, /kierunki 0 — wysokie CLS w Clarity (1,145) pochodziło głównie z deployów sprzed #95–#98 w oknie 11–13.06 i wolnych łącz; monitorować Clarity po wdrożeniu.
+- ℹ️ Diagnostyka dev: 404 na /api/hotels/rates/batch po `next build` = skorumpowany `.next` (znany gotcha) — `rm -rf .next` i restart.
+
 ---
 
 ### ZROBIONE — Sprint 1.16 (zadanie 5: grupowanie taryf + fix kalendarza) — 2026-06-12 — PR #99 (✅ MERGED 2026-06-13; na produkcji od promote'a właściciela)
