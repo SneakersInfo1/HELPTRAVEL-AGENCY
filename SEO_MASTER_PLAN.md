@@ -303,6 +303,14 @@ Pełny redesign `/hotele/rezerwacja` (4 fazy wg briefu właściciela; cel: konwe
 
 ---
 
+### ZROBIONE — Sprint 1.16 (zadanie 5: grupowanie taryf + fix kalendarza) — 2026-06-12 — PR #99 (⏳ PREVIEW, nie mergować do testowej płatności właściciela)
+
+- ✅ **Grupowanie taryf jak Booking** (`lib/hotels/group-rates.ts` + przebudowa `rooms-section.tsx`): LiteAPI zwraca każdy wariant cenowy jako osobny offer (zmierzone: 200 ofert / 25 nazw na hotelu, „superior double room" ×19; roomTypeId unikalny PER OFERTA — nie skleja). Grupowanie po znormalizowanej oryginalnej nazwie EN + maks. gości, dedupe identycznych warunków (wyżywienie+anulacja per dzień+pojemność) do najtańszej, sort po cenie, 1 globalny badge „Najtańsza opcja", max 3 opcje + „Pokaż wszystkie". **Prezentacja-only**: każdy wiersz linkuje WŁASNYM offerId, payload checkout bajt-w-bajt. Przed/po: 200→25 grup/62 opcje (zbite 138), 88→25/47, 18→3/9; najtańsze ceny identyczne. Realny prebook przez opcję z rozwiniętej listy = success. 6 testów (suite 127/127), build clean.
+- ✅ **Fix kalendarza (zgłoszenie właściciela):** (1) „Wyczyść" nie czyściło zaznaczenia — DayPicker v9 bez `onSelect` nie jest controlled; teraz onSelect + selected zawsze zdefiniowane (7 aria-selected → 0). (2) Desktop: popover otwiera się NAD polem, gdy poniżej brak ~440 px (formularz na dole hero).
+- ⬜ NEXT: właściciel robi testową płatność na preview PR #99 → merge; potem zadanie 4 (polskie nazwy pokoi — nagłówki grup gotowe na tłumaczenie, grupowanie po EN), zadanie 2 (wyspy).
+
+---
+
 ## 📋 12 PROBLEMÓW Z AUDYTU (priorytet wg revenue)
 
 | # | Problem | Status | PR |
