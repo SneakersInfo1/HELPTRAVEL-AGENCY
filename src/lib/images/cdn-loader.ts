@@ -77,19 +77,38 @@ export default function cdnLoader({ src, width, quality }: ImageLoaderProps): st
     return url.toString();
   }
 
-  // ── LiteAPI / Cupid Travel ─────────────────────────────────────────────
-  // Their URLs already include a fixed rendition (e.g. `/800x600/`) in the
-  // path. Passthrough — the CDN negotiates AVIF/WebP via Accept headers and
-  // we get the bytes directly from their edge.
+  // ── Geoapify (mapy, URL z kluczem API) — passthrough ──────────────────
   if (
-    host === "static.cupid.travel" ||
-    host.endsWith(".cupid.travel") ||
-    host.endsWith(".liteapi.travel") ||
     host === "api.geoapify.com" ||
     host === "maps.geoapify.com" ||
     host.endsWith(".geoapify.com")
   ) {
     return src;
+  }
+
+  // ── LiteAPI / Cupid Travel → proxy wsrv.nl ─────────────────────────────
+  // Cupid NIE wspiera renditionów (zmierzone 2026-06-13: /hotels/640x480/…
+  // → 404, a realne URL-e z LiteAPI nie mają rozmiaru w ścieżce), więc
+  // passthrough wysyłał ORYGINAŁY (~400 KB JPEG) na telefony — główny
+  // hamulec LCP na kartach hoteli (Clarity: LCP 2.4 s, jeden pomiar 20.9 s).
+  // wsrv.nl (darmowe, cache na Cloudflare) zbija to do ~20-60 KB WebP:
+  // zmierzone 402 525 B → 19 428 B przy w=384. `we` = bez powiększania
+  // mniejszych oryginałów; CSP: wsrv.nl dodane w next.config.ts.
+  if (
+    host === "static.cupid.travel" ||
+    host.endsWith(".cupid.travel") ||
+    host.endsWith(".liteapi.travel")
+  ) {
+    const proxied = new URL("https://wsrv.nl/");
+    proxied.searchParams.set("url", src);
+    proxied.searchParams.set("w", String(width));
+    proxied.searchParams.set("q", String(q));
+    proxied.searchParams.set("output", "webp");
+    proxied.searchParams.set("we", "");
+    // Awaria po stronie proxy (np. upstream 404/timeout) → redirect na
+    // oryginalny URL zamiast zepsutego obrazka.
+    proxied.searchParams.set("default", src);
+    return proxied.toString();
   }
 
   // ── Default: passthrough ───────────────────────────────────────────────
