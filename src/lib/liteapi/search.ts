@@ -93,6 +93,30 @@ export async function fetchHotelsList(input: HotelsListInput): Promise<LiteApiHo
   });
 }
 
+// Zadanie 2 — wyspy/regiony. /data/hotels przyjmuje placeId z /data/places
+// (zweryfikowane empirycznie 2026-06-12: Majorka → 1000 hoteli, Gozo → 170).
+// Bez countryCode/cityName — placeId sam definiuje obszar. Wyniki bywają
+// szersze niż wyspa (sąsiednie wyspy w promieniu), więc strona wyników
+// przycina je przez isInRegion() z lib/hotels/regions.
+export async function fetchHotelsByPlaceId(input: {
+  placeId: string;
+  limit?: number;
+}): Promise<LiteApiHotelsListResponse> {
+  return liteApiRequest({
+    path: "/data/hotels",
+    method: "GET",
+    keyMode: "public",
+    schema: LiteApiHotelsListResponseSchema,
+    query: {
+      placeId: input.placeId,
+      limit: input.limit ?? DEFAULT_HOTELS_LIMIT,
+    },
+    // Ten sam Next Data Cache co lista miejska (klucz = pełny URL fetcha,
+    // czyli placeId+limit) — metadane nie zmieniają się godzinowo.
+    nextCache: { revalidate: 86_400, tags: ["liteapi", "liteapi-hotels-list"] },
+  });
+}
+
 // Convenience wrapper that takes the higher-level NormalizedHotelSearchInput.
 export async function searchHotels(input: NormalizedHotelSearchInput): Promise<LiteApiHotelsListResponse> {
   return fetchHotelsList({
