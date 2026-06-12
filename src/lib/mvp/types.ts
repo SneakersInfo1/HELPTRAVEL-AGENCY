@@ -378,6 +378,11 @@ export interface DestinationSuggestion {
   cityPl?: string;
   countryPl?: string;
   popularity?: number;
+  // Zadanie 2 — wyspy/regiony w podpowiedziach. Brak pola = "city"
+  // (kompatybilność wsteczna ze starymi klientami).
+  kind?: "city" | "region";
+  /** Slug z data/regions.ts — wartość parametru `region` na /hotele/szukaj. */
+  regionId?: string;
 }
 
 export interface TravelPackageOffer {
