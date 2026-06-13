@@ -24,11 +24,21 @@ interface MiniPlannerFormProps {
     origin: string;
     destination: string;
     destinationCountry: string;
+    /** Zadanie 2 — slug wyspy/regionu (parametr `region` na /hotele/szukaj). */
+    regionId: string;
     startDate: string;
     endDate: string;
     travelers: number;
     kids: number;
   }>;
+}
+
+/** Wynik rozstrzygnięcia pola "Dokąd" na submit (miasto albo wyspa/region). */
+interface ResolvedDestination {
+  kind: "city" | "region";
+  city: string;
+  country: string;
+  regionId: string | null;
 }
 
 function diffNights(start: string, end: string): number {
@@ -52,6 +62,9 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
   const [originError, setOriginError] = useState("");
   const [destination, setDestination] = useState(initial?.destination ?? "");
   const [destinationCountry, setDestinationCountry] = useState(initial?.destinationCountry ?? "");
+  // Zadanie 2 — wybrana wyspa/region (null = zwykłe miasto). Wpisywanie
+  // czegokolwiek w pole zeruje wybór, jak destConfirmed.
+  const [destRegionId, setDestRegionId] = useState<string | null>(initial?.regionId ?? null);
   // Visible input gets the Polish exonym (e.g. "Lizbona") so collapsing back
   // from /hotele/szukaj?destination=Lisbon shows what the user picked, not
   // the canonical English key.
@@ -112,8 +125,10 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     // Backend key (URL param, LiteAPI/IATA lookups) stays English.
     setDestination(s.city);
     setDestinationCountry(s.country);
+    // Zadanie 2 — wyspa/region niesie regionId; miasto je zeruje.
+    setDestRegionId(s.kind === "region" ? (s.regionId ?? null) : null);
     // Visible input gets the Polish exonym so the user sees what they picked.
-    setDestQuery(localizeCity(s.city));
+    setDestQuery(s.cityPl ?? localizeCity(s.city));
     setDestSuggestions([]);
     setDestFetching(false);
     setDestOpen(false);
@@ -139,13 +154,44 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // Jeśli user coś wpisał ale nie wybrał z listy → pokaż błąd
+    // Jak na Booking: wpisany tekst bez wyboru z listy NIE blokuje submitu.
+    // Bierzemy najlepszą podpowiedź serwera ("warszaw"/"warszawa" →
+    // Warszawa, "majorka" → wyspa Majorka). Błąd dopiero gdy podpowiedzi
+    // nie ma wcale (czyli tekst nie przypomina żadnego kierunku).
+    let resolvedDest: ResolvedDestination = {
+      kind: destRegionId ? "region" : "city",
+      city: destination,
+      country: destinationCountry,
+      regionId: destRegionId,
+    };
     if (destQuery.trim().length > 0 && !destConfirmed) {
-      setDestError("Nie znaleziono takiego kierunku. Wybierz miasto z listy podpowiedzi.");
-      setDestOpen(true);
-      return;
+      let top: DestinationSuggestion | undefined;
+      try {
+        const res = await fetch(
+          `/api/destinations/suggest?q=${encodeURIComponent(destQuery.trim())}&limit=1`,
+        );
+        const payload = (await res.json().catch(() => ({ items: [] }))) as {
+          items?: DestinationSuggestion[];
+        };
+        top = payload.items?.[0];
+      } catch {
+        top = undefined;
+      }
+      if (!top) {
+        setDestError("Nie znaleziono takiego kierunku. Wybierz miasto z listy podpowiedzi.");
+        setDestOpen(true);
+        return;
+      }
+      resolvedDest = {
+        kind: top.kind === "region" ? "region" : "city",
+        city: top.city,
+        country: top.country,
+        regionId: top.kind === "region" ? (top.regionId ?? null) : null,
+      };
+      // Dosynchronizuj UI, żeby po nawigacji wstecz pole pokazywało wybór.
+      selectSuggestion(top);
     }
     setDestError("");
     // "Skąd" is optional — but typed-and-unmatched text must not silently
@@ -171,7 +217,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     }
     setDateError("");
     const nights = diffNights(startDate, endDate);
-    const trimmedDestination = destination.trim();
+    const trimmedDestination = resolvedDest.city.trim();
     // PRODUCT DECISION (zadanie 1): children count as adults downstream —
     // LiteAPI occupancies and the flights search both read the summed
     // `adults` param. `kids` is informational only (restores the UI split).
@@ -180,12 +226,18 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     // page that composes hotels (LiteAPI) + flights (Travelpayouts).
     const params = new URLSearchParams({
       destination: trimmedDestination,
-      country: destinationCountry,
+      country: resolvedDest.country,
       checkin: startDate,
       checkout: endDate,
       adults: String(totalGuests),
       rooms: "1",
     });
+    // Zadanie 2 — wyspa/region: dodatkowy parametr `region` (slug ze
+    // słownika). `destination` zostaje (EN nazwa regionu) dla spójności
+    // metadanych i starych konsumentów; strona wyników preferuje `region`.
+    if (resolvedDest.kind === "region" && resolvedDest.regionId) {
+      params.set("region", resolvedDest.regionId);
+    }
     if (childCount > 0) params.set("kids", String(childCount));
     // Empty "Skąd" → no origin param at all; the results page already hides
     // the flights section when sp.origin is absent.
@@ -193,7 +245,8 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     sendClientEvent("mini_planner_submitted", {
       origin: resolvedOrigin || null,
       destination: trimmedDestination || null,
-      country: destinationCountry || null,
+      country: resolvedDest.country || null,
+      region: resolvedDest.regionId,
       nights,
       travelers: totalGuests,
       hasDestination: trimmedDestination.length > 0,
@@ -203,7 +256,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     // params from the brief.
     track("hotel_search_submit", {
       destination: trimmedDestination,
-      country: destinationCountry || undefined,
+      country: resolvedDest.country || undefined,
       checkin: startDate,
       checkout: endDate,
       adults: totalGuests,
@@ -265,6 +318,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
             onChange={(e) => {
               setDestQuery(e.target.value);
               setDestination(e.target.value);
+              setDestRegionId(null);
               setDestConfirmed(false);
               setDestError("");
             }}
@@ -286,9 +340,13 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
                 <li className="px-3 py-2 text-sm text-emerald-900/56">Szukamy kierunków…</li>
               ) : destSuggestions.length > 0 ? (
                 destSuggestions.map((s, idx) => {
+                  // Zadanie 2 — wyspy z oznaczeniem typu ("wyspa · Hiszpania").
+                  const isRegion = s.kind === "region";
                   const ctry = localizeCountry(s.country);
-                  const reg = localizeRegion(s.region);
-                  const meta = [ctry, reg].filter(Boolean).join(" · ");
+                  const reg = isRegion ? "wyspa" : localizeRegion(s.region);
+                  const meta = isRegion
+                    ? [reg, ctry].filter(Boolean).join(" · ")
+                    : [ctry, reg].filter(Boolean).join(" · ");
                   return (
                     <li
                       key={s.id}
@@ -303,7 +361,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
                         idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
                       }`}
                     >
-                      <div className="font-semibold text-emerald-950">{localizeCity(s.city)}</div>
+                      <div className="font-semibold text-emerald-950">{s.cityPl ?? localizeCity(s.city)}</div>
                       {meta && <div className="text-xs text-emerald-900/56">{meta}</div>}
                     </li>
                   );

@@ -8,8 +8,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { fetchHotelsList, LiteApiError } from "@/lib/liteapi";
+import { fetchHotelsByPlaceId, fetchHotelsList, LiteApiError } from "@/lib/liteapi";
 import { nightsBetween } from "@/lib/hotels/normalize";
+import { getRegionById, isInRegion, type RegionRecord } from "@/lib/hotels/regions";
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
 
@@ -39,6 +40,8 @@ const RESULTS_PER_PAGE = 20;
 interface SP {
   destination?: string;
   country?: string;
+  /** Zadanie 2 — slug wyspy/regionu z data/regions.ts (np. "majorka"). */
+  region?: string;
   origin?: string;
   checkin?: string;
   checkout?: string;
@@ -63,6 +66,17 @@ interface SP {
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
   const sp = await searchParams;
+  const region = sp.region ? getRegionById(sp.region) : null;
+  if (region) {
+    return {
+      title: `Hotele ${region.namePl}, ${region.countryPl} — ceny w PLN | HelpTravel`,
+      description: `Znajdź hotel na wyspie ${region.namePl}. Prawdziwe ceny w PLN, bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`,
+      alternates: {
+        canonical: `/hotele/szukaj?${new URLSearchParams({ region: region.id }).toString()}`,
+      },
+      robots: "index, follow",
+    };
+  }
   const dest = sp.destination ?? "";
   const ctry = sp.country ?? "";
   const title = dest
@@ -87,12 +101,13 @@ export default async function HotelResultsPage({
   searchParams: Promise<SP>;
 }) {
   const sp = await searchParams;
+  // Zadanie 2 — wyspa/region ma pierwszeństwo przed destination (miastem).
+  const region = sp.region ? getRegionById(sp.region) : null;
   const destinationRecord = sp.destination
     ? resolveDestinationFromQuery({ destination: sp.destination, country: sp.country })
     : null;
   const valid =
-    sp.destination &&
-    sp.country &&
+    (region || (sp.destination && sp.country)) &&
     sp.checkin &&
     sp.checkout &&
     /^\d{4}-\d{2}-\d{2}$/.test(sp.checkin) &&
@@ -113,12 +128,15 @@ export default async function HotelResultsPage({
           // (no dates → invalid → expanded), then picking dates + ZAPLANUJ
           // keeps the form expanded (user had to hit "Anuluj edycję"). On
           // remount with dates present, valid=true → collapsed → results.
-          key={`sb-${sp.destination ?? ""}-${sp.country ?? ""}-${sp.checkin ?? ""}-${sp.checkout ?? ""}-${sp.adults ?? ""}-${sp.origin ?? ""}`}
+          key={`sb-${sp.region ?? ""}-${sp.destination ?? ""}-${sp.country ?? ""}-${sp.checkin ?? ""}-${sp.checkout ?? ""}-${sp.adults ?? ""}-${sp.origin ?? ""}`}
           valid={Boolean(valid)}
           initial={{
             origin: sp.origin,
-            destination: sp.destination,
-            destinationCountry: sp.country,
+            // Region: pole "Dokąd" pokazuje polską nazwę wyspy, a regionId
+            // wraca do formularza, żeby resubmit znowu zbudował region=….
+            destination: region ? region.namePl : sp.destination,
+            destinationCountry: region ? region.countryPl : sp.country,
+            regionId: region?.id,
             startDate: sp.checkin,
             endDate: sp.checkout,
             travelers: sp.adults ? Number(sp.adults) : undefined,
@@ -141,7 +159,7 @@ export default async function HotelResultsPage({
             <EmptyPrompt hasDestination={Boolean(sp.destination)} />
           ) : (
             <Suspense fallback={<ResultsSkeleton count={6} />}>
-              <Results sp={sp} />
+              <Results sp={sp} region={region} />
             </Suspense>
           )}
         </section>
@@ -149,18 +167,18 @@ export default async function HotelResultsPage({
 
       {/* Flights — full-width below hotels. FlightOffersPanel is its own
           client component with internal Suspense-equivalent loading. */}
-      {valid && sp.origin && sp.destination && sp.checkin && sp.checkout && (
+      {valid && sp.origin && (region || sp.destination) && sp.checkin && sp.checkout && (
         <div className="mx-auto max-w-7xl px-4 pb-12">
           <FlightOffersPanel
             originCity={sp.origin}
-            destinationCity={sp.destination}
-            destinationCountry={sp.country ?? ""}
+            destinationCity={region ? region.nameEn : sp.destination!}
+            destinationCountry={region ? region.countryPl : (sp.country ?? "")}
             departureDate={sp.checkin}
             returnDate={sp.checkout}
             passengers={sp.adults ? Math.max(1, Math.min(15, Number(sp.adults))) : 2}
-            destinationIata={destinationRecord?.airports[0] ?? null}
-            destinationLat={destinationRecord?.lat ?? null}
-            destinationLng={destinationRecord?.lng ?? null}
+            destinationIata={region ? (region.airports[0] ?? null) : (destinationRecord?.airports[0] ?? null)}
+            destinationLat={region ? region.lat : (destinationRecord?.lat ?? null)}
+            destinationLng={region ? region.lng : (destinationRecord?.lng ?? null)}
           />
         </div>
       )}
@@ -168,9 +186,11 @@ export default async function HotelResultsPage({
   );
 }
 
-async function Results({ sp }: { sp: SP }) {
-  const destination = sp.destination!;
-  const country = sp.country!;
+async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) {
+  // Region: destination/country pochodzą ze słownika (URL może mieć samo
+  // region=… — np. link kanoniczny), miasto: z parametrów jak dotąd.
+  const destination = region ? region.nameEn : sp.destination!;
+  const country = region ? region.countryPl : sp.country!;
   const checkin = sp.checkin!;
   const checkout = sp.checkout!;
   // Cap 15 = 9 adults + 6 children from the guests popover (zadanie 1).
@@ -208,8 +228,14 @@ async function Results({ sp }: { sp: SP }) {
     //     entirely — no more "Brak miejsc w tym terminie" cards.
     //   • The count line reflects ACTUAL availability ("511 dostępnych
     //     obiektów"), not the metadata count.
-    const list = await fetchHotelsList({ city: destination, country, limit: HOTEL_POOL_SIZE });
-    const raw = list.data ?? [];
+    // Region (zadanie 2): jeden call po placeId (zweryfikowane — działa jak
+    // cityName, ten sam cap 1000), po czym przycinamy do hoteli faktycznie
+    // leżących na wyspie (placeId-search dorzuca sąsiednie wyspy).
+    const list = region
+      ? await fetchHotelsByPlaceId({ placeId: region.placeId, limit: HOTEL_POOL_SIZE })
+      : await fetchHotelsList({ city: destination, country, limit: HOTEL_POOL_SIZE });
+    let raw = list.data ?? [];
+    if (region) raw = raw.filter((h) => isInRegion(region, h));
     metaPool = raw.map((h) => ({
       hotelId: h.id,
       name: h.name,
@@ -224,17 +250,20 @@ async function Results({ sp }: { sp: SP }) {
     errorMessage = err instanceof LiteApiError ? err.userMessagePl : "Coś poszło nie tak. Spróbuj ponownie.";
   }
 
-  const destinationRecord = resolveDestinationFromQuery({ destination, country });
-  const cityPl = destinationRecord?.city.pl ?? localizeCity(destination);
+  const destinationRecord = region ? null : resolveDestinationFromQuery({ destination, country });
+  const cityPl = region ? region.namePl : (destinationRecord?.city.pl ?? localizeCity(destination));
+  const fallbackIata = region ? (region.airports[0] ?? null) : (destinationRecord?.airports[0] ?? null);
+  const fallbackLat = region ? region.lat : (destinationRecord?.lat ?? null);
+  const fallbackLng = region ? region.lng : (destinationRecord?.lng ?? null);
 
   if (errorMessage) {
     return (
       <ResultsError
         title={`Nie znaleźliśmy hoteli w ${cityPl}`}
         message={errorMessage}
-        iata={destinationRecord?.airports[0] ?? null}
-        lat={destinationRecord?.lat ?? null}
-        lng={destinationRecord?.lng ?? null}
+        iata={fallbackIata}
+        lat={fallbackLat}
+        lng={fallbackLng}
       />
     );
   }
@@ -243,9 +272,9 @@ async function Results({ sp }: { sp: SP }) {
     return (
       <EmptyResults
         destination={cityPl}
-        iata={destinationRecord?.airports[0] ?? null}
-        lat={destinationRecord?.lat ?? null}
-        lng={destinationRecord?.lng ?? null}
+        iata={fallbackIata}
+        lat={fallbackLat}
+        lng={fallbackLng}
       />
     );
   }
@@ -268,6 +297,8 @@ async function Results({ sp }: { sp: SP }) {
   childParams.set("adults", String(adults));
   childParams.set("rooms", String(rooms));
   if (children.length) childParams.set("children", children.join(","));
+  // Region w linkach do hoteli — powrót z karty hotelu zachowuje kontekst.
+  if (region) childParams.set("region", region.id);
 
   // Shared search context for the client price islands.
   const priceCtx = { checkin, checkout, adults, children, rooms, currency: "PLN" };
@@ -289,7 +320,7 @@ async function Results({ sp }: { sp: SP }) {
     <div className="space-y-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-xl font-bold text-neutral-900 sm:text-2xl">
-          Hotele w {destination}
+          {region ? `Hotele: ${region.namePl}` : `Hotele w ${cityPl}`}
         </h1>
       </header>
 

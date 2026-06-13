@@ -15,6 +15,8 @@ interface Props {
     origin?: string;
     destination?: string;
     destinationCountry?: string;
+    /** Zadanie 2 — slug wyspy/regionu; wraca do MiniPlannerForm. */
+    regionId?: string;
     startDate?: string;
     endDate?: string;
     /** Total guests (the summed `adults` URL param). */
