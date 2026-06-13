@@ -32,8 +32,8 @@ const operator = {
   email: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "kontakt@helptravel.pl",
 };
 
-const EFFECTIVE_DATE = "24 maja 2026 r.";
-const EFFECTIVE_DATE_ISO = "2026-05-24";
+const EFFECTIVE_DATE = "13 czerwca 2026 r.";
+const EFFECTIVE_DATE_ISO = "2026-06-13";
 
 export const metadata: Metadata = {
   title: "Regulamin",
@@ -280,6 +280,40 @@ const sections: Section[] = [
       "Polityka anulacji, modyfikacji oraz zwrotu środków każdorazowo wynika z warunków Partnera Rezerwacyjnego dla wybranej stawki (m.in. „refundable” / „non-refundable”) i jest prezentowana Użytkownikowi przed potwierdzeniem rezerwacji.",
       "Anulacji lub zmiany Rezerwacji Hotelowej Użytkownik może dokonać kontaktując się z Partnerem Rezerwacyjnym, korzystając z odpowiedniej funkcji w Serwisie (jeżeli jest dostępna) lub zwracając się do Operatora pod adresem kontaktowym Operatora, który przekaże dyspozycję Partnerowi.",
       "Zwrot środków, jeżeli przysługuje, dokonywany jest przez ten sam kanał płatności, którym dokonano płatności pierwotnej, w terminach wynikających z polityki Partnera Rezerwacyjnego oraz przepisów dostawcy usług płatniczych. Operator nie odpowiada za terminy księgowania zwrotu po stronie banku Użytkownika.",
+    ],
+  },
+  {
+    id: "loty",
+    ord: "§ 10a",
+    title: "Rezerwacja i sprzedaż biletów lotniczych",
+    intro:
+      "Operator pośredniczy w rezerwacji biletów lotniczych realizowanych za pośrednictwem dostawcy technologicznego LiteAPI/Nuitee Travel, który występuje jako podmiot obsługujący płatność (merchant of record) — analogicznie do rezerwacji hotelowych. Do rezerwacji lotniczych stosuje się odpowiednio postanowienia § 8–§ 10, z uwzględnieniem poniższych zasad szczególnych.",
+    numbered: [
+      {
+        label: "Moment zawarcia umowy / potwierdzenie rezerwacji",
+        body:
+          "Złożenie zamówienia i dokonanie płatności nie jest równoznaczne z natychmiastowym potwierdzeniem rezerwacji lotniczej. Rezerwacja jest uznana za potwierdzoną dopiero w momencie nadania jej statusu „potwierdzona” w systemie rezerwacyjnym oraz udostępnienia potwierdzenia rezerwacji Klientowi.",
+      },
+      {
+        label: "Rozbieżność płatność–rezerwacja",
+        body:
+          "W wyjątkowych przypadkach może dojść do sytuacji, w której płatność zostanie zrealizowana, natomiast rezerwacja nie zostanie potwierdzona (np. z powodu braku dostępności oferty w czasie finalizacji). W takiej sytuacji Sprzedawca dokonuje weryfikacji i informuje Klienta o wyniku weryfikacji oraz dalszych krokach (w szczególności: potwierdzenie rezerwacji, propozycja alternatywy albo anulowanie transakcji i zwrot środków).",
+      },
+      {
+        label: "Ostateczny status rezerwacji",
+        body:
+          "Ostatecznym potwierdzeniem stanu rezerwacji jest status rezerwacji widoczny w szczegółach rezerwacji. W przypadku rozbieżności pomiędzy komunikatami tymczasowymi a statusem rezerwacji, wiążący jest status rezerwacji w szczegółach rezerwacji.",
+      },
+      {
+        label: "Czas przetwarzania",
+        body:
+          "Czas finalizacji rezerwacji może się różnić w zależności od przewoźnika, dostawcy oraz rodzaju taryfy. Sprzedawca nie gwarantuje konkretnego czasu potwierdzenia rezerwacji.",
+      },
+    ],
+    paragraphs: [
+      "Zasady zmian i anulacji zależą od przewoźnika lotniczego oraz rodzaju taryfy biletu; część taryf jest bezzwrotna. Obsługa zmian i anulacji odbywa się poprzez kontakt z obsługą Operatora pod adresem kontaktowym Operatora — Serwis nie udostępnia automatycznych zwrotów ani samodzielnej anulacji biletu online i ich nie gwarantuje.",
+      "Do realizacji rezerwacji biletu niezbędne jest podanie danych pasażerów wymaganych przez przewoźnika, w tym danych dokumentu tożsamości lub paszportu (rodzaj, numer, data ważności, kraj wydania), daty urodzenia i obywatelstwa. Zakres i sposób przetwarzania tych danych określa Polityka prywatności.",
+      "Obciążenie karty płatniczej z tytułu rezerwacji lotu może widnieć na wyciągu pod nazwą operatora płatności (m.in. „NUITEE TRAVEL”), będącego podmiotem obsługującym płatność dla danej rezerwacji.",
     ],
   },
   {

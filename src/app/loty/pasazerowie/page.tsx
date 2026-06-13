@@ -299,7 +299,7 @@ export default function PassengersPage() {
             >
               {submitting ? "Przygotowuję płatność…" : "Przejdź do płatności →"}
             </button>
-            <p className="mt-2 text-center text-[11px] text-neutral-500">Cena i dostępność lotu zostaną potwierdzone przed płatnością.</p>
+            <p className="mt-2 text-center text-[11px] text-neutral-500">Cena i dostępność lotu zostaną potwierdzone przed przejściem do płatności.</p>
             {submitError && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{submitError}</p>}
           </div>
         </aside>

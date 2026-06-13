@@ -83,6 +83,9 @@ export function FlightConfirmation({ bookingId }: { bookingId: string }) {
         <div className="mt-4 space-y-4">
           <div className={`rounded-2xl border p-5 ${toneCls}`}>
             <p className="text-lg font-bold">{label?.text}</p>
+            {data.bookingStatus === "confirmed" && (
+              <p className="mt-1 text-sm">Rezerwacja została potwierdzona. Szczegóły lotu i status biletu znajdziesz poniżej.</p>
+            )}
             <p className="mt-1 text-sm">Numer rezerwacji: <span className="font-mono font-semibold">{data.bookingId}</span></p>
             {data.pnr && <p className="text-sm">PNR: <span className="font-mono font-semibold">{data.pnr}</span></p>}
           </div>
