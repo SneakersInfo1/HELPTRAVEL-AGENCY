@@ -149,7 +149,9 @@ export default function PassengersPage() {
         return;
       }
       track("flight_prebook", { offer_id: flow.offerId, price: json.price, currency: json.currency });
-      patchFlightFlow({ sessionId: json.sessionId, secretKey: json.secretKey, widgetEnv: json.widgetEnv, verifiedTotal: json.price ?? flow.verifiedTotal, verifiedCurrency: json.currency ?? flow.verifiedCurrency });
+      // verifiedTotal := cena z prebooka (autorytatywna, tę kwotę pobierze
+      // PaymentIntent). verifiedAt odświeżamy, by odzwierciedlał moment locka.
+      patchFlightFlow({ sessionId: json.sessionId, secretKey: json.secretKey, widgetEnv: json.widgetEnv, verifiedTotal: json.price ?? flow.verifiedTotal, verifiedCurrency: json.currency ?? flow.verifiedCurrency, verifiedAt: Date.now() });
       router.push("/loty/platnosc");
     } catch {
       setSubmitError("Problem z połączeniem. Spróbuj ponownie.");

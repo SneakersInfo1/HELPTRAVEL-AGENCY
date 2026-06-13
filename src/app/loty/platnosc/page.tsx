@@ -14,10 +14,8 @@ import { useRouter } from "next/navigation";
 
 import { track } from "@/lib/analytics/track";
 import { fmtMoneyPln } from "@/lib/flights/display";
-import { loadFlightFlow, patchFlightFlow, type FlightFlow } from "@/lib/flights/flow-storage";
+import { loadFlightFlow, type FlightFlow } from "@/lib/flights/flow-storage";
 import { PaymentSlot, type PaymentSlotPrebook } from "@/app/hotele/rezerwacja/_components/payment-slot";
-
-const REVERIFY_AFTER_MS = 10 * 60 * 1000;
 
 export default function FlightPaymentPage() {
   const router = useRouter();
@@ -35,43 +33,22 @@ export default function FlightPaymentPage() {
       router.replace("/loty/wyniki");
       return;
     }
+    // Cena jest już ZABLOKOWANA przez prebook: f.verifiedTotal to kwota zwrócona
+    // przez /flights/prebooks (ustawiona na stronie pasażerów) i dokładnie ją
+    // obciąży PaymentIntent powiązany z secretKey. Świadomie NIE re-verify'ujemy
+    // tu oferty — offerId został już skonsumowany przez prebook, więc verify
+    // mógłby zwrócić OFFER_UNAVAILABLE i ZABLOKOWAĆ ważną płatność, albo pokazać
+    // inną cenę niż realnie pobierana. Źródłem prawdy o kwocie jest prebook.
+    const amount = f.verifiedTotal ?? 0;
+    const currency = f.verifiedCurrency ?? "PLN";
     // Deferred (setTimeout 0) — unika kaskadowego renderu w efekcie
     // (react-hooks/set-state-in-effect); wzorzec użyty w home-search-tabs.
-    window.setTimeout(() => setFlow(f), 0);
-
-    (async () => {
-      // Re-verify, jeśli verify > 10 min temu (cena/dostępność może się zmienić).
-      let amount = f.verifiedTotal ?? 0;
-      let currency = f.verifiedCurrency ?? "PLN";
-      if (Date.now() - f.verifiedAt > REVERIFY_AFTER_MS) {
-        try {
-          const res = await fetch("/api/flights/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ offerId: f.offerId, previousTotal: f.verifiedTotal ?? undefined, previousCurrency: currency }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            setStatus("error");
-            setNotice(json.error === "OFFER_UNAVAILABLE" ? "Oferta wygasła. Wróć do wyników i wybierz lot ponownie." : (json.message || "Nie udało się potwierdzić oferty."));
-            return;
-          }
-          if (typeof json.total === "number") {
-            amount = json.total;
-            currency = json.currency ?? currency;
-            patchFlightFlow({ verifiedTotal: amount, verifiedCurrency: currency, verifiedAt: Date.now() });
-          }
-          if (json.priceChanged) setNotice(`Cena została zaktualizowana do ${fmtMoneyPln(json.newTotal ?? amount, currency)}.`);
-        } catch {
-          setStatus("error");
-          setNotice("Problem z połączeniem. Spróbuj ponownie.");
-          return;
-        }
-      }
+    window.setTimeout(() => {
+      setFlow(f);
       setPrebook({ secretKey: f.secretKey!, sessionId: f.sessionId!, amount, currency, widgetEnv: f.widgetEnv ?? "live" });
       setStatus("ready");
-      track("flight_payment_start", { amount, currency });
-    })();
+    }, 0);
+    track("flight_payment_start", { amount, currency });
   }, [router]);
 
   if (!flow || status === "checking") {
