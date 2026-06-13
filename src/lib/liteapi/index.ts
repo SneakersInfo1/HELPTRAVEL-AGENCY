@@ -4,7 +4,7 @@
 export * from "./errors";
 export * from "./types";
 export { liteApiRequest } from "./client";
-export { fetchHotelsList, searchHotels, resolveCountryCode } from "./search";
+export { fetchHotelsList, fetchHotelsByPlaceId, searchHotels, resolveCountryCode } from "./search";
 export { getRates, type GetRatesInput } from "./rates";
 export { getHotelDetail } from "./hotel";
 // `autocompletePlaces` removed 2026-05-26 — was a TODO stub returning [] with

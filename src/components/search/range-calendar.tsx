@@ -76,10 +76,19 @@ export function RangeCalendar({ value, onChange, numberOfMonths }: Props) {
       onSelect={(_, triggerDate) => handleDayClick(triggerDate)}
       onDayMouseEnter={(day) => setHovered(day)}
       onDayMouseLeave={() => setHovered(undefined)}
-      modifiers={
-        previewActive ? { preview: { from: value.from!, to: hovered! } } : undefined
-      }
-      modifiersClassNames={{ preview: "bg-emerald-50" }}
+      modifiers={{
+        ...(previewActive ? { preview: { from: value.from!, to: hovered! } } : {}),
+        // Pierwsze kliknięcie (start bez końca) — wyraźne ciemnozielone
+        // potwierdzenie wyboru (zgłoszenie właściciela 2026-06-13). Własny
+        // modifier zamiast polegania na range_start, bo przy {from, to:
+        // undefined} DayPicker v9 nie zawsze go nakłada.
+        ...(value.from && !value.to ? { pickedStart: value.from } : {}),
+      }}
+      modifiersClassNames={{
+        preview: "bg-emerald-50",
+        pickedStart:
+          "[&>button]:bg-emerald-700 [&>button]:text-white [&>button]:font-bold [&>button]:hover:bg-emerald-800",
+      }}
       locale={pl}
       weekStartsOn={1}
       numberOfMonths={numberOfMonths}
