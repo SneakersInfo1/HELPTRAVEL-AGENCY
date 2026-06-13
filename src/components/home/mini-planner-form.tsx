@@ -15,6 +15,10 @@ import type { DestinationSuggestion } from "@/lib/mvp/types";
 interface MiniPlannerFormProps {
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
   compact?: boolean;
+  /** Tryb wyszukiwarki (Faza 2 toggle Hotele/Loty). Domyślnie "hotels" —
+   *  bez zmian dla istniejących użyć (homepage hotelowy, pasek wyników).
+   *  "flights": pokazuje "Skąd" (wymagane), niemowlęta, kieruje na /loty/wyniki. */
+  mode?: "hotels" | "flights";
   /** Initial values when reusing the bar on results pages. Sesja C pkt 2.
       `travelers` is the TOTAL guest count from the `adults` URL param (sum of
       adults+children — product decision); `kids` is the informational
@@ -48,9 +52,10 @@ function diffNights(start: string, end: string): number {
   return nights > 0 ? nights : 4;
 }
 
-export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormProps) {
+export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: MiniPlannerFormProps) {
   const router = useRouter();
   const { locale } = useLanguage();
+  const isFlights = mode === "flights";
   const listboxId = useId();
   const destInputRef = useRef<HTMLInputElement>(null);
   const destListRef = useRef<HTMLUListElement>(null);
@@ -59,7 +64,12 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
   // same confirmed/query split the destination combobox uses.
   const [origin, setOrigin] = useState(initial?.origin ?? "");
   const [originQuery, setOriginQuery] = useState(initial?.origin ?? "");
+  const [originIata, setOriginIata] = useState(""); // IATA wylotu (tryb lotów)
   const [originError, setOriginError] = useState("");
+  // Faza 2 (loty): IATA celu (z s.airportCode), liczba niemowląt, one-way.
+  const [destIata, setDestIata] = useState("");
+  const [infants, setInfants] = useState(0);
+  const [oneWay, setOneWay] = useState(false);
   const [destination, setDestination] = useState(initial?.destination ?? "");
   const [destinationCountry, setDestinationCountry] = useState(initial?.destinationCountry ?? "");
   // Zadanie 2 — wybrana wyspa/region (null = zwykłe miasto). Wpisywanie
@@ -127,6 +137,8 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
     setDestinationCountry(s.country);
     // Zadanie 2 — wyspa/region niesie regionId; miasto je zeruje.
     setDestRegionId(s.kind === "region" ? (s.regionId ?? null) : null);
+    // Faza 2 (loty): zapamiętaj IATA celu (z autocomplete: airportCode).
+    setDestIata(s.airportCode ?? "");
     // Visible input gets the Polish exonym so the user sees what they picked.
     setDestQuery(s.cityPl ?? localizeCity(s.city));
     setDestSuggestions([]);
@@ -166,6 +178,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
       country: destinationCountry,
       regionId: destRegionId,
     };
+    let resolvedDestIata = destIata; // IATA celu (tryb lotów)
     if (destQuery.trim().length > 0 && !destConfirmed) {
       let top: DestinationSuggestion | undefined;
       try {
@@ -190,10 +203,68 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
         country: top.country,
         regionId: top.kind === "region" ? (top.regionId ?? null) : null,
       };
+      resolvedDestIata = top.airportCode ?? "";
       // Dosynchronizuj UI, żeby po nawigacji wstecz pole pokazywało wybór.
       selectSuggestion(top);
     }
     setDestError("");
+
+    // ── TRYB LOTÓW (Faza 2) ──────────────────────────────────────────────
+    if (isFlights) {
+      // Cel musi mieć lotnisko (IATA).
+      if (!resolvedDestIata) {
+        setDestError("Wybierz miasto z lotniskiem z listy podpowiedzi.");
+        setDestOpen(true);
+        return;
+      }
+      // "Skąd" WYMAGANE w trybie lotów, musi rozwiązać się do IATA.
+      let resolvedOriginIata = originIata;
+      if (!resolvedOriginIata) {
+        const match = exactOriginMatch(originQuery);
+        if (match) {
+          resolvedOriginIata = match.iata;
+          setOrigin(match.city);
+          setOriginIata(match.iata);
+          setOriginQuery(match.city);
+        } else {
+          setOriginError("Wybierz lotnisko wylotu z listy.");
+          return;
+        }
+      }
+      setOriginError("");
+      // Data wylotu wymagana; powrót wymagany, chyba że "w jedną stronę".
+      if (!startDate) {
+        setDateError("Wybierz datę wylotu.");
+        return;
+      }
+      if (!oneWay && !endDate) {
+        setDateError("Wybierz datę powrotu albo zaznacz „w jedną stronę”.");
+        return;
+      }
+      setDateError("");
+      const flightParams = new URLSearchParams({
+        origin: resolvedOriginIata,
+        destination: resolvedDestIata,
+        depart: startDate,
+        adults: String(adults),
+      });
+      if (!oneWay && endDate) flightParams.set("return", endDate);
+      if (childCount > 0) flightParams.set("children", String(childCount));
+      if (infants > 0) flightParams.set("infants", String(infants));
+      track("flight_search", {
+        origin: resolvedOriginIata,
+        destination: resolvedDestIata,
+        depart: startDate,
+        return: oneWay ? undefined : endDate,
+        passengers: adults + childCount + infants,
+        round_trip: !oneWay,
+        cabin_class: "ECONOMY",
+      });
+      const flightPrefix = locale === "en" ? "/en" : "";
+      router.push(`${flightPrefix}/loty/wyniki?${flightParams.toString()}`);
+      return;
+    }
+    // ── TRYB HOTELI (dotychczasowy) ──────────────────────────────────────
     // "Skąd" is optional — but typed-and-unmatched text must not silently
     // turn into "no flights". Exact single match auto-confirms ("krakow" →
     // Kraków); anything else asks the user to pick or clear.
@@ -279,29 +350,45 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
       onSubmit={handleSubmit}
       className="rounded-3xl border border-white/40 bg-white/80 p-4 shadow-[0_24px_60px_rgba(16,84,48,0.24)] backdrop-blur-xl sm:p-5"
     >
-      <div className="grid gap-3 lg:grid-cols-[1.1fr_1.4fr_1.3fr_1fr_auto] lg:items-end">
-        {/* SKAD — optional searchable combobox over the static airport list */}
-        <OriginCombobox
-          query={originQuery}
-          onQueryChange={(value) => {
-            setOriginQuery(value);
-            setOrigin("");
-            setOriginError("");
-          }}
-          onSelect={(city) => {
-            setOrigin(city.city);
-            setOriginQuery(city.city);
-            setOriginError("");
-          }}
-          onClear={() => {
-            setOrigin("");
-            setOriginQuery("");
-            setOriginError("");
-          }}
-          error={originError}
-          fieldClassName={fieldCls}
-          labelClassName={labelCls}
-        />
+      <div
+        className={`grid gap-3 lg:items-end ${
+          isFlights
+            ? "lg:grid-cols-[1.1fr_1.4fr_1.3fr_1fr_auto]"
+            : "lg:grid-cols-[1.4fr_1.3fr_1fr_auto]"
+        }`}
+      >
+        {/* SKAD — tylko w trybie LOTY (Faza 2.2: znika z widoku hotelowego).
+            Pojawia się z subtelną animacją fade/slide przy wejściu w loty. */}
+        {isFlights && (
+          <div className="animate-fade-in">
+            <OriginCombobox
+              query={originQuery}
+              onQueryChange={(value) => {
+                setOriginQuery(value);
+                setOrigin("");
+                setOriginIata("");
+                setOriginError("");
+              }}
+              onSelect={(city) => {
+                setOrigin(city.city);
+                setOriginIata(city.iata);
+                setOriginQuery(city.city);
+                setOriginError("");
+              }}
+              onClear={() => {
+                setOrigin("");
+                setOriginIata("");
+                setOriginQuery("");
+                setOriginError("");
+              }}
+              error={originError}
+              fieldClassName={fieldCls}
+              labelClassName={labelCls}
+              placeholder="Skąd lecisz?"
+              inputAriaLabel="Skąd (lotnisko wylotu)"
+            />
+          </div>
+        )}
 
         {/* DOKAD — autocomplete combobox */}
         <div className="relative flex flex-col gap-1.5">
@@ -393,13 +480,17 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
           labelClassName={labelCls}
         />
 
-        {/* GOŚCIE — popover with Dorośli / Dzieci steppers */}
+        {/* GOŚCIE / PASAŻEROWIE — popover; w trybie lotów dochodzą niemowlęta */}
         <GuestsField
           adults={adults}
           childCount={childCount}
-          onChange={(nextAdults, nextChildren) => {
+          infants={infants}
+          showInfants={isFlights}
+          fieldLabel={isFlights ? "Pasażerowie" : "Goście"}
+          onChange={(nextAdults, nextChildren, nextInfants) => {
             setAdults(nextAdults);
             setChildCount(nextChildren);
+            if (typeof nextInfants === "number") setInfants(nextInfants);
           }}
           fieldClassName={fieldCls}
           labelClassName={labelCls}
@@ -411,7 +502,7 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
           className="group relative h-12 overflow-hidden rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60"
         >
           <span className="relative z-10 flex items-center justify-center gap-2">
-            Zaplanuj
+            {isFlights ? "Szukaj lotów" : "Zaplanuj"}
             <span aria-hidden className="transition group-hover:translate-x-1">→</span>
           </span>
           <span
@@ -421,13 +512,29 @@ export function MiniPlannerForm({ compact = false, initial }: MiniPlannerFormPro
         </button>
       </div>
 
+      {/* Loty: opcja „w jedną stronę" (pojedyncza data = one-way). */}
+      {isFlights && (
+        <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-[11px] font-medium text-emerald-900/80">
+          <input
+            type="checkbox"
+            checked={oneWay}
+            onChange={(e) => {
+              setOneWay(e.target.checked);
+              setDateError("");
+            }}
+            className="h-3.5 w-3.5 rounded border-emerald-900/30 text-emerald-600 focus:ring-emerald-500"
+          />
+          Lot w jedną stronę
+        </label>
+      )}
+
       {dateError && (
         <p className="mt-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
           {dateError}
         </p>
       )}
 
-      {!compact && (
+      {!compact && !isFlights && (
         <p className="mt-3 text-[11px] text-emerald-900/70">
               Dokąd możesz zostawić puste — pomożemy wybrać kierunek po Twoich preferencjach.
         </p>
