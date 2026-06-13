@@ -133,6 +133,8 @@ export interface FlightBookingRecord {
   passengerData?: MaskedPassenger[];
   contactData?: FlightContactData;
   manualReviewReason?: string;
+  /** Strażnik anty-duplikat maila potwierdzającego (book route ↔ webhook). */
+  confirmationSent?: boolean;
   price?: number;
   currency?: string;
   createdAt: number;

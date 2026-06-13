@@ -188,10 +188,11 @@ export async function POST(request: NextRequest) {
       await linkBookingToSession(effectiveBookingId, sessionId);
       const live = await refreshFromLive(session, effectiveBookingId);
       const ticketing = live?.ticketingStatus ?? "pending";
-      await saveFlightSession(sessionId, { ...session, bookingId: effectiveBookingId, bookingStatus: "confirmed", paymentStatus: "paid", ticketingStatus: ticketing, pnr: live?.pnr ?? session.pnr, eTicketNumbers: live?.eTickets ?? session.eTicketNumbers, updatedAt: Date.now() });
+      const sendMail = !session.confirmationSent && Boolean(session.contactData?.email);
+      await saveFlightSession(sessionId, { ...session, bookingId: effectiveBookingId, bookingStatus: "confirmed", paymentStatus: "paid", ticketingStatus: ticketing, pnr: live?.pnr ?? session.pnr, eTicketNumbers: live?.eTickets ?? session.eTicketNumbers, confirmationSent: session.confirmationSent || sendMail, updatedAt: Date.now() });
       await saveFlightCompleted({ bookingId: effectiveBookingId, sessionId, status: "CONFIRMED", pnr: live?.pnr ?? session.pnr, eTicketNumbers: live?.eTickets ?? session.eTicketNumbers, ticketingStatus: ticketing, price: session.price, currency: session.currency, createdAt: Date.now() });
-      if (session.contactData?.email) {
-        sendFlightConfirmation({ bookingId: effectiveBookingId, to: session.contactData.email, pnr: live?.pnr ?? session.pnr, ticketingPending: ticketing !== "ticketed", price: session.price, currency: session.currency }).catch(() => {});
+      if (sendMail) {
+        sendFlightConfirmation({ bookingId: effectiveBookingId, to: session.contactData!.email, pnr: live?.pnr ?? session.pnr, ticketingPending: ticketing !== "ticketed", price: session.price, currency: session.currency }).catch(() => {});
       }
       break;
     }

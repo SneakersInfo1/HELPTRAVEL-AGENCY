@@ -15,6 +15,7 @@ import { z } from "zod";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { notifyCritical } from "@/lib/alerting/notify";
 import { sendFlightManualReviewAlert } from "@/lib/email/send-flight-alerts";
+import { sendFlightConfirmation } from "@/lib/email/send-flight-alerts";
 import { bookFlight, extractBookingId, toFlightApiError } from "@/lib/flights/client";
 import {
   getFlightSession,
@@ -107,6 +108,11 @@ export async function POST(request: NextRequest) {
     const bookingStatus = mapBookingStatus(facts.status);
     const bookingId = facts.bookingId ?? session.prebookId; // fallback: użyj prebookId jako klucza
 
+    // Mail potwierdzający (3.6) — tylko przy confirmed i jeśli jeszcze nie
+    // wysłany (webhook flight.book.confirmed też wysyła; guard chroni przed
+    // duplikatem).
+    const shouldSendMail = bookingStatus === "confirmed" && !session.confirmationSent && Boolean(session.contactData?.email);
+
     const updated = {
       ...session,
       paymentStatus: "paid" as const,
@@ -115,6 +121,7 @@ export async function POST(request: NextRequest) {
       pnr: facts.pnr,
       eTicketNumbers: facts.eTicketNumbers,
       ticketingStatus: facts.ticketingStatus,
+      confirmationSent: session.confirmationSent || shouldSendMail,
       updatedAt: Date.now(),
     };
     await saveFlightSession(sessionId, updated);
@@ -131,6 +138,16 @@ export async function POST(request: NextRequest) {
         currency: session.currency,
         createdAt: Date.now(),
       });
+    }
+    if (shouldSendMail) {
+      sendFlightConfirmation({
+        bookingId,
+        to: session.contactData!.email,
+        pnr: facts.pnr,
+        ticketingPending: facts.ticketingStatus !== "ticketed",
+        price: session.price,
+        currency: session.currency,
+      }).catch(() => {});
     }
 
     return NextResponse.json(
