@@ -5,8 +5,8 @@
 // Goal: produce data/destinations.json containing a verified list of
 // destinations where every entry has:
 //   (a) ≥ 15 hotels available in LiteAPI for a canonical query window
-//   (b) at least one airport within 100 km serviced by Travelpayouts
-//       from at least one major PL hub (WAW/KRK/GDN/WRO/KTW/POZ).
+//   (b) rozpoznane lotnisko (IATA) ze statycznej mapy city→IATA i co
+//       najmniej jeden bliski hub PL (WAW/KRK/GDN/WRO/KTW/POZ).
 //
 // The script is idempotent: results are cached under data/.cache so
 // rebuilds skip the slow API calls. Two modes:
@@ -33,10 +33,11 @@ import { destinationCatalog } from "../src/lib/mvp/destination-catalog";
 import { curatedDestinations } from "../src/lib/mvp/destinations";
 import { CITY_PL, COUNTRY_PL, REGION_PL } from "../src/lib/mvp/i18n-geo";
 import { resolveAirportCode } from "../src/lib/mvp/location";
-import {
-  nearestFlightableAirport,
-  resolveAirportFromTPDirectory,
-} from "../src/lib/mvp/tp-airport-directory";
+// Faza 4 (b): rozpoznawanie lotnisk opiera się wyłącznie na statycznej mapie
+// city→IATA (location.ts) — globalny katalog lotnisk usunięty. Miasta spoza
+// mapy dostają null IATA (są odsiewane na kroku „flight reachability"). Pełny
+// crawl globalny (--full) traci pokrycie egzotycznych miast; kuratorowany /
+// pilotażowy zakres (nasze realne kierunki) bez zmian.
 
 // ────────────────────────────────────────────────────────────────────────────
 // Config
@@ -922,20 +923,13 @@ async function sourceFromLiteApiListings(
       // are the ones the seed pipeline can actually book flights to. We
       // still cap at perCountry but bias toward airport-served cities so
       // we don't waste hotel-check API calls on landlocked villages.
-      // Ranking uses BOTH the local resolver AND the TP city directory
-      // (the latter is async, so we batch by city for clarity).
-      // TP directory is the authoritative source: country-aware,
-      // ~9.6k cities globally with verified metro/IATA codes. Local
-      // map is intentionally NOT used as a fallback here — its flat
-      // Record<city, iata> shape produces wrong-country matches for
-      // ambiguous names (Bergen DE/NL/NO all → BGO Norway). Cities
-      // not in TP fall through with null IATA; geo-distance in the
-      // flight-reachability step picks them up using lat/lng +
-      // country-constrained nearest-airport search.
+      // Ranking po statycznej mapie city→IATA (location.ts). Miasta spoza
+      // mapy mają null IATA i trafiają na koniec rankingu (a w kroku
+      // „flight reachability" są odsiewane). Globalny katalog lotnisk
+      // wycofany — pełne pokrycie globalne wymaga osobnego datasetu.
       const rankedWithIata: Array<{ c: typeof cities[number]; iata: string | null }> = [];
       for (const c of cities) {
-        const tp = await resolveAirportFromTPDirectory(c.city, country.code);
-        rankedWithIata.push({ c, iata: tp?.iata ?? null });
+        rankedWithIata.push({ c, iata: resolveAirportCode(c.city) ?? null });
       }
       rankedWithIata.sort((a, b) => {
         const aHasIata = a.iata ? 0 : 1;
@@ -1138,52 +1132,39 @@ async function main(): Promise<void> {
   }
   console.log(`[hotels] kept ${withHotels.length}, dropped ${droppedHotels} (< ${MIN_HOTEL_COUNT} hotels or no inventory data)`);
 
-  // 3) Flight reachability — every kept city needs lat/lng AND nearest PL hub
-  // within Travelpayouts' covered set. We treat the airport as reachable if
-  // (a) the catalog city resolved an IATA via resolveAirportCode AND
-  // (b) at least one of the top-3 nearest PL hubs is ≤ 4000 km (Aviasales
-  // cache realistically covers anything bookable from Poland — long-haul
-  // Asia/Americas included).
+  // 3) Flight reachability — każde zachowane miasto potrzebuje lat/lng ORAZ
+  // rozpoznanego lotniska (IATA ze statycznej mapy). Lotnisko uznajemy za
+  // osiągalne, gdy miasto ma IATA z resolveAirportCode i ≥1 z 3 najbliższych
+  // hubów PL jest ≤ 4000 km.
   const withFlights: SourceCity[] = [];
   let droppedNoAirport = 0;
   let droppedNoCoords = 0;
-  let recoveredViaGeo = 0;
-  let recoveredViaTpDirectory = 0;
+  let recoveredViaStaticMap = 0;
   for (const item of withHotels) {
     if (item.lat === null || item.lng === null) {
       droppedNoCoords += 1;
       continue;
     }
-    // (a) Already has IATA from local or TP directory at source-time?
+    // (a) Already has IATA from the static map at source-time?
     if (item.airportCode) {
       withFlights.push(item);
       continue;
     }
-    // (b) Try TP directory again now that we have country context.
-    if (item.countryCode) {
-      const tp = await resolveAirportFromTPDirectory(item.city, item.countryCode);
-      if (tp) {
-        item.airportCode = tp.iata;
-        recoveredViaTpDirectory += 1;
-        withFlights.push(item);
-        continue;
-      }
-      // (c) Geo-distance fallback: find nearest flightable airport within
-      // 100 km of the city's lat/lng (constrained to same country).
-      // Captures small towns near regional airports — Booking-style scale.
-      const geo = await nearestFlightableAirport(item.lat, item.lng, item.countryCode, 100);
-      if (geo) {
-        item.airportCode = geo.iata;
-        recoveredViaGeo += 1;
-        withFlights.push(item);
-        continue;
-      }
+    // (b) Faza 4(b): odzysk wyłącznie ze statycznej mapy city→IATA
+    // (location.ts). Globalny zewnętrzny katalog lotnisk usunięty — miasta spoza
+    // mapy są odsiewane (null IATA). Nasze realne kierunki są w mapie.
+    const staticIata = resolveAirportCode(item.city);
+    if (staticIata) {
+      item.airportCode = staticIata;
+      recoveredViaStaticMap += 1;
+      withFlights.push(item);
+      continue;
     }
     droppedNoAirport += 1;
   }
   console.log(
     `[flights] kept ${withFlights.length}, dropped ${droppedNoCoords} no-coords + ${droppedNoAirport} no-airport ` +
-      `(recovered ${recoveredViaTpDirectory} via TP directory + ${recoveredViaGeo} via geo-distance)`,
+      `(recovered ${recoveredViaStaticMap} via static map)`,
   );
 
   // 4) Polish localization with curated tier first, Wikidata fallback.
