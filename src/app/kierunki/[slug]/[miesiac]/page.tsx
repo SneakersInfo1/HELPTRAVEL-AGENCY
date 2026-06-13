@@ -15,7 +15,6 @@ import {
   type PolishMonthSlug,
 } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
-import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
 import { AuthorByline } from "@/components/publisher/author-byline";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { isMonthIndexable } from "@/lib/mvp/month-index-policy";
@@ -188,7 +187,6 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
   const verdict = suitabilityVerdict(temp, guide.destination.beachScore);
   const weather = describeWeather(temp);
   const baseUrl = getSiteUrl();
-  const affiliateCampaign = `month-${slug}-${monthSlug}`;
 
   // Per-month unique signals (data-driven → scale across 2800 pages without
   // hand-writing): sea temp for the coast, tourist season, and the
@@ -455,7 +453,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* 2-CTA block per master spec section 2: hotele (internal LiteAPI) + loty (Aviasales). */}
+      {/* 2-CTA block: hotele (LiteAPI) + loty (wewnętrzna wyszukiwarka). */}
       <section className="grid gap-5 lg:grid-cols-2">
         <article className="flex flex-col justify-between rounded-[1.8rem] border border-emerald-900/10 bg-emerald-700 p-6 text-white shadow-[0_18px_42px_rgba(7,31,18,0.18)]">
           <div>
@@ -485,12 +483,16 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
             )}
           </div>
         </article>
-        <AviasalesCta
-          city={guide.destination.city}
-          country={guide.destination.country}
-          campaign={affiliateCampaign}
-          flightHours={guide.destination.typicalFlightHoursFromPL}
-        />
+        <Link
+          href="/?tab=loty"
+          className="flex flex-col justify-center rounded-[1.6rem] border border-emerald-950 bg-emerald-950 p-5 text-white shadow-[0_20px_52px_rgba(7,31,18,0.18)] transition hover:-translate-y-1 hover:bg-emerald-900"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Loty</p>
+          <h3 className="mt-2 text-xl font-bold">Sprawdź loty do {guide.destination.city}</h3>
+          <p className="mt-2 text-sm leading-6 text-white/78">
+            Wyszukaj loty z dowolnego lotniska w Polsce. Lot ok. {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h.
+          </p>
+        </Link>
       </section>
 
       <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">

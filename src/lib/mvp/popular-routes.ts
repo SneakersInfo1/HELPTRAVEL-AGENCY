@@ -15,6 +15,9 @@ export interface PopularRoute {
   destination: string; // miasto docelowe
   destinationCountry: string;
   destinationSlug: string;
+  // Kody IATA (Faza 4 — chipy kierują do wewnętrznej wyszukiwarki lotów).
+  originIata: string;
+  destinationIata: string;
   // Pełny anchor SEO ("Tani lot Kraków -> Malaga")
   anchor: string;
 }
@@ -44,32 +47,41 @@ export const POPULAR_DESTINATIONS_EN: PopularDestination[] = [
 // Trasy origin->destination - mocno szukane długie ogony
 // (np. "tani lot Kraków Malaga", "lot Warszawa Barcelona")
 export const POPULAR_ROUTES_PL: PopularRoute[] = [
-  { origin: "Kraków", destination: "Malaga", destinationCountry: "Spain", destinationSlug: "malaga-spain", anchor: "Lot Kraków -> Malaga" },
-  { origin: "Warszawa", destination: "Barcelona", destinationCountry: "Spain", destinationSlug: "barcelona-spain", anchor: "Lot Warszawa -> Barcelona" },
-  { origin: "Gdańsk", destination: "Rzym", destinationCountry: "Italy", destinationSlug: "rome-italy", anchor: "Lot Gdańsk -> Rzym" },
-  { origin: "Wrocław", destination: "Lizbona", destinationCountry: "Portugal", destinationSlug: "lisbon-portugal", anchor: "Lot Wrocław -> Lizbona" },
-  { origin: "Katowice", destination: "Ateny", destinationCountry: "Greece", destinationSlug: "athens-greece", anchor: "Lot Katowice -> Ateny" },
-  { origin: "Poznań", destination: "Stambuł", destinationCountry: "Turkey", destinationSlug: "istanbul-turkey", anchor: "Lot Poznań -> Stambuł" },
+  { origin: "Kraków", originIata: "KRK", destination: "Malaga", destinationIata: "AGP", destinationCountry: "Spain", destinationSlug: "malaga-spain", anchor: "Lot Kraków -> Malaga" },
+  { origin: "Warszawa", originIata: "WAW", destination: "Barcelona", destinationIata: "BCN", destinationCountry: "Spain", destinationSlug: "barcelona-spain", anchor: "Lot Warszawa -> Barcelona" },
+  { origin: "Gdańsk", originIata: "GDN", destination: "Rzym", destinationIata: "FCO", destinationCountry: "Italy", destinationSlug: "rome-italy", anchor: "Lot Gdańsk -> Rzym" },
+  { origin: "Wrocław", originIata: "WRO", destination: "Lizbona", destinationIata: "LIS", destinationCountry: "Portugal", destinationSlug: "lisbon-portugal", anchor: "Lot Wrocław -> Lizbona" },
+  { origin: "Katowice", originIata: "KTW", destination: "Ateny", destinationIata: "ATH", destinationCountry: "Greece", destinationSlug: "athens-greece", anchor: "Lot Katowice -> Ateny" },
+  { origin: "Poznań", originIata: "POZ", destination: "Stambuł", destinationIata: "IST", destinationCountry: "Turkey", destinationSlug: "istanbul-turkey", anchor: "Lot Poznań -> Stambuł" },
 ];
 
 export const POPULAR_ROUTES_EN: PopularRoute[] = [
-  { origin: "Krakow", destination: "Malaga", destinationCountry: "Spain", destinationSlug: "malaga-spain", anchor: "Krakow -> Malaga flight" },
-  { origin: "Warsaw", destination: "Barcelona", destinationCountry: "Spain", destinationSlug: "barcelona-spain", anchor: "Warsaw -> Barcelona flight" },
-  { origin: "Gdansk", destination: "Rome", destinationCountry: "Italy", destinationSlug: "rome-italy", anchor: "Gdansk -> Rome flight" },
-  { origin: "Wroclaw", destination: "Lisbon", destinationCountry: "Portugal", destinationSlug: "lisbon-portugal", anchor: "Wroclaw -> Lisbon flight" },
-  { origin: "Katowice", destination: "Athens", destinationCountry: "Greece", destinationSlug: "athens-greece", anchor: "Katowice -> Athens flight" },
-  { origin: "Poznan", destination: "Istanbul", destinationCountry: "Turkey", destinationSlug: "istanbul-turkey", anchor: "Poznan -> Istanbul flight" },
+  { origin: "Krakow", originIata: "KRK", destination: "Malaga", destinationIata: "AGP", destinationCountry: "Spain", destinationSlug: "malaga-spain", anchor: "Krakow -> Malaga flight" },
+  { origin: "Warsaw", originIata: "WAW", destination: "Barcelona", destinationIata: "BCN", destinationCountry: "Spain", destinationSlug: "barcelona-spain", anchor: "Warsaw -> Barcelona flight" },
+  { origin: "Gdansk", originIata: "GDN", destination: "Rome", destinationIata: "FCO", destinationCountry: "Italy", destinationSlug: "rome-italy", anchor: "Gdansk -> Rome flight" },
+  { origin: "Wroclaw", originIata: "WRO", destination: "Lisbon", destinationIata: "LIS", destinationCountry: "Portugal", destinationSlug: "lisbon-portugal", anchor: "Wroclaw -> Lisbon flight" },
+  { origin: "Katowice", originIata: "KTW", destination: "Athens", destinationIata: "ATH", destinationCountry: "Greece", destinationSlug: "athens-greece", anchor: "Katowice -> Athens flight" },
+  { origin: "Poznan", originIata: "POZ", destination: "Istanbul", destinationIata: "IST", destinationCountry: "Turkey", destinationSlug: "istanbul-turkey", anchor: "Poznan -> Istanbul flight" },
 ];
 
+function isoPlusDays(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Faza 4: chip „Popularne trasy" → wewnętrzna wyszukiwarka lotów /loty/wyniki
+// (IATA z route'a, wylot +21 dni, powrót +28 dni, round-trip dla 2 osób).
+// Wcześniej linkował do /hotele/szukaj — przepięte po wdrożeniu LiteAPI Flights.
 export function buildRouteHref(route: PopularRoute): string {
   const params = new URLSearchParams({
-    origin: route.origin,
-    destination: route.destination,
-    country: route.destinationCountry,
+    origin: route.originIata,
+    destination: route.destinationIata,
+    depart: isoPlusDays(21),
+    return: isoPlusDays(28),
     adults: "2",
-    rooms: "1",
   });
-  return `/hotele/szukaj?${params.toString()}`;
+  return `/loty/wyniki?${params.toString()}`;
 }
 
 export function buildDestinationHref(dest: PopularDestination): string {

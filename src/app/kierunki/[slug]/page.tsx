@@ -9,7 +9,6 @@ import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
-import { buildAviasalesLink } from "@/lib/mvp/affiliate-config";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
@@ -215,7 +214,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     adults: "2",
     rooms: "1",
   }).toString()}`;
-  // Phase 1 affiliate model: hotels are internal, flights via Aviasales.
+  // Model: hotele i loty obsługiwane wewnętrznie (LiteAPI).
   const internalHotelsHref = `/hotele/szukaj?${new URLSearchParams({
     destination: guide.destination.city,
     country: guide.destination.country,
@@ -224,7 +223,6 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     adults: "2",
     rooms: "1",
   }).toString()}`;
-  const flightAffiliateHref = buildAviasalesLink({ campaign: `kierunki_${guide.destination.slug}` });
   // If this destination has a dedicated commercial landing page
   // (/hotele/w/[miasto]), link to it — passes link equity from this guide
   // into the high-intent money page and gives the user a direct "hotele w X"
@@ -483,18 +481,16 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               Konkretne ceny w PLN dla terminu {formatShortDate(defaultStartDate, "pl-PL")} – {formatShortDate(defaultCheckOutDate, "pl-PL")}. Bez wychodzenia ze strony.
             </p>
           </LocalizedLink>
-          <a
-            href={flightAffiliateHref}
-            target="_blank"
-            rel="noopener nofollow sponsored noreferrer"
+          <LocalizedLink
+            href="/?tab=loty"
             className="rounded-[1.6rem] border border-emerald-950 bg-emerald-950 p-5 text-white shadow-[0_20px_52px_rgba(7,31,18,0.18)] transition hover:-translate-y-1 hover:bg-emerald-900 lg:col-span-2 xl:col-span-2"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Loty</p>
             <h3 className="mt-2 text-2xl font-bold">Sprawdź loty do {guide.destination.city}</h3>
             <p className="mt-3 text-sm leading-6 text-white/78">
-              Aviasales: porównanie linii i tanich lotów. Lot ok. {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h.
+              Wyszukaj loty z dowolnego lotniska w Polsce. Lot ok. {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h.
             </p>
-          </a>
+          </LocalizedLink>
           </div>
         </section>
 

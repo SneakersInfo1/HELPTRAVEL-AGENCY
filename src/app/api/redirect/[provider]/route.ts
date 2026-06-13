@@ -33,15 +33,10 @@ const ALLOWED_HOSTS: ReadonlySet<string> = new Set([
   "airbnb.com",
   "airbnb.pl",
   "agoda.com",
-  // Flights
-  "aviasales.com",
-  "aviasales.pl",
+  // Hotele afiliacyjne (legacy). Loty obsługiwane są w pełni wewnętrznie
+  // (LiteAPI Flights) — zewnętrzne przekierowania lotnicze wycofane.
   "hotellook.com",
   "search.hotellook.com",
-  // Travelpayouts affiliate redirector
-  "tp.media",
-  "www.travelpayouts.com",
-  "travelpayouts.com",
   // CJ affiliate redirector
   "www.anrdoezrs.net",
   "www.dpbolvw.net",
@@ -64,10 +59,7 @@ const ALLOWED_HOST_SUFFIXES: ReadonlyArray<string> = [
   ".vrbo.com",
   ".airbnb.com",
   ".agoda.com",
-  ".aviasales.com",
   ".hotellook.com",
-  ".travelpayouts.com",
-  ".tp.media",
   ".anrdoezrs.net",
   ".dpbolvw.net",
   ".jdoqocy.com",

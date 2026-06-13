@@ -294,7 +294,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     // `adults` param. `kids` is informational only (restores the UI split).
     const totalGuests = adults + childCount;
     // Sesja C pkt 2: route directly to /hotele/szukaj — the unified results
-    // page that composes hotels (LiteAPI) + flights (Travelpayouts).
+    // page that composes hotels (LiteAPI).
     const params = new URLSearchParams({
       destination: trimmedDestination,
       country: resolvedDest.country,

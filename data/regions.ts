@@ -37,7 +37,7 @@ export interface RegionRecord {
   /** LiteAPI /data/places — zweryfikowany identyfikator wyspy/regionu. */
   placeId: string;
   filterPoints: RegionPoint[];
-  /** Centroid dla panelu lotów (Aviasales) i fallbacków. */
+  /** Centroid dla wyszukiwarki lotów i fallbacków. */
   lat: number;
   lng: number;
   /** Lotniska wyspy (IATA) — pierwsze jest głównym dla panelu lotów. */

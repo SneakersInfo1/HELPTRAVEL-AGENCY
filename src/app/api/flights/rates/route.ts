@@ -1,9 +1,8 @@
 // POST /api/flights/rates — proxy do LiteAPI POST /flights/rates (wyszukiwanie).
 //
-// NAZWA: świadomie `/rates` (nie `/search`), bo `/api/flights/search` jest
-// zajęte przez istniejącą integrację Travelpayouts (panel lotów na stronie
-// hoteli). TP zostaje nietknięty do Fazy 4 (usuwanie Aviasales). Reszta
-// rodziny lotów LiteAPI żyje pod /api/flights/{verify,prebook,book,booking}.
+// NAZWA: `/rates` (nie `/search`) — odpowiada nazwie endpointu LiteAPI
+// (POST /flights/rates). Cała rodzina lotów LiteAPI: /api/flights/{rates,
+// verify,prebook,book,booking}.
 //
 // Read-only, brak płatności. Walidacja zod (legs 1–2, IATA, daty przyszłe).
 

@@ -9,7 +9,7 @@ const csp = [
   // wsrv.nl — proxy zmniejszający zdjęcia hoteli Cupid/LiteAPI (cdn-loader.ts).
   "img-src 'self' data: blob: https://wsrv.nl https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.cupid.travel https://*.liteapi.travel https://*.geoapify.com https://maps.geoapify.com https://www.google-analytics.com https://www.googletagmanager.com",
   "media-src 'self' https://videos.pexels.com",
-  "connect-src 'self' https://*.upstash.io https://api.travelpayouts.com https://api.liteapi.travel https://api.sandbox.liteapi.travel https://book.liteapi.travel https://payment-wrapper.liteapi.travel https://api.stripe.com https://api.geoapify.com https://api.anthropic.com https://vitals.vercel-insights.com https://vercel.live https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com",
+  "connect-src 'self' https://*.upstash.io https://api.liteapi.travel https://api.sandbox.liteapi.travel https://book.liteapi.travel https://payment-wrapper.liteapi.travel https://api.stripe.com https://api.geoapify.com https://api.anthropic.com https://vitals.vercel-insights.com https://vercel.live https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com",
   // `vercel.live` covers the Vercel preview toolbar feedback iframe — without
   // it the browser logs `Framing 'https://vercel.live/' violates CSP` on every
   // preview deployment view. Vercel does not inject the toolbar on production

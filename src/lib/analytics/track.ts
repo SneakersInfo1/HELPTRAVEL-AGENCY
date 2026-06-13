@@ -125,10 +125,11 @@ export interface TrackEventMap {
     hotel_id?: string;
   };
 
-  // ── Affiliate (Aviasales / Travelpayouts) ──
+  // ── Affiliate (legacy — outbound loty usunięte w Fazie 4; zostaje typ na
+  //    wypadek pozostałych linków afiliacyjnych hotelowych) ──
   affiliate_click: {
     /** Used as a key event / conversion. */
-    provider: "aviasales" | "hotellook" | "other";
+    provider: "hotellook" | "other";
     destination?: string;
     campaign?: string;
   };

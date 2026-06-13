@@ -136,7 +136,7 @@ const sections: Section[] = [
       {
         label: "Partner Afiliacyjny",
         body:
-          "podmiot zewnętrzny (m.in. Booking.com, Hotels.com, Expedia, Vrbo, Aviasales, Hotellook, Travelpayouts, CJ Affiliate, Stay22), do którego Użytkownik może przejść za pośrednictwem Linku Afiliacyjnego.",
+          "podmiot zewnętrzny (m.in. Booking.com, Hotels.com, Expedia, Vrbo, CJ Affiliate, Stay22), do którego Użytkownik może przejść za pośrednictwem Linku Afiliacyjnego.",
       },
       {
         label: "Link Afiliacyjny",

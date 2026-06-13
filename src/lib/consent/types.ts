@@ -6,7 +6,7 @@
 //                  the consent record itself). No banner gate.
 //   • analytics  — aggregate usage metrics (Plausible/GA4). Anonymous-ish.
 //   • marketing  — affiliate-click attribution and retargeting pixels.
-//                  Currently includes Travelpayouts marker, CJ click ids.
+//                  Currently includes CJ click ids i piksele kampanii.
 //
 // Storage scheme: a single JSON blob in localStorage. We version it so future
 // category additions can force a re-prompt of users whose record predates the

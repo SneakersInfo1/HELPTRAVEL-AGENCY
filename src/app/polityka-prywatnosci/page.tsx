@@ -286,12 +286,6 @@ const sections: Section[] = [
           "Dostarczanie zdjęć hoteli prezentowanych w Serwisie",
         ],
         [
-          "Travelpayouts (WhiteSky Pte. Ltd.)",
-          "Joint Controller (wspólny administrator) — w zakresie kliknięć afiliacyjnych",
-          "Singapur (SCC)",
-          "Afiliacja Hotellook, Aviasales — atrybucja kliknięcia i prowizji",
-        ],
-        [
           "CJ Affiliate (Commission Junction LLC)",
           "Joint Controller",
           "USA (SCC)",
@@ -472,7 +466,7 @@ const sections: Section[] = [
         ],
         [
           "Marketingowe / afiliacyjne (wymagają zgody)",
-          "Identyfikatory atrybucji kliknięć w linki partnerów (Travelpayouts, CJ, Stay22), pomiar skuteczności kampanii.",
+          "Identyfikatory atrybucji kliknięć w linki partnerów afiliacyjnych (m.in. CJ, Stay22), pomiar skuteczności kampanii.",
           "do 12 miesięcy",
           "1st-party + odpowiedni partner (3rd-party)",
         ],
