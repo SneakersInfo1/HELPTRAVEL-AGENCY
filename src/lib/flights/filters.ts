@@ -5,7 +5,7 @@
 // pokazuje tylko te filtry, które realnie da się zastosować (np. „lotniska
 // wylotu" tylko gdy jest >1 lotnisko — przy grupie „wszystkie lotniska").
 
-import type { DisplayOffer } from "./display";
+import type { Airline, DisplayOffer } from "./display";
 
 export type SortKey = "best" | "price" | "duration" | "earliest" | "latest";
 export type TimeBucket = "night" | "morning" | "afternoon" | "evening";
@@ -76,23 +76,23 @@ export function offerDepartTime(o: DisplayOffer): string {
   return o.legs[0]?.departureTime ?? "";
 }
 
-/** Przewoźnicy oferty {kod,nazwa} ze wszystkich segmentów (do filtra linii). */
-export function offerAirlines(o: DisplayOffer): { code: string; name: string }[] {
-  const map = new Map<string, string>();
+/** Przewoźnicy oferty (kod, nazwa, logo) ze wszystkich segmentów — filtr linii. */
+export function offerAirlines(o: DisplayOffer): Airline[] {
+  const map = new Map<string, Airline>();
   for (const leg of o.legs) {
     for (const s of leg.segments) {
       const code = s.carrierCode || s.carrierName;
-      if (code && !map.has(code)) map.set(code, s.carrierName || s.carrierCode || code);
+      if (code && !map.has(code)) map.set(code, { code, name: s.carrierName || s.carrierCode || code, logoUrl: s.carrierLogo });
     }
   }
-  return [...map].map(([code, name]) => ({ code, name }));
+  return [...map.values()];
 }
 
 // ── Faceting ──────────────────────────────────────────────────────────────────
 
 export interface Facets {
   stops: { value: StopBucket; count: number }[];
-  airlines: { code: string; name: string; count: number }[];
+  airlines: { code: string; name: string; logoUrl?: string; count: number }[];
   departBuckets: { key: TimeBucket; count: number }[];
   originAirports: { code: string; count: number }[];
   priceMin: number;
@@ -105,7 +105,7 @@ export interface Facets {
 
 export function computeFacets(offers: DisplayOffer[]): Facets {
   const stopCounts = new Map<StopBucket, number>();
-  const airlineCounts = new Map<string, { name: string; count: number }>();
+  const airlineCounts = new Map<string, { name: string; logoUrl?: string; count: number }>();
   const bucketCounts = new Map<TimeBucket, number>();
   const originCounts = new Map<string, number>();
   let priceMin = Infinity;
@@ -120,7 +120,7 @@ export function computeFacets(offers: DisplayOffer[]): Facets {
     stopCounts.set(st, (stopCounts.get(st) ?? 0) + 1);
 
     for (const a of offerAirlines(o)) {
-      const cur = airlineCounts.get(a.code) ?? { name: a.name, count: 0 };
+      const cur = airlineCounts.get(a.code) ?? { name: a.name, logoUrl: a.logoUrl, count: 0 };
       cur.count += 1;
       airlineCounts.set(a.code, cur);
     }
@@ -147,7 +147,7 @@ export function computeFacets(offers: DisplayOffer[]): Facets {
   return {
     stops: ([0, 1, 2] as StopBucket[]).filter((v) => stopCounts.has(v)).map((v) => ({ value: v, count: stopCounts.get(v)! })),
     airlines: [...airlineCounts.entries()]
-      .map(([code, { name, count }]) => ({ code, name, count }))
+      .map(([code, { name, logoUrl, count }]) => ({ code, name, logoUrl, count }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     departBuckets: TIME_BUCKETS.filter((b) => bucketCounts.has(b.key)).map((b) => ({ key: b.key, count: bucketCounts.get(b.key)! })),
     originAirports: [...originCounts.entries()].map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count),

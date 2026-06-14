@@ -32,6 +32,13 @@ export interface DisplayLeg {
   segments: DisplaySegment[];
 }
 
+/** Znormalizowany przewoźnik (zadanie 6) — kod IATA + nazwa + logo. */
+export interface Airline {
+  code: string;
+  name: string;
+  logoUrl?: string;
+}
+
 /** Wariant taryfy tej samej trasy (branded fare: Basic/Smart/Go/Plus…) — różni
  *  się bagażem i ceną. To realny mechanizm „dodania bagażu" w LiteAPI Flights. */
 export interface FareOption {

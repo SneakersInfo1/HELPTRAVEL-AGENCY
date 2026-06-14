@@ -7,6 +7,7 @@
 
 import { fmtDuration, fmtMoneyPln } from "@/lib/flights/display";
 import { lookupAirport } from "@/lib/flights/airports";
+import { AirlineLogo } from "@/components/flights/airline-logo";
 import {
   TIME_BUCKETS,
   hasActiveFilters,
@@ -43,7 +44,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Check({ checked, onChange, label, count }: { checked: boolean; onChange: () => void; label: string; count?: number }) {
+function Check({ checked, onChange, label, count, icon }: { checked: boolean; onChange: () => void; label: string; count?: number; icon?: React.ReactNode }) {
   return (
     <label className="flex cursor-pointer items-center gap-2.5 text-sm text-neutral-700">
       <input
@@ -52,7 +53,8 @@ function Check({ checked, onChange, label, count }: { checked: boolean; onChange
         onChange={onChange}
         className="h-4 w-4 shrink-0 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
       />
-      <span className="flex-1">{label}</span>
+      {icon}
+      <span className="flex-1 truncate">{label}</span>
       {typeof count === "number" && <span className="text-xs tabular-nums text-neutral-400">{count}</span>}
     </label>
   );
@@ -122,6 +124,7 @@ export function FlightFiltersPanel({ facets, filters, onChange, onClear }: Props
                 onChange={() => set({ airlines: toggle(filters.airlines, a.code) })}
                 label={a.name}
                 count={a.count}
+                icon={<AirlineLogo logoUrl={a.logoUrl} code={a.code} name={a.name} size={18} />}
               />
             ))}
           </div>
