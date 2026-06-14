@@ -25,11 +25,9 @@
 // callers should pass already-normalized strings or rely on
 // `resolveAirportCode` to do the normalization for them.
 //
-// Each entry should match what Aviasales/Travelpayouts knows: where a city
-// has multiple airports we use the metro/cluster code (LON/PAR/ROM/MIL/
-// NYC/TYO) so a single API call returns flights to every airport. The
-// fanout in `airport-groups.ts` knows how to expand these where finer
-// control matters.
+// Gdzie miasto ma kilka lotnisk, używamy kodu metropolitalnego/klastra
+// (LON/PAR/ROM/MIL/NYC/TYO), więc jedno zapytanie obejmuje wszystkie
+// lotniska danego miasta.
 const airportCodesByKey: Record<string, string> = {
   // ---- Poland (canonical + Polish exonyms) ------------------------------
   warsaw: "WAW",

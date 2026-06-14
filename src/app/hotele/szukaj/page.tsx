@@ -14,7 +14,6 @@ import { getRegionById, isInRegion, type RegionRecord } from "@/lib/hotels/regio
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
 
-import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { CollapsibleSearchBar } from "./_components/collapsible-search-bar";
 import { FiltersSidebar } from "./_components/filters-sidebar";
 import { ResultsList } from "./_components/results-list";
@@ -103,9 +102,6 @@ export default async function HotelResultsPage({
   const sp = await searchParams;
   // Zadanie 2 — wyspa/region ma pierwszeństwo przed destination (miastem).
   const region = sp.region ? getRegionById(sp.region) : null;
-  const destinationRecord = sp.destination
-    ? resolveDestinationFromQuery({ destination: sp.destination, country: sp.country })
-    : null;
   const valid =
     (region || (sp.destination && sp.country)) &&
     sp.checkin &&
@@ -149,11 +145,9 @@ export default async function HotelResultsPage({
         <FiltersSidebar />
 
         <section className="space-y-6">
-          {/* Flight CTA card removed (2026-06-09): Clarity showed a heavy
-              drop-off on the "Zobacz loty" banner that sat ABOVE the hotel
-              results — it pulled users out of the hotel funnel before they
-              saw a single hotel. Flights remain fully available in the
-              FlightOffersPanel below the results (#planner-flights). */}
+          {/* Loty wyszukuje się osobnym torem (toggle Hotele/Loty na stronie
+              głównej → /loty/wyniki). Strona hoteli nie miesza już lotów do
+              lejka hotelowego. */}
 
           {!valid ? (
             <EmptyPrompt hasDestination={Boolean(sp.destination)} />
@@ -164,24 +158,6 @@ export default async function HotelResultsPage({
           )}
         </section>
       </div>
-
-      {/* Flights — full-width below hotels. FlightOffersPanel is its own
-          client component with internal Suspense-equivalent loading. */}
-      {valid && sp.origin && (region || sp.destination) && sp.checkin && sp.checkout && (
-        <div className="mx-auto max-w-7xl px-4 pb-12">
-          <FlightOffersPanel
-            originCity={sp.origin}
-            destinationCity={region ? region.nameEn : sp.destination!}
-            destinationCountry={region ? region.countryPl : (sp.country ?? "")}
-            departureDate={sp.checkin}
-            returnDate={sp.checkout}
-            passengers={sp.adults ? Math.max(1, Math.min(15, Number(sp.adults))) : 2}
-            destinationIata={region ? (region.airports[0] ?? null) : (destinationRecord?.airports[0] ?? null)}
-            destinationLat={region ? region.lat : (destinationRecord?.lat ?? null)}
-            destinationLng={region ? region.lng : (destinationRecord?.lng ?? null)}
-          />
-        </div>
-      )}
     </main>
   );
 }

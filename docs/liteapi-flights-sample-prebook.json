@@ -1,0 +1,35 @@
+{
+  "note": "GATE 0.3 — struktura odpowiedzi POST /flights/prebooks (usePaymentSdk:true). Wartości wrażliwe (prebookId/transactionId/secretKey) celowo NIE zapisane.",
+  "httpStatus": 200,
+  "keys": [
+    "prebookId",
+    "booking",
+    "price",
+    "currency",
+    "transactionId",
+    "secretKey",
+    "servicesAttachable",
+    "paymentTypes"
+  ],
+  "structure": {
+    "prebookId": "<string, 36 znaków — WRAŻLIWE, nie zapisujemy>",
+    "booking": {
+      "timestamp": "string",
+      "journey": "object",
+      "passengers": "object",
+      "order": "object",
+      "contact": "object",
+      "pricing": "object"
+    },
+    "price": 629.9,
+    "currency": "PLN",
+    "transactionId": "<string, 27 znaków — WRAŻLIWE, nie zapisujemy>",
+    "secretKey": "<string, 60 znaków — WRAŻLIWE, nie zapisujemy>",
+    "servicesAttachable": {
+      "groups": "object"
+    },
+    "paymentTypes": [
+      "<string>"
+    ]
+  }
+}

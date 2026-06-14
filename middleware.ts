@@ -14,7 +14,7 @@ function stripEnPrefix(pathname: string) {
 }
 
 // Sesja C: /planner is a dead route (replaced by /hotele/szukaj which now
-// composes hotels + flights from real LiteAPI + Travelpayouts data).
+// composes hotels from real LiteAPI data; loty mają osobny tor /loty/*).
 // Old /planner URLs are bookmarkable — issue 308 with query params preserved.
 function isPlannerPath(pathname: string): boolean {
   return (

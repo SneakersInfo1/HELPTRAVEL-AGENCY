@@ -4,9 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DestinationAttractionsPanel } from "@/components/mvp/destination-attractions-panel";
-import { FlightOffersPanel } from "@/components/mvp/flight-offers-panel";
 import { StayOffersPanel } from "@/components/mvp/stay-offers-panel";
-import { buildAviasalesLink } from "@/lib/mvp/affiliate-config";
 import { getDestinationMedia } from "@/lib/mvp/commercial-assets";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -60,7 +58,7 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
   const destinationGuideHref = `/kierunki/${trip.destinationSlug}`;
   const decisionBrief = snapshot?.mode === "discovery" ? snapshot.query : snapshot?.destinationHint || trip.city;
 
-  // Phase 1 affiliate model: hotels are internal /hotele/szukaj, flights via Aviasales.
+  // Hotele i loty obsługiwane wewnętrznie (/hotele/szukaj, /loty/*).
   const internalHotelsHref = `/hotele/szukaj?${new URLSearchParams({
     destination: trip.city,
     country: trip.country,
@@ -69,7 +67,6 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
     adults: String(tripTravelers),
     rooms: String(tripRooms),
   }).toString()}`;
-  const aviasalesHref = buildAviasalesLink({ campaign: `trip_${trip.destinationSlug}` });
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -123,14 +120,6 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           checkOutDate={tripCheckOutDate}
           guests={tripTravelers}
           rooms={tripRooms}
-        />
-        <FlightOffersPanel
-          destinationCity={trip.city}
-          destinationCountry={trip.country}
-          originCity={tripOriginCity}
-          departureDate={tripStartDate}
-          returnDate={tripCheckOutDate}
-          passengers={tripTravelers}
         />
       </div>
 
@@ -204,9 +193,9 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
           <Link href={internalHotelsHref} className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800">
             Zobacz hotele w {trip.city}
           </Link>
-          <a href={aviasalesHref} target="_blank" rel="noopener nofollow sponsored noreferrer" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
-            Sprawdź loty w Aviasales
-          </a>
+          <Link href="/?tab=loty" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
+            Sprawdź loty
+          </Link>
           <Link href="/" className="rounded-full border border-emerald-900/12 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">
             Wróć na stronę główną
           </Link>

@@ -125,10 +125,11 @@ export interface TrackEventMap {
     hotel_id?: string;
   };
 
-  // ── Affiliate (Aviasales / Travelpayouts) ──
+  // ── Affiliate (legacy — outbound loty usunięte w Fazie 4; zostaje typ na
+  //    wypadek pozostałych linków afiliacyjnych hotelowych) ──
   affiliate_click: {
     /** Used as a key event / conversion. */
-    provider: "aviasales" | "hotellook" | "other";
+    provider: "hotellook" | "other";
     destination?: string;
     campaign?: string;
   };
@@ -141,6 +142,60 @@ export interface TrackEventMap {
   hotel_save: {
     hotel_id: string;
     destination?: string;
+  };
+
+  // ── Lejek lotów (LiteAPI Flights) — OBOK hotelowych, nie zamiast ──
+  flight_search: {
+    origin: string;
+    destination: string;
+    /** YYYY-MM-DD */
+    depart?: string;
+    return?: string;
+    /** SUMA pasażerów (adults+children+infants). */
+    passengers?: number;
+    round_trip?: boolean;
+    cabin_class?: string;
+  };
+  flight_results_view: {
+    origin: string;
+    destination: string;
+    results_count: number;
+  };
+  flight_select: {
+    offer_id: string;
+    price?: number;
+    currency?: string;
+    carrier?: string;
+  };
+  /** Verify zwrócił inną cenę niż w wynikach — mierzy tarcie „cena się zmieniła". */
+  flight_verify_price_change: {
+    offer_id: string;
+    old_price?: number;
+    new_price?: number;
+    currency?: string;
+  };
+  flight_passenger_form_start: {
+    offer_id?: string;
+  };
+  flight_prebook: {
+    offer_id?: string;
+    price?: number;
+    currency?: string;
+  };
+  flight_payment_start: {
+    amount?: number;
+    currency?: string;
+  };
+  flight_payment_error: {
+    code?: string;
+    http_status?: number;
+  };
+  /** Zakup lotu — GA4 ecommerce. `item_category:"flight"` ODRÓŻNIA od hoteli. */
+  purchase: {
+    booking_id: string;
+    value?: number;
+    currency?: string;
+    item_category: "flight";
   };
 }
 

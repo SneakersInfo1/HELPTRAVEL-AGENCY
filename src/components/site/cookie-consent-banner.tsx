@@ -37,7 +37,7 @@ const CATEGORY_COPY = {
   marketing: {
     title: "Marketingowe i afiliacyjne",
     body:
-      "Identyfikatory umożliwiające przypisanie kliknięcia do partnera (Travelpayouts, CJ) oraz pomiar skuteczności kampanii. Nie sprzedajemy Twoich danych.",
+      "Identyfikatory umożliwiające przypisanie kliknięcia do partnera afiliacyjnego oraz pomiar skuteczności kampanii. Nie sprzedajemy Twoich danych.",
   },
 } as const;
 

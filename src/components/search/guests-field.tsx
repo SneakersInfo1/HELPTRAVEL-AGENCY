@@ -14,13 +14,22 @@ export const ADULTS_MIN = 1;
 export const ADULTS_MAX = 9;
 export const CHILDREN_MIN = 0;
 export const CHILDREN_MAX = 6;
+export const INFANTS_MIN = 0;
+export const INFANTS_MAX = 4;
 
 interface Props {
   adults: number;
   childCount: number;
-  onChange: (adults: number, childCount: number) => void;
+  onChange: (adults: number, childCount: number, infants?: number) => void;
   fieldClassName: string;
   labelClassName: string;
+  // Tryb lotów (zadanie LiteAPI Flights, Faza 2.2): dodatkowy stepper
+  // "Niemowlęta". Domyślnie wyłączony → komponent zachowuje się jak przy
+  // hotelach (Dorośli + Dzieci), bez zmian dla istniejących wywołań.
+  showInfants?: boolean;
+  infants?: number;
+  /** Etykieta pola: "Goście" (hotele) albo "Pasażerowie" (loty). */
+  fieldLabel?: string;
 }
 
 function Stepper({
@@ -83,6 +92,9 @@ export function GuestsField({
   onChange,
   fieldClassName,
   labelClassName,
+  showInfants = false,
+  infants = 0,
+  fieldLabel = "Goście",
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -107,19 +119,25 @@ export function GuestsField({
     };
   }, [open]);
 
+  // Podsumowanie w przycisku: hotele = "2 dorosłych · 1 dziecko"; loty dokładają
+  // niemowlęta, gdy >0 (np. "2 dorosłych · 1 niemowlę").
+  const infantsSuffix =
+    showInfants && infants > 0 ? ` · ${infants} ${infants === 1 ? "niemowlę" : "niemowląt"}` : "";
+  const summary = `${guestsLabel(adults, childCount)}${infantsSuffix}`;
+
   return (
     <div ref={rootRef} className="relative flex flex-col gap-1.5">
-      <span className={labelClassName}>Goście</span>
+      <span className={labelClassName}>{fieldLabel}</span>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label={`Goście: ${guestsLabel(adults, childCount)}`}
+        aria-label={`${fieldLabel}: ${summary}`}
         className={`${fieldClassName} flex items-center justify-between gap-2 text-left`}
       >
-        <span className="truncate">{guestsLabel(adults, childCount)}</span>
+        <span className="truncate">{summary}</span>
         <span
           aria-hidden
           className={`text-xs text-emerald-900/45 transition-transform ${open ? "rotate-180" : ""}`}
@@ -141,21 +159,37 @@ export function GuestsField({
             value={adults}
             min={ADULTS_MIN}
             max={ADULTS_MAX}
-            onChange={(v) => onChange(v, childCount)}
+            // Niemowlę leci „na kolanach" dorosłego → infants ≤ adults.
+            onChange={(v) => onChange(v, childCount, showInfants ? Math.min(infants, v) : undefined)}
             decreaseLabel={`Mniej dorosłych (teraz ${adultsLabel(adults)})`}
             increaseLabel={`Więcej dorosłych (teraz ${adultsLabel(adults)})`}
           />
           <div className="mx-4 border-t border-emerald-900/8" />
           <Stepper
             label="Dzieci"
-            hint="0–12 lat"
+            hint={showInfants ? "2–12 lat" : "0–12 lat"}
             value={childCount}
             min={CHILDREN_MIN}
             max={CHILDREN_MAX}
-            onChange={(v) => onChange(adults, v)}
+            onChange={(v) => onChange(adults, v, infants)}
             decreaseLabel={`Mniej dzieci (teraz ${childrenLabel(childCount)})`}
             increaseLabel={`Więcej dzieci (teraz ${childrenLabel(childCount)})`}
           />
+          {showInfants && (
+            <>
+              <div className="mx-4 border-t border-emerald-900/8" />
+              <Stepper
+                label="Niemowlęta"
+                hint="poniżej 2 lat (na kolanach)"
+                value={infants}
+                min={INFANTS_MIN}
+                max={Math.min(INFANTS_MAX, adults)}
+                onChange={(v) => onChange(adults, childCount, v)}
+                decreaseLabel={`Mniej niemowląt (teraz ${infants})`}
+                increaseLabel={`Więcej niemowląt (teraz ${infants})`}
+              />
+            </>
+          )}
           <div className="flex justify-end px-4 pb-2 pt-1">
             <button
               type="button"

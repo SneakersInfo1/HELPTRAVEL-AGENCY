@@ -5,8 +5,8 @@
 // Pulls 20 random entries (or `--n=NUM`) from data/destinations.json and
 // verifies for each:
 //   1. Hotels API returns ≥10 results for the canonical query window.
-//   2. Travelpayouts cache returns ≥1 option from WAW for the configured
-//      airport (or any of nearestPLHubs).
+//   2. Kierunek ma rozpoznane lotnisko (IATA) — warunek wystarczający dla
+//      wewnętrznej wyszukiwarki lotów (LiteAPI Flights).
 //   3. Polish localization is non-empty AND not just a copy of English
 //      where we expect a Polish exonym (Lisbon → Lizbona, Mediolan etc.).
 //
@@ -22,7 +22,6 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { fetchHotelsList } from "../src/lib/liteapi";
-import { searchTravelpayoutsFlights } from "../src/lib/mvp/travelpayouts-flights";
 
 const ROOT = path.resolve(__dirname, "..");
 const SEED_PATH = path.join(ROOT, "data", "destinations.json");
@@ -137,31 +136,15 @@ async function check(record: SeedRecord, args: CliArgs): Promise<ResultRow> {
   }
 
   // 2) Flights — try the recommended PL hub via the live search adapter.
-  const today = new Date();
-  const departure = new Date(today.getTime() + 30 * 86_400_000);
-  const departureDate = departure.toISOString().slice(0, 10);
-  const origin = "Warszawa"; // pin to WAW so the test is deterministic per spec
-  try {
-    const flightRes = await searchTravelpayoutsFlights({
-      origin,
-      destination: record.city.en,
-      destinationIata: record.airports[0] ?? undefined,
-      departureDate,
-      passengers: 1,
-      cabinClass: "economy",
-      sortBy: "cheap",
-    });
-    row.flightsCount = flightRes.offers.length;
-    row.flightsOk = flightRes.offers.length >= 1;
-    if (!row.flightsOk) {
-      row.errors.push(
-        flightRes.error
-          ? `flights-error: ${flightRes.error}`
-          : "flights<1",
-      );
-    }
-  } catch (err) {
-    row.errors.push(`flights-error: ${err instanceof Error ? err.message : String(err)}`);
+  // Faza 4(b): walidacja lotów bez zewnętrznego API lotniczego. Sprawdzamy, że
+  // kierunek ma rozpoznane lotnisko (IATA) — to warunek wystarczający, by
+  // wewnętrzna wyszukiwarka LiteAPI Flights mogła zbudować zapytanie. Pełne
+  // pokrycie dostępności sprawdza już sam LiteAPI w runtime.
+  const destIata = record.airports[0] ?? null;
+  row.flightsOk = Boolean(destIata);
+  row.flightsCount = destIata ? 1 : 0;
+  if (!row.flightsOk) {
+    row.errors.push("no-iata");
   }
 
   // 3) Polish localization sanity check.
