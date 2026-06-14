@@ -5,7 +5,9 @@ import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent 
 
 import { DateRangeField } from "@/components/search/date-range-field";
 import { GuestsField } from "@/components/search/guests-field";
-import { OriginCombobox, exactOriginMatch } from "@/components/search/origin-combobox";
+import { exactOriginMatch } from "@/components/search/origin-combobox";
+import { AirportCombobox } from "@/components/flights/airport-combobox";
+import { bestAirportOption, resolveOriginFromOption } from "@/lib/flights/airports";
 import { useLanguage } from "@/components/site/language-provider";
 import { track } from "@/lib/analytics/track";
 import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
@@ -64,7 +66,11 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   // same confirmed/query split the destination combobox uses.
   const [origin, setOrigin] = useState(initial?.origin ?? "");
   const [originQuery, setOriginQuery] = useState(initial?.origin ?? "");
-  const [originIata, setOriginIata] = useState(""); // IATA wylotu (tryb lotów)
+  // Tryb lotów (zadanie 1): rozstrzygnięty wybór „Skąd" — kody do zapytania
+  // (1 lotnisko, kod metra, albo fan-out grupy „wszystkie lotniska") + etykieta
+  // miasta do nagłówka wyników.
+  const [originCodes, setOriginCodes] = useState<string[]>([]);
+  const [originLabel, setOriginLabel] = useState("");
   const [originError, setOriginError] = useState("");
   // Faza 2 (loty): IATA celu (z s.airportCode), liczba niemowląt, one-way.
   const [destIata, setDestIata] = useState("");
@@ -217,15 +223,20 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         setDestOpen(true);
         return;
       }
-      // "Skąd" WYMAGANE w trybie lotów, musi rozwiązać się do IATA.
-      let resolvedOriginIata = originIata;
-      if (!resolvedOriginIata) {
-        const match = exactOriginMatch(originQuery);
-        if (match) {
-          resolvedOriginIata = match.iata;
-          setOrigin(match.city);
-          setOriginIata(match.iata);
-          setOriginQuery(match.city);
+      // "Skąd" WYMAGANE w trybie lotów. Wybór z listy → originCodes/originLabel;
+      // wpisany-niewybrany tekst → najlepsza podpowiedź ze słownika (jak na
+      // Booking: „warszaw" → grupa Warszawa, „modlin" → WMI).
+      let resolvedCodes = originCodes;
+      let resolvedOriginLabel = originLabel;
+      if (resolvedCodes.length === 0) {
+        const best = originQuery.trim() ? bestAirportOption(originQuery) : null;
+        if (best) {
+          const sel = resolveOriginFromOption(best);
+          resolvedCodes = sel.codes;
+          resolvedOriginLabel = sel.label;
+          setOriginCodes(sel.codes);
+          setOriginLabel(sel.label);
+          setOriginQuery(sel.inputLabel);
         } else {
           setOriginError("Wybierz lotnisko wylotu z listy.");
           return;
@@ -243,16 +254,17 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       }
       setDateError("");
       const flightParams = new URLSearchParams({
-        origin: resolvedOriginIata,
+        origin: resolvedCodes.join(","),
         destination: resolvedDestIata,
         depart: startDate,
         adults: String(adults),
       });
+      if (resolvedOriginLabel) flightParams.set("originLabel", resolvedOriginLabel);
       if (!oneWay && endDate) flightParams.set("return", endDate);
       if (childCount > 0) flightParams.set("children", String(childCount));
       if (infants > 0) flightParams.set("infants", String(infants));
       track("flight_search", {
-        origin: resolvedOriginIata,
+        origin: resolvedCodes.join(","),
         destination: resolvedDestIata,
         depart: startDate,
         return: oneWay ? undefined : endDate,
@@ -361,23 +373,24 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             Pojawia się z subtelną animacją fade/slide przy wejściu w loty. */}
         {isFlights && (
           <div className="animate-fade-in">
-            <OriginCombobox
+            <AirportCombobox
               query={originQuery}
               onQueryChange={(value) => {
                 setOriginQuery(value);
-                setOrigin("");
-                setOriginIata("");
+                setOriginCodes([]);
+                setOriginLabel("");
                 setOriginError("");
               }}
-              onSelect={(city) => {
-                setOrigin(city.city);
-                setOriginIata(city.iata);
-                setOriginQuery(city.city);
+              onSelect={(option) => {
+                const sel = resolveOriginFromOption(option);
+                setOriginCodes(sel.codes);
+                setOriginLabel(sel.label);
+                setOriginQuery(sel.inputLabel);
                 setOriginError("");
               }}
               onClear={() => {
-                setOrigin("");
-                setOriginIata("");
+                setOriginCodes([]);
+                setOriginLabel("");
                 setOriginQuery("");
                 setOriginError("");
               }}

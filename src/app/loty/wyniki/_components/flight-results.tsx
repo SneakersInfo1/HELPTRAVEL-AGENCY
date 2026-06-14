@@ -21,10 +21,14 @@ import {
   type DisplayOffer,
 } from "@/lib/flights/display";
 import { saveFlightFlow } from "@/lib/flights/flow-storage";
+import { lookupAirport, originHeaderLabel } from "@/lib/flights/airports";
 import { AirlineLogo } from "@/components/flights/airline-logo";
 
 interface Props {
-  origin: string;
+  /** Kody wylotu: 1 lotnisko, kod metra (LON) albo lista (WAW,WMI,RDO) z grupy. */
+  origins: string[];
+  /** Etykieta nagłówka, np. „Warszawa — wszystkie lotniska". */
+  originLabel?: string;
   destination: string;
   depart: string;
   ret?: string;
@@ -38,7 +42,7 @@ type SortKey = "price" | "duration";
 type Leg = { origin: string; destination: string; date: string; direction: "OUTBOUND" | "INBOUND" };
 
 export function FlightResults(props: Props) {
-  const { origin, destination, depart, ret, adults, childrenCount, infants } = props;
+  const { origins, originLabel, destination, depart, ret, adults, childrenCount, infants } = props;
   const router = useRouter();
   const [offers, setOffers] = useState<DisplayOffer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,38 +50,68 @@ export function FlightResults(props: Props) {
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [priceChange, setPriceChange] = useState<{ offer: DisplayOffer; oldTotal: number; newTotal: number; currency: string } | null>(null);
+  // Lotniska grupy „wszystkie lotniska", które nie zwróciły żadnej oferty
+  // (np. Modlin/Radom bez treści u dostawcy) — do uczciwej noty.
+  const [emptyOrigins, setEmptyOrigins] = useState<string[]>([]);
   const fetchedRef = useRef(false);
 
   const passengers = adults + childrenCount + infants;
+  const originsKey = origins.join(",");
+  const headerLabel = originHeaderLabel(origins, originLabel);
 
-  // Pobranie ofert (raz).
+  // Pobranie ofert (raz). Dla grupy „wszystkie lotniska" — fan-out po lotniskach
+  // (metro = 1 kod), równolegle, scalenie + dedup po offerId.
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
-    const legs: Leg[] = [{ origin, destination, date: depart, direction: "OUTBOUND" }];
-    if (ret) legs.push({ origin: destination, destination: origin, date: ret, direction: "INBOUND" });
     (async () => {
       try {
-        const res = await fetch("/api/flights/rates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ legs, adults, children: childrenCount, infants, cabinClass: "ECONOMY" }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setError(json.message || "Nie udało się pobrać ofert. Spróbuj ponownie.");
+        const perOrigin = await Promise.all(
+          origins.map(async (o) => {
+            const legs: Leg[] = [{ origin: o, destination, date: depart, direction: "OUTBOUND" }];
+            if (ret) legs.push({ origin: destination, destination: o, date: ret, direction: "INBOUND" });
+            try {
+              const res = await fetch("/api/flights/rates", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ legs, adults, children: childrenCount, infants, cabinClass: "ECONOMY" }),
+              });
+              const json = await res.json().catch(() => ({}));
+              if (!res.ok) return { origin: o, ok: false, offers: [] as DisplayOffer[], message: json.message as string | undefined };
+              return { origin: o, ok: true, offers: normalizeRatesResponse(json), message: undefined };
+            } catch {
+              return { origin: o, ok: false, offers: [] as DisplayOffer[], message: undefined };
+            }
+          }),
+        );
+
+        if (perOrigin.every((r) => !r.ok)) {
+          setError(perOrigin.find((r) => r.message)?.message || "Nie udało się pobrać ofert. Spróbuj ponownie.");
           setOffers([]);
           return;
         }
-        const list = normalizeRatesResponse(json);
-        setOffers(list);
-        track("flight_results_view", { origin, destination, results_count: list.length });
+
+        // Scal + dedup po offerId.
+        const seen = new Set<string>();
+        const merged: DisplayOffer[] = [];
+        for (const r of perOrigin) {
+          for (const off of r.offers) {
+            if (seen.has(off.offerId)) continue;
+            seen.add(off.offerId);
+            merged.push(off);
+          }
+        }
+        // Nota tylko dla grupy (>1 lotnisko), gdy część lotnisk = 0 ofert.
+        setEmptyOrigins(origins.length > 1 ? perOrigin.filter((r) => r.ok && r.offers.length === 0).map((r) => r.origin) : []);
+        setOffers(merged);
+        track("flight_results_view", { origin: originsKey, destination, results_count: merged.length });
       } catch {
         setError("Problem z połączeniem. Spróbuj ponownie.");
         setOffers([]);
       }
     })();
-  }, [origin, destination, depart, ret, adults, childrenCount, infants]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originsKey, destination, depart, ret, adults, childrenCount, infants]);
 
   const sorted = useMemo(() => {
     if (!offers) return [];
@@ -91,8 +125,11 @@ export function FlightResults(props: Props) {
   }, [offers, sort]);
 
   function toResults(offer: DisplayOffer, total: number | null, currency: string) {
+    // Zapisz REALNE lotnisko wylotu wybranej oferty (grupa „wszystkie lotniska"
+    // miesza lotniska) — dalszy flow pokazuje konkretny kod, nie grupę.
+    const actualOrigin = offer.legs[0]?.originCode || origins[0];
     saveFlightFlow({
-      origin, destination, depart, ret, adults, children: childrenCount, infants,
+      origin: actualOrigin, destination, depart, ret, adults, children: childrenCount, infants,
       offerId: offer.offerId, offer,
       verifiedTotal: total, verifiedCurrency: currency, verifiedAt: Date.now(),
     });
@@ -144,7 +181,7 @@ export function FlightResults(props: Props) {
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold text-neutral-900 sm:text-2xl">
-            Loty {origin} → {destination}
+            Loty {headerLabel} → {destination}
           </h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             {ret ? "W obie strony" : "W jedną stronę"} · {passengers} {passengers === 1 ? "pasażer" : "pasażerów"}
@@ -170,6 +207,13 @@ export function FlightResults(props: Props) {
           </div>
         )}
       </header>
+
+      {/* Uczciwa nota: lotniska grupy bez ofert u dostawcy (np. Modlin/Radom). */}
+      {emptyOrigins.length > 0 && offers && offers.length > 0 && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+          Brak ofert z: {emptyOrigins.map((c) => `${lookupAirport(c)?.name ?? c} (${c})`).join(", ")} — pokazujemy wszystkie loty dostępne u naszego dostawcy.
+        </div>
+      )}
 
       {/* Loading skeleton */}
       {offers === null && (

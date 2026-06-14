@@ -16,6 +16,8 @@ export const metadata: Metadata = {
 
 interface SP {
   origin?: string;
+  /** Etykieta miasta/grupy do nagłówka (zadanie 1), np. „Warszawa — wszystkie lotniska". */
+  originLabel?: string;
   destination?: string;
   depart?: string;
   return?: string;
@@ -27,9 +29,19 @@ interface SP {
 const isIata = (v?: string) => Boolean(v && /^[A-Z]{3}$/.test(v));
 const isDate = (v?: string) => Boolean(v && /^\d{4}-\d{2}-\d{2}$/.test(v));
 
+/** `origin` może być jednym kodem (WAW), kodem metra (LON) albo listą kodów
+ *  rozdzieloną przecinkami dla grupy „wszystkie lotniska" (WAW,WMI,RDO). */
+function parseOrigins(v?: string): string[] {
+  if (!v) return [];
+  const codes = v.split(",").map((s) => s.trim().toUpperCase()).filter(isIata);
+  return [...new Set(codes)].slice(0, 4);
+}
+
 export default async function FlightResultsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const valid = isIata(sp.origin) && isIata(sp.destination) && isDate(sp.depart);
+  const origins = parseOrigins(sp.origin);
+  const destination = sp.destination?.toUpperCase();
+  const valid = origins.length > 0 && isIata(destination) && isDate(sp.depart);
 
   if (!valid) {
     return (
@@ -44,8 +56,9 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
 
   return (
     <FlightResults
-      origin={sp.origin!}
-      destination={sp.destination!}
+      origins={origins}
+      originLabel={sp.originLabel}
+      destination={destination!}
       depart={sp.depart!}
       ret={isDate(sp.return) ? sp.return : undefined}
       adults={Math.max(1, Math.min(9, Number(sp.adults) || 1))}
