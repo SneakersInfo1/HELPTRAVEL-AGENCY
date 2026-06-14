@@ -1,6 +1,6 @@
 import { CinematicBackdrop } from "./cinematic-backdrop";
 import { DestinationTile } from "./destination-tile";
-import { MiniPlannerForm } from "./mini-planner-form";
+import { HomeSearchTabs } from "./home-search-tabs";
 import { MoodChips } from "./mood-chips";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
@@ -57,9 +57,9 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
             </p>
           </div>
 
-          {/* Form */}
+          {/* Form — toggle Hotele/Loty + pasek (Faza 2) */}
           <div className="mt-auto">
-            <MiniPlannerForm compact />
+            <HomeSearchTabs />
             <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[10px] text-white/80 sm:text-[11px]">
               <span className="flex items-center gap-1.5">
                 <span aria-hidden className="text-amber-300">✦</span>

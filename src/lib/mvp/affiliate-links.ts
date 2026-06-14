@@ -1,12 +1,10 @@
-// Phase 1 affiliate-links — only Aviasales flights survive.
-// Hotels link points to internal /hotele (LiteAPI booking flow, Phase 2+).
-// `attractions` and `cars` are deprecated outbound paths — kept on the type
-// for backward compatibility but resolve to "" (empty) so consumers can detect
-// "no link" and hide the CTA. Master spec section 2: those affiliate programs
-// are PURGED.
+// Linki kierunkowe — wyłącznie WEWNĘTRZNE (Faza 4: zewnętrzne programy
+// lotnicze wycofane). `stays` → /hotele/szukaj (LiteAPI), `flights` →
+// wewnętrzna wyszukiwarka lotów LiteAPI Flights (/?tab=loty — kontekst kierunku
+// bez lotniska wylotu, więc ląduje na pasku lotów). `attractions`/`cars`
+// pozostają puste (programy wycofane).
 
 import type { AffiliateLinks } from "./types";
-import { buildAviasalesLink } from "./affiliate-config";
 
 interface AffiliateContextInput {
   city: string;
@@ -32,12 +30,10 @@ function buildInternalHotelHref(input: AffiliateContextInput): string {
 }
 
 export function buildAffiliateLinksWithContext(input: AffiliateContextInput): AffiliateLinks {
-  const flights = buildAviasalesLink({
-    origin: { iata: input.originIata, city: input.originCity },
-    campaign: `dest_${input.city.toLowerCase().replace(/\s+/g, "_")}`,
-  });
   return {
-    flights,
+    // Wewnętrzna wyszukiwarka lotów (bez lotniska wylotu w kontekście kierunku
+    // — pasek lotów na stronie głównej pozwala wybrać „Skąd").
+    flights: "/?tab=loty",
     stays: buildInternalHotelHref(input),
     attractions: "",
     cars: "",

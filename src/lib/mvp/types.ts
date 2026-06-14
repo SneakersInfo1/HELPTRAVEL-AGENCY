@@ -276,7 +276,7 @@ export interface FlightSearchResponse {
   sortBy: FlightSortMode;
   offers: NormalizedFlightOffer[];
   fetchedAt: string;
-  source?: "travelpayouts" | "partner_fallback";
+  source?: "internal" | "partner_fallback";
   error?: string;
   // Which alternative airports actually returned hits during the nearby-
   // airport fanout. Useful for UI ("dodatkowo szukaliśmy w: BGY, MXP").

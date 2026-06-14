@@ -50,6 +50,10 @@ interface Props {
   /** Pay-button label inside the widget — pass the exact amount ("Zapłać
       2060 zł") so the buyer sees precisely what leaves the card. */
   submitText?: string;
+  /** Ścieżka powrotu po płatności względem returnBaseUrl. Domyślnie hotelowa
+   *  (/hotele/rezerwacja/return). Loty przekazują /loty/platnosc/return
+   *  (zmiana addytywna — flow hotelowy bez zmian). `sid` doklejamy sami. */
+  returnPath?: string;
   onMountFail: () => void;
 }
 
@@ -75,7 +79,7 @@ function loadWidgetScript(): Promise<void> {
   });
 }
 
-export function PaymentSlot({ prebook, returnBaseUrl, submitText, onMountFail }: Props) {
+export function PaymentSlot({ prebook, returnBaseUrl, submitText, returnPath = "/hotele/rezerwacja/return", onMountFail }: Props) {
   const [widgetMounted, setWidgetMounted] = useState(false);
 
   // Ref pattern: parents may pass an inline arrow as onMountFail; reading the
@@ -165,7 +169,7 @@ export function PaymentSlot({ prebook, returnBaseUrl, submitText, onMountFail }:
       observer.observe(target, { childList: true });
       fallbackTimer = setTimeout(markMounted, SKELETON_FALLBACK_MS);
 
-      const returnUrl = `${returnBaseUrl}/hotele/rezerwacja/return?sid=${encodeURIComponent(
+      const returnUrl = `${returnBaseUrl}${returnPath}?sid=${encodeURIComponent(
         prebook.sessionId,
       )}`;
       new window.LiteAPIPayment({
@@ -194,7 +198,7 @@ export function PaymentSlot({ prebook, returnBaseUrl, submitText, onMountFail }:
       if (rafHandle) cancelAnimationFrame(rafHandle);
       teardownMountWatchers();
     };
-  }, [prebook, returnBaseUrl, submitText]);
+  }, [prebook, returnBaseUrl, submitText, returnPath]);
 
   return (
     <div className="relative min-h-[280px]">

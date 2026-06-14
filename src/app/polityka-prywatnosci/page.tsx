@@ -31,8 +31,8 @@ const admin = {
   email: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "kontakt@helptravel.pl",
 };
 
-const EFFECTIVE_DATE = "25 maja 2026 r.";
-const EFFECTIVE_DATE_ISO = "2026-05-25";
+const EFFECTIVE_DATE = "13 czerwca 2026 r.";
+const EFFECTIVE_DATE_ISO = "2026-06-13";
 
 export const metadata: Metadata = {
   title: "Polityka prywatności",
@@ -163,6 +163,11 @@ const sections: Section[] = [
           "5 lat od daty rezerwacji (księgowość + roszczenia)",
         ],
         [
+          "Pośrednictwo w rezerwacji biletu lotniczego (dane pasażerów, w tym dane dokumentu tożsamości)",
+          "art. 6 ust. 1 lit. b — wykonanie umowy (realizacja rezerwacji i umowy przewozu)",
+          "5 lat od daty rezerwacji (księgowość + roszczenia)",
+        ],
+        [
           "Obsługa reklamacji i kontaktu",
           "art. 6 ust. 1 lit. b oraz lit. f — uzasadniony interes (rozpatrzenie zgłoszenia)",
           "do 3 lat od zamknięcia sprawy",
@@ -212,6 +217,11 @@ const sections: Section[] = [
           "identyfikator rezerwacji, identyfikator transakcji płatniczej, kwota, waluta, status płatności. Dane karty płatniczej (numer, CVV) NIE są przetwarzane przez Administratora — autoryzacja odbywa się bezpośrednio u dostawcy usług płatniczych (Stripe).",
       },
       {
+        label: "Dane pasażerów lotniczych",
+        body:
+          "wyłącznie w procesie Rezerwacji Lotniczej: imię i nazwisko, data urodzenia, obywatelstwo, płeć oraz dane dokumentu tożsamości lub paszportu (rodzaj, numer, data ważności, kraj wydania). Dane te są wymagane przez przewoźników do wystawienia biletu. Numer dokumentu tożsamości jest przechowywany w postaci zminimalizowanej (maskowanej) w naszych rekordach operacyjnych i NIE jest zapisywany w logach technicznych ani w systemach analitycznych; pełny numer przekazywany jest wyłącznie dostawcy rezerwacji w celu realizacji umowy przewozu.",
+      },
+      {
         label: "Dane techniczne",
         body:
           "adres IP, typ przeglądarki, język, identyfikator Sesji, znacznik czasowy żądania, adres odsyłający (referer), informacje o urządzeniu.",
@@ -238,10 +248,16 @@ const sections: Section[] = [
       headers: ["Podmiot", "Rola", "Lokalizacja", "Cel"],
       rows: [
         [
-          "LiteAPI Travel Ltd.",
-          "Procesor",
+          "LiteAPI Travel Ltd. / Nuitee Travel",
+          "Procesor; Nuitee Travel — podmiot obsługujący płatność (merchant of record)",
           "Wielka Brytania (decyzja stwierdzająca odpowiedni stopień ochrony)",
-          "Realizacja Rezerwacji Hotelowej, agregacja oferty hoteli, webhook potwierdzenia",
+          "Realizacja Rezerwacji Hotelowej i Lotniczej, agregacja oferty, przekazanie danych pasażerów do przewoźników, webhook potwierdzenia",
+        ],
+        [
+          "Przewoźnicy lotniczy oraz dostawcy systemów rezerwacyjnych (GDS) obsługujący wybrane połączenie",
+          "Autonomiczni administratorzy",
+          "UE/EOG oraz państwa trzecie (w zależności od przewoźnika; zabezpieczenia: SCC lub decyzje o adekwatności)",
+          "Realizacja umowy przewozu, wystawienie biletu — odbiorcy danych pasażerów (w tym danych dokumentu) przekazanych w procesie rezerwacji",
         ],
         [
           "Stripe Payments Europe, Ltd.",
@@ -284,12 +300,6 @@ const sections: Section[] = [
           "Procesor (w ramach LiteAPI)",
           "UE/EOG",
           "Dostarczanie zdjęć hoteli prezentowanych w Serwisie",
-        ],
-        [
-          "Travelpayouts (WhiteSky Pte. Ltd.)",
-          "Joint Controller (wspólny administrator) — w zakresie kliknięć afiliacyjnych",
-          "Singapur (SCC)",
-          "Afiliacja Hotellook, Aviasales — atrybucja kliknięcia i prowizji",
         ],
         [
           "CJ Affiliate (Commission Junction LLC)",
@@ -472,7 +482,7 @@ const sections: Section[] = [
         ],
         [
           "Marketingowe / afiliacyjne (wymagają zgody)",
-          "Identyfikatory atrybucji kliknięć w linki partnerów (Travelpayouts, CJ, Stay22), pomiar skuteczności kampanii.",
+          "Identyfikatory atrybucji kliknięć w linki partnerów afiliacyjnych (m.in. CJ, Stay22), pomiar skuteczności kampanii.",
           "do 12 miesięcy",
           "1st-party + odpowiedni partner (3rd-party)",
         ],

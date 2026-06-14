@@ -1,7 +1,7 @@
 // @deprecated Sesja C — /planner has been removed. The unified results page
-// is /hotele/szukaj which composes hotels (LiteAPI) + flights (Travelpayouts)
-// directly. This endpoint is preserved as 410 Gone for the small number of
-// external bookmarks that may still exist.
+// is /hotele/szukaj (hotels via LiteAPI); loty mają osobny tor /loty/*.
+// This endpoint is preserved as 410 Gone for the small number of external
+// bookmarks that may still exist.
 
 import { NextResponse } from "next/server";
 

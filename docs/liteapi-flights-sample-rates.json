@@ -1,0 +1,323 @@
+{
+  "data": [
+    {
+      "journeys": [
+        {
+          "cheapestOffer": {
+            "offerId": "h6NwaWTZJDAxOWViZmM1LWI5ODQtNzZjZi1hMTY3LTczZTI3MTIwZTczMaJ0cMtAg68zMzMzM6JtdctAAAAAAAAAAKJtZMsAAAAAAAAAAKNjdXKjUExOo3VpZM4ABcGHoWyRhKFvo1dBV6JkZaNMSFKiZGGqMjAyNi0wNy0xM6JkaahPVVRCT1VORA==",
+            "expiration": "2026-06-13T07:07:46.884Z",
+            "pricing": {
+              "display": {
+                "total": 629.9,
+                "currency": "PLN",
+                "base": 488.55,
+                "fees": 0,
+                "taxes": 141.34,
+                "perPassenger": {
+                  "adult": {
+                    "base": 488.55,
+                    "currency": "PLN",
+                    "fees": 0,
+                    "taxes": 141.34,
+                    "total": 629.9
+                  },
+                  "child": {
+                    "base": 0,
+                    "currency": "PLN",
+                    "fees": 0,
+                    "taxes": 0,
+                    "total": 0
+                  },
+                  "infant": {
+                    "base": 0,
+                    "currency": "PLN",
+                    "fees": 0,
+                    "taxes": 0,
+                    "total": 0
+                  }
+                }
+              },
+              "converted": true
+            },
+            "provider": {
+              "code": "TRAVELPORT",
+              "logo": "https://production.nuitee.flights/static/providers/travelport.png"
+            },
+            "baggage": {
+              "hasCarryOnBag": true,
+              "hasCheckedBag": false,
+              "included": [
+                {
+                  "bagType": "cabin",
+                  "description": "Cabin bag",
+                  "passengerType": "ALL",
+                  "pieces": 1,
+                  "pricing": {
+                    "display": {
+                      "amount": 0,
+                      "currency": "PLN"
+                    },
+                    "converted": true
+                  },
+                  "size": "56x45x25 cm"
+                }
+              ]
+            },
+            "fare": {
+              "family": "Basic",
+              "mixedCabin": false,
+              "seatsRemaining": 1
+            },
+            "segmentAmenities": [
+              {
+                "aircraftType": "319",
+                "amenities": [
+                  {
+                    "available": true,
+                    "category": "food",
+                    "chargeable": false,
+                    "name": "Meal"
+                  }
+                ],
+                "segmentKey": "fb8b7e6e"
+              }
+            ],
+            "segmentFares": [
+              {
+                "bookingCode": "L",
+                "cabin": "Economy",
+                "fareBasisCode": "LZ0HO",
+                "fareFamily": "Basic",
+                "seatsRemaining": 1,
+                "segmentKey": "fb8b7e6e"
+              }
+            ],
+            "terms": {
+              "changeable": true,
+              "refundable": false,
+              "summary": [
+                {
+                  "level": "danger",
+                  "message": "Non-refundable"
+                },
+                {
+                  "level": "warning",
+                  "message": "Changes allowed with penalty"
+                },
+                {
+                  "level": "warning",
+                  "message": "Change fee: 51 GBP"
+                }
+              ],
+              "changeFee": {
+                "pricing": {
+                  "display": {
+                    "amount": 261.18,
+                    "currency": "PLN"
+                  },
+                  "converted": true
+                },
+                "applicability": "anytime",
+                "label": "Change fee"
+              },
+              "hasChangeFee": true
+            }
+          },
+          "offers": [
+            {
+              "offerId": "h6NwaWTZJDAxOWViZmM1LWI5ODQtNzZjZi1hMTY3LTczZTI3MTIwZTczMaJ0cMtAg68zMzMzM6JtdctAAAAAAAAAAKJtZMsAAAAAAAAAAKNjdXKjUExOo3VpZM4ABcGHoWyRhKFvo1dBV6JkZaNMSFKiZGGqMjAyNi0wNy0xM6JkaahPVVRCT1VORA==",
+              "expiration": "2026-06-13T07:07:46.884Z",
+              "pricing": {
+                "display": {
+                  "total": 629.9,
+                  "currency": "PLN",
+                  "base": 488.55,
+                  "fees": 0,
+                  "taxes": 141.34,
+                  "perPassenger": {
+                    "adult": {
+                      "base": 488.55,
+                      "currency": "PLN",
+                      "fees": 0,
+                      "taxes": 141.34,
+                      "total": 629.9
+                    },
+                    "child": {
+                      "base": 0,
+                      "currency": "PLN",
+                      "fees": 0,
+                      "taxes": 0,
+                      "total": 0
+                    },
+                    "infant": {
+                      "base": 0,
+                      "currency": "PLN",
+                      "fees": 0,
+                      "taxes": 0,
+                      "total": 0
+                    }
+                  }
+                },
+                "converted": true
+              },
+              "provider": {
+                "code": "TRAVELPORT",
+                "logo": "https://production.nuitee.flights/static/providers/travelport.png"
+              },
+              "baggage": {
+                "hasCarryOnBag": true,
+                "hasCheckedBag": false,
+                "included": [
+                  {
+                    "bagType": "cabin",
+                    "description": "Cabin bag",
+                    "passengerType": "ALL",
+                    "pieces": 1,
+                    "pricing": {
+                      "display": {
+                        "amount": 0,
+                        "currency": "PLN"
+                      },
+                      "converted": true
+                    },
+                    "size": "56x45x25 cm"
+                  }
+                ]
+              },
+              "fare": {
+                "family": "Basic",
+                "mixedCabin": false,
+                "seatsRemaining": 1
+              },
+              "segmentAmenities": [
+                {
+                  "aircraftType": "319",
+                  "amenities": [
+                    {
+                      "available": true,
+                      "category": "food",
+                      "chargeable": false,
+                      "name": "Meal"
+                    }
+                  ],
+                  "segmentKey": "fb8b7e6e"
+                }
+              ],
+              "segmentFares": [
+                {
+                  "bookingCode": "L",
+                  "cabin": "Economy",
+                  "fareBasisCode": "LZ0HO",
+                  "fareFamily": "Basic",
+                  "seatsRemaining": 1,
+                  "segmentKey": "fb8b7e6e"
+                }
+              ],
+              "terms": {
+                "changeable": true,
+                "refundable": false,
+                "summary": [
+                  {
+                    "level": "danger",
+                    "message": "Non-refundable"
+                  },
+                  {
+                    "level": "warning",
+                    "message": "Changes allowed with penalty"
+                  },
+                  {
+                    "level": "warning",
+                    "message": "Change fee: 51 GBP"
+                  }
+                ],
+                "changeFee": {
+                  "pricing": {
+                    "display": {
+                      "amount": 261.18,
+                      "currency": "PLN"
+                    },
+                    "converted": true
+                  },
+                  "applicability": "anytime",
+                  "label": "Change fee"
+                },
+                "hasChangeFee": true
+              }
+            }
+          ],
+          "isCheapest": false,
+          "journeyKey": "983ca1de1aac4374",
+          "legDurations": [
+            {
+              "dayChange": 0,
+              "direction": "OUTBOUND",
+              "duration": {
+                "iso8601": "PT2H50M",
+                "minutes": 170
+              },
+              "overnightFlight": false
+            }
+          ],
+          "totalDuration": {
+            "iso8601": "PT2H50M",
+            "minutes": 170
+          },
+          "segments": [
+            {
+              "arrivalTime": "2026-07-13T10:10:00",
+              "carrier": {
+                "marketingCode": "BA",
+                "marketingLogo": "https://production.nuitee.flights/static/images/airlines/BA.png",
+                "marketingName": "British Airways",
+                "operatingCode": "BA",
+                "operatingLogo": "https://production.nuitee.flights/static/images/airlines/BA.png",
+                "operatingName": "British Airways"
+              },
+              "departureTime": "2026-07-13T08:20:00",
+              "originCode": "WAW",
+              "destinationCode": "LHR",
+              "direction": "OUTBOUND",
+              "duration": {
+                "iso8601": "PT2H50M",
+                "minutes": 170
+              },
+              "flight": {
+                "marketingNumber": "847",
+                "operatingNumber": "847"
+              },
+              "segmentKey": "fb8b7e6e",
+              "originName": "Warsaw Chopin Airport",
+              "destinationName": "London Heathrow Airport"
+            }
+          ]
+        }
+      ],
+      "sortMetadata": {
+        "best": {
+          "journeyKey": "983ca1de1aac4374",
+          "offerId": "h6NwaWTZJDAxOWViZmM1LWI5ODQtNzZjZi1hMTY3LTczZTI3MTIwZTczMaJ0cMtAg68zMzMzM6JtdctAAAAAAAAAAKJtZMsAAAAAAAAAAKNjdXKjUExOo3VpZM4ABcGHoWyRhKFvo1dBV6JkZaNMSFKiZGGqMjAyNi0wNy0xM6JkaahPVVRCT1VORA==",
+          "price": 629.9,
+          "currency": "PLN"
+        },
+        "duration": {
+          "journeyKey": "a758f3934e5ac7e6",
+          "offerId": "h6NwaWTZJDAxOWViZmM1LWI5ODQtNzZjZi1hMTY3LTczZWMwOGY5MmVmNqJ0cMtAibvCj1wo9qJtdctAAAAAAAAAAKJtZMsAAAAAAAAAAKNjdXKjUExOo3VpZM4ABcGHoWyRhKFvo1dBV6JkZaNMSFKiZGGqMjAyNi0wNy0xM6JkaahPVVRCT1VORA==",
+          "price": 823.47,
+          "currency": "PLN"
+        },
+        "price": {
+          "journeyKey": "1d4d65aaf77bc5a4",
+          "offerId": "h6NwaWTZJDAxOWViZmM1LWJkMGUtNzRlYi1iNGNlLWQxZTg0NDI1OTZmYqJ0cMtAgkqPXCj1w6JtdctAAAAAAAAAAKJtZMsAAAAAAAAAAKNjdXKjUExOo3VpZM4ABcGHoWyRhKFvo1dBV6JkZaNMSFKiZGGqMjAyNi0wNy0xM6JkaahPVVRCT1VORA==",
+          "price": 585.32,
+          "currency": "PLN"
+        },
+        "stops": {
+          "journeyKey": "983ca1de1aac4374",
+          "offerId": "h6NwaWTZJDAxOWViZmM1LWI5ODQtNzZjZi1hMTY3LTczZTI3MTIwZTczMaJ0cMtAg68zMzMzM6JtdctAAAAAAAAAAKJtZMsAAAAAAAAAAKNjdXKjUExOo3VpZM4ABcGHoWyRhKFvo1dBV6JkZaNMSFKiZGGqMjAyNi0wNy0xM6JkaahPVVRCT1VORA==",
+          "price": 629.9,
+          "currency": "PLN"
+        }
+      }
+    }
+  ]
+}

@@ -55,6 +55,11 @@ interface Props {
   error?: string;
   fieldClassName: string;
   labelClassName: string;
+  /** Placeholder pola — domyślnie wariant hotelowy „(opcjonalnie)". W trybie
+   *  lotów przekazujemy wariant „wymagane" (Faza 2). */
+  placeholder?: string;
+  /** aria-label inputu — analogicznie do placeholdera. */
+  inputAriaLabel?: string;
 }
 
 export function OriginCombobox({
@@ -65,6 +70,8 @@ export function OriginCombobox({
   error,
   fieldClassName,
   labelClassName,
+  placeholder = "Skąd? (opcjonalnie)",
+  inputAriaLabel = "Skąd (opcjonalnie)",
 }: Props) {
   const listboxId = useId();
   const [open, setOpen] = useState(false);
@@ -140,7 +147,7 @@ export function OriginCombobox({
           aria-autocomplete="list"
           aria-expanded={open}
           aria-controls={listboxId}
-          aria-label="Skąd (opcjonalnie)"
+          aria-label={inputAriaLabel}
           value={query}
           onChange={(e) => {
             onQueryChange(e.target.value);
@@ -152,7 +159,7 @@ export function OriginCombobox({
           onBlur={() => {
             window.setTimeout(() => setOpen(false), 150);
           }}
-          placeholder="Skąd? (opcjonalnie)"
+          placeholder={placeholder}
           autoComplete="off"
           className={`${fieldClassName} w-full ${query ? "pr-9" : ""}`}
         />

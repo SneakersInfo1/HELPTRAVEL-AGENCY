@@ -14,7 +14,6 @@ import { localizeCity } from "@/lib/mvp/i18n-geo";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
-import { AviasalesCta } from "@/components/affiliate/aviasales-cta";
 import type { DestinationProfile } from "@/lib/mvp/types";
 import type { EditorialArticle } from "@/lib/mvp/publisher-content";
 
@@ -604,7 +603,7 @@ export default async function ComparisonPage({ params }: PageProps) {
         ))}
       </section>
 
-      {/* 2 CTA per kierunek — wewnętrzne hotele + Aviasales (loty) */}
+      {/* 2 CTA per kierunek — wewnętrzne hotele + wewnętrzne loty */}
       <section className="grid gap-5 lg:grid-cols-2">
         {destPanels.map(({ dest, name }) => {
           const hotelHref = `/hotele/szukaj?${new URLSearchParams({
@@ -629,12 +628,16 @@ export default async function ComparisonPage({ params }: PageProps) {
                   <span className="text-emerald-900">Zobacz hotele: {name}</span>
                 </Link>
               </article>
-              <AviasalesCta
-                city={dest.city}
-                country={dest.country}
-                campaign={`compare-${pair.slug}-${dest === a ? "a" : "b"}`}
-                flightHours={dest.typicalFlightHoursFromPL}
-              />
+              <Link
+                href="/?tab=loty"
+                className="flex flex-col justify-center rounded-[1.6rem] border border-emerald-950 bg-emerald-950 p-5 text-white shadow-[0_20px_52px_rgba(7,31,18,0.18)] transition hover:-translate-y-1 hover:bg-emerald-900"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Loty</p>
+                <h3 className="mt-2 text-xl font-bold text-white">Sprawdź loty do {dest.city}</h3>
+                <p className="mt-2 text-sm leading-6 text-white/78">
+                  Wyszukaj loty z dowolnego lotniska w Polsce. Lot ok. {dest.typicalFlightHoursFromPL.toFixed(1)} h.
+                </p>
+              </Link>
             </div>
           );
         })}
