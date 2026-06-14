@@ -21,8 +21,19 @@ import {
   type DisplayOffer,
 } from "@/lib/flights/display";
 import { saveFlightFlow } from "@/lib/flights/flow-storage";
-import { lookupAirport, originHeaderLabel } from "@/lib/flights/airports";
+import { originHeaderLabel } from "@/lib/flights/airports";
+import {
+  EMPTY_FILTERS,
+  SORT_OPTIONS,
+  applyFilters,
+  computeFacets,
+  hasActiveFilters,
+  sortOffers,
+  type FlightFilters,
+  type SortKey,
+} from "@/lib/flights/filters";
 import { AirlineLogo } from "@/components/flights/airline-logo";
+import { FlightFiltersPanel } from "@/components/flights/flight-filters";
 
 interface Props {
   /** Kody wylotu: 1 lotnisko, kod metra (LON) albo lista (WAW,WMI,RDO) z grupy. */
@@ -37,8 +48,6 @@ interface Props {
   infants: number;
 }
 
-type SortKey = "price" | "duration";
-
 type Leg = { origin: string; destination: string; date: string; direction: "OUTBOUND" | "INBOUND" };
 
 export function FlightResults(props: Props) {
@@ -46,13 +55,12 @@ export function FlightResults(props: Props) {
   const router = useRouter();
   const [offers, setOffers] = useState<DisplayOffer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortKey>("price");
+  const [sort, setSort] = useState<SortKey>("best");
+  const [filters, setFilters] = useState<FlightFilters>(EMPTY_FILTERS);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [priceChange, setPriceChange] = useState<{ offer: DisplayOffer; oldTotal: number; newTotal: number; currency: string } | null>(null);
-  // Lotniska grupy „wszystkie lotniska", które nie zwróciły żadnej oferty
-  // (np. Modlin/Radom bez treści u dostawcy) — do uczciwej noty.
-  const [emptyOrigins, setEmptyOrigins] = useState<string[]>([]);
   const fetchedRef = useRef(false);
 
   const passengers = adults + childrenCount + infants;
@@ -101,8 +109,6 @@ export function FlightResults(props: Props) {
             merged.push(off);
           }
         }
-        // Nota tylko dla grupy (>1 lotnisko), gdy część lotnisk = 0 ofert.
-        setEmptyOrigins(origins.length > 1 ? perOrigin.filter((r) => r.ok && r.offers.length === 0).map((r) => r.origin) : []);
         setOffers(merged);
         track("flight_results_view", { origin: originsKey, destination, results_count: merged.length });
       } catch {
@@ -113,16 +119,13 @@ export function FlightResults(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originsKey, destination, depart, ret, adults, childrenCount, infants]);
 
-  const sorted = useMemo(() => {
-    if (!offers) return [];
-    const copy = [...offers];
-    if (sort === "price") {
-      copy.sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity));
-    } else {
-      copy.sort((a, b) => a.maxDurationMinutes - b.maxDurationMinutes);
-    }
-    return copy;
-  }, [offers, sort]);
+  // Faceting z PEŁNEJ puli (liczniki nie zmieniają się przy filtrowaniu);
+  // widoczna lista = filtry + sort, po stronie klienta.
+  const facets = useMemo(() => (offers ? computeFacets(offers) : null), [offers]);
+  const visible = useMemo(
+    () => (offers ? sortOffers(applyFilters(offers, filters), sort) : []),
+    [offers, filters, sort],
+  );
 
   function toResults(offer: DisplayOffer, total: number | null, currency: string) {
     // Zapisz REALNE lotnisko wylotu wybranej oferty (grupa „wszystkie lotniska"
@@ -177,82 +180,138 @@ export function FlightResults(props: Props) {
   }, [toast]);
 
   return (
-    <main className="mx-auto min-h-[60vh] max-w-3xl px-4 py-8">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
+    <main className="mx-auto min-h-[60vh] max-w-6xl px-4 py-8">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-neutral-900 sm:text-2xl">
             Loty {headerLabel} → {destination}
           </h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             {ret ? "W obie strony" : "W jedną stronę"} · {passengers} {passengers === 1 ? "pasażer" : "pasażerów"}
-            {offers ? ` · ${offers.length} ${offers.length === 1 ? "oferta" : "ofert"}` : ""}
+            {offers
+              ? visible.length === offers.length
+                ? ` · ${offers.length} ${offers.length === 1 ? "oferta" : "ofert"}`
+                : ` · ${visible.length} z ${offers.length} ofert`
+              : ""}
           </p>
         </div>
         {offers && offers.length > 0 && (
-          <div className="inline-flex rounded-lg border border-neutral-200 bg-white p-0.5 text-xs font-semibold">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setSort("price")}
-              className={`rounded-md px-3 py-1.5 transition ${sort === "price" ? "bg-emerald-600 text-white" : "text-neutral-600 hover:bg-neutral-50"}`}
+              onClick={() => setDrawerOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 lg:hidden"
             >
-              Najtańsze
+              Filtry{hasActiveFilters(filters) ? " •" : ""}
             </button>
-            <button
-              type="button"
-              onClick={() => setSort("duration")}
-              className={`rounded-md px-3 py-1.5 transition ${sort === "duration" ? "bg-emerald-600 text-white" : "text-neutral-600 hover:bg-neutral-50"}`}
-            >
-              Najszybsze
-            </button>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-500">
+              <span className="hidden sm:inline">Sortuj</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                aria-label="Sortowanie"
+                className="rounded-lg border border-neutral-300 bg-white px-2.5 py-2 text-xs font-semibold text-neutral-700 focus:border-emerald-500 focus:outline-none"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>{o.label}</option>
+                ))}
+              </select>
+            </label>
           </div>
         )}
       </header>
 
-      {/* Uczciwa nota: lotniska grupy bez ofert u dostawcy (np. Modlin/Radom). */}
-      {emptyOrigins.length > 0 && offers && offers.length > 0 && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
-          Brak ofert z: {emptyOrigins.map((c) => `${lookupAirport(c)?.name ?? c} (${c})`).join(", ")} — pokazujemy wszystkie loty dostępne u naszego dostawcy.
-        </div>
-      )}
-
-      {/* Loading skeleton */}
-      {offers === null && (
-        <div className="mt-6 space-y-3">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse rounded-2xl border border-neutral-200 bg-white p-5">
-              <div className="h-4 w-1/3 rounded bg-neutral-100" />
-              <div className="mt-3 h-6 w-2/3 rounded bg-neutral-100" />
-              <div className="mt-3 h-4 w-1/4 rounded bg-neutral-100" />
+      <div className="mt-5 grid gap-6 lg:grid-cols-[260px_1fr]">
+        {/* Sidebar filtrów (desktop) */}
+        <aside className="hidden lg:block">
+          {facets && offers && offers.length > 0 && (
+            <div className="sticky top-6 rounded-2xl border border-neutral-200 bg-white p-4">
+              <FlightFiltersPanel facets={facets} filters={filters} onChange={setFilters} onClear={() => setFilters(EMPTY_FILTERS)} />
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </aside>
 
-      {/* Empty / error */}
-      {offers !== null && sorted.length === 0 && (
-        <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-8 text-center">
-          <p className="text-base font-semibold text-neutral-900">
-            {error ?? "Brak lotów dla wybranych dat"}
-          </p>
-          <p className="mt-1 text-sm text-neutral-600">
-            Spróbuj zmienić daty albo lotnisko wylotu. Część tras lata tylko w wybrane dni tygodnia.
-          </p>
-        </div>
-      )}
+        {/* Kolumna wyników */}
+        <div>
+          {/* Loading skeleton */}
+          {offers === null && (
+            <div className="space-y-3">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse rounded-2xl border border-neutral-200 bg-white p-5">
+                  <div className="h-4 w-1/3 rounded bg-neutral-100" />
+                  <div className="mt-3 h-6 w-2/3 rounded bg-neutral-100" />
+                  <div className="mt-3 h-4 w-1/4 rounded bg-neutral-100" />
+                </div>
+              ))}
+            </div>
+          )}
 
-      {/* Lista */}
-      {sorted.length > 0 && (
-        <div className="mt-6 space-y-3">
-          {sorted.map((offer) => (
-            <OfferCard
-              key={offer.offerId}
-              offer={offer}
-              passengers={passengers}
-              busy={verifyingId === offer.offerId}
-              disabled={Boolean(verifyingId) && verifyingId !== offer.offerId}
-              onSelect={() => selectOffer(offer)}
-            />
-          ))}
+          {/* Brak ofert z serwera / błąd */}
+          {offers !== null && offers.length === 0 && (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center">
+              <p className="text-base font-semibold text-neutral-900">{error ?? "Brak lotów dla wybranych dat"}</p>
+              <p className="mt-1 text-sm text-neutral-600">
+                Spróbuj zmienić daty albo lotnisko wylotu. Część tras lata tylko w wybrane dni tygodnia.
+              </p>
+            </div>
+          )}
+
+          {/* Są oferty, ale filtry wycięły wszystko */}
+          {offers !== null && offers.length > 0 && visible.length === 0 && (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center">
+              <p className="text-base font-semibold text-neutral-900">Brak lotów spełniających filtry</p>
+              <button
+                type="button"
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="mt-3 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                Wyczyść filtry
+              </button>
+            </div>
+          )}
+
+          {/* Lista */}
+          {visible.length > 0 && (
+            <div className="space-y-3">
+              {visible.map((offer) => (
+                <OfferCard
+                  key={offer.offerId}
+                  offer={offer}
+                  passengers={passengers}
+                  busy={verifyingId === offer.offerId}
+                  disabled={Boolean(verifyingId) && verifyingId !== offer.offerId}
+                  onSelect={() => selectOffer(offer)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Drawer filtrów (mobile) */}
+      {drawerOpen && facets && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white p-5">
+            <div className="mb-1 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Zamknij filtry"
+                className="grid h-8 w-8 place-items-center rounded-full text-neutral-500 hover:bg-neutral-100"
+              >
+                ×
+              </button>
+            </div>
+            <FlightFiltersPanel facets={facets} filters={filters} onChange={setFilters} onClear={() => setFilters(EMPTY_FILTERS)} />
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(false)}
+              className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700"
+            >
+              Pokaż wyniki ({visible.length})
+            </button>
+          </div>
         </div>
       )}
 

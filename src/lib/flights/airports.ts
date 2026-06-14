@@ -100,6 +100,7 @@ export const AIRPORTS: readonly Airport[] = [
   { code: "STN", name: "London Stansted", city: "Londyn", country: "Wielka Brytania", aliases: ["stansted", "stn", "londyn stansted", "london stansted"] },
   { code: "LTN", name: "London Luton", city: "Londyn", country: "Wielka Brytania", aliases: ["luton", "ltn", "londyn luton", "london luton"] },
   { code: "LCY", name: "London City", city: "Londyn", country: "Wielka Brytania", aliases: ["london city", "lcy"] },
+  { code: "SEN", name: "London Southend", city: "Londyn", country: "Wielka Brytania", aliases: ["southend", "sen", "londyn southend", "london southend"] },
   { code: "MAN", name: "Manchester", city: "Manchester", country: "Wielka Brytania", aliases: ["manchester", "man"] },
   { code: "EDI", name: "Edynburg", city: "Edynburg", country: "Wielka Brytania", aliases: ["edynburg", "edinburgh", "edi"] },
   { code: "DUB", name: "Dublin", city: "Dublin", country: "Irlandia", aliases: ["dublin", "dub"] },
@@ -144,7 +145,7 @@ export const AIRPORT_GROUPS: readonly AirportGroup[] = [
     label: "Londyn — wszystkie lotniska",
     city: "Londyn",
     country: "Wielka Brytania",
-    airportCodes: ["LHR", "LGW", "STN", "LTN", "LCY"],
+    airportCodes: ["LHR", "LGW", "STN", "LTN", "LCY", "SEN"],
     metroCode: "LON", // zweryfikowane: LON → LHR/LGW/STN/LTN/LCY/SEN
     aliases: ["londyn", "london", "lon", "londyn wszystkie"],
   },
