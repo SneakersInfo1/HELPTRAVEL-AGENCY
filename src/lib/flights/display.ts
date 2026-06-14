@@ -26,6 +26,8 @@ export interface DisplayLeg {
   durationMinutes: number;
   stops: number;
   carriers: string[];
+  /** Kod IATA głównego (pierwszego) przewoźnika odcinka, np. "BA". */
+  carrierCode: string;
   carrierLogo?: string;
   segments: DisplaySegment[];
 }
@@ -97,6 +99,7 @@ function buildLeg(direction: "OUTBOUND" | "INBOUND", rawSegs: RawSegment[], legD
     durationMinutes,
     stops: segs.length - 1,
     carriers,
+    carrierCode: first.carrierCode,
     carrierLogo: first.carrierLogo,
     segments: segs,
   };

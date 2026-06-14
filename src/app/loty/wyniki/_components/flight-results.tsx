@@ -21,6 +21,7 @@ import {
   type DisplayOffer,
 } from "@/lib/flights/display";
 import { saveFlightFlow } from "@/lib/flights/flow-storage";
+import { AirlineLogo } from "@/components/flights/airline-logo";
 
 interface Props {
   origin: string;
@@ -259,12 +260,7 @@ export function FlightResults(props: Props) {
 function LegRow({ leg }: { leg: DisplayLeg }) {
   return (
     <div className="flex items-center gap-3">
-      {leg.carrierLogo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={leg.carrierLogo} alt={leg.carriers[0]} className="h-6 w-6 shrink-0 rounded object-contain" />
-      ) : (
-        <span className="grid h-6 w-6 shrink-0 place-items-center rounded bg-emerald-50 text-[10px] font-bold text-emerald-700">✈</span>
-      )}
+      <AirlineLogo logoUrl={leg.carrierLogo} code={leg.carrierCode} name={leg.carriers[0]} size={24} />
       <div className="flex flex-1 items-center gap-3">
         <div className="text-right">
           <div className="text-base font-bold tabular-nums text-neutral-900">{fmtTime(leg.departureTime)}</div>
@@ -299,19 +295,55 @@ function OfferCard({
   disabled: boolean;
   onSelect: () => void;
 }) {
-  const carrier = offer.legs[0]?.carriers.join(", ");
+  const [showDetails, setShowDetails] = useState(false);
+  const carrierNames = [...new Set(offer.legs.flatMap((l) => l.carriers))].join(", ");
+  const mainCode = offer.legs[0]?.carrierCode;
   return (
     <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-3">
           {offer.legs.map((leg) => (
             <LegRow key={leg.direction} leg={leg} />
           ))}
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
-            <span className="font-medium text-neutral-700">{carrier}</span>
+            <span className="font-medium text-neutral-700">{carrierNames}</span>
+            {mainCode && <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-neutral-600">{mainCode}</span>}
             {offer.hasCarryOnBag && <span className="rounded bg-neutral-100 px-1.5 py-0.5">bagaż podręczny</span>}
             {offer.hasCheckedBag && <span className="rounded bg-neutral-100 px-1.5 py-0.5">bagaż rejestrowany</span>}
           </div>
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            aria-expanded={showDetails}
+            className="text-[11px] font-semibold text-emerald-700 hover:underline"
+          >
+            {showDetails ? "Ukryj szczegóły lotu" : "Szczegóły lotu"}
+          </button>
+          {showDetails && (
+            <div className="space-y-3 rounded-xl bg-neutral-50 p-3">
+              {offer.legs.map((leg) => (
+                <div key={leg.direction}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+                    {leg.direction === "OUTBOUND" ? "Wylot" : "Powrót"} · {leg.originCode} → {leg.destinationCode} · {fmtDuration(leg.durationMinutes)} · {stopsLabel(leg.stops)}
+                  </p>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {leg.segments.map((s, i) => (
+                      <li key={i} className="flex items-center gap-2 text-[11px] text-neutral-600">
+                        <AirlineLogo logoUrl={s.carrierLogo} code={s.carrierCode} name={s.carrierName} size={18} />
+                        <span className="font-medium text-neutral-800">{s.carrierName}</span>
+                        {(s.carrierCode || s.flightNumber) && (
+                          <span className="font-mono text-neutral-400">{[s.carrierCode, s.flightNumber].filter(Boolean).join(" ")}</span>
+                        )}
+                        <span className="ml-auto whitespace-nowrap tabular-nums">
+                          {fmtTime(s.departureTime)} {s.originCode} → {fmtTime(s.arrivalTime)} {s.destinationCode}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2 border-t border-neutral-100 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
           <div className="text-right">

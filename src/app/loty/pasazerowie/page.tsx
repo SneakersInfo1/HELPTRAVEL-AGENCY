@@ -177,12 +177,6 @@ export default function PassengersPage() {
 
       <form onSubmit={handleSubmit} className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          {/* Wyjaśnienie po co dane dokumentu */}
-          <div className="rounded-xl border border-emerald-900/10 bg-emerald-50/60 p-4 text-xs text-emerald-900/80">
-            Dane dokumentu (paszport albo dowód) są wymagane przez przewoźnika do wystawienia biletu. Numer dokumentu
-            przechowujemy w formie zamaskowanej i nie trafia on do żadnej analityki.
-          </div>
-
           {pax.map((p, i) => (
             <fieldset key={i} className="rounded-2xl border border-neutral-200 bg-white p-5">
               <legend className="px-1 text-sm font-bold text-neutral-900">
