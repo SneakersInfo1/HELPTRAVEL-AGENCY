@@ -1,6 +1,7 @@
 // /loty/platnosc/return — cel przekierowania z widgetu LiteAPI/Stripe po
-// płatności (smuggle `sid`). Server: finalizuje rezerwację przez
-// POST /api/flights/book {sessionId}, po czym:
+// płatności (smuggle `sid`). Server: finalizuje rezerwację BEZPOŚREDNIO
+// (finalizeFlightBooking, in-process — NIE przez HTTP self-fetch, który na
+// preview trafiał na produkcję bez tras lotów; patrz finalize.ts), po czym:
 //   • confirmed/pending → redirect na /loty/potwierdzenie/[bookingId]
 //   • manual_review (202) → komunikat 1.4.5 (płatność OK, ręczna weryfikacja)
 //   • błąd → komunikat + powrót do płatności
@@ -11,7 +12,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { getSiteUrl } from "@/lib/mvp/site";
+import { finalizeFlightBooking } from "@/lib/flights/finalize";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -37,15 +38,14 @@ export default async function FlightReturnPage({ searchParams }: { searchParams:
   let status = 0;
   let body: { bookingId?: string; bookingStatus?: string; error?: string; message?: string } = {};
   try {
-    const res = await fetch(`${getSiteUrl()}/api/flights/book`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": sid },
-      body: JSON.stringify({ sessionId: sid }),
-      cache: "no-store",
-    });
-    status = res.status;
-    body = await res.json().catch(() => ({}));
+    // Wywołanie BEZPOŚREDNIE (ta sama deployment) — bez self-fetchu na domenę
+    // kanoniczną. Idempotentne: refresh strony nie zdubluje booka.
+    const r = await finalizeFlightBooking(sid);
+    status = r.status;
+    body = r.body as typeof body;
   } catch {
+    // Tu trafiamy tylko gdy store (Redis) padł na starcie — payment NIE został
+    // jeszcze oznaczony jako paid, więc uczciwy komunikat + kontakt.
     return (
       <Shell title="Problem z finalizacją">
         <p className="text-sm text-neutral-600">Wystąpił problem techniczny. Jeśli płatność przeszła, skontaktujemy się z Tobą. Możesz też napisać: {SUPPORT_EMAIL}.</p>
