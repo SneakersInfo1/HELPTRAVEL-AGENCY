@@ -116,7 +116,11 @@ export function RangeCalendar({ value, onChange, numberOfMonths }: Props) {
         weekday:
           "w-10 text-center text-[11px] font-semibold uppercase text-emerald-900/45",
         week: "mt-1 flex",
-        day: "p-0",
+        // Stała szerokość KOMÓRKI (nie tylko buttona) — inaczej puste komórki
+        // dni „outside" (showOutsideDays=false, brak buttona) miały 0 px i przy
+        // `flex` dni pierwszego tygodnia pakowały się do lewej zamiast trafiać w
+        // swoją kolumnę dnia tygodnia (np. 1 sierpnia lądował w pon zamiast sob).
+        day: "h-10 w-10 p-0",
         day_button:
           "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium text-emerald-950 transition hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 disabled:pointer-events-none",
         range_start: "[&>button]:bg-emerald-600 [&>button]:text-white [&>button]:hover:bg-emerald-700",

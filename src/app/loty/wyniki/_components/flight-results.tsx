@@ -315,6 +315,9 @@ function OfferCard({
   const carrierNames = [...new Set(offer.legs.flatMap((l) => l.carriers))].join(", ");
   const mainCode = offer.legs[0]?.carrierCode;
   const multiFare = offer.fares.length > 1;
+  // Cena GŁÓWNA = za jedną osobę (jak „za noc" w hotelach); suma za wszystkich
+  // mniej wyróżniona. Przy 1 pasażerze per-osobę == suma, więc sumy nie dublujemy.
+  const perPerson = offer.total !== null && passengers > 0 ? Math.round(offer.total / passengers) : offer.total;
   return (
     <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -364,8 +367,13 @@ function OfferCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2 border-t border-neutral-100 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
           <div className="text-right">
-            <div className="text-xl font-bold text-emerald-700">{fmtMoneyPln(offer.total, offer.currency)}</div>
-            <div className="text-[11px] text-neutral-500">za {passengers} {passengers === 1 ? "pasażera" : "pasażerów"} · wł. opłat</div>
+            <div className="text-xl font-bold text-emerald-700">
+              {fmtMoneyPln(perPerson, offer.currency)}
+              <span className="text-xs font-medium text-neutral-400"> / os.</span>
+            </div>
+            <div className="text-[11px] text-neutral-500">
+              {passengers > 1 ? `${fmtMoneyPln(offer.total, offer.currency)} za ${passengers} pasażerów · ` : ""}wł. opłat
+            </div>
             {multiFare && <div className="text-[10px] font-medium text-emerald-600">{offer.fares.length} taryf z bagażem →</div>}
           </div>
           <button
