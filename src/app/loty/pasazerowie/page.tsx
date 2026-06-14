@@ -272,6 +272,17 @@ export default function PassengersPage() {
             <div className="mt-3 space-y-1 text-sm text-neutral-600">
               <div className="flex justify-between"><span>Trasa</span><span className="font-medium text-neutral-900">{flow.origin} → {flow.destination}</span></div>
               <div className="flex justify-between"><span>Pasażerowie</span><span className="font-medium text-neutral-900">{flow.adults + flow.children + flow.infants}</span></div>
+              {flow.fare && (
+                <div className="flex justify-between"><span>Taryfa</span><span className="font-medium text-neutral-900">{flow.fare.name}</span></div>
+              )}
+              {flow.fare && (
+                <div className="flex justify-between text-xs">
+                  <span>Bagaż</span>
+                  <span className="text-neutral-500">
+                    {[flow.fare.hasCarryOnBag ? "podręczny" : null, flow.fare.hasCheckedBag ? "rejestrowany" : null].filter(Boolean).join(" + ") || "wg taryfy"}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="mt-3 flex items-baseline justify-between border-t border-neutral-100 pt-3">
               <span className="text-sm font-semibold text-neutral-700">Razem</span>

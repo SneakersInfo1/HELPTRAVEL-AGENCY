@@ -32,6 +32,17 @@ export interface DisplayLeg {
   segments: DisplaySegment[];
 }
 
+/** Wariant taryfy tej samej trasy (branded fare: Basic/Smart/Go/Plus…) — różni
+ *  się bagażem i ceną. To realny mechanizm „dodania bagażu" w LiteAPI Flights. */
+export interface FareOption {
+  offerId: string;
+  fareName: string;
+  total: number | null;
+  currency: string;
+  hasCheckedBag: boolean;
+  hasCarryOnBag: boolean;
+}
+
 export interface DisplayOffer {
   offerId: string;
   total: number | null;
@@ -41,6 +52,9 @@ export interface DisplayOffer {
   maxDurationMinutes: number;
   hasCheckedBag: boolean;
   hasCarryOnBag: boolean;
+  /** Taryfy tej trasy (z journey.offers[]) — do kroku „Bagaż / taryfa". Zawiera
+   *  też taryfę bazową (cheapestOffer). Posortowane rosnąco po cenie. */
+  fares: FareOption[];
 }
 
 interface RawSegment {
@@ -53,14 +67,48 @@ interface RawSegment {
   carrier?: { marketingName?: string; marketingCode?: string; marketingLogo?: string };
   flight?: { marketingNumber?: string };
 }
+interface RawOffer {
+  offerId?: string;
+  pricing?: { display?: { total?: number; currency?: string } };
+  baggage?: { hasCheckedBag?: boolean; hasCarryOnBag?: boolean };
+  fare?: { family?: string };
+}
 interface RawJourney {
-  cheapestOffer?: {
-    offerId?: string;
-    pricing?: { display?: { total?: number; currency?: string } };
-    baggage?: { hasCheckedBag?: boolean; hasCarryOnBag?: boolean };
-  };
+  cheapestOffer?: RawOffer;
+  offers?: RawOffer[];
   segments?: RawSegment[];
   legDurations?: Array<{ direction?: string; duration?: { minutes?: number } }>;
+}
+
+/** Nazwa taryfy: preferuj fare.family z API, w razie braku wyprowadź z bagażu. */
+function fareName(o: RawOffer): string {
+  if (o.fare?.family) return o.fare.family;
+  const carry = Boolean(o.baggage?.hasCarryOnBag);
+  const checked = Boolean(o.baggage?.hasCheckedBag);
+  if (carry && checked) return "Z pełnym bagażem";
+  if (checked) return "Z bagażem rejestrowanym";
+  if (carry) return "Z bagażem podręcznym";
+  return "Podstawowa";
+}
+
+/** Taryfy trasy z journey.offers[] (fallback: sam cheapestOffer). Dedup + sort. */
+function buildFares(j: RawJourney): FareOption[] {
+  const raw = (j.offers && j.offers.length > 0 ? j.offers : j.cheapestOffer ? [j.cheapestOffer] : []) as RawOffer[];
+  const seen = new Set<string>();
+  const fares: FareOption[] = [];
+  for (const o of raw) {
+    if (!o.offerId || seen.has(o.offerId)) continue;
+    seen.add(o.offerId);
+    fares.push({
+      offerId: o.offerId,
+      fareName: fareName(o),
+      total: o.pricing?.display?.total ?? null,
+      currency: o.pricing?.display?.currency ?? "PLN",
+      hasCheckedBag: Boolean(o.baggage?.hasCheckedBag),
+      hasCarryOnBag: Boolean(o.baggage?.hasCarryOnBag),
+    });
+  }
+  return fares.sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity));
 }
 
 function toSegment(s: RawSegment): DisplaySegment {
@@ -123,6 +171,7 @@ export function normalizeJourney(j: RawJourney): DisplayOffer | null {
     maxDurationMinutes: Math.max(...legs.map((l) => l.durationMinutes)),
     hasCheckedBag: Boolean(j.cheapestOffer?.baggage?.hasCheckedBag),
     hasCarryOnBag: Boolean(j.cheapestOffer?.baggage?.hasCarryOnBag),
+    fares: buildFares(j),
   };
 }
 

@@ -24,6 +24,8 @@ export interface FlightFlow {
   verifiedTotal: number | null;
   verifiedCurrency: string;
   verifiedAt: number; // epoch ms — do reguły „re-verify po 10 min"
+  // Wybrana taryfa (krok „Bagaż / taryfa", Faza D) — do podsumowania w checkoutcie.
+  fare?: { name: string; hasCarryOnBag: boolean; hasCheckedBag: boolean };
   // Po prebooku (ustawiane na stronie pasażerów).
   sessionId?: string;
   secretKey?: string;

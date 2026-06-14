@@ -58,9 +58,6 @@ export function FlightResults(props: Props) {
   const [sort, setSort] = useState<SortKey>("best");
   const [filters, setFilters] = useState<FlightFilters>(EMPTY_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const [priceChange, setPriceChange] = useState<{ offer: DisplayOffer; oldTotal: number; newTotal: number; currency: string } | null>(null);
   const fetchedRef = useRef(false);
 
   const passengers = adults + childrenCount + infants;
@@ -127,57 +124,21 @@ export function FlightResults(props: Props) {
     [offers, filters, sort],
   );
 
-  function toResults(offer: DisplayOffer, total: number | null, currency: string) {
-    // Zapisz REALNE lotnisko wylotu wybranej oferty (grupa „wszystkie lotniska"
-    // miesza lotniska) — dalszy flow pokazuje konkretny kod, nie grupę.
+  function selectOffer(offer: DisplayOffer) {
+    track("flight_select", { offer_id: offer.offerId, price: offer.total ?? undefined, currency: offer.currency, carrier: offer.legs[0]?.carriers[0] });
+    // REALNE lotnisko wylotu (grupa „wszystkie lotniska" miesza lotniska).
     const actualOrigin = offer.legs[0]?.originCode || origins[0];
+    const base = offer.fares[0]; // taryfa bazowa (najtańsza) = aktualnie pokazana
     saveFlightFlow({
       origin: actualOrigin, destination, depart, ret, adults, children: childrenCount, infants,
       offerId: offer.offerId, offer,
-      verifiedTotal: total, verifiedCurrency: currency, verifiedAt: Date.now(),
+      verifiedTotal: offer.total, verifiedCurrency: offer.currency, verifiedAt: Date.now(),
+      fare: base ? { name: base.fareName, hasCarryOnBag: base.hasCarryOnBag, hasCheckedBag: base.hasCheckedBag } : undefined,
     });
-    router.push("/loty/pasazerowie");
+    // Krok „Bagaż / taryfa" (Faza D). Weryfikacja oferty dzieje się TAM, na
+    // finalnie wybranej taryfie (priceChanged/OFFER_UNAVAILABLE obsłużone tam).
+    router.push("/loty/dodatki");
   }
-
-  async function selectOffer(offer: DisplayOffer) {
-    if (verifyingId) return;
-    setVerifyingId(offer.offerId);
-    track("flight_select", { offer_id: offer.offerId, price: offer.total ?? undefined, currency: offer.currency, carrier: offer.legs[0]?.carriers[0] });
-    try {
-      const res = await fetch("/api/flights/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ offerId: offer.offerId, previousTotal: offer.total ?? undefined, previousCurrency: offer.currency }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (json.error === "OFFER_UNAVAILABLE") {
-          setToast("Ta oferta jest już niedostępna. Wybierz inną.");
-          setOffers((prev) => (prev ? prev.filter((o) => o.offerId !== offer.offerId) : prev));
-        } else {
-          setToast(json.message || "Nie udało się potwierdzić oferty. Spróbuj ponownie.");
-        }
-        return;
-      }
-      if (json.priceChanged && typeof json.newTotal === "number") {
-        track("flight_verify_price_change", { offer_id: offer.offerId, old_price: json.oldTotal, new_price: json.newTotal, currency: json.currency });
-        setPriceChange({ offer, oldTotal: json.oldTotal ?? offer.total ?? 0, newTotal: json.newTotal, currency: json.currency ?? offer.currency });
-        return;
-      }
-      toResults(offer, json.total ?? offer.total, json.currency ?? offer.currency);
-    } catch {
-      setToast("Problem z połączeniem. Spróbuj ponownie.");
-    } finally {
-      setVerifyingId(null);
-    }
-  }
-
-  // Auto-ukrycie tostu.
-  useEffect(() => {
-    if (!toast) return;
-    const id = window.setTimeout(() => setToast(null), 4000);
-    return () => window.clearTimeout(id);
-  }, [toast]);
 
   return (
     <main className="mx-auto min-h-[60vh] max-w-6xl px-4 py-8">
@@ -278,8 +239,6 @@ export function FlightResults(props: Props) {
                   key={offer.offerId}
                   offer={offer}
                   passengers={passengers}
-                  busy={verifyingId === offer.offerId}
-                  disabled={Boolean(verifyingId) && verifyingId !== offer.offerId}
                   onSelect={() => selectOffer(offer)}
                 />
               ))}
@@ -311,48 +270,6 @@ export function FlightResults(props: Props) {
             >
               Pokaż wyniki ({visible.length})
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed inset-x-0 bottom-4 z-50 mx-auto w-fit max-w-[92%] rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
-          {toast}
-        </div>
-      )}
-
-      {/* Modal zmiany ceny */}
-      {priceChange && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-neutral-900">Cena lotu się zmieniła</h2>
-            <p className="mt-2 text-sm text-neutral-600">
-              Cena lotu zmieniła się z{" "}
-              <span className="font-semibold">{fmtMoneyPln(priceChange.oldTotal, priceChange.currency)}</span> na{" "}
-              <span className="font-semibold text-emerald-700">{fmtMoneyPln(priceChange.newTotal, priceChange.currency)}</span>.
-              Kontynuuj tylko, jeśli akceptujesz nową cenę.
-            </p>
-            <div className="mt-5 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setPriceChange(null)}
-                className="flex-1 rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
-              >
-                Wróć do wyników
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const pc = priceChange;
-                  setPriceChange(null);
-                  toResults(pc.offer, pc.newTotal, pc.currency);
-                }}
-                className="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                Akceptuję
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -388,19 +305,16 @@ function LegRow({ leg }: { leg: DisplayLeg }) {
 function OfferCard({
   offer,
   passengers,
-  busy,
-  disabled,
   onSelect,
 }: {
   offer: DisplayOffer;
   passengers: number;
-  busy: boolean;
-  disabled: boolean;
   onSelect: () => void;
 }) {
   const [showDetails, setShowDetails] = useState(false);
   const carrierNames = [...new Set(offer.legs.flatMap((l) => l.carriers))].join(", ");
   const mainCode = offer.legs[0]?.carrierCode;
+  const multiFare = offer.fares.length > 1;
   return (
     <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -452,14 +366,14 @@ function OfferCard({
           <div className="text-right">
             <div className="text-xl font-bold text-emerald-700">{fmtMoneyPln(offer.total, offer.currency)}</div>
             <div className="text-[11px] text-neutral-500">za {passengers} {passengers === 1 ? "pasażera" : "pasażerów"} · wł. opłat</div>
+            {multiFare && <div className="text-[10px] font-medium text-emerald-600">{offer.fares.length} taryf z bagażem →</div>}
           </div>
           <button
             type="button"
             onClick={onSelect}
-            disabled={busy || disabled}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700"
           >
-            {busy ? "Sprawdzam…" : "Wybierz"}
+            Wybierz
           </button>
         </div>
       </div>
