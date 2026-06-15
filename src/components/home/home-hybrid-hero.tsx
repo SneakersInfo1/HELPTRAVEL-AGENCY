@@ -25,59 +25,63 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
         {/* Cinematic tlo */}
         <CinematicBackdrop images={backdropImages} />
 
-        {/* Content — kompaktowe, form widoczny w pierwszym viewporcie */}
-        <div className="relative z-20 flex min-h-[560px] flex-col gap-5 px-5 py-6 sm:min-h-[600px] sm:gap-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
-          {/* Top row: badge + 100% DARMOWE */}
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-md sm:text-[11px]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-              Loty · Hotele · Plan wyjazdu
-            </div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/50 bg-emerald-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-100 backdrop-blur-md sm:text-[11px]">
-              <span aria-hidden>🎁</span>
-              100% DARMOWE
-            </div>
-          </div>
-
-          {/* Mood chips */}
-          <MoodChips />
+        {/* Content — wyśrodkowany, dopracowany układ; form widoczny w pierwszym
+            viewporcie. Mniej konkurujących elementów u góry niż poprzednio:
+            jedna elegancka linia „eyebrow" zamiast dwóch pigułek, większy
+            nagłówek, a sygnały zaufania zebrane w jeden rząd pod wyszukiwarką. */}
+        <div className="relative z-20 flex min-h-[600px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[640px] sm:px-8 sm:py-12 lg:min-h-[680px] lg:px-12 lg:py-14">
+          {/* Eyebrow — jedna, dopracowana linia */}
+          <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90 shadow-[0_2px_12px_rgba(0,0,0,0.18)] backdrop-blur-md sm:tracking-[0.24em] sm:text-[11px]">
+            <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+            Loty · Hotele · Plan wyjazdu
+          </span>
 
           {/* Headline */}
-          <div className="mx-auto max-w-3xl text-center">
-            <h1 className="font-display text-3xl font-semibold leading-[1.02] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] sm:text-4xl md:text-5xl lg:text-[3.5rem]">
-              Gdzie{" "}
-              <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 bg-clip-text text-transparent">
-                uciekasz
-              </span>{" "}
-              tym razem?
-            </h1>
-            <p className="mx-auto mt-2 max-w-xl text-xs leading-6 text-white/85 drop-shadow-md sm:mt-3 sm:text-sm sm:leading-7">
-              Kierunek, daty, pasazerowie — w 3 minuty gotowy plan z lotem i hotelem.
-              Z Polski albo z calej Europy.
-            </p>
+          <h1 className="mt-7 max-w-3xl font-display text-[2.15rem] font-semibold leading-[1.03] text-white drop-shadow-[0_2px_28px_rgba(0,0,0,0.55)] sm:mt-8 sm:text-5xl lg:text-[3.75rem]">
+            Gdzie{" "}
+            <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 bg-clip-text text-transparent">
+              uciekasz
+            </span>{" "}
+            tym razem?
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.4)] sm:text-base sm:leading-8">
+            Kierunek, daty, pasażerowie — w 3 minuty gotowy plan z lotem i hotelem.
+            Z Polski albo z całej Europy.
+          </p>
+
+          {/* Mood chips */}
+          <div className="mt-7 w-full max-w-2xl sm:mt-8">
+            <MoodChips />
           </div>
 
-          {/* Form — toggle Hotele/Loty + pasek (Faza 2) */}
-          <div className="mt-auto">
+          {/* Wyszukiwarka — toggle Hotele/Loty + pasek (Faza 2). Bez zmian
+              funkcjonalnych: ten sam formularz, te same eventy GA4. */}
+          <div className="mt-6 w-full max-w-3xl sm:mt-7">
             <HomeSearchTabs />
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[10px] text-white/80 sm:text-[11px]">
-              <span className="flex items-center gap-1.5">
-                <span aria-hidden className="text-amber-300">✦</span>
-                Loty z 22 lotnisk (PL + EU)
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span aria-hidden className="text-amber-300">✦</span>
-                Bez rejestracji
-              </span>
-            </div>
           </div>
+
+          {/* Sygnały zaufania — jeden elegancki rząd (zastępuje pigułkę
+              „100% DARMOWE" przeniesioną tu z góry). */}
+          <ul className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-medium text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)] sm:mt-6 sm:text-xs">
+            {["100% darmowe", "Loty z 22 lotnisk (PL + EU)", "Bez rejestracji"].map((item) => (
+              <li key={item} className="inline-flex items-center gap-1.5">
+                <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
+                  <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
+                </svg>
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Kafelki pod hero — "gotowy pomysl" */}
         <div className="relative z-10 border-t border-white/15 bg-gradient-to-b from-emerald-950/40 via-emerald-950/70 to-emerald-950/90 px-5 py-6 backdrop-blur-md sm:px-8 sm:py-8 lg:px-12">
-          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-            Popularne kierunki
-          </p>
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+              Popularne kierunki
+            </p>
+            <span className="hidden text-[11px] text-white/60 sm:inline">Ceny w PLN · z lotem i hotelem</span>
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {featured.map((tile) => (
               <DestinationTile

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
-import { HomePageSections } from "@/components/home/home-page-sections";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -66,7 +65,7 @@ const heroDestinationSlugs = [
   "heraklion-greece",
 ] as const;
 
-export async function HomePageView({ locale }: { locale: SiteLocale }) {
+export async function HomePageView() {
   // Tiles link to the search results, not to publisher guides — so they only
   // need a destination PROFILE (photo recipe, flight time), not membership in
   // the curated publishedDestinationSlugs list. Resolving profiles directly
@@ -93,11 +92,10 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} />
       </div>
-      <HomePageSections locale={locale} />
     </main>
   );
 }
 
 export default async function Home() {
-  return HomePageView({ locale: "pl" });
+  return HomePageView();
 }
