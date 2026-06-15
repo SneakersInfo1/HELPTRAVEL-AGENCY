@@ -55,15 +55,17 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
           </div>
 
           {/* Wyszukiwarka — toggle Hotele/Loty + pasek (Faza 2). Bez zmian
-              funkcjonalnych: ten sam formularz, te same eventy GA4. */}
-          <div className="mt-6 w-full max-w-3xl sm:mt-7">
+              funkcjonalnych: ten sam formularz, te same eventy GA4.
+              max-w-4xl (nie 3xl) — tryb LOTY ma 5 pól (Skąd/Dokąd/Termin/
+              Pasażerowie/CTA), na 3xl pole „Skąd" się zgniatało. */}
+          <div className="mt-6 w-full max-w-4xl sm:mt-7">
             <HomeSearchTabs />
           </div>
 
           {/* Sygnały zaufania — jeden elegancki rząd (zastępuje pigułkę
               „100% DARMOWE" przeniesioną tu z góry). */}
           <ul className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-medium text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)] sm:mt-6 sm:text-xs">
-            {["100% darmowe", "Loty z 22 lotnisk (PL + EU)", "Bez rejestracji"].map((item) => (
+            {["100% darmowe", "Loty z ponad 80 lotnisk", "Bez rejestracji"].map((item) => (
               <li key={item} className="inline-flex items-center gap-1.5">
                 <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
                   <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />

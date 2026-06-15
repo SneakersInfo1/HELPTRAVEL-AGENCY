@@ -94,6 +94,8 @@ export const AIRPORTS: readonly Airport[] = [
   { code: "SZZ", name: "Szczecin-Goleniów", city: "Szczecin", country: "Polska", aliases: ["szczecin", "szz", "goleniow", "stettin"] },
   { code: "BZG", name: "Bydgoszcz", city: "Bydgoszcz", country: "Polska", aliases: ["bydgoszcz", "bzg"] },
   { code: "LCJ", name: "Łódź-Lublinek", city: "Łódź", country: "Polska", aliases: ["lodz", "lcj", "lublinek"] },
+  { code: "SZY", name: "Olsztyn-Mazury", city: "Olsztyn", country: "Polska", aliases: ["olsztyn", "mazury", "szymany", "szy", "olsztyn mazury"] },
+  { code: "IEG", name: "Zielona Góra-Babimost", city: "Zielona Góra", country: "Polska", aliases: ["zielona gora", "babimost", "ieg"] },
   // Wielka Brytania / Irlandia (diaspora)
   { code: "LHR", name: "London Heathrow", city: "Londyn", country: "Wielka Brytania", aliases: ["heathrow", "lhr", "londyn heathrow", "london heathrow"] },
   { code: "LGW", name: "London Gatwick", city: "Londyn", country: "Wielka Brytania", aliases: ["gatwick", "lgw", "londyn gatwick", "london gatwick"] },
@@ -123,6 +125,61 @@ export const AIRPORTS: readonly Airport[] = [
   { code: "MXP", name: "Mediolan-Malpensa", city: "Mediolan", country: "Włochy", aliases: ["malpensa", "mxp", "mediolan malpensa"] },
   { code: "LIN", name: "Mediolan-Linate", city: "Mediolan", country: "Włochy", aliases: ["linate", "lin", "mediolan linate"] },
   { code: "BGY", name: "Mediolan-Bergamo", city: "Mediolan", country: "Włochy", aliases: ["bergamo", "bgy", "orio al serio", "mediolan bergamo"] },
+
+  // ── Poza Europą — główne huby interkontynentalne ────────────────────────────
+  // Wylot także spoza Europy (diaspora, przesiadki, podróże dalekie). Kody to
+  // realne IATA obsługiwane przez LiteAPI Flights (GDS). Bez grup „wszystkie
+  // lotniska" — dodajemy pojedyncze lotniska (grupy wymagają weryfikacji kodu
+  // metra, jak dla Londynu/Paryża).
+  // Ameryka Północna
+  { code: "JFK", name: "Nowy Jork-JFK", city: "Nowy Jork", country: "USA", aliases: ["nowy jork", "new york", "jfk", "nowy jork jfk", "kennedy"] },
+  { code: "EWR", name: "Nowy Jork-Newark", city: "Nowy Jork", country: "USA", aliases: ["newark", "ewr", "nowy jork newark", "new york newark"] },
+  { code: "LAX", name: "Los Angeles", city: "Los Angeles", country: "USA", aliases: ["los angeles", "lax"] },
+  { code: "ORD", name: "Chicago-O'Hare", city: "Chicago", country: "USA", aliases: ["chicago", "ord", "ohare", "o'hare", "chicago ohare"] },
+  { code: "MIA", name: "Miami", city: "Miami", country: "USA", aliases: ["miami", "mia"] },
+  { code: "SFO", name: "San Francisco", city: "San Francisco", country: "USA", aliases: ["san francisco", "sfo"] },
+  { code: "YYZ", name: "Toronto-Pearson", city: "Toronto", country: "Kanada", aliases: ["toronto", "yyz", "pearson"] },
+  { code: "YVR", name: "Vancouver", city: "Vancouver", country: "Kanada", aliases: ["vancouver", "yvr"] },
+  // Ameryka Łacińska / Karaiby
+  { code: "CUN", name: "Cancún", city: "Cancún", country: "Meksyk", aliases: ["cancun", "cun", "meksyk"] },
+  { code: "PUJ", name: "Punta Cana", city: "Punta Cana", country: "Dominikana", aliases: ["punta cana", "puj", "dominikana"] },
+  { code: "GRU", name: "São Paulo-Guarulhos", city: "São Paulo", country: "Brazylia", aliases: ["sao paulo", "gru", "guarulhos"] },
+  { code: "GIG", name: "Rio de Janeiro-Galeão", city: "Rio de Janeiro", country: "Brazylia", aliases: ["rio de janeiro", "gig", "galeao", "rio"] },
+  { code: "EZE", name: "Buenos Aires-Ezeiza", city: "Buenos Aires", country: "Argentyna", aliases: ["buenos aires", "eze", "ezeiza"] },
+  { code: "LIM", name: "Lima", city: "Lima", country: "Peru", aliases: ["lima", "lim"] },
+  { code: "BOG", name: "Bogota", city: "Bogota", country: "Kolumbia", aliases: ["bogota", "bog", "kolumbia"] },
+  // Bliski Wschód
+  { code: "DXB", name: "Dubaj", city: "Dubaj", country: "Zjednoczone Emiraty Arabskie", aliases: ["dubaj", "dubai", "dxb", "emiraty"] },
+  { code: "AUH", name: "Abu Zabi", city: "Abu Zabi", country: "Zjednoczone Emiraty Arabskie", aliases: ["abu zabi", "abu dhabi", "auh"] },
+  { code: "DOH", name: "Doha", city: "Doha", country: "Katar", aliases: ["doha", "doh", "katar"] },
+  { code: "TLV", name: "Tel Awiw", city: "Tel Awiw", country: "Izrael", aliases: ["tel awiw", "tel aviv", "tlv", "izrael"] },
+  { code: "RUH", name: "Rijad", city: "Rijad", country: "Arabia Saudyjska", aliases: ["rijad", "riyadh", "ruh"] },
+  // Azja
+  { code: "BKK", name: "Bangkok-Suvarnabhumi", city: "Bangkok", country: "Tajlandia", aliases: ["bangkok", "bkk", "suvarnabhumi", "tajlandia"] },
+  { code: "HKT", name: "Phuket", city: "Phuket", country: "Tajlandia", aliases: ["phuket", "hkt"] },
+  { code: "SIN", name: "Singapur-Changi", city: "Singapur", country: "Singapur", aliases: ["singapur", "singapore", "sin", "changi"] },
+  { code: "HKG", name: "Hongkong", city: "Hongkong", country: "Hongkong", aliases: ["hongkong", "hong kong", "hkg"] },
+  { code: "NRT", name: "Tokio-Narita", city: "Tokio", country: "Japonia", aliases: ["tokio", "tokyo", "nrt", "narita"] },
+  { code: "HND", name: "Tokio-Haneda", city: "Tokio", country: "Japonia", aliases: ["tokio haneda", "hnd", "haneda"] },
+  { code: "ICN", name: "Seul-Incheon", city: "Seul", country: "Korea Południowa", aliases: ["seul", "seoul", "icn", "incheon"] },
+  { code: "KUL", name: "Kuala Lumpur", city: "Kuala Lumpur", country: "Malezja", aliases: ["kuala lumpur", "kul", "malezja"] },
+  { code: "DEL", name: "Delhi", city: "Delhi", country: "Indie", aliases: ["delhi", "new delhi", "del"] },
+  { code: "BOM", name: "Mumbaj", city: "Mumbaj", country: "Indie", aliases: ["mumbaj", "mumbai", "bom", "bombaj"] },
+  { code: "DPS", name: "Denpasar-Bali", city: "Bali", country: "Indonezja", aliases: ["bali", "denpasar", "dps", "indonezja"] },
+  { code: "PEK", name: "Pekin", city: "Pekin", country: "Chiny", aliases: ["pekin", "beijing", "pek"] },
+  { code: "PVG", name: "Szanghaj-Pudong", city: "Szanghaj", country: "Chiny", aliases: ["szanghaj", "shanghai", "pvg", "pudong"] },
+  // Afryka
+  { code: "CAI", name: "Kair", city: "Kair", country: "Egipt", aliases: ["kair", "cairo", "cai", "egipt"] },
+  { code: "HRG", name: "Hurghada", city: "Hurghada", country: "Egipt", aliases: ["hurghada", "hrg"] },
+  { code: "SSH", name: "Szarm el-Szejk", city: "Szarm el-Szejk", country: "Egipt", aliases: ["szarm el szejk", "sharm el sheikh", "ssh", "sharm"] },
+  { code: "CMN", name: "Casablanca", city: "Casablanca", country: "Maroko", aliases: ["casablanca", "cmn", "maroko"] },
+  { code: "RAK", name: "Marrakesz", city: "Marrakesz", country: "Maroko", aliases: ["marrakesz", "marrakesh", "rak"] },
+  { code: "JNB", name: "Johannesburg", city: "Johannesburg", country: "RPA", aliases: ["johannesburg", "jnb", "rpa"] },
+  { code: "CPT", name: "Kapsztad", city: "Kapsztad", country: "RPA", aliases: ["kapsztad", "cape town", "cpt"] },
+  // Oceania
+  { code: "SYD", name: "Sydney", city: "Sydney", country: "Australia", aliases: ["sydney", "syd", "australia"] },
+  { code: "MEL", name: "Melbourne", city: "Melbourne", country: "Australia", aliases: ["melbourne", "mel"] },
+  { code: "AKL", name: "Auckland", city: "Auckland", country: "Nowa Zelandia", aliases: ["auckland", "akl", "nowa zelandia"] },
 ] as const;
 
 // ── Dane: grupy „wszystkie lotniska" ──────────────────────────────────────────

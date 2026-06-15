@@ -365,7 +365,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       <div
         className={`grid gap-3 lg:items-end ${
           isFlights
-            ? "lg:grid-cols-[1.1fr_1.4fr_1.3fr_1fr_auto]"
+            ? "lg:grid-cols-[minmax(150px,1.1fr)_minmax(170px,1.4fr)_minmax(155px,1.2fr)_minmax(125px,0.95fr)_auto]"
             : "lg:grid-cols-[1.4fr_1.3fr_1fr_auto]"
         }`}
       >
@@ -512,7 +512,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         {/* CTA */}
         <button
           type="submit"
-          className="group relative h-12 overflow-hidden rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60"
+          className="group relative h-12 overflow-hidden whitespace-nowrap rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60"
         >
           <span className="relative z-10 flex items-center justify-center gap-2">
             {isFlights ? "Szukaj lotów" : "Zaplanuj"}

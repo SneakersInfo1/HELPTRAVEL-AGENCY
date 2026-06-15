@@ -83,7 +83,7 @@ export default async function OgImage() {
             fontWeight: 500,
           }}
         >
-          22 lotniska PL i EU · Bez rejestracji · 100% darmowe
+          Ponad 80 lotnisk PL, EU i świat · Bez rejestracji · 100% darmowe
         </div>
       </div>
     ),
