@@ -269,16 +269,36 @@ function airportMatches(a: Airport, q: string): boolean {
 export function searchAirports(query: string, limit = 8): AirportOption[] {
   const q = foldText(query);
   if (!q) {
-    const warsaw = AIRPORT_GROUPS.find((g) => g.id === "warsaw-all");
-    const london = AIRPORT_GROUPS.find((g) => g.id === "london-all");
-    const popularCodes = ["WAW", "KRK", "GDN", "WRO", "KTW", "POZ"];
+    // Lista domyślna (bez wpisywania) — pokazuje REALNĄ szerokość oferty:
+    // cała Polska + europejskie grupy „wszystkie lotniska" + popularne huby
+    // świata. Lista jest przewijalna (combobox: max-h + overflow), a wpisanie
+    // czegokolwiek znajdzie dowolne z >80 lotnisk.
     const opts: AirportOption[] = [];
-    if (warsaw) opts.push({ kind: "group", group: warsaw });
-    for (const c of popularCodes) {
-      const a = lookupAirport(c);
-      if (a) opts.push({ kind: "airport", airport: a });
+    const seen = new Set<string>();
+    const pushGroup = (id: string) => {
+      const g = AIRPORT_GROUPS.find((x) => x.id === id);
+      if (g) opts.push({ kind: "group", group: g });
+    };
+    const pushAirport = (code: string) => {
+      const a = lookupAirport(code);
+      if (a && !seen.has(a.code)) {
+        opts.push({ kind: "airport", airport: a });
+        seen.add(a.code);
+      }
+    };
+    // Polska: grupa Warszawa + wszystkie lotniska krajowe (WMI/RDO siedzą w grupie).
+    pushGroup("warsaw-all");
+    for (const a of AIRPORTS) {
+      if (a.country === "Polska" && a.code !== "WMI" && a.code !== "RDO") pushAirport(a.code);
     }
-    if (london) opts.push({ kind: "group", group: london });
+    // Europa: grupy „wszystkie lotniska".
+    pushGroup("london-all");
+    pushGroup("paris-all");
+    pushGroup("milan-all");
+    // Świat: popularne huby interkontynentalne.
+    for (const c of ["DXB", "DOH", "JFK", "LAX", "BKK", "SIN", "NRT", "ICN", "CUN", "HRG", "RAK", "SYD"]) {
+      pushAirport(c);
+    }
     return opts.slice(0, limit);
   }
 
