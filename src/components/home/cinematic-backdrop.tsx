@@ -50,7 +50,12 @@ export function CinematicBackdrop({ images, intervalMs = 7000 }: CinematicBackdr
                 fetchPriority={i === 0 ? "high" : undefined}
                 loading={i === 0 ? "eager" : "lazy"}
                 quality={70}
-                sizes="100vw"
+                // Hero to zdjęcie object-cover na pełnej szerokości i sporej
+                // wysokości — na telefonie kontener jest „wyższy" niż naturalny
+                // kadr, więc `100vw` (≈ szerokość) niedoszacowywał rozdzielczości
+                // i zdjęcie wychodziło rozpikselowane. Na ≤1024px deklarujemy
+                // ~960px, żeby przeglądarka pobrała ~1920px (ostro przy DPR 2-3).
+                sizes="(max-width: 1024px) 960px, 100vw"
                 className="object-cover"
               />
             </div>
