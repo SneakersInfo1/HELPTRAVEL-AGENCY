@@ -33,12 +33,16 @@ export function MoodChips() {
         <Link
           key={mood.key}
           href={mood.href}
-          className="group inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-white/15 px-4 py-2 text-xs font-semibold text-white backdrop-blur-md transition hover:border-amber-300/70 hover:bg-white/25 hover:text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400/60 sm:text-sm"
+          className="group inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/30 px-4 py-2 text-xs font-semibold text-white shadow-[0_2px_10px_rgba(0,0,0,0.25)] backdrop-blur-md transition hover:border-amber-300/70 hover:bg-black/45 hover:text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400/60 sm:text-sm"
         >
           <span aria-hidden className="text-base transition group-hover:scale-110">
             {mood.icon}
           </span>
-          <span>{mood.label}</span>
+          {/* Kolor na spanie, NIE na <a>: globalna reguła `a { color: inherit }`
+              (poza warstwami) bije utility `text-white` z warstwy utilities, więc
+              tekst linku dziedziczył ciemny foreground. Span nie jest łapany przez
+              tę regułę → biały trzyma się na każdym zdjęciu. */}
+          <span className="text-white transition group-hover:text-amber-100">{mood.label}</span>
         </Link>
       ))}
     </div>

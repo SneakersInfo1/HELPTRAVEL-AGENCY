@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     },
   },
   description:
-    "Zaplanuj wyjazd w 3 minuty: lot + hotel + gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe — płacisz tylko za rezerwacje u partnerów.",
+    "Zaplanuj wyjazd w 3 minuty: lot + hotel + gotowy plan dnia. Ponad 80 lotnisk w Polsce, Europie i na świecie. Bez rejestracji. 100% darmowe — płacisz tylko za rezerwacje u partnerów.",
   keywords: [
     "tani lot i hotel",
     "planer podróży",
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty",
     description:
-      "Zaplanuj cały wyjazd w 3 minuty: lot, hotel i plan dnia w jednym kliku. 22 lotniska PL + EU. Bez rejestracji. 100% darmowe.",
+      "Zaplanuj cały wyjazd w 3 minuty: lot, hotel i plan dnia w jednym kliku. Ponad 80 lotnisk PL, EU i świat. Bez rejestracji. 100% darmowe.",
     url: siteUrl,
     siteName: "HelpTravel",
     locale: "pl_PL",
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "HelpTravel - Loty + hotel i plan w 3 minuty",
-    description: "Zaplanuj wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 0 zł.",
+    description: "Zaplanuj wyjazd w 3 minuty: lot, hotel i plan dnia. Ponad 80 lotnisk PL, EU i świat. Bez rejestracji. 0 zł.",
     // images: generowane przez src/app/twitter-image.tsx (fallback do opengraph-image)
   },
   icons: {
@@ -100,7 +100,7 @@ const structuredData = {
       url: siteUrl,
       inLanguage: ["pl-PL", "en-US"],
       description:
-        "Planer podróży, który łączy lot, hotel i gotowy plan dnia w jednym kliku. 22 lotniska PL+EU. Bez rejestracji.",
+        "Planer podróży, który łączy lot, hotel i gotowy plan dnia w jednym kliku. Ponad 80 lotnisk PL, EU i świat. Bez rejestracji.",
       publisher: { "@id": `${siteUrl}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
