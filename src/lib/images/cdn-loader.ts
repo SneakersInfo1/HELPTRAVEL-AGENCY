@@ -59,6 +59,11 @@ export default function cdnLoader({ src, width, quality }: ImageLoaderProps): st
   // because Next's `sizes` already requests retina widths from this loader
   // (so we'd be double-applying density otherwise).
   if (host === "images.pexels.com" || host === "videos.pexels.com") {
+    // Warianty Pexels (`large`) niosą cap wysokości `h=650`, który razem z
+    // szerokim kadrem ograniczał realny rozmiar zdjęcia. Usuwamy `h`, by `w`
+    // (z next/image) sterowało rozdzielczością — kluczowe dla pełnoekranowego
+    // hero, gdzie zdjęcie jest skalowane object-cover na dużej powierzchni.
+    url.searchParams.delete("h");
     url.searchParams.set("auto", "compress");
     url.searchParams.set("cs", "tinysrgb");
     url.searchParams.set("w", String(width));
