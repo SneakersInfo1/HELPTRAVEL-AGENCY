@@ -22,8 +22,13 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
   return (
     <>
       <section id="hero" className="relative scroll-mt-20 overflow-hidden rounded-b-[2rem] shadow-[0_30px_80px_rgba(16,84,48,0.22)] sm:rounded-[2rem]">
-        {/* Cinematic tlo */}
-        <CinematicBackdrop images={backdropImages} />
+        {/* Blok wizualny — TŁO ZDJĘCIOWE obejmuje TYLKO nagłówek + wyszukiwarkę,
+            NIE pasek kafelków. Wcześniej backdrop rozciągał się na całą sekcję
+            (~1900 px wys. na telefonie), więc zdjęcie (object-cover) było skalowane
+            ~7× → „rozpikselowane". Niższy kontener = to samo zdjęcie jest ostre. */}
+        <div className="relative overflow-hidden">
+          {/* Cinematic tlo */}
+          <CinematicBackdrop images={backdropImages} />
 
         {/* Content — wyśrodkowany, dopracowany układ; form widoczny w pierwszym
             viewporcie. Mniej konkurujących elementów u góry niż poprzednio:
@@ -65,7 +70,7 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
           {/* Sygnały zaufania — jeden elegancki rząd (zastępuje pigułkę
               „100% DARMOWE" przeniesioną tu z góry). */}
           <ul className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-medium text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)] sm:mt-6 sm:text-xs">
-            {["100% darmowe", "Loty z ponad 80 lotnisk", "Bez rejestracji"].map((item) => (
+            {["3 mln hoteli i apartamentów", "Loty z ponad 80 lotnisk", "Bez rejestracji"].map((item) => (
               <li key={item} className="inline-flex items-center gap-1.5">
                 <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
                   <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
@@ -75,9 +80,11 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
             ))}
           </ul>
         </div>
+        </div>
 
-        {/* Kafelki pod hero — "gotowy pomysl" */}
-        <div className="relative z-10 border-t border-white/15 bg-gradient-to-b from-emerald-950/40 via-emerald-950/70 to-emerald-950/90 px-5 py-6 backdrop-blur-md sm:px-8 sm:py-8 lg:px-12">
+        {/* Kafelki pod hero — własne, NIEPRZEZROCZYSTE tło (nie zależy już od
+            tła zdjęciowego, które obejmuje teraz tylko nagłówek). */}
+        <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-6 sm:px-8 sm:py-8 lg:px-12">
           <div className="mb-4 flex items-end justify-between gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
               Popularne kierunki
