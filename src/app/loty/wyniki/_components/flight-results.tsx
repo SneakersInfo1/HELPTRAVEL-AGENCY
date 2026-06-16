@@ -34,6 +34,7 @@ import {
 } from "@/lib/flights/filters";
 import { AirlineLogo } from "@/components/flights/airline-logo";
 import { FlightFiltersPanel } from "@/components/flights/flight-filters";
+import { FlightResultsSkeleton, FlightFiltersSkeleton } from "./flight-results-skeleton";
 
 interface Props {
   /** Kody wylotu: 1 lotnisko, kod metra (LON) albo lista (WAW,WMI,RDO) z grupy. */
@@ -185,6 +186,7 @@ export function FlightResults(props: Props) {
       <div className="mt-5 grid gap-6 lg:grid-cols-[260px_1fr]">
         {/* Sidebar filtrów (desktop) */}
         <aside className="hidden lg:block">
+          {offers === null && <FlightFiltersSkeleton />}
           {facets && offers && offers.length > 0 && (
             <div className="sticky top-6 rounded-2xl border border-neutral-200 bg-white p-4">
               <FlightFiltersPanel facets={facets} filters={filters} onChange={setFilters} onClear={() => setFilters(EMPTY_FILTERS)} />
@@ -194,17 +196,9 @@ export function FlightResults(props: Props) {
 
         {/* Kolumna wyników */}
         <div>
-          {/* Loading skeleton */}
+          {/* Loading — banner aktywnego wyszukiwania + szkielety kart oferty */}
           {offers === null && (
-            <div className="space-y-3">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse rounded-2xl border border-neutral-200 bg-white p-5">
-                  <div className="h-4 w-1/3 rounded bg-neutral-100" />
-                  <div className="mt-3 h-6 w-2/3 rounded bg-neutral-100" />
-                  <div className="mt-3 h-4 w-1/4 rounded bg-neutral-100" />
-                </div>
-              ))}
-            </div>
+            <FlightResultsSkeleton originLabel={headerLabel} destination={destination} />
           )}
 
           {/* Brak ofert z serwera / błąd */}

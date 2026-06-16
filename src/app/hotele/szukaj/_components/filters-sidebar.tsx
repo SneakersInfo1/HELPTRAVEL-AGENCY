@@ -367,21 +367,6 @@ export function FiltersSidebar() {
               ))}
             </div>
           </FilterBlock>
-
-          {/* Udogodnienia: see Sesja C1 FIX 4 — list endpoint doesn't return
-              amenities, so this filter waits for an adapter extension. UI
-              kept disabled with a clear "(wkrótce)" so users see the surface
-              area but don't get fooled by a no-op. */}
-          <FilterBlock title="Udogodnienia (wkrótce)">
-            <div className="space-y-1 text-sm text-neutral-400">
-              {["WiFi", "Parking", "Basen", "Klimatyzacja", "Śniadanie"].map((a) => (
-                <label key={a} className="flex items-center gap-2 opacity-60">
-                  <input type="checkbox" disabled className="h-4 w-4" />
-                  <span>{a}</span>
-                </label>
-              ))}
-            </div>
-          </FilterBlock>
         </div>
 
         {/* Mobile-only sticky-bottom apply (desktop has it at top). */}

@@ -287,6 +287,33 @@ video {
 }
 
 /* ─────────────────────────────────────────────────────────────────────
+ * Indeterminate progress bar — pasek "trwa wyszukiwanie" na ekranach
+ * ładowania ofert (loty + hotele). Czysto CSS (bez JS), żeby działał także
+ * w server-renderowanym fallbacku <Suspense>. Wąski pasek przesuwa się w
+ * kółko po torze, sygnalizując aktywną pracę zamiast "strona padła".
+ * ───────────────────────────────────────────────────────────────────── */
+@keyframes ht-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(360%);
+  }
+}
+
+.ht-indeterminate-bar {
+  animation: ht-indeterminate 1.25s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ht-indeterminate-bar {
+    animation: none;
+    transform: translateX(120%);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
  * LiteAPI Payment widget — submit CTA promotion.
  *
  * The wrapper renders its `submitButton.text` (we pass "Zapłać teraz") as

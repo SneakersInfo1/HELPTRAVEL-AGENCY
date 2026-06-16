@@ -126,7 +126,7 @@ export default async function AboutPage() {
           <span className="rounded-full bg-white/12 px-3 py-1">100% darmowe</span>
           <span className="rounded-full bg-white/12 px-3 py-1">bez rejestracji</span>
           <span className="rounded-full bg-white/12 px-3 py-1">ceny w PLN</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">22 lotniska PL + EU</span>
+          <span className="rounded-full bg-white/12 px-3 py-1">ponad 80 lotnisk PL, EU i świat</span>
         </div>
       </MediaHero>
 

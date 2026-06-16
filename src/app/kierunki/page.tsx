@@ -267,7 +267,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
     },
     {
       q: "Skąd wylatują loty na te kierunki?",
-      a: "Loty obsługujemy z 22 lotnisk w Polsce i regionie (m.in. Warszawa, Kraków, Gdańsk, Wrocław, Katowice, Poznań). Przy każdym kierunku podajemy orientacyjny czas lotu, a w wyszukiwarce wybierzesz lotnisko wylotu i termin.",
+      a: "Loty obsługujemy z ponad 80 lotnisk w Polsce, Europie i na świecie (m.in. Warszawa, Kraków, Gdańsk, Wrocław, Katowice, Poznań, a także Londyn, Dubaj czy Nowy Jork). Przy każdym kierunku podajemy orientacyjny czas lotu, a w wyszukiwarce wybierzesz lotnisko wylotu i termin.",
     },
   ];
 
@@ -353,7 +353,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
         </div>
         <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90">
           <span className="rounded-full bg-white/12 px-3 py-1">{allDestinations.length}+ kierunków</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">loty z 22 lotnisk w PL</span>
+          <span className="rounded-full bg-white/12 px-3 py-1">loty z ponad 80 lotnisk</span>
           <span className="rounded-full bg-white/12 px-3 py-1">ceny finalne w PLN</span>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">

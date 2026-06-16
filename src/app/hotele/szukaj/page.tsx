@@ -109,6 +109,12 @@ export default async function HotelResultsPage({
     /^\d{4}-\d{2}-\d{2}$/.test(sp.checkin) &&
     /^\d{4}-\d{2}-\d{2}$/.test(sp.checkout);
 
+  // Etykieta dla bannera „trwa wyszukiwanie" w fallbacku <Suspense> (pokazywany
+  // gdy serwer pobiera pulę hoteli z LiteAPI — ~2–3 s). Po wczytaniu metadanych
+  // ResultsList przejmuje z własnym licznikiem „Sprawdzam dostępność…".
+  const destLabel = region ? region.namePl : sp.destination;
+  const skeletonTitle = `Szukamy najlepszych hoteli${destLabel ? ` w ${destLabel}` : ""}…`;
+
   return (
     <main className="min-h-screen bg-neutral-50">
       {/* Sticky search bar — sits BELOW the site-shell header (which is
@@ -152,7 +158,7 @@ export default async function HotelResultsPage({
           {!valid ? (
             <EmptyPrompt hasDestination={Boolean(sp.destination)} />
           ) : (
-            <Suspense fallback={<ResultsSkeleton count={6} />}>
+            <Suspense fallback={<ResultsSkeleton count={6} title={skeletonTitle} />}>
               <Results sp={sp} region={region} />
             </Suspense>
           )}

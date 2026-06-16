@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
-import { HomePageSections } from "@/components/home/home-page-sections";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -25,7 +24,7 @@ export function getHomeMetadata(locale: SiteLocale): Metadata {
       : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zł",
     description: isEnglish
       ? "Plan a full trip in 3 minutes: flight, hotel and a real day-by-day plan. 22 airports across Poland and Europe. No signup. Free to use - you only pay partners when you book."
-      : "Zaplanuj wyjazd w 3 minuty: lot, hotel i gotowy plan dnia. 22 lotniska w Polsce i Europie. Bez rejestracji. 100% darmowe - płacisz tylko za rezerwacje u partnerów.",
+      : "Zaplanuj wyjazd w 3 minuty: lot, hotel i gotowy plan dnia. Ponad 80 lotnisk w Polsce, Europie i na świecie. Bez rejestracji. 100% darmowe - płacisz tylko za rezerwacje u partnerów.",
     alternates: {
       canonical: locale === "en" ? "/en" : "/",
       // hreflang.languages omitted — /en/* paths 308-redirect to Polish root,
@@ -38,7 +37,7 @@ export function getHomeMetadata(locale: SiteLocale): Metadata {
         : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty",
       description: isEnglish
         ? "Plan a full trip in 3 minutes: flight, hotel and a real day-by-day plan. 22 airports PL+EU. No signup. 100% free."
-        : "Zaplanuj cały wyjazd w 3 minuty: lot, hotel i plan dnia. 22 lotniska PL+EU. Bez rejestracji. 100% darmowe.",
+        : "Zaplanuj cały wyjazd w 3 minuty: lot, hotel i plan dnia. Ponad 80 lotnisk PL, EU i świat. Bez rejestracji. 100% darmowe.",
       url: locale === "en" ? `${siteUrl}/en` : siteUrl,
       locale: locale === "en" ? "en_US" : "pl_PL",
       alternateLocale: locale === "en" ? ["pl_PL"] : ["en_US"],
@@ -66,7 +65,7 @@ const heroDestinationSlugs = [
   "heraklion-greece",
 ] as const;
 
-export async function HomePageView({ locale }: { locale: SiteLocale }) {
+export async function HomePageView() {
   // Tiles link to the search results, not to publisher guides — so they only
   // need a destination PROFILE (photo recipe, flight time), not membership in
   // the curated publishedDestinationSlugs list. Resolving profiles directly
@@ -93,11 +92,10 @@ export async function HomePageView({ locale }: { locale: SiteLocale }) {
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} />
       </div>
-      <HomePageSections locale={locale} />
     </main>
   );
 }
 
 export default async function Home() {
-  return HomePageView({ locale: "pl" });
+  return HomePageView();
 }

@@ -43,7 +43,9 @@ export function AirportCombobox({
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
 
-  const options = searchAirports(query);
+  // Bez wpisywania pokazujemy szeroką listę domyślną (cała PL + grupy EU +
+  // huby świata) — stąd wyższy limit; po wpisaniu zwężamy do najtrafniejszych.
+  const options = searchAirports(query, query.trim() ? 8 : 40);
 
   const pick = (o: AirportOption) => {
     onSelect(o);
@@ -113,7 +115,7 @@ export function AirportCombobox({
           id={listboxId}
           role="listbox"
           aria-label="Lotniska"
-          className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-72 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
+          className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-80 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
         >
           {options.length > 0 ? (
             options.map((o, idx) => {

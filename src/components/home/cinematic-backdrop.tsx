@@ -57,10 +57,14 @@ export function CinematicBackdrop({ images, intervalMs = 7000 }: CinematicBackdr
           </div>
         );
       })}
-      {/* Ciemny gradient na dole zeby tekst byl czytelny */}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.15)_0%,rgba(5,18,11,0.55)_55%,rgba(5,18,11,0.85)_100%)]" />
-      {/* Lekki vignette na bokach */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(5,18,11,0.35)_100%)]" />
+      {/* Scrim: ciemniejszy u góry (nagłówek) i na dole (formularz + przejście
+          do kafelków), ale ROZJAŚNIONY w środku — żeby zdjęcie było żywe i
+          premium, a nie przygłuszone „mułem". Czytelność tekstu zapewniają
+          dodatkowo drop-shadowy i własne tło formularza. */}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,16,11,0.50)_0%,rgba(4,16,11,0.16)_40%,rgba(4,16,11,0.32)_66%,rgba(4,16,11,0.88)_100%)]" />
+      {/* Delikatny vignette tylko w rogach (skupiony u góry-środka, mniej
+          przyciemnia centrum kadru niż poprzedni 0.35 na całym środku). */}
+      <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_32%,transparent_56%,rgba(4,16,11,0.32)_100%)]" />
     </div>
   );
 }

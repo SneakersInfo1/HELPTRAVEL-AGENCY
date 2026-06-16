@@ -1,3 +1,12 @@
+import { SearchProgressBanner } from "@/components/search/search-progress-banner";
+
+const HOTEL_MESSAGES = [
+  "Sprawdzamy dostępność w hotelach…",
+  "Pobieramy aktualne ceny w PLN…",
+  "Porównujemy oferty i warunki anulacji…",
+  "Już prawie gotowe…",
+];
+
 function SkeletonCard() {
   return (
     <article className="overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.06)]">
@@ -18,12 +27,15 @@ function SkeletonCard() {
   );
 }
 
-export function ResultsSkeleton({ count = 6 }: { count?: number }) {
+export function ResultsSkeleton({ count = 6, title }: { count?: number; title?: string }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: count }).map((_, index) => (
-        <SkeletonCard key={index} />
-      ))}
+    <div className="space-y-4">
+      {title && <SearchProgressBanner title={title} messages={HOTEL_MESSAGES} />}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: count }).map((_, index) => (
+          <SkeletonCard key={index} />
+        ))}
+      </div>
     </div>
   );
 }
