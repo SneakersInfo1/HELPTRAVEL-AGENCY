@@ -189,9 +189,17 @@ body {
   }
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* Reset linków MUSI być w @layer base. Wcześniej był poza warstwami, więc bił
+   utility `text-*` (z @layer utilities) postawione bezpośrednio na <a> — przez
+   co `text-white` na przyciskach-linkach (np. „Zacznij planować" w nagłówku)
+   dziedziczyło ciemny --foreground zamiast bieli (kontrast ~2:1, fail WCAG).
+   W base utilities znów wygrywają na linkach z jawnym kolorem, a linki bez
+   koloru nadal dziedziczą po rodzicu. */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 button,
