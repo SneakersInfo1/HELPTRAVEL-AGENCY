@@ -341,11 +341,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
             </div>
           ))}
         </div>
-
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/10 pt-4 text-xs text-emerald-900/80">
-          <p>{text.footerMetaLeft}</p>
-          <p>{text.footerMetaRight}</p>
-        </div>
       </footer>
       )}
     </div>

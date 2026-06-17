@@ -2,29 +2,9 @@ import Link from "next/link";
 
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 
-// Sekcje pod hero (server component, treść PL). Po usunięciu starej sekcji
-// „Booking pokaże hotel" homepage zrobił się pusty — te bloki wypełniają go i
-// prowadzą użytkownika do akcji: (1) „Jak to działa" buduje zaufanie i kieruje
-// do wyszukiwarki, (2) „Wyjazd w Twoim stylu" to atrakcyjne kafelki-kolekcje
-// (TRAVEL_MOODS) z linkiem do /wyjazdy/<slug> → dalej do wyszukiwarki.
-
-const STEPS = [
-  {
-    icon: "🔍",
-    title: "Wyszukaj",
-    body: "Wpisz kierunek, daty i liczbę osób. Sprawdzamy loty i hotele w jednym miejscu.",
-  },
-  {
-    icon: "⚖️",
-    title: "Porównaj i wybierz",
-    body: "Prawdziwe ceny w PLN, filtry jak na Booking, bez ukrytych kosztów i rejestracji.",
-  },
-  {
-    icon: "🎒",
-    title: "Zarezerwuj i leć",
-    body: "Płacisz bezpiecznie u partnera. Dostajesz gotowy plan — lot, hotel i kolejne kroki.",
-  },
-] as const;
+// Sekcja pod hero (server component, treść PL): „Zacznij od pomysłu na wyjazd"
+// to atrakcyjne kafelki-kolekcje (TRAVEL_MOODS) z linkiem do /wyjazdy/<slug> →
+// dalej do wyszukiwarki. Prowadzi użytkownika od pomysłu do akcji.
 
 // Kolejność kolekcji dobrana „sprzedażowo" (najpierw to, co najczęściej klikane).
 const COLLECTION_SLUGS = ["plaza", "slonce-zima", "city-break", "kultura", "gory", "budzet"] as const;
@@ -45,55 +25,6 @@ export function HomePageSections() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-10 px-4 sm:gap-14 sm:px-6 xl:px-8">
-      {/* ── Jak to działa ─────────────────────────────────────────────── */}
-      <section aria-labelledby="how-it-works" className="relative overflow-hidden rounded-[2.2rem] border border-emerald-900/10 bg-white px-6 py-9 shadow-[0_24px_70px_rgba(16,84,48,0.08)] sm:px-10 sm:py-12">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(110,231,183,0.16),transparent_38%)]"
-        />
-        <div className="relative">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-600">
-            Prosto i bez chaosu
-          </p>
-          <h2 id="how-it-works" className="mt-2 max-w-2xl font-display text-2xl leading-tight text-emerald-950 sm:text-3xl md:text-4xl">
-            Cały wyjazd w 3 krokach — lot, hotel i plan w jednym miejscu
-          </h2>
-
-          <ol className="mt-7 grid gap-4 sm:grid-cols-3">
-            {STEPS.map((step, i) => (
-              <li
-                key={step.title}
-                className="group relative rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5 transition hover:-translate-y-1 hover:border-emerald-300/60 hover:bg-emerald-50"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-2xl shadow-sm">
-                    {step.icon}
-                  </span>
-                  <span className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-600">
-                    Krok {i + 1}
-                  </span>
-                </div>
-                <h3 className="mt-3 text-lg font-bold text-emerald-950">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-emerald-900/72">{step.body}</p>
-              </li>
-            ))}
-          </ol>
-
-          <div className="mt-7 flex flex-wrap items-center gap-4">
-            <Link
-              href="/#hero"
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 px-6 py-3 text-sm font-bold uppercase tracking-[0.08em] text-emerald-950 shadow-[0_12px_40px_rgba(234,88,12,0.4)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_50px_rgba(234,88,12,0.55)]"
-            >
-              Zaplanuj wyjazd
-              <span aria-hidden>→</span>
-            </Link>
-            <span className="text-sm font-medium text-emerald-900/70">
-              100% darmowe · bez rejestracji · płacisz dopiero u partnera
-            </span>
-          </div>
-        </div>
-      </section>
-
       {/* ── Wyjazd w Twoim stylu (kolekcje) ───────────────────────────── */}
       <section aria-labelledby="collections">
         <div className="flex flex-wrap items-end justify-between gap-3">
