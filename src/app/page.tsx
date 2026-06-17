@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
+import { HomePageSections } from "@/components/home/home-page-sections";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -92,6 +93,7 @@ export async function HomePageView() {
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} />
       </div>
+      <HomePageSections />
     </main>
   );
 }
