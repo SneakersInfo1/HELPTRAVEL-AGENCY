@@ -8,6 +8,7 @@
 import type { Metadata } from "next";
 
 import { FlightResults } from "./_components/flight-results";
+import { FlightSearchBar } from "./_components/flight-search-bar";
 
 export const metadata: Metadata = {
   title: "Wyniki lotów | HelpTravel",
@@ -19,6 +20,8 @@ interface SP {
   /** Etykieta miasta/grupy do nagłówka (zadanie 1), np. „Warszawa — wszystkie lotniska". */
   originLabel?: string;
   destination?: string;
+  /** Nazwa miasta celu (do nagłówka + paska edycji), np. „Barcelona". */
+  destLabel?: string;
   depart?: string;
   return?: string;
   adults?: string;
@@ -54,16 +57,39 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
     );
   }
 
+  const ret = isDate(sp.return) ? sp.return : undefined;
+  const adults = Math.max(1, Math.min(9, Number(sp.adults) || 1));
+  const childrenCount = Math.max(0, Math.min(8, Number(sp.children) || 0));
+  const infants = Math.max(0, Math.min(4, Number(sp.infants) || 0));
+
   return (
-    <FlightResults
-      origins={origins}
-      originLabel={sp.originLabel}
-      destination={destination!}
-      depart={sp.depart!}
-      ret={isDate(sp.return) ? sp.return : undefined}
-      adults={Math.max(1, Math.min(9, Number(sp.adults) || 1))}
-      childrenCount={Math.max(0, Math.min(8, Number(sp.children) || 0))}
-      infants={Math.max(0, Math.min(4, Number(sp.infants) || 0))}
-    />
+    <>
+      {/* Pasek edycji wyszukiwania — sticky pod headerem, jak na hotelach.
+          Pozwala zmienić kierunek/daty bez wracania na homepage. */}
+      <div className="sticky top-[72px] z-20 shadow-sm sm:top-[84px]">
+        <FlightSearchBar
+          origins={origins}
+          originLabel={sp.originLabel}
+          destination={destination!}
+          destLabel={sp.destLabel}
+          depart={sp.depart!}
+          ret={ret}
+          adults={adults}
+          childrenCount={childrenCount}
+          infants={infants}
+        />
+      </div>
+      <FlightResults
+        origins={origins}
+        originLabel={sp.originLabel}
+        destination={destination!}
+        destLabel={sp.destLabel}
+        depart={sp.depart!}
+        ret={ret}
+        adults={adults}
+        childrenCount={childrenCount}
+        infants={infants}
+      />
+    </>
   );
 }
