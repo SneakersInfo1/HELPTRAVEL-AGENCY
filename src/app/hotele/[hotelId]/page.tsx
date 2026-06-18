@@ -16,6 +16,7 @@ import { isBookingLive } from "@/lib/config/featureFlags";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { normalizeFacilities, groupFacilities, coerceImportantInfo } from "@/lib/liteapi/facilities";
+import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 // LiteAPI is asked for `language=pl` (see lib/liteapi/hotel.ts), but for
@@ -121,7 +122,7 @@ export async function generateMetadata({
   if (!detail) {
     return { title: "Hotel | HelpTravel", robots: { index: false, follow: false } };
   }
-  const cityCountry = [detail.city, detail.country].filter(Boolean).join(", ");
+  const cityCountry = [detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ");
   const desc = `Zarezerwuj ${detail.name} w ${detail.city}. Ceny finalne w PLN, bezpłatna anulacja w wybranych hotelach.${
     detail.amenities?.[0] ? ` ${detail.amenities[0]}.` : ""
   }${detail.amenities?.[1] ? ` ${detail.amenities[1]}.` : ""}`;
@@ -341,7 +342,7 @@ export default async function HotelDetailPage({
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-neutral-600">
             {detail.stars ? <span className="text-amber-500">{"★".repeat(Math.round(detail.stars))}</span> : null}
             <span>
-              {[detail.address, detail.city, detail.country].filter(Boolean).join(", ")}
+              {[detail.address, detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ")}
             </span>
           </div>
 
@@ -510,7 +511,7 @@ export default async function HotelDetailPage({
             <section id="location" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
               <h2 className="text-lg font-bold text-neutral-900">Lokalizacja</h2>
               <p className="mt-2 text-sm text-neutral-700">
-                {[detail.address, detail.city, detail.country].filter(Boolean).join(", ") || detail.city}
+                {[detail.address, detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ") || detail.city}
               </p>
               {detail.latitude != null && detail.longitude != null && (
                 <a

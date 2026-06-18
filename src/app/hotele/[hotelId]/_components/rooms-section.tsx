@@ -19,6 +19,7 @@ import { useMemo, useState } from "react";
 
 import type { LiteApiRoomType } from "@/lib/liteapi";
 import { groupRates, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
+import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
 import { fromMinor } from "@/lib/money";
 
 const VISIBLE_OPTIONS_DEFAULT = 3;
@@ -44,17 +45,6 @@ const formatDate = (iso: string | null | undefined): string | null => {
   return Number.isNaN(d.getTime())
     ? null
     : new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit" }).format(d);
-};
-
-const polishBoard = (raw?: string): string => {
-  if (!raw) return "Bez wyżywienia";
-  const r = raw.toLowerCase();
-  if (r.includes("breakfast")) return "Ze śniadaniem";
-  if (r.includes("all-inclusive") || r.includes("all_inclusive") || r.includes("ai")) return "All Inclusive";
-  if (r.includes("half")) return "Wyżywienie HB (śniadanie + obiadokolacja)";
-  if (r.includes("full")) return "Pełne wyżywienie (FB)";
-  if (r.includes("room only") || r.includes("ro")) return "Bez wyżywienia";
-  return raw;
 };
 
 const optionsNoun = (n: number): string =>
@@ -127,7 +117,7 @@ function RoomGroupCard({
     <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-neutral-100 bg-neutral-50 px-5 py-3">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold text-neutral-900">{group.name}</h3>
+          <h3 className="text-base font-semibold text-neutral-900">{localizeRoomName(group.name)}</h3>
           {typeof group.maxOccupancy === "number" && group.maxOccupancy > 0 && (
             <p className="mt-0.5 text-xs text-neutral-500">Maks. gości: {group.maxOccupancy}</p>
           )}
@@ -214,7 +204,7 @@ function OptionRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-neutral-900">
-            {polishBoard(rate.boardName ?? rate.boardType)}
+            {localizeBoard(rate.boardName ?? rate.boardType)}
           </span>
           {option.cheapestOfHotel && (
             <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
