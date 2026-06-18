@@ -17,3 +17,10 @@ export function getBookingFlowMode(): BookingFlowMode {
 export function isBookingLive(): boolean {
   return getBookingFlowMode() === "live";
 }
+
+// FAZA 3 — boilerplate COVID/higiena (maseczki, dezynfekcja między pobytami,
+// dystans fizyczny…) sprawia, że serwis wygląda jak skopiowany 4 lata temu.
+// Domyślnie UKRYTE; ustaw HIDE_COVID_FACILITIES=false, żeby pokazać z powrotem.
+export function hideCovidFacilities(): boolean {
+  return process.env.HIDE_COVID_FACILITIES?.trim().toLowerCase() !== "false";
+}

@@ -17,6 +17,7 @@ import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/no
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { normalizeFacilities, groupFacilities, coerceImportantInfo } from "@/lib/liteapi/facilities";
 import { sanitizeFacilities } from "@/lib/liteapi/sanitize-facilities";
+import { stripCovidFacilities } from "@/lib/liteapi/covid-facilities";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { getSiteUrl } from "@/lib/mvp/site";
 
@@ -261,9 +262,12 @@ export default async function HotelDetailPage({
 
   // Merge every REAL facility source LiteAPI returned (`amenities` is often the
   // sparsest of the three), de-dupe, FAZA 2: usuń sprzeczności „X / No X" oraz
-  // prawie-duplikaty, a na końcu zlokalizuj do polskiego i pogrupuj.
+  // prawie-duplikaty, FAZA 3: wytnij boilerplate COVID, a na końcu zlokalizuj
+  // do polskiego i pogrupuj.
   const facilityGroups = groupFacilities(
-    sanitizeFacilities(normalizeFacilities(detail.amenities, detail.hotelFacilities, detail.facilities)),
+    stripCovidFacilities(
+      sanitizeFacilities(normalizeFacilities(detail.amenities, detail.hotelFacilities, detail.facilities)),
+    ),
   );
   const facilityCount = facilityGroups.reduce((sum, g) => sum + g.items.length, 0);
   const importantInfo = coerceImportantInfo(detail.hotelImportantInformation);
