@@ -7,14 +7,6 @@ import { useState, type ReactNode } from "react";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
 import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
-import {
-  POPULAR_DESTINATIONS_EN,
-  POPULAR_DESTINATIONS_PL,
-  POPULAR_ROUTES_EN,
-  POPULAR_ROUTES_PL,
-  buildDestinationHref,
-  buildRouteHref,
-} from "@/lib/mvp/popular-routes";
 
 const copy = {
   pl: {
@@ -140,51 +132,6 @@ const copy = {
 function isActivePath(pathname: string, href: string) {
   const normalizedPathname = stripLocalePrefix(pathname);
   return normalizedPathname === href || normalizedPathname.startsWith(`${href}/`);
-}
-
-// Destination + route chip wall (SEO internal links). Rendered twice in the
-// full footer — inside a collapsed <details> on mobile, always-open on lg —
-// so it's one source of truth for both.
-function FooterLinkChips({ locale }: { locale: "pl" | "en" }) {
-  return (
-    <div className="mt-4 grid gap-6 lg:grid-cols-2 lg:gap-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-          {locale === "en" ? "Popular destinations" : "Popularne kierunki"}
-        </p>
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {(locale === "en" ? POPULAR_DESTINATIONS_EN : POPULAR_DESTINATIONS_PL).map((dest) => (
-            <li key={dest.slug}>
-              <LocalizedLink
-                href={buildDestinationHref(dest)}
-                className="inline-flex items-center rounded-full border border-emerald-900/10 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
-              >
-                {dest.anchor}
-              </LocalizedLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-          {locale === "en" ? "Popular routes" : "Popularne trasy"}
-        </p>
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {(locale === "en" ? POPULAR_ROUTES_EN : POPULAR_ROUTES_PL).map((route) => (
-            <li key={`${route.origin}-${route.destinationSlug}`}>
-              <LocalizedLink
-                href={buildRouteHref(route)}
-                className="inline-flex items-center rounded-full border border-amber-300/50 bg-amber-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:border-amber-400 hover:bg-amber-100"
-              >
-                <span aria-hidden className="mr-1 text-amber-600">✈</span>
-                {route.anchor}
-              </LocalizedLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
 }
 
 export function SiteShell({ children }: { children: ReactNode }) {
@@ -393,25 +340,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* SEO internal links: top kierunki + trasy. On mobile they collapse
-            into a <details> (the open chip wall was 2 screens of distraction
-            per Clarity); desktop keeps them visible. Links stay in the DOM in
-            both variants, so crawlers see them either way. */}
-        <details className="mt-6 border-t border-emerald-900/10 pt-4 lg:hidden">
-          <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-            {effectiveLocale === "en" ? "Popular destinations and routes ▾" : "Popularne kierunki i trasy ▾"}
-          </summary>
-          <FooterLinkChips locale={effectiveLocale} />
-        </details>
-        <section className="mt-8 hidden border-t border-emerald-900/10 pt-6 lg:block">
-          <FooterLinkChips locale={effectiveLocale} />
-        </section>
-
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/10 pt-4 text-xs text-emerald-900/80">
-          <p>{text.footerMetaLeft}</p>
-          <p>{text.footerMetaRight}</p>
         </div>
       </footer>
       )}

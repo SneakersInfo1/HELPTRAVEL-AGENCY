@@ -36,6 +36,21 @@ interface MiniPlannerFormProps {
     endDate: string;
     travelers: number;
     kids: number;
+    // Pasek edycji na /loty/wyniki (tryb lotów): wstępne wypełnienie „Skąd",
+    // celu (IATA) i opcji, żeby użytkownik mógł zmienić kierunek bez wracania
+    // na homepage.
+    /** Kody IATA wylotu (1 lotnisko, kod metra, albo lista grupy). */
+    originCodes: string[];
+    /** Etykieta miasta wylotu do nagłówka (np. „Warszawa"). */
+    originLabel: string;
+    /** Widoczny tekst pola „Skąd" (np. „Warszawa (WAW)"). */
+    originInput: string;
+    /** IATA celu (do zapytania o loty). */
+    destIata: string;
+    /** Liczba niemowląt (tryb lotów). */
+    infants: number;
+    /** Lot w jedną stronę. */
+    oneWay: boolean;
   }>;
 }
 
@@ -65,17 +80,17 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   // CONFIRMED city from the list (or ""), `originQuery` the visible text —
   // same confirmed/query split the destination combobox uses.
   const [origin, setOrigin] = useState(initial?.origin ?? "");
-  const [originQuery, setOriginQuery] = useState(initial?.origin ?? "");
+  const [originQuery, setOriginQuery] = useState(initial?.originInput ?? initial?.origin ?? "");
   // Tryb lotów (zadanie 1): rozstrzygnięty wybór „Skąd" — kody do zapytania
   // (1 lotnisko, kod metra, albo fan-out grupy „wszystkie lotniska") + etykieta
-  // miasta do nagłówka wyników.
-  const [originCodes, setOriginCodes] = useState<string[]>([]);
-  const [originLabel, setOriginLabel] = useState("");
+  // miasta do nagłówka wyników. Wstępnie wypełnione na pasku edycji wyników.
+  const [originCodes, setOriginCodes] = useState<string[]>(initial?.originCodes ?? []);
+  const [originLabel, setOriginLabel] = useState(initial?.originLabel ?? "");
   const [originError, setOriginError] = useState("");
   // Faza 2 (loty): IATA celu (z s.airportCode), liczba niemowląt, one-way.
-  const [destIata, setDestIata] = useState("");
-  const [infants, setInfants] = useState(0);
-  const [oneWay, setOneWay] = useState(false);
+  const [destIata, setDestIata] = useState(initial?.destIata ?? "");
+  const [infants, setInfants] = useState(Math.max(0, Math.min(4, initial?.infants ?? 0)));
+  const [oneWay, setOneWay] = useState(Boolean(initial?.oneWay));
   const [destination, setDestination] = useState(initial?.destination ?? "");
   const [destinationCountry, setDestinationCountry] = useState(initial?.destinationCountry ?? "");
   // Zadanie 2 — wybrana wyspa/region (null = zwykłe miasto). Wpisywanie
@@ -260,6 +275,8 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         adults: String(adults),
       });
       if (resolvedOriginLabel) flightParams.set("originLabel", resolvedOriginLabel);
+      // Nazwa miasta celu (do nagłówka + paska edycji na wynikach lotów).
+      if (resolvedDest.city) flightParams.set("destLabel", resolvedDest.city);
       if (!oneWay && endDate) flightParams.set("return", endDate);
       if (childCount > 0) flightParams.set("children", String(childCount));
       if (infants > 0) flightParams.set("infants", String(infants));

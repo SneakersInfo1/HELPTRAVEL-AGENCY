@@ -2,6 +2,7 @@ import { CinematicBackdrop } from "./cinematic-backdrop";
 import { DestinationTile } from "./destination-tile";
 import { HomeSearchTabs } from "./home-search-tabs";
 import { MoodChips } from "./mood-chips";
+import { PaymentMethods } from "./payment-methods";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 interface FeaturedTile {
@@ -62,10 +63,9 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
             <HomeSearchTabs />
           </div>
 
-          {/* Sygnały zaufania — jeden elegancki rząd (zastępuje pigułkę
-              „100% DARMOWE" przeniesioną tu z góry). */}
+          {/* Sygnały zaufania — jeden elegancki rząd. */}
           <ul className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-medium text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)] sm:mt-6 sm:text-xs">
-            {["100% darmowe", "Loty z ponad 80 lotnisk", "Bez rejestracji"].map((item) => (
+            {["Loty z ponad 80 lotnisk", "Bez rejestracji", "Tylko sprawdzeni partnerzy"].map((item) => (
               <li key={item} className="inline-flex items-center gap-1.5">
                 <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
                   <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
@@ -74,6 +74,11 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
               </li>
             ))}
           </ul>
+
+          {/* Akceptowane metody płatności — zastępuje dawny chip „100% darmowe". */}
+          <div className="mt-5 sm:mt-6">
+            <PaymentMethods />
+          </div>
         </div>
 
         {/* Kafelki pod hero — "gotowy pomysl" */}
@@ -84,12 +89,14 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
             </p>
             <span className="hidden text-[11px] text-white/60 sm:inline">Ceny w PLN · z lotem i hotelem</span>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {featured.map((tile) => (
               <DestinationTile
                 key={tile.destination.slug}
                 destination={tile.destination}
                 heroImage={tile.heroImage}
+                size="lg"
+                badge="Polecane"
               />
             ))}
           </div>

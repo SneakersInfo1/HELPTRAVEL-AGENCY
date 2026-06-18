@@ -42,6 +42,8 @@ interface Props {
   /** Etykieta nagłówka, np. „Warszawa — wszystkie lotniska". */
   originLabel?: string;
   destination: string;
+  /** Nazwa miasta celu (z URL `destLabel`); fallback do kodu IATA. */
+  destLabel?: string;
   depart: string;
   ret?: string;
   adults: number;
@@ -52,7 +54,7 @@ interface Props {
 type Leg = { origin: string; destination: string; date: string; direction: "OUTBOUND" | "INBOUND" };
 
 export function FlightResults(props: Props) {
-  const { origins, originLabel, destination, depart, ret, adults, childrenCount, infants } = props;
+  const { origins, originLabel, destination, destLabel, depart, ret, adults, childrenCount, infants } = props;
   const router = useRouter();
   const [offers, setOffers] = useState<DisplayOffer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -146,7 +148,7 @@ export function FlightResults(props: Props) {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-neutral-900 sm:text-2xl">
-            Loty {headerLabel} → {destination}
+            Loty {headerLabel} → {destLabel || destination}
           </h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             {ret ? "W obie strony" : "W jedną stronę"} · {passengers} {passengers === 1 ? "pasażer" : "pasażerów"}
@@ -198,7 +200,7 @@ export function FlightResults(props: Props) {
         <div>
           {/* Loading — banner aktywnego wyszukiwania + szkielety kart oferty */}
           {offers === null && (
-            <FlightResultsSkeleton originLabel={headerLabel} destination={destination} />
+            <FlightResultsSkeleton originLabel={headerLabel} destination={destLabel || destination} />
           )}
 
           {/* Brak ofert z serwera / błąd */}
