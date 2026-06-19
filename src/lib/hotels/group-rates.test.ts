@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { LiteApiRoomType } from "../liteapi";
-import { groupRates } from "./group-rates";
+import { groupRates, mergeGroupsByDisplayName } from "./group-rates";
 
 let seq = 0;
 function offer(opts: {
@@ -129,4 +129,30 @@ test("groupRates: free-cancellation deadlines differing only by HOUR dedupe toge
   assert.equal(groups[0].options.length, 2); // 13th (×2 → 1) + 15th
   assert.equal(groups[0].options[0].totalMinor, BigInt(500000));
   assert.equal(groups[0].options[0].collapsedCount, 1);
+});
+
+// FAZA 4 — wtórne scalanie grup o identycznej nazwie PL.
+test("mergeGroupsByDisplayName: scala grupy o tej samej nazwie PL + dedup ofert", () => {
+  const res = groupRates([
+    offer({ name: "Double Or Twin Bed", price: 3003, board: "Room Only", maxOcc: 2 }),
+    offer({ name: "Twin/Double room", price: 2982, board: "Room Only", maxOcc: 2 }),
+    offer({ name: "Twin/Double room", price: 3139, board: "Room Only", refundable: true, maxOcc: 2 }),
+  ]);
+  assert.equal(res.groups.length, 2); // bazowo 2 grupy EN
+  const merged = mergeGroupsByDisplayName(res.groups, () => "Pokój dwuosobowy lub z dwoma łóżkami");
+  assert.equal(merged.length, 1); // ta sama nazwa PL → 1 karta
+  // dwie identyczne NRF Room Only (3003, 2982) → najtańsza (2982); zwrotna (3139) zostaje
+  assert.equal(merged[0].options.length, 2);
+  assert.equal(merged[0].options[0].totalMinor, BigInt(298200));
+  assert.equal(merged[0].cheapestMinor, BigInt(298200));
+});
+
+test("mergeGroupsByDisplayName: różne nazwy PL + różna pojemność zostają osobno", () => {
+  const res = groupRates([
+    offer({ name: "Double Room", price: 1000, maxOcc: 2 }),
+    offer({ name: "Suite", price: 2000, maxOcc: 2 }),
+    offer({ name: "Double Room", price: 1500, maxOcc: 4 }),
+  ]);
+  const merged = mergeGroupsByDisplayName(res.groups, (n) => n.toLowerCase());
+  assert.equal(merged.length, 3); // double(2) / suite(2) / double(4) — różne klucze
 });

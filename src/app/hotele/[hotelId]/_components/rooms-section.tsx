@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import type { LiteApiRoomType } from "@/lib/liteapi";
-import { groupRates, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
+import { groupRates, mergeGroupsByDisplayName, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
 import { fromMinor } from "@/lib/money";
 
@@ -59,7 +59,12 @@ export function RoomsSection({
   bookingLive,
 }: Props) {
   // Pure presentation-layer fold — recomputed only when fresh rates arrive.
-  const { groups } = useMemo(() => groupRates(roomTypes), [roomTypes]);
+  // Bazowe grupowanie po nazwie EN, potem scalenie grup o identycznej nazwie PL
+  // (FAZA 4) — żeby nie było kilku kart „Pokój dwuosobowy…" obok siebie.
+  const groups = useMemo(
+    () => mergeGroupsByDisplayName(groupRates(roomTypes).groups, localizeRoomName),
+    [roomTypes],
+  );
 
   if (!groups.length) {
     return (
@@ -113,6 +118,27 @@ function RoomGroupCard({
       ? `od ${formatPLN(fromMinor(group.cheapestMinor), currency)}`
       : null;
 
+  // FAZA 4 — „+X zł za możliwość anulowania": dla oferty zwrotnej porównujemy
+  // z NAJTAŃSZĄ bezzwrotną o TYM SAMYM wyżywieniu, żeby różnica wynikała z
+  // samej polityki anulacji (a nie np. z innego wyżywienia). Brak takiego
+  // odpowiednika → nie pokazujemy nic (uczciwie, bez zmyślania).
+  const boardOf = (o: RoomOption) => (o.rate.boardName ?? o.rate.boardType ?? "").toLowerCase().trim();
+  const cheapestNrfByBoard = new Map<string, bigint>();
+  for (const o of group.options) {
+    if (!o.freeCancellation && o.totalMinor !== null) {
+      const b = boardOf(o);
+      const cur = cheapestNrfByBoard.get(b);
+      if (cur === undefined || o.totalMinor < cur) cheapestNrfByBoard.set(b, o.totalMinor);
+    }
+  }
+  const premiumFor = (o: RoomOption): bigint | null => {
+    if (!o.freeCancellation || o.totalMinor === null) return null;
+    const nrf = cheapestNrfByBoard.get(boardOf(o));
+    return nrf !== undefined && o.totalMinor > nrf ? o.totalMinor - nrf : null;
+  };
+  const cheapestOfferId = group.options[0]?.offerId; // opcje są posortowane rosnąco
+  const groupHasMultiple = group.options.length > 1;
+
   return (
     <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-neutral-100 bg-neutral-50 px-5 py-3">
@@ -138,6 +164,9 @@ function RoomGroupCard({
             nights={nights}
             currency={currency}
             bookingLive={bookingLive}
+            cancelPremiumMinor={premiumFor(option)}
+            isGroupCheapest={option.offerId === cheapestOfferId}
+            groupHasMultiple={groupHasMultiple}
           />
         ))}
       </ul>
@@ -170,6 +199,9 @@ function OptionRow({
   nights,
   currency,
   bookingLive,
+  cancelPremiumMinor,
+  isGroupCheapest,
+  groupHasMultiple,
 }: {
   hotelId: string;
   option: RoomOption;
@@ -177,6 +209,12 @@ function OptionRow({
   nights: number;
   currency: string;
   bookingLive: boolean;
+  /** Dopłata (grosze) za bezpłatne anulowanie vs najtańsza bezzwrotna o tym samym wyżywieniu; null = nie pokazuj. */
+  cancelPremiumMinor: bigint | null;
+  /** Czy to najtańsza opcja w tej grupie (do etykiety „· najniższa cena"). */
+  isGroupCheapest: boolean;
+  /** Czy grupa ma >1 opcję (etykieta „najniższa cena" ma sens tylko wtedy). */
+  groupHasMultiple: boolean;
 }) {
   const { rate } = option;
   const total = option.totalMinor !== null ? fromMinor(option.totalMinor) : null;
@@ -212,13 +250,23 @@ function OptionRow({
             </span>
           )}
         </div>
-        <div className="mt-1 text-xs">
+        <div className="mt-1 flex flex-col gap-0.5 text-xs">
           {option.freeCancellation ? (
-            <span className="font-medium text-emerald-700">
-              Bezpłatne odwołanie{cancelDate ? ` do ${cancelDate}` : ""}
+            <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
+              <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
+              </svg>
+              Bezpłatne anulowanie{cancelDate ? ` do ${cancelDate}` : ""}
             </span>
           ) : (
-            <span className="text-neutral-500">Oferta bezzwrotna</span>
+            <span className="text-neutral-500">
+              Bezzwrotna{isGroupCheapest && groupHasMultiple ? " · najniższa cena" : ""}
+            </span>
+          )}
+          {cancelPremiumMinor !== null && (
+            <span className="text-[11px] text-neutral-400">
+              +{formatPLN(fromMinor(cancelPremiumMinor), rateCurrency)} za możliwość anulowania
+            </span>
           )}
         </div>
       </div>
