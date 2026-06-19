@@ -31,6 +31,10 @@ const COVID_BLACKLIST = [
   "shared stationery", // shared stationery like menus, pens are removed
   "opt-out", "opt out", // guests can opt-out cleaning services
   "hand sanitizer",
+  // FAZA 6 (QA) — luki znalezione na żywych hotelach (Ateny/Rzym):
+  "coronavirus", "koronawirus", // „…effective against Coronavirus"
+  "thermometer", "termometr", // „Thermometers for guests provided by property"
+  "securely covered", "bezpiecznie przykryt", // „Delivered food - securely covered"
 ];
 
 /** Czy facility to boilerplate COVID/higiena (do ukrycia). */

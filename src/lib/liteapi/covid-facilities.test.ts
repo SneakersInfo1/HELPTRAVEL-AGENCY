@@ -24,6 +24,11 @@ const COVID_REAL = [
   "Ekrany / bariery między personelem a gośćmi",
   "Maseczki dla gości",
   "Dezynfekcja pokoju między pobytami",
+  // FAZA 6 — luki znalezione na żywo (Ateny/Rzym)
+  "Cleaning standards that are effective against Coronavirus",
+  "Standardy czyszczenia skuteczne przeciwko koronawirusowi",
+  "Thermometers for guests provided by property",
+  "Delivered food - securely covered",
 ];
 
 const SAFETY_KEEP = [
