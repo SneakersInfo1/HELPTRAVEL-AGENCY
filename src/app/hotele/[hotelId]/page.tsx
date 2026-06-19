@@ -14,6 +14,7 @@ import { fromMinor } from "@/lib/money";
 import { getHotelDetail, getRates, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
 import { isBookingLive } from "@/lib/config/featureFlags";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
+import { ratingLabel } from "@/lib/hotels/rating";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { normalizeFacilities, groupFacilities, coerceImportantInfo } from "@/lib/liteapi/facilities";
 import { sanitizeFacilities } from "@/lib/liteapi/sanitize-facilities";
@@ -43,17 +44,6 @@ import { BookingWidget } from "./_components/booking-widget";
 import { HotelGallery } from "./_components/hotel-gallery";
 import { RoomsSection } from "./_components/rooms-section";
 import { SaveHotelButton } from "./_components/save-hotel-button";
-
-// Honest qualitative label for LiteAPI's 0-10 guest rating. A pure mapping
-// of the REAL score — no inflation, shown only when a rating exists. Mirrors
-// the bands travellers recognise from booking sites.
-function ratingLabel(rating: number): string {
-  if (rating >= 9) return "Wyjątkowy";
-  if (rating >= 8) return "Świetny";
-  if (rating >= 7) return "Bardzo dobry";
-  if (rating >= 6) return "Dobry";
-  return "Przyzwoity";
-}
 
 // Polish plural for "opinia": 1 → opinia; 2-4 (except 12-14) → opinie;
 // otherwise → opinii.

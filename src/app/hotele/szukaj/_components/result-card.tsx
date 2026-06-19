@@ -17,6 +17,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { ratingLabel } from "@/lib/hotels/rating";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { HotelCardImage } from "./hotel-card-image";
 
@@ -55,13 +56,6 @@ const formatDate = (iso: string | undefined): string | null => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   return new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit" }).format(d);
-};
-
-const ratingLabel = (r: number): string => {
-  if (r >= 9) return "Wspaniały";
-  if (r >= 8) return "Bardzo dobry";
-  if (r >= 7) return "Dobry";
-  return "Akceptowalny";
 };
 
 // Sesja C pkt 5 — polish board names that come from LiteAPI in English.

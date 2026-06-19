@@ -209,7 +209,7 @@ export function renderBookingConfirmation(data: BookingConfirmationData): Render
         <tr><td style="padding:14px 32px 0 32px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">
             <tr><td style="padding:14px 16px;font-size:13px;line-height:1.6;color:#704306;">
-              <strong>Zmiana lub anulowanie?</strong> Warunki zależą od pakietu wybranego przy rezerwacji. Aby zmienić termin lub odwołać pobyt — odpisz na tego maila lub napisz na ${escHtml(data.supportEmail)} możliwie najszybciej, podając numer ${escHtml(data.bookingId)}.
+              <strong>Zmiana lub anulowanie?</strong> Warunki zależą od pakietu wybranego przy rezerwacji. Aby zmienić termin lub anulować pobyt — odpisz na tego maila lub napisz na ${escHtml(data.supportEmail)} możliwie najszybciej, podając numer ${escHtml(data.bookingId)}.
             </td></tr>
           </table>
         </td></tr>
