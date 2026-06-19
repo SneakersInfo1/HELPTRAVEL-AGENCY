@@ -20,7 +20,7 @@ import { useMemo, useState } from "react";
 import type { LiteApiRoomType } from "@/lib/liteapi";
 import { groupRates, mergeGroupsByDisplayName, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
-import { fromMinor } from "@/lib/money";
+import { formatPLN, fromMinor } from "@/lib/money";
 
 const VISIBLE_OPTIONS_DEFAULT = 3;
 
@@ -35,9 +35,6 @@ interface Props {
   // no API call, no 401) — this alone fixes today's visible bug.
   bookingLive: boolean;
 }
-
-const formatPLN = (amount: number, currency: string) =>
-  new Intl.NumberFormat("pl-PL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 
 const formatDate = (iso: string | null | undefined): string | null => {
   if (!iso) return null;

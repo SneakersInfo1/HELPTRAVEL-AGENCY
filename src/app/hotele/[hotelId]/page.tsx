@@ -581,7 +581,7 @@ export default async function HotelDetailPage({
               ))}
               {importantInfo && (
                 <div className="mt-4 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-100">
-                  <div className="text-sm font-semibold text-amber-900">Ważne informacje</div>
+                  <div className="text-sm font-semibold text-amber-900">Dobrze wiedzieć</div>
                   <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-amber-900/80">{importantInfo}</p>
                 </div>
               )}

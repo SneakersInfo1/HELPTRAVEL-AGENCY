@@ -15,6 +15,9 @@ export interface MetaOffer {
   name: string;
   city: string;
   country?: string;
+  countryCode?: string;
+  latitude?: number;
+  longitude?: number;
   stars?: number;
   rating?: number;
   reviewCount?: number;
