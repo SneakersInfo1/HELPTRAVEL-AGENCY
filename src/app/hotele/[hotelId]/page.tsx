@@ -19,6 +19,7 @@ import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { normalizeFacilities, groupFacilities, coerceImportantInfo } from "@/lib/liteapi/facilities";
 import { sanitizeFacilities } from "@/lib/liteapi/sanitize-facilities";
 import { stripCovidFacilities } from "@/lib/liteapi/covid-facilities";
+import { hotelDistanceLabels } from "@/lib/geo/distance-label";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { getSiteUrl } from "@/lib/mvp/site";
 
@@ -170,6 +171,11 @@ export default async function HotelDetailPage({
     return p.toString();
   })();
 
+  // Współrzędne hotelu — LiteAPI podaje je raz top-level, raz w `location`.
+  // Bierzemy pierwsze sensowne (używane przez mapę, JSON-LD geo i odległości).
+  const lat = detail.latitude ?? detail.location?.latitude ?? null;
+  const lng = detail.longitude ?? detail.location?.longitude ?? null;
+
   // JSON-LD
   const siteUrl = getSiteUrl();
   const breadcrumb = {
@@ -207,8 +213,8 @@ export default async function HotelDetailPage({
       addressCountry: detail.countryCode ?? detail.country,
     },
     geo:
-      detail.latitude != null && detail.longitude != null
-        ? { "@type": "GeoCoordinates", latitude: detail.latitude, longitude: detail.longitude }
+      lat != null && lng != null
+        ? { "@type": "GeoCoordinates", latitude: lat, longitude: lng }
         : undefined,
     priceRange: cheapestTotal ? `od ${Math.round(cheapestTotal)} PLN` : undefined,
   };
@@ -273,6 +279,15 @@ export default async function HotelDetailPage({
   if (detail.rating && detail.rating > 0) keyFacts.push({ label: "Ocena gości", value: `${detail.rating.toFixed(1)}/10` });
   if (facilityCount > 0) keyFacts.push({ label: "Udogodnienia", value: String(facilityCount) });
   if (photos.length > 0) keyFacts.push({ label: "Zdjęcia", value: String(photos.length) });
+
+  // FAZA 7 — odległość od centrum / plaży (liczona z realnych współrzędnych
+  // hotelu i punktu odniesienia miasta; guardraile w distance-label.ts; pusty
+  // obiekt = po prostu nie pokazujemy).
+  const distances = hotelDistanceLabels(
+    { lat, lng },
+    detail.city,
+    detail.countryCode ?? detail.country,
+  );
 
   return (
     <main className="min-h-screen bg-neutral-50 pb-24 lg:pb-0">
@@ -341,6 +356,20 @@ export default async function HotelDetailPage({
               {[detail.address, detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ")}
             </span>
           </div>
+
+          {/* Odległości (FAZA 7) — dyskretnie, ikona + tekst, jak na Booking. */}
+          {(distances.center || distances.beach) && (
+            <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700">
+              <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-emerald-600">
+                <path
+                  fillRule="evenodd"
+                  d="M10 2a5 5 0 0 0-5 5c0 3.36 3.69 7.39 4.65 8.39a.48.48 0 0 0 .7 0C11.31 14.39 15 10.36 15 7a5 5 0 0 0-5-5zm0 6.8A1.8 1.8 0 1 1 10 5.2a1.8 1.8 0 0 1 0 3.6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {[distances.center, distances.beach].filter(Boolean).join(" · ")}
+            </p>
+          )}
 
           {/* Honest social proof — real LiteAPI rating + qualitative label +
               review count. Shown only when a real rating exists; review count
@@ -509,9 +538,9 @@ export default async function HotelDetailPage({
               <p className="mt-2 text-sm text-neutral-700">
                 {[detail.address, detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ") || detail.city}
               </p>
-              {detail.latitude != null && detail.longitude != null && (
+              {lat != null && lng != null && (
                 <a
-                  href={`https://www.openstreetmap.org/?mlat=${detail.latitude}&mlon=${detail.longitude}#map=15/${detail.latitude}/${detail.longitude}`}
+                  href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800"
