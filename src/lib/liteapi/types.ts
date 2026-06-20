@@ -39,7 +39,11 @@ export const LiteApiHotelSchema = z.object({
       latitude: z.number().nullish(),
       longitude: z.number().nullish(),
     })
-    .nullish(),
+    .nullish()
+    // Defensywnie: gdyby któryś hotel zwrócił `location` w innym kształcie,
+    // NIE wywalamy parsowania całej listy (do 1000 hoteli) — to pole jest tylko
+    // do odległości; brak/zły kształt → undefined (po prostu bez odległości).
+    .catch(undefined),
   address: z.string().optional(),
   zip: z.string().optional(),
   stars: z.number().nullish(),

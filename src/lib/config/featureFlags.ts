@@ -24,3 +24,10 @@ export function isBookingLive(): boolean {
 export function hideCovidFacilities(): boolean {
   return process.env.HIDE_COVID_FACILITIES?.trim().toLowerCase() !== "false";
 }
+
+// FAZA 9 — sekcja prawdziwych opinii gości (LiteAPI /data/reviews). Domyślnie
+// WYŁĄCZONA (opt-in), bo treści bywają obcojęzyczne i właściciel chce je
+// najpierw obejrzeć. Włącz przez SHOW_REVIEWS=true (np. na Vercel).
+export function showReviews(): boolean {
+  return process.env.SHOW_REVIEWS?.trim().toLowerCase() === "true";
+}

@@ -12,7 +12,8 @@ import { notFound } from "next/navigation";
 
 import { fromMinor } from "@/lib/money";
 import { getHotelDetail, getRates, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
-import { isBookingLive } from "@/lib/config/featureFlags";
+import { isBookingLive, showReviews } from "@/lib/config/featureFlags";
+import { getHotelReviews, selectReviews, type DisplayReview } from "@/lib/liteapi/reviews";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { ratingLabel } from "@/lib/hotels/rating";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
@@ -43,6 +44,7 @@ import { TrackView } from "@/components/analytics/track-view";
 
 import { BookingWidget } from "./_components/booking-widget";
 import { HotelGallery } from "./_components/hotel-gallery";
+import { HotelReviews } from "./_components/hotel-reviews";
 import { RoomsSection } from "./_components/rooms-section";
 import { SaveHotelButton } from "./_components/save-hotel-button";
 
@@ -101,6 +103,18 @@ async function fetchRates(args: {
     return res.data.find((r) => r.hotelId === args.hotelId)?.roomTypes ?? [];
   } catch (err) {
     if (err instanceof LiteApiError) console.warn("[hotele/detail] rates", err.internalCode, err.message);
+    return [];
+  }
+}
+
+// Opinie to DODATEK do strony — gdy LiteAPI zawiedzie (sieć/4xx/5xx/walidacja),
+// NIGDY nie wywalamy całej strony hotelu, tylko nie pokazujemy sekcji.
+async function fetchReviews(hotelId: string): Promise<DisplayReview[]> {
+  if (!showReviews()) return [];
+  try {
+    return selectReviews(await getHotelReviews(hotelId));
+  } catch (err) {
+    if (err instanceof LiteApiError) console.warn("[hotele/detail] reviews", err.internalCode, err.message);
     return [];
   }
 }
@@ -289,6 +303,11 @@ export default async function HotelDetailPage({
     detail.countryCode ?? detail.country,
   );
 
+  // FAZA 9 — prawdziwe opinie gości (za flagą SHOW_REVIEWS; cache 24h).
+  // selectReviews zwraca [] gdy brak czytelnych opinii → sekcja się nie pokaże.
+  // Fetch zabezpieczony (fetchReviews) — błąd LiteAPI nie wywala strony.
+  const reviews = await fetchReviews(hotelId);
+
   return (
     <main className="min-h-screen bg-neutral-50 pb-24 lg:pb-0">
       <TrackView
@@ -413,6 +432,7 @@ export default async function HotelDetailPage({
               {[
                 { id: "overview", label: "Przegląd" },
                 { id: "rooms", label: "Pokoje" },
+                ...(reviews.length > 0 ? [{ id: "reviews", label: "Opinie" }] : []),
                 ...(facilityCount > 0 ? [{ id: "amenities", label: "Udogodnienia" }] : []),
                 { id: "location", label: "Lokalizacja" },
                 { id: "policies", label: "Polityka" },
@@ -498,6 +518,9 @@ export default async function HotelDetailPage({
               currency={currency}
               bookingLive={isBookingLive()}
             />
+
+            {/* Opinie gości (FAZA 9) — renderuje się tylko gdy są czytelne. */}
+            <HotelReviews reviews={reviews} />
 
             {/* Amenities — merged from amenities + hotelFacilities + facilities,
                 localised to Polish and grouped. Shows ALL real facilities
