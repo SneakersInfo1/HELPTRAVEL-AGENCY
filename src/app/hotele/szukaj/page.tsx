@@ -188,6 +188,9 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
     name: string;
     city: string;
     country?: string;
+    countryCode?: string;
+    latitude?: number;
+    longitude?: number;
     stars?: number;
     rating?: number;
     reviewCount?: number;
@@ -223,6 +226,9 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
       name: h.name,
       city: h.city,
       country: h.country,
+      countryCode: h.countryCode,
+      latitude: h.latitude ?? h.location?.latitude ?? undefined,
+      longitude: h.longitude ?? h.location?.longitude ?? undefined,
       stars: h.stars ?? undefined,
       rating: h.rating ?? undefined,
       reviewCount: h.reviewCount ?? undefined,

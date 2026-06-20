@@ -8,6 +8,8 @@
 // set of known English phrases into accurate Polish, and (b) bucket items into
 // readable categories. We never invent a facility a hotel doesn't have.
 
+import { logUntranslated } from "./translations";
+
 // Pull a display string out of one raw facility entry (string | { name } | …).
 function facilityToString(item: unknown): string | null {
   if (typeof item === "string") return item.trim() || null;
@@ -67,6 +69,7 @@ const PL_DICTIONARY: Record<string, string> = {
   "secured parking": "Parking strzeżony",
   "valet parking": "Parking z obsługą",
   "parking garage": "Parking w garażu",
+  garage: "Garaż",
   "street parking": "Parking przy ulicy",
   "parking on site": "Parking na miejscu",
   "accessible parking": "Parking dla niepełnosprawnych",
@@ -130,6 +133,7 @@ const PL_DICTIONARY: Record<string, string> = {
   "plunge pool": "Basen zanurzeniowy",
   "exercise/lap pool": "Basen do pływania",
   "access to nearby indoor pool": "Dostęp do pobliskiego basenu krytego",
+  "swimming nearby": "Pływanie w pobliżu",
   "pool sun loungers": "Leżaki przy basenie",
   "sun loungers": "Leżaki",
   "pool/beach towels": "Ręczniki przy basenie / na plażę",
@@ -244,6 +248,7 @@ const PL_DICTIONARY: Record<string, string> = {
   bathtub: "Wanna",
   shower: "Prysznic",
   "free toiletries": "Bezpłatne kosmetyki",
+  "bulk dispenser for toiletries": "Dozowniki kosmetyków wielokrotnego użytku",
   hairdryer: "Suszarka do włosów",
   "hair dryer": "Suszarka do włosów",
   bathrobe: "Szlafrok",
@@ -273,6 +278,7 @@ const PL_DICTIONARY: Record<string, string> = {
   "upper floors accessible by elevator": "Wyższe piętra dostępne windą",
   // ── Na zewnątrz i widoki ─────────────────────────────────────────────
   garden: "Ogród",
+  "rooftop garden": "Ogród na dachu",
   "sun terrace": "Taras słoneczny",
   beachfront: "Przy plaży",
   "private beach area": "Prywatna plaża",
@@ -293,8 +299,22 @@ const PL_DICTIONARY: Record<string, string> = {
   "private entrance": "Prywatne wejście",
 };
 
+// Zbiór wszystkich polskich WARTOŚCI słownika (lowercase). LiteAPI przez
+// `language=pl` często zwraca facility już po polsku (np. „Klimatyzacja",
+// „Basen", „Restauracja") — i wiele z nich nie ma polskich znaków, więc
+// heurystyka „brak ąćę… ⇒ angielski" myliłaby je z miss. Jeśli string jest
+// JUŻ jedną z naszych polskich etykiet, nie logujemy go jako nieprzetłumaczony.
+const PL_VALUES = new Set(Object.values(PL_DICTIONARY).map((v) => v.toLowerCase()));
+
 export function localizeFacility(s: string): string {
-  return PL_DICTIONARY[s.toLowerCase().trim()] ?? s;
+  const key = s.toLowerCase().trim();
+  const hit = PL_DICTIONARY[key];
+  if (hit) return hit;
+  // Brak mapowania — pokaż oryginał, ale zaloguj (jeśli wygląda na angielski i
+  // nie jest już jedną z naszych polskich etykiet), żeby właściciel mógł dobrać
+  // brakujące tłumaczenie (FAZA 1/6).
+  if (!PL_VALUES.has(key)) logUntranslated("facility", s);
+  return s;
 }
 
 export interface FacilityGroup {

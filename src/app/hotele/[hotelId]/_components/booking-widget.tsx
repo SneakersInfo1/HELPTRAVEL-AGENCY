@@ -7,6 +7,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { formatPLN } from "@/lib/money";
+
 interface Props {
   hotelId: string;
   initial: {
@@ -21,8 +23,6 @@ interface Props {
   currency: string;
 }
 
-const formatPLN = (amount: number, currency: string) =>
-  new Intl.NumberFormat("pl-PL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 
 const nightsCopy = (n: number) => (n === 1 ? "noc" : n < 5 ? "noce" : "nocy");
 

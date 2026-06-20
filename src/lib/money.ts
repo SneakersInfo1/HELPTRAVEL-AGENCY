@@ -65,3 +65,14 @@ export function formatMinorAsCurrency(
     maximumFractionDigits: 0,
   }).format(fromMinor(minor));
 }
+
+// FAZA 8 — JEDNA funkcja formatowania ceny dla całego flow hoteli (wcześniej
+// każdy komponent miał swoją kopię). `amount` to już liczba (po fromMinor),
+// pełne złote bez groszy, „zł" zawsze po liczbie (Intl pl-PL).
+export function formatPLN(amount: number, currency = "PLN", locale = "pl-PL"): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}

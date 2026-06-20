@@ -12,10 +12,16 @@ import { notFound } from "next/navigation";
 
 import { fromMinor } from "@/lib/money";
 import { getHotelDetail, getRates, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
-import { isBookingLive } from "@/lib/config/featureFlags";
+import { isBookingLive, showReviews } from "@/lib/config/featureFlags";
+import { getHotelReviews, selectReviews, type DisplayReview } from "@/lib/liteapi/reviews";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
+import { ratingLabel } from "@/lib/hotels/rating";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { normalizeFacilities, groupFacilities, coerceImportantInfo } from "@/lib/liteapi/facilities";
+import { sanitizeFacilities } from "@/lib/liteapi/sanitize-facilities";
+import { stripCovidFacilities } from "@/lib/liteapi/covid-facilities";
+import { hotelDistanceLabels } from "@/lib/geo/distance-label";
+import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { getSiteUrl } from "@/lib/mvp/site";
 
 // LiteAPI is asked for `language=pl` (see lib/liteapi/hotel.ts), but for
@@ -38,19 +44,9 @@ import { TrackView } from "@/components/analytics/track-view";
 
 import { BookingWidget } from "./_components/booking-widget";
 import { HotelGallery } from "./_components/hotel-gallery";
+import { HotelReviews } from "./_components/hotel-reviews";
 import { RoomsSection } from "./_components/rooms-section";
 import { SaveHotelButton } from "./_components/save-hotel-button";
-
-// Honest qualitative label for LiteAPI's 0-10 guest rating. A pure mapping
-// of the REAL score — no inflation, shown only when a rating exists. Mirrors
-// the bands travellers recognise from booking sites.
-function ratingLabel(rating: number): string {
-  if (rating >= 9) return "Wyjątkowy";
-  if (rating >= 8) return "Świetny";
-  if (rating >= 7) return "Bardzo dobry";
-  if (rating >= 6) return "Dobry";
-  return "Przyzwoity";
-}
 
 // Polish plural for "opinia": 1 → opinia; 2-4 (except 12-14) → opinie;
 // otherwise → opinii.
@@ -111,6 +107,18 @@ async function fetchRates(args: {
   }
 }
 
+// Opinie to DODATEK do strony — gdy LiteAPI zawiedzie (sieć/4xx/5xx/walidacja),
+// NIGDY nie wywalamy całej strony hotelu, tylko nie pokazujemy sekcji.
+async function fetchReviews(hotelId: string): Promise<DisplayReview[]> {
+  if (!showReviews()) return [];
+  try {
+    return selectReviews(await getHotelReviews(hotelId));
+  } catch (err) {
+    if (err instanceof LiteApiError) console.warn("[hotele/detail] reviews", err.internalCode, err.message);
+    return [];
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -121,7 +129,7 @@ export async function generateMetadata({
   if (!detail) {
     return { title: "Hotel | HelpTravel", robots: { index: false, follow: false } };
   }
-  const cityCountry = [detail.city, detail.country].filter(Boolean).join(", ");
+  const cityCountry = [detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ");
   const desc = `Zarezerwuj ${detail.name} w ${detail.city}. Ceny finalne w PLN, bezpłatna anulacja w wybranych hotelach.${
     detail.amenities?.[0] ? ` ${detail.amenities[0]}.` : ""
   }${detail.amenities?.[1] ? ` ${detail.amenities[1]}.` : ""}`;
@@ -177,6 +185,11 @@ export default async function HotelDetailPage({
     return p.toString();
   })();
 
+  // Współrzędne hotelu — LiteAPI podaje je raz top-level, raz w `location`.
+  // Bierzemy pierwsze sensowne (używane przez mapę, JSON-LD geo i odległości).
+  const lat = detail.latitude ?? detail.location?.latitude ?? null;
+  const lng = detail.longitude ?? detail.location?.longitude ?? null;
+
   // JSON-LD
   const siteUrl = getSiteUrl();
   const breadcrumb = {
@@ -214,8 +227,8 @@ export default async function HotelDetailPage({
       addressCountry: detail.countryCode ?? detail.country,
     },
     geo:
-      detail.latitude != null && detail.longitude != null
-        ? { "@type": "GeoCoordinates", latitude: detail.latitude, longitude: detail.longitude }
+      lat != null && lng != null
+        ? { "@type": "GeoCoordinates", latitude: lat, longitude: lng }
         : undefined,
     priceRange: cheapestTotal ? `od ${Math.round(cheapestTotal)} PLN` : undefined,
   };
@@ -258,9 +271,13 @@ export default async function HotelDetailPage({
   ).slice(0, 15);
 
   // Merge every REAL facility source LiteAPI returned (`amenities` is often the
-  // sparsest of the three), de-dupe, localise to Polish and bucket for display.
+  // sparsest of the three), de-dupe, FAZA 2: usuń sprzeczności „X / No X" oraz
+  // prawie-duplikaty, FAZA 3: wytnij boilerplate COVID, a na końcu zlokalizuj
+  // do polskiego i pogrupuj.
   const facilityGroups = groupFacilities(
-    normalizeFacilities(detail.amenities, detail.hotelFacilities, detail.facilities),
+    stripCovidFacilities(
+      sanitizeFacilities(normalizeFacilities(detail.amenities, detail.hotelFacilities, detail.facilities)),
+    ),
   );
   const facilityCount = facilityGroups.reduce((sum, g) => sum + g.items.length, 0);
   const importantInfo = coerceImportantInfo(detail.hotelImportantInformation);
@@ -276,6 +293,20 @@ export default async function HotelDetailPage({
   if (detail.rating && detail.rating > 0) keyFacts.push({ label: "Ocena gości", value: `${detail.rating.toFixed(1)}/10` });
   if (facilityCount > 0) keyFacts.push({ label: "Udogodnienia", value: String(facilityCount) });
   if (photos.length > 0) keyFacts.push({ label: "Zdjęcia", value: String(photos.length) });
+
+  // FAZA 7 — odległość od centrum / plaży (liczona z realnych współrzędnych
+  // hotelu i punktu odniesienia miasta; guardraile w distance-label.ts; pusty
+  // obiekt = po prostu nie pokazujemy).
+  const distances = hotelDistanceLabels(
+    { lat, lng },
+    detail.city,
+    detail.countryCode ?? detail.country,
+  );
+
+  // FAZA 9 — prawdziwe opinie gości (za flagą SHOW_REVIEWS; cache 24h).
+  // selectReviews zwraca [] gdy brak czytelnych opinii → sekcja się nie pokaże.
+  // Fetch zabezpieczony (fetchReviews) — błąd LiteAPI nie wywala strony.
+  const reviews = await fetchReviews(hotelId);
 
   return (
     <main className="min-h-screen bg-neutral-50 pb-24 lg:pb-0">
@@ -341,9 +372,23 @@ export default async function HotelDetailPage({
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-neutral-600">
             {detail.stars ? <span className="text-amber-500">{"★".repeat(Math.round(detail.stars))}</span> : null}
             <span>
-              {[detail.address, detail.city, detail.country].filter(Boolean).join(", ")}
+              {[detail.address, detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ")}
             </span>
           </div>
+
+          {/* Odległości (FAZA 7) — dyskretnie, ikona + tekst, jak na Booking. */}
+          {(distances.center || distances.beach) && (
+            <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700">
+              <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-emerald-600">
+                <path
+                  fillRule="evenodd"
+                  d="M10 2a5 5 0 0 0-5 5c0 3.36 3.69 7.39 4.65 8.39a.48.48 0 0 0 .7 0C11.31 14.39 15 10.36 15 7a5 5 0 0 0-5-5zm0 6.8A1.8 1.8 0 1 1 10 5.2a1.8 1.8 0 0 1 0 3.6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {[distances.center, distances.beach].filter(Boolean).join(" · ")}
+            </p>
+          )}
 
           {/* Honest social proof — real LiteAPI rating + qualitative label +
               review count. Shown only when a real rating exists; review count
@@ -387,6 +432,7 @@ export default async function HotelDetailPage({
               {[
                 { id: "overview", label: "Przegląd" },
                 { id: "rooms", label: "Pokoje" },
+                ...(reviews.length > 0 ? [{ id: "reviews", label: "Opinie" }] : []),
                 ...(facilityCount > 0 ? [{ id: "amenities", label: "Udogodnienia" }] : []),
                 { id: "location", label: "Lokalizacja" },
                 { id: "policies", label: "Polityka" },
@@ -473,6 +519,9 @@ export default async function HotelDetailPage({
               bookingLive={isBookingLive()}
             />
 
+            {/* Opinie gości (FAZA 9) — renderuje się tylko gdy są czytelne. */}
+            <HotelReviews reviews={reviews} />
+
             {/* Amenities — merged from amenities + hotelFacilities + facilities,
                 localised to Polish and grouped. Shows ALL real facilities
                 (previously capped at 30 and sourced only from the sparse
@@ -510,11 +559,11 @@ export default async function HotelDetailPage({
             <section id="location" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
               <h2 className="text-lg font-bold text-neutral-900">Lokalizacja</h2>
               <p className="mt-2 text-sm text-neutral-700">
-                {[detail.address, detail.city, detail.country].filter(Boolean).join(", ") || detail.city}
+                {[detail.address, detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ") || detail.city}
               </p>
-              {detail.latitude != null && detail.longitude != null && (
+              {lat != null && lng != null && (
                 <a
-                  href={`https://www.openstreetmap.org/?mlat=${detail.latitude}&mlon=${detail.longitude}#map=15/${detail.latitude}/${detail.longitude}`}
+                  href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800"
@@ -555,7 +604,7 @@ export default async function HotelDetailPage({
               ))}
               {importantInfo && (
                 <div className="mt-4 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-100">
-                  <div className="text-sm font-semibold text-amber-900">Ważne informacje</div>
+                  <div className="text-sm font-semibold text-amber-900">Dobrze wiedzieć</div>
                   <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-amber-900/80">{importantInfo}</p>
                 </div>
               )}

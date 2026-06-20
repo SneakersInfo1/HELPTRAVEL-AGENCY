@@ -17,3 +17,17 @@ export function getBookingFlowMode(): BookingFlowMode {
 export function isBookingLive(): boolean {
   return getBookingFlowMode() === "live";
 }
+
+// FAZA 3 — boilerplate COVID/higiena (maseczki, dezynfekcja między pobytami,
+// dystans fizyczny…) sprawia, że serwis wygląda jak skopiowany 4 lata temu.
+// Domyślnie UKRYTE; ustaw HIDE_COVID_FACILITIES=false, żeby pokazać z powrotem.
+export function hideCovidFacilities(): boolean {
+  return process.env.HIDE_COVID_FACILITIES?.trim().toLowerCase() !== "false";
+}
+
+// FAZA 9 — sekcja prawdziwych opinii gości (LiteAPI /data/reviews). Domyślnie
+// WYŁĄCZONA (opt-in), bo treści bywają obcojęzyczne i właściciel chce je
+// najpierw obejrzeć. Włącz przez SHOW_REVIEWS=true (np. na Vercel).
+export function showReviews(): boolean {
+  return process.env.SHOW_REVIEWS?.trim().toLowerCase() === "true";
+}
