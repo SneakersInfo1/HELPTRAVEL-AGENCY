@@ -10,6 +10,8 @@
 
 import { useState } from "react";
 
+import { ratingLabel } from "@/lib/hotels/rating";
+
 interface Props {
   hotelName: string;
   hotelCity?: string;
@@ -97,14 +99,6 @@ function formatPrice(amount: number, currency: string): string {
     currency,
     maximumFractionDigits: 0,
   }).format(amount);
-}
-
-// Same quality labels the hotel page uses for the LiteAPI 0–10 guest score.
-function ratingLabel(r: number): string {
-  if (r >= 9) return "Wspaniały";
-  if (r >= 8) return "Bardzo dobry";
-  if (r >= 7) return "Dobry";
-  return "Przyzwoity";
 }
 
 function reviewsNoun(n: number): string {

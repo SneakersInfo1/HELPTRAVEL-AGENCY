@@ -17,7 +17,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { hotelDistanceLabels } from "@/lib/geo/distance-label";
+import { ratingLabel } from "@/lib/hotels/rating";
+import { localizeBoard } from "@/lib/liteapi/translations";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
+import { formatPLN } from "@/lib/money";
 import { HotelCardImage } from "./hotel-card-image";
 
 interface OfferCard {
@@ -25,6 +29,9 @@ interface OfferCard {
   name: string;
   city: string;
   country?: string;
+  countryCode?: string;
+  latitude?: number;
+  longitude?: number;
   address?: string;
   stars?: number;
   rating?: number;
@@ -43,38 +50,12 @@ interface OfferCard {
   };
 }
 
-const formatPLN = (amount: number, currency: string) =>
-  new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-
 const formatDate = (iso: string | undefined): string | null => {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   return new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit" }).format(d);
 };
-
-const ratingLabel = (r: number): string => {
-  if (r >= 9) return "Wspaniały";
-  if (r >= 8) return "Bardzo dobry";
-  if (r >= 7) return "Dobry";
-  return "Akceptowalny";
-};
-
-// Sesja C pkt 5 — polish board names that come from LiteAPI in English.
-function polishBoard(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const r = raw.toLowerCase();
-  if (r.includes("all inclusive") || r.includes("all-inclusive") || r === "ai") return "All Inclusive";
-  if (r.includes("full board") || r === "fb") return "Pełne wyżywienie";
-  if (r.includes("half board") || r === "hb") return "HB · śniadanie + obiadokolacja";
-  if (r.includes("breakfast")) return "Ze śniadaniem w cenie";
-  if (r.includes("room only") || r === "ro") return "Bez wyżywienia";
-  return raw;
-}
 
 function nightsLabel(n: number): string {
   if (n === 1) return "1 noc";
@@ -116,6 +97,12 @@ export function ResultCard({
     : null;
   const freeCancelDate = rate ? formatDate(rate.cancellationDeadline) : null;
   const isFreeCancel = (rate?.refundableTag === "RFN" || badges?.freeCancel) ?? false;
+  // FAZA 8 — odległość od centrum/plaży (te same guardraile co na szczegółach).
+  const distances = hotelDistanceLabels(
+    { lat: offer.latitude, lng: offer.longitude },
+    offer.city,
+    offer.countryCode ?? offer.country,
+  );
 
   return (
     <Link
@@ -171,6 +158,18 @@ export function ResultCard({
                 {offer.country ? `, ${localizeCountry(offer.country)}` : ""}
               </span>
             </div>
+            {(distances.center || distances.beach) && (
+              <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-neutral-600">
+                <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-600">
+                  <path
+                    fillRule="evenodd"
+                    d="M10 2a5 5 0 0 0-5 5c0 3.36 3.69 7.39 4.65 8.39a.48.48 0 0 0 .7 0C11.31 14.39 15 10.36 15 7a5 5 0 0 0-5-5zm0 6.8A1.8 1.8 0 1 1 10 5.2a1.8 1.8 0 0 1 0 3.6z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {[distances.center, distances.beach].filter(Boolean).join(" · ")}
+              </div>
+            )}
           </div>
           {offer.rating !== undefined && offer.rating > 0 && (
             <div className="flex shrink-0 flex-col items-end">
@@ -189,10 +188,10 @@ export function ResultCard({
           )}
         </div>
 
-        {rate && polishBoard(rate.boardName) && (
+        {rate && rate.boardName && (
           <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-900">
             <span aria-hidden>🍽</span>
-            {polishBoard(rate.boardName)}
+            {localizeBoard(rate.boardName)}
           </div>
         )}
 

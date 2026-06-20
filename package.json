@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "lighthouse": "tsx scripts/run-lighthouse.ts",
-    "test": "node --import tsx --test src/lib/mvp/parser.test.ts src/lib/mvp/scoring.test.ts src/lib/mvp/planner-links.test.ts src/lib/mvp/featured-destinations.test.ts src/lib/html/sanitize.test.ts src/lib/liteapi/client.test.ts src/lib/liteapi/hotel.test.ts src/lib/liteapi/booking.test.ts src/lib/hotels/rate-cache.test.ts src/lib/hotels/group-rates.test.ts src/lib/hotels/regions.test.ts src/lib/flights/flights.test.ts src/app/api/booking/booking-routes.test.ts src/lib/email/templates/booking-confirmation.test.ts src/lib/mvp/month-index-policy.test.ts",
+    "test": "node --import tsx --test src/lib/mvp/parser.test.ts src/lib/mvp/scoring.test.ts src/lib/mvp/planner-links.test.ts src/lib/mvp/featured-destinations.test.ts src/lib/html/sanitize.test.ts src/lib/liteapi/client.test.ts src/lib/liteapi/hotel.test.ts src/lib/liteapi/booking.test.ts src/lib/liteapi/sanitize-facilities.test.ts src/lib/liteapi/covid-facilities.test.ts src/lib/liteapi/reviews.test.ts src/lib/hotels/rate-cache.test.ts src/lib/hotels/group-rates.test.ts src/lib/hotels/rating.test.ts src/lib/hotels/regions.test.ts src/lib/geo/distance.test.ts src/lib/flights/flights.test.ts src/app/api/booking/booking-routes.test.ts src/lib/email/templates/booking-confirmation.test.ts src/lib/mvp/month-index-policy.test.ts",
     "smoke:liteapi": "tsx --env-file=.env.local scripts/smoke-liteapi.ts",
     "booking:smoke": "tsx --env-file=.env.local scripts/booking-smoke.ts",
     "booking:recover": "tsx --env-file=.env.local scripts/persist-recovered-booking.ts",

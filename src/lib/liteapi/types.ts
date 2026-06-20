@@ -30,6 +30,20 @@ export const LiteApiHotelSchema = z.object({
   countryCode: z.string().optional(),
   latitude: z.number().nullish(),
   longitude: z.number().nullish(),
+  // LiteAPI zwraca współrzędne raz top-level, raz ZAGNIEŻDŻONE w `location`
+  // (tak jest na /data/hotel; na /data/hotels bywa różnie). Czytamy oba — UI
+  // bierze `latitude ?? location.latitude`. Dotyczy mapy, JSON-LD geo i FAZY 7
+  // (odległość od centrum/plaży) zarówno na szczegółach, jak i na karcie wyników.
+  location: z
+    .object({
+      latitude: z.number().nullish(),
+      longitude: z.number().nullish(),
+    })
+    .nullish()
+    // Defensywnie: gdyby któryś hotel zwrócił `location` w innym kształcie,
+    // NIE wywalamy parsowania całej listy (do 1000 hoteli) — to pole jest tylko
+    // do odległości; brak/zły kształt → undefined (po prostu bez odległości).
+    .catch(undefined),
   address: z.string().optional(),
   zip: z.string().optional(),
   stars: z.number().nullish(),
@@ -69,6 +83,7 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   // mandatory fees…). Shape is usually a string but kept as unknown so an
   // array/object variant can never break the parse — coerced in the UI.
   hotelImportantInformation: z.unknown().optional(),
+  // `location` (zagnieżdżone współrzędne) jest już w bazowym LiteApiHotelSchema.
   checkinCheckoutTimes: z
     .object({
       checkin: z.string().optional(),

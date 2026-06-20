@@ -90,6 +90,24 @@ function compareByPrice(a: { totalMinor: bigint | null }, b: { totalMinor: bigin
   return a.totalMinor < b.totalMinor ? -1 : a.totalMinor > b.totalMinor ? 1 : 0;
 }
 
+/** Zwiń warunkowo identyczne opcje (board + polityka anulacji + maks. gości)
+ *  do najtańszej, posortuj rosnąco. Współdzielone przez groupRates i merge. */
+function dedupeOptions(options: RoomOption[]): RoomOption[] {
+  const byCondition = new Map<string, RoomOption>();
+  for (const opt of options) {
+    const cond = `${boardKey(opt.rate)}|${cancellationKey(opt)}|${opt.rate.maxOccupancy ?? ""}`;
+    const existing = byCondition.get(cond);
+    if (!existing) {
+      byCondition.set(cond, opt);
+    } else {
+      const winner = cheaperOf(existing, opt);
+      winner.collapsedCount = existing.collapsedCount + opt.collapsedCount + 1;
+      byCondition.set(cond, winner);
+    }
+  }
+  return [...byCondition.values()].sort(compareByPrice);
+}
+
 export function groupRates(roomTypes: LiteApiRoomType[]): GroupRatesResult {
   // 1. Flatten offers → options (offerId travels with each row; in practice
   //    LiteAPI ships exactly 1 rate per roomType, but we iterate defensively).
@@ -120,19 +138,7 @@ export function groupRates(roomTypes: LiteApiRoomType[]): GroupRatesResult {
   // 3. Deduplicate inside each group (identical terms → keep cheapest).
   const groups: RoomGroup[] = [];
   for (const [key, options] of groupsByKey) {
-    const byCondition = new Map<string, RoomOption>();
-    for (const opt of options) {
-      const cond = `${boardKey(opt.rate)}|${cancellationKey(opt)}|${opt.rate.maxOccupancy ?? ""}`;
-      const existing = byCondition.get(cond);
-      if (!existing) {
-        byCondition.set(cond, opt);
-      } else {
-        const winner = cheaperOf(existing, opt);
-        winner.collapsedCount = existing.collapsedCount + opt.collapsedCount + 1;
-        byCondition.set(cond, winner);
-      }
-    }
-    const deduped = [...byCondition.values()].sort(compareByPrice);
+    const deduped = dedupeOptions(options);
     const cheapest = deduped[0];
     groups.push({
       key,
@@ -168,4 +174,47 @@ export function groupRates(roomTypes: LiteApiRoomType[]): GroupRatesResult {
       groups: groups.length,
     },
   };
+}
+
+// FAZA 4 (bonus) — wtórna, PREZENTACYJNA konsolidacja: scala grupy, których
+// PRZETŁUMACZONA nazwa jest identyczna (+ ta sama maks. liczba gości). Bazowe
+// grupowanie zostaje na nazwie EN (jak w groupRates — „zadanie-4-safe"); to
+// tylko dla widoku, gdy różne nazwy EN dają tę samą nazwę PL (np. „Double Or
+// Twin Bed" i „Twin/Double room" → „Pokój dwuosobowy lub z dwoma łóżkami").
+// Po scaleniu deduplikujemy warunkowo identyczne opcje (różne grupy EN mogły
+// nieść tę samą taryfę w innej cenie) i sortujemy. offerId / flagi /
+// kontrakt checkoutu nietknięte.
+export function mergeGroupsByDisplayName(
+  groups: RoomGroup[],
+  displayNameOf: (originalName: string) => string,
+): RoomGroup[] {
+  const order: string[] = [];
+  const buckets = new Map<string, { options: RoomOption[]; maxOcc?: number; firstName: string }>();
+  for (const g of groups) {
+    const key = `${displayNameOf(g.name).trim().toLowerCase()}|${g.maxOccupancy ?? ""}`;
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = { options: [], maxOcc: g.maxOccupancy, firstName: g.name };
+      buckets.set(key, bucket);
+      order.push(key);
+    }
+    bucket.options.push(...g.options);
+  }
+
+  const out: RoomGroup[] = [];
+  for (const key of order) {
+    const b = buckets.get(key)!;
+    const deduped = dedupeOptions(b.options);
+    const cheapest = deduped[0];
+    out.push({
+      key,
+      name: cheapest?.rate.name?.trim() || b.firstName || FALLBACK_NAME,
+      maxOccupancy: b.maxOcc,
+      options: deduped,
+      cheapestMinor: cheapest?.totalMinor ?? null,
+      collapsedTotal: deduped.reduce((s, o) => s + o.collapsedCount, 0),
+    });
+  }
+  out.sort((a, b) => compareByPrice({ totalMinor: a.cheapestMinor }, { totalMinor: b.cheapestMinor }));
+  return out;
 }

@@ -1,9 +1,7 @@
 "use client";
 
 import type { PriceEntry } from "@/lib/hotels/price-store";
-
-const formatPLN = (amount: number, currency: string) =>
-  new Intl.NumberFormat("pl-PL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+import { formatPLN } from "@/lib/money";
 
 const formatDate = (iso: string | undefined): string | null => {
   if (!iso) return null;
