@@ -59,7 +59,13 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
               funkcjonalnych: ten sam formularz, te same eventy GA4.
               max-w-4xl (nie 3xl) — tryb LOTY ma 5 pól (Skąd/Dokąd/Termin/
               Pasażerowie/CTA), na 3xl pole „Skąd" się zgniatało. */}
-          <div className="mt-6 w-full max-w-4xl sm:mt-7">
+          {/* relative z-30: pasek ma `backdrop-blur-xl` (tworzy własny kontekst
+              stackingu), przez co popovery formularza (kalendarz/„Dokąd"/goście)
+              z-50 były UWIĘZIONE w tym kontekście, a późniejsze w DOM rodzeństwo
+              (rząd zaufania, metody płatności) malowało SIĘ NA WIERZCHU — białe
+              napisy „prześwitywały" przez biały kalendarz. Podniesienie całego
+              poddrzewa formularza ponad to rodzeństwo gasi przeświecanie. */}
+          <div className="relative z-30 mt-6 w-full max-w-4xl sm:mt-7">
             <HomeSearchTabs />
           </div>
 
