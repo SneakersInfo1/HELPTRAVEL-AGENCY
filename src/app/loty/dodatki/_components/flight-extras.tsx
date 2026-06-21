@@ -8,8 +8,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { track } from "@/lib/analytics/track";
-import { fmtMoneyPln, fmtTime, type FareOption } from "@/lib/flights/display";
+import { fmtMoneyPln, type FareOption } from "@/lib/flights/display";
 import { loadFlightFlow, patchFlightFlow, type FlightFlow } from "@/lib/flights/flow-storage";
+import { FlightItinerarySummary } from "@/components/flights/flight-itinerary-summary";
 
 function BagRow({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -85,8 +86,6 @@ export function FlightExtras() {
     }
   }
 
-  const offerLegs = flow.offer.legs;
-
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-bold text-neutral-900">Bagaż i taryfa</h1>
@@ -94,17 +93,9 @@ export function FlightExtras() {
         {flow.origin} → {flow.destination} · {flow.adults + flow.children + flow.infants} pasażerów
       </p>
 
-      {/* Skrót wybranego lotu */}
-      <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
-        {offerLegs.map((leg) => (
-          <div key={leg.direction} className="flex items-center justify-between py-1 text-sm">
-            <span className="text-neutral-500">{leg.direction === "OUTBOUND" ? "Wylot" : "Powrót"}</span>
-            <span className="font-medium text-neutral-800">
-              {leg.originCode} {fmtTime(leg.departureTime)} → {leg.destinationCode} {fmtTime(leg.arrivalTime)}
-            </span>
-          </div>
-        ))}
-        <p className="mt-1 text-[11px] text-neutral-400">{[...new Set(offerLegs.flatMap((l) => l.carriers))].join(", ")}</p>
+      {/* Skrót wybranego lotu — logo linii, godziny, daty, czas i przesiadki. */}
+      <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <FlightItinerarySummary offer={flow.offer} depart={flow.depart} ret={flow.ret} />
       </div>
 
       {/* Taryfy */}
