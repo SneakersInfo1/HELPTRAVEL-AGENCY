@@ -8,7 +8,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { fetchHotelsByPlaceId, fetchHotelsList, LiteApiError } from "@/lib/liteapi";
+import { fetchHotelsByPlaceId, fetchHotelsForDestination, LiteApiError } from "@/lib/liteapi";
 import { nightsBetween } from "@/lib/hotels/normalize";
 import { getRegionById, isInRegion, type RegionRecord } from "@/lib/hotels/regions";
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
@@ -197,6 +197,12 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
     thumbnailUrl?: string;
   }
 
+  // FAZA 2 — rozwiązujemy rekord katalogu PRZED fetchem: daje kanoniczny EN
+  // `cityName` (LiteAPI matchuje dokładny string → polska nazwa = 0 hoteli) oraz
+  // lat/lng do fallbacku po współrzędnych, gdy nazwa nie trafi w indeks LiteAPI.
+  const destinationRecord = region ? null : resolveDestinationFromQuery({ destination, country });
+  const canonicalCity = destinationRecord?.city.en ?? destination;
+
   let metaPool: MetaOffer[] = [];
   let errorMessage: string | null = null;
 
@@ -218,7 +224,13 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
     // leżących na wyspie (placeId-search dorzuca sąsiednie wyspy).
     const list = region
       ? await fetchHotelsByPlaceId({ placeId: region.placeId, limit: HOTEL_POOL_SIZE })
-      : await fetchHotelsList({ city: destination, country, limit: HOTEL_POOL_SIZE });
+      : await fetchHotelsForDestination({
+          city: canonicalCity,
+          country,
+          lat: destinationRecord?.lat ?? null,
+          lng: destinationRecord?.lng ?? null,
+          limit: HOTEL_POOL_SIZE,
+        });
     let raw = list.data ?? [];
     if (region) raw = raw.filter((h) => isInRegion(region, h));
     metaPool = raw.map((h) => ({
@@ -238,7 +250,6 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
     errorMessage = err instanceof LiteApiError ? err.userMessagePl : "Coś poszło nie tak. Spróbuj ponownie.";
   }
 
-  const destinationRecord = region ? null : resolveDestinationFromQuery({ destination, country });
   const cityPl = region ? region.namePl : (destinationRecord?.city.pl ?? localizeCity(destination));
   const fallbackIata = region ? (region.airports[0] ?? null) : (destinationRecord?.airports[0] ?? null);
   const fallbackLat = region ? region.lat : (destinationRecord?.lat ?? null);
