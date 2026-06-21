@@ -185,7 +185,10 @@ export function FlightResults(props: Props) {
         )}
       </header>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[260px_1fr]">
+      {/* grid-cols-1 na mobile: bez tego implicytna kolumna gridu skaluje się do
+          max-content, a `nowrap` w banerze ładowania rozpychał ją poza ekran
+          (poziomy scroll „przy wyszukiwaniu"). minmax(0,1fr) wymusza zawijanie. */}
+      <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
         {/* Sidebar filtrów (desktop) */}
         <aside className="hidden lg:block">
           {offers === null && <FlightFiltersSkeleton />}

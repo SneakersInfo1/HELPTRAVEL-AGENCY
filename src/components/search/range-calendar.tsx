@@ -25,6 +25,8 @@ interface Props {
   /** completed=true when the second click just finished a full range. */
   onChange: (next: RangeValue, completed: boolean) => void;
   numberOfMonths: 1 | 2;
+  /** Tryb jednej daty (lot w jedną stronę): jeden klik = gotowe, bez powrotu. */
+  singleDate?: boolean;
 }
 
 function startOfToday(): Date {
@@ -36,11 +38,16 @@ function addMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, date.getDate());
 }
 
-export function RangeCalendar({ value, onChange, numberOfMonths }: Props) {
+export function RangeCalendar({ value, onChange, numberOfMonths, singleDate = false }: Props) {
   const [hovered, setHovered] = useState<Date | undefined>(undefined);
   const today = startOfToday();
 
   const handleDayClick = (day: Date) => {
+    // Tryb jednej daty (one-way): pojedynczy klik kończy wybór, bez powrotu.
+    if (singleDate) {
+      onChange({ from: day, to: undefined }, true);
+      return;
+    }
     const { from, to } = value;
     // No start yet, or a full range already picked → (re)start here.
     if (!from || (from && to)) {
