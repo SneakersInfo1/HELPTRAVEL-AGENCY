@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics/track";
 import { fmtMoneyPln } from "@/lib/flights/display";
 import { loadFlightFlow, patchFlightFlow, type FlightFlow } from "@/lib/flights/flow-storage";
+import { FlightItinerarySummary } from "@/components/flights/flight-itinerary-summary";
 
 type Gender = "M" | "F" | "X";
 type DocType = "passport" | "id";
@@ -266,11 +267,16 @@ export default function PassengersPage() {
         </div>
 
         {/* Sticky podsumowanie + CTA */}
-        <aside className="lg:sticky lg:top-6 lg:h-fit">
+        <aside className="space-y-4 lg:sticky lg:top-6 lg:h-fit">
+          {flow.offer && (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+              <h2 className="text-sm font-bold text-neutral-900">Twój lot</h2>
+              <FlightItinerarySummary offer={flow.offer} depart={flow.depart} ret={flow.ret} className="mt-3" />
+            </div>
+          )}
           <div className="rounded-2xl border border-neutral-200 bg-white p-5">
             <h2 className="text-sm font-bold text-neutral-900">Podsumowanie</h2>
             <div className="mt-3 space-y-1 text-sm text-neutral-600">
-              <div className="flex justify-between"><span>Trasa</span><span className="font-medium text-neutral-900">{flow.origin} → {flow.destination}</span></div>
               <div className="flex justify-between"><span>Pasażerowie</span><span className="font-medium text-neutral-900">{flow.adults + flow.children + flow.infants}</span></div>
               {flow.fare && (
                 <div className="flex justify-between"><span>Taryfa</span><span className="font-medium text-neutral-900">{flow.fare.name}</span></div>

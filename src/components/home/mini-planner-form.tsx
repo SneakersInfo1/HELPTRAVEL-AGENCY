@@ -382,7 +382,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       <div
         className={`grid gap-3 lg:items-end ${
           isFlights
-            ? "lg:grid-cols-[minmax(150px,1.1fr)_minmax(170px,1.4fr)_minmax(155px,1.2fr)_minmax(125px,0.95fr)_auto]"
+            ? "lg:grid-cols-[minmax(195px,1.45fr)_minmax(180px,1.35fr)_minmax(150px,1.05fr)_minmax(118px,0.85fr)_auto]"
             : "lg:grid-cols-[1.4fr_1.3fr_1fr_auto]"
         }`}
       >
@@ -501,6 +501,8 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         <DateRangeField
           checkin={startDate}
           checkout={endDate}
+          // Lot w jedną stronę → kalendarz wybiera tylko jedną datę (wylot).
+          singleDate={isFlights && oneWay}
           onChange={(nextStart, nextEnd) => {
             setStartDate(nextStart);
             setEndDate(nextEnd);
@@ -550,6 +552,10 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             checked={oneWay}
             onChange={(e) => {
               setOneWay(e.target.checked);
+              // Włączenie „w jedną stronę" czyści wybraną datę powrotu (inaczej
+              // zostałaby ukryta, ale dalej wysyłana). Kalendarz przełącza się
+              // wtedy w tryb jednej daty (singleDate).
+              if (e.target.checked) setEndDate("");
               setDateError("");
             }}
             className="h-3.5 w-3.5 rounded border-emerald-900/30 text-emerald-600 focus:ring-emerald-500"

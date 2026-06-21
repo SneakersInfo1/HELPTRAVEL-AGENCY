@@ -56,6 +56,8 @@ interface Props {
   onChange: (checkin: string, checkout: string) => void;
   fieldClassName: string;
   labelClassName: string;
+  /** Tryb jednej daty (lot w jedną stronę): tylko wylot, jeden klik = gotowe. */
+  singleDate?: boolean;
 }
 
 export function DateRangeField({
@@ -64,6 +66,7 @@ export function DateRangeField({
   onChange,
   fieldClassName,
   labelClassName,
+  singleDate = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   // Desktop vs mobile decided when the picker opens (lg breakpoint, brief).
@@ -75,7 +78,11 @@ export function DateRangeField({
   const rootRef = useRef<HTMLDivElement>(null);
 
   const value: RangeValue = { from: isoToDate(checkin), to: isoToDate(checkout) };
-  const label = checkin && checkout ? formatRangeLabel(checkin, checkout) : null;
+  // W trybie jednej daty etykieta to sam wylot; inaczej pełny zakres wylot–powrót.
+  const label = singleDate
+    ? (value.from ? dayLabel(value.from) : null)
+    : (checkin && checkout ? formatRangeLabel(checkin, checkout) : null);
+  const placeholderText = singleDate ? "Data wylotu" : "Wylot – Powrót";
 
   // Two months side by side ≈ 420px tall incl. footer.
   const POPOVER_HEIGHT_PX = 440;
@@ -129,6 +136,7 @@ export function DateRangeField({
   const clear = () => onChange("", "");
 
   const footerRangeText = (() => {
+    if (singleDate) return value.from ? dayLabel(value.from) : "Wybierz datę wylotu";
     if (value.from && value.to) return `${dayLabel(value.from)} – ${dayLabel(value.to)}`;
     if (value.from) return `${dayLabel(value.from)} – wybierz powrót`;
     return "Wybierz datę wylotu";
@@ -142,12 +150,12 @@ export function DateRangeField({
         onClick={() => (open ? setOpen(false) : openPicker())}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={label ? `Termin: ${label}` : "Wybierz termin podróży"}
+        aria-label={label ? `Termin: ${label}` : (singleDate ? "Wybierz datę wylotu" : "Wybierz termin podróży")}
         className={`${fieldClassName} flex items-center gap-2 text-left`}
       >
         <span aria-hidden className="text-emerald-900/45">📅</span>
         <span className={`truncate ${label ? "" : "text-emerald-950/45"}`}>
-          {label ?? "Wylot – Powrót"}
+          {label ?? placeholderText}
         </span>
       </button>
 
@@ -159,7 +167,7 @@ export function DateRangeField({
             flipUp ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"
           }`}
         >
-          <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={2} />
+          <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={2} singleDate={singleDate} />
           <div className="mt-2 flex items-center justify-between border-t border-emerald-900/8 pt-3">
             <button
               type="button"
@@ -181,7 +189,7 @@ export function DateRangeField({
           className="fixed inset-0 z-[70] flex flex-col bg-white"
         >
           <div className="flex items-center justify-between border-b border-emerald-900/10 px-4 py-3">
-            <h2 className="text-base font-bold text-emerald-950">Wybierz termin</h2>
+            <h2 className="text-base font-bold text-emerald-950">{singleDate ? "Wybierz datę wylotu" : "Wybierz termin"}</h2>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -192,7 +200,7 @@ export function DateRangeField({
             </button>
           </div>
           <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-4">
-            <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={1} />
+            <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={1} singleDate={singleDate} />
           </div>
           <div className="sticky bottom-0 border-t border-emerald-900/10 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <p className="text-center text-xs font-medium text-emerald-900/70">{footerRangeText}</p>
@@ -207,7 +215,7 @@ export function DateRangeField({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                disabled={!value.from || !value.to}
+                disabled={singleDate ? !value.from : (!value.from || !value.to)}
                 className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-600/50"
               >
                 Gotowe

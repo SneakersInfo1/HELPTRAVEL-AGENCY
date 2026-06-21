@@ -153,7 +153,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           competing focus targets for keyboard/AT users). Layout's skip link
           is canonical; this site-shell only owns the #main-content wrapper. */}
 
-      <header className="sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 px-3 py-2 shadow-[0_10px_30px_rgba(12,58,34,0.055)] backdrop-blur-xl sm:px-4">
+      <header className="sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/10 bg-white px-3 py-2 shadow-[0_10px_30px_rgba(12,58,34,0.055)] sm:px-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <LocalizedLink
