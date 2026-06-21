@@ -1,6 +1,8 @@
 // LiteAPI search — produces a list of hotelIds for a destination/dates query.
 // Two-step model: this returns the list; rates.ts gets pricing.
 
+import { z } from "zod";
+
 import { liteApiRequest } from "./client";
 import {
   LiteApiHotelsListResponseSchema,
@@ -115,6 +117,123 @@ export async function fetchHotelsByPlaceId(input: {
     // czyli placeId+limit) — metadane nie zmieniają się godzinowo.
     nextCache: { revalidate: 86_400, tags: ["liteapi", "liteapi-hotels-list"] },
   });
+}
+
+// FAZA 2 — wyszukiwanie po współrzędnych (fallback, gdy cityName daje 0).
+// LiteAPI /data/hotels przyjmuje latitude/longitude/radius (metry, min 1000).
+// Zweryfikowane na żywo (prod): Sharm 27.9158,34.33 r=15km → 722 hotele.
+export async function fetchHotelsByCoords(input: {
+  lat: number;
+  lng: number;
+  radius?: number;
+  limit?: number;
+}): Promise<LiteApiHotelsListResponse> {
+  return liteApiRequest({
+    path: "/data/hotels",
+    method: "GET",
+    keyMode: "public",
+    schema: LiteApiHotelsListResponseSchema,
+    query: {
+      latitude: input.lat,
+      longitude: input.lng,
+      radius: input.radius ?? 25_000,
+      limit: input.limit ?? DEFAULT_HOTELS_LIMIT,
+    },
+    nextCache: { revalidate: 86_400, tags: ["liteapi", "liteapi-hotels-list"] },
+  });
+}
+
+// /data/places — rozwiązanie luźnej/polskiej nazwy na placeId (Google Places
+// pod spodem, więc znosi pisownię/język/literówki). Schemat luźny: liczy się
+// tylko placeId; nieoczekiwany kształt rzuci LiteApiValidationError, który
+// łańcuch fallbacków łapie i idzie dalej.
+const LiteApiPlacesResponseSchema = z
+  .object({
+    data: z
+      .array(
+        z
+          .object({
+            placeId: z.string(),
+            displayName: z.string().optional(),
+            types: z.array(z.string()).optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+  })
+  .passthrough();
+
+/** Wybór najlepszego placeId: preferuj lokalność (miasto/region), unikaj lotniska/POI. */
+export function pickPlaceId(
+  places: ReadonlyArray<{ placeId: string; types?: string[] }>,
+): string | null {
+  if (places.length === 0) return null;
+  const isAirport = (t?: string[]) => t?.some((x) => x.includes("airport")) ?? false;
+  const isLocality = (t?: string[]) =>
+    t?.some((x) => x === "locality" || x === "administrative_area_level_2") ?? false;
+  const locality = places.find((p) => isLocality(p.types) && !isAirport(p.types));
+  if (locality) return locality.placeId;
+  const nonAirport = places.find((p) => !isAirport(p.types));
+  return (nonAirport ?? places[0]).placeId;
+}
+
+export async function resolvePlaceId(textQuery: string): Promise<string | null> {
+  const res = await liteApiRequest({
+    path: "/data/places",
+    method: "GET",
+    keyMode: "public",
+    schema: LiteApiPlacesResponseSchema,
+    query: { textQuery },
+    nextCache: { revalidate: 86_400, tags: ["liteapi", "liteapi-places"] },
+  });
+  return pickPlaceId(res.data ?? []);
+}
+
+// FAZA 2 — odporne wyszukiwanie hoteli dla kierunku. LiteAPI /data/hotels?cityName
+// to DOKŁADNE dopasowanie stringa, więc polska nazwa albo inna pisownia = 0 hoteli
+// mimo realnej oferty. Łańcuch fallbacków (każdy odpala TYLKO gdy poprzedni dał 0):
+//   1) cityName (kanoniczny EN — najszersze pokrycie, gdy pisownia trafia),
+//   2) lat/lng + radius (mamy współrzędne każdego kierunku z katalogu),
+//   3) /data/places → placeId (gdy brak współrzędnych albo 1–2 dały 0).
+// Normalny ruch (cityName trafia od razu) NIE płaci nic ekstra.
+export async function fetchHotelsForDestination(input: {
+  city: string; // najlepiej kanoniczny EN
+  country: string;
+  lat?: number | null;
+  lng?: number | null;
+  limit?: number;
+}): Promise<LiteApiHotelsListResponse> {
+  const limit = input.limit ?? DEFAULT_HOTELS_LIMIT;
+
+  let byCity: LiteApiHotelsListResponse | null = null;
+  try {
+    byCity = await fetchHotelsList({ city: input.city, country: input.country, limit });
+    if ((byCity.data?.length ?? 0) > 0) return byCity;
+  } catch {
+    // Nieznany kraj / odrzucona nazwa → próbujemy współrzędnych/places.
+  }
+
+  if (typeof input.lat === "number" && typeof input.lng === "number") {
+    try {
+      const byCoords = await fetchHotelsByCoords({ lat: input.lat, lng: input.lng, limit });
+      if ((byCoords.data?.length ?? 0) > 0) return byCoords;
+    } catch {
+      // spadamy do places
+    }
+  }
+
+  try {
+    const query = input.country ? `${input.city}, ${input.country}` : input.city;
+    const placeId = await resolvePlaceId(query);
+    if (placeId) {
+      const byPlace = await fetchHotelsByPlaceId({ placeId, limit });
+      if ((byPlace.data?.length ?? 0) > 0) return byPlace;
+    }
+  } catch {
+    // wszystkie ścieżki puste → zwracamy pusty wynik (caller pokaże „brak wyników")
+  }
+
+  return byCity ?? { data: [] };
 }
 
 // Convenience wrapper that takes the higher-level NormalizedHotelSearchInput.
