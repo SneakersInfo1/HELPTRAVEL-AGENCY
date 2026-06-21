@@ -22,6 +22,26 @@ export type PriceAmount = z.infer<typeof PriceAmountSchema>;
 // ────────────────────────────────────────────────────────────────────────────
 // Search / hotels list (`GET /data/hotels`)
 
+// LiteAPI potrafi zwrócić `main_photo`/`thumbnail` jako PUSTY STRING ("") albo
+// ścieżkę bez schematu URL. Sztywne `z.string().url()` rzucało wtedy
+// `invalid_format`, a ponieważ `data` to tablica BEZ per-element catch, JEDEN
+// taki hotel wywracał parsowanie CAŁEGO miasta. Zmierzone na żywo (prod):
+// Sharm El Sheikh „Royal Naama Bay" (main_photo:"") → 754 hotele do kosza →
+// „Otrzymaliśmy niespodziewaną odpowiedź od dostawcy" → martwy kierunek.
+// To samo zabijało Hammamet, Rodos i dziesiątki innych kurortów.
+// Rozwiązanie: złe/puste zdjęcie → undefined (hotel ZOSTAJE, karta pokazuje
+// placeholder), zamiast wywracać cały wynik. „Każdy błąd to stracony ruch."
+function toHttpUrlOrUndefined(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:" ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+const OptionalPhotoUrl = z.preprocess(toHttpUrlOrUndefined, z.string().optional());
+
 export const LiteApiHotelSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -49,15 +69,29 @@ export const LiteApiHotelSchema = z.object({
   stars: z.number().nullish(),
   rating: z.number().nullish(),
   reviewCount: z.number().nullish(),
-  main_photo: z.string().url().optional(),
-  thumbnail: z.string().url().optional(),
+  main_photo: OptionalPhotoUrl,
+  thumbnail: OptionalPhotoUrl,
 });
 export type LiteApiHotel = z.infer<typeof LiteApiHotelSchema>;
 
 export const LiteApiHotelsListResponseSchema = z.object({
-  data: z.array(LiteApiHotelSchema),
+  // Per-element odporność (siatka bezpieczeństwa). Najczęstszy sprawca (puste
+  // main_photo) jest już neutralizowany w `OptionalPhotoUrl`, ale gdyby
+  // POJEDYNCZY hotel miał inny nieoczekiwany kształt (np. null `name`/`city`),
+  // wypada z listy — NIE wywraca całego kierunku. Lista to ≤1000 rekordów i jest
+  // cache'owana, więc podwójny safeParse jest tani. Bez tego jeden trefny rekord
+  // = cały kierunek martwy (= stracony ruch).
+  data: z.preprocess(
+    (val) => (Array.isArray(val) ? val.filter((item) => LiteApiHotelSchema.safeParse(item).success) : val),
+    z.array(LiteApiHotelSchema),
+  ),
   total: z.number().optional(),
-  hotelIds: z.array(z.string()).optional(),
+  // LiteAPI przy 0 wynikach zwraca `hotelIds: ""` (pusty STRING zamiast tablicy
+  // albo braku pola) — zmierzone na żywo (prod). Sztywne `z.array()` rzucało
+  // `invalid_type`, więc KAŻDY pusty wynik (zła pisownia LUB realnie 0 hoteli na
+  // dane daty) leciał jako błąd („niespodziewana odpowiedź dostawcy") zamiast
+  // łagodnego ekranu „brak wyników, zmień daty/kierunek". Nie-tablica → undefined.
+  hotelIds: z.preprocess((v) => (Array.isArray(v) ? v : undefined), z.array(z.string()).optional()),
 });
 export type LiteApiHotelsListResponse = z.infer<typeof LiteApiHotelsListResponseSchema>;
 
