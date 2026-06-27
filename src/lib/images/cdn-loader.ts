@@ -61,6 +61,11 @@ export default function cdnLoader({ src, width, quality }: ImageLoaderProps): st
   if (host === "images.pexels.com" || host === "videos.pexels.com") {
     url.searchParams.set("auto", "compress");
     url.searchParams.set("cs", "tinysrgb");
+    // KRYTYCZNE dla ostrości hero: część źródłowych URL-i Pexels niesie wbudowane
+    // `h=650`. Z `w` + `h` naraz Pexels oddaje malutki rendition (zmierzone na
+    // żywo: prośba o w=1920 zwracała 770×433 → ~5× upscaling w hero). Usuwamy
+    // `h`, żeby SAMO `w` sterowało rozdzielczością; aspekt i tak tnie object-cover.
+    url.searchParams.delete("h");
     url.searchParams.set("w", String(width));
     url.searchParams.set("dpr", "1");
     return url.toString();
