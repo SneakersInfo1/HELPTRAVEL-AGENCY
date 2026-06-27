@@ -50,7 +50,12 @@ export function CinematicBackdrop({ images, intervalMs = 7000 }: CinematicBackdr
                 fetchPriority={i === 0 ? "high" : undefined}
                 loading={i === 0 ? "eager" : "lazy"}
                 quality={70}
-                sizes="100vw"
+                // Hero jest WYSOKI a wąski na mobile → object-cover mocno
+                // przycina zdjęcie poziomo i skaluje w pionie. `100vw` kazałby
+                // pobrać obraz szeroki na viewport (np. 390 px) = za mało pikseli
+                // na wysoki kadr → miękko. Wymuszamy ≥1280 px (max sensowny
+                // rendition Pexels) na mobile/tablet; desktop i tak bierze 1280.
+                sizes="(max-width: 1024px) 1280px, 100vw"
                 className="object-cover"
               />
             </div>
