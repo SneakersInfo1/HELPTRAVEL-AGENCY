@@ -11,10 +11,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { searchFlightRates, toFlightApiError } from "@/lib/flights/client";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
+import { normalizeRatesResponse } from "@/lib/flights/display";
+import {
+  flightRatesCacheKey,
+  getCachedFlightOffers,
+  setCachedFlightOffers,
+} from "@/lib/flights/rates-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+// Lista pokazuje setki ofert; cap utrzymuje payload <0,5 MB i Redis-friendly.
+// Sort po cenie PRZED capem → najtańsze zawsze zostają; klient re-sortuje wg wyboru.
+const FLIGHT_OFFERS_CAP = 150;
 
 export async function POST(request: NextRequest) {
   const limited = await enforceRateLimit(request, "flights-search");
@@ -30,11 +40,24 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_body", issues: parsed.error.issues }, { status: 400 });
   }
+  const input = parsed.data;
+
+  // Cache-hit → instant (oferty już chude i przycięte). [] = trafiony negatywny
+  // cache (martwa trasa) — też zwracamy bez ruszania LiteAPI.
+  const cacheKey = flightRatesCacheKey(input);
+  const cached = await getCachedFlightOffers(cacheKey);
+  if (cached !== null) {
+    return NextResponse.json({ offers: cached, count: cached.length, cached: true }, { status: 200 });
+  }
 
   try {
-    const res = await searchFlightRates(parsed.data);
-    const journeys = res.data?.flatMap((d) => d.journeys ?? []) ?? [];
-    return NextResponse.json({ data: res.data, count: journeys.length }, { status: 200 });
+    const res = await searchFlightRates(input);
+    const offers = normalizeRatesResponse(res)
+      .slice()
+      .sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity))
+      .slice(0, FLIGHT_OFFERS_CAP);
+    await setCachedFlightOffers(cacheKey, offers);
+    return NextResponse.json({ offers, count: offers.length, cached: false }, { status: 200 });
   } catch (err) {
     const e = toFlightApiError(err, "search");
     console.warn(`[flights][rates] ${e.code} liteApiStatus=${e.liteApiStatus} liteApiCode=${e.liteApiCode}`);
