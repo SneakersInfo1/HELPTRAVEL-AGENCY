@@ -115,6 +115,23 @@ function isInvalidOfferBody(body: unknown): boolean {
   return typeof err.message === "string" && /invalid\s*offer\s*id/i.test(err.message);
 }
 
+// Czy błąd z /data/hotel oznacza PRAWDZIWIE nieistniejący hotel? Używane przez
+// stronę szczegółów, żeby zrobić notFound() (czysty 404) zamiast traktować to
+// jak błąd przejściowy (strona 500). UWAGA (zmierzone na żywo): LiteAPI dla
+// złego hotelId NIE zwraca 404, tylko HTTP 400 z `{error:{code:4002,
+// description:"hotelId is missing or invalid"}}`. Kod 4002 dzieli z prebookiem
+// (tam = wygasła oferta), więc rozpoznajemy go po statusie 400 + treści.
+export function isHotelNotFoundError(err: unknown): boolean {
+  if (!(err instanceof LiteApiError)) return false;
+  if (err.status === 404) return true;
+  if (err.status === 400) {
+    const body = err.body as { error?: { code?: unknown; description?: unknown } } | undefined;
+    const desc = typeof body?.error?.description === "string" ? body.error.description : "";
+    if (body?.error?.code === 4002 || /hotel\s*id.*(missing|invalid)/i.test(desc)) return true;
+  }
+  return false;
+}
+
 // Map an HTTP status + body to the right error subclass.
 export function liteApiErrorFromResponse(status: number, body: unknown): LiteApiError {
   const opts = { status, body };
