@@ -11,7 +11,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { fromMinor } from "@/lib/money";
-import { getHotelDetail, getRates, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
+import { getHotelDetail, getRates, isHotelNotFoundError, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
 import { isBookingLive, showReviews } from "@/lib/config/featureFlags";
 import { getHotelReviews, selectReviews, type DisplayReview } from "@/lib/liteapi/reviews";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
@@ -93,15 +93,15 @@ async function fetchDetailForMeta(hotelId: string) {
 // „martwy" przez 6h dla wszystkich (zgłoszenie: „czasami po kliknięciu jest
 // 404"). Dodatkowo catch był NIEMY → zero śladu w logach.
 // Teraz:
-//   • LiteAPI 404 (hotel naprawdę nie istnieje) → null → notFound() (poprawne,
-//     cacheowalne — nie odpytujemy w kółko znanego-brakującego hotelu),
-//   • cokolwiek innego (przejściowe) → rzucamy → error boundary: 500 z „spróbuj
-//     ponownie", NIE zapisuje 404 w cache, odświeżenie ponawia.
+//   • prawdziwie nieistniejący hotel (404 LUB 400/4002) → null → notFound()
+//     (poprawne, cacheowalne — nie odpytujemy w kółko znanego-brakującego hotelu),
+//   • cokolwiek innego (przejściowe: timeout/5xx/sieć/limit/walidacja) → rzucamy
+//     → error boundary: 500 z „spróbuj ponownie", NIE zapisuje 404 w cache.
 async function fetchDetailForPage(hotelId: string) {
   try {
     return await getHotelDetail(hotelId);
   } catch (err) {
-    if (err instanceof LiteApiError && err.status === 404) return null;
+    if (isHotelNotFoundError(err)) return null;
     console.error("[hotele/detail] fetchDetail nieudane (traktuję jako przejściowe)", {
       hotelId,
       code: err instanceof LiteApiError ? err.internalCode : "NON_LITEAPI",
