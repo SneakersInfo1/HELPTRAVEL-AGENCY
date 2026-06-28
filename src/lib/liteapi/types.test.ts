@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { LiteApiHotelSchema, LiteApiHotelsListResponseSchema } from "./types";
+import { LiteApiHotelSchema, LiteApiHotelsListResponseSchema, LiteApiHotelDetailSchema } from "./types";
 
 const GOOD_PHOTO = "https://static.cupid.travel/hotels/123.jpg";
 
@@ -88,4 +88,48 @@ test("0 wyników: hotelIds:'' (pusty string z LiteAPI) parsuje się jako brak wy
   assert.equal(parsed.success, true);
   assert.equal(parsed.success && parsed.data.data.length, 0);
   assert.equal(parsed.success && parsed.data.hotelIds, undefined);
+});
+
+// ── /data/hotel (szczegóły) — ta sama klasa błędu co Sharm, ale na STRONIE
+// HOTELU. Jedno złe URL w galerii (`hotelImages[].url`) rzucało invalid_format
+// na sztywnym z.string().url() → cała walidacja hotelu padała → getHotelDetail
+// throw → catch→null→notFound() → 404 („czasami hotel znika"). Te testy pilnują,
+// że trefne zdjęcie wypada, a HOTEL ZOSTAJE.
+const DETAIL_BASE = {
+  id: "lp1",
+  name: "Test Hotel",
+  city: "Hurghada",
+  main_photo: GOOD_PHOTO,
+};
+
+test("szczegóły: jedno złe URL w hotelImages NIE wywala hotelu — wypada tylko zła pozycja", () => {
+  const parsed = LiteApiHotelDetailSchema.safeParse({
+    ...DETAIL_BASE,
+    hotelImages: [
+      { url: GOOD_PHOTO, urlHd: GOOD_PHOTO },
+      { url: "" }, // trefne — pusty string z dostawcy
+      { url: "/relative/path.jpg" }, // trefne — bez schematu http
+      { url: "https://static.cupid.travel/hotels/456.jpg" },
+    ],
+  });
+  assert.equal(parsed.success, true);
+  // Zostają tylko dwie poprawne pozycje.
+  assert.equal(parsed.success && parsed.data.hotelImages?.length, 2);
+  assert.equal(parsed.success && parsed.data.name, "Test Hotel");
+});
+
+test("szczegóły: złe urlHd → zachowujemy url, gubimy tylko urlHd (nie odrzucamy)", () => {
+  const parsed = LiteApiHotelDetailSchema.safeParse({
+    ...DETAIL_BASE,
+    hotelImages: [{ url: GOOD_PHOTO, urlHd: "" }],
+  });
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.success && parsed.data.hotelImages?.length, 1);
+  assert.equal(parsed.success && parsed.data.hotelImages?.[0].url, GOOD_PHOTO);
+  assert.equal(parsed.success && parsed.data.hotelImages?.[0].urlHd, undefined);
+});
+
+test("szczegóły: brak hotelImages parsuje się (pole opcjonalne)", () => {
+  const parsed = LiteApiHotelDetailSchema.safeParse({ ...DETAIL_BASE });
+  assert.equal(parsed.success, true);
 });
