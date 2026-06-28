@@ -22,18 +22,23 @@ import { ResultsSkeleton } from "./_components/results-skeleton";
 
 export const revalidate = 300;
 
-// Hotel metadata (/data/hotels) is cheap, so we pull the LiteAPI cap so
-// every available property in the destination is eligible. Rates are
-// expensive — those are fetched client-side via /api/hotels/rates/batch.
-// The full pool is shipped to the client so sort-by-price and the
-// "hide unavailable" filter operate GLOBALLY (not just per current page).
+// Hotel metadata (/data/hotels) feeds the results pool. We ship the pool to
+// the client so sort-by-price and the "hide unavailable" filter operate
+// GLOBALLY (not just per current page). Rates are fetched client-side via
+// /api/hotels/rates/batch.
 //
-// Page sizing: 20/page (down from 30) — fewer DOM nodes, faster card
-// images render, and the user can see the next page faster without a
-// long scroll. LiteAPI returns up to 1000 metadata records per /data/hotels
-// call, so cities like Barcelona (~500-600 properties) fit in one fetch
-// without paginating the upstream.
-const HOTEL_POOL_SIZE = 1000;
+// POOL SIZE — obniżone 1000 → 300 (2026-06-27, mierzone na prod): przy
+// `limit=1000` odpowiedź dużych miast PRZEKRACZA 2 MB cap Next Data Cache
+// (Valencia = 2 361 040 B → log „items over 2MB can not be cached") → metadane
+// NIGDY się nie cache'owały, więc KAŻDE wyszukiwanie płaciło pełny fetch +
+// wysyłało 2,36 MB RSC do przeglądarki dla strony pokazującej 20 hoteli. 300
+// rekordów ≈ 0,7 MB → mieści się w cache (drugi user = hit), mniejszy payload
+// do przeglądarki i mniej batchy stawek. 300 to wciąż głęboka, sortowalna pula
+// — najtańsze hotele praktycznie zawsze są w top-300 wg trafności LiteAPI, a
+// użytkownik i tak rzadko schodzi poniżej kilku pierwszych stron.
+//
+// Page sizing: 20/page — fewer DOM nodes, faster card images render.
+const HOTEL_POOL_SIZE = 300;
 const RESULTS_PER_PAGE = 20;
 
 interface SP {
