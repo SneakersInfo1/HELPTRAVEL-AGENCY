@@ -76,11 +76,39 @@ const plusDaysIso = (n: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-async function fetchDetail(hotelId: string) {
+// Metadane są DODATKIEM — gdy detal się nie pobierze (z jakiegokolwiek powodu),
+// po cichu degradujemy do noindex zamiast wywalać generację metadanych.
+async function fetchDetailForMeta(hotelId: string) {
   try {
     return await getHotelDetail(hotelId);
   } catch {
     return null;
+  }
+}
+
+// Strona hotelu: rozróżniamy PRAWDZIWIE nieistniejący hotel od błędu
+// PRZEJŚCIOWEGO. Wcześniej `catch { return null } → notFound()` zamieniał KAŻDY
+// błąd (timeout/5xx/sieć/limit/walidacja) w 404 — a przy `revalidate=21600`
+// (ISR 6h) taki przejściowy 404 potrafił zostać ZAPISANY w cache → hotel
+// „martwy" przez 6h dla wszystkich (zgłoszenie: „czasami po kliknięciu jest
+// 404"). Dodatkowo catch był NIEMY → zero śladu w logach.
+// Teraz:
+//   • LiteAPI 404 (hotel naprawdę nie istnieje) → null → notFound() (poprawne,
+//     cacheowalne — nie odpytujemy w kółko znanego-brakującego hotelu),
+//   • cokolwiek innego (przejściowe) → rzucamy → error boundary: 500 z „spróbuj
+//     ponownie", NIE zapisuje 404 w cache, odświeżenie ponawia.
+async function fetchDetailForPage(hotelId: string) {
+  try {
+    return await getHotelDetail(hotelId);
+  } catch (err) {
+    if (err instanceof LiteApiError && err.status === 404) return null;
+    console.error("[hotele/detail] fetchDetail nieudane (traktuję jako przejściowe)", {
+      hotelId,
+      code: err instanceof LiteApiError ? err.internalCode : "NON_LITEAPI",
+      status: err instanceof LiteApiError ? err.status : undefined,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
   }
 }
 
@@ -125,7 +153,7 @@ export async function generateMetadata({
   params: Promise<{ hotelId: string }>;
 }): Promise<Metadata> {
   const { hotelId } = await params;
-  const detail = await fetchDetail(hotelId);
+  const detail = await fetchDetailForMeta(hotelId);
   if (!detail) {
     return { title: "Hotel | HelpTravel", robots: { index: false, follow: false } };
   }
@@ -155,7 +183,7 @@ export default async function HotelDetailPage({
 }) {
   const { hotelId } = await params;
   const sp = await searchParams;
-  const detail = await fetchDetail(hotelId);
+  const detail = await fetchDetailForPage(hotelId);
   if (!detail) notFound();
 
   const checkin = sp.checkin && /^\d{4}-\d{2}-\d{2}$/.test(sp.checkin) ? sp.checkin : plusDaysIso(14);

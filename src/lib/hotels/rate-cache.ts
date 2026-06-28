@@ -36,7 +36,12 @@ export interface RateCacheContext {
 // Bump KEY_VERSION whenever the cached shape changes (instant global
 // invalidation without touching Redis).
 const KEY_VERSION = "v1";
-const TTL_PRICED_SECONDS = 1800; // 30 min — display price; re-verified at prebook
+// 60 min — cena DO WYŚWIETLENIA (re-weryfikowana przy prebooku). Podbite 30→60
+// min, bo cron prewarmingu (/api/cron/warm-rates) odświeża co 30 min: dłuższy
+// TTL daje margines (wpis przeżywa 2 cykle crona), więc popularne kierunki są
+// stale ciepłe nawet gdy jeden run crona padnie. Stawki nie zmieniają się na
+// tyle szybko, by 60 min było problemem; prebook i tak pobiera aktualną cenę.
+const TTL_PRICED_SECONDS = 3600;
 const TTL_UNAVAILABLE_SECONDS = 600; // 10 min — availability can return sooner
 
 type CachedValue = SlimRate | { unavailable: true };

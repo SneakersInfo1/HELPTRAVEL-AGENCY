@@ -38,20 +38,20 @@ export interface PriceQuery {
 // 1000 hotels). Bumped to BATCH_SIZE=24, MAX_CONCURRENT=5 → ~7s for a
 // cold Barcelona-sized scan.
 //
-// 2026-05-28 follow-up #2 ("aktualnie około 5 sekund ładuje wszystkie
-// obiekty" — user wants it faster): the LiteAPI call latency is fixed at
-// ~600-800ms per batch regardless of size (their backend parallelises
-// internally over hotelIds). Round-trips are what cost us, so:
-//   • BATCH_SIZE   24 → 50  (route cap is raised in lockstep to 50)
-//   • MAX_CONCURRENT 5 → 10 (paired with the stays-search limit bump
-//                             from 60 → 200/min so a power user searching
-//                             multiple cities in a row doesn't 429)
-// For 1000 hotels: 1000/50 = 20 batches / 10 concurrent ≈ 2 rounds ×
-// ~700ms ≈ 1.4s for a fully-cold scan. Warm Redis hits drop this to
-// well under 300ms because the route short-circuits without ever
-// calling LiteAPI.
+// 2026-06-27 KOREKTA (zmierzone na żywo, prod): wcześniejsze „~600-800 ms na
+// batch" było BŁĘDNE. Realnie `/hotels/rates` ma TWARDĄ PODŁOGĘ ~3,3 s na call
+// (zimno) niezależnie od rozmiaru batcha (batch 10 → 3,7 s, 50 → 5,9 s, 100 →
+// 8,8 s). Tej podłogi NIE da się obejść — jedyne wyjście to cache (Redis +
+// teraz Next Data Cache). Dwie zmiany, które realnie pomogły:
+//   • Batch route woła getRates z `maxRatesPerHotel: 1` → payload 25 MB → 0,15 MB
+//     (170×), call 6,8 s → 3,8 s, a 0,15 MB MIEŚCI się w cache (drugi user = hit).
+//   • Pula metadanych 1000 → 300 → 6 batchy zamiast 20.
+// Po fixie (zimno): wszystkie 6 batchy lecą równolegle → ~4 s na KOMPLET cen,
+// ~80 KB/batch. Ciepły Redis: <300 ms (route nie woła LiteAPI w ogóle).
 //
-// If LiteAPI ever returns batch-size-related 4xx, drop BATCH_SIZE back to 24.
+// BATCH_SIZE 50 / MAX_CONCURRENT 10 zostają: większe batche lepiej amortyzują
+// podłogę 3,3 s (mniej round-tripów). Jak LiteAPI zwróci 4xx od rozmiaru —
+// zejdź do 24.
 const BATCH_SIZE = 50;
 const MAX_CONCURRENT = 10;
 const WINDOW_MS = 60; // coalescing window

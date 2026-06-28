@@ -98,6 +98,16 @@ export type LiteApiHotelsListResponse = z.infer<typeof LiteApiHotelsListResponse
 // ────────────────────────────────────────────────────────────────────────────
 // Hotel detail (`GET /data/hotel`)
 
+// Galeria zdjęć hotelu — `url` MUSI być poprawnym http(s) (inaczej pozycja
+// wypada w preprocess powyżej), `urlHd` tolerancyjny (śmieci → undefined).
+// `.passthrough()` na wszelki wypadek, gdyby dostawca dorzucił dodatkowe pola.
+const HotelImageSchema = z
+  .object({
+    url: z.preprocess(toHttpUrlOrUndefined, z.string()),
+    urlHd: OptionalPhotoUrl,
+  })
+  .passthrough();
+
 export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   description: z.string().optional(),
   hotelDescription: z.string().optional(),
@@ -111,7 +121,17 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   // page. (2026-06)
   hotelFacilities: z.array(z.unknown()).optional(),
   facilities: z.array(z.unknown()).optional(),
-  hotelImages: z.array(z.object({ url: z.string().url(), urlHd: z.string().url().optional() })).optional(),
+  // TA SAMA klasa błędu co Sharm na liście, ale na STRONIE HOTELU. Sztywne
+  // `z.string().url()` na `url`/`urlHd` rzucało invalid_format gdy POJEDYNCZE
+  // zdjęcie galerii miało pusty/bezschematowy URL → cała walidacja szczegółów
+  // padała → getHotelDetail throw → catch→null→notFound() → 404 („czasami hotel
+  // znika po kliknięciu"). Teraz: złe zdjęcie WYPADA (per-element filter, jak na
+  // liście), urlHd toleruje śmieci → undefined. Hotel ZOSTAJE.
+  hotelImages: z.preprocess(
+    (val) =>
+      Array.isArray(val) ? val.filter((item) => HotelImageSchema.safeParse(item).success) : val,
+    z.array(HotelImageSchema).optional(),
+  ),
   policies: z.array(z.object({ name: z.string(), description: z.string() })).optional(),
   // Free-text "important information" block (check-in instructions, deposits,
   // mandatory fees…). Shape is usually a string but kept as unknown so an
