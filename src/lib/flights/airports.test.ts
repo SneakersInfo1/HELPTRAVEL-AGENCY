@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { searchAirports, lookupAirport } from "./airports";
+import { searchAirports, lookupAirport, AIRPORTS } from "./airports";
+
+test("brak zduplikowanych kodów IATA w słowniku (Map BY_CODE gubiłaby duplikat po cichu)", () => {
+  const codes = AIRPORTS.map((a) => a.code);
+  const dups = codes.filter((c, i) => codes.indexOf(c) !== i);
+  assert.deepEqual(dups, [], `duplikaty: ${dups.join(", ")}`);
+});
 
 function findsCode(query: string, code: string): boolean {
   return searchAirports(query, 8).some((o) => o.kind === "airport" && o.airport.code === code);

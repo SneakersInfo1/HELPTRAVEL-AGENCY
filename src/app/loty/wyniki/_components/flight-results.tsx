@@ -103,8 +103,12 @@ export function FlightResults(props: Props) {
             seen.add(off.offerId);
             merged.push(off);
           }
-          // Progresywny render: po każdym lotnisku odśwież widoczną listę.
-          setOffers([...merged]);
+          // Progresywny render TYLKO gdy faktycznie coś dosypaliśmy. Bez tego
+          // lotnisko z 0 ofert (np. WMI/RDO w grupie Warszawa — pusta odpowiedź
+          // wraca szybciej) wywołałoby setOffers([]) → mignięcie „Brak lotów"
+          // zanim dojdą oferty z lotniska, które je ma. Stan pusty/błąd domyka
+          // .finally(), więc do tego czasu trzymamy szkielet (offers === null).
+          if (merged.length > 0) setOffers([...merged]);
         } catch {
           /* to lotnisko padło — inne mogą się udać */
         }
