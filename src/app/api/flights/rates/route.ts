@@ -44,8 +44,11 @@ export async function POST(request: NextRequest) {
 
   // Cache-hit → instant (oferty już chude i przycięte). [] = trafiony negatywny
   // cache (martwa trasa) — też zwracamy bez ruszania LiteAPI.
+  // `?fresh=1` (recovery po wygaśnięciu oferty) POMIJA odczyt cache, żeby user
+  // nie dostał ponownie tej samej wygasłej oferty; zapis poniżej zostaje.
+  const fresh = new URL(request.url).searchParams.get("fresh") === "1";
   const cacheKey = flightRatesCacheKey(input);
-  const cached = await getCachedFlightOffers(cacheKey);
+  const cached = fresh ? null : await getCachedFlightOffers(cacheKey);
   if (cached !== null) {
     return NextResponse.json({ offers: cached, count: cached.length, cached: true }, { status: 200 });
   }

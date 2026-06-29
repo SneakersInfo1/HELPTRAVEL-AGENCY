@@ -27,6 +27,8 @@ interface SP {
   adults?: string;
   children?: string;
   infants?: string;
+  /** `1` = recovery po wygaśnięciu oferty → omiń cache ofert (świeże wyniki). */
+  fresh?: string;
 }
 
 const isIata = (v?: string) => Boolean(v && /^[A-Z]{3}$/.test(v));
@@ -89,6 +91,7 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
         adults={adults}
         childrenCount={childrenCount}
         infants={infants}
+        fresh={sp.fresh === "1"}
       />
     </>
   );

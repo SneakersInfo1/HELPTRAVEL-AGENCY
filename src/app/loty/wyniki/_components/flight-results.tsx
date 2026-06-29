@@ -48,12 +48,14 @@ interface Props {
   adults: number;
   childrenCount: number;
   infants: number;
+  /** Recovery po wygaśnięciu oferty — omiń cache ofert (świeże wyniki). */
+  fresh?: boolean;
 }
 
 type Leg = { origin: string; destination: string; date: string; direction: "OUTBOUND" | "INBOUND" };
 
 export function FlightResults(props: Props) {
-  const { origins, originLabel, destination, destLabel, depart, ret, adults, childrenCount, infants } = props;
+  const { origins, originLabel, destination, destLabel, depart, ret, adults, childrenCount, infants, fresh } = props;
   const router = useRouter();
   const [offers, setOffers] = useState<DisplayOffer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export function FlightResults(props: Props) {
         const legs: Leg[] = [{ origin: o, destination, date: depart, direction: "OUTBOUND" }];
         if (ret) legs.push({ origin: destination, destination: o, date: ret, direction: "INBOUND" });
         try {
-          const res = await fetch("/api/flights/rates", {
+          const res = await fetch(`/api/flights/rates${fresh ? "?fresh=1" : ""}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ legs, adults, children: childrenCount, infants, cabinClass: "ECONOMY" }),
@@ -213,6 +215,17 @@ export function FlightResults(props: Props) {
               <p className="mt-1 text-sm text-neutral-600">
                 Spróbuj zmienić daty albo lotnisko wylotu. Część tras lata tylko w wybrane dni tygodnia.
               </p>
+              {/* Całkowita awaria (nie „pusta trasa") jest naprawialna — daj akcję,
+                  zamiast zostawiać użytkownika w ślepym zaułku. */}
+              {error && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-4 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  Spróbuj ponownie
+                </button>
+              )}
             </div>
           )}
 
