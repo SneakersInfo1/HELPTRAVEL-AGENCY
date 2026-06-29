@@ -31,6 +31,7 @@ import {
   type FlightFilters,
   type SortKey,
 } from "@/lib/flights/filters";
+import { computeOfferBadges, isDirectOffer } from "@/lib/flights/badges";
 import { AirlineLogo } from "@/components/flights/airline-logo";
 import { FlightFiltersPanel } from "@/components/flights/flight-filters";
 import { FlightResultsSkeleton, FlightFiltersSkeleton } from "./flight-results-skeleton";
@@ -128,6 +129,11 @@ export function FlightResults(props: Props) {
     () => (offers ? sortOffers(applyFilters(offers, filters), sort) : []),
     [offers, filters, sort],
   );
+  // Odznaki „Najtańszy/Najszybszy" z PEŁNEJ puli (stabilne mimo filtra/sortu).
+  const badges = useMemo(
+    () => (offers ? computeOfferBadges(offers) : { cheapestId: null, fastestId: null }),
+    [offers],
+  );
 
   function selectOffer(offer: DisplayOffer) {
     track("flight_select", { offer_id: offer.offerId, price: offer.total ?? undefined, currency: offer.currency, carrier: offer.legs[0]?.carriers[0] });
@@ -186,6 +192,21 @@ export function FlightResults(props: Props) {
           </div>
         )}
       </header>
+
+      {/* Sygnały zaufania — jak na checkoutcie hoteli. Bez ukrytych opłat +
+          bezpieczna płatność + polskie wsparcie podnoszą pewność kliknięcia. */}
+      {offers && offers.length > 0 && (
+        <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-neutral-500">
+          {["Ceny finalne w PLN, bez ukrytych opłat", "Bezpieczna płatność", "Polskie wsparcie"].map((t) => (
+            <li key={t} className="inline-flex items-center gap-1">
+              <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-600">
+                <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
+              </svg>
+              {t}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* grid-cols-1 na mobile: bez tego implicytna kolumna gridu skaluje się do
           max-content, a `nowrap` w banerze ładowania rozpychał ją poza ekran
@@ -260,6 +281,8 @@ export function FlightResults(props: Props) {
                   key={offer.offerId}
                   offer={offer}
                   passengers={passengers}
+                  cheapestId={badges.cheapestId}
+                  fastestId={badges.fastestId}
                   onSelect={() => selectOffer(offer)}
                 />
               ))}
@@ -326,10 +349,14 @@ function LegRow({ leg }: { leg: DisplayLeg }) {
 function OfferCard({
   offer,
   passengers,
+  cheapestId,
+  fastestId,
   onSelect,
 }: {
   offer: DisplayOffer;
   passengers: number;
+  cheapestId: string | null;
+  fastestId: string | null;
   onSelect: () => void;
 }) {
   const [showDetails, setShowDetails] = useState(false);
@@ -339,8 +366,27 @@ function OfferCard({
   // Cena GŁÓWNA = za jedną osobę (jak „za noc" w hotelach); suma za wszystkich
   // mniej wyróżniona. Przy 1 pasażerze per-osobę == suma, więc sumy nie dublujemy.
   const perPerson = offer.total !== null && passengers > 0 ? Math.round(offer.total / passengers) : offer.total;
+  // Odznaki prowadzące decyzję.
+  const isCheapest = offer.offerId === cheapestId;
+  const isFastest = offer.offerId === fastestId;
+  const direct = isDirectOffer(offer);
   return (
     <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+      {(isCheapest || isFastest || direct) && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {isCheapest && (
+            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">Najtańszy</span>
+          )}
+          {isFastest && (
+            <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-bold text-white">Najszybszy</span>
+          )}
+          {direct && (
+            <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+              Bezpośredni
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-3">
           {offer.legs.map((leg) => (
@@ -404,6 +450,7 @@ function OfferCard({
           >
             Wybierz
           </button>
+          <span className="text-[10px] text-neutral-400">Bez opłat za rezerwację</span>
         </div>
       </div>
     </article>
