@@ -84,8 +84,11 @@ export function DateRangeField({
     : (checkin && checkout ? formatRangeLabel(checkin, checkout) : null);
   const placeholderText = singleDate ? "Data wylotu" : "Wylot – Powrót";
 
-  // Two months side by side ≈ 420px tall incl. footer.
-  const POPOVER_HEIGHT_PX = 440;
+  // Realna wysokość popovera (2 miesiące + stopka) ≈ 360px. Wcześniej 440px
+  // PRZESZACOWANE → flip-up odpalał się nawet gdy miejsca pod polem było dość,
+  // przez co kalendarz lądował wysoko (oderwany w ciemnym hero). Dokładna
+  // wartość = flip tylko gdy realnie brak miejsca pod polem.
+  const POPOVER_HEIGHT_PX = 360;
 
   const openPicker = () => {
     setIsDesktop(window.matchMedia("(min-width: 1024px)").matches);
