@@ -109,6 +109,61 @@ test("toFlightApiError: 5xx bez kodu → PROVIDER_ERROR 502", () => {
   assert.equal(e.httpStatus, 502);
 });
 
+// Regresja prod 2026-06-30: LiteAPI dla verify zwraca HTTP 500 z
+// `{error:{code:52099,description:"failed to verify flight offer",
+// message:"unable to process verify request"}}` gdy oferta nie da się
+// potwierdzić (wygasła / GDS nie przeliczy). To NIE jest błąd przejściowy —
+// ten sam offerId zawsze da 500. Mapowanie na PROVIDER_ERROR mówiło userowi
+// „spróbuj ponownie" (a retry tej samej oferty nigdy nie pomoże) i route'a
+// retry'ował 5xx 3× → burst 500 do LiteAPI. Musi mapować na OFFER_UNAVAILABLE,
+// żeby UI skierował usera po ŚWIEŻE wyniki (?fresh=1).
+test("toFlightApiError: verify 52099 (failed to verify) → OFFER_UNAVAILABLE 409", () => {
+  const liteErr = new LiteApiError("LITEAPI_NETWORK", "HTTP 500", "x", {
+    status: 500,
+    body: { error: { code: 52099, description: "failed to verify flight offer", message: "unable to process verify request" } },
+  });
+  const e = toFlightApiError(liteErr, "verify");
+  assert.equal(e.code, "OFFER_UNAVAILABLE");
+  assert.equal(e.httpStatus, 409);
+});
+
+// Prawdziwa awaria dostawcy (500 BEZ markera oferty) musi zostać
+// PROVIDER_ERROR — „spróbuj ponownie" jest tu poprawne (nie wysyłamy usera
+// po świeże wyniki, bo to nie wygasła oferta tylko chwilowy problem API).
+test("toFlightApiError: 500 z generycznym body NIE jest OFFER_UNAVAILABLE", () => {
+  const liteErr = new LiteApiError("LITEAPI_NETWORK", "HTTP 500", "x", {
+    status: 500,
+    body: { error: { code: 50000, description: "internal server error" } },
+  });
+  const e = toFlightApiError(liteErr, "verify");
+  assert.equal(e.code, "PROVIDER_ERROR");
+});
+
+test("verifyFlightOffer: na powtarzalnym 500 (52099) NIE retry'uje (1 strzał, bez bursta do LiteAPI)", async () => {
+  const priorKey = process.env.LITEAPI_SANDBOX_KEY;
+  const priorEnv = process.env.LITEAPI_ENV;
+  const priorFetch = globalThis.fetch;
+  process.env.LITEAPI_SANDBOX_KEY = "sand_test_verify";
+  delete process.env.LITEAPI_ENV;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(
+      JSON.stringify({ error: { code: 52099, description: "failed to verify flight offer", message: "unable to process verify request" } }),
+      { status: 500, headers: { "content-type": "application/json" } },
+    );
+  }) as typeof fetch;
+  try {
+    const { verifyFlightOffer } = await import("./client");
+    await assert.rejects(() => verifyFlightOffer("OFFER_DEAD"));
+    assert.equal(calls, 1, `oczekiwano 1 wywołania verify, było ${calls} (retry hamerował LiteAPI)`);
+  } finally {
+    globalThis.fetch = priorFetch;
+    if (priorKey === undefined) delete process.env.LITEAPI_SANDBOX_KEY; else process.env.LITEAPI_SANDBOX_KEY = priorKey;
+    if (priorEnv === undefined) delete process.env.LITEAPI_ENV; else process.env.LITEAPI_ENV = priorEnv;
+  }
+});
+
 test("walidacja search: poprawne wejście przechodzi, IATA i daty pilnowane", () => {
   const future = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
   const ok = FlightSearchInputSchema.safeParse({ legs: [{ origin: "waw", destination: "lhr", date: future }], adults: 1 });
