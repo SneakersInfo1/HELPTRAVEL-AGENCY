@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics/track";
 import { fmtMoneyPln, type FareOption } from "@/lib/flights/display";
 import { loadFlightFlow, patchFlightFlow, type FlightFlow } from "@/lib/flights/flow-storage";
+import { buildResultsUrl } from "@/lib/flights/recovery";
 import { FlightItinerarySummary } from "@/components/flights/flight-itinerary-summary";
 
 function BagRow({ ok, label }: { ok: boolean; label: string }) {
@@ -143,7 +144,11 @@ export function FlightExtras() {
       {error && (
         <div className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
-          <button onClick={() => router.push("/loty/wyniki")} className="ml-2 underline">Wróć do wyników</button>
+          {/* Recovery: odbuduj URL wyników z flow + fresh=1 (świeże oferty, nie ta
+              sama wygasła). Pusty „/loty/wyniki" dawał ślepy zaułek. */}
+          <button onClick={() => router.push(buildResultsUrl(flow, { fresh: true }))} className="ml-2 underline">
+            Wróć do wyników
+          </button>
         </div>
       )}
 

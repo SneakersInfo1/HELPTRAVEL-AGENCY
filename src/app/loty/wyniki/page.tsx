@@ -27,6 +27,8 @@ interface SP {
   adults?: string;
   children?: string;
   infants?: string;
+  /** `1` = recovery po wygaśnięciu oferty → omiń cache ofert (świeże wyniki). */
+  fresh?: string;
 }
 
 const isIata = (v?: string) => Boolean(v && /^[A-Z]{3}$/.test(v));
@@ -37,7 +39,9 @@ const isDate = (v?: string) => Boolean(v && /^\d{4}-\d{2}-\d{2}$/.test(v));
 function parseOrigins(v?: string): string[] {
   if (!v) return [];
   const codes = v.split(",").map((s) => s.trim().toUpperCase()).filter(isIata);
-  return [...new Set(codes)].slice(0, 4);
+  // Cap 6 — „Polska — dowolne lotnisko" robi fan-out po 6 największych
+  // lotniskach (WAW/KRK/KTW/GDN/WRO/POZ). Grupy miejskie i tak mają ≤3.
+  return [...new Set(codes)].slice(0, 6);
 }
 
 export default async function FlightResultsPage({ searchParams }: { searchParams: Promise<SP> }) {
@@ -62,12 +66,20 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
   const childrenCount = Math.max(0, Math.min(8, Number(sp.children) || 0));
   const infants = Math.max(0, Math.min(4, Number(sp.infants) || 0));
 
+  // Klucz per-wyszukiwanie: zmiana kierunku/dat/pasażerów w pasku edycji robi
+  // SOFT-NAV na ten sam route /loty/wyniki, więc bez tego React reużywałby
+  // instancję FlightResults — a `fetchedRef` blokował ponowny fetch → stare
+  // wyniki mimo nowych parametrów. `key` wymusza remount: świeży stan +
+  // ponowny fetch. Pasek edycji też się remountuje (zwija do podsumowania).
+  const searchKey = [origins.join(","), destination, sp.depart, ret ?? "", adults, childrenCount, infants].join("|");
+
   return (
     <>
       {/* Pasek edycji wyszukiwania — sticky pod headerem, jak na hotelach.
           Pozwala zmienić kierunek/daty bez wracania na homepage. */}
       <div className="sticky top-[72px] z-20 shadow-sm sm:top-[84px]">
         <FlightSearchBar
+          key={`sb-${searchKey}`}
           origins={origins}
           originLabel={sp.originLabel}
           destination={destination!}
@@ -80,6 +92,7 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
         />
       </div>
       <FlightResults
+        key={`fr-${searchKey}`}
         origins={origins}
         originLabel={sp.originLabel}
         destination={destination!}
@@ -89,6 +102,7 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
         adults={adults}
         childrenCount={childrenCount}
         infants={infants}
+        fresh={sp.fresh === "1"}
       />
     </>
   );

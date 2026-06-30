@@ -15,7 +15,6 @@ import {
   fmtDuration,
   fmtMoneyPln,
   fmtTime,
-  normalizeRatesResponse,
   stopsLabel,
   type DisplayLeg,
   type DisplayOffer,
@@ -32,6 +31,7 @@ import {
   type FlightFilters,
   type SortKey,
 } from "@/lib/flights/filters";
+import { computeOfferBadges, isDirectOffer } from "@/lib/flights/badges";
 import { AirlineLogo } from "@/components/flights/airline-logo";
 import { FlightFiltersPanel } from "@/components/flights/flight-filters";
 import { FlightResultsSkeleton, FlightFiltersSkeleton } from "./flight-results-skeleton";
@@ -49,73 +49,80 @@ interface Props {
   adults: number;
   childrenCount: number;
   infants: number;
+  /** Recovery po wygaśnięciu oferty — omiń cache ofert (świeże wyniki). */
+  fresh?: boolean;
 }
 
 type Leg = { origin: string; destination: string; date: string; direction: "OUTBOUND" | "INBOUND" };
 
 export function FlightResults(props: Props) {
-  const { origins, originLabel, destination, destLabel, depart, ret, adults, childrenCount, infants } = props;
+  const { origins, originLabel, destination, destLabel, depart, ret, adults, childrenCount, infants, fresh } = props;
   const router = useRouter();
   const [offers, setOffers] = useState<DisplayOffer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("best");
   const [filters, setFilters] = useState<FlightFilters>(EMPTY_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [allSettled, setAllSettled] = useState(false);
   const fetchedRef = useRef(false);
 
   const passengers = adults + childrenCount + infants;
   const originsKey = origins.join(",");
   const headerLabel = originHeaderLabel(origins, originLabel);
 
-  // Pobranie ofert (raz). Dla grupy „wszystkie lotniska" — fan-out po lotniskach
-  // (metro = 1 kod), równolegle, scalenie + dedup po offerId.
+  // Pobranie ofert (raz). Fan-out po lotniskach (metro=1 kod) RÓWNOLEGLE, ale
+  // wyniki POKAZUJEMY W MIARĘ NAPŁYWU (nie czekamy aż wszystkie odpowiedzą):
+  // najszybsze lotnisko pojawia się pierwsze. Scalanie + dedup po offerId.
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
-    (async () => {
-      try {
-        const perOrigin = await Promise.all(
-          origins.map(async (o) => {
-            const legs: Leg[] = [{ origin: o, destination, date: depart, direction: "OUTBOUND" }];
-            if (ret) legs.push({ origin: destination, destination: o, date: ret, direction: "INBOUND" });
-            try {
-              const res = await fetch("/api/flights/rates", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ legs, adults, children: childrenCount, infants, cabinClass: "ECONOMY" }),
-              });
-              const json = await res.json().catch(() => ({}));
-              if (!res.ok) return { origin: o, ok: false, offers: [] as DisplayOffer[], message: json.message as string | undefined };
-              return { origin: o, ok: true, offers: normalizeRatesResponse(json), message: undefined };
-            } catch {
-              return { origin: o, ok: false, offers: [] as DisplayOffer[], message: undefined };
-            }
-          }),
-        );
+    const seen = new Set<string>();
+    const merged: DisplayOffer[] = [];
+    let anyOk = false;
+    let firstMessage: string | undefined;
 
-        if (perOrigin.every((r) => !r.ok)) {
-          setError(perOrigin.find((r) => r.message)?.message || "Nie udało się pobrać ofert. Spróbuj ponownie.");
-          setOffers([]);
-          return;
-        }
-
-        // Scal + dedup po offerId.
-        const seen = new Set<string>();
-        const merged: DisplayOffer[] = [];
-        for (const r of perOrigin) {
-          for (const off of r.offers) {
+    void Promise.all(
+      origins.map(async (o) => {
+        const legs: Leg[] = [{ origin: o, destination, date: depart, direction: "OUTBOUND" }];
+        if (ret) legs.push({ origin: destination, destination: o, date: ret, direction: "INBOUND" });
+        try {
+          const res = await fetch(`/api/flights/rates${fresh ? "?fresh=1" : ""}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ legs, adults, children: childrenCount, infants, cabinClass: "ECONOMY" }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            if (!firstMessage) firstMessage = json.message as string | undefined;
+            return;
+          }
+          anyOk = true;
+          const got = (json.offers ?? []) as DisplayOffer[];
+          for (const off of got) {
             if (seen.has(off.offerId)) continue;
             seen.add(off.offerId);
             merged.push(off);
           }
+          // Progresywny render TYLKO gdy faktycznie coś dosypaliśmy. Bez tego
+          // lotnisko z 0 ofert (np. WMI/RDO w grupie Warszawa — pusta odpowiedź
+          // wraca szybciej) wywołałoby setOffers([]) → mignięcie „Brak lotów"
+          // zanim dojdą oferty z lotniska, które je ma. Stan pusty/błąd domyka
+          // .finally(), więc do tego czasu trzymamy szkielet (offers === null).
+          if (merged.length > 0) setOffers([...merged]);
+        } catch {
+          /* to lotnisko padło — inne mogą się udać */
         }
-        setOffers(merged);
-        track("flight_results_view", { origin: originsKey, destination, results_count: merged.length });
-      } catch {
-        setError("Problem z połączeniem. Spróbuj ponownie.");
+      }),
+    ).finally(() => {
+      setAllSettled(true);
+      if (!anyOk) {
+        setError(firstMessage || "Nie udało się pobrać ofert. Spróbuj ponownie.");
         setOffers([]);
+      } else {
+        setOffers([...merged]);
+        track("flight_results_view", { origin: originsKey, destination, results_count: merged.length });
       }
-    })();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originsKey, destination, depart, ret, adults, childrenCount, infants]);
 
@@ -125,6 +132,11 @@ export function FlightResults(props: Props) {
   const visible = useMemo(
     () => (offers ? sortOffers(applyFilters(offers, filters), sort) : []),
     [offers, filters, sort],
+  );
+  // Odznaki „Najtańszy/Najszybszy" z PEŁNEJ puli (stabilne mimo filtra/sortu).
+  const badges = useMemo(
+    () => (offers ? computeOfferBadges(offers) : { cheapestId: null, fastestId: null }),
+    [offers],
   );
 
   function selectOffer(offer: DisplayOffer) {
@@ -185,6 +197,21 @@ export function FlightResults(props: Props) {
         )}
       </header>
 
+      {/* Sygnały zaufania — jak na checkoutcie hoteli. Bez ukrytych opłat +
+          bezpieczna płatność + polskie wsparcie podnoszą pewność kliknięcia. */}
+      {offers && offers.length > 0 && (
+        <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-neutral-500">
+          {["Ceny finalne w PLN, bez ukrytych opłat", "Bezpieczna płatność", "Polskie wsparcie"].map((t) => (
+            <li key={t} className="inline-flex items-center gap-1">
+              <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-600">
+                <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
+              </svg>
+              {t}
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* grid-cols-1 na mobile: bez tego implicytna kolumna gridu skaluje się do
           max-content, a `nowrap` w banerze ładowania rozpychał ją poza ekran
           (poziomy scroll „przy wyszukiwaniu"). minmax(0,1fr) wymusza zawijanie. */}
@@ -213,6 +240,17 @@ export function FlightResults(props: Props) {
               <p className="mt-1 text-sm text-neutral-600">
                 Spróbuj zmienić daty albo lotnisko wylotu. Część tras lata tylko w wybrane dni tygodnia.
               </p>
+              {/* Całkowita awaria (nie „pusta trasa") jest naprawialna — daj akcję,
+                  zamiast zostawiać użytkownika w ślepym zaułku. */}
+              {error && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-4 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  Spróbuj ponownie
+                </button>
+              )}
             </div>
           )}
 
@@ -230,6 +268,15 @@ export function FlightResults(props: Props) {
             </div>
           )}
 
+          {/* Progresja: są już oferty, ale nie wszystkie lotniska odpowiedziały
+              (dotyczy tylko grup „wszystkie lotniska"). */}
+          {offers !== null && offers.length > 0 && !allSettled && origins.length > 1 && (
+            <p className="mb-3 inline-flex items-center gap-2 text-xs text-neutral-500">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden />
+              Szukam w pozostałych lotniskach…
+            </p>
+          )}
+
           {/* Lista */}
           {visible.length > 0 && (
             <div className="space-y-3">
@@ -238,6 +285,8 @@ export function FlightResults(props: Props) {
                   key={offer.offerId}
                   offer={offer}
                   passengers={passengers}
+                  cheapestId={badges.cheapestId}
+                  fastestId={badges.fastestId}
                   onSelect={() => selectOffer(offer)}
                 />
               ))}
@@ -304,10 +353,14 @@ function LegRow({ leg }: { leg: DisplayLeg }) {
 function OfferCard({
   offer,
   passengers,
+  cheapestId,
+  fastestId,
   onSelect,
 }: {
   offer: DisplayOffer;
   passengers: number;
+  cheapestId: string | null;
+  fastestId: string | null;
   onSelect: () => void;
 }) {
   const [showDetails, setShowDetails] = useState(false);
@@ -317,8 +370,27 @@ function OfferCard({
   // Cena GŁÓWNA = za jedną osobę (jak „za noc" w hotelach); suma za wszystkich
   // mniej wyróżniona. Przy 1 pasażerze per-osobę == suma, więc sumy nie dublujemy.
   const perPerson = offer.total !== null && passengers > 0 ? Math.round(offer.total / passengers) : offer.total;
+  // Odznaki prowadzące decyzję.
+  const isCheapest = offer.offerId === cheapestId;
+  const isFastest = offer.offerId === fastestId;
+  const direct = isDirectOffer(offer);
   return (
     <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+      {(isCheapest || isFastest || direct) && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {isCheapest && (
+            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">Najtańszy</span>
+          )}
+          {isFastest && (
+            <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-bold text-white">Najszybszy</span>
+          )}
+          {direct && (
+            <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+              Bezpośredni
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-3">
           {offer.legs.map((leg) => (
@@ -382,6 +454,7 @@ function OfferCard({
           >
             Wybierz
           </button>
+          <span className="text-[10px] text-neutral-400">Bez opłat za rezerwację</span>
         </div>
       </div>
     </article>

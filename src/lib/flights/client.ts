@@ -70,11 +70,18 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
     const { code: provCode, text } = providerError(err.body);
     const label = err.internalCode;
     // Sold out / wygasła oferta: kod 53010, etykieta SOLD_OUT/RATE_EXPIRED, albo tekst.
+    // 52099 ("failed to verify flight offer" / "unable to process verify request"):
+    // verify NIE potrafi potwierdzić TEJ oferty (wygasła albo GDS jej nie przeliczy).
+    // To NIE jest błąd przejściowy — ten sam offerId zawsze da 500, więc traktujemy
+    // jak niedostępną ofertę (UI: „wróć po świeże wyniki", ?fresh=1), a NIE jako
+    // PROVIDER_ERROR z mylącym „spróbuj ponownie". Dopasowanie też po tekście,
+    // gdyby kod numeryczny się zmienił. (Prod 2026-06-30.)
     if (
       provCode === 53010 ||
+      provCode === 52099 ||
       label === "LITEAPI_SOLD_OUT" ||
       label === "LITEAPI_RATE_EXPIRED" ||
-      /sold\s*out|unavailable|no longer available/.test(text)
+      /sold\s*out|unavailable|no longer available|failed to verify|unable to process verify/.test(text)
     ) {
       return new FlightApiError("OFFER_UNAVAILABLE", "Ta oferta lotu jest już niedostępna.", {
         httpStatus: 409,
@@ -125,7 +132,16 @@ export async function searchFlightRates(input: FlightSearchInput) {
   });
 }
 
-/** POST /flights/verify — potwierdzenie ceny/dostępności oferty. */
+/**
+ * POST /flights/verify — potwierdzenie ceny/dostępności oferty.
+ *
+ * `retries: 1` (1 strzał, BEZ retry) — verify jest operacją NA KONKRETNEJ
+ * ofercie: 5xx (np. 52099 „failed to verify") znaczy, że TA oferta nie da się
+ * potwierdzić, a ponawianie tego samego offerId zawsze zwróci ten sam błąd.
+ * Domyślne `retries:3` w liteApiRequest hamerowało LiteAPI 3× na każdą martwą
+ * ofertę (prod 2026-06-30: burst 500) i kazało userowi czekać przez backoff
+ * zanim zobaczył błąd. Recovery (świeże wyniki) i tak robi front przez ?fresh=1.
+ */
 export async function verifyFlightOffer(offerId: string) {
   return liteApiRequest({
     path: "/flights/verify",
@@ -134,6 +150,7 @@ export async function verifyFlightOffer(offerId: string) {
     schema: FlightVerifyResponseSchema,
     body: { offerId },
     timeoutMs: 30_000,
+    retries: 1,
   });
 }
 

@@ -126,6 +126,49 @@ export const AIRPORTS: readonly Airport[] = [
   { code: "LIN", name: "Mediolan-Linate", city: "Mediolan", country: "Włochy", aliases: ["linate", "lin", "mediolan linate"] },
   { code: "BGY", name: "Mediolan-Bergamo", city: "Mediolan", country: "Włochy", aliases: ["bergamo", "bgy", "orio al serio", "mediolan bergamo"] },
 
+  // ── Kierunki wakacyjne (Morze Śródziemne / wyspy) ───────────────────────────
+  // Najczęstsze cele polskiego turysty. Wszystkie ZWERYFIKOWANE na żywo
+  // (LiteAPI /flights/rates z WAW, 2026-06-29: 49–129 ofert każdy). Bez tych
+  // wpisów user wpisujący „Antalya"/„Rodos"/„Malaga" nie dostawał podpowiedzi.
+  // Hiszpania + wyspy
+  { code: "BCN", name: "Barcelona-El Prat", city: "Barcelona", country: "Hiszpania", aliases: ["barcelona", "bcn", "el prat", "barca"] },
+  { code: "AGP", name: "Málaga-Costa del Sol", city: "Málaga", country: "Hiszpania", aliases: ["malaga", "agp", "costa del sol", "malaga costa del sol"] },
+  { code: "ALC", name: "Alicante-Elche", city: "Alicante", country: "Hiszpania", aliases: ["alicante", "alc", "elche", "costa blanca"] },
+  { code: "PMI", name: "Palma de Mallorca", city: "Palma de Mallorca", country: "Hiszpania", aliases: ["palma", "pmi", "majorka", "mallorca", "palma de mallorca", "palma mallorca"] },
+  { code: "LPA", name: "Gran Canaria", city: "Las Palmas", country: "Hiszpania", aliases: ["gran canaria", "lpa", "las palmas", "wyspy kanaryjskie", "kanary"] },
+  { code: "TFS", name: "Teneryfa-Południe", city: "Teneryfa", country: "Hiszpania", aliases: ["teneryfa", "tenerife", "tfs", "teneryfa poludnie", "tenerife south"] },
+  { code: "VLC", name: "Walencja", city: "Walencja", country: "Hiszpania", aliases: ["walencja", "valencia", "vlc"] },
+  { code: "MAD", name: "Madryt-Barajas", city: "Madryt", country: "Hiszpania", aliases: ["madryt", "madrid", "mad", "barajas"] },
+  // Grecja + wyspy
+  { code: "ATH", name: "Ateny", city: "Ateny", country: "Grecja", aliases: ["ateny", "athens", "ath"] },
+  { code: "RHO", name: "Rodos", city: "Rodos", country: "Grecja", aliases: ["rodos", "rhodes", "rho"] },
+  { code: "HER", name: "Heraklion (Kreta)", city: "Heraklion", country: "Grecja", aliases: ["heraklion", "kreta", "crete", "her", "heraklion kreta"] },
+  { code: "CFU", name: "Korfu", city: "Korfu", country: "Grecja", aliases: ["korfu", "corfu", "cfu", "kerkyra"] },
+  { code: "SKG", name: "Saloniki", city: "Saloniki", country: "Grecja", aliases: ["saloniki", "thessaloniki", "skg", "tesaloniki"] },
+  { code: "KGS", name: "Kos", city: "Kos", country: "Grecja", aliases: ["kos", "kgs"] },
+  // Turcja
+  { code: "IST", name: "Stambuł", city: "Stambuł", country: "Turcja", aliases: ["stambul", "istanbul", "ist"] },
+  { code: "AYT", name: "Antalya", city: "Antalya", country: "Turcja", aliases: ["antalya", "ayt"] },
+  // Portugalia
+  { code: "LIS", name: "Lizbona", city: "Lizbona", country: "Portugalia", aliases: ["lizbona", "lisbon", "lisboa", "lis"] },
+  { code: "FAO", name: "Faro (Algarve)", city: "Faro", country: "Portugalia", aliases: ["faro", "algarve", "fao"] },
+  { code: "OPO", name: "Porto", city: "Porto", country: "Portugalia", aliases: ["porto", "opo", "oporto"] },
+  // Chorwacja
+  { code: "SPU", name: "Split", city: "Split", country: "Chorwacja", aliases: ["split", "spu"] },
+  { code: "DBV", name: "Dubrownik", city: "Dubrownik", country: "Chorwacja", aliases: ["dubrownik", "dubrovnik", "dbv"] },
+  // Cypr / Malta / Bałkany
+  { code: "LCA", name: "Larnaka", city: "Larnaka", country: "Cypr", aliases: ["larnaka", "larnaca", "lca", "cypr"] },
+  { code: "MLA", name: "Malta", city: "Valletta", country: "Malta", aliases: ["malta", "mla", "valletta", "la valetta"] },
+  { code: "BOJ", name: "Burgas", city: "Burgas", country: "Bułgaria", aliases: ["burgas", "boj"] },
+  { code: "VAR", name: "Warna", city: "Warna", country: "Bułgaria", aliases: ["warna", "varna", "var"] },
+  { code: "TIA", name: "Tirana", city: "Tirana", country: "Albania", aliases: ["tirana", "tia", "albania"] },
+  // Włochy (cele wakacyjne) + Francja
+  { code: "FCO", name: "Rzym-Fiumicino", city: "Rzym", country: "Włochy", aliases: ["rzym", "rome", "roma", "fco", "fiumicino"] },
+  { code: "NAP", name: "Neapol", city: "Neapol", country: "Włochy", aliases: ["neapol", "naples", "napoli", "nap"] },
+  { code: "CTA", name: "Katania (Sycylia)", city: "Katania", country: "Włochy", aliases: ["katania", "catania", "cta", "sycylia", "sicily"] },
+  { code: "VCE", name: "Wenecja", city: "Wenecja", country: "Włochy", aliases: ["wenecja", "venice", "venezia", "vce"] },
+  { code: "NCE", name: "Nicea (Lazurowe Wybrzeże)", city: "Nicea", country: "Francja", aliases: ["nicea", "nice", "nce", "lazurowe wybrzeze", "french riviera"] },
+
   // ── Poza Europą — główne huby interkontynentalne ────────────────────────────
   // Wylot także spoza Europy (diaspora, przesiadki, podróże dalekie). Kody to
   // realne IATA obsługiwane przez LiteAPI Flights (GDS). Bez grup „wszystkie
@@ -187,6 +230,22 @@ export const AIRPORTS: readonly Airport[] = [
 // zweryfikowanych empirycznie (LiteAPI rozwija je natywnie). Reszta = fan-out.
 
 export const AIRPORT_GROUPS: readonly AirportGroup[] = [
+  {
+    // „Nie wiem skąd / dowolne lotnisko w PL" — fan-out po największych
+    // krajowych lotniskach. Brak kodu metra dla całego kraju → realny fan-out.
+    // U dostawcy GDS (brak treści LCC) część lotnisk zwróci mało/zero — `note`
+    // jest o tym uczciwy, a wynik = wszystkie loty, które realnie znajdziemy.
+    id: "poland-all",
+    label: "Polska — dowolne lotnisko",
+    city: "Polska",
+    country: "Polska",
+    airportCodes: ["WAW", "KRK", "KTW", "GDN", "WRO", "POZ"],
+    aliases: [
+      "polska", "poland", "dowolne", "dowolne lotnisko", "dowolne lotnisko w polsce",
+      "wszystkie lotniska w polsce", "cala polska", "skadkolwiek", "obojetnie", "niewazne",
+    ],
+    note: "Szukamy w największych polskich lotniskach (Warszawa, Kraków, Katowice, Gdańsk, Wrocław, Poznań). U naszego dostawcy część tanich linii bywa niedostępna — pokazujemy wszystkie loty, które realnie znajdziemy.",
+  },
   {
     id: "warsaw-all",
     label: "Warszawa — wszystkie lotniska",
@@ -286,7 +345,9 @@ export function searchAirports(query: string, limit = 8): AirportOption[] {
         seen.add(a.code);
       }
     };
-    // Polska: grupa Warszawa + wszystkie lotniska krajowe (WMI/RDO siedzą w grupie).
+    // „Polska — dowolne lotnisko" PIERWSZA (dla niezdecydowanych skąd lecą),
+    // potem grupa Warszawa + wszystkie lotniska krajowe (WMI/RDO siedzą w grupie).
+    pushGroup("poland-all");
     pushGroup("warsaw-all");
     for (const a of AIRPORTS) {
       if (a.country === "Polska" && a.code !== "WMI" && a.code !== "RDO") pushAirport(a.code);
@@ -295,8 +356,9 @@ export function searchAirports(query: string, limit = 8): AirportOption[] {
     pushGroup("london-all");
     pushGroup("paris-all");
     pushGroup("milan-all");
-    // Świat: popularne huby interkontynentalne.
-    for (const c of ["DXB", "DOH", "JFK", "LAX", "BKK", "SIN", "NRT", "ICN", "CUN", "HRG", "RAK", "SYD"]) {
+    // Kierunki wakacyjne (Morze Śródziemne / wyspy) — najczęstsze cele
+    // polskiego turysty, prowadzą przed odległymi hubami biznesowymi.
+    for (const c of ["BCN", "AGP", "PMI", "AYT", "RHO", "HER", "FAO", "LIS", "SPU", "LCA", "HRG", "DXB"]) {
       pushAirport(c);
     }
     return opts.slice(0, limit);
