@@ -39,7 +39,9 @@ const isDate = (v?: string) => Boolean(v && /^\d{4}-\d{2}-\d{2}$/.test(v));
 function parseOrigins(v?: string): string[] {
   if (!v) return [];
   const codes = v.split(",").map((s) => s.trim().toUpperCase()).filter(isIata);
-  return [...new Set(codes)].slice(0, 4);
+  // Cap 6 — „Polska — dowolne lotnisko" robi fan-out po 6 największych
+  // lotniskach (WAW/KRK/KTW/GDN/WRO/POZ). Grupy miejskie i tak mają ≤3.
+  return [...new Set(codes)].slice(0, 6);
 }
 
 export default async function FlightResultsPage({ searchParams }: { searchParams: Promise<SP> }) {

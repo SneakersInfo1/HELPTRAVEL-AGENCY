@@ -231,6 +231,22 @@ export const AIRPORTS: readonly Airport[] = [
 
 export const AIRPORT_GROUPS: readonly AirportGroup[] = [
   {
+    // „Nie wiem skąd / dowolne lotnisko w PL" — fan-out po największych
+    // krajowych lotniskach. Brak kodu metra dla całego kraju → realny fan-out.
+    // U dostawcy GDS (brak treści LCC) część lotnisk zwróci mało/zero — `note`
+    // jest o tym uczciwy, a wynik = wszystkie loty, które realnie znajdziemy.
+    id: "poland-all",
+    label: "Polska — dowolne lotnisko",
+    city: "Polska",
+    country: "Polska",
+    airportCodes: ["WAW", "KRK", "KTW", "GDN", "WRO", "POZ"],
+    aliases: [
+      "polska", "poland", "dowolne", "dowolne lotnisko", "dowolne lotnisko w polsce",
+      "wszystkie lotniska w polsce", "cala polska", "skadkolwiek", "obojetnie", "niewazne",
+    ],
+    note: "Szukamy w największych polskich lotniskach (Warszawa, Kraków, Katowice, Gdańsk, Wrocław, Poznań). U naszego dostawcy część tanich linii bywa niedostępna — pokazujemy wszystkie loty, które realnie znajdziemy.",
+  },
+  {
     id: "warsaw-all",
     label: "Warszawa — wszystkie lotniska",
     city: "Warszawa",
@@ -329,7 +345,9 @@ export function searchAirports(query: string, limit = 8): AirportOption[] {
         seen.add(a.code);
       }
     };
-    // Polska: grupa Warszawa + wszystkie lotniska krajowe (WMI/RDO siedzą w grupie).
+    // „Polska — dowolne lotnisko" PIERWSZA (dla niezdecydowanych skąd lecą),
+    // potem grupa Warszawa + wszystkie lotniska krajowe (WMI/RDO siedzą w grupie).
+    pushGroup("poland-all");
     pushGroup("warsaw-all");
     for (const a of AIRPORTS) {
       if (a.country === "Polska" && a.code !== "WMI" && a.code !== "RDO") pushAirport(a.code);

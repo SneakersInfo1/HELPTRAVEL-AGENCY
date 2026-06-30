@@ -42,15 +42,23 @@ export function AirportCombobox({
   const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
+  // Czy użytkownik COKOLWIEK wpisał od ostatniego wejścia w pole. Gdy `false`
+  // (świeży fokus — także na polu z już potwierdzonym lotniskiem) pokazujemy
+  // PEŁNĄ listę domyślną zamiast filtrować po nazwie potwierdzonego wyboru.
+  // Bez tego klik w pole „Lotnisko Chopina (WAW)" filtrował po tym tekście →
+  // 0 trafień → komunikat „Brak lotniska dla…" zamiast listy do zmiany.
+  const [typed, setTyped] = useState(false);
 
-  // Bez wpisywania pokazujemy szeroką listę domyślną (cała PL + grupy EU +
-  // huby świata) — stąd wyższy limit; po wpisaniu zwężamy do najtrafniejszych.
-  const options = searchAirports(query, query.trim() ? 8 : 40);
+  // Dopóki user nie zacznie pisać, traktujemy pole jak puste → lista domyślna
+  // („Polska — dowolne lotnisko" + cała PL + grupy EU + popularne huby).
+  const term = typed ? query : "";
+  const options = searchAirports(term, term.trim() ? 8 : 40);
 
   const pick = (o: AirportOption) => {
     onSelect(o);
     setOpen(false);
     setHighlight(-1);
+    setTyped(false);
   };
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -82,12 +90,19 @@ export function AirportCombobox({
           aria-label={inputAriaLabel}
           value={query}
           onChange={(e) => {
+            setTyped(true);
             onQueryChange(e.target.value);
             setOpen(true);
             setHighlight(-1);
           }}
           onKeyDown={handleKeyDown}
-          onFocus={() => setOpen(true)}
+          onFocus={(e) => {
+            // Wejście w pole = pokaż pełną listę (nie filtruj po potwierdzonym
+            // wyborze) i zaznacz tekst, żeby pierwszy znak go zastąpił.
+            setOpen(true);
+            setTyped(false);
+            e.currentTarget.select();
+          }}
           onBlur={() => {
             window.setTimeout(() => setOpen(false), 150);
           }}
@@ -115,19 +130,21 @@ export function AirportCombobox({
           id={listboxId}
           role="listbox"
           aria-label="Lotniska"
-          // Stała, komfortowa szerokość (≥ pola, capem do viewportu) — wąskie
-          // pole „Skąd"/„Dokąd" ucinało nazwy („Lotnisko Ch…"). Teraz pełne nazwy.
-          className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-80 w-[min(90vw,360px)] overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
+          // Szerokość = szerokość pola (left-0 right-0), jak lista „Dokąd" —
+          // nie wystaje poza kartę na telefonie. Nazwy mieszczą się bo rząd jest
+          // teraz prosty (nazwa + miasto/kraj), bez szerokiego badge'a z kodami.
+          className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-80 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
         >
           {options.length > 0 ? (
             options.map((o, idx) => {
               const active = idx === highlight;
               const isGroup = o.kind === "group";
               const title = isGroup ? o.group.label : o.airport.name;
+              // Bez kodów IATA (prośba właściciela) — sam opis lokalizacji.
+              // Grupa „Polska" (city===country) dostaje czytelniejszy podpis.
               const sub = isGroup
-                ? `${o.group.city}, ${o.group.country}`
+                ? (o.group.city === o.group.country ? "Wszystkie polskie lotniska" : o.group.country)
                 : `${o.airport.city}, ${o.airport.country}`;
-              const code = isGroup ? o.group.airportCodes.join(" · ") : o.airport.code;
               return (
                 <li
                   key={optionKey(o)}
@@ -138,19 +155,14 @@ export function AirportCombobox({
                     pick(o);
                   }}
                   onMouseEnter={() => setHighlight(idx)}
-                  className={`flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5 transition ${
+                  className={`cursor-pointer px-3.5 py-2.5 transition ${
                     active ? "bg-emerald-50" : "hover:bg-emerald-50/60"
                   }`}
                 >
-                  {/* Prosty, profesjonalny rząd: pełna nazwa (bez ucinania) +
-                      miasto/kraj, a kod IATA jako dyskretny badge po prawej. */}
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-emerald-950">{title}</span>
-                    <span className="block text-[11px] text-emerald-900/55">{sub}</span>
-                  </span>
-                  <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold tabular-nums tracking-wide text-emerald-700 ring-1 ring-emerald-600/15">
-                    {code}
-                  </span>
+                  {/* Prosty, profesjonalny rząd jak na „Dokąd": nazwa + opis,
+                      bez skrótów lotnisk i bez ucinania (długie nazwy zawijają). */}
+                  <div className="text-sm font-semibold text-emerald-950">{title}</div>
+                  <div className="text-[11px] text-emerald-900/55">{sub}</div>
                 </li>
               );
             })
