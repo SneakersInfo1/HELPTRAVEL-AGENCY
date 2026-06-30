@@ -64,12 +64,20 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
   const childrenCount = Math.max(0, Math.min(8, Number(sp.children) || 0));
   const infants = Math.max(0, Math.min(4, Number(sp.infants) || 0));
 
+  // Klucz per-wyszukiwanie: zmiana kierunku/dat/pasażerów w pasku edycji robi
+  // SOFT-NAV na ten sam route /loty/wyniki, więc bez tego React reużywałby
+  // instancję FlightResults — a `fetchedRef` blokował ponowny fetch → stare
+  // wyniki mimo nowych parametrów. `key` wymusza remount: świeży stan +
+  // ponowny fetch. Pasek edycji też się remountuje (zwija do podsumowania).
+  const searchKey = [origins.join(","), destination, sp.depart, ret ?? "", adults, childrenCount, infants].join("|");
+
   return (
     <>
       {/* Pasek edycji wyszukiwania — sticky pod headerem, jak na hotelach.
           Pozwala zmienić kierunek/daty bez wracania na homepage. */}
       <div className="sticky top-[72px] z-20 shadow-sm sm:top-[84px]">
         <FlightSearchBar
+          key={`sb-${searchKey}`}
           origins={origins}
           originLabel={sp.originLabel}
           destination={destination!}
@@ -82,6 +90,7 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
         />
       </div>
       <FlightResults
+        key={`fr-${searchKey}`}
         origins={origins}
         originLabel={sp.originLabel}
         destination={destination!}

@@ -115,7 +115,9 @@ export function AirportCombobox({
           id={listboxId}
           role="listbox"
           aria-label="Lotniska"
-          className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-80 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
+          // Stała, komfortowa szerokość (≥ pola, capem do viewportu) — wąskie
+          // pole „Skąd"/„Dokąd" ucinało nazwy („Lotnisko Ch…"). Teraz pełne nazwy.
+          className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-80 w-[min(90vw,360px)] overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
         >
           {options.length > 0 ? (
             options.map((o, idx) => {
@@ -136,18 +138,19 @@ export function AirportCombobox({
                     pick(o);
                   }}
                   onMouseEnter={() => setHighlight(idx)}
-                  className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 transition ${
+                  className={`flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5 transition ${
                     active ? "bg-emerald-50" : "hover:bg-emerald-50/60"
                   }`}
                 >
-                  <span aria-hidden className="shrink-0 text-sm text-emerald-700">
-                    {isGroup ? "📍" : "✈"}
+                  {/* Prosty, profesjonalny rząd: pełna nazwa (bez ucinania) +
+                      miasto/kraj, a kod IATA jako dyskretny badge po prawej. */}
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-emerald-950">{title}</span>
+                    <span className="block text-[11px] text-emerald-900/55">{sub}</span>
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-emerald-950">{title}</span>
-                    <span className="block truncate text-[11px] text-emerald-900/50">{sub}</span>
+                  <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold tabular-nums tracking-wide text-emerald-700 ring-1 ring-emerald-600/15">
+                    {code}
                   </span>
-                  <span className="shrink-0 text-[11px] font-medium tabular-nums text-emerald-900/45">{code}</span>
                 </li>
               );
             })
