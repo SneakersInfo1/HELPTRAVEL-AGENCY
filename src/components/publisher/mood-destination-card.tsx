@@ -60,7 +60,7 @@ export function MoodDestinationCard({
         {typeof fromPricePerNight === "number" && (
           <p className="mt-3 text-sm font-bold text-emerald-700">
             Hotel od {fromPricePerNight} zł
-            <span className="ml-1 text-[11px] font-medium text-emerald-900/55">/ noc</span>
+            <span className="ml-1 text-[11px] font-medium text-emerald-900/70">/ noc</span>
           </p>
         )}
 
