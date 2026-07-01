@@ -7,7 +7,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { computeWarmDateWindows } from "./warm-config";
+import {
+  computeWarmDateWindows,
+  HOME_TILE_DESTINATION_IDS,
+  WARM_EXTRA_DESTINATION_IDS,
+} from "./warm-config";
 
 const DAY = 86_400_000;
 const dow = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay();
@@ -56,4 +60,11 @@ for (const start of STARTS) {
 test("okna dat: deterministyczne (ten sam wynik dla tego samego now)", () => {
   const now = new Date("2026-06-29T12:00:00Z");
   assert.deepEqual(computeWarmDateWindows(now), computeWarmDateWindows(now));
+});
+
+test("każdy kafelek homepage jest w extras crona (inaczej kafelek nigdy nie dostanie ceny)", () => {
+  assert.equal(HOME_TILE_DESTINATION_IDS.length, 8);
+  for (const id of HOME_TILE_DESTINATION_IDS) {
+    assert.ok(WARM_EXTRA_DESTINATION_IDS.includes(id), `${id} nie jest grzany`);
+  }
 });
