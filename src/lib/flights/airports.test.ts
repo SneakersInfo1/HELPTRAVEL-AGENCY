@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   searchAirports,
   lookupAirport,
+  iataForCity,
   AIRPORTS,
   AIRPORT_GROUPS,
   resolveOriginFromOption,
@@ -75,6 +76,15 @@ test("wybór poland-all rozwija się w fan-out po największych lotniskach (bez 
   assert.ok(sel.isGroup, "isGroup=true (nota o ograniczeniach)");
   // Każdy kod fan-outu musi być realnym lotniskiem ze słownika.
   for (const c of sel.codes) assert.ok(lookupAirport(c), `kod ${c} musi istnieć w słowniku`);
+});
+
+test("iataForCity: EN nazwy miast z picks nastrojów trafiają w IATA", () => {
+  assert.equal(iataForCity("Barcelona"), "BCN");
+  assert.equal(iataForCity("Lisbon"), "LIS"); // alias EN
+  assert.equal(iataForCity("Malaga"), "AGP"); // fold diakrytyków (Málaga)
+  assert.equal(iataForCity("Antalya"), "AYT");
+  assert.equal(iataForCity("Middle of Nowhere"), null);
+  assert.equal(iataForCity(""), null);
 });
 
 test("domyślna lista podpowiedzi prowadzi kierunkami wakacyjnymi (nie tylko huby)", () => {

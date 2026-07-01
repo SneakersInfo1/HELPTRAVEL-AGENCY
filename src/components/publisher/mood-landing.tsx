@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { MoodDestinationCard } from "@/components/publisher/mood-destination-card";
+import { iataForCity } from "@/lib/flights/airports";
+import { pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
 import { curatedDestinations } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -67,13 +69,26 @@ export async function MoodLanding({ slug }: { slug: string }) {
   const checkin = plusDaysIso(30);
   const checkout = plusDaysIso(34);
 
+  // Prawdziwe ceny ze snapshotu (podzbiór picks — tylko grzane kierunki;
+  // reszta kart bez linii ceny). Odczyt RAZ na render ISR.
+  const priceSnapshot = await readPriceSnapshot();
+
   const cards = await Promise.all(
-    mood.picks.map(async (pick) => ({
-      pick,
-      media: await resolveDestinationMedia(profileForPick(pick)),
-      hotelsHref: hotelsHrefFor(pick, checkin, checkout),
-      guideHref: pick.slug ? `/kierunki/${pick.slug}` : undefined,
-    })),
+    mood.picks.map(async (pick) => {
+      const iata = iataForCity(pick.searchCity);
+      return {
+        pick,
+        media: await resolveDestinationMedia(profileForPick(pick)),
+        hotelsHref: hotelsHrefFor(pick, checkin, checkout),
+        guideHref: pick.slug ? `/kierunki/${pick.slug}` : undefined,
+        fromPricePerNight: pickFreshPrice(priceSnapshot, pick.searchCity, pick.country) ?? undefined,
+        // CTA lotów tylko dla miast z lotniskiem w słowniku (WAW → kierunek,
+        // te same daty co CTA hotelowe — spójna wycieczka jednym klikiem).
+        flightsHref: iata
+          ? `/loty/wyniki?origin=WAW&destination=${iata}&depart=${checkin}&return=${checkout}&adults=2&destLabel=${encodeURIComponent(pick.name)}`
+          : undefined,
+      };
+    }),
   );
 
   const siteUrl = getSiteUrl();
@@ -236,6 +251,8 @@ export async function MoodLanding({ slug }: { slug: string }) {
               media={item.media}
               hotelsHref={item.hotelsHref}
               guideHref={item.guideHref}
+              fromPricePerNight={item.fromPricePerNight}
+              flightsHref={item.flightsHref}
             />
           ))}
         </div>
