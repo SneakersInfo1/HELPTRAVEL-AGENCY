@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
-import { HomePageSections } from "@/components/home/home-page-sections";
+import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // 8 kafelków = HOME_TILE_DESTINATION_IDS z warm-config (JEDNO źródło prawdy:
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
@@ -91,7 +91,7 @@ export async function HomePageView() {
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} />
       </div>
-      <HomePageSections />
+      <TrustHowItWorks />
     </main>
   );
 }
