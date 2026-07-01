@@ -12,11 +12,17 @@ export function MoodDestinationCard({
   media,
   hotelsHref,
   guideHref,
+  fromPricePerNight,
+  flightsHref,
 }: {
   pick: MoodPick;
   media: DestinationMedia;
   hotelsHref: string;
   guideHref?: string;
+  /** Prawdziwa cena ze snapshotu dstprice:v1 (tylko grzane kierunki; brak = brak linii). */
+  fromPricePerNight?: number;
+  /** CTA lotów — tylko gdy miasto ma IATA w słowniku lotnisk. */
+  flightsHref?: string;
 }) {
   return (
     <article className="group flex flex-col overflow-hidden rounded-[1.5rem] border border-emerald-900/10 bg-white shadow-[0_16px_40px_rgba(16,84,48,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(16,84,48,0.14)]">
@@ -51,6 +57,13 @@ export function MoodDestinationCard({
           ))}
         </div>
 
+        {typeof fromPricePerNight === "number" && (
+          <p className="mt-3 text-sm font-bold text-emerald-700">
+            Hotel od {fromPricePerNight} zł
+            <span className="ml-1 text-[11px] font-medium text-emerald-900/55">/ noc</span>
+          </p>
+        )}
+
         <p className="mt-3 text-xs text-emerald-900/60">
           <span className="font-semibold text-emerald-800">Najlepszy czas:</span> {pick.season}
         </p>
@@ -61,8 +74,16 @@ export function MoodDestinationCard({
             className="inline-flex min-h-10 items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold transition hover:bg-emerald-800"
           >
             {/* span keeps the label white despite the global a{color:inherit} */}
-            <span className="text-white">Zobacz hotele i loty →</span>
+            <span className="text-white">Zobacz hotele →</span>
           </Link>
+          {flightsHref && (
+            <Link
+              href={flightsHref}
+              className="inline-flex min-h-10 items-center justify-center rounded-full border border-emerald-900/10 bg-white px-4 py-2 text-sm font-semibold transition hover:bg-emerald-50"
+            >
+              <span className="text-emerald-950">Sprawdź loty</span>
+            </Link>
+          )}
           {guideHref && (
             <Link
               href={guideHref}
