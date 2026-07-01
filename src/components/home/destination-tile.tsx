@@ -26,6 +26,10 @@ interface DestinationTileProps {
   badge?: string;
   /** Visual scale. „lg" = bigger photo + larger heading (homepage). */
   size?: "default" | "lg";
+  /** Prawdziwa cena „Hotel od X zł/noc" ze snapshotu dstprice:v1 (cron →
+   *  realne wyszukanie LiteAPI). Brak = brak linii. NIE podawać tu żadnych
+   *  liczb liczonych lokalnie — patrz historia 2026-06-11 (fikcyjne ceny). */
+  fromPricePerNight?: number;
 }
 
 export function DestinationTile({
@@ -35,6 +39,7 @@ export function DestinationTile({
   defaultTravelers = 2,
   badge,
   size = "default",
+  fromPricePerNight,
 }: DestinationTileProps) {
   const isLarge = size === "lg";
   // Sesja C1 FIX 7: chips link directly to the unified results page with
@@ -86,6 +91,12 @@ export function DestinationTile({
         </p>
         <h3 className={`mt-1 font-display leading-tight ${isLarge ? "text-2xl" : "text-xl"}`}>{cityLabel}</h3>
         <p className="mt-1.5 text-[11px] text-white/80">{flightHoursLabel}</p>
+        {typeof fromPricePerNight === "number" && (
+          <p className="mt-1 text-sm font-bold text-amber-300">
+            Hotel od {fromPricePerNight} zł
+            <span className="ml-1 text-[10px] font-medium text-white/75">/ noc</span>
+          </p>
+        )}
       </div>
     </LocalizedLink>
   );

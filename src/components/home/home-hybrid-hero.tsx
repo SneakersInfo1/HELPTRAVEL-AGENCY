@@ -8,6 +8,8 @@ import type { DestinationProfile } from "@/lib/mvp/types";
 interface FeaturedTile {
   destination: DestinationProfile;
   heroImage: string;
+  /** Prawdziwa cena ze snapshotu dstprice:v1 (patrz DestinationTile). */
+  fromPricePerNight?: number;
 }
 
 interface HomeHybridHeroProps {
@@ -105,6 +107,7 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
                 key={tile.destination.slug}
                 destination={tile.destination}
                 heroImage={tile.heroImage}
+                fromPricePerNight={tile.fromPricePerNight}
                 size="lg"
                 badge="Polecane"
               />
