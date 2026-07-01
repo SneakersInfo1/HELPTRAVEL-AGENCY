@@ -64,9 +64,26 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
               <HomeSearchTabs />
             </div>
 
-            {/* Sygnały zaufania — zwięzły rząd tuż pod formularzem. */}
+            {/* Sygnały zaufania — WYŁĄCZNIE weryfikowalne fakty (świeży projekt,
+                zero ogólników typu „sprawdzeni partnerzy"): prawdziwy profil
+                Trustpilot (ten sam co na checkoucie), realny procesor płatności,
+                realna waluta rozliczeń. */}
             <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px] font-medium text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)] sm:mt-5 sm:text-xs">
-              {["Ceny w PLN", "Bez rejestracji", "Sprawdzeni partnerzy"].map((item) => (
+              <li>
+                <a
+                  href="https://pl.trustpilot.com/review/helptravel.pl"
+                  target="_blank"
+                  rel="noopener nofollow"
+                  className="inline-flex items-center gap-1.5 underline-offset-2 transition hover:underline"
+                >
+                  <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
+                    <path d="M10 1.6l2.47 5.01 5.53.8-4 3.9.94 5.5L10 14.2l-4.95 2.6.94-5.5-4-3.9 5.53-.8z" />
+                  </svg>
+                  {/* span: globalne a{color:inherit} bije text-*, kolor na span */}
+                  <span className="text-white/90">Opinie na Trustpilot</span>
+                </a>
+              </li>
+              {["Płatności obsługuje Stripe", "Ceny finalne w PLN"].map((item) => (
                 <li key={item} className="inline-flex items-center gap-1.5">
                   <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
                     <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
