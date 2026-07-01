@@ -74,11 +74,13 @@ dokąd jechać, ma zostać nakierowana: chipy nastrojów → mocne podstrony
 - Po każdym udanym `resolveSlimRates` dla zadania (kierunek × okno) cron liczy
   minimum ceny za noc po hotelach tego zadania; po przebiegu zapisuje
   `mergePriceSnapshot` z minimum po wszystkich oknach danego kierunku.
-- Lista grzanych kierunków: `WARM_DESTINATION_COUNT` 10 → **14** w
-  `warm-config.ts`, tak by pokryła 8 kafelków homepage; budżet zapytań rośnie
-  z 30 do 42 zadań na przebieg (mieści się w `WARM_TIME_BUDGET_MS` przy
-  concurrency 4 — do zweryfikowania pomiarem w F1; jeśli nie, wracamy do 10
-  i kafelki spoza top-10 po prostu nie mają ceny).
+- Lista grzanych kierunków — **KOREKTA przy planowaniu (2026-07-01)**: seed
+  jest sortowany popularnością i top-14 to niemal sama Hiszpania (Rzym idx 23,
+  Ateny 48, Stambuł 64), więc podbicie licznika NIE pokryłoby kafelków.
+  Zamiast tego: `HOME_TILE_DESTINATION_IDS` (8 kafelków) +
+  `WARM_EXTRA_DESTINATION_IDS` w `warm-config.ts`; cron grzeje
+  **union(top-10, extras)** (~15 kierunków × 3 okna ≈ 45 zadań; budżet czasu
+  weryfikowany pomiarem w Task 8 — fallback: mniej okien dla extras).
 - Karty `/wyjazdy` pokazują cenę TYLKO dla kierunków obecnych w snapshotcie
   (podzbiór picks) — reszta gracefully bez ceny. Świadomy kompromis: nie
   rozszerzamy crona o ~40 miast nastrojów w tym milestone.
