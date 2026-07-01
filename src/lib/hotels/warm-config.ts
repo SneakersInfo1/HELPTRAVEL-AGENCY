@@ -17,6 +17,26 @@ export const WARM_CONCURRENCY = 4;
 // Twardy budżet czasu — zatrzymujemy się przed limitem funkcji (maxDuration 300 s).
 export const WARM_TIME_BUDGET_MS = 250_000;
 
+// Kafelki „Popularne kierunki" na homepage (8; podzbiór zestawu właściciela
+// z 2026-06-11, dobór leisure-first). ID = id z data/destinations.json ==
+// slug profilu kierunku. KAŻDY kafelek MUSI być grzany (poniżej), inaczej
+// nigdy nie dostanie prawdziwej ceny „od zł/noc" ze snapshotu dstprice:v1.
+export const HOME_TILE_DESTINATION_IDS = [
+  "malaga-spain",
+  "barcelona-spain",
+  "lisbon-portugal",
+  "rome-italy",
+  "valencia-spain",
+  "athens-greece",
+  "istanbul-turkey",
+  "heraklion-greece",
+] as const;
+
+// Kierunki grzane DODATKOWO poza top-N popularności. Seed jest sortowany
+// popularnością i top-10 to niemal sama Hiszpania — bez tej listy kafelki
+// (Rzym idx 23, Ateny 48, Stambuł 64…) nie miałyby cen. Union liczony w cronie.
+export const WARM_EXTRA_DESTINATION_IDS: readonly string[] = HOME_TILE_DESTINATION_IDS;
+
 export interface WarmWindow {
   checkin: string; // yyyy-MM-dd
   checkout: string;
