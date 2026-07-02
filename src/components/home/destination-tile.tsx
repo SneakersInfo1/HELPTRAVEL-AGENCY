@@ -30,6 +30,8 @@ interface DestinationTileProps {
    *  realne wyszukanie LiteAPI). Brak = brak linii. NIE podawać tu żadnych
    *  liczb liczonych lokalnie — patrz historia 2026-06-11 (fikcyjne ceny). */
   fromPricePerNight?: number;
+  /** Najtańszy lot w obie strony z Warszawy (total PLN/os., snapshot). */
+  flightFromPln?: number;
 }
 
 export function DestinationTile({
@@ -40,6 +42,7 @@ export function DestinationTile({
   badge,
   size = "default",
   fromPricePerNight,
+  flightFromPln,
 }: DestinationTileProps) {
   const isLarge = size === "lg";
   // Sesja C1 FIX 7: chips link directly to the unified results page with
@@ -95,6 +98,11 @@ export function DestinationTile({
           <p className="mt-1 text-sm font-bold text-amber-300">
             Hotel od {fromPricePerNight} zł
             <span className="ml-1 text-[10px] font-medium text-white/75">/ noc</span>
+          </p>
+        )}
+        {typeof flightFromPln === "number" && (
+          <p className="mt-0.5 text-[11px] font-medium text-white/85">
+            Lot z Warszawy od {flightFromPln} zł
           </p>
         )}
       </div>

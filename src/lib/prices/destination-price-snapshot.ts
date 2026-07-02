@@ -23,6 +23,13 @@ export interface DestinationPriceEntry {
   checkout: string;
   /** Epoch ms zapisu — staleness liczona od tego. */
   computedAt: number;
+  // ── Loty (Faza 6) — opcjonalne: kierunek bez IATA / nieudany search lotów
+  // nie blokuje ceny hotelu. Świeżość lotu liczona OSOBNO (flightComputedAt).
+  /** Najtańszy lot w obie strony WAW→kierunek, total PLN za 1 os. (floor). */
+  flightFromPln?: number;
+  flightDepart?: string;
+  flightReturn?: string;
+  flightComputedAt?: number;
 }
 
 export type DestinationPriceSnapshot = Record<string, DestinationPriceEntry>;
@@ -131,6 +138,32 @@ export async function mergePriceSnapshot(entries: DestinationPriceSnapshot): Pro
   } catch (err) {
     console.warn("[dst-price] merge skip:", err instanceof Error ? err.message : err);
   }
+}
+
+/** Minimum totala z ofert lotów (kształt DisplayOffer: total może być null).
+ *  Nonsensy (≤0) pomijane; floor do pełnych zł. */
+export function minTotalFromOffers(offers: Array<{ total: number | null }>): number | null {
+  let min: number | null = null;
+  for (const o of offers) {
+    if (typeof o.total !== "number" || !Number.isFinite(o.total) || o.total <= 0) continue;
+    const v = Math.floor(o.total);
+    if (min === null || v < min) min = v;
+  }
+  return min;
+}
+
+/** Świeża cena LOTU kierunku albo null (świeżość z flightComputedAt, 48 h). */
+export function pickFreshFlightPrice(
+  snapshot: DestinationPriceSnapshot | null,
+  cityEn: string,
+  countryEn: string,
+  now: number = Date.now(),
+): number | null {
+  if (!snapshot) return null;
+  const entry = snapshot[destinationPriceKey(cityEn, countryEn)];
+  if (!entry || typeof entry.flightFromPln !== "number") return null;
+  if (!Number.isFinite(entry.flightComputedAt ?? Number.NaN)) return null;
+  return now - (entry.flightComputedAt as number) <= PRICE_FRESH_MS ? entry.flightFromPln : null;
 }
 
 /** Wygodny odczyt dla stron: świeża cena kierunku albo null. */
