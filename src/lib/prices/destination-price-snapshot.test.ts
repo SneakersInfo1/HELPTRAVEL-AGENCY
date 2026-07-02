@@ -9,6 +9,8 @@ import {
   isFreshPrice,
   mergePriceSnapshot,
   minPerNightFromRates,
+  minTotalFromOffers,
+  pickFreshFlightPrice,
   pickFreshPrice,
   pricePerNight,
   readPriceSnapshot,
@@ -92,6 +94,42 @@ test("pickFreshPrice: zwraca cenę tylko dla świeżego wpisu istniejącego kier
   assert.equal(pickFreshPrice(snap, "Rome", "Italy", now), null); // stęchły
   assert.equal(pickFreshPrice(snap, "Atlantis", "Nowhere", now), null); // brak
   assert.equal(pickFreshPrice(null, "Malaga", "Spain", now), null); // brak snapshotu
+});
+
+// ── Faza 6: ceny lotów w tym samym snapshotcie ───────────────────────────────
+
+test("minTotalFromOffers: minimum po totalach, null-e pomijane, floor do zł", () => {
+  assert.equal(minTotalFromOffers([{ total: 899.99 }, { total: 420.5 }, { total: null }]), 420);
+  assert.equal(minTotalFromOffers([{ total: null }]), null);
+  assert.equal(minTotalFromOffers([]), null);
+  assert.equal(minTotalFromOffers([{ total: 0 }, { total: -5 }]), null); // nonsensy
+});
+
+test("pickFreshFlightPrice: świeżość liczona z flightComputedAt (osobno od hotelu)", () => {
+  const now = Date.now();
+  const key = destinationPriceKey("Barcelona", "Spain");
+  const snap: DestinationPriceSnapshot = {
+    [key]: {
+      hotelFromPlnPerNight: 300,
+      checkin: "a",
+      checkout: "b",
+      computedAt: now,
+      flightFromPln: 450,
+      flightDepart: "2026-09-05",
+      flightReturn: "2026-09-12",
+      flightComputedAt: now - 1000,
+    },
+  };
+  assert.equal(pickFreshFlightPrice(snap, "Barcelona", "Spain", now), 450);
+  // Stęchły lot (>48h) → null, mimo świeżego hotelu.
+  snap[key].flightComputedAt = now - 49 * 3600 * 1000;
+  assert.equal(pickFreshFlightPrice(snap, "Barcelona", "Spain", now), null);
+  assert.equal(pickFreshPrice(snap, "Barcelona", "Spain", now), 300, "hotel dalej świeży");
+  // Wpis bez pól lotu (np. brak IATA) → null, bez wyjątku.
+  delete snap[key].flightFromPln;
+  delete snap[key].flightComputedAt;
+  assert.equal(pickFreshFlightPrice(snap, "Barcelona", "Spain", now), null);
+  assert.equal(pickFreshFlightPrice(null, "Barcelona", "Spain", now), null);
 });
 
 test("read bez env/seama → null (degrade-to-miss, nigdy wyjątek)", async () => {

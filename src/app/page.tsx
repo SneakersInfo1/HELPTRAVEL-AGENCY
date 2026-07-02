@@ -5,7 +5,7 @@ import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // 8 kafelków = HOME_TILE_DESTINATION_IDS z warm-config (JEDNO źródło prawdy:
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
-import { pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import { pickFreshFlightPrice, pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -84,6 +84,8 @@ export async function HomePageView() {
     heroImage: item.media.heroImage,
     fromPricePerNight:
       pickFreshPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
+    flightFromPln:
+      pickFreshFlightPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
   }));
 
   return (

@@ -4,7 +4,7 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { MoodDestinationCard } from "@/components/publisher/mood-destination-card";
 import { iataForCity } from "@/lib/flights/airports";
 import { getDestinationByCityCountry } from "@/lib/mvp/destinations-seed";
-import { pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import { pickFreshFlightPrice, pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
 import { curatedDestinations } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -87,6 +87,12 @@ export async function MoodLanding({ slug }: { slug: string }) {
         guideHref: pick.slug ? `/kierunki/${pick.slug}` : undefined,
         fromPricePerNight:
           pickFreshPrice(
+            priceSnapshot,
+            seedDest?.city.en ?? pick.searchCity,
+            seedDest?.country.en ?? pick.country,
+          ) ?? undefined,
+        flightFromPln:
+          pickFreshFlightPrice(
             priceSnapshot,
             seedDest?.city.en ?? pick.searchCity,
             seedDest?.country.en ?? pick.country,
@@ -261,6 +267,7 @@ export async function MoodLanding({ slug }: { slug: string }) {
               hotelsHref={item.hotelsHref}
               guideHref={item.guideHref}
               fromPricePerNight={item.fromPricePerNight}
+              flightFromPln={item.flightFromPln}
               flightsHref={item.flightsHref}
             />
           ))}

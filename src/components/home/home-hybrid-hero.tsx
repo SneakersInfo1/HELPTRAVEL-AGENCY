@@ -10,6 +10,8 @@ interface FeaturedTile {
   heroImage: string;
   /** Prawdziwa cena ze snapshotu dstprice:v1 (patrz DestinationTile). */
   fromPricePerNight?: number;
+  /** Najtańszy lot w obie strony z WAW (snapshot, Faza 6). */
+  flightFromPln?: number;
 }
 
 interface HomeHybridHeroProps {
@@ -127,6 +129,7 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
                 destination={tile.destination}
                 heroImage={tile.heroImage}
                 fromPricePerNight={tile.fromPricePerNight}
+                flightFromPln={tile.flightFromPln}
                 size="lg"
                 badge="Polecane"
               />
