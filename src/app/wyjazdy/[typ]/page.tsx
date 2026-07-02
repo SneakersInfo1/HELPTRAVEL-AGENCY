@@ -10,7 +10,9 @@ import { MoodLanding } from "@/components/publisher/mood-landing";
 import { TRAVEL_MOODS, getMoodBySlug } from "@/lib/mvp/travel-moods";
 import { getSiteUrl } from "@/lib/mvp/site";
 
-export const revalidate = 86400;
+// 1 h (było 24 h): karty pokazują ceny ze snapshotu crona (30 min) — doba
+// trzymałaby nieświeże ceny na widoku mimo świeżych danych w Redis.
+export const revalidate = 3600;
 export const dynamicParams = false;
 
 interface PageProps {

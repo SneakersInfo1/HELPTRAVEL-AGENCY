@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 
 import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
-import { HomePageSections } from "@/components/home/home-page-sections";
+import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
+// 8 kafelków = HOME_TILE_DESTINATION_IDS z warm-config (JEDNO źródło prawdy:
+// dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
+import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
+import { pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -49,22 +53,10 @@ export function getHomeMetadata(locale: SiteLocale): Metadata {
 
 export const metadata: Metadata = getHomeMetadata("pl");
 
-// 12 popular-destination tiles (owner-approved set, 2026-06-11). Order is
-// editorial — the section header says "Popularne kierunki", NOT a ranking.
-const heroDestinationSlugs = [
-  "malaga-spain",
-  "barcelona-spain",
-  "lisbon-portugal",
-  "rome-italy",
-  "valencia-spain",
-  "athens-greece",
-  "istanbul-turkey",
-  "funchal-portugal",
-  "paris-france",
-  "porto-portugal",
-  "naples-italy",
-  "heraklion-greece",
-] as const;
+// Kafelki „Popularne kierunki" — 8 sztuk (2026-07-01, redesign konwersji:
+// mniej scrollu, każdy kafelek z prawdziwą ceną). Zestaw i kolejność
+// EDYTORSKIE (podzbiór zestawu właściciela z 2026-06-11), zdefiniowane w
+// warm-config obok crona, który grzeje dla nich ceny.
 
 export async function HomePageView() {
   // Tiles link to the search results, not to publisher guides — so they only
@@ -72,7 +64,7 @@ export async function HomePageView() {
   // the curated publishedDestinationSlugs list. Resolving profiles directly
   // lets the 12-tile set include cities without a guide (Paris, Porto,
   // Heraklion), which the previous published-only filter silently dropped.
-  const selectedHeroDestinations = heroDestinationSlugs
+  const selectedHeroDestinations = HOME_TILE_DESTINATION_IDS
     .map((slug) => getDestinationProfileBySlug(slug))
     .filter((destination): destination is DestinationProfile => Boolean(destination));
 
@@ -83,9 +75,15 @@ export async function HomePageView() {
     })),
   );
 
-  const featuredTiles = resolvedHeroDestinations.slice(0, 12).map((item) => ({
+  // Prawdziwe „Hotel od X zł/noc" ze snapshotu (cron). Odczyt RAZ przy ISR;
+  // brak snapshotu/wpisu → kafelek bez linii ceny (uczciwość > kompletność).
+  const priceSnapshot = await readPriceSnapshot();
+
+  const featuredTiles = resolvedHeroDestinations.map((item) => ({
     destination: item.destination,
     heroImage: item.media.heroImage,
+    fromPricePerNight:
+      pickFreshPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
   }));
 
   return (
@@ -93,7 +91,7 @@ export async function HomePageView() {
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
         <HomeHybridHero featured={featuredTiles} />
       </div>
-      <HomePageSections />
+      <TrustHowItWorks />
     </main>
   );
 }

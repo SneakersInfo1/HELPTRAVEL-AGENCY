@@ -17,13 +17,28 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { fetchHotelsForDestination } from "@/lib/liteapi";
-import { getTopDestinations } from "@/lib/mvp/destinations-seed";
+import {
+  getDestinationByCityCountry,
+  getDestinationById,
+  getTopDestinations,
+  type DestinationRecord,
+} from "@/lib/mvp/destinations-seed";
+import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import type { RateCacheContext } from "@/lib/hotels/rate-cache";
 import {
+  destinationPriceKey,
+  mergePriceSnapshot,
+  minPerNightFromRates,
+  type DestinationPriceSnapshot,
+} from "@/lib/prices/destination-price-snapshot";
+import {
+  computeSnapshotDateWindows,
   computeWarmDateWindows,
+  SNAPSHOT_HOTELS_PER_DEST,
   WARM_CONCURRENCY,
   WARM_DESTINATION_COUNT,
+  WARM_EXTRA_DESTINATION_IDS,
   WARM_HOTELS_PER_DEST,
   WARM_TIME_BUDGET_MS,
 } from "@/lib/hotels/warm-config";
@@ -59,22 +74,64 @@ export async function GET(request: NextRequest) {
 
   const startedAt = Date.now();
   const windows = computeWarmDateWindows();
-  const dests = getTopDestinations(WARM_DESTINATION_COUNT);
+  // Union: top-N popularności + jawne extras (kafelki homepage). Dedup po id.
+  const byId = new Map(getTopDestinations(WARM_DESTINATION_COUNT).map((d) => [d.id, d] as const));
+  for (const id of WARM_EXTRA_DESTINATION_IDS) {
+    if (!byId.has(id)) {
+      const d = getDestinationById(id);
+      if (d) byId.set(d.id, d);
+      else console.warn(`[cron/warm-rates] extra kierunek '${id}' nie istnieje w seedzie`);
+    }
+  }
+  const dests = [...byId.values()];
+
+  // Kierunki z picks nastrojów (/wyjazdy) — grupa SNAPSHOT-ONLY: grzejemy je
+  // wyłącznie w tanich oknach (2 zamiast 5), żeby karty dostały ceny bez
+  // rozsadzenia budżetu czasu. Dedup względem core po id seedu.
+  const snapshotOnlyDests: DestinationRecord[] = [];
+  const seenMood = new Set<string>();
+  for (const m of TRAVEL_MOODS) {
+    for (const p of m.picks) {
+      const key = `${p.searchCity}|${p.country}`.toLowerCase();
+      if (seenMood.has(key)) continue;
+      seenMood.add(key);
+      const d = getDestinationByCityCountry(p.searchCity, p.country);
+      if (!d) {
+        console.warn(`[cron/warm-rates] mood pick '${p.searchCity}, ${p.country}' poza seedem — karta bez ceny`);
+        continue;
+      }
+      if (!byId.has(d.id) && !snapshotOnlyDests.some((x) => x.id === d.id)) snapshotOnlyDests.push(d);
+    }
+  }
 
   // 1) Metadane (hotelId) na kierunek — raz. Przy okazji grzeje Next Data Cache
   // dla /data/hotels tego miasta. Błąd pojedynczego kierunku nie wywala crona.
-  const destHotels: Array<{ id: string; label: string; hotelIds: string[] }> = [];
-  for (const d of dests) {
+  const destHotels: Array<{ id: string; label: string; priceKey: string; hotelIds: string[]; group: "core" | "snapshot" }> = [];
+  const allDests: Array<{ d: DestinationRecord; group: "core" | "snapshot" }> = [
+    ...dests.map((d) => ({ d, group: "core" as const })),
+    ...snapshotOnlyDests.map((d) => ({ d, group: "snapshot" as const })),
+  ];
+  for (const { d, group } of allDests) {
     try {
+      // Metadane do głębokości snapshotu (150); bliskie okna i tak biorą
+      // tylko pierwszą 50-tkę (to, co widzi user na 1. stronie wyników).
       const list = await fetchHotelsForDestination({
         city: d.city.en,
         country: d.country.code ?? d.country.pl,
         lat: d.lat,
         lng: d.lng,
-        limit: WARM_HOTELS_PER_DEST,
+        limit: SNAPSHOT_HOTELS_PER_DEST,
       });
-      const ids = (list.data ?? []).map((h) => h.id).slice(0, WARM_HOTELS_PER_DEST);
-      if (ids.length) destHotels.push({ id: d.id, label: d.city.en, hotelIds: ids });
+      const ids = (list.data ?? []).map((h) => h.id).slice(0, SNAPSHOT_HOTELS_PER_DEST);
+      if (ids.length) {
+        destHotels.push({
+          id: d.id,
+          label: d.city.en,
+          priceKey: destinationPriceKey(d.city.en, d.country.en),
+          hotelIds: ids,
+          group,
+        });
+      }
     } catch (err) {
       console.warn(`[cron/warm-rates] metadane '${d.city.en}' nieudane:`, err instanceof Error ? err.message : err);
     }
@@ -82,14 +139,34 @@ export async function GET(request: NextRequest) {
 
   // 2) Zadania = (kierunek × okno dat). Occupancy: 2 dorosłych, 1 pokój, PLN —
   // najczęstszy wariant (cache jest kluczowany po occupancy).
-  const tasks: Array<{ label: string; hotelIds: string[]; ctx: RateCacheContext }> = [];
+  // Core: 3 bliskie okna (cache dla realnych searchy; pierwsza 50-tka hoteli)
+  // + 2 tanie okna. Snapshot-only (mood picks): tylko 2 tanie okna.
+  // Tanie okna skanują GŁĘBIEJ (150 hoteli = 3 chunki po 50): lista jest
+  // sortowana popularnością, a najtańsze bywają za pierwszą 50-tką
+  // (sonda: Rzym 513 zł/noc w 0-50 vs 262 zł w 100-150).
+  const cheapWindows = computeSnapshotDateWindows();
+  const tasks: Array<{ label: string; priceKey: string; hotelIds: string[]; ctx: RateCacheContext }> = [];
   for (const dh of destHotels) {
-    for (const w of windows) {
-      tasks.push({
-        label: `${dh.label}/${w.label}`,
-        hotelIds: dh.hotelIds,
-        ctx: { checkin: w.checkin, checkout: w.checkout, adults: 2, children: [], rooms: 1, currency: "PLN" },
-      });
+    const nearIds = dh.hotelIds.slice(0, WARM_HOTELS_PER_DEST);
+    if (dh.group === "core") {
+      for (const w of windows) {
+        tasks.push({
+          label: `${dh.label}/${w.label}`,
+          priceKey: dh.priceKey,
+          hotelIds: nearIds,
+          ctx: { checkin: w.checkin, checkout: w.checkout, adults: 2, children: [], rooms: 1, currency: "PLN" },
+        });
+      }
+    }
+    for (const w of cheapWindows) {
+      for (let i = 0; i < dh.hotelIds.length; i += 50) {
+        tasks.push({
+          label: `${dh.label}/${w.label}/${i}-${i + 50}`,
+          priceKey: dh.priceKey,
+          hotelIds: dh.hotelIds.slice(i, i + 50),
+          ctx: { checkin: w.checkin, checkout: w.checkout, adults: 2, children: [], rooms: 1, currency: "PLN" },
+        });
+      }
     }
   }
 
@@ -98,6 +175,7 @@ export async function GET(request: NextRequest) {
   let calls = 0;
   let warmedHotels = 0;
   let skipped = 0;
+  const bestPrice = new Map<string, DestinationPriceSnapshot[string]>();
   await runPool(tasks, WARM_CONCURRENCY, async (t) => {
     if (Date.now() - startedAt > WARM_TIME_BUDGET_MS) {
       skipped++;
@@ -107,20 +185,49 @@ export async function GET(request: NextRequest) {
       const res = await resolveSlimRates(t.hotelIds, t.ctx, { forceRefresh: true });
       calls++;
       warmedHotels += Object.values(res.rates).filter((r) => r !== null).length;
+      // Snapshot cen: minimum za-noc z tego zadania (kierunek × okno) vs
+      // dotychczasowe minimum kierunku z innych okien.
+      const pn = minPerNightFromRates(res.rates, t.ctx.checkin, t.ctx.checkout);
+      if (pn !== null) {
+        const prev = bestPrice.get(t.priceKey);
+        if (!prev || pn < prev.hotelFromPlnPerNight) {
+          bestPrice.set(t.priceKey, {
+            hotelFromPlnPerNight: pn,
+            checkin: t.ctx.checkin,
+            checkout: t.ctx.checkout,
+            computedAt: Date.now(),
+          });
+        }
+      }
     } catch (err) {
       console.warn(`[cron/warm-rates] grzanie '${t.label}' nieudane:`, err instanceof Error ? err.message : err);
     }
   });
 
+  // Snapshot „Hotel od X zł/noc" dla homepage i /wyjazdy. Błąd zapisu NIE
+  // psuje crona (merge jest best-effort, ale pas bezpieczeństwa zostaje).
+  let snapshotEntries = 0;
+  if (bestPrice.size > 0) {
+    try {
+      await mergePriceSnapshot(Object.fromEntries(bestPrice));
+      snapshotEntries = bestPrice.size;
+    } catch (err) {
+      console.warn("[cron/warm-rates] snapshot cen nieudany:", err instanceof Error ? err.message : err);
+    }
+  }
+
   const durationMs = Date.now() - startedAt;
   const summary = {
     ok: true,
     destinations: destHotels.length,
-    windows: windows.length,
+    coreDests: destHotels.filter((d) => d.group === "core").length,
+    snapshotOnlyDests: destHotels.filter((d) => d.group === "snapshot").length,
+    windows: windows.length + cheapWindows.length,
     tasks: tasks.length,
     rateCalls: calls,
     warmedHotels,
     skipped,
+    snapshotEntries,
     durationMs,
   };
   console.log("[cron/warm-rates]", JSON.stringify(summary));
