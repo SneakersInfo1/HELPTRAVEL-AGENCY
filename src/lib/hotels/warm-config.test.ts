@@ -66,7 +66,7 @@ test("okna dat: deterministyczne (ten sam wynik dla tego samego now)", () => {
 });
 
 test("każdy kafelek homepage jest w extras crona (inaczej kafelek nigdy nie dostanie ceny)", () => {
-  assert.equal(HOME_TILE_DESTINATION_IDS.length, 8);
+  assert.equal(HOME_TILE_DESTINATION_IDS.length, 12);
   for (const id of HOME_TILE_DESTINATION_IDS) {
     assert.ok(WARM_EXTRA_DESTINATION_IDS.includes(id), `${id} nie jest grzany`);
   }

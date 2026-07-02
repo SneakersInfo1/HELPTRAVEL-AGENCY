@@ -167,7 +167,12 @@ export async function GET(request: NextRequest) {
       }
     }
     for (const w of cheapWindows) {
-      for (let i = 0; i < dh.hotelIds.length; i += 50) {
+      // Głęboki skan (150 = 3 chunki) tylko w PIERWSZYM tanim oknie — dwa
+      // głębokie okna rozsadzały budżet czasu (zmierzone 260 s przy limicie
+      // funkcji 300 s). Drugie okno płytko (top-50) — i tak łapie różnicę
+      // weekday vs weekend, a minimum bierzemy ze wszystkich zadań.
+      const depth = w.label === "tani-tydzien" ? dh.hotelIds.length : Math.min(dh.hotelIds.length, WARM_HOTELS_PER_DEST);
+      for (let i = 0; i < depth; i += 50) {
         tasks.push({
           label: `${dh.label}/${w.label}/${i}-${i + 50}`,
           priceKey: dh.priceKey,
@@ -212,21 +217,28 @@ export async function GET(request: NextRequest) {
     }
   });
 
-  // ── Loty (Faza 6): najtańszy lot w obie strony WAW→kierunek na tanie okno.
-  // Dopinamy TYLKO do kierunków, które mają już wpis cenowy hotelu (typ wymaga
-  // hotelFromPlnPerNight; kierunek bez hotelu i tak nie ma karty z ceną).
+  // ── Loty (Faza 6): najtańszy lot w obie strony WAW→kierunek. Szukamy w OBU
+  // tanich oknach (sobota-daleko 7 nocy ORAZ poniedziałek-środek tygodnia
+  // 4 noce — wyloty poniedziałkowe bywają wyraźnie tańsze; właściciel
+  // 2026-07-02: „niższe ceny lotów") i bierzemy minimum. Dopinamy TYLKO do
+  // kierunków z wpisem cenowym hotelu (typ wymaga hotelFromPlnPerNight).
   // Concurrency 4 (nie WARM_CONCURRENCY): /flights/rates jest cięższy (~5-8 s).
-  const flightWindow = cheapWindows[0]; // tani-tydzien (sobota ≥60 dni, 7 nocy)
   let flightCalls = 0;
   let flightPrices = 0;
-  const flightTasks = destHotels.filter((dh) => dh.iata && bestPrice.has(dh.priceKey));
-  await runPool(flightTasks, 4, async (dh) => {
+  const flightTasks: Array<{ label: string; priceKey: string; iata: string; w: (typeof cheapWindows)[number] }> = [];
+  for (const dh of destHotels) {
+    if (!dh.iata || !bestPrice.has(dh.priceKey)) continue;
+    for (const w of cheapWindows) {
+      flightTasks.push({ label: `${dh.label}/${w.label}`, priceKey: dh.priceKey, iata: dh.iata, w });
+    }
+  }
+  await runPool(flightTasks, 6, async (t) => {
     if (Date.now() - startedAt > WARM_TIME_BUDGET_MS) return;
     try {
       const input = FlightSearchInputSchema.parse({
         legs: [
-          { origin: "WAW", destination: dh.iata, date: flightWindow.checkin, direction: "OUTBOUND" },
-          { origin: dh.iata, destination: "WAW", date: flightWindow.checkout, direction: "INBOUND" },
+          { origin: "WAW", destination: t.iata, date: t.w.checkin, direction: "OUTBOUND" },
+          { origin: t.iata, destination: "WAW", date: t.w.checkout, direction: "INBOUND" },
         ],
         adults: 1,
       });
@@ -234,18 +246,20 @@ export async function GET(request: NextRequest) {
       flightCalls++;
       const minTotal = minTotalFromOffers(normalizeRatesResponse(res));
       if (minTotal !== null) {
-        const entry = bestPrice.get(dh.priceKey)!;
-        bestPrice.set(dh.priceKey, {
-          ...entry,
-          flightFromPln: minTotal,
-          flightDepart: flightWindow.checkin,
-          flightReturn: flightWindow.checkout,
-          flightComputedAt: Date.now(),
-        });
+        const entry = bestPrice.get(t.priceKey)!;
+        if (typeof entry.flightFromPln !== "number" || minTotal < entry.flightFromPln) {
+          bestPrice.set(t.priceKey, {
+            ...entry,
+            flightFromPln: minTotal,
+            flightDepart: t.w.checkin,
+            flightReturn: t.w.checkout,
+            flightComputedAt: Date.now(),
+          });
+        }
         flightPrices++;
       }
     } catch (err) {
-      console.warn(`[cron/warm-rates] lot '${dh.label}' nieudany:`, err instanceof Error ? err.message : err);
+      console.warn(`[cron/warm-rates] lot '${t.label}' nieudany:`, err instanceof Error ? err.message : err);
     }
   });
 

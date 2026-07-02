@@ -37,6 +37,12 @@ export const HOME_TILE_DESTINATION_IDS = [
   "athens-greece",
   "istanbul-turkey",
   "heraklion-greece",
+  // 2026-07-02 (właściciel: „takich ofert ma być więcej") — powrót do pełnego
+  // zestawu 12 z 2026-06-11; wszystkie grzane, więc wszystkie z cenami.
+  "funchal-portugal",
+  "paris-france",
+  "porto-portugal",
+  "naples-italy",
 ] as const;
 
 // Kierunki grzane DODATKOWO poza top-N popularności. Seed jest sortowany
