@@ -8,10 +8,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  computeSnapshotDateWindows,
   computeWarmDateWindows,
   HOME_TILE_DESTINATION_IDS,
   WARM_EXTRA_DESTINATION_IDS,
 } from "./warm-config";
+import { TRAVEL_MOODS } from "../mvp/travel-moods";
+import seedJson from "../../../data/destinations.json";
 
 const DAY = 86_400_000;
 const dow = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay();
@@ -67,4 +70,60 @@ test("każdy kafelek homepage jest w extras crona (inaczej kafelek nigdy nie dos
   for (const id of HOME_TILE_DESTINATION_IDS) {
     assert.ok(WARM_EXTRA_DESTINATION_IDS.includes(id), `${id} nie jest grzany`);
   }
+});
+
+// Tanie okna snapshotu (prośba właściciela 2026-07-02: ceny „od" na homepage
+// za wysokie — najbliższe weekendy w szczycie sezonu są drogie). Okna daleko
+// w przód + środek tygodnia dają REALNIE niższe minima bez zmyślania liczb.
+for (const start of STARTS) {
+  test(`tanie okna snapshotu: własności dla startu ${start}`, () => {
+    const now = new Date(`${start}T09:00:00Z`);
+    const w = computeSnapshotDateWindows(now);
+    assert.equal(w.length, 2, "dwa tanie okna");
+
+    const [taniTydzien, srodtydzien] = w;
+    // tani-tydzien: sobota ≥60 dni w przód, 7 nocy (poza szczytem cenowym).
+    assert.equal(dow(taniTydzien.checkin), 6, "tani-tydzien checkin = sobota");
+    assert.equal(nights(taniTydzien.checkin, taniTydzien.checkout), 7, "tani-tydzien = 7 nocy");
+    // srodtydzien: poniedziałek ≥40 dni w przód, 4 noce (stawki weekdayowe).
+    assert.equal(dow(srodtydzien.checkin), 1, "srodtydzien checkin = poniedziałek");
+    assert.equal(nights(srodtydzien.checkin, srodtydzien.checkout), 4, "srodtydzien = 4 noce");
+
+    const base = new Date(now);
+    base.setUTCHours(0, 0, 0, 0);
+    assert.ok(
+      new Date(`${taniTydzien.checkin}T00:00:00Z`).getTime() >= base.getTime() + 60 * DAY,
+      "tani-tydzien ≥ 60 dni w przód",
+    );
+    assert.ok(
+      new Date(`${srodtydzien.checkin}T00:00:00Z`).getTime() >= base.getTime() + 40 * DAY,
+      "srodtydzien ≥ 40 dni w przód",
+    );
+  });
+}
+
+test("głębokość skanu snapshotu: wielokrotność 50 (cap calla LiteAPI) i ≥ WARM_HOTELS_PER_DEST", async () => {
+  const { SNAPSHOT_HOTELS_PER_DEST, WARM_HOTELS_PER_DEST } = await import("./warm-config");
+  assert.ok(SNAPSHOT_HOTELS_PER_DEST >= WARM_HOTELS_PER_DEST);
+  assert.equal(SNAPSHOT_HOTELS_PER_DEST % 50, 0, "chunki po 50 muszą się równo dzielić");
+});
+
+test("pokrycie mood-picks: ≥90% unikalnych picks rozwiązuje się w seedzie (karty /wyjazdy dostaną ceny)", () => {
+  const seen = new Set<string>();
+  let hit = 0;
+  const dests = (seedJson as { destinations: Array<{ city: { en: string }; country: { en: string } }> }).destinations;
+  for (const m of TRAVEL_MOODS) {
+    for (const p of m.picks) {
+      const k = `${p.searchCity}|${p.country}`.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const found = dests.some(
+        (d) =>
+          d.city.en.toLowerCase() === p.searchCity.toLowerCase() &&
+          d.country.en.toLowerCase() === p.country.toLowerCase(),
+      );
+      if (found) hit++;
+    }
+  }
+  assert.ok(hit / seen.size >= 0.9, `w seedzie ${hit}/${seen.size} — za mało (karty bez cen)`);
 });
