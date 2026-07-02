@@ -17,6 +17,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { fetchHotelsForDestination } from "@/lib/liteapi";
+import { searchFlightRates } from "@/lib/flights/client";
+import { normalizeRatesResponse } from "@/lib/flights/display";
+import { FlightSearchInputSchema } from "@/lib/flights/types";
+import { iataForCity } from "@/lib/flights/airports";
 import {
   getDestinationByCityCountry,
   getDestinationById,
@@ -30,6 +34,7 @@ import {
   destinationPriceKey,
   mergePriceSnapshot,
   minPerNightFromRates,
+  minTotalFromOffers,
   type DestinationPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
 import {
@@ -106,7 +111,7 @@ export async function GET(request: NextRequest) {
 
   // 1) Metadane (hotelId) na kierunek — raz. Przy okazji grzeje Next Data Cache
   // dla /data/hotels tego miasta. Błąd pojedynczego kierunku nie wywala crona.
-  const destHotels: Array<{ id: string; label: string; priceKey: string; hotelIds: string[]; group: "core" | "snapshot" }> = [];
+  const destHotels: Array<{ id: string; label: string; priceKey: string; iata: string | null; hotelIds: string[]; group: "core" | "snapshot" }> = [];
   const allDests: Array<{ d: DestinationRecord; group: "core" | "snapshot" }> = [
     ...dests.map((d) => ({ d, group: "core" as const })),
     ...snapshotOnlyDests.map((d) => ({ d, group: "snapshot" as const })),
@@ -128,6 +133,9 @@ export async function GET(request: NextRequest) {
           id: d.id,
           label: d.city.en,
           priceKey: destinationPriceKey(d.city.en, d.country.en),
+          // IATA do ceny lotu: seed (airports[0], bywa kod metra jak ROM —
+          // LiteAPI rozwija natywnie) z fallbackiem do słownika lotnisk.
+          iata: d.airports?.[0] ?? iataForCity(d.city.en),
           hotelIds: ids,
           group,
         });
@@ -204,6 +212,43 @@ export async function GET(request: NextRequest) {
     }
   });
 
+  // ── Loty (Faza 6): najtańszy lot w obie strony WAW→kierunek na tanie okno.
+  // Dopinamy TYLKO do kierunków, które mają już wpis cenowy hotelu (typ wymaga
+  // hotelFromPlnPerNight; kierunek bez hotelu i tak nie ma karty z ceną).
+  // Concurrency 4 (nie WARM_CONCURRENCY): /flights/rates jest cięższy (~5-8 s).
+  const flightWindow = cheapWindows[0]; // tani-tydzien (sobota ≥60 dni, 7 nocy)
+  let flightCalls = 0;
+  let flightPrices = 0;
+  const flightTasks = destHotels.filter((dh) => dh.iata && bestPrice.has(dh.priceKey));
+  await runPool(flightTasks, 4, async (dh) => {
+    if (Date.now() - startedAt > WARM_TIME_BUDGET_MS) return;
+    try {
+      const input = FlightSearchInputSchema.parse({
+        legs: [
+          { origin: "WAW", destination: dh.iata, date: flightWindow.checkin, direction: "OUTBOUND" },
+          { origin: dh.iata, destination: "WAW", date: flightWindow.checkout, direction: "INBOUND" },
+        ],
+        adults: 1,
+      });
+      const res = await searchFlightRates(input);
+      flightCalls++;
+      const minTotal = minTotalFromOffers(normalizeRatesResponse(res));
+      if (minTotal !== null) {
+        const entry = bestPrice.get(dh.priceKey)!;
+        bestPrice.set(dh.priceKey, {
+          ...entry,
+          flightFromPln: minTotal,
+          flightDepart: flightWindow.checkin,
+          flightReturn: flightWindow.checkout,
+          flightComputedAt: Date.now(),
+        });
+        flightPrices++;
+      }
+    } catch (err) {
+      console.warn(`[cron/warm-rates] lot '${dh.label}' nieudany:`, err instanceof Error ? err.message : err);
+    }
+  });
+
   // Snapshot „Hotel od X zł/noc" dla homepage i /wyjazdy. Błąd zapisu NIE
   // psuje crona (merge jest best-effort, ale pas bezpieczeństwa zostaje).
   let snapshotEntries = 0;
@@ -227,6 +272,8 @@ export async function GET(request: NextRequest) {
     rateCalls: calls,
     warmedHotels,
     skipped,
+    flightCalls,
+    flightPrices,
     snapshotEntries,
     durationMs,
   };

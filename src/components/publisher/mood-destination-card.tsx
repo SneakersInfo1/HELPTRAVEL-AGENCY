@@ -13,6 +13,7 @@ export function MoodDestinationCard({
   hotelsHref,
   guideHref,
   fromPricePerNight,
+  flightFromPln,
   flightsHref,
 }: {
   pick: MoodPick;
@@ -21,6 +22,8 @@ export function MoodDestinationCard({
   guideHref?: string;
   /** Prawdziwa cena ze snapshotu dstprice:v1 (tylko grzane kierunki; brak = brak linii). */
   fromPricePerNight?: number;
+  /** Najtańszy lot w obie strony z WAW (total PLN/os., snapshot Faza 6). */
+  flightFromPln?: number;
   /** CTA lotów — tylko gdy miasto ma IATA w słowniku lotnisk. */
   flightsHref?: string;
 }) {
@@ -61,6 +64,11 @@ export function MoodDestinationCard({
           <p className="mt-3 text-sm font-bold text-emerald-700">
             Hotel od {fromPricePerNight} zł
             <span className="ml-1 text-[11px] font-medium text-emerald-900/70">/ noc</span>
+          </p>
+        )}
+        {typeof flightFromPln === "number" && (
+          <p className="mt-0.5 text-xs font-medium text-emerald-900/75">
+            Lot z Warszawy od {flightFromPln} zł
           </p>
         )}
 
