@@ -308,6 +308,22 @@ export function airportLabel(code: string): string {
   return a ? `${a.city} (${a.code})` : code;
 }
 
+/** IATA głównego lotniska miasta po nazwie (PL/EN/aliasy, fold). Dopasowanie
+ *  TYLKO exact (nie substring — „Pary" nie może trafić w Paryż). Miasto z
+ *  wieloma lotniskami → pierwsze z datasetu (główne lotnisko jest pierwsze).
+ *  Używane przez karty /wyjazdy do CTA „Sprawdź loty". Brak → null (bez CTA). */
+export function iataForCity(city: string): string | null {
+  const q = foldText(city);
+  if (!q) return null;
+  for (const a of AIRPORTS) {
+    if (foldText(a.city) === q) return a.code;
+  }
+  for (const a of AIRPORTS) {
+    if (a.aliases.some((al) => foldText(al) === q)) return a.code;
+  }
+  return null;
+}
+
 function groupMatches(g: AirportGroup, q: string): boolean {
   if (foldText(g.city).includes(q)) return true;
   return g.aliases.some((a) => foldText(a).includes(q));
