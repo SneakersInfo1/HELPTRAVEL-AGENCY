@@ -12,8 +12,15 @@ export const WARM_DESTINATION_COUNT = 10;
 // Ile hoteli na kierunek (1. strona wyników = to co user widzi od razu).
 // ≤50, bo resolveSlimRates robi jeden call LiteAPI na ≤50 hotelId.
 export const WARM_HOTELS_PER_DEST = 50;
-// Równoległość zapytań do LiteAPI (każde ~3,8 s zimno).
-export const WARM_CONCURRENCY = 4;
+// Głębokość skanu DLA SNAPSHOTU CEN (tanie okna): lista hoteli jest sortowana
+// popularnością, nie ceną — realnie najtańsze bywają za pierwszą 50-tką
+// (sonda 2026-07-02: Rzym min/noc 513 zł w hotelach 0-50 vs 262 zł w 100-150).
+// 150 = 3 paczki po 50 (cap resolveSlimRates na jeden call LiteAPI).
+export const SNAPSHOT_HOTELS_PER_DEST = 150;
+// Równoległość zapytań do LiteAPI (każde ~2,5-4 s). 6 (było 4): głęboki skan
+// snapshotu podniósł liczbę zadań do ~250 — przy 4 zimny przebieg ocierał się
+// o budżet czasu.
+export const WARM_CONCURRENCY = 6;
 // Twardy budżet czasu — zatrzymujemy się przed limitem funkcji (maxDuration 300 s).
 export const WARM_TIME_BUDGET_MS = 250_000;
 
@@ -72,5 +79,24 @@ export function computeWarmDateWindows(now: Date = new Date()): WarmWindow[] {
     { checkin: iso(fri1), checkout: iso(addDays(fri1, 2)), label: "weekend-1" },
     { checkin: iso(fri2), checkout: iso(addDays(fri2, 2)), label: "weekend-2" },
     { checkin: iso(sat1), checkout: iso(addDays(sat1, 7)), label: "tydzien-1" },
+  ];
+}
+
+// Tanie okna DLA SNAPSHOTU CEN (prośba właściciela 2026-07-02: „od X zł" na
+// homepage za wysokie). Najbliższe weekendy = szczyt cenowy; realnie niższe
+// minima są daleko w przód i w środku tygodnia:
+//   1) tani-tydzien — sobota ≥60 dni w przód, 7 nocy (poza szczytem; cena/noc
+//      przy 7 nocach jest najniższa),
+//   2) srodtydzien — poniedziałek ≥40 dni w przód, 4 noce (stawki weekdayowe).
+// Ceny z tych okien są PRAWDZIWE (realne wyszukania) — obniżamy „od" przez
+// szersze szukanie, nigdy przez zmyślanie liczb. Okna te grzeją też cache
+// wyników (bonus dla userów planujących z wyprzedzeniem).
+export function computeSnapshotDateWindows(now: Date = new Date()): WarmWindow[] {
+  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const satFar = nextDow(base, 6, 60);
+  const monMid = nextDow(base, 1, 40);
+  return [
+    { checkin: iso(satFar), checkout: iso(addDays(satFar, 7)), label: "tani-tydzien" },
+    { checkin: iso(monMid), checkout: iso(addDays(monMid, 4)), label: "srodtydzien" },
   ];
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { MoodDestinationCard } from "@/components/publisher/mood-destination-card";
 import { iataForCity } from "@/lib/flights/airports";
+import { getDestinationByCityCountry } from "@/lib/mvp/destinations-seed";
 import { pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
 import { curatedDestinations } from "@/lib/mvp/destinations";
@@ -76,12 +77,20 @@ export async function MoodLanding({ slug }: { slug: string }) {
   const cards = await Promise.all(
     mood.picks.map(async (pick) => {
       const iata = iataForCity(pick.searchCity);
+      // Klucz ceny przez rekord SEEDU (cron pisze klucze z seed city.en) —
+      // inaczej „Palma de Mallorca" (pick) nie trafi w „Palma" (seed/cron).
+      const seedDest = getDestinationByCityCountry(pick.searchCity, pick.country);
       return {
         pick,
         media: await resolveDestinationMedia(profileForPick(pick)),
         hotelsHref: hotelsHrefFor(pick, checkin, checkout),
         guideHref: pick.slug ? `/kierunki/${pick.slug}` : undefined,
-        fromPricePerNight: pickFreshPrice(priceSnapshot, pick.searchCity, pick.country) ?? undefined,
+        fromPricePerNight:
+          pickFreshPrice(
+            priceSnapshot,
+            seedDest?.city.en ?? pick.searchCity,
+            seedDest?.country.en ?? pick.country,
+          ) ?? undefined,
         // CTA lotów tylko dla miast z lotniskiem w słowniku (WAW → kierunek,
         // te same daty co CTA hotelowe — spójna wycieczka jednym klikiem).
         flightsHref: iata
