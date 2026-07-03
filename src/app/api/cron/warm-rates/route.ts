@@ -37,6 +37,7 @@ import {
   minTotalFromOffers,
   type DestinationPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
+import { refreshTrustpilotSnapshot } from "@/lib/trust/trustpilot-snapshot";
 import {
   computeSnapshotDateWindows,
   computeWarmDateWindows,
@@ -275,6 +276,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Ocena Trustpilot do pasów zaufania — realny fetch max 1×/24 h (throttle
+  // w module), porażka nie psuje crona ani nie kasuje starej wartości.
+  let trustpilot = "failed";
+  try {
+    trustpilot = await refreshTrustpilotSnapshot();
+  } catch (err) {
+    console.warn("[cron/warm-rates] trustpilot refresh:", err instanceof Error ? err.message : err);
+  }
+
   const durationMs = Date.now() - startedAt;
   const summary = {
     ok: true,
@@ -289,6 +299,7 @@ export async function GET(request: NextRequest) {
     flightCalls,
     flightPrices,
     snapshotEntries,
+    trustpilot,
     durationMs,
   };
   console.log("[cron/warm-rates]", JSON.stringify(summary));

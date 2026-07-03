@@ -24,7 +24,21 @@ const STEPS = [
   },
 ] as const;
 
-export function TrustHowItWorks() {
+interface TrustHowItWorksProps {
+  /** Świeża ocena Trustpilot (snapshot z crona) — null = sam link bez liczby. */
+  trustpilot?: { score: number; reviewCount: number | null } | null;
+}
+
+// Polska odmiana: 1 opinia, 2-4 opinie, 5+ opinii (z wyjątkiem 12-14).
+function reviewsLabel(n: number): string {
+  if (n === 1) return "1 opinia";
+  const d = n % 10;
+  const h = n % 100;
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return `${n} opinie`;
+  return `${n} opinii`;
+}
+
+export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
   return (
     <section
       aria-labelledby="how-it-works"
@@ -70,7 +84,18 @@ export function TrustHowItWorks() {
               className="inline-flex min-h-10 items-center justify-center rounded-full bg-white/10 px-4 py-2 text-sm font-semibold ring-1 ring-white/25 transition hover:bg-white/20"
             >
               {/* span: globalne a{color:inherit} bije text-* na <a> */}
-              <span className="text-white">★ Opinie na Trustpilot</span>
+              <span className="text-white">
+                {trustpilot ? (
+                  <>
+                    ★ {trustpilot.score.toFixed(1).replace(".", ",")}/5 na Trustpilot
+                    {typeof trustpilot.reviewCount === "number" && trustpilot.reviewCount > 0 && (
+                      <span className="text-white/70"> · {reviewsLabel(trustpilot.reviewCount)}</span>
+                    )}
+                  </>
+                ) : (
+                  "★ Opinie na Trustpilot"
+                )}
+              </span>
             </a>
             <Link
               href="/o-nas"
