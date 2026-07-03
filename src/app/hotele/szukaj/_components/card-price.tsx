@@ -47,6 +47,17 @@ export function PriceView({ entry, nights }: { entry: PriceEntry | undefined; ni
     );
   }
 
+  if (entry === "error") {
+    // Fetch ceny padł (po ponowce) — to NIE jest brak miejsc. Strona hotelu
+    // pobiera stawki osobnym endpointem, więc kierujemy tam.
+    return (
+      <div className="text-sm text-neutral-500">
+        <div className="font-medium text-neutral-600">Nie udało się pobrać ceny</div>
+        <div className="text-[11px]">Otwórz hotel — sprawdzimy dostępność na jego stronie.</div>
+      </div>
+    );
+  }
+
   if (entry === null) {
     return (
       <div className="text-sm text-neutral-500">
