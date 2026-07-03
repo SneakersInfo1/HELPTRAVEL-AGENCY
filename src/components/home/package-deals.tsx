@@ -55,8 +55,11 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
         <h2 id="package-deals" className="font-display text-2xl leading-tight text-emerald-950 sm:text-3xl">
           Cały wyjazd w jednej cenie
         </h2>
+        {/* Cena „od" pochodzi z KONKRETNEGO terminu na karcie (uczciwość) —
+            ale CTA nie narzuca dat: user wybiera je sam w formularzu
+            (właściciel 2026-07-04). */}
         <p className="text-xs leading-5 text-neutral-500 sm:text-sm">
-          Lot z Warszawy w obie strony + hotel, na osobę przy 2 osobach. Realne terminy — kliknij i rezerwuj.
+          Lot z Warszawy w obie strony + hotel, na osobę przy 2 osobach. Cena z terminu na karcie — daty wybierasz sam.
         </p>
       </div>
 
