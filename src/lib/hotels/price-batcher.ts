@@ -26,6 +26,13 @@ export interface PriceQuery {
   currency: string;
 }
 
+// Wynik pobrania ceny. Rozróżnienie null vs "error" jest KRYTYCZNE dla
+// uczciwości listy wyników: null = LiteAPI potwierdziło brak ofert dla dat
+// (hotel wyprzedany), "error" = NIE WIEMY (padł fetch/endpoint). Audyt
+// 2026-07-03: awaria /rates/batch mapowała się na null → cała lista
+// pokazywała „Brak dostępnych hoteli w tym terminie", choć hotele były.
+export type PriceResult = SlimRate | null | "error";
+
 // LiteAPI rates run ~1-2s/hotel, but the API itself happily handles
 // hotelIds[] arrays much larger than 3 — the bottleneck was our batching,
 // not the upstream. Audit 2026-05-26 showed that 30 hotels × BATCH_SIZE=3
@@ -58,7 +65,7 @@ const WINDOW_MS = 60; // coalescing window
 
 type Pending = {
   hotelId: string;
-  resolve: (v: SlimRate | null) => void;
+  resolve: (v: PriceResult) => void;
 };
 
 interface Group {
@@ -89,25 +96,40 @@ async function flush(key: string): Promise<void> {
   }
 }
 
+// Pojedyncza ponowka po krótkiej pauzie — łapie przejściowe czknięcia
+// (chwilowy 5xx, zerwane połączenie na mobile) bez lawiny requestów.
+const RETRY_DELAY_MS = 800;
+
+async function postBatch(g: Group, hotelIds: string[]): Promise<Record<string, SlimRate | null>> {
+  const res = await fetch("/api/hotels/rates/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ hotelIds, ...g.ctx }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as { rates: Record<string, SlimRate | null> };
+  return data.rates ?? {};
+}
+
 async function runBatch(g: Group, batch: Pending[]): Promise<void> {
   const hotelIds = batch.map((b) => b.hotelId);
   try {
-    const res = await fetch("/api/hotels/rates/batch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hotelIds, ...g.ctx }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as { rates: Record<string, SlimRate | null> };
-    for (const p of batch) p.resolve(data.rates?.[p.hotelId] ?? null);
+    const rates = await postBatch(g, hotelIds);
+    for (const p of batch) p.resolve(rates[p.hotelId] ?? null);
   } catch {
-    // Network/endpoint failure → resolve null so the card shows a
-    // graceful "price unavailable" state instead of hanging.
-    for (const p of batch) p.resolve(null);
+    try {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      const rates = await postBatch(g, hotelIds);
+      for (const p of batch) p.resolve(rates[p.hotelId] ?? null);
+    } catch {
+      // Dwukrotna porażka fetcha → "error", NIGDY null: null znaczy
+      // „potwierdzony brak miejsc" i ukrywa hotel z listy.
+      for (const p of batch) p.resolve("error");
+    }
   }
 }
 
-export function fetchHotelPrice(q: PriceQuery): Promise<SlimRate | null> {
+export function fetchHotelPrice(q: PriceQuery): Promise<PriceResult> {
   const key = groupKey(q);
   let g = groups.get(key);
   if (!g) {
@@ -116,7 +138,7 @@ export function fetchHotelPrice(q: PriceQuery): Promise<SlimRate | null> {
     g = { ctx, queue: [], timer: null, inFlight: 0 };
     groups.set(key, g);
   }
-  return new Promise<SlimRate | null>((resolve) => {
+  return new Promise<PriceResult>((resolve) => {
     g!.queue.push({ hotelId: q.hotelId, resolve });
     if (g!.timer === null && g!.inFlight < MAX_CONCURRENT) {
       g!.timer = setTimeout(() => void flush(key), WINDOW_MS);

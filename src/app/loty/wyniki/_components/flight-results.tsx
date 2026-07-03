@@ -55,6 +55,9 @@ interface Props {
 
 type Leg = { origin: string; destination: string; date: string; direction: "OUTBOUND" | "INBOUND" };
 
+// Ile ofert renderujemy na start i dosypujemy na klik „Pokaż więcej".
+const PAGE_SIZE = 20;
+
 export function FlightResults(props: Props) {
   const { origins, originLabel, destination, destLabel, depart, ret, adults, childrenCount, infants, fresh } = props;
   const router = useRouter();
@@ -63,6 +66,11 @@ export function FlightResults(props: Props) {
   const [sort, setSort] = useState<SortKey>("best");
   const [filters, setFilters] = useState<FlightFilters>(EMPTY_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Paginacja „Pokaż więcej" (audyt mobilny 2026-07-03): 150 kart naraz to
+  // ~7000 nodów DOM i strona wysoka na ~60 000 px — na telefonie wolny
+  // scroll i pamięć. Sort/filtry dalej działają na PEŁNEJ puli; tniemy
+  // wyłącznie render. Zmiana sortu/filtrów wraca do pierwszej strony.
+  const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [allSettled, setAllSettled] = useState(false);
   const fetchedRef = useRef(false);
 
@@ -133,6 +141,13 @@ export function FlightResults(props: Props) {
     () => (offers ? sortOffers(applyFilters(offers, filters), sort) : []),
     [offers, filters, sort],
   );
+  // Powrót na pierwszą „stronę" przy zmianie kontrolek — inny sort/filtr
+  // to nowy ranking, doklejone wcześniej oferty przestają mieć sens.
+  useEffect(() => {
+    setShownCount(PAGE_SIZE);
+  }, [filters, sort]);
+  const rendered = visible.slice(0, shownCount);
+  const remaining = visible.length - rendered.length;
   // Odznaki „Najtańszy/Najszybszy" z PEŁNEJ puli (stabilne mimo filtra/sortu).
   const badges = useMemo(
     () => (offers ? computeOfferBadges(offers) : { cheapestId: null, fastestId: null }),
@@ -278,9 +293,9 @@ export function FlightResults(props: Props) {
           )}
 
           {/* Lista */}
-          {visible.length > 0 && (
+          {rendered.length > 0 && (
             <div className="space-y-3">
-              {visible.map((offer) => (
+              {rendered.map((offer) => (
                 <OfferCard
                   key={offer.offerId}
                   offer={offer}
@@ -291,6 +306,16 @@ export function FlightResults(props: Props) {
                 />
               ))}
             </div>
+          )}
+
+          {remaining > 0 && (
+            <button
+              type="button"
+              onClick={() => setShownCount((c) => c + PAGE_SIZE)}
+              className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-xl border border-neutral-300 bg-white text-sm font-semibold text-neutral-700 transition hover:border-emerald-400 hover:text-emerald-700"
+            >
+              Pokaż więcej ofert ({remaining})
+            </button>
           )}
         </div>
       </div>
