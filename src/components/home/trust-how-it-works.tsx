@@ -52,7 +52,7 @@ export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
   return (
     <section
       aria-labelledby="how-it-works"
-      className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 xl:px-8"
+      className="mx-auto w-full max-w-[1800px] px-4 sm:px-6 xl:px-8"
     >
       <ul className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-medium text-emerald-950/80 sm:mb-5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-8 sm:text-sm">
         {BENEFITS.map((b) => (

@@ -50,7 +50,7 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
   if (sorted.length < MIN_DEALS) return null;
 
   return (
-    <section aria-labelledby="package-deals" className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 xl:px-8">
+    <section aria-labelledby="package-deals" className="mx-auto w-full max-w-[1800px] px-4 sm:px-6 xl:px-8">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
         <h2 id="package-deals" className="font-display text-2xl leading-tight text-emerald-950 sm:text-3xl">
           Cały wyjazd w jednej cenie

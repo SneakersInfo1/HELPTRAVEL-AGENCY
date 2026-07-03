@@ -21,7 +21,7 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
   if (tiles.length === 0) return null;
 
   return (
-    <section aria-labelledby="theme-tiles" className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 xl:px-8">
+    <section aria-labelledby="theme-tiles" className="mx-auto w-full max-w-[1800px] px-4 sm:px-6 xl:px-8">
       <h2 id="theme-tiles" className="font-display text-2xl leading-tight text-emerald-950 sm:text-3xl">
         Nie wiesz, dokąd jechać?
       </h2>

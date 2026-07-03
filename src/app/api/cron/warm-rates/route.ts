@@ -45,6 +45,7 @@ import {
   SNAPSHOT_HOTELS_PER_DEST,
   WARM_CONCURRENCY,
   WARM_DESTINATION_COUNT,
+  PACKAGE_DESTINATION_IDS,
   WARM_EXTRA_DESTINATION_IDS,
   WARM_HOTELS_PER_DEST,
   WARM_TIME_BUDGET_MS,
@@ -109,6 +110,14 @@ export async function GET(request: NextRequest) {
       }
       if (!byId.has(d.id) && !snapshotOnlyDests.some((x) => x.id === d.id)) snapshotOnlyDests.push(d);
     }
+  }
+  // Kierunki sekcji pakietów (rozłączne z kafelkami) — też snapshot-only:
+  // tanie okna + loty wystarczą do pól pkg*; nie płacimy za bliskie okna.
+  for (const id of PACKAGE_DESTINATION_IDS) {
+    if (byId.has(id) || snapshotOnlyDests.some((x) => x.id === id)) continue;
+    const d = getDestinationById(id);
+    if (d) snapshotOnlyDests.push(d);
+    else console.warn(`[cron/warm-rates] kierunek pakietu '${id}' nie istnieje w seedzie`);
   }
 
   // 1) Metadane (hotelId) na kierunek — raz. Przy okazji grzeje Next Data Cache

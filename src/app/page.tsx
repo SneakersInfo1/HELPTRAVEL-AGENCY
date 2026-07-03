@@ -4,7 +4,7 @@ import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // 8 kafelków = HOME_TILE_DESTINATION_IDS z warm-config (JEDNO źródło prawdy:
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
-import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
+import { HOME_TILE_DESTINATION_IDS, PACKAGE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
@@ -124,32 +124,41 @@ export async function HomePageView() {
       pickFreshFlightPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
   }));
 
-  // Pakiety „Cały wyjazd w jednej cenie" — te same kierunki i zdjęcia co
-  // kafelki, ceny z pól pkg* snapshotu (lot+hotel z jednego okna). CTA
-  // otwiera wyniki hoteli z WYPEŁNIONYMI datami pakietu (user widzi
-  // dokładnie te ceny, z których policzyliśmy „od").
-  const packageDeals: PackageDeal[] = resolvedHeroDestinations.flatMap((item) => {
-    const pkg = pickFreshPackage(priceSnapshot, item.destination.city, item.destination.country);
-    if (!pkg) return [];
-    const params = new URLSearchParams({
-      destination: item.destination.city,
-      country: item.destination.country,
-      checkin: pkg.checkin,
-      checkout: pkg.checkout,
-      adults: "2",
-      rooms: "1",
-    });
-    return [{
-      slug: item.destination.slug,
-      cityLabel: localizeCity(item.destination.city),
-      countryLabel: localizeCountry(item.destination.country),
-      heroImage: item.media.heroImage,
-      perPersonPln: pkg.perPersonPln,
-      checkin: pkg.checkin,
-      checkout: pkg.checkout,
-      href: `/hotele/szukaj?${params.toString()}`,
-    }];
-  });
+  // Pakiety „Cały wyjazd w jednej cenie" — kierunki ROZŁĄCZNE z kafelkami
+  // (PACKAGE_DESTINATION_IDS; właściciel 2026-07-03: „w obu sekcjach inne").
+  // Ceny z pól pkg* snapshotu (lot+hotel z jednego okna); CTA otwiera wyniki
+  // hoteli z WYPEŁNIONYMI datami pakietu (user widzi dokładnie te ceny,
+  // z których policzyliśmy „od").
+  const packageDestinations = PACKAGE_DESTINATION_IDS
+    .map((slug) => getDestinationProfileBySlug(slug))
+    .filter((destination): destination is DestinationProfile => Boolean(destination));
+  const packageDeals: PackageDeal[] = (
+    await Promise.all(
+      packageDestinations.map(async (destination): Promise<PackageDeal | null> => {
+        const pkg = pickFreshPackage(priceSnapshot, destination.city, destination.country);
+        if (!pkg) return null;
+        const media = await resolveDestinationMedia(destination);
+        const params = new URLSearchParams({
+          destination: destination.city,
+          country: destination.country,
+          checkin: pkg.checkin,
+          checkout: pkg.checkout,
+          adults: "2",
+          rooms: "1",
+        });
+        return {
+          slug: destination.slug,
+          cityLabel: localizeCity(destination.city),
+          countryLabel: localizeCountry(destination.country),
+          heroImage: media.heroImage,
+          perPersonPln: pkg.perPersonPln,
+          checkin: pkg.checkin,
+          checkout: pkg.checkout,
+          href: `/hotele/szukaj?${params.toString()}`,
+        };
+      }),
+    )
+  ).filter((d): d is PackageDeal => d !== null);
 
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-10 lg:gap-10">

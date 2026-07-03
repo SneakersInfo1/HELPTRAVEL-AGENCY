@@ -66,9 +66,22 @@ test("okna dat: deterministyczne (ten sam wynik dla tego samego now)", () => {
 });
 
 test("każdy kafelek homepage jest w extras crona (inaczej kafelek nigdy nie dostanie ceny)", () => {
-  assert.equal(HOME_TILE_DESTINATION_IDS.length, 12);
+  assert.equal(HOME_TILE_DESTINATION_IDS.length, 18, "18 = równe 3 rzędy przy xl:grid-cols-6");
   for (const id of HOME_TILE_DESTINATION_IDS) {
     assert.ok(WARM_EXTRA_DESTINATION_IDS.includes(id), `${id} nie jest grzany`);
+  }
+});
+
+test("pakiety: kierunki ROZŁĄCZNE z kafelkami i obecne w seedzie (właściciel: „w obu sekcjach inne”)", async () => {
+  const { PACKAGE_DESTINATION_IDS } = await import("./warm-config");
+  assert.equal(PACKAGE_DESTINATION_IDS.length, 6);
+  const tiles = new Set<string>(HOME_TILE_DESTINATION_IDS);
+  const seedIds = new Set(
+    (seedJson as unknown as { destinations: Array<{ id: string }> }).destinations.map((d) => d.id),
+  );
+  for (const id of PACKAGE_DESTINATION_IDS) {
+    assert.ok(!tiles.has(id), `${id} dubluje kafelek homepage`);
+    assert.ok(seedIds.has(id), `${id} nie istnieje w seedzie — nigdy nie dostanie pakietu`);
   }
 });
 
