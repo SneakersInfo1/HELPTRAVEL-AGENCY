@@ -43,6 +43,27 @@ export const HOME_TILE_DESTINATION_IDS = [
   "paris-france",
   "porto-portugal",
   "naples-italy",
+  // 2026-07-03 (właściciel: „1,5 raza więcej") — 12 → 18, równe 3 rzędy
+  // przy xl:grid-cols-6. Dobór leisure-first, rozrzut geograficzny.
+  "palma-spain",
+  "alicante-spain",
+  "antalya-turkey",
+  "faro-portugal",
+  "corfu-greece",
+  "santa-cruz-de-tenerife-spain",
+] as const;
+
+// Kierunki sekcji „Cały wyjazd w jednej cenie" (pakiety lot+hotel).
+// MUSZĄ być ROZŁĄCZNE z HOME_TILE_DESTINATION_IDS — właściciel 2026-07-03:
+// „w obu sekcjach mają być inne [kierunki]". Grzane w cronie jako grupa
+// snapshot-only (tanie okna + loty), więc dostają pola pkg* snapshotu.
+export const PACKAGE_DESTINATION_IDS = [
+  "rhodes-greece",
+  "larnaca-cyprus",
+  "valletta-malta",
+  "palermo-italy",
+  "catania-italy",
+  "chania-greece",
 ] as const;
 
 // Kierunki grzane DODATKOWO poza top-N popularności. Seed jest sortowany

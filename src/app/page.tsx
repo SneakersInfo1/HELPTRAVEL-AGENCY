@@ -4,8 +4,13 @@ import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // 8 kafelków = HOME_TILE_DESTINATION_IDS z warm-config (JEDNO źródło prawdy:
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
-import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
-import { pickFreshFlightPrice, pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import { HOME_TILE_DESTINATION_IDS, PACKAGE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
+import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
+import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
+import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
+import { pickFreshFlightPrice, pickFreshPackage, pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
+import { isFreshTrustpilot, readTrustpilotSnapshot } from "@/lib/trust/trustpilot-snapshot";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -79,6 +84,37 @@ export async function HomePageView() {
   // brak snapshotu/wpisu → kafelek bez linii ceny (uczciwość > kompletność).
   const priceSnapshot = await readPriceSnapshot();
 
+  // Kafle tematyczne „Nie wiesz, dokąd jechać?" — 4 moody z /wyjazdy.
+  // Zdjęcie = media pierwszego picka moodu (ten sam resolver co kafelki;
+  // pick bez profilu w seedzie → kafel pomijany, nie pusty obrazek).
+  const THEME_SLUGS = ["plaza", "city-break", "slonce-zima", "kultura"] as const;
+  const themeTiles: ThemeTile[] = (
+    await Promise.all(
+      THEME_SLUGS.map(async (slug): Promise<ThemeTile | null> => {
+        const mood = TRAVEL_MOODS.find((m) => m.slug === slug);
+        const pickSlug = mood?.picks[0]?.slug;
+        const profile = pickSlug ? getDestinationProfileBySlug(pickSlug) : undefined;
+        if (!mood || !profile) return null;
+        const media = await resolveDestinationMedia(profile);
+        return {
+          slug: mood.slug,
+          label: mood.label,
+          tagline: mood.eyebrow,
+          heroImage: media.heroImage,
+          imageAlt: mood.h1,
+        };
+      }),
+    )
+  ).filter((t): t is ThemeTile => t !== null);
+
+  // Ocena Trustpilot (cron odświeża ~1×/dobę). Nieświeża (>14 dni) lub brak
+  // → komponenty pokazują sam link bez liczby — liczba NIGDY nie jest
+  // hardkodowana (uczciwość jak przy cenach).
+  const trustpilotEntry = await readTrustpilotSnapshot();
+  const trustpilot = isFreshTrustpilot(trustpilotEntry)
+    ? { score: trustpilotEntry!.score, reviewCount: trustpilotEntry!.reviewCount }
+    : null;
+
   const featuredTiles = resolvedHeroDestinations.map((item) => ({
     destination: item.destination,
     heroImage: item.media.heroImage,
@@ -88,12 +124,50 @@ export async function HomePageView() {
       pickFreshFlightPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
   }));
 
+  // Pakiety „Cały wyjazd w jednej cenie" — kierunki ROZŁĄCZNE z kafelkami
+  // (PACKAGE_DESTINATION_IDS; właściciel 2026-07-03: „w obu sekcjach inne").
+  // Ceny z pól pkg* snapshotu (lot+hotel z jednego okna); CTA otwiera wyniki
+  // hoteli z WYPEŁNIONYMI datami pakietu (user widzi dokładnie te ceny,
+  // z których policzyliśmy „od").
+  const packageDestinations = PACKAGE_DESTINATION_IDS
+    .map((slug) => getDestinationProfileBySlug(slug))
+    .filter((destination): destination is DestinationProfile => Boolean(destination));
+  const packageDeals: PackageDeal[] = (
+    await Promise.all(
+      packageDestinations.map(async (destination): Promise<PackageDeal | null> => {
+        const pkg = pickFreshPackage(priceSnapshot, destination.city, destination.country);
+        if (!pkg) return null;
+        const media = await resolveDestinationMedia(destination);
+        const params = new URLSearchParams({
+          destination: destination.city,
+          country: destination.country,
+          checkin: pkg.checkin,
+          checkout: pkg.checkout,
+          adults: "2",
+          rooms: "1",
+        });
+        return {
+          slug: destination.slug,
+          cityLabel: localizeCity(destination.city),
+          countryLabel: localizeCountry(destination.country),
+          heroImage: media.heroImage,
+          perPersonPln: pkg.perPersonPln,
+          checkin: pkg.checkin,
+          checkout: pkg.checkout,
+          href: `/hotele/szukaj?${params.toString()}`,
+        };
+      }),
+    )
+  ).filter((d): d is PackageDeal => d !== null);
+
   return (
-    <main className="flex w-full flex-1 flex-col gap-8 pb-8">
+    <main className="flex w-full flex-1 flex-col gap-8 pb-10 lg:gap-10">
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
-        <HomeHybridHero featured={featuredTiles} />
+        <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} />
       </div>
-      <TrustHowItWorks />
+      <PackageDeals deals={packageDeals} />
+      <ThemeTiles tiles={themeTiles} />
+      <TrustHowItWorks trustpilot={trustpilot} />
     </main>
   );
 }
