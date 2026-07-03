@@ -147,7 +147,9 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               Loty z Warszawy · ceny w PLN
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+          {/* xl:6 kolumn — 12 kafli = równe 2 rzędy; desktop był „pusty"
+              (właściciel 2026-07-03: homepage ma wypełniać monitor). */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
             {featured.map((tile) => (
               <DestinationTile
                 key={tile.destination.slug}

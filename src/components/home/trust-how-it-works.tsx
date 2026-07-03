@@ -38,12 +38,30 @@ function reviewsLabel(n: number): string {
   return `${n} opinii`;
 }
 
+// Pas korzyści (2026-07-03, wzór Trip.com — właściciel: „warto dodatkowo
+// wzbogacić"). WYŁĄCZNIE fakty już komunikowane gdzie indziej w serwisie —
+// zero nowych obietnic.
+const BENEFITS = [
+  { icon: "🔒", text: "Bezpieczna płatność Stripe" },
+  { icon: "✉️", text: "Potwierdzenie od razu na e-mail" },
+  { icon: "🇵🇱", text: "Polskie wsparcie" },
+  { icon: "💤", text: "Bez zakładania konta" },
+] as const;
+
 export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
   return (
     <section
       aria-labelledby="how-it-works"
       className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 xl:px-8"
     >
+      <ul className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-medium text-emerald-950/80 sm:mb-5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-8 sm:text-sm">
+        {BENEFITS.map((b) => (
+          <li key={b.text} className="inline-flex items-center gap-2">
+            <span aria-hidden className="text-base leading-none">{b.icon}</span>
+            {b.text}
+          </li>
+        ))}
+      </ul>
       <div className="grid gap-6 rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8 lg:grid-cols-[1.5fr_1fr] lg:gap-10">
         {/* Kolumna A — 3 kroki */}
         <div>

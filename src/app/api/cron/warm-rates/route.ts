@@ -31,6 +31,7 @@ import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import type { RateCacheContext } from "@/lib/hotels/rate-cache";
 import {
+  computePackagePerPerson,
   destinationPriceKey,
   mergePriceSnapshot,
   minPerNightFromRates,
@@ -154,7 +155,9 @@ export async function GET(request: NextRequest) {
   // sortowana popularnością, a najtańsze bywają za pierwszą 50-tką
   // (sonda: Rzym 513 zł/noc w 0-50 vs 262 zł w 100-150).
   const cheapWindows = computeSnapshotDateWindows();
-  const tasks: Array<{ label: string; priceKey: string; hotelIds: string[]; ctx: RateCacheContext }> = [];
+  // windowLabel tylko dla tanich okien — z nich liczymy pakiety (hotel i lot
+  // z TEGO SAMEGO okna; patrz computePackagePerPerson).
+  const tasks: Array<{ label: string; priceKey: string; hotelIds: string[]; ctx: RateCacheContext; windowLabel?: string }> = [];
   for (const dh of destHotels) {
     const nearIds = dh.hotelIds.slice(0, WARM_HOTELS_PER_DEST);
     if (dh.group === "core") {
@@ -179,6 +182,7 @@ export async function GET(request: NextRequest) {
           priceKey: dh.priceKey,
           hotelIds: dh.hotelIds.slice(i, i + 50),
           ctx: { checkin: w.checkin, checkout: w.checkout, adults: 2, children: [], rooms: 1, currency: "PLN" },
+          windowLabel: w.label,
         });
       }
     }
@@ -190,6 +194,9 @@ export async function GET(request: NextRequest) {
   let warmedHotels = 0;
   let skipped = 0;
   const bestPrice = new Map<string, DestinationPriceSnapshot[string]>();
+  // Minima per (kierunek × tanie okno) — składniki pakietu. Klucz: `${priceKey}|${windowLabel}`.
+  const hotelByWindow = new Map<string, number>();
+  const flightByWindow = new Map<string, number>();
   await runPool(tasks, WARM_CONCURRENCY, async (t) => {
     if (Date.now() - startedAt > WARM_TIME_BUDGET_MS) {
       skipped++;
@@ -203,6 +210,11 @@ export async function GET(request: NextRequest) {
       // dotychczasowe minimum kierunku z innych okien.
       const pn = minPerNightFromRates(res.rates, t.ctx.checkin, t.ctx.checkout);
       if (pn !== null) {
+        if (t.windowLabel) {
+          const wk = `${t.priceKey}|${t.windowLabel}`;
+          const prevW = hotelByWindow.get(wk);
+          if (prevW === undefined || pn < prevW) hotelByWindow.set(wk, pn);
+        }
         const prev = bestPrice.get(t.priceKey);
         if (!prev || pn < prev.hotelFromPlnPerNight) {
           bestPrice.set(t.priceKey, {
@@ -247,6 +259,9 @@ export async function GET(request: NextRequest) {
       flightCalls++;
       const minTotal = minTotalFromOffers(normalizeRatesResponse(res));
       if (minTotal !== null) {
+        const wk = `${t.priceKey}|${t.w.label}`;
+        const prevW = flightByWindow.get(wk);
+        if (prevW === undefined || minTotal < prevW) flightByWindow.set(wk, minTotal);
         const entry = bestPrice.get(t.priceKey)!;
         if (typeof entry.flightFromPln !== "number" || minTotal < entry.flightFromPln) {
           bestPrice.set(t.priceKey, {
@@ -263,6 +278,34 @@ export async function GET(request: NextRequest) {
       console.warn(`[cron/warm-rates] lot '${t.label}' nieudany:`, err instanceof Error ? err.message : err);
     }
   });
+
+  // Pakiety „Cały wyjazd od X zł/os.": dla każdego kierunku minimum po tanich
+  // oknach z pkg = lot(okno) + noce×hotel(okno)/2 — OBA składniki z tego
+  // samego okna (uczciwe, rezerwowalne daty). Brak któregokolwiek → bez pkg.
+  let pkgCount = 0;
+  for (const [priceKey, entry] of bestPrice) {
+    let best: { pkg: number; checkin: string; checkout: string } | null = null;
+    for (const w of cheapWindows) {
+      const wk = `${priceKey}|${w.label}`;
+      const hotel = hotelByWindow.get(wk);
+      const flight = flightByWindow.get(wk);
+      if (hotel === undefined || flight === undefined) continue;
+      const pkg = computePackagePerPerson(flight, hotel, w.checkin, w.checkout);
+      if (pkg !== null && (best === null || pkg < best.pkg)) {
+        best = { pkg, checkin: w.checkin, checkout: w.checkout };
+      }
+    }
+    if (best) {
+      bestPrice.set(priceKey, {
+        ...entry,
+        pkgPerPersonPln: best.pkg,
+        pkgCheckin: best.checkin,
+        pkgCheckout: best.checkout,
+        pkgComputedAt: Date.now(),
+      });
+      pkgCount++;
+    }
+  }
 
   // Snapshot „Hotel od X zł/noc" dla homepage i /wyjazdy. Błąd zapisu NIE
   // psuje crona (merge jest best-effort, ale pas bezpieczeństwa zostaje).
@@ -299,6 +342,7 @@ export async function GET(request: NextRequest) {
     flightCalls,
     flightPrices,
     snapshotEntries,
+    pkgCount,
     trustpilot,
     durationMs,
   };

@@ -30,6 +30,15 @@ export interface DestinationPriceEntry {
   flightDepart?: string;
   flightReturn?: string;
   flightComputedAt?: number;
+  // ── Pakiet „Cały wyjazd od X zł/os." (2026-07-03) — opcjonalne. Liczony
+  // w cronie WYŁĄCZNIE z okna, w którym istnieją OBA składniki (lot RT 1 os.
+  // + hotel/noc pokój 2 os.) — spójne daty, żadnego sklejania minimów z
+  // różnych terminów. Świeżość liczona z pkgComputedAt (osobno).
+  /** Lot RT + noce×hotel/2, PLN/os. przy 2 os. (ceil — nie zaniżamy). */
+  pkgPerPersonPln?: number;
+  pkgCheckin?: string;
+  pkgCheckout?: string;
+  pkgComputedAt?: number;
 }
 
 export type DestinationPriceSnapshot = Record<string, DestinationPriceEntry>;
@@ -164,6 +173,46 @@ export function pickFreshFlightPrice(
   if (!entry || typeof entry.flightFromPln !== "number") return null;
   if (!Number.isFinite(entry.flightComputedAt ?? Number.NaN)) return null;
   return now - (entry.flightComputedAt as number) <= PRICE_FRESH_MS ? entry.flightFromPln : null;
+}
+
+/**
+ * Cena pakietu na osobę przy 2 os.: lot RT (1 os.) + noce × hotel(pokój
+ * 2 os.) / 2. Ceil do pełnych zł (uczciwość: nigdy nie zaniżamy sumy).
+ * Nonsensowne składowe (≤0, NaN, ≤0 nocy) → null.
+ */
+export function computePackagePerPerson(
+  flightPerPersonPln: number,
+  hotelPerNightPln: number,
+  checkin: string,
+  checkout: string,
+): number | null {
+  const nights = nightsBetween(checkin, checkout);
+  if (nights <= 0) return null;
+  if (!Number.isFinite(flightPerPersonPln) || flightPerPersonPln <= 0) return null;
+  if (!Number.isFinite(hotelPerNightPln) || hotelPerNightPln <= 0) return null;
+  return Math.ceil(flightPerPersonPln + (nights * hotelPerNightPln) / 2);
+}
+
+export interface FreshPackage {
+  perPersonPln: number;
+  checkin: string;
+  checkout: string;
+}
+
+/** Świeży pakiet kierunku albo null (świeżość z pkgComputedAt, 48 h). */
+export function pickFreshPackage(
+  snapshot: DestinationPriceSnapshot | null,
+  cityEn: string,
+  countryEn: string,
+  now: number = Date.now(),
+): FreshPackage | null {
+  if (!snapshot) return null;
+  const entry = snapshot[destinationPriceKey(cityEn, countryEn)];
+  if (!entry || typeof entry.pkgPerPersonPln !== "number") return null;
+  if (!entry.pkgCheckin || !entry.pkgCheckout) return null;
+  if (!Number.isFinite(entry.pkgComputedAt ?? Number.NaN)) return null;
+  if (now - (entry.pkgComputedAt as number) > PRICE_FRESH_MS) return null;
+  return { perPersonPln: entry.pkgPerPersonPln, checkin: entry.pkgCheckin, checkout: entry.pkgCheckout };
 }
 
 /** Wygodny odczyt dla stron: świeża cena kierunku albo null. */

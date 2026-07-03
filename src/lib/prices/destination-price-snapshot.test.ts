@@ -138,3 +138,46 @@ test("read bez env/seama → null (degrade-to-miss, nigdy wyjątek)", async () =
   await mergePriceSnapshot({}); // nie może rzucić
   __resetDestinationPriceRedisForTests();
 });
+
+// ── Pakiety „Cały wyjazd od X zł/os." (2026-07-03) ────────────────────────
+// Uczciwość pakietu: lot i hotel z TEGO SAMEGO okna dat; cena na osobę przy
+// 2 os. = lot(1 os.) + noce × hotel(pokój 2 os.) / 2, zaokrąglane W GÓRĘ
+// (nigdy nie zaniżamy sumy).
+
+test("computePackagePerPerson: lot + noce×hotel/2, ceil w górę", async () => {
+  const { computePackagePerPerson } = await import("./destination-price-snapshot");
+  // 7 nocy × 200 zł / 2 os. = 700; + lot 500 = 1200
+  assert.equal(computePackagePerPerson(500, 200, "2026-10-17", "2026-10-24"), 1200);
+  // 7 × 333 / 2 = 1165,5; + 500 = 1665,5 → 1666 (ceil, nie floor)
+  assert.equal(computePackagePerPerson(500, 333, "2026-10-17", "2026-10-24"), 1666);
+});
+
+test("computePackagePerPerson: nonsens (0 nocy, ujemne, NaN) → null", async () => {
+  const { computePackagePerPerson } = await import("./destination-price-snapshot");
+  assert.equal(computePackagePerPerson(500, 200, "2026-10-17", "2026-10-17"), null);
+  assert.equal(computePackagePerPerson(0, 200, "2026-10-17", "2026-10-24"), null);
+  assert.equal(computePackagePerPerson(500, -1, "2026-10-17", "2026-10-24"), null);
+  assert.equal(computePackagePerPerson(Number.NaN, 200, "2026-10-17", "2026-10-24"), null);
+});
+
+test("pickFreshPackage: świeży wpis z pkg → dane; stary/brak pkg → null", async () => {
+  const { pickFreshPackage, PRICE_FRESH_MS } = await import("./destination-price-snapshot");
+  const now = Date.now();
+  const key = destinationPriceKey("Malaga", "Spain");
+  const base = { hotelFromPlnPerNight: 200, checkin: "2026-10-17", checkout: "2026-10-24", computedAt: now };
+  const withPkg: DestinationPriceSnapshot = {
+    [key]: { ...base, pkgPerPersonPln: 1200, pkgCheckin: "2026-10-17", pkgCheckout: "2026-10-24", pkgComputedAt: now },
+  };
+  assert.deepEqual(pickFreshPackage(withPkg, "Malaga", "Spain", now), {
+    perPersonPln: 1200,
+    checkin: "2026-10-17",
+    checkout: "2026-10-24",
+  });
+  const stale: DestinationPriceSnapshot = {
+    [key]: { ...withPkg[key], pkgComputedAt: now - PRICE_FRESH_MS - 1 },
+  };
+  assert.equal(pickFreshPackage(stale, "Malaga", "Spain", now), null);
+  const noPkg: DestinationPriceSnapshot = { [key]: base };
+  assert.equal(pickFreshPackage(noPkg, "Malaga", "Spain", now), null);
+  assert.equal(pickFreshPackage(null, "Malaga", "Spain", now), null);
+});
