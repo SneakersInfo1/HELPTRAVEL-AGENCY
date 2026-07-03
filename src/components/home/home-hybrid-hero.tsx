@@ -120,7 +120,11 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
               Popularne kierunki
             </p>
-            <span className="hidden text-[11px] text-white/60 sm:inline">Ceny w PLN · z lotem i hotelem</span>
+            {/* Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"
+                do „Lot", więc kontekst wylotu niesie podtytuł sekcji. */}
+            <span className="text-right text-[11px] leading-tight text-white/60">
+              Loty z Warszawy · ceny w PLN
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {featured.map((tile) => (
