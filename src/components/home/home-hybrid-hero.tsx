@@ -14,11 +14,23 @@ interface FeaturedTile {
   flightFromPln?: number;
 }
 
-interface HomeHybridHeroProps {
-  featured: FeaturedTile[];
+export interface TrustpilotDisplay {
+  score: number;
+  reviewCount: number | null;
 }
 
-export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
+interface HomeHybridHeroProps {
+  featured: FeaturedTile[];
+  /** Świeża ocena Trustpilot (snapshot z crona) — null = pokazujemy sam link. */
+  trustpilot?: TrustpilotDisplay | null;
+}
+
+// Polski zapis oceny: 4.2 → „4,2".
+function formatScore(score: number): string {
+  return score.toFixed(1).replace(".", ",");
+}
+
+export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
   const backdropImages = featured.slice(0, 6).map((tile) => ({
     src: tile.heroImage,
     alt: `${tile.destination.city}, ${tile.destination.country}`,
@@ -86,7 +98,16 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
                   {/* span: globalne a{color:inherit} bije text-*, kolor na span.
                       Stałe (subtelne) podkreślenie: link musi być rozpoznawalny
                       bez hovera (audyt a11y F4). */}
-                  <span className="text-white/90">Opinie na Trustpilot</span>
+                  <span className="text-white/90">
+                    {trustpilot ? (
+                      <>
+                        <strong className="font-bold text-white">{formatScore(trustpilot.score)}/5</strong> na
+                        Trustpilot
+                      </>
+                    ) : (
+                      "Opinie na Trustpilot"
+                    )}
+                  </span>
                 </a>
               </li>
               {["Płatności obsługuje Stripe", "Ceny finalne w PLN"].map((item) => (
@@ -122,9 +143,15 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
               Popularne kierunki
             </p>
-            <span className="hidden text-[11px] text-white/60 sm:inline">Ceny w PLN · z lotem i hotelem</span>
+            {/* Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"
+                do „Lot", więc kontekst wylotu niesie podtytuł sekcji. */}
+            <span className="text-right text-[11px] leading-tight text-white/60">
+              Loty z Warszawy · ceny w PLN
+            </span>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+          {/* xl:6 kolumn — 12 kafli = równe 2 rzędy; desktop był „pusty"
+              (właściciel 2026-07-03: homepage ma wypełniać monitor). */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
             {featured.map((tile) => (
               <DestinationTile
                 key={tile.destination.slug}
