@@ -60,7 +60,7 @@ interface PricedFilterable extends FilterableOffer {
 // "loading", not still undefined). Hotels in this state are confirmed
 // AVAILABLE in the requested date range.
 function isPriced(entry: PriceEntry | undefined): entry is SlimRate {
-  return entry !== undefined && entry !== null && entry !== "loading";
+  return entry !== undefined && entry !== null && entry !== "loading" && entry !== "error";
 }
 
 // Client-owned results list. It owns the FULL hotel pool for the destination
@@ -158,10 +158,15 @@ export function ResultsList(props: ResultsListProps) {
 
     let scanning = 0;
     let unavailable = 0;
+    let failed = 0;
     const priced: Row[] = [];
     for (const r of rows) {
       if (r.entry === null) {
         unavailable++;
+      } else if (r.entry === "error") {
+        // Pobranie ceny padło (batch po ponowce) — hotel NIE jest „bez miejsc",
+        // po prostu nie wiemy. Liczony osobno, karta zostaje widoczna.
+        failed++;
       } else if (!isPriced(r.entry)) {
         scanning++;
       } else {
@@ -267,8 +272,12 @@ export function ResultsList(props: ResultsListProps) {
     // pad while scanning > 0 (i.e., something is still in flight) AND
     // there's room left in the current page slot. Loading rows render with
     // a skeleton PriceView; once their rate lands they re-sort into place.
+    // Rozszerzenie o failed > 0: hotele z padniętym fetchem cen zostają na
+    // liście (karta z metadanymi + stanem „nie udało się pobrać ceny"), bo
+    // NIE są potwierdzonym brakiem miejsc — ukrycie ich przy awarii batcha
+    // wyświetlało fałszywe „Brak dostępnych hoteli w tym terminie".
     const displayed: Row[] = [...slicedPriced];
-    if (displayed.length < pageSize && scanning > 0) {
+    if (displayed.length < pageSize && (scanning > 0 || failed > 0)) {
       const filledIds = new Set(displayed.map((r) => r.offer.hotelId));
       for (const r of rows) {
         if (displayed.length >= pageSize) break;
@@ -287,6 +296,7 @@ export function ResultsList(props: ResultsListProps) {
       safePage,
       scanning,
       unavailable,
+      failed,
       availableCount: priced.length,
     };
     // ctxSig + poolIdSig stand in for `pool` and `ctx`; getVersion()
@@ -320,6 +330,7 @@ export function ResultsList(props: ResultsListProps) {
         totalChecked={totalChecked}
         totalPool={pool.length}
         unavailableCount={view.unavailable}
+        failedCount={view.failed}
         nights={nights}
         adults={ctx.adults}
         page={view.safePage}
@@ -331,11 +342,31 @@ export function ResultsList(props: ResultsListProps) {
           the scan completes AND nothing matched (either no available hotels
           at all, or filters wiped everything). */}
       {view.displayed.length === 0 ? (
-        <p className="rounded-2xl border border-neutral-200 bg-white p-6 text-sm text-neutral-600">
-          {view.availableCount === 0
-            ? "Brak dostępnych hoteli w tym terminie. Spróbuj zmienić daty lub liczbę gości."
-            : "Filtry wykluczyły wszystkie dostępne hotele. Zmień lub wyczyść filtry."}
-        </p>
+        view.availableCount === 0 && view.failed > 0 ? (
+          // Awaria pobierania cen ≠ brak miejsc. Uczciwy komunikat + akcja,
+          // zamiast fałszywego „nic nie ma" (audyt mobilny 2026-07-03).
+          <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center">
+            <p className="text-sm font-semibold text-neutral-900">
+              Nie udało się sprawdzić dostępności hoteli
+            </p>
+            <p className="mt-1 text-sm text-neutral-600">
+              To zwykle chwilowy problem z połączeniem — hotele nadal mogą być wolne.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            >
+              Spróbuj ponownie
+            </button>
+          </div>
+        ) : (
+          <p className="rounded-2xl border border-neutral-200 bg-white p-6 text-sm text-neutral-600">
+            {view.availableCount === 0
+              ? "Brak dostępnych hoteli w tym terminie. Spróbuj zmienić daty lub liczbę gości."
+              : "Filtry wykluczyły wszystkie dostępne hotele. Zmień lub wyczyść filtry."}
+          </p>
+        )
       ) : (
         view.displayed.map(({ offer, entry }, index) => (
           <ResultCard
@@ -365,6 +396,7 @@ function ResultsSubtitle({
   totalChecked,
   totalPool,
   unavailableCount,
+  failedCount,
   nights,
   adults,
   page,
@@ -376,6 +408,7 @@ function ResultsSubtitle({
   totalChecked: number;
   totalPool: number;
   unavailableCount: number;
+  failedCount: number;
   nights: number;
   adults: number;
   page: number;
@@ -434,6 +467,14 @@ function ResultsSubtitle({
       <span>
         {adults} {adultsLabel}
       </span>
+      {scanComplete && failedCount > 0 && (
+        <>
+          <span aria-hidden>·</span>
+          <span className="text-amber-700">
+            {failedCount} obiektów bez sprawdzonej ceny — odśwież stronę
+          </span>
+        </>
+      )}
       {totalPages > 1 && (
         <>
           <span aria-hidden>·</span>

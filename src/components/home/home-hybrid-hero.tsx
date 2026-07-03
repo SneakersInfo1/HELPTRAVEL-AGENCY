@@ -88,7 +88,9 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
                   href="https://pl.trustpilot.com/review/helptravel.pl"
                   target="_blank"
                   rel="noopener nofollow"
-                  className="inline-flex items-center gap-1.5 underline decoration-white/40 underline-offset-2 transition hover:decoration-white"
+                  // -my-2/py-2: hit area ≥ 33px (WCAG 2.2 min 24px) bez zmiany
+                  // wizualnej wysokości pasa — audyt mobilny 2026-07-03 zmierzył 17px.
+                  className="-my-2 inline-flex items-center gap-1.5 py-2 underline decoration-white/40 underline-offset-2 transition hover:decoration-white"
                 >
                   <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
                     <path d="M10 1.6l2.47 5.01 5.53.8-4 3.9.94 5.5L10 14.2l-4.95 2.6.94-5.5-4-3.9 5.53-.8z" />
