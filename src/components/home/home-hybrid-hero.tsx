@@ -14,11 +14,23 @@ interface FeaturedTile {
   flightFromPln?: number;
 }
 
-interface HomeHybridHeroProps {
-  featured: FeaturedTile[];
+export interface TrustpilotDisplay {
+  score: number;
+  reviewCount: number | null;
 }
 
-export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
+interface HomeHybridHeroProps {
+  featured: FeaturedTile[];
+  /** Świeża ocena Trustpilot (snapshot z crona) — null = pokazujemy sam link. */
+  trustpilot?: TrustpilotDisplay | null;
+}
+
+// Polski zapis oceny: 4.2 → „4,2".
+function formatScore(score: number): string {
+  return score.toFixed(1).replace(".", ",");
+}
+
+export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
   const backdropImages = featured.slice(0, 6).map((tile) => ({
     src: tile.heroImage,
     alt: `${tile.destination.city}, ${tile.destination.country}`,
@@ -84,7 +96,16 @@ export function HomeHybridHero({ featured }: HomeHybridHeroProps) {
                   {/* span: globalne a{color:inherit} bije text-*, kolor na span.
                       Stałe (subtelne) podkreślenie: link musi być rozpoznawalny
                       bez hovera (audyt a11y F4). */}
-                  <span className="text-white/90">Opinie na Trustpilot</span>
+                  <span className="text-white/90">
+                    {trustpilot ? (
+                      <>
+                        <strong className="font-bold text-white">{formatScore(trustpilot.score)}/5</strong> na
+                        Trustpilot
+                      </>
+                    ) : (
+                      "Opinie na Trustpilot"
+                    )}
+                  </span>
                 </a>
               </li>
               {["Płatności obsługuje Stripe", "Ceny finalne w PLN"].map((item) => (

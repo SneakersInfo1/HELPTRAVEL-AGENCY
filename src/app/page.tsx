@@ -6,6 +6,7 @@ import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { pickFreshFlightPrice, pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import { isFreshTrustpilot, readTrustpilotSnapshot } from "@/lib/trust/trustpilot-snapshot";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -79,6 +80,14 @@ export async function HomePageView() {
   // brak snapshotu/wpisu → kafelek bez linii ceny (uczciwość > kompletność).
   const priceSnapshot = await readPriceSnapshot();
 
+  // Ocena Trustpilot (cron odświeża ~1×/dobę). Nieświeża (>14 dni) lub brak
+  // → komponenty pokazują sam link bez liczby — liczba NIGDY nie jest
+  // hardkodowana (uczciwość jak przy cenach).
+  const trustpilotEntry = await readTrustpilotSnapshot();
+  const trustpilot = isFreshTrustpilot(trustpilotEntry)
+    ? { score: trustpilotEntry!.score, reviewCount: trustpilotEntry!.reviewCount }
+    : null;
+
   const featuredTiles = resolvedHeroDestinations.map((item) => ({
     destination: item.destination,
     heroImage: item.media.heroImage,
@@ -91,9 +100,9 @@ export async function HomePageView() {
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-8">
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
-        <HomeHybridHero featured={featuredTiles} />
+        <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} />
       </div>
-      <TrustHowItWorks />
+      <TrustHowItWorks trustpilot={trustpilot} />
     </main>
   );
 }
