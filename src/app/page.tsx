@@ -138,11 +138,13 @@ export async function HomePageView() {
         const pkg = pickFreshPackage(priceSnapshot, destination.city, destination.country);
         if (!pkg) return null;
         const media = await resolveDestinationMedia(destination);
+        // BEZ checkin/checkout w CTA (właściciel 2026-07-04: „data jest
+        // z góry ustawiona — popraw"). Termin, z którego policzono cenę,
+        // zostaje NA KARCIE (transparentność); daty user wybiera sam
+        // w formularzu wyników — jak przy kafelkach kierunków.
         const params = new URLSearchParams({
           destination: destination.city,
           country: destination.country,
-          checkin: pkg.checkin,
-          checkout: pkg.checkout,
           adults: "2",
           rooms: "1",
         });
