@@ -10,7 +10,9 @@
 
 import { fetchHotelPrice, type PriceQuery, type SlimRate } from "./price-batcher";
 
-export type PriceEntry = SlimRate | null | "loading";
+// null = potwierdzony brak miejsc (LiteAPI odpowiedziało pustką),
+// "error" = pobranie ceny padło (NIE wiemy, czy hotel jest dostępny).
+export type PriceEntry = SlimRate | null | "loading" | "error";
 
 function ctxKey(q: Omit<PriceQuery, "hotelId">): string {
   return [q.checkin, q.checkout, q.adults, [...q.children].sort((a, b) => a - b).join("."), q.rooms, q.currency].join("|");
@@ -52,7 +54,9 @@ export function getPrice(q: PriceQuery): PriceEntry | undefined {
 export function ensurePrice(q: PriceQuery): void {
   const key = entryKey(q);
   const existing = store.get(key);
-  if (existing !== undefined) return; // already loading / resolved
+  // "error" NIE jest stanem końcowym — kolejne ensurePrice (np. po powrocie
+  // na listę albo zmianie strony) próbuje jeszcze raz.
+  if (existing !== undefined && existing !== "error") return;
   store.set(key, "loading");
   // Note: no emit() here — "loading" is the default the UI assumes.
   fetchHotelPrice(q)
@@ -60,7 +64,7 @@ export function ensurePrice(q: PriceQuery): void {
       store.set(key, rate);
     })
     .catch(() => {
-      store.set(key, null);
+      store.set(key, "error");
     })
     .finally(() => {
       emit();
