@@ -149,19 +149,27 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               Loty z Warszawy · ceny w PLN
             </span>
           </div>
-          {/* xl:6 kolumn — 12 kafli = równe 2 rzędy; desktop był „pusty"
-              (właściciel 2026-07-03: homepage ma wypełniać monitor). */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
+          {/* Poziomy pasek zamiast siatki (właściciel 2026-07-04: 18 kafli
+              w 3 rzędach zajmowało za dużo pionu). Jeden rząd ze snapem;
+              szerokości dobrane tak, by ZAWSZE wystawał „podgląd" kolejnego
+              kafelka (jawny sygnał, że można przewijać). Ujemne marginesy =
+              scroll bleeduje do krawędzi sekcji, pierwszy kafel wyrównany do
+              treści. */}
+          <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 sm:-mx-8 sm:gap-4 sm:px-8 lg:-mx-12 lg:px-12 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
             {featured.map((tile) => (
-              <DestinationTile
+              <div
                 key={tile.destination.slug}
-                destination={tile.destination}
-                heroImage={tile.heroImage}
-                fromPricePerNight={tile.fromPricePerNight}
-                flightFromPln={tile.flightFromPln}
-                size="lg"
-                badge="Polecane"
-              />
+                className="w-[42%] shrink-0 snap-start sm:w-[30%] md:w-[22%] lg:w-[18%] xl:w-[14.5%]"
+              >
+                <DestinationTile
+                  destination={tile.destination}
+                  heroImage={tile.heroImage}
+                  fromPricePerNight={tile.fromPricePerNight}
+                  flightFromPln={tile.flightFromPln}
+                  size="lg"
+                  badge="Polecane"
+                />
+              </div>
             ))}
           </div>
         </div>
