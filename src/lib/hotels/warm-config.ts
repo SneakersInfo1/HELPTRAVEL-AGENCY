@@ -64,6 +64,16 @@ export const PACKAGE_DESTINATION_IDS = [
   "palermo-italy",
   "catania-italy",
   "chania-greece",
+  // 2026-07-04 (właściciel: „rozbuduj sekcję") — 6 → 12. Śródziemnomorskie
+  // wyspy/miasta z lotniskami w seedzie, rozłączne z kafelkami. Pakiet
+  // powstaje TYLKO gdy cron znajdzie realny lot RT + hotel w tym samym
+  // oknie — kierunek bez lotu z WAW po prostu się nie pokaże (uczciwość).
+  "kos-greece",
+  "zakynthos-greece",
+  "paphos-cyprus",
+  "thessaloniki-greece",
+  "bari-italy",
+  "ibiza-town-spain",
 ] as const;
 
 // Kierunki grzane DODATKOWO poza top-N popularności. Seed jest sortowany

@@ -4,11 +4,18 @@ import { HomeHybridHero } from "@/components/home/home-hybrid-hero";
 import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // 8 kafelków = HOME_TILE_DESTINATION_IDS z warm-config (JEDNO źródło prawdy:
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
-import { HOME_TILE_DESTINATION_IDS, PACKAGE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
+import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
-import { pickFreshFlightPrice, pickFreshPackage, pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import { listAllDestinations } from "@/lib/mvp/destinations-seed";
+import {
+  pickFreshFlightPrice,
+  pickFreshPackage,
+  pickFreshPrice,
+  readPriceSnapshot,
+  type FreshPackage,
+} from "@/lib/prices/destination-price-snapshot";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import { isFreshTrustpilot, readTrustpilotSnapshot } from "@/lib/trust/trustpilot-snapshot";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
@@ -124,43 +131,47 @@ export async function HomePageView() {
       pickFreshFlightPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
   }));
 
-  // Pakiety „Cały wyjazd w jednej cenie" — kierunki ROZŁĄCZNE z kafelkami
-  // (PACKAGE_DESTINATION_IDS; właściciel 2026-07-03: „w obu sekcjach inne").
-  // Ceny z pól pkg* snapshotu (lot+hotel z jednego okna); CTA otwiera wyniki
-  // hoteli z WYPEŁNIONYMI datami pakietu (user widzi dokładnie te ceny,
-  // z których policzyliśmy „od").
-  const packageDestinations = PACKAGE_DESTINATION_IDS
-    .map((slug) => getDestinationProfileBySlug(slug))
-    .filter((destination): destination is DestinationProfile => Boolean(destination));
-  const packageDeals: PackageDeal[] = (
-    await Promise.all(
-      packageDestinations.map(async (destination): Promise<PackageDeal | null> => {
-        const pkg = pickFreshPackage(priceSnapshot, destination.city, destination.country);
-        if (!pkg) return null;
-        const media = await resolveDestinationMedia(destination);
-        // BEZ checkin/checkout w CTA (właściciel 2026-07-04: „data jest
-        // z góry ustawiona — popraw"). Termin, z którego policzono cenę,
-        // zostaje NA KARCIE (transparentność); daty user wybiera sam
-        // w formularzu wyników — jak przy kafelkach kierunków.
-        const params = new URLSearchParams({
-          destination: destination.city,
-          country: destination.country,
-          adults: "2",
-          rooms: "1",
-        });
-        return {
-          slug: destination.slug,
-          cityLabel: localizeCity(destination.city),
-          countryLabel: localizeCountry(destination.country),
-          heroImage: media.heroImage,
-          perPersonPln: pkg.perPersonPln,
-          checkin: pkg.checkin,
-          checkout: pkg.checkout,
-          href: `/hotele/szukaj?${params.toString()}`,
-        };
-      }),
-    )
-  ).filter((d): d is PackageDeal => d !== null);
+  // Pakiety „Cały wyjazd w jednej cenie" — pula = WSZYSTKIE grzane kierunki
+  // SPOZA kafelków (rozłączność sekcji z definicji), które mają świeży pakiet
+  // w snapshocie. To ODPORNE na zmienność dostępności lotów GDS: zamiast
+  // sztywnej listy 6-12 wysp (gdzie w danym przebiegu crona lot bywa tylko
+  // dla 1-2), pokazujemy NAJTAŃSZE realnie policzone pakiety z całego seeda.
+  // Klucz pakietu match po rekordzie seedu (city.en|country.en — jak w cronie);
+  // karta/CTA po PROFILU. Media (Pexels) tylko dla top-N (koszt ISR).
+  const tileIdSet = new Set<string>(HOME_TILE_DESTINATION_IDS);
+  const packageCandidates = listAllDestinations()
+    .filter((d) => !tileIdSet.has(d.id))
+    .map((d) => {
+      const pkg = pickFreshPackage(priceSnapshot, d.city.en, d.country.en);
+      const profile = pkg ? getDestinationProfileBySlug(d.id) : undefined;
+      return pkg && profile ? { profile, pkg } : null;
+    })
+    .filter((x): x is { profile: DestinationProfile; pkg: FreshPackage } => x !== null)
+    .sort((a, b) => a.pkg.perPersonPln - b.pkg.perPersonPln)
+    .slice(0, 10);
+  const packageDeals: PackageDeal[] = await Promise.all(
+    packageCandidates.map(async ({ profile, pkg }): Promise<PackageDeal> => {
+      const media = await resolveDestinationMedia(profile);
+      // BEZ checkin/checkout w CTA (właściciel 2026-07-04) — termin ceny
+      // zostaje NA KARCIE, daty user wybiera sam w formularzu wyników.
+      const params = new URLSearchParams({
+        destination: profile.city,
+        country: profile.country,
+        adults: "2",
+        rooms: "1",
+      });
+      return {
+        slug: profile.slug,
+        cityLabel: localizeCity(profile.city),
+        countryLabel: localizeCountry(profile.country),
+        heroImage: media.heroImage,
+        perPersonPln: pkg.perPersonPln,
+        checkin: pkg.checkin,
+        checkout: pkg.checkout,
+        href: `/hotele/szukaj?${params.toString()}`,
+      };
+    }),
+  );
 
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-10 lg:gap-10">
