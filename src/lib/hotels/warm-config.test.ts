@@ -74,7 +74,8 @@ test("każdy kafelek homepage jest w extras crona (inaczej kafelek nigdy nie dos
 
 test("pakiety: kierunki ROZŁĄCZNE z kafelkami i obecne w seedzie (właściciel: „w obu sekcjach inne”)", async () => {
   const { PACKAGE_DESTINATION_IDS } = await import("./warm-config");
-  assert.equal(PACKAGE_DESTINATION_IDS.length, 6);
+  assert.equal(PACKAGE_DESTINATION_IDS.length, 12);
+  assert.equal(new Set(PACKAGE_DESTINATION_IDS).size, 12, "bez duplikatów");
   const tiles = new Set<string>(HOME_TILE_DESTINATION_IDS);
   const seedIds = new Set(
     (seedJson as unknown as { destinations: Array<{ id: string }> }).destinations.map((d) => d.id),

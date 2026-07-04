@@ -145,9 +145,18 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // external resources) pulling buyers out of the flow right before payment.
   // Booking/Airbnb do the same — legal links only past this point.
   const isCheckout = stripLocalePrefix(pathname).startsWith("/hotele/rezerwacja");
+  // Homepage wychodzi poza globalny kontener 1280 px (właściciel 2026-07-04:
+  // „strona ma być pełna, bez pustych przestrzeni na bokach"). Pozostałe
+  // strony (artykuły, wyniki, checkout) zostają w max-w-7xl dla czytelności —
+  // treść tekstowa nie może się rozjeżdżać na całą szerokość monitora.
+  const isHome = stripLocalePrefix(pathname) === "/";
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-4 sm:px-6 lg:px-8">
+    <div
+      className={`mx-auto flex min-h-screen w-full flex-col px-4 pb-4 sm:px-6 lg:px-8 ${
+        isHome ? "max-w-none" : "max-w-7xl"
+      }`}
+    >
       {/* Skip link removed 2026-05-26 — it duplicated the one already rendered
           by src/app/layout.tsx (both pointed at #main-content, creating two
           competing focus targets for keyboard/AT users). Layout's skip link
