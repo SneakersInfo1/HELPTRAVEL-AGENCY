@@ -179,7 +179,7 @@ export function QuickSearchLauncher() {
 
             {/* Panel — mobile: pełny ekran; desktop: karta w górnej części. */}
             <div
-              className={`relative flex min-h-full w-full flex-col bg-gradient-to-br from-emerald-800 via-emerald-700 to-emerald-900 px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl transition duration-200 ease-out sm:min-h-0 sm:max-w-[760px] sm:rounded-3xl sm:px-6 sm:pb-7 sm:pt-6 motion-reduce:transition-none ${
+              className={`relative flex min-h-full w-full flex-col bg-gradient-to-br from-emerald-800 via-emerald-700 to-emerald-900 px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl transition duration-200 ease-out sm:min-h-0 sm:max-w-[760px] sm:rounded-3xl sm:px-6 sm:pb-7 sm:pt-6 lg:max-w-[960px] motion-reduce:transition-none ${
                 entered ? "opacity-100" : "opacity-0 translate-y-4"
               }`}
             >
