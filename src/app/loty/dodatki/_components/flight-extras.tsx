@@ -8,9 +8,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { track } from "@/lib/analytics/track";
-import { fmtMoneyPln, type FareOption } from "@/lib/flights/display";
+import { fmtMoneyPln, type DisplayOffer, type FareOption } from "@/lib/flights/display";
 import { loadFlightFlow, patchFlightFlow, type FlightFlow } from "@/lib/flights/flow-storage";
 import { buildResultsUrl } from "@/lib/flights/recovery";
+import { findMatchingFare, findMatchingOffer } from "@/lib/flights/offer-match";
 import { FlightItinerarySummary } from "@/components/flights/flight-itinerary-summary";
 
 function BagRow({ ok, label }: { ok: boolean; label: string }) {
@@ -27,6 +28,7 @@ export function FlightExtras() {
   const [flow, setFlow] = useState<FlightFlow | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
   const [verifying, setVerifying] = useState(false);
+  const [recovering, setRecovering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [priceChange, setPriceChange] = useState<{ oldTotal: number; newTotal: number; currency: string; fare: FareOption } | null>(null);
 
@@ -59,31 +61,107 @@ export function FlightExtras() {
     router.push("/loty/pasazerowie");
   }
 
+  // Woła /api/flights/verify dla danej taryfy; zwraca {ok, json}.
+  async function callVerify(fare: FareOption): Promise<{ ok: boolean; json: Record<string, unknown> }> {
+    const res = await fetch("/api/flights/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ offerId: fare.offerId, previousTotal: fare.total ?? undefined, previousCurrency: fare.currency }),
+    });
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return { ok: res.ok, json };
+  }
+
+  // Płynne odzyskiwanie po wygaśnięciu oferty (52099 → OFFER_UNAVAILABLE): fresh
+  // re-search TEJ SAMEJ trasy → dopasuj DOKŁADNIE ten sam lot (podpis segmentów)
+  // + tę samą taryfę → re-verify świeży offerId. null = lotu już nie ma albo
+  // świeży też się nie potwierdził → UI spada do ręcznego „wróć do wyników".
+  // Zero cichej podmiany na inny/droższy lot; zmiana ceny idzie przez modal.
+  async function recoverExpiredOffer(
+    f: FlightFlow,
+    prevFare: FareOption,
+  ): Promise<
+    | { fare: FareOption; matchOffer: DisplayOffer; total: number | null; currency: string; priceChanged: boolean; oldTotal?: number; newTotal?: number }
+    | null
+  > {
+    const legs: Array<{ origin: string; destination: string; date: string; direction: "OUTBOUND" | "INBOUND" }> = [
+      { origin: f.origin, destination: f.destination, date: f.depart, direction: "OUTBOUND" },
+    ];
+    if (f.ret) legs.push({ origin: f.destination, destination: f.origin, date: f.ret, direction: "INBOUND" });
+    let freshOffers: DisplayOffer[] = [];
+    try {
+      const res = await fetch("/api/flights/rates?fresh=1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ legs, adults: f.adults, children: f.children, infants: f.infants, cabinClass: "ECONOMY" }),
+      });
+      if (!res.ok) return null;
+      const json = (await res.json().catch(() => ({}))) as { offers?: DisplayOffer[] };
+      freshOffers = json.offers ?? [];
+    } catch {
+      return null;
+    }
+    const matchOffer = findMatchingOffer(freshOffers, f.offer);
+    if (!matchOffer) return null;
+    const freshFare = findMatchingFare(matchOffer, {
+      name: f.fare?.name ?? prevFare.fareName,
+      hasCarryOnBag: prevFare.hasCarryOnBag,
+      hasCheckedBag: prevFare.hasCheckedBag,
+    });
+    if (!freshFare) return null;
+    const { ok, json } = await callVerify(freshFare);
+    if (!ok) return null; // świeży też nie da się potwierdzić → ręczne odzyskiwanie
+    const newTotal = typeof json.newTotal === "number" ? json.newTotal : undefined;
+    return {
+      fare: freshFare,
+      matchOffer,
+      total: typeof json.total === "number" ? json.total : freshFare.total,
+      currency: typeof json.currency === "string" ? json.currency : freshFare.currency,
+      priceChanged: Boolean(json.priceChanged) && typeof newTotal === "number",
+      oldTotal: typeof json.oldTotal === "number" ? json.oldTotal : prevFare.total ?? undefined,
+      newTotal,
+    };
+  }
+
   async function proceed() {
-    if (!selected || verifying) return;
+    if (!flow || !selected || verifying) return;
     setVerifying(true);
     setError(null);
     try {
-      const res = await fetch("/api/flights/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ offerId: selected.offerId, previousTotal: selected.total ?? undefined, previousCurrency: selected.currency }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(json.error === "OFFER_UNAVAILABLE" ? "Ta oferta wygasła. Wróć do wyników i wybierz lot ponownie." : json.message || "Nie udało się potwierdzić oferty. Spróbuj ponownie.");
+      const { ok, json } = await callVerify(selected);
+      if (ok) {
+        if (json.priceChanged && typeof json.newTotal === "number") {
+          track("flight_verify_price_change", { offer_id: selected.offerId, old_price: json.oldTotal as number | undefined, new_price: json.newTotal, currency: json.currency as string | undefined });
+          setPriceChange({ oldTotal: (json.oldTotal as number) ?? selected.total ?? 0, newTotal: json.newTotal, currency: (json.currency as string) ?? selected.currency, fare: selected });
+          return;
+        }
+        commit(selected, (json.total as number) ?? selected.total, (json.currency as string) ?? selected.currency);
         return;
       }
-      if (json.priceChanged && typeof json.newTotal === "number") {
-        track("flight_verify_price_change", { offer_id: selected.offerId, old_price: json.oldTotal, new_price: json.newTotal, currency: json.currency });
-        setPriceChange({ oldTotal: json.oldTotal ?? selected.total ?? 0, newTotal: json.newTotal, currency: json.currency ?? selected.currency, fare: selected });
+      // Tylko wygasłą ofertę odzyskujemy automatycznie; inne błędy → komunikat.
+      if (json.error !== "OFFER_UNAVAILABLE") {
+        setError((json.message as string) || "Nie udało się potwierdzić oferty. Spróbuj ponownie.");
         return;
       }
-      commit(selected, json.total ?? selected.total, json.currency ?? selected.currency);
+      setRecovering(true);
+      const rec = await recoverExpiredOffer(flow, selected);
+      if (!rec) {
+        setError("Ta oferta wygasła i nie znaleźliśmy jej w świeżych wynikach. Wróć do wyników i wybierz lot ponownie.");
+        return;
+      }
+      // Zapisz świeży, dopasowany lot (płatność użyje jego offerId, nie wygasłego).
+      patchFlightFlow({ offer: rec.matchOffer });
+      if (rec.priceChanged && typeof rec.newTotal === "number") {
+        track("flight_verify_price_change", { offer_id: rec.fare.offerId, old_price: rec.oldTotal, new_price: rec.newTotal, currency: rec.currency });
+        setPriceChange({ oldTotal: rec.oldTotal ?? selected.total ?? 0, newTotal: rec.newTotal, currency: rec.currency, fare: rec.fare });
+        return;
+      }
+      commit(rec.fare, rec.total, rec.currency);
     } catch {
       setError("Problem z połączeniem. Spróbuj ponownie.");
     } finally {
       setVerifying(false);
+      setRecovering(false);
     }
   }
 
@@ -161,7 +239,7 @@ export function FlightExtras() {
           disabled={verifying || !selected}
           className="inline-flex h-12 items-center justify-center rounded-xl bg-emerald-600 px-6 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-60"
         >
-          {verifying ? "Sprawdzam cenę…" : "Dalej do danych pasażerów →"}
+          {verifying ? (recovering ? "Odświeżam ofertę…" : "Sprawdzam cenę…") : "Dalej do danych pasażerów →"}
         </button>
       </div>
 
