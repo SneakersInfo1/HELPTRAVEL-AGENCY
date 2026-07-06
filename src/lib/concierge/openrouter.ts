@@ -1,5 +1,11 @@
 // Server-only HTTP client for OpenRouter Chat Completions API. Do not import from client components.
 
+// Hard cost/abuse safeguards
+export const MAX_TOOL_ROUNDS = 4;
+export const MAX_HISTORY_MESSAGES = 20;
+export const MAX_INPUT_CHARS = 1500;
+export const MAX_TOKENS = 700;
+
 interface ChatCompletionArgs {
   messages: Record<string, unknown>[];
   tools: Record<string, unknown>[];
@@ -26,7 +32,7 @@ export async function chatCompletion({
       model,
       messages,
       temperature: 0.3,
-      max_tokens: 700,
+      max_tokens: MAX_TOKENS,
       stream,
     };
 
