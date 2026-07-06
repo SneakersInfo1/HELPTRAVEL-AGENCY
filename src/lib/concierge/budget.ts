@@ -40,6 +40,8 @@ export function missingFields(intent: ConciergeIntent): MissingField[] {
  * - origin ??= "WAW"
  * - adults ??= 2
  * - children ??= 0
+ * - wantsFlight ??= true
+ * - wantsHotel ??= true
  * NIE mutuje wejścia.
  */
 export function normalizeIntent(intent: ConciergeIntent): ConciergeIntent {
@@ -48,5 +50,7 @@ export function normalizeIntent(intent: ConciergeIntent): ConciergeIntent {
     origin: intent.origin ?? "WAW",
     adults: intent.adults ?? 2,
     children: intent.children ?? 0,
+    wantsFlight: intent.wantsFlight ?? true,
+    wantsHotel: intent.wantsHotel ?? true,
   };
 }
