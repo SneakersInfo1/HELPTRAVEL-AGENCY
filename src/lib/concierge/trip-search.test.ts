@@ -3,7 +3,33 @@ import { test } from "node:test";
 import type { DestinationPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import { destinationPriceKey } from "@/lib/prices/destination-price-snapshot";
 import { getMoodBySlug, TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
-import { rankTripCandidates, resolveThemeCities } from "./trip-search";
+import seedJson from "../../../data/destinations.json";
+import { rankTripCandidates, resolveThemeCities, type SeedDestinationLike } from "./trip-search";
+
+// Lookup seedu do wstrzyknięcia: te same DANE (data/destinations.json) i ta
+// sama semantyka dopasowania co getDestinationByCityCountry z
+// @/lib/mvp/destinations-seed (city.en|city.pl + country en/pl/code,
+// case-insensitive). Nie importujemy tego modułu wprost, bo jego
+// `import "server-only"` nie rozwiązuje się pod `node --import tsx --test`.
+interface SeedDestRecord extends SeedDestinationLike {
+  country: { code: string | null; en: string; pl: string };
+}
+const seedDestinations = (seedJson as { destinations: SeedDestRecord[] }).destinations;
+function seedLookup(city: string, country?: string): SeedDestRecord | undefined {
+  const targetCity = city.trim().toLowerCase();
+  const targetCountry = country?.trim().toLowerCase();
+  return seedDestinations.find((d) => {
+    const matchCity =
+      d.city.en.toLowerCase() === targetCity || d.city.pl.toLowerCase() === targetCity;
+    if (!matchCity) return false;
+    if (!targetCountry) return true;
+    return (
+      d.country.en.toLowerCase() === targetCountry ||
+      d.country.pl.toLowerCase() === targetCountry ||
+      d.country.code?.toLowerCase() === targetCountry
+    );
+  });
+}
 
 const now = Date.UTC(2026, 6, 7);
 function entry(pkg: number) {
@@ -41,10 +67,28 @@ test("resolveThemeCities: znany slug zwraca niepustą, odduplikowaną listę; ni
   const knownSlug = TRAVEL_MOODS[0].slug;
   const mood = getMoodBySlug(knownSlug);
   assert.ok(mood, "fixture sanity: mood exists");
-  const out = resolveThemeCities(knownSlug);
+  const out = resolveThemeCities(knownSlug, seedLookup);
   assert.ok(out.length > 0);
   const seen = new Set(out.map((c) => `${c.cityEn}|${c.countryEn}`));
   assert.equal(seen.size, out.length, "brak duplikatów cityEn+countryEn");
 
-  assert.deepEqual(resolveThemeCities("nieistniejacy-slug"), []);
+  assert.deepEqual(resolveThemeCities("nieistniejacy-slug", seedLookup), []);
+});
+
+test("resolveThemeCities: każdy pick z każdego motywu trafia w rekord seedu (klucze cen z crona)", () => {
+  // Cron warm-rates pisze snapshot pod destinationPriceKey(seed.city.en,
+  // seed.country.en). Każdy zwrócony kierunek MUSI produkować dokładnie taki
+  // klucz — inaczej nigdy nie trafi w cenę i będzie po cichu znikał
+  // (regresja: pick „Palma de Mallorca" vs seed „Palma").
+  const cronKeys = new Set(seedDestinations.map((d) => destinationPriceKey(d.city.en, d.country.en)));
+  for (const mood of TRAVEL_MOODS) {
+    const cities = resolveThemeCities(mood.slug, seedLookup);
+    assert.ok(cities.length > 0, `motyw ${mood.slug} bez kierunków`);
+    for (const c of cities) {
+      assert.ok(
+        cronKeys.has(destinationPriceKey(c.cityEn, c.countryEn)),
+        `Brak rekordu seedu dla ${c.cityEn}|${c.countryEn} (motyw ${mood.slug})`,
+      );
+    }
+  }
 });
