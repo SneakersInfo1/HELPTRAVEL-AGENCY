@@ -12,3 +12,11 @@ export interface ConciergeIntent {
 }
 /** Czego jeszcze brakuje, by odpalić trip-search (do dopytania przez bota). */
 export type MissingField = "theme" | "budgetPln" | "budgetKind" | "month" | "adults";
+
+export interface TripCandidate {
+  cityEn: string; countryEn: string; cityPl: string;
+  perPersonPln: number;      // z pakietu snapshotu (lot RT + noce×hotel/2)
+  checkin: string; checkout: string;
+  hotelFromPlnPerNight: number | null;
+  flightFromPln: number | null;
+}
