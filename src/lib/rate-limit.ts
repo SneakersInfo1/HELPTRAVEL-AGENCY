@@ -10,7 +10,8 @@ type LimiterKey =
   | "activities-search"
   | "booking-prebook"
   | "booking-book"
-  | "admin-email-test";
+  | "admin-email-test"
+  | "concierge";
 
 const LIMIT_PER_MINUTE = 20;
 
@@ -34,6 +35,9 @@ const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   "booking-book": 10,
   "admin-email-test": 5,
   "stays-search": 200,
+  // concierge: każdy request kosztuje tokeny LLM (OpenRouter) — ciasny limit
+  // 10/min/IP chroni budżet przed jednym klientem spamującym czat.
+  concierge: 10,
 };
 
 let warnedMissingEnv = false;
