@@ -237,6 +237,107 @@ test("runConcierge: executeGetTripOffer odrzuca obietnicę → tool-result z bł
   assert.equal(result.text, "Niestety coś poszło nie tak.");
 });
 
+// ── 3b. Nadmiar tool_calls (>3) — zero wiszących tool_call_id ────────────────
+
+test("runConcierge: >3 tool_calls — wykonane 3, tool_calls asystenta przycięte 1:1 do odpowiedzi role:tool", async () => {
+  const calls: ChatArgs[] = [];
+  let executorCallCount = 0;
+
+  const fiveCalls = ["t1", "t2", "t3", "t4", "t5"].map((id) => ({
+    id,
+    type: "function",
+    function: { name: "search_trips", arguments: '{"theme":"plaza"}' },
+  }));
+
+  const deps = makeDeps({
+    chat: async (args) => {
+      calls.push(args as ChatArgs);
+      if (calls.length === 1) {
+        return { choices: [{ message: { tool_calls: fiveCalls } }] };
+      }
+      return { choices: [{ message: { content: "Gotowe" } }] };
+    },
+    executors: {
+      executeSearchTrips: async () => {
+        executorCallCount += 1;
+        return { candidates: [] };
+      },
+      executeGetTripOffer: async () => {
+        throw new Error("not used in this test");
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "test" }], deps);
+
+  assert.equal(executorCallCount, 3);
+  assert.equal(result.text, "Gotowe");
+  assert.equal(result.error, false);
+
+  const secondCallMessages = calls[1].messages;
+  const assistantMsg = secondCallMessages.find(
+    (m) => m.role === "assistant" && Array.isArray(m.tool_calls),
+  );
+  assert.ok(assistantMsg, "druga runda musi nieść wiadomość asystenta z tool_calls");
+  const assistantToolCalls = assistantMsg!.tool_calls as { id: string }[];
+  // KAŻDY tool_call_id w wiadomości asystenta MUSI mieć odpowiedź role:"tool" —
+  // wiszący id (bez odpowiedzi) = provider w formacie OpenAI odrzuca request (400).
+  assert.equal(assistantToolCalls.length, 3);
+  assert.deepEqual(
+    assistantToolCalls.map((c) => c.id),
+    ["t1", "t2", "t3"],
+  );
+
+  const toolMsgs = secondCallMessages.filter((m) => m.role === "tool");
+  assert.equal(toolMsgs.length, 3);
+  assert.deepEqual(
+    toolMsgs.map((m) => m.tool_call_id),
+    ["t1", "t2", "t3"],
+  );
+});
+
+// ── 3c. Nieznana nazwa narzędzia ─────────────────────────────────────────────
+
+test("runConcierge: nieznana nazwa narzędzia → tool-result „Nieznane narzędzie”, brak crasha", async () => {
+  let round = 0;
+  let toolMessageContent = "";
+
+  const deps = makeDeps({
+    chat: async (args) => {
+      round += 1;
+      if (round === 1) {
+        return {
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  {
+                    id: "t1",
+                    type: "function",
+                    function: { name: "hack_the_planet", arguments: "{}" },
+                  },
+                ],
+              },
+            },
+          ],
+        };
+      }
+      const toolMsg = (args as ChatArgs).messages.find(
+        (m) => (m as Record<string, unknown>).role === "tool",
+      ) as Record<string, unknown> | undefined;
+      toolMessageContent = String(toolMsg?.content ?? "");
+      return { choices: [{ message: { content: "Wróćmy do wyjazdu." } }] };
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "test" }], deps);
+
+  assert.equal(result.error, false);
+  assert.match(toolMessageContent, /Nieznane narzędzie/);
+  assert.equal(result.text, "Wróćmy do wyjazdu.");
+});
+
 // ── 4. Limit rund ────────────────────────────────────────────────────────────
 
 test("runConcierge: limit rund — finalne wywołanie BEZ narzędzi, wynik z ostatniej treści", async () => {
