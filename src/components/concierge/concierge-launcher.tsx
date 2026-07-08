@@ -24,6 +24,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { createPortal } from "react-dom";
 
 import { ConciergeChat } from "./concierge-chat";
+import { track } from "@/lib/analytics/track";
 
 // Kill-switch (domyślnie WŁĄCZONE) — ta sama konwencja co
 // NEXT_PUBLIC_SHOW_QUICK_SEARCH i /api/concierge/chat route.ts.
@@ -82,6 +83,7 @@ export function ConciergeLauncher() {
   const openPanel = useCallback(() => {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     setPanel("expanded");
+    track("concierge_open", { page_path: window.location.pathname });
   }, []);
 
   const closePanel = useCallback(() => {

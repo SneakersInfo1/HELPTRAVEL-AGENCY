@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { TripOfferCard } from "./trip-offer-card";
+import { track } from "@/lib/analytics/track";
 import type { TripOffer } from "@/lib/concierge/types";
 
 export interface ConciergeMessage {
@@ -201,6 +202,7 @@ export function ConciergeChat() {
       setMessages(next);
       setInput("");
       setPending(true);
+      track("concierge_message", { message_chars: trimmed.length });
 
       // try/finally: postChat z założenia nie rzuca, ale `pending` NIE MOŻE
       // utknąć na true, gdyby przyszła edycja to zepsuła — input byłby
@@ -214,6 +216,13 @@ export function ConciergeChat() {
               : "Chwilowo nie mogę się połączyć — spróbuj za moment.";
           setMessages((cur) => [...cur, { role: "assistant", content: errorText, isError: true }]);
           return;
+        }
+        if (result.offer) {
+          track("concierge_offer_shown", {
+            city: result.offer.cityPl,
+            total_per_person: result.offer.totalPerPersonPln ?? undefined,
+            partial: result.offer.partial,
+          });
         }
         setMessages((cur) => [
           ...cur,
