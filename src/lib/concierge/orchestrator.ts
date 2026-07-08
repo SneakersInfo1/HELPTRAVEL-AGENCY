@@ -145,13 +145,16 @@ export async function runConcierge(
     const message = (response as ChatCompletionResponse).choices![0]!.message!;
 
     if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+      // Ucięte tool_calls muszą odpowiadać 1:1 wiadomościom role:"tool" —
+      // wiszący tool_call_id bez odpowiedzi = provider w formacie OpenAI
+      // odrzuca kolejny request (400) i zabija rozmowę. Dlatego do historii
+      // trafia TYLKO wykonywany podzbiór, nigdy pełna lista z modelu.
+      const callsToRun = message.tool_calls.slice(0, MAX_TOOL_CALLS_PER_ROUND);
       messages.push({
         role: "assistant",
         content: message.content ?? null,
-        tool_calls: message.tool_calls,
+        tool_calls: callsToRun,
       });
-
-      const callsToRun = message.tool_calls.slice(0, MAX_TOOL_CALLS_PER_ROUND);
       for (const call of callsToRun) {
         const { result, offer: callOffer } = await dispatchToolCall(call, deps.executors);
         if (callOffer) offer = callOffer;
