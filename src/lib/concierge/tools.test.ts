@@ -244,3 +244,57 @@ test("executeListThemes: wszystkie slugi TRAVEL_MOODS z etykietami", () => {
     TRAVEL_MOODS.map((m) => ({ slug: m.slug, label: m.label })),
   );
 });
+
+// ── Daty należą do NAS, nie do LLM (halucynacja roku z tekstu rozmowy) ───────
+// Model potrafi odtworzyć daty z tekstu („12.09" → zgaduje 2024 = przeszłość).
+// Kontrakt: daty z przeszłości/nieobecne → egzekutor bierze świeże daty
+// pakietu ze snapshotu; brak świeżego pakietu → jasny błąd (nie zmyślamy).
+
+test("executeGetTripOffer: checkin w przeszłości → daty ze snapshotu (nie z modelu)", async () => {
+  const snap: DestinationPriceSnapshot = {
+    [destinationPriceKey("Malaga", "Spain")]: pkgEntry(1500), // pkg 2026-08-10..17
+  };
+  const exec = createToolExecutors(makeDeps({
+    readSnapshot: async () => snap,
+    resolveDest: () => ({ city: { en: "Malaga", pl: "Małaga" }, country: { en: "Spain" } }),
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  const offer = await exec.executeGetTripOffer({
+    ...offerArgs,
+    checkin: "2024-09-12", // przeszłość vs now() fixture (2026-07-07)
+    checkout: "2024-09-19",
+  });
+  assert.equal(offer.checkin, "2026-08-10");
+  assert.equal(offer.checkout, "2026-08-17");
+  assert.ok(offer.hotel!.url.includes("checkin=2026-08-10"));
+  assert.ok(offer.flight!.url.includes("depart=2026-08-10"));
+});
+
+test("executeGetTripOffer: brak dat od modelu → daty ze snapshotu", async () => {
+  const snap: DestinationPriceSnapshot = {
+    [destinationPriceKey("Malaga", "Spain")]: pkgEntry(1500),
+  };
+  const exec = createToolExecutors(makeDeps({
+    readSnapshot: async () => snap,
+    resolveDest: () => ({ city: { en: "Malaga", pl: "Małaga" }, country: { en: "Spain" } }),
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2,
+  });
+  assert.equal(offer.checkin, "2026-08-10");
+  assert.equal(offer.checkout, "2026-08-17");
+});
+
+test("executeGetTripOffer: brak dat i brak świeżego pakietu → błąd kierujący do search_trips", async () => {
+  const exec = createToolExecutors(makeDeps({
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  })); // readSnapshot → null
+  await assert.rejects(
+    () => exec.executeGetTripOffer({ cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2 }),
+    /search_trips/,
+  );
+});

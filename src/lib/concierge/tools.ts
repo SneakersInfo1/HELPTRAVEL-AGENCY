@@ -14,7 +14,10 @@
 
 import { buildResultsUrl } from "@/lib/flights/recovery";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
-import type { DestinationPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import {
+  pickFreshPackage,
+  type DestinationPriceSnapshot,
+} from "@/lib/prices/destination-price-snapshot";
 import { missingFields, normalizeIntent } from "./budget";
 import {
   rankTripCandidates,
@@ -119,9 +122,9 @@ const getTripOfferTool: ToolDef = {
     name: "get_trip_offer",
     description:
       "Pobiera konkretną, aktualną ofertę (najtańszy hotel + najtańszy lot) dla wybranego kierunku. " +
-      "WAŻNE: cityEn, countryEn, checkin i checkout MUSZĄ pochodzić dosłownie (verbatim) z wcześniejszego " +
-      "wyniku narzędzia search_trips dla tego samego kierunku — nigdy nie wolno ich zgadywać ani wpisywać " +
-      "z pamięci. Jeśli nie masz świeżego wyniku search_trips dla tego kierunku, najpierw wywołaj search_trips.",
+      "cityEn i countryEn podaj po angielsku (dokładnie jak w wyniku search_trips, np. cityEn=\"Antalya\", countryEn=\"Turkey\"). " +
+      "Dat (checkin/checkout) NIE podawaj, chyba że masz je z wyniku search_trips w TEJ turze — " +
+      "bez dat system sam dobierze świeży, dostępny termin. Nigdy nie wpisuj dat ani cen z pamięci/tekstu rozmowy.",
     parameters: {
       type: "object",
       properties: {
@@ -136,12 +139,14 @@ const getTripOfferTool: ToolDef = {
         checkin: {
           type: "string",
           format: "date",
-          description: "Data zameldowania w formacie YYYY-MM-DD — dokładnie ta wartość co w wyniku search_trips (pole checkin).",
+          description:
+            "OPCJONALNE. Data zameldowania YYYY-MM-DD — podaj TYLKO jeśli masz ją z wyniku search_trips w TEJ turze. W przeciwnym razie POMIŃ to pole — system sam dobierze świeże daty. NIGDY nie wpisuj dat z tekstu rozmowy.",
         },
         checkout: {
           type: "string",
           format: "date",
-          description: "Data wymeldowania w formacie YYYY-MM-DD — dokładnie ta wartość co w wyniku search_trips (pole checkout).",
+          description:
+            "OPCJONALNE. Data wymeldowania YYYY-MM-DD — te same zasady co checkin: tylko z wyniku search_trips z TEJ tury, inaczej pomiń.",
         },
         origin: {
           type: "string",
@@ -158,7 +163,7 @@ const getTripOfferTool: ToolDef = {
           description: "Liczba dzieci uczestniczących w wyjeździe. Pomiń, jeśli nie dotyczy.",
         },
       },
-      required: ["cityEn", "countryEn", "checkin", "checkout", "origin", "adults"],
+      required: ["cityEn", "countryEn", "origin", "adults"],
     },
   },
 };
@@ -305,24 +310,29 @@ function readSearchTripsArgs(args: unknown): ConciergeIntent {
 interface GetTripOfferArgs {
   cityEn: string;
   countryEn: string;
-  checkin: string;
-  checkout: string;
+  /** Brak/nieprawidłowe/przeszłe daty od modelu → undefined; egzekutor sam dobierze świeże daty ze snapshotu. */
+  checkin: string | undefined;
+  checkout: string | undefined;
   originIata: string;
   adults: number;
   children: number;
 }
 
 /**
- * get_trip_offer: walidacja TWARDA (rzuca) — te argumenty mają pochodzić
- * verbatim z wcześniejszego wyniku search_trips, więc nonsens = błąd
- * programu/modelu, nie stan do maskowania.
+ * get_trip_offer: walidacja TWARDA (rzuca) dla pól identyfikujących
+ * (miasto/kraj/wylot/pax). DATY są celowo miękkie: model potrafi odtworzyć
+ * je z TEKSTU rozmowy (bez roku → zgaduje np. 2024, czyli przeszłość),
+ * zamiast przepisać z wyniku search_trips. Dlatego daty nieobecne, w złym
+ * formacie albo z przeszłości traktujemy jak NIEPODANE — egzekutor pobierze
+ * świeże daty pakietu ze snapshotu (NASZE dane, nie LLM). Cała klasa
+ * halucynacji dat znika architektonicznie.
  */
 function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
   const a = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
   const cityEn = asTrimmedString(a.cityEn);
   const countryEn = asTrimmedString(a.countryEn);
-  const checkin = asTrimmedString(a.checkin);
-  const checkout = asTrimmedString(a.checkout);
+  let checkin = asTrimmedString(a.checkin);
+  let checkout = asTrimmedString(a.checkout);
   const origin = asTrimmedString(a.origin)?.toUpperCase();
   const adults = asInt(a.adults);
   const children = asInt(a.children) ?? 0;
@@ -330,19 +340,31 @@ function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
   const problems: string[] = [];
   if (!cityEn) problems.push("cityEn");
   if (!countryEn) problems.push("countryEn");
-  if (!checkin || !ISO_DATE_RE.test(checkin)) problems.push("checkin");
-  if (!checkout || !ISO_DATE_RE.test(checkout) || (checkin && checkout <= checkin)) problems.push("checkout");
   if (!origin || !/^[A-Z]{3}$/.test(origin)) problems.push("origin");
   if (adults === undefined || adults < 1) problems.push("adults");
   if (children < 0) problems.push("children");
   if (problems.length > 0) {
     throw new Error(`get_trip_offer: nieprawidłowe argumenty: ${problems.join(", ")}`);
   }
+
+  // Format/kolejność sprawdzamy tutaj (bez zegara — deterministycznie);
+  // datę z PRZESZŁOŚCI odrzuca egzekutor przez wstrzyknięty `now()`.
+  const datesInvalid =
+    !checkin ||
+    !checkout ||
+    !ISO_DATE_RE.test(checkin) ||
+    !ISO_DATE_RE.test(checkout) ||
+    checkout <= checkin;
+  if (datesInvalid) {
+    checkin = undefined;
+    checkout = undefined;
+  }
+
   return {
     cityEn: cityEn!,
     countryEn: countryEn!,
-    checkin: checkin!,
-    checkout: checkout!,
+    checkin,
+    checkout,
     originIata: origin!,
     adults: adults!,
     children,
@@ -357,7 +379,10 @@ function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
  * karta wyników (result-card.tsx). Decyzja produktowa (mini-planner-form.tsx):
  * dzieci liczone jak dorośli downstream — `adults` niesie SUMĘ gości.
  */
-function buildHotelHandoffUrl(hotelId: string, a: GetTripOfferArgs): string {
+function buildHotelHandoffUrl(
+  hotelId: string,
+  a: { checkin: string; checkout: string; adults: number; children: number },
+): string {
   const params = new URLSearchParams({
     checkin: a.checkin,
     checkout: a.checkout,
@@ -415,19 +440,52 @@ export function createToolExecutors(deps: ToolDeps) {
    */
   async function executeGetTripOffer(args: unknown): Promise<TripOffer> {
     const a = parseGetTripOfferArgs(args);
-    // Polska nazwa z seedu (przez wstrzyknięty lookup); brak rekordu → zostaje
-    // EN (to etykieta, nie cena — wolno degradować, nie wolno zgadywać kwot).
-    const cityPl = deps.resolveDest(a.cityEn, a.countryEn)?.city.pl ?? a.cityEn;
+    // Rekord seedu: polska etykieta + KANONICZNE nazwy do klucza snapshotu
+    // (pick „Palma de Mallorca" ≠ seed „Palma" — patrz resolveThemeCities).
+    const dest = deps.resolveDest(a.cityEn, a.countryEn);
+    const cityPl = dest?.city.pl ?? a.cityEn;
+
+    // Daty: gdy model ich nie podał, podał nonsens (parseGetTripOfferArgs)
+    // albo datę z PRZESZŁOŚCI (halucynacja roku z tekstu rozmowy — np. 2024),
+    // bierzemy świeże daty pakietu ze snapshotu. Daty są NASZYMI danymi
+    // (cron), nie wyjściem LLM. Porównanie przez wstrzyknięty now() —
+    // deterministyczne w testach.
+    const todayIso = new Date(now()).toISOString().slice(0, 10);
+    let checkin = a.checkin && a.checkin >= todayIso ? a.checkin : undefined;
+    let checkout = checkin ? a.checkout : undefined;
+    if (a.checkin && !checkin) {
+      console.warn(
+        `[concierge] get_trip_offer: data od modelu z przeszłości (checkin=${a.checkin}, dziś=${todayIso}) — używam świeżych dat ze snapshotu`,
+      );
+    }
+    if (!checkin || !checkout) {
+      const snapshot = await deps.readSnapshot();
+      const pkg = snapshot
+        ? pickFreshPackage(
+            snapshot,
+            dest?.city.en ?? a.cityEn,
+            dest?.country.en ?? a.countryEn,
+            now(),
+          )
+        : null;
+      if (!pkg) {
+        throw new Error(
+          "Brak świeżych dat pakietu dla tego kierunku — wywołaj search_trips i zaproponuj kierunki z jego wyniku.",
+        );
+      }
+      checkin = pkg.checkin;
+      checkout = pkg.checkout;
+    }
 
     const [hotelRes, flightRes] = await Promise.allSettled([
       deps.findCheapestHotel({
         cityEn: a.cityEn, countryEn: a.countryEn,
-        checkin: a.checkin, checkout: a.checkout,
+        checkin, checkout,
         adults: a.adults, children: a.children,
       }),
       deps.findCheapestFlight({
         originIata: a.originIata, cityEn: a.cityEn, countryEn: a.countryEn,
-        depart: a.checkin, returnDate: a.checkout,
+        depart: checkin, returnDate: checkout,
         adults: a.adults, children: a.children,
       }),
     ]);
@@ -447,7 +505,10 @@ export function createToolExecutors(deps: ToolDeps) {
           totalPln: hotelData.totalPln,
           mainPhotoUrl: hotelData.mainPhotoUrl,
           rating: hotelData.rating,
-          url: buildHotelHandoffUrl(hotelData.hotelId, a),
+          url: buildHotelHandoffUrl(hotelData.hotelId, {
+            checkin, checkout,
+            adults: a.adults, children: a.children,
+          }),
         }
       : null;
 
@@ -463,8 +524,8 @@ export function createToolExecutors(deps: ToolDeps) {
           url: buildResultsUrl({
             origin: a.originIata,
             destination: flightData.destinationIata,
-            depart: a.checkin,
-            ret: a.checkout,
+            depart: checkin,
+            ret: checkout,
             adults: a.adults,
             children: a.children,
             infants: 0,
@@ -483,8 +544,8 @@ export function createToolExecutors(deps: ToolDeps) {
       cityEn: a.cityEn,
       countryEn: a.countryEn,
       cityPl,
-      checkin: a.checkin,
-      checkout: a.checkout,
+      checkin,
+      checkout,
       adults: a.adults,
       children: a.children,
       originIata: a.originIata,

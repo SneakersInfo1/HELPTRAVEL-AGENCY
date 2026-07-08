@@ -105,6 +105,32 @@ function isMalformedResponse(payload: unknown): payload is Record<string, unknow
   return !hasContent && !hasToolCalls;
 }
 
+/** Twardy błąd API (np. zły klucz, brak środków) — ponawianie nic nie da. */
+function isHardApiError(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  return "error" in payload && Boolean((payload as ChatCompletionResponse).error);
+}
+
+/**
+ * Jedno wywołanie modelu z JEDNĄ ponowną próbą na „miękko" zdeformowaną
+ * odpowiedź (np. Gemini `MALFORMED_FUNCTION_CALL` — stochastyczny zwrot z
+ * pustą wiadomością). Twardych błędów API nie ponawiamy (deterministyczne).
+ */
+async function chatWithRetry(
+  deps: OrchestratorDeps,
+  args: { messages: Record<string, unknown>[]; tools: Record<string, unknown>[] },
+  usage: UsageTotals,
+): Promise<unknown> {
+  let response = await deps.chat(args);
+  addUsage(usage, response);
+  if (isMalformedResponse(response) && !isHardApiError(response)) {
+    console.warn("[concierge] zdeformowana odpowiedź modelu — jedna ponowna próba");
+    response = await deps.chat(args);
+    addUsage(usage, response);
+  }
+  return response;
+}
+
 /** Dispatch bezpieczny: nigdy nie rzuca — błąd egzekutora/parsowania staje się wynikiem narzędzia. */
 async function dispatchToolCall(
   call: ToolCall,
@@ -159,8 +185,7 @@ export async function runConcierge(
   const usage: UsageTotals = { promptTokens: 0, completionTokens: 0, chatCalls: 0 };
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const response = await deps.chat({ messages, tools: TOOL_DEFS });
-    addUsage(usage, response);
+    const response = await chatWithRetry(deps, { messages, tools: TOOL_DEFS }, usage);
 
     if (isMalformedResponse(response)) {
       console.error("concierge: OpenRouter error", response);
@@ -203,8 +228,7 @@ export async function runConcierge(
   }
 
   // Limit rund osiągnięty — finalne wywołanie BEZ narzędzi, wymusza tekst.
-  const finalResponse = await deps.chat({ messages, tools: [] });
-  addUsage(usage, finalResponse);
+  const finalResponse = await chatWithRetry(deps, { messages, tools: [] }, usage);
   if (isMalformedResponse(finalResponse)) {
     console.error("concierge: OpenRouter error", finalResponse);
     return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
