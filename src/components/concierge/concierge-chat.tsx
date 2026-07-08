@@ -39,11 +39,67 @@ const WELCOME_MESSAGE: ConciergeMessage = {
     "Cześć! Dobiorę Ci wyjazd w Twoim budżecie — napisz np. „plaża do 3000 zł w sierpniu, 2 osoby”.",
 };
 
-const STARTER_CHIPS = [
-  "🏖️ Plaża do 3000 zł w sierpniu",
-  "🌆 City break do 1500 zł",
-  "☀️ Słońce zimą do 4000 zł",
+// Startery jako dane strukturalne: ikona TYLKO do renderu (aria-hidden),
+// prompt wysyłany do API to osobny, czysty string. Poprzednia wersja wycinała
+// emoji regexem /^\p{Emoji}\s*/u z etykiety — \p{Emoji} łapie JEDEN code
+// point, a „🏖️"/„☀️" to emoji + U+FE0F (variation selector), więc niewidzialny
+// U+FE0F przeciekał do payloadu API i historii. Zero manipulacji stringami =
+// zero takich bugów.
+const STARTERS = [
+  { icon: "🏖️", label: "Plaża do 3000 zł w sierpniu", prompt: "Plaża do 3000 zł w sierpniu" },
+  { icon: "🌆", label: "City break do 1500 zł", prompt: "City break do 1500 zł" },
+  { icon: "☀️", label: "Słońce zimą do 4000 zł", prompt: "Słońce zimą do 4000 zł" },
 ] as const;
+
+// --- Walidacja rehydratacji z sessionStorage -------------------------------
+// Ślepy cast `as ConciergeMessage[]` był groźny: zmanipulowany albo stary
+// (cross-deploy) wpis — np. hotel.rating jako string — wywala render w
+// TripOfferCard (rating.toFixed) i, bez error boundary na widgecie, całą
+// stronę. Walidujemy DOKŁADNIE pola, które TripOfferCard dereferencuje
+// (patrz trip-offer-card.tsx). Celowo bez Zod: zero zależności, szybko.
+// Jakikolwiek zepsuty wpis → wyrzucamy CAŁĄ zapisaną rozmowę (prościej
+// i bezpieczniej niż częściowy ratunek).
+
+function isValidOffer(value: unknown): value is TripOffer {
+  if (typeof value !== "object" || value === null) return false;
+  const o = value as Record<string, unknown>;
+  if (typeof o.cityEn !== "string" || typeof o.countryEn !== "string" || typeof o.cityPl !== "string") return false;
+  if (typeof o.checkin !== "string" || typeof o.checkout !== "string") return false;
+  if (typeof o.adults !== "number" || typeof o.children !== "number") return false;
+  if (typeof o.originIata !== "string") return false;
+  if (typeof o.partial !== "boolean") return false;
+  if (o.totalPerPersonPln !== null && typeof o.totalPerPersonPln !== "number") return false;
+
+  if (o.hotel !== null) {
+    if (typeof o.hotel !== "object" || o.hotel === undefined) return false;
+    const h = o.hotel as Record<string, unknown>;
+    if (typeof h.hotelId !== "string" || typeof h.name !== "string") return false;
+    if (typeof h.totalPln !== "number" || typeof h.url !== "string") return false;
+    if (h.mainPhotoUrl !== null && typeof h.mainPhotoUrl !== "string") return false;
+    if (h.rating !== null && typeof h.rating !== "number") return false;
+  }
+
+  if (o.flight !== null) {
+    if (typeof o.flight !== "object" || o.flight === undefined) return false;
+    const f = o.flight as Record<string, unknown>;
+    if (typeof f.totalPln !== "number" || typeof f.url !== "string") return false;
+    if (typeof f.outboundDepartureTime !== "string" || typeof f.stops !== "number") return false;
+    if (f.carrierName !== null && typeof f.carrierName !== "string") return false;
+    if (f.inboundDepartureTime !== null && typeof f.inboundDepartureTime !== "string") return false;
+  }
+
+  return true;
+}
+
+function isValidMessage(value: unknown): value is ConciergeMessage {
+  if (typeof value !== "object" || value === null) return false;
+  const m = value as Record<string, unknown>;
+  if (m.role !== "user" && m.role !== "assistant") return false;
+  if (typeof m.content !== "string") return false;
+  if (m.isError !== undefined && typeof m.isError !== "boolean") return false;
+  if (m.offer !== undefined && m.offer !== null && !isValidOffer(m.offer)) return false;
+  return true;
+}
 
 function readStoredMessages(): ConciergeMessage[] {
   if (typeof window === "undefined") return [WELCOME_MESSAGE];
@@ -52,7 +108,8 @@ function readStoredMessages(): ConciergeMessage[] {
     if (!raw) return [WELCOME_MESSAGE];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return [WELCOME_MESSAGE];
-    return parsed as ConciergeMessage[];
+    if (!parsed.every(isValidMessage)) return [WELCOME_MESSAGE];
+    return parsed;
   } catch {
     return [WELCOME_MESSAGE];
   }
@@ -145,20 +202,26 @@ export function ConciergeChat() {
       setInput("");
       setPending(true);
 
-      const result = await postChat(next);
-      setPending(false);
-      if (!result.ok) {
-        const errorText =
-          result.kind === "rate-limit"
-            ? "Zbyt wiele wiadomości — odczekaj chwilę i spróbuj ponownie."
-            : "Chwilowo nie mogę się połączyć — spróbuj za moment.";
-        setMessages((cur) => [...cur, { role: "assistant", content: errorText, isError: true }]);
-        return;
+      // try/finally: postChat z założenia nie rzuca, ale `pending` NIE MOŻE
+      // utknąć na true, gdyby przyszła edycja to zepsuła — input byłby
+      // zablokowany na zawsze.
+      try {
+        const result = await postChat(next);
+        if (!result.ok) {
+          const errorText =
+            result.kind === "rate-limit"
+              ? "Zbyt wiele wiadomości — odczekaj chwilę i spróbuj ponownie."
+              : "Chwilowo nie mogę się połączyć — spróbuj za moment.";
+          setMessages((cur) => [...cur, { role: "assistant", content: errorText, isError: true }]);
+          return;
+        }
+        setMessages((cur) => [
+          ...cur,
+          { role: "assistant", content: result.text, offer: result.offer, isError: result.error },
+        ]);
+      } finally {
+        setPending(false);
       }
-      setMessages((cur) => [
-        ...cur,
-        { role: "assistant", content: result.text, offer: result.offer, isError: result.error },
-      ]);
     },
     [pending, messages],
   );
@@ -209,14 +272,14 @@ export function ConciergeChat() {
 
         {isEmptyState && (
           <div className="flex flex-col gap-2 pt-1">
-            {STARTER_CHIPS.map((chip) => (
+            {STARTERS.map((starter) => (
               <button
-                key={chip}
+                key={starter.prompt}
                 type="button"
-                onClick={() => void sendMessage(chip.replace(/^\p{Emoji}\s*/u, ""))}
+                onClick={() => void sendMessage(starter.prompt)}
                 className="rounded-xl border border-emerald-900/15 bg-emerald-50/60 px-3.5 py-2.5 text-left text-sm font-semibold text-emerald-800 transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
-                {chip}
+                <span aria-hidden>{starter.icon}</span> {starter.label}
               </button>
             ))}
           </div>
