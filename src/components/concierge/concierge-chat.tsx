@@ -135,7 +135,13 @@ interface ChatApiResponse {
 async function postChat(messages: ConciergeMessage[]): Promise<
   { ok: true; text: string; offer: TripOffer | null; error: boolean } | { ok: false; kind: "rate-limit" | "network" }
 > {
-  const payload = messages.slice(-HISTORY_WINDOW).map((m) => ({ role: m.role, content: m.content }));
+  // Przycięcie do MAX_INPUT_LENGTH per wiadomość jest OBOWIĄZKOWE: route
+  // waliduje content max 1500 (Zod → 400), a odpowiedź asystenta przy
+  // max_tokens 700 potrafi przekroczyć 1500 znaków — bez slice() jedna długa
+  // odpowiedź bota w historii zabijałaby całą dalszą rozmowę.
+  const payload = messages
+    .slice(-HISTORY_WINDOW)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_INPUT_LENGTH) }));
   let res: Response;
   try {
     res = await fetch("/api/concierge/chat", {
