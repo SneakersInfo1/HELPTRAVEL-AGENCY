@@ -1,0 +1,243 @@
+"use client";
+
+// Dokowany dymek AI Concierge (Task 4.2) — montowany raz w layout.tsx, widoczny
+// na KAŻDEJ stronie (homepage, /hotele/*, /loty/* włącznie — inaczej niż
+// QuickSearchLauncher, który na tych trasach jest chowany). Mechanika portalu/
+// Esc/focus-trap skopiowana z quick-search-launcher.tsx (te same sprawdzone
+// wzorce), ale to NIE jest modal-overlay wyszukiwarki: to trwały widget czatu
+// z trzema stanami: "bubble" (zwinięty) i "expanded" (panel/pełny ekran).
+// "Zminimalizowany" to POWRÓT do stanu "bubble" — historia czatu nie ginie,
+// bo żyje w sessionStorage wewnątrz ConciergeChat (patrz ten plik), więc
+// odmontowanie ConciergeChat przy zwinięciu jest poprawne i najprostsze:
+// przy ponownym otwarciu komponent po prostu odczyta tę samą sesję.
+//
+// Coexistence z QuickSearchLauncher: concierge jest widgetem GŁÓWNYM w rogu
+// (ten sam slot bottom-4/right-4 co miał quick-search), więc to quick-search
+// przesunięto WYŻEJ (patrz komentarz w quick-search-launcher.tsx) — jedyna
+// zmiana w tamtym pliku to offset pozycji, nic więcej.
+//
+// Zero gate'owania zgodą (decyzja produktowa z zadania): ujawnienie
+// dostawcy AI dzieje się W PANELU (stopka ConciergeChat), nie przez
+// ConsentProvider — dlatego ten plik świadomie NIE importuje consent/context.
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+import { ConciergeChat } from "./concierge-chat";
+
+// Kill-switch (domyślnie WŁĄCZONE) — ta sama konwencja co
+// NEXT_PUBLIC_SHOW_QUICK_SEARCH i /api/concierge/chat route.ts.
+const ENABLED = process.env.NEXT_PUBLIC_SHOW_CONCIERGE?.trim().toLowerCase() !== "false";
+
+const TEASER_DISMISSED_KEY = "helptravel-concierge-teaser-dismissed-v1";
+const MOTION_MS = 200;
+
+function readTeaserDismissed(): boolean {
+  if (typeof window === "undefined") return true; // SSR: nie renderuj teasera przed hydracją
+  try {
+    return window.localStorage.getItem(TEASER_DISMISSED_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+type PanelState = "bubble" | "expanded";
+
+export function ConciergeLauncher() {
+  const [panel, setPanel] = useState<PanelState>("bubble");
+  const [entered, setEntered] = useState(false);
+  const [teaserDismissed, setTeaserDismissed] = useState(() => readTeaserDismissed());
+  const bubbleRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<number | null>(null);
+
+  const prefersReduced =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  const openPanel = useCallback(() => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    setPanel("expanded");
+  }, []);
+
+  const closePanel = useCallback(() => {
+    setEntered(false);
+    const done = () => {
+      setPanel("bubble");
+      bubbleRef.current?.focus();
+    };
+    if (prefersReduced) done();
+    else closeTimer.current = window.setTimeout(done, MOTION_MS);
+  }, [prefersReduced]);
+
+  const dismissTeaser = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setTeaserDismissed(true);
+    try {
+      window.localStorage.setItem(TEASER_DISMISSED_KEY, "1");
+    } catch {
+      // localStorage niedostępny — teaser po prostu wróci przy kolejnej wizycie.
+    }
+  }, []);
+
+  // Wejście: po zamontowaniu panelu włącz "entered" w kolejnej klatce, żeby
+  // CSS-transition (opacity, nie transform w stanie spoczynku) ruszyła; fokus
+  // na przycisk zamknięcia panelu.
+  useEffect(() => {
+    if (panel !== "expanded") return;
+    const raf = requestAnimationFrame(() => setEntered(true));
+    const focusRaf = requestAnimationFrame(() => {
+      panelRef.current?.querySelector<HTMLElement>("[data-concierge-close]")?.focus();
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(focusRaf);
+    };
+  }, [panel]);
+
+  // Blokada scrolla tła TYLKO na mobile pełnoekranowym (desktop panel jest
+  // dokowany, nie zasłania strony — scroll tła zostaje włączony).
+  useEffect(() => {
+    if (panel !== "expanded") return;
+    const mql = window.matchMedia("(max-width: 639px)");
+    if (!mql.matches) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [panel]);
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    },
+    [],
+  );
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      closePanel();
+      return;
+    }
+    if (e.key !== "Tab" || !panelRef.current) return;
+    const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+      'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])',
+    );
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  if (!ENABLED) return null;
+
+  return (
+    <>
+      {panel === "bubble" && (
+        <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
+          {/* Teaser jednorazowy — dismiss trwały w localStorage, bez liczników/scarcity. */}
+          {!teaserDismissed && (
+            <div className="animate-fade-in-up relative max-w-[240px] rounded-2xl rounded-br-md border border-emerald-900/10 bg-white px-4 py-3 text-sm font-medium text-neutral-800 shadow-[0_12px_32px_rgba(16,84,48,0.16)]">
+              <button
+                type="button"
+                onClick={dismissTeaser}
+                aria-label="Zamknij podpowiedź"
+                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-900/10 bg-white text-neutral-500 shadow-sm transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-3 w-3">
+                  <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+              Cześć! Dobiorę Ci wyjazd w Twoim budżecie.
+            </div>
+          )}
+
+          <button
+            ref={bubbleRef}
+            type="button"
+            onClick={openPanel}
+            aria-haspopup="dialog"
+            aria-expanded={false}
+            className="animate-bubble-pulse group inline-flex items-center gap-2 rounded-full bg-emerald-600 py-3.5 pl-4 pr-5 text-sm font-bold text-white outline-none transition-colors hover:bg-emerald-700 focus-visible:ring-4 focus-visible:ring-emerald-300/60 motion-reduce:animate-none"
+          >
+            <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-5 w-5 shrink-0">
+              <path
+                d="M3 9.5C3 5.9 6.13 3 10 3s7 2.9 7 6.5S13.87 16 10 16c-.8 0-1.57-.12-2.28-.35L4 17l1.1-3.3A6.24 6.24 0 0 1 3 9.5Z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Dobierz wyjazd
+          </button>
+        </div>
+      )}
+
+      {panel === "expanded" &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="concierge-title"
+            onKeyDown={onKeyDown}
+            className="fixed inset-0 z-[60] flex sm:inset-auto sm:bottom-6 sm:right-6 sm:block"
+          >
+            {/* Panel — mobile: pełny ekran; desktop: karta dokowana w rogu. */}
+            <div
+              className={`flex h-full w-full min-h-0 flex-col overflow-hidden bg-white shadow-2xl transition-opacity duration-200 ease-out sm:h-[70vh] sm:max-h-[640px] sm:w-[400px] sm:rounded-2xl sm:border sm:border-emerald-900/10 motion-reduce:transition-none ${
+                entered ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <header className="flex shrink-0 items-center justify-between gap-3 border-b border-emerald-900/10 bg-emerald-50/60 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-3">
+                <div className="min-w-0">
+                  <h2 id="concierge-title" className="truncate text-sm font-bold text-neutral-900">
+                    Asystent wyjazdowy
+                  </h2>
+                  <p className="truncate text-xs font-medium text-emerald-700">HelpTravel</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={closePanel}
+                    aria-label="Zminimalizuj"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-800/70 outline-none transition-colors hover:bg-emerald-900/10 hover:text-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    <span aria-hidden className="text-base font-bold leading-none">
+                      —
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    data-concierge-close
+                    onClick={closePanel}
+                    aria-label="Zamknij"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-800/70 outline-none transition-colors hover:bg-emerald-900/10 hover:text-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                      <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              </header>
+
+              <div className="min-h-0 flex-1">
+                <ConciergeChat />
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}

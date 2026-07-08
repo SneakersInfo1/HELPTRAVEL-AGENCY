@@ -9,6 +9,7 @@ import { CookieConsentBanner } from "@/components/site/cookie-consent-banner";
 import { GoogleAnalytics } from "@/components/site/google-analytics";
 import { MicrosoftClarity } from "@/components/site/microsoft-clarity";
 import { QuickSearchLauncher } from "@/components/site/quick-search-launcher";
+import { ConciergeLauncher } from "@/components/concierge/concierge-launcher";
 import { ConsentProvider } from "@/lib/consent/context";
 import { getSiteUrl } from "@/lib/mvp/site";
 
@@ -178,6 +179,7 @@ export default function RootLayout({
             <SiteShell>{children}</SiteShell>
             <CookieConsentBanner />
             <QuickSearchLauncher />
+            <ConciergeLauncher />
           </LanguageProvider>
         </ConsentProvider>
       </body>
