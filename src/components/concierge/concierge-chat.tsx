@@ -36,7 +36,7 @@ const HISTORY_WINDOW = 20;
 const WELCOME_MESSAGE: ConciergeMessage = {
   role: "assistant",
   content:
-    "Cześć! Dobiorę Ci wyjazd w Twoim budżecie — napisz np. „plaża do 3000 zł w sierpniu, 2 osoby”.",
+    "Cześć! Jestem asystentem AI HelpTravel — dobiorę Ci wyjazd w Twoim budżecie. Napisz np. „plaża do 3000 zł w sierpniu, 2 osoby”.",
 };
 
 // Startery jako dane strukturalne: ikona TYLKO do renderu (aria-hidden),
@@ -333,7 +333,16 @@ export function ConciergeChat() {
           </button>
         </form>
         <p className="mt-2 text-center text-[11px] leading-snug text-neutral-400">
-          Rozmowę przetwarza dostawca AI. Ceny pochodzą z wyszukiwarki HelpTravel.
+          Rozmowę przetwarza dostawca AI (OpenRouter). Ceny i oferty pochodzą z wyszukiwarki
+          HelpTravel. Nie podawaj danych osobowych.{" "}
+          <a
+            href="/polityka-prywatnosci"
+            target="_blank"
+            rel="noopener"
+            className="font-medium text-neutral-500 underline underline-offset-2 hover:text-emerald-700"
+          >
+            Polityka prywatności
+          </a>
         </p>
       </div>
     </div>
