@@ -1,0 +1,318 @@
+// Testy pętli orkiestracji AI Concierge (Task 3.2). Wszystkie zależności
+// (chat + egzekutory) są WSTRZYKNIĘTE mockami — zero sieci, zero OpenRouter.
+//
+// Uczciwość pod testem: orkiestrator nigdy nie rzuca na zewnątrz (błąd
+// transportu/modelu → łagodny komunikat PL + error:true), a treść wiadomości
+// `role:"tool"` musi wprost nieść wynik egzekutora (albo jego błąd).
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { MAX_HISTORY_MESSAGES, MAX_INPUT_CHARS, MAX_TOOL_ROUNDS } from "./openrouter";
+import { SYSTEM_PROMPT } from "./system-prompt";
+import { runConcierge, type OrchestratorDeps } from "./orchestrator";
+import type { TripOffer } from "./types";
+
+type ChatArgs = { messages: Record<string, unknown>[]; tools: Record<string, unknown>[] };
+
+function makeDeps(overrides: Partial<OrchestratorDeps> = {}): OrchestratorDeps {
+  return {
+    chat: async () => {
+      throw new Error("chat mock not configured");
+    },
+    executors: {
+      executeSearchTrips: async () => ({ candidates: [] }),
+      executeGetTripOffer: async () => {
+        throw new Error("executeGetTripOffer mock not configured");
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+    ...overrides,
+  };
+}
+
+function fakeOffer(): TripOffer {
+  return {
+    cityEn: "Palma de Mallorca",
+    countryEn: "Spain",
+    cityPl: "Palma de Mallorca",
+    checkin: "2026-08-10",
+    checkout: "2026-08-17",
+    adults: 2,
+    children: 0,
+    originIata: "WAW",
+    hotel: {
+      hotelId: "h1",
+      name: "Hotel Testowy",
+      totalPln: 3000,
+      mainPhotoUrl: null,
+      rating: 8.5,
+      url: "/hotele/h1?checkin=2026-08-10&checkout=2026-08-17&adults=2&rooms=1",
+    },
+    flight: {
+      totalPln: 1800,
+      carrierName: "Test Air",
+      outboundDepartureTime: "2026-08-10T06:00:00Z",
+      inboundDepartureTime: "2026-08-17T18:00:00Z",
+      stops: 0,
+      url: "/loty/wyniki?origin=WAW&destination=PMI&depart=2026-08-10&return=2026-08-17&adults=2&children=0&infants=0",
+    },
+    totalPerPersonPln: 2400,
+    partial: false,
+  };
+}
+
+// ── 1. Happy path z jedną rundą narzędzia ───────────────────────────────────
+
+test("runConcierge: happy path — jedna runda tool_calls, potem tekst", async () => {
+  const calls: ChatArgs[] = [];
+  let searchTripsCallCount = 0;
+  let searchTripsArgs: unknown = null;
+
+  const deps = makeDeps({
+    chat: async (args) => {
+      calls.push(args as ChatArgs);
+      if (calls.length === 1) {
+        return {
+          choices: [
+            {
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [
+                  {
+                    id: "t1",
+                    type: "function",
+                    function: { name: "search_trips", arguments: '{"theme":"plaza"}' },
+                  },
+                ],
+              },
+            },
+          ],
+        };
+      }
+      return { choices: [{ message: { role: "assistant", content: "Oto kierunki" } }] };
+    },
+    executors: {
+      executeSearchTrips: async (args) => {
+        searchTripsCallCount += 1;
+        searchTripsArgs = args;
+        return { candidates: [{ cityEn: "Palma" }] };
+      },
+      executeGetTripOffer: async () => {
+        throw new Error("not used in this test");
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "Szukam plaży" }], deps);
+
+  assert.equal(result.text, "Oto kierunki");
+  assert.equal(result.error, false);
+  assert.equal(searchTripsCallCount, 1);
+  assert.deepEqual(searchTripsArgs, { theme: "plaza" });
+
+  assert.equal(calls.length, 2);
+  // pierwsza wiadomość w KAŻDYM wywołaniu to system prompt
+  assert.equal(calls[0].messages[0].content, SYSTEM_PROMPT);
+  assert.equal(calls[1].messages[0].content, SYSTEM_PROMPT);
+
+  const toolMsg = calls[1].messages.find(
+    (m) => (m as Record<string, unknown>).role === "tool",
+  ) as Record<string, unknown> | undefined;
+  assert.ok(toolMsg, "druga runda musi nieść wiadomość role:tool");
+  assert.equal(toolMsg!.tool_call_id, "t1");
+  assert.equal(toolMsg!.content, JSON.stringify({ candidates: [{ cityEn: "Palma" }] }));
+});
+
+// ── 2. Przechwycenie oferty ─────────────────────────────────────────────────
+
+test("runConcierge: get_trip_offer — offer w wyniku to DOKŁADNIE wynik egzekutora", async () => {
+  const offer = fakeOffer();
+  let round = 0;
+
+  const deps = makeDeps({
+    chat: async () => {
+      round += 1;
+      if (round === 1) {
+        return {
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  {
+                    id: "t1",
+                    type: "function",
+                    function: {
+                      name: "get_trip_offer",
+                      arguments: JSON.stringify({
+                        cityEn: "Palma de Mallorca",
+                        countryEn: "Spain",
+                        checkin: "2026-08-10",
+                        checkout: "2026-08-17",
+                        origin: "WAW",
+                        adults: 2,
+                      }),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        };
+      }
+      return { choices: [{ message: { content: "Polecam!" } }] };
+    },
+    executors: {
+      executeSearchTrips: async () => ({ candidates: [] }),
+      executeGetTripOffer: async () => offer,
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "Wybieram Palmę" }], deps);
+
+  assert.equal(result.text, "Polecam!");
+  assert.equal(result.error, false);
+  assert.deepEqual(result.offer, offer);
+});
+
+// ── 3. Egzekutor rzuca → wynik narzędzia niesie błąd, brak crasha ──────────
+
+test("runConcierge: executeGetTripOffer odrzuca obietnicę → tool-result z błędem, brak crasha", async () => {
+  let round = 0;
+  let toolMessageContent = "";
+
+  const deps = makeDeps({
+    chat: async (args) => {
+      round += 1;
+      if (round === 1) {
+        return {
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  {
+                    id: "t1",
+                    type: "function",
+                    function: {
+                      name: "get_trip_offer",
+                      arguments: JSON.stringify({
+                        cityEn: "Palma",
+                        countryEn: "Spain",
+                        checkin: "2026-08-10",
+                        checkout: "2026-08-17",
+                        origin: "WAW",
+                        adults: 2,
+                      }),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        };
+      }
+      const toolMsg = (args as ChatArgs).messages.find(
+        (m) => (m as Record<string, unknown>).role === "tool",
+      ) as Record<string, unknown> | undefined;
+      toolMessageContent = String(toolMsg?.content ?? "");
+      return { choices: [{ message: { content: "Niestety coś poszło nie tak." } }] };
+    },
+    executors: {
+      executeSearchTrips: async () => ({ candidates: [] }),
+      executeGetTripOffer: async () => {
+        throw new Error("bad dates");
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "Wybieram Palmę" }], deps);
+
+  assert.equal(result.error, false);
+  assert.equal(result.offer, null);
+  assert.match(toolMessageContent, /bad dates/);
+  assert.equal(result.text, "Niestety coś poszło nie tak.");
+});
+
+// ── 4. Limit rund ────────────────────────────────────────────────────────────
+
+test("runConcierge: limit rund — finalne wywołanie BEZ narzędzi, wynik z ostatniej treści", async () => {
+  let chatCallCount = 0;
+  const receivedTools: Record<string, unknown>[][] = [];
+
+  const deps = makeDeps({
+    chat: async (args) => {
+      chatCallCount += 1;
+      receivedTools.push((args as ChatArgs).tools);
+      if (chatCallCount <= MAX_TOOL_ROUNDS) {
+        return {
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  {
+                    id: `t${chatCallCount}`,
+                    type: "function",
+                    function: { name: "search_trips", arguments: "{}" },
+                  },
+                ],
+              },
+            },
+          ],
+        };
+      }
+      return { choices: [{ message: { content: "Finalna odpowiedź po limicie" } }] };
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "test" }], deps);
+
+  assert.equal(chatCallCount, MAX_TOOL_ROUNDS + 1);
+  assert.deepEqual(receivedTools[receivedTools.length - 1], []);
+  assert.equal(result.text, "Finalna odpowiedź po limicie");
+  assert.equal(result.error, false);
+});
+
+// ── 5. Błąd payloadu OpenRouter ──────────────────────────────────────────────
+
+test("runConcierge: błędny payload OpenRouter → łagodny komunikat PL, error:true, brak crasha", async () => {
+  const deps = makeDeps({
+    chat: async () => ({ error: { message: "invalid key" } }),
+  });
+
+  const result = await runConcierge([{ role: "user", content: "test" }], deps);
+
+  assert.equal(result.error, true);
+  assert.equal(result.text, "Chwilowo nie mogę odpowiedzieć — spróbuj za moment.");
+  assert.equal(result.offer, null);
+});
+
+// ── 6. Przycinanie historii ─────────────────────────────────────────────────
+
+test("runConcierge: przycina historię do MAX_HISTORY_MESSAGES i treść do MAX_INPUT_CHARS", async () => {
+  const longContent = "a".repeat(MAX_INPUT_CHARS + 500);
+  const history: { role: "user" | "assistant"; content: string }[] = [];
+  for (let i = 0; i < MAX_HISTORY_MESSAGES + 5; i++) {
+    history.push({ role: i % 2 === 0 ? "user" : "assistant", content: `msg ${i}` });
+  }
+  // Nadpisz ostatnią wiadomość zbyt długą treścią.
+  history[history.length - 1] = { role: "user", content: longContent };
+
+  let capturedMessages: Record<string, unknown>[] = [];
+  const deps = makeDeps({
+    chat: async (args) => {
+      capturedMessages = (args as ChatArgs).messages;
+      return { choices: [{ message: { content: "ok" } }] };
+    },
+  });
+
+  await runConcierge(history, deps);
+
+  // system + MAX_HISTORY_MESSAGES ostatnich wiadomości
+  assert.equal(capturedMessages.length, MAX_HISTORY_MESSAGES + 1);
+  const lastMsg = capturedMessages[capturedMessages.length - 1];
+  assert.equal((lastMsg.content as string).length, MAX_INPUT_CHARS);
+});
