@@ -3,10 +3,12 @@
 // PRODUKTU (ta sama DNA co karta wyników hoteli i wiersz oferty lotu), NIE jak
 // generyczny „AI slop" dymek. Zero pastelowych gradientów, zero fałszywej presji.
 //
-// Serwerowo bezpieczny komponent prezentacyjny — same linki i markup, bez
-// hooków. Każda liczba pochodzi WYŁĄCZNIE z propsów (realne dane z TripOffer:
-// snapshot crona / żywe LiteAPI) — PRODUCT.md: brak danych = brak liczby,
-// nigdy nie liczymy ani nie zgadujemy nic po stronie UI.
+// Komponent prezentacyjny bez hooków; renderowany wyłącznie wewnątrz
+// klientowego czatu (concierge-chat.tsx), więc onClick (analytics handoffu)
+// jest legalny bez własnej dyrektywy "use client". Każda liczba pochodzi
+// WYŁĄCZNIE z propsów (realne dane z TripOffer: snapshot crona / żywe
+// LiteAPI) — PRODUCT.md: brak danych = brak liczby, nigdy nie liczymy ani
+// nie zgadujemy nic po stronie UI.
 //
 // Wzorce skopiowane z:
 // - src/app/hotele/szukaj/_components/result-card.tsx — karta = cały <Link>,
@@ -22,6 +24,7 @@
 
 import Link from "next/link";
 
+import { track } from "@/lib/analytics/track";
 import type { TripOffer } from "@/lib/concierge/types";
 import { stopsLabel, fmtTime } from "@/lib/flights/display";
 import { ratingLabel } from "@/lib/hotels/rating";
@@ -94,6 +97,7 @@ export function TripOfferCard({ offer }: { offer: TripOffer }) {
         {hotel ? (
           <Link
             href={hotel.url}
+            onClick={() => track("concierge_offer_click", { target: "hotel", city: offer.cityPl })}
             className="group flex items-stretch gap-3 overflow-hidden rounded-xl border border-emerald-900/10 bg-white transition-colors transition-shadow hover:border-emerald-300 hover:shadow-[0_8px_20px_rgba(16,84,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
           >
             <div className="relative aspect-square w-24 shrink-0 overflow-hidden bg-neutral-100 sm:w-28">
@@ -142,7 +146,11 @@ export function TripOfferCard({ offer }: { offer: TripOffer }) {
             {flight && (
               <>
                 {" "}
-                <Link href={flight.url} className="font-semibold text-emerald-700 hover:underline">
+                <Link
+                  href={flight.url}
+                  onClick={() => track("concierge_offer_click", { target: "flight", city: offer.cityPl })}
+                  className="font-semibold text-emerald-700 hover:underline"
+                >
                   <span>Zobacz wyniki lotu →</span>
                 </Link>
               </>
@@ -154,6 +162,7 @@ export function TripOfferCard({ offer }: { offer: TripOffer }) {
         {flight ? (
           <Link
             href={flight.url}
+            onClick={() => track("concierge_offer_click", { target: "flight", city: offer.cityPl })}
             className="group flex items-center justify-between gap-3 rounded-xl border border-emerald-900/10 bg-white p-3 transition-colors transition-shadow hover:border-emerald-300 hover:shadow-[0_8px_20px_rgba(16,84,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
           >
             <div className="min-w-0">
@@ -181,7 +190,11 @@ export function TripOfferCard({ offer }: { offer: TripOffer }) {
             {hotel && (
               <>
                 {" "}
-                <Link href={hotel.url} className="font-semibold text-emerald-700 hover:underline">
+                <Link
+                  href={hotel.url}
+                  onClick={() => track("concierge_offer_click", { target: "hotel", city: offer.cityPl })}
+                  className="font-semibold text-emerald-700 hover:underline"
+                >
                   <span>Zobacz hotel →</span>
                 </Link>
               </>

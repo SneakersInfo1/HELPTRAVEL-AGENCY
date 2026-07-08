@@ -70,6 +70,29 @@ function trimHistory(history: HistoryMessage[]): Record<string, unknown>[] {
   }));
 }
 
+/**
+ * Licznik tokenów tury (koszt!) — sumuje pole `usage` z każdej odpowiedzi
+ * OpenRouter. Logowany raz na turę (widoczny w logach runtime Vercela), co
+ * daje obserwowalność kosztu od pierwszego dnia; próg alertu dostroimy po
+ * realnym ruchu (Faza 6).
+ */
+interface UsageTotals {
+  promptTokens: number;
+  completionTokens: number;
+  chatCalls: number;
+}
+
+function addUsage(totals: UsageTotals, payload: unknown): void {
+  if (!payload || typeof payload !== "object") return;
+  const usage = (payload as { usage?: { prompt_tokens?: number; completion_tokens?: number } })
+    .usage;
+  if (!usage) return;
+  totals.promptTokens += typeof usage.prompt_tokens === "number" ? usage.prompt_tokens : 0;
+  totals.completionTokens +=
+    typeof usage.completion_tokens === "number" ? usage.completion_tokens : 0;
+  totals.chatCalls += 1;
+}
+
 /** Wąska walidacja kształtu odpowiedzi modelu — patrz nagłówek pliku. */
 function isMalformedResponse(payload: unknown): payload is Record<string, unknown> {
   if (!payload || typeof payload !== "object") return true;
@@ -133,9 +156,11 @@ export async function runConcierge(
   ];
 
   let offer: TripOffer | null = null;
+  const usage: UsageTotals = { promptTokens: 0, completionTokens: 0, chatCalls: 0 };
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const response = await deps.chat({ messages, tools: TOOL_DEFS });
+    addUsage(usage, response);
 
     if (isMalformedResponse(response)) {
       console.error("concierge: OpenRouter error", response);
@@ -168,6 +193,7 @@ export async function runConcierge(
     }
 
     if (typeof message.content === "string") {
+      console.log("[concierge] usage", usage);
       return { text: message.content, offer, error: false };
     }
 
@@ -178,12 +204,14 @@ export async function runConcierge(
 
   // Limit rund osiągnięty — finalne wywołanie BEZ narzędzi, wymusza tekst.
   const finalResponse = await deps.chat({ messages, tools: [] });
+  addUsage(usage, finalResponse);
   if (isMalformedResponse(finalResponse)) {
     console.error("concierge: OpenRouter error", finalResponse);
     return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
   }
   const finalMessage = (finalResponse as ChatCompletionResponse).choices![0]!.message!;
   if (typeof finalMessage.content === "string") {
+    console.log("[concierge] usage", usage);
     return { text: finalMessage.content, offer, error: false };
   }
   console.error("concierge: OpenRouter error", finalResponse);
