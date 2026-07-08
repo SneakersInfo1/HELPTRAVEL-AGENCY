@@ -20,7 +20,7 @@
 // dostawcy AI dzieje się W PANELU (stopka ConciergeChat), nie przez
 // ConsentProvider — dlatego ten plik świadomie NIE importuje consent/context.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 import { ConciergeChat } from "./concierge-chat";
@@ -32,8 +32,21 @@ const ENABLED = process.env.NEXT_PUBLIC_SHOW_CONCIERGE?.trim().toLowerCase() !==
 const TEASER_DISMISSED_KEY = "helptravel-concierge-teaser-dismissed-v1";
 const MOTION_MS = 200;
 
+// Teaser jako mini-„external store" (localStorage) czytany przez
+// useSyncExternalStore — jedyny wzorzec, który NARAZ: (a) nie daje
+// hydration-mismatch (server snapshot = ukryty; React po hydracji sam
+// przechodzi na snapshot klienta), (b) przechodzi lint React Compilera
+// (zakaz setState w efekcie), (c) aktualizuje się po dismissie.
+let teaserListeners: ReadonlyArray<() => void> = [];
+
+function subscribeTeaser(listener: () => void): () => void {
+  teaserListeners = [...teaserListeners, listener];
+  return () => {
+    teaserListeners = teaserListeners.filter((l) => l !== listener);
+  };
+}
+
 function readTeaserDismissed(): boolean {
-  if (typeof window === "undefined") return true; // SSR: nie renderuj teasera przed hydracją
   try {
     return window.localStorage.getItem(TEASER_DISMISSED_KEY) === "1";
   } catch {
@@ -41,12 +54,23 @@ function readTeaserDismissed(): boolean {
   }
 }
 
+function markTeaserDismissed(): void {
+  try {
+    window.localStorage.setItem(TEASER_DISMISSED_KEY, "1");
+  } catch {
+    // localStorage niedostępny — teaser po prostu wróci przy kolejnej wizycie.
+  }
+  for (const listener of teaserListeners) listener();
+}
+
 type PanelState = "bubble" | "expanded";
 
 export function ConciergeLauncher() {
   const [panel, setPanel] = useState<PanelState>("bubble");
   const [entered, setEntered] = useState(false);
-  const [teaserDismissed, setTeaserDismissed] = useState(() => readTeaserDismissed());
+  // Server snapshot = true (ukryty): SSR nigdy nie renderuje teasera, więc
+  // hydracja jest spójna; klientowy snapshot wchodzi zaraz po niej.
+  const teaserDismissed = useSyncExternalStore(subscribeTeaser, readTeaserDismissed, () => true);
   const bubbleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | null>(null);
@@ -72,12 +96,7 @@ export function ConciergeLauncher() {
 
   const dismissTeaser = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setTeaserDismissed(true);
-    try {
-      window.localStorage.setItem(TEASER_DISMISSED_KEY, "1");
-    } catch {
-      // localStorage niedostępny — teaser po prostu wróci przy kolejnej wizycie.
-    }
+    markTeaserDismissed();
   }, []);
 
   // Wejście: po zamontowaniu panelu włącz "entered" w kolejnej klatce, żeby
@@ -166,6 +185,9 @@ export function ConciergeLauncher() {
             type="button"
             onClick={openPanel}
             aria-haspopup="dialog"
+            // Statycznie false: ten przycisk istnieje TYLKO w stanie "bubble"
+            // (odmontowany, gdy panel otwarty), więc dynamiczne wiązanie ze
+            // stanem to zawsze-false, które TS słusznie flaguje (TS2367).
             aria-expanded={false}
             className="animate-bubble-pulse group inline-flex items-center gap-2 rounded-full bg-emerald-600 py-3.5 pl-4 pr-5 text-sm font-bold text-white outline-none transition-colors hover:bg-emerald-700 focus-visible:ring-4 focus-visible:ring-emerald-300/60 motion-reduce:animate-none"
           >
