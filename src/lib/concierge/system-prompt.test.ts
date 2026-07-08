@@ -25,6 +25,12 @@ test("SYSTEM_PROMPT: zakaz fałszywej presji/sztucznej rzadkości", () => {
   assert.equal(SYSTEM_PROMPT.includes("ostatnie"), true);
 });
 
+test("SYSTEM_PROMPT: sprzedażowe domykanie — następny krok + alternatywy przy obiekcjach", () => {
+  assert.equal(SYSTEM_PROMPT.includes("następnym krokiem"), true);
+  assert.equal(SYSTEM_PROMPT.includes("zaproponuj alternatywę"), true);
+  assert.equal(SYSTEM_PROMPT.includes("szukaj dalej"), true);
+});
+
 test("SYSTEM_PROMPT: koszt — długość promptu pod kontrolą (wysyłany z KAŻDYM requestem)", () => {
   assert.equal(SYSTEM_PROMPT.length < 6000, true);
 });
