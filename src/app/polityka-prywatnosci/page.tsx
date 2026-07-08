@@ -31,8 +31,8 @@ const admin = {
   email: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "kontakt@helptravel.pl",
 };
 
-const EFFECTIVE_DATE = "13 czerwca 2026 r.";
-const EFFECTIVE_DATE_ISO = "2026-06-13";
+const EFFECTIVE_DATE = "8 lipca 2026 r.";
+const EFFECTIVE_DATE_ISO = "2026-07-08";
 
 export const metadata: Metadata = {
   title: "Polityka prywatności",
@@ -188,6 +188,11 @@ const sections: Section[] = [
           "do 12 miesięcy lub do cofnięcia zgody",
         ],
         [
+          "Asystent wyjazdowy (czat AI) — dobór oferty wyjazdu na podstawie treści rozmowy wpisanej przez Użytkownika",
+          "art. 6 ust. 1 lit. b — świadczenie usługi na żądanie Użytkownika",
+          "Administrator nie przechowuje trwale treści rozmów; historia czatu żyje wyłącznie w pamięci sesji przeglądarki Użytkownika (sessionStorage) i znika po zamknięciu karty",
+        ],
+        [
           "Zapewnienie bezpieczeństwa Serwisu (rate-limit, ochrona przed nadużyciami)",
           "art. 6 ust. 1 lit. f — uzasadniony interes",
           "do 30 dni",
@@ -230,6 +235,11 @@ const sections: Section[] = [
         label: "Dane o korzystaniu z Serwisu",
         body:
           "zapytania do planera, wybrane kierunki, kliknięcia w linki partnerów (Pomoc, Linki partnerskie), zapisane plany. Dane przypisane są wyłącznie do anonimowej Sesji.",
+      },
+      {
+        label: "Treść rozmowy z asystentem AI",
+        body:
+          "treści dobrowolnie wpisane przez Użytkownika w czacie asystenta wyjazdowego (preferencje wyjazdu: motyw, budżet, termin, liczba osób). Treść rozmowy jest przekazywana dostawcy modelu językowego (OpenRouter — § 7) wyłącznie w celu wygenerowania odpowiedzi. Prosimy nie podawać w czacie danych osobowych (imion, adresów, numerów dokumentów) — do doboru oferty nie są potrzebne.",
       },
       {
         label: "Dane z plików cookie",
@@ -318,6 +328,12 @@ const sections: Section[] = [
           "Procesor (po wyrażeniu zgody na cookies analityczne)",
           "USA (Standardowe Klauzule Umowne + EU-U.S. Data Privacy Framework)",
           "Anonimowa analityka ruchu i interakcji. Aktywne wyłącznie po zgodzie; IP anonimizowane (anonymize_ip).",
+        ],
+        [
+          "OpenRouter, Inc.",
+          "Procesor",
+          "USA (Standardowe Klauzule Umowne)",
+          "Obsługa asystenta wyjazdowego (czat AI): treść rozmowy jest przekazywana doraźnie do modelu językowego w celu wygenerowania odpowiedzi. Ceny i oferty NIE pochodzą od dostawcy AI — pochodzą z wyszukiwarki HelpTravel.",
         ],
       ],
     },
@@ -456,7 +472,7 @@ const sections: Section[] = [
     title: "Automatyczne podejmowanie decyzji i profilowanie",
     paragraphs: [
       "Administrator nie podejmuje wobec Użytkowników decyzji opartych wyłącznie na zautomatyzowanym przetwarzaniu, w tym profilowaniu, które wywoływałyby skutki prawne lub w podobny sposób istotnie wpływały na Użytkownika (art. 22 RODO).",
-      "Wyniki Planera oraz rekomendacje kierunków stanowią zalecenia informacyjne mające pomóc w wyborze wyjazdu. Nie generują wiążących prawnie decyzji i nie różnicują Użytkowników w sposób istotny.",
+      "Wyniki Planera, rekomendacje kierunków oraz propozycje asystenta wyjazdowego (czat AI) stanowią zalecenia informacyjne mające pomóc w wyborze wyjazdu. Nie generują wiążących prawnie decyzji i nie różnicują Użytkowników w sposób istotny; każda propozycja asystenta prowadzi do standardowej, jednakowej dla wszystkich ścieżki rezerwacji.",
     ],
   },
   {
