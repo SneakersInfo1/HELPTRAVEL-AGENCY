@@ -417,3 +417,41 @@ test("runConcierge: przycina historię do MAX_HISTORY_MESSAGES i treść do MAX_
   const lastMsg = capturedMessages[capturedMessages.length - 1];
   assert.equal((lastMsg.content as string).length, MAX_INPUT_CHARS);
 });
+
+// ── 9. Retry na miękko zdeformowaną odpowiedź modelu ────────────────────────
+// Gemini potrafi stochastycznie zwrócić MALFORMED_FUNCTION_CALL (choices bez
+// treści i bez tool_calls). Jedna ponowna próba ratuje turę; twardych błędów
+// API ({error}) NIE ponawiamy (osobny test 5 pilnuje pojedynczego wywołania).
+
+test("runConcierge: pusta wiadomość (soft-malformed) → jedna ponowna próba, sukces", async () => {
+  let chatCalls = 0;
+  const deps = makeDeps({
+    chat: async () => {
+      chatCalls++;
+      if (chatCalls === 1) {
+        // finish_reason:"error" u Gemini = message bez content i bez tool_calls
+        return { choices: [{ message: { role: "assistant" } }] };
+      }
+      return { choices: [{ message: { role: "assistant", content: "Po ponowieniu działa" } }] };
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "test" }], deps);
+  assert.equal(chatCalls, 2);
+  assert.equal(result.error, false);
+  assert.equal(result.text, "Po ponowieniu działa");
+});
+
+test("runConcierge: soft-malformed dwa razy z rzędu → error:true (tylko jedna ponowka)", async () => {
+  let chatCalls = 0;
+  const deps = makeDeps({
+    chat: async () => {
+      chatCalls++;
+      return { choices: [{ message: { role: "assistant" } }] };
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "test" }], deps);
+  assert.equal(chatCalls, 2);
+  assert.equal(result.error, true);
+});
