@@ -18,7 +18,7 @@ import { FlightSearchInputSchema } from "@/lib/flights/types";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import type { RateCacheContext, SlimRate } from "@/lib/hotels/rate-cache";
 import { fetchHotelsForDestination } from "@/lib/liteapi";
-import { getDestinationByCityCountry } from "@/lib/mvp/destinations-seed";
+import { getDestinationByCityCountry, listAllDestinations } from "@/lib/mvp/destinations-seed";
 import { readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import type { CheapestFlight, CheapestFlightQuery, CheapestHotel, CheapestHotelQuery, ToolDeps } from "./tools";
 
@@ -127,11 +127,30 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
   };
 }
 
+/**
+ * Kierunki seedu w danym kraju — nazwa po polsku, angielsku albo kodem
+ * (case-insensitive). Seed jest uporządkowany popularnością, więc pierwsze
+ * wpisy to główne kierunki kraju (np. Grecja: Ateny, Chania, Heraklion…).
+ */
+function listDestinationsInCountryLive(country: string): Array<{ cityEn: string; countryEn: string; cityPl: string }> {
+  const target = country.trim().toLowerCase();
+  if (!target) return [];
+  return listAllDestinations()
+    .filter(
+      (d) =>
+        d.country.en.toLowerCase() === target ||
+        d.country.pl.toLowerCase() === target ||
+        d.country.code?.toLowerCase() === target,
+    )
+    .map((d) => ({ cityEn: d.city.en, countryEn: d.country.en, cityPl: d.city.pl }));
+}
+
 /** Jedno wywołanie w API route: createToolExecutors(buildProductionToolDeps()). */
 export function buildProductionToolDeps(): ToolDeps {
   return {
     readSnapshot: readPriceSnapshot,
     resolveDest: getDestinationByCityCountry,
+    listDestinationsInCountry: listDestinationsInCountryLive,
     findCheapestHotel: findCheapestHotelLive,
     findCheapestFlight: findCheapestFlightLive,
   };
