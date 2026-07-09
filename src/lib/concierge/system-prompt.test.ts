@@ -16,8 +16,12 @@ test("SYSTEM_PROMPT: ceny w PLN, odpowiedzi po polsku", () => {
   assert.equal(SYSTEM_PROMPT.includes("po polsku"), true);
 });
 
-test("SYSTEM_PROMPT: jedno pytanie na raz", () => {
-  assert.equal(SYSTEM_PROMPT.includes("jedno pytanie"), true);
+test("SYSTEM_PROMPT: krótki lejek — jedna tura dopytania, karta od razu, czysty tekst", () => {
+  assert.equal(SYSTEM_PROMPT.includes("JEDNYM zwięzłym pytaniem"), true);
+  assert.equal(SYSTEM_PROMPT.includes("Nie czekaj, aż użytkownik poprosi o ofertę"), true);
+  assert.equal(SYSTEM_PROMPT.includes("użytkownik JUŻ WIDZI"), true);
+  assert.equal(SYSTEM_PROMPT.includes("zero markdownu"), true);
+  assert.equal(SYSTEM_PROMPT.includes("gwiazdek"), true);
 });
 
 test("SYSTEM_PROMPT: zakaz fałszywej presji/sztucznej rzadkości", () => {
