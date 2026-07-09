@@ -23,6 +23,7 @@ import {
   rankTripCandidates,
   resolveThemeCities,
   type SeedDestinationLookup,
+  type TripSearchCity,
 } from "./trip-search";
 import type { ConciergeIntent, TripOffer } from "./types";
 
@@ -67,7 +68,12 @@ const searchTripsTool: ToolDef = {
         theme: {
           type: "string",
           enum: THEME_SLUGS,
-          description: "Slug motywu podróży (np. rodzaj wyjazdu, którego szuka użytkownik). Użyj list_themes, jeśli nie masz pewności co do dostępnych wartości.",
+          description: "Slug motywu podróży (np. rodzaj wyjazdu, którego szuka użytkownik). Użyj list_themes, jeśli nie masz pewności co do dostępnych wartości. Możesz pominąć, gdy podajesz country.",
+        },
+        country: {
+          type: "string",
+          description:
+            "Podaj, gdy użytkownik chce KONKRETNY kraj (po polsku lub angielsku, np. Grecja albo Greece) — wyszukiwanie obejmie kierunki w tym kraju zamiast motywu. Ceny na termin użytkownika pobierze system.",
         },
         budgetPln: {
           type: "number",
@@ -113,7 +119,9 @@ const searchTripsTool: ToolDef = {
           description: "Czy użytkownik chce, żeby wyszukiwarka uwzględniła hotel.",
         },
       },
-      required: ["theme", "budgetPln", "budgetKind", "month", "adults", "wantsFlight", "wantsHotel"],
+      // theme celowo POZA required: przy zapytaniu o konkretny kraj wystarczy
+      // country (egzekutor wymaga theme ALBO country).
+      required: ["budgetPln", "budgetKind", "month", "adults", "wantsFlight", "wantsHotel"],
     },
   },
 };
@@ -271,6 +279,13 @@ export interface ToolDeps {
   readSnapshot: () => Promise<DestinationPriceSnapshot | null>;
   /** Prod: getDestinationByCityCountry z @/lib/mvp/destinations-seed (server-only!). */
   resolveDest: SeedDestinationLookup;
+  /**
+   * Kierunki seedu w danym kraju (nazwa PL/EN/kod, case-insensitive), w
+   * kolejności popularności seedu. Prod: filtr listAllDestinations.
+   * Potrzebne, gdy użytkownik chce KONKRETNY kraj („chcę Grecję") — motywy
+   * tego nie obsłużą.
+   */
+  listDestinationsInCountry: (country: string) => TripSearchCity[];
   findCheapestHotel: (q: CheapestHotelQuery) => Promise<CheapestHotel | null>;
   findCheapestFlight: (q: CheapestFlightQuery) => Promise<CheapestFlight | null>;
   /** Zegar do liczenia świeżości snapshotu (testy podają stały). */
@@ -288,10 +303,14 @@ export interface ModelTripCandidate {
   cityEn: string;
   countryEn: string;
   cityPl: string;
-  /** Orientacyjna cena pakietu lot+hotel NA OSOBĘ dla podanych dat. */
-  perPersonPln: number;
-  checkin: string;
-  checkout: string;
+  /**
+   * Orientacyjna cena pakietu lot+hotel NA OSOBĘ dla podanych dat.
+   * null = snapshot nie ma ceny dla tego kierunku (np. zapytanie o konkretny
+   * kraj spoza grzanych kierunków) — cenę zna dopiero karta oferty (live).
+   */
+  perPersonPln: number | null;
+  checkin: string | null;
+  checkout: string | null;
 }
 
 export interface SearchTripsResult {
@@ -327,7 +346,7 @@ function asInt(v: unknown): number | undefined {
  * pola stają się undefined i łapie je missingFields (odpowiedź z reason,
  * BEZ rzucania — model ma dopytać użytkownika, nie dostać wyjątek).
  */
-function readSearchTripsArgs(args: unknown): ConciergeIntent {
+function readSearchTripsArgs(args: unknown): ConciergeIntent & { country?: string } {
   const a = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
   const budgetPln = asFiniteNumber(a.budgetPln);
   const month = asInt(a.month);
@@ -335,6 +354,7 @@ function readSearchTripsArgs(args: unknown): ConciergeIntent {
   const children = asInt(a.children);
   return {
     theme: asTrimmedString(a.theme),
+    country: asTrimmedString(a.country),
     budgetPln: budgetPln !== undefined && budgetPln > 0 ? budgetPln : undefined,
     budgetKind: a.budgetKind === "per_person" || a.budgetKind === "total_two" ? a.budgetKind : undefined,
     month: month !== undefined && month >= 1 && month <= 12 ? month : undefined,
@@ -475,47 +495,84 @@ export function createToolExecutors(deps: ToolDeps) {
    * bez świeżego pakietu). Pusta lista zawsze niesie `reason` dla bota.
    */
   async function executeSearchTrips(args: unknown): Promise<SearchTripsResult> {
-    const intent = normalizeIntent(readSearchTripsArgs(args));
-    const missing = missingFields(intent);
+    const parsed = readSearchTripsArgs(args);
+    const intent = normalizeIntent(parsed);
+    const country = parsed.country;
+    // Kraj zastępuje motyw jako źródło kierunków („chcę Grecję" — realny
+    // incydent: motyw plaża nie miał świeżych greckich pakietów i bot
+    // odmawiał, mimo że żywe ceny istnieją).
+    const missing = missingFields(intent).filter((f) => !(f === "theme" && country));
     if (missing.length > 0) {
       return { candidates: [], reason: `Brak wymaganych pól: ${missing.join(", ")} — dopytaj użytkownika.` };
     }
 
-    const cities = resolveThemeCities(intent.theme!, deps.resolveDest);
-    if (cities.length === 0) {
-      return { candidates: [], reason: `Nieznany motyw "${intent.theme}" — pobierz dostępne motywy przez list_themes.` };
+    let cities: TripSearchCity[];
+    if (country) {
+      cities = deps.listDestinationsInCountry(country).slice(0, 6);
+      if (cities.length === 0) {
+        return {
+          candidates: [],
+          reason: `Nie znam kierunków w kraju „${country}” — upewnij się co do nazwy kraju albo zaproponuj motyw z list_themes.`,
+        };
+      }
+    } else {
+      cities = resolveThemeCities(intent.theme!, deps.resolveDest);
+      if (cities.length === 0) {
+        return { candidates: [], reason: `Nieznany motyw "${intent.theme}" — pobierz dostępne motywy przez list_themes.` };
+      }
     }
 
     const snapshot = await deps.readSnapshot();
+    const ranked = snapshot
+      ? rankTripCandidates(
+          cities,
+          snapshot,
+          { budgetPln: intent.budgetPln!, budgetKind: intent.budgetKind! },
+          now(),
+        ).slice(0, MAX_TRIP_CANDIDATES)
+      : [];
+
+    if (ranked.length > 0) {
+      // Kształt DLA MODELU: tylko cena pakietu/os. — bez cen jednostkowych,
+      // których model nie umie poprawnie sumować (patrz ModelTripCandidate).
+      const candidates: ModelTripCandidate[] = ranked.map((c) => ({
+        cityEn: c.cityEn,
+        countryEn: c.countryEn,
+        cityPl: c.cityPl,
+        perPersonPln: c.perPersonPln,
+        checkin: c.checkin,
+        checkout: c.checkout,
+      }));
+      return {
+        candidates,
+        note:
+          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę dla dat checkin–checkout (najbliższy dostępny termin). Cytuj ją jako „od X zł/os.”. Nie rozbijaj na lot/hotel i nie licz sum samodzielnie — dokładną, aktualną cenę (także na inny miesiąc) zwraca get_trip_offer.",
+      };
+    }
+
+    if (country) {
+      // Seed zna kraj, ale snapshot nie ma świeżych pakietów w budżecie (kraj
+      // spoza grzanych kierunków). NIE odmawiamy: zwracamy kierunki BEZ cen —
+      // realną cenę na termin użytkownika pobierze auto-oferta (live LiteAPI).
+      const candidates: ModelTripCandidate[] = cities.slice(0, 3).map((c) => ({
+        cityEn: c.cityEn,
+        countryEn: c.countryEn,
+        cityPl: c.cityPl,
+        perPersonPln: null,
+        checkin: null,
+        checkout: null,
+      }));
+      return {
+        candidates,
+        note:
+          "Brak cen orientacyjnych dla tych kierunków (perPersonPln=null) — NIE podawaj ŻADNYCH kwot z pamięci. Realną, aktualną cenę pokazuje karta oferty (autoOffer) — cytuj wyłącznie ją. Alternatywy wymieniaj bez cen; jeśli cena z karty przekracza budżet użytkownika, powiedz to wprost i zaproponuj inny kierunek lub termin.",
+      };
+    }
+
     if (!snapshot) {
       return { candidates: [], reason: "Snapshot cen niedostępny — nie mamy w tej chwili świeżych cen, spróbuj później." };
     }
-
-    const ranked = rankTripCandidates(
-      cities,
-      snapshot,
-      { budgetPln: intent.budgetPln!, budgetKind: intent.budgetKind! },
-      now(),
-    ).slice(0, MAX_TRIP_CANDIDATES);
-
-    if (ranked.length === 0) {
-      return { candidates: [], reason: "Brak kierunków w tym budżecie/motywie — zaproponuj większy budżet lub inny motyw." };
-    }
-    // Kształt DLA MODELU: tylko cena pakietu/os. — bez cen jednostkowych,
-    // których model nie umie poprawnie sumować (patrz ModelTripCandidate).
-    const candidates: ModelTripCandidate[] = ranked.map((c) => ({
-      cityEn: c.cityEn,
-      countryEn: c.countryEn,
-      cityPl: c.cityPl,
-      perPersonPln: c.perPersonPln,
-      checkin: c.checkin,
-      checkout: c.checkout,
-    }));
-    return {
-      candidates,
-      note:
-        "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę dla dat checkin–checkout (najbliższy dostępny termin). Cytuj ją jako „od X zł/os.”. Nie rozbijaj na lot/hotel i nie licz sum samodzielnie — dokładną, aktualną cenę (także na inny miesiąc) zwraca get_trip_offer.",
-    };
+    return { candidates: [], reason: "Brak kierunków w tym budżecie/motywie — zaproponuj większy budżet lub inny motyw." };
   }
 
   /**

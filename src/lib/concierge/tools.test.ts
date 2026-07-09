@@ -52,6 +52,7 @@ function makeDeps(overrides: Partial<ToolDeps> = {}): ToolDeps {
   return {
     readSnapshot: async () => null,
     resolveDest: seedLookup,
+    listDestinationsInCountry: () => [],
     findCheapestHotel: async () => null,
     findCheapestFlight: async () => null,
     now: () => now,
@@ -330,4 +331,58 @@ test("executeGetTripOffer: brak dat i brak świeżego pakietu → błąd kieruj�
     () => exec.executeGetTripOffer({ cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2 }),
     /search_trips/,
   );
+});
+
+// ── Wyszukiwanie po KRAJU (realny incydent: „chcę Grecję" → fałszywe „brak") ──
+
+const GREEK_CITIES = [
+  { cityEn: "Athens", countryEn: "Greece", cityPl: "Ateny" },
+  { cityEn: "Heraklion", countryEn: "Greece", cityPl: "Heraklion" },
+  { cityEn: "Rhodes", countryEn: "Greece", cityPl: "Rodos" },
+  { cityEn: "Corfu", countryEn: "Greece", cityPl: "Korfu" },
+];
+
+test("executeSearchTrips: country ze snapshotem → kandydaci z tego kraju w budżecie", async () => {
+  const snap: DestinationPriceSnapshot = {
+    [destinationPriceKey("Athens", "Greece")]: pkgEntry(2100),
+    [destinationPriceKey("Rhodes", "Greece")]: pkgEntry(9000), // ponad budżet
+  };
+  const exec = createToolExecutors(makeDeps({
+    readSnapshot: async () => snap,
+    listDestinationsInCountry: (c) => (c.toLowerCase() === "grecja" ? GREEK_CITIES : []),
+  }));
+  const out = await exec.executeSearchTrips({
+    country: "Grecja", budgetPln: 5000, budgetKind: "total_two", month: 9,
+    adults: 2, wantsFlight: true, wantsHotel: true,
+  });
+  assert.equal(out.candidates.length, 1);
+  assert.equal(out.candidates[0].cityEn, "Athens");
+  assert.equal(out.candidates[0].perPersonPln, 2100);
+});
+
+test("executeSearchTrips: country BEZ cen w snapshotcie → kandydaci bez cen (żywa oferta), nie odmowa", async () => {
+  const exec = createToolExecutors(makeDeps({
+    listDestinationsInCountry: (c) => (c.toLowerCase() === "grecja" ? GREEK_CITIES : []),
+  })); // readSnapshot → null
+  const out = await exec.executeSearchTrips({
+    country: "Grecja", budgetPln: 5000, budgetKind: "total_two", month: 9,
+    adults: 2, wantsFlight: true, wantsHotel: true,
+  });
+  assert.equal(out.reason, undefined); // NIE odmawiamy
+  assert.equal(out.candidates.length, 3); // top-3 z seedu (kolejność popularności)
+  assert.equal(out.candidates[0].cityEn, "Athens");
+  assert.equal(out.candidates[0].perPersonPln, null);
+  assert.ok(typeof out.note === "string" && out.note.includes("NIE podawaj"));
+});
+
+test("executeSearchTrips: country bez theme przechodzi walidację; nieznany kraj → reason", async () => {
+  const exec = createToolExecutors(makeDeps({
+    listDestinationsInCountry: () => [],
+  }));
+  const out = await exec.executeSearchTrips({
+    country: "Narnia", budgetPln: 5000, budgetKind: "total_two", month: 9,
+    adults: 2, wantsFlight: true, wantsHotel: true,
+  });
+  assert.deepEqual(out.candidates, []);
+  assert.ok(out.reason && out.reason.includes("Narnia"));
 });
