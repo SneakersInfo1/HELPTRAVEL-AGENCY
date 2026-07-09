@@ -24,7 +24,7 @@ import {
   resolveThemeCities,
   type SeedDestinationLookup,
 } from "./trip-search";
-import type { ConciergeIntent, TripCandidate, TripOffer } from "./types";
+import type { ConciergeIntent, TripOffer } from "./types";
 
 /**
  * Wąski kształt narzędzia OpenAI/OpenRouter. Celowo `type` (nie `interface`):
@@ -98,6 +98,12 @@ const searchTripsTool: ToolDef = {
           minimum: 0,
           description: "Liczba dzieci uczestniczących w wyjeździe. Pomiń, jeśli użytkownik nie wspomniał o dzieciach.",
         },
+        nights: {
+          type: "integer",
+          minimum: 1,
+          maximum: 21,
+          description: "Liczba nocy, jeśli użytkownik ją podał (np. trzy noce). Pomiń, gdy nie podał.",
+        },
         wantsFlight: {
           type: "boolean",
           description: "Czy użytkownik chce, żeby wyszukiwarka uwzględniła lot.",
@@ -121,10 +127,11 @@ const getTripOfferTool: ToolDef = {
   function: {
     name: "get_trip_offer",
     description:
-      "Pobiera konkretną, aktualną ofertę (najtańszy hotel + najtańszy lot) dla wybranego kierunku. " +
-      "cityEn i countryEn podaj po angielsku (dokładnie jak w wyniku search_trips, np. cityEn=\"Antalya\", countryEn=\"Turkey\"). " +
-      "Dat (checkin/checkout) NIE podawaj, chyba że masz je z wyniku search_trips w TEJ turze — " +
-      "bez dat system sam dobierze świeży, dostępny termin. Nigdy nie wpisuj dat ani cen z pamięci/tekstu rozmowy.",
+      "Pobiera konkretną, aktualną ofertę (najtańszy hotel + najtańszy lot) dla wybranego kierunku i AUTOMATYCZNIE " +
+      "pokazuje użytkownikowi kartę oferty z linkami «Zobacz hotel» / «Zobacz lot» — nie musisz (i nie możesz) " +
+      "podawać linków samodzielnie. cityEn i countryEn podaj po angielsku (dokładnie jak w wyniku search_trips, " +
+      "np. cityEn=\"Antalya\", countryEn=\"Turkey\"). Gdy użytkownik podał miesiąc/liczbę nocy — przekaż je w month/nights, " +
+      "a system wyszuka PRAWDZIWE ceny na ten termin. Nigdy nie wpisuj dat ani cen z pamięci/tekstu rozmowy.",
     parameters: {
       type: "object",
       properties: {
@@ -136,17 +143,30 @@ const getTripOfferTool: ToolDef = {
           type: "string",
           description: "Angielska nazwa kraju — dokładnie ta wartość co w wyniku search_trips (pole countryEn).",
         },
+        month: {
+          type: "integer",
+          minimum: 1,
+          maximum: 12,
+          description:
+            "OPCJONALNE. Miesiąc wyjazdu (1–12) wskazany przez użytkownika — system dobierze konkretne daty w tym miesiącu i wyszuka realne ceny.",
+        },
+        nights: {
+          type: "integer",
+          minimum: 1,
+          maximum: 21,
+          description: "OPCJONALNE. Liczba nocy, jeśli użytkownik ją podał (domyślnie 7).",
+        },
         checkin: {
           type: "string",
           format: "date",
           description:
-            "OPCJONALNE. Data zameldowania YYYY-MM-DD — podaj TYLKO jeśli masz ją z wyniku search_trips w TEJ turze. W przeciwnym razie POMIŃ to pole — system sam dobierze świeże daty. NIGDY nie wpisuj dat z tekstu rozmowy.",
+            "OPCJONALNE. Data zameldowania YYYY-MM-DD — podaj TYLKO jeśli masz ją z wyniku search_trips w TEJ turze. W przeciwnym razie POMIŃ (użyj month/nights albo niczego). NIGDY nie wpisuj dat z tekstu rozmowy.",
         },
         checkout: {
           type: "string",
           format: "date",
           description:
-            "OPCJONALNE. Data wymeldowania YYYY-MM-DD — te same zasady co checkin: tylko z wyniku search_trips z TEJ tury, inaczej pomiń.",
+            "OPCJONALNE. Data wymeldowania YYYY-MM-DD — te same zasady co checkin.",
         },
         origin: {
           type: "string",
@@ -257,10 +277,29 @@ export interface ToolDeps {
   now?: () => number;
 }
 
+/**
+ * Kandydat w kształcie DLA MODELU — celowo BEZ cen jednostkowych
+ * (hotel/noc, lot/os.): realna rozmowa na preview pokazała, że model
+ * sumuje je błędnie po swojemu (np. „1948 zł" tam, gdzie wychodzi ~3541 zł).
+ * Dostaje więc wyłącznie gotową cenę pakietu na osobę — jedyną liczbę,
+ * którą ma cytować.
+ */
+export interface ModelTripCandidate {
+  cityEn: string;
+  countryEn: string;
+  cityPl: string;
+  /** Orientacyjna cena pakietu lot+hotel NA OSOBĘ dla podanych dat. */
+  perPersonPln: number;
+  checkin: string;
+  checkout: string;
+}
+
 export interface SearchTripsResult {
-  candidates: TripCandidate[];
+  candidates: ModelTripCandidate[];
   /** Powód pustej listy — bot komunikuje go użytkownikowi wprost. */
   reason?: string;
+  /** Instrukcja interpretacji dla modelu (dokleja się do wyniku). */
+  note?: string;
 }
 
 /** Maksymalna liczba kandydatów zwracanych modelowi (karty w czacie). */
@@ -310,12 +349,38 @@ function readSearchTripsArgs(args: unknown): ConciergeIntent {
 interface GetTripOfferArgs {
   cityEn: string;
   countryEn: string;
-  /** Brak/nieprawidłowe/przeszłe daty od modelu → undefined; egzekutor sam dobierze świeże daty ze snapshotu. */
+  /** Brak/nieprawidłowe/przeszłe daty od modelu → undefined; egzekutor sam dobierze daty (month/nights albo snapshot). */
   checkin: string | undefined;
   checkout: string | undefined;
+  /** Miesiąc wyjazdu wskazany przez użytkownika (1–12) — priorytet nad datami snapshotu. */
+  month: number | undefined;
+  /** Liczba nocy podana przez użytkownika (1–21). */
+  nights: number | undefined;
   originIata: string;
   adults: number;
   children: number;
+}
+
+/**
+ * Konkretne daty dla miesiąca wskazanego przez użytkownika: checkin 10. dnia
+ * miesiąca (bezpiecznie w środku, GDS ma pełną dostępność), następne
+ * wystąpienie co najmniej 7 dni w przyszłości (inaczej → kolejny rok).
+ * Czysta funkcja od `todayIso` — deterministyczna w testach.
+ */
+function datesForMonth(
+  month: number,
+  nights: number,
+  todayIso: string,
+): { checkin: string; checkout: string } {
+  const today = new Date(`${todayIso}T00:00:00Z`);
+  let checkinDate = new Date(Date.UTC(today.getUTCFullYear(), month - 1, 10));
+  const minStart = new Date(today.getTime() + 7 * 86_400_000);
+  if (checkinDate < minStart) {
+    checkinDate = new Date(Date.UTC(today.getUTCFullYear() + 1, month - 1, 10));
+  }
+  const checkoutDate = new Date(checkinDate.getTime() + nights * 86_400_000);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return { checkin: iso(checkinDate), checkout: iso(checkoutDate) };
 }
 
 /**
@@ -336,6 +401,11 @@ function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
   const origin = asTrimmedString(a.origin)?.toUpperCase();
   const adults = asInt(a.adults);
   const children = asInt(a.children) ?? 0;
+  const monthRaw = asInt(a.month);
+  const month = monthRaw !== undefined && monthRaw >= 1 && monthRaw <= 12 ? monthRaw : undefined;
+  const nightsRaw = asInt(a.nights);
+  const nights =
+    nightsRaw !== undefined && nightsRaw >= 1 ? Math.min(nightsRaw, 21) : undefined;
 
   const problems: string[] = [];
   if (!cityEn) problems.push("cityEn");
@@ -365,6 +435,8 @@ function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
     countryEn: countryEn!,
     checkin,
     checkout,
+    month,
+    nights,
     originIata: origin!,
     adults: adults!,
     children,
@@ -419,17 +491,31 @@ export function createToolExecutors(deps: ToolDeps) {
       return { candidates: [], reason: "Snapshot cen niedostępny — nie mamy w tej chwili świeżych cen, spróbuj później." };
     }
 
-    const candidates = rankTripCandidates(
+    const ranked = rankTripCandidates(
       cities,
       snapshot,
       { budgetPln: intent.budgetPln!, budgetKind: intent.budgetKind! },
       now(),
     ).slice(0, MAX_TRIP_CANDIDATES);
 
-    if (candidates.length === 0) {
-      return { candidates, reason: "Brak kierunków w tym budżecie/motywie — zaproponuj większy budżet lub inny motyw." };
+    if (ranked.length === 0) {
+      return { candidates: [], reason: "Brak kierunków w tym budżecie/motywie — zaproponuj większy budżet lub inny motyw." };
     }
-    return { candidates };
+    // Kształt DLA MODELU: tylko cena pakietu/os. — bez cen jednostkowych,
+    // których model nie umie poprawnie sumować (patrz ModelTripCandidate).
+    const candidates: ModelTripCandidate[] = ranked.map((c) => ({
+      cityEn: c.cityEn,
+      countryEn: c.countryEn,
+      cityPl: c.cityPl,
+      perPersonPln: c.perPersonPln,
+      checkin: c.checkin,
+      checkout: c.checkout,
+    }));
+    return {
+      candidates,
+      note:
+        "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę dla dat checkin–checkout (najbliższy dostępny termin). Cytuj ją jako „od X zł/os.”. Nie rozbijaj na lot/hotel i nie licz sum samodzielnie — dokładną, aktualną cenę (także na inny miesiąc) zwraca get_trip_offer.",
+    };
   }
 
   /**
@@ -445,18 +531,23 @@ export function createToolExecutors(deps: ToolDeps) {
     const dest = deps.resolveDest(a.cityEn, a.countryEn);
     const cityPl = dest?.city.pl ?? a.cityEn;
 
-    // Daty: gdy model ich nie podał, podał nonsens (parseGetTripOfferArgs)
-    // albo datę z PRZESZŁOŚCI (halucynacja roku z tekstu rozmowy — np. 2024),
-    // bierzemy świeże daty pakietu ze snapshotu. Daty są NASZYMI danymi
-    // (cron), nie wyjściem LLM. Porównanie przez wstrzyknięty now() —
-    // deterministyczne w testach.
+    // Daty — priorytet: (1) jawne przyszłe daty z wyniku search_trips,
+    // (2) miesiąc/noce wskazane przez UŻYTKOWNIKA (live ceny na jego termin!),
+    // (3) świeże daty pakietu ze snapshotu. Nigdy daty wymyślone przez LLM:
+    // data z przeszłości (halucynacja roku z tekstu) jest odrzucana.
+    // Porównanie przez wstrzyknięty now() — deterministyczne w testach.
     const todayIso = new Date(now()).toISOString().slice(0, 10);
     let checkin = a.checkin && a.checkin >= todayIso ? a.checkin : undefined;
     let checkout = checkin ? a.checkout : undefined;
     if (a.checkin && !checkin) {
       console.warn(
-        `[concierge] get_trip_offer: data od modelu z przeszłości (checkin=${a.checkin}, dziś=${todayIso}) — używam świeżych dat ze snapshotu`,
+        `[concierge] get_trip_offer: data od modelu z przeszłości (checkin=${a.checkin}, dziś=${todayIso}) — dobieram daty systemowo`,
       );
+    }
+    if ((!checkin || !checkout) && a.month) {
+      const derived = datesForMonth(a.month, a.nights ?? 7, todayIso);
+      checkin = derived.checkin;
+      checkout = derived.checkout;
     }
     if (!checkin || !checkout) {
       const snapshot = await deps.readSnapshot();

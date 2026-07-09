@@ -455,3 +455,105 @@ test("runConcierge: soft-malformed dwa razy z rzędu → error:true (tylko jedna
   assert.equal(chatCalls, 2);
   assert.equal(result.error, true);
 });
+
+// ── Auto-oferta po search_trips (karta bez łaski modelu) ────────────────────
+// Tani model nie łańcuchuje niezawodnie get_trip_offer po search_trips
+// (realny incydent na preview: user utknął bez karty). Kontrakt: po udanym
+// search_trips z kandydatami ORKIESTRATOR sam pobiera ofertę top-1 (przekazując
+// month/nights z argumentów wyszukiwania) i dokleja ją do wyniku narzędzia.
+
+test("runConcierge: search_trips z kandydatami → auto get_trip_offer top-1 (offer w wyniku tury)", async () => {
+  const offer = fakeOffer();
+  const offerCalls: Array<Record<string, unknown>> = [];
+  const calls: ChatArgs[] = [];
+  const deps = makeDeps({
+    chat: async (args) => {
+      calls.push(args as ChatArgs);
+      if (calls.length === 1) {
+        return {
+          choices: [{
+            message: {
+              role: "assistant",
+              tool_calls: [{
+                id: "t1", type: "function",
+                function: {
+                  name: "search_trips",
+                  arguments: JSON.stringify({
+                    theme: "plaza", budgetPln: 5000, budgetKind: "total_two",
+                    month: 12, nights: 3, adults: 2, origin: "WAW",
+                    wantsFlight: true, wantsHotel: true,
+                  }),
+                },
+              }],
+            },
+          }],
+        };
+      }
+      return { choices: [{ message: { role: "assistant", content: "Karta czeka!" } }] };
+    },
+    executors: {
+      executeSearchTrips: async () => ({
+        candidates: [
+          { cityEn: "Larnaca", countryEn: "Cyprus", cityPl: "Larnaka", perPersonPln: 1948, checkin: "2026-08-24", checkout: "2026-08-28" },
+        ],
+      }),
+      executeGetTripOffer: async (args: unknown) => {
+        offerCalls.push(args as Record<string, unknown>);
+        return offer;
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "słońce zimą" }], deps);
+  // Oferta trafiła do wyniku tury mimo że MODEL nie wywołał get_trip_offer.
+  assert.deepEqual(result.offer, offer);
+  assert.equal(result.error, false);
+  // Auto-wywołanie dostało kierunek top-1 + month/nights z argumentów wyszukiwania.
+  assert.equal(offerCalls.length, 1);
+  assert.equal(offerCalls[0].cityEn, "Larnaca");
+  assert.equal(offerCalls[0].month, 12);
+  assert.equal(offerCalls[0].nights, 3);
+  assert.equal(offerCalls[0].origin, "WAW");
+  // Wynik narzędzia widziany przez model niesie autoOffer + notę.
+  const toolMsg = calls[1].messages.find((m) => m.role === "tool") as { content: string };
+  assert.ok(toolMsg.content.includes("autoOffer"));
+  assert.ok(toolMsg.content.includes("JUŻ pokazana"));
+});
+
+test("runConcierge: auto-oferta pada → wynik search_trips bez autoOffer, zero crasha", async () => {
+  const calls: ChatArgs[] = [];
+  const deps = makeDeps({
+    chat: async (args) => {
+      calls.push(args as ChatArgs);
+      if (calls.length === 1) {
+        return {
+          choices: [{
+            message: {
+              role: "assistant",
+              tool_calls: [{
+                id: "t1", type: "function",
+                function: { name: "search_trips", arguments: JSON.stringify({ theme: "plaza" }) },
+              }],
+            },
+          }],
+        };
+      }
+      return { choices: [{ message: { role: "assistant", content: "Sama lista" } }] };
+    },
+    executors: {
+      executeSearchTrips: async () => ({
+        candidates: [{ cityEn: "Larnaca", countryEn: "Cyprus", cityPl: "Larnaka", perPersonPln: 1948, checkin: "2026-08-24", checkout: "2026-08-28" }],
+      }),
+      executeGetTripOffer: async () => { throw new Error("LiteAPI down"); },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "x" }], deps);
+  assert.equal(result.error, false);
+  assert.equal(result.offer, null);
+  const toolMsg = calls[1].messages.find((m) => m.role === "tool") as { content: string };
+  assert.ok(toolMsg.content.includes("candidates"));
+  assert.equal(toolMsg.content.includes("autoOffer"), false);
+});

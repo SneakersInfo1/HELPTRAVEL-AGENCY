@@ -87,12 +87,16 @@ test("executeSearchTrips: tylko kierunki w budżecie, kwoty DOKŁADNIE ze snapsh
   assert.equal(out.candidates.length, 1);
   const cand = out.candidates[0];
   assert.equal(cand.cityEn, c0.cityEn);
-  // Kwoty przechodzą 1:1 ze snapshotu — nic doliczonego, nic zgadniętego.
+  // Kwota pakietu 1:1 ze snapshotu — nic doliczonego, nic zgadniętego.
   assert.equal(cand.perPersonPln, 1500);
-  assert.equal(cand.hotelFromPlnPerNight, 200);
-  assert.equal(cand.flightFromPln, 900);
   assert.equal(cand.checkin, "2026-08-10");
   assert.equal(cand.checkout, "2026-08-17");
+  // Kształt DLA MODELU: BEZ cen jednostkowych (lot/os., hotel/noc) — model
+  // sumował je błędnie po swojemu (realny incydent z preview). Ma dostać
+  // wyłącznie gotową cenę pakietu + notę interpretacyjną.
+  assert.equal("hotelFromPlnPerNight" in cand, false);
+  assert.equal("flightFromPln" in cand, false);
+  assert.ok(typeof out.note === "string" && out.note.includes("ORIENTACYJNA"));
 });
 
 test("executeSearchTrips: zwraca maksymalnie 5 kandydatów", async () => {
@@ -286,6 +290,35 @@ test("executeGetTripOffer: brak dat od modelu → daty ze snapshotu", async () =
   });
   assert.equal(offer.checkin, "2026-08-10");
   assert.equal(offer.checkout, "2026-08-17");
+});
+
+test("executeGetTripOffer: month/nights użytkownika → daty w JEGO miesiącu (live, bez snapshotu)", async () => {
+  const exec = createToolExecutors(makeDeps({
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  })); // readSnapshot → null: daty z month/nights NIE potrzebują snapshotu
+  // now() fixture = 2026-07-07 → grudzień 2026 jest w przyszłości.
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Larnaca", countryEn: "Cyprus", origin: "WAW", adults: 2,
+    month: 12, nights: 3,
+  });
+  assert.equal(offer.checkin, "2026-12-10");
+  assert.equal(offer.checkout, "2026-12-13");
+  assert.ok(offer.hotel!.url.includes("checkin=2026-12-10"));
+  assert.ok(offer.flight!.url.includes("depart=2026-12-10"));
+});
+
+test("executeGetTripOffer: month już miniony w tym roku → następny rok (nie przeszłość)", async () => {
+  const exec = createToolExecutors(makeDeps({
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  // now() fixture = 2026-07-07 → marzec 2026 minął → marzec 2027.
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Larnaca", countryEn: "Cyprus", origin: "WAW", adults: 2, month: 3,
+  });
+  assert.equal(offer.checkin, "2027-03-10");
+  assert.equal(offer.checkout, "2027-03-17"); // domyślnie 7 nocy
 });
 
 test("executeGetTripOffer: brak dat i brak świeżego pakietu → błąd kierujący do search_trips", async () => {

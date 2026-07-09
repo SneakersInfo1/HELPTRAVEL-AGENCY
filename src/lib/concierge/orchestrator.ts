@@ -147,6 +147,47 @@ async function dispatchToolCall(
     switch (call.function.name) {
       case "search_trips": {
         const result = await executors.executeSearchTrips(args);
+        // AUTO-OFERTA: tani model NIE łańcuchuje niezawodnie get_trip_offer po
+        // search_trips (zweryfikowane na preview — user utknął bez karty mimo
+        // instrukcji w prompcie). Dlatego kartę najlepszego kandydata pobiera
+        // SYSTEM, nie model: krótszy lejek (karta w tej samej turze) i zero
+        // zależności od dyscypliny LLM. month/nights użytkownika przechodzą
+        // z argumentów wyszukiwania → live ceny na JEGO termin. Porażka
+        // auto-oferty nie psuje wyniku wyszukiwania (spadamy do samej listy).
+        const candidates = (result as { candidates?: Array<Record<string, unknown>> } | null)
+          ?.candidates;
+        const top = Array.isArray(candidates) ? candidates[0] : undefined;
+        if (top && typeof top.cityEn === "string" && typeof top.countryEn === "string") {
+          const searchArgs = (args && typeof args === "object" ? args : {}) as Record<
+            string,
+            unknown
+          >;
+          try {
+            const offer = await executors.executeGetTripOffer({
+              cityEn: top.cityEn,
+              countryEn: top.countryEn,
+              origin: searchArgs.origin ?? "WAW",
+              adults: searchArgs.adults ?? 2,
+              children: searchArgs.children ?? 0,
+              month: searchArgs.month,
+              nights: searchArgs.nights,
+            });
+            return {
+              result: {
+                ...(result as Record<string, unknown>),
+                autoOffer: offer,
+                autoOfferNote:
+                  "Karta tej oferty (najlepszy kandydat) została JUŻ pokazana użytkownikowi, z linkami „Zobacz hotel” i „Zobacz lot”. Omów jej wartość (cena, daty z karty, zapas do budżetu) i wymień 1–2 alternatywy z candidates.",
+              },
+              offer,
+            };
+          } catch (err) {
+            console.warn(
+              "concierge: auto-oferta po search_trips nieudana",
+              err instanceof Error ? err.message : err,
+            );
+          }
+        }
         return { result, offer: null };
       }
       case "get_trip_offer": {
