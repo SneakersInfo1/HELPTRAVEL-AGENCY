@@ -557,3 +557,16 @@ test("runConcierge: auto-oferta pada → wynik search_trips bez autoOffer, zero 
   assert.ok(toolMsg.content.includes("candidates"));
   assert.equal(toolMsg.content.includes("autoOffer"), false);
 });
+
+test("runConcierge: markdown z modelu (** # * ) zdejmowany mechanicznie z finalnego tekstu", async () => {
+  const deps = makeDeps({
+    chat: async () => ({
+      choices: [{ message: { role: "assistant", content: "## Oferta\n**Ateny** — super!\n* punkt jeden\n* punkt dwa" } }],
+    }),
+  });
+  const result = await runConcierge([{ role: "user", content: "x" }], deps);
+  assert.equal(result.text.includes("**"), false);
+  assert.equal(result.text.includes("#"), false);
+  assert.ok(result.text.includes("Ateny — super!"));
+  assert.ok(result.text.includes("- punkt jeden"));
+});

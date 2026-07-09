@@ -21,6 +21,8 @@ test("SYSTEM_PROMPT: krótki lejek — jedna tura dopytania, karta od razu, czys
   assert.equal(SYSTEM_PROMPT.includes("Nie czekaj, aż użytkownik poprosi o ofertę"), true);
   assert.equal(SYSTEM_PROMPT.includes("użytkownik JUŻ WIDZI"), true);
   assert.equal(SYSTEM_PROMPT.includes("zero markdownu"), true);
+  assert.equal(SYSTEM_PROMPT.includes("KONKRETNE MIASTO"), true);
+  assert.equal(SYSTEM_PROMPT.includes("nie dopytuj o coś, co użytkownik już podał"), true);
   assert.equal(SYSTEM_PROMPT.includes("gwiazdek"), true);
 });
 

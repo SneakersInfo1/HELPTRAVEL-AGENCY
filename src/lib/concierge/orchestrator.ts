@@ -39,6 +39,20 @@ export interface ConciergeResult {
 
 const FALLBACK_ERROR_TEXT = "Chwilowo nie mogę odpowiedzieć — spróbuj za moment.";
 
+/**
+ * Czat renderuje CZYSTY tekst — markdown pokazuje się użytkownikowi dosłownie
+ * jako gwiazdki/kratki. Zakaz jest w prompcie, ale modele (zwł. Haiku) i tak
+ * wstawiają pogrubienia w dłuższych odpowiedziach, więc zdejmujemy je
+ * mechanicznie: ** __ pogrubienia, nagłówki #, punktory "* " → "- ".
+ */
+function stripMarkdownArtifacts(text: string): string {
+  return text
+    .replace(/\*\*([^*]*)\*\*/g, "$1")
+    .replace(/__([^_]*)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*\*\s+/gm, "- ");
+}
+
 /** Maks. liczba tool_calls obsłużonych w jednej rundzie — reszta ignorowana. */
 const MAX_TOOL_CALLS_PER_ROUND = 3;
 
@@ -260,7 +274,7 @@ export async function runConcierge(
 
     if (typeof message.content === "string") {
       console.log("[concierge] usage", usage);
-      return { text: message.content, offer, error: false };
+      return { text: stripMarkdownArtifacts(message.content), offer, error: false };
     }
 
     // Ani content, ani tool_calls — traktujemy jak zdeformowaną odpowiedź.
@@ -277,7 +291,7 @@ export async function runConcierge(
   const finalMessage = (finalResponse as ChatCompletionResponse).choices![0]!.message!;
   if (typeof finalMessage.content === "string") {
     console.log("[concierge] usage", usage);
-    return { text: finalMessage.content, offer, error: false };
+    return { text: stripMarkdownArtifacts(finalMessage.content), offer, error: false };
   }
   console.error("concierge: OpenRouter error", finalResponse);
   return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
