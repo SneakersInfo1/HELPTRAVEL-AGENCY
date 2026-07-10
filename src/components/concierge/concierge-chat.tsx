@@ -73,6 +73,8 @@ function isValidOffer(value: unknown): value is TripOffer {
   if (typeof o.originIata !== "string") return false;
   if (typeof o.partial !== "boolean") return false;
   if (o.totalPerPersonPln !== null && typeof o.totalPerPersonPln !== "number") return false;
+  if (o.wantsFlight !== undefined && typeof o.wantsFlight !== "boolean") return false;
+  if (o.wantsHotel !== undefined && typeof o.wantsHotel !== "boolean") return false;
 
   if (o.hotel !== null) {
     if (typeof o.hotel !== "object" || o.hotel === undefined) return false;
