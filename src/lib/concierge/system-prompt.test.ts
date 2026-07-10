@@ -26,6 +26,15 @@ test("SYSTEM_PROMPT: krótki lejek — jedna tura dopytania, karta od razu, czys
   assert.equal(SYSTEM_PROMPT.includes("gwiazdek"), true);
 });
 
+test("SYSTEM_PROMPT: klient niekonkretny — założenia zamiast ankiety, szukanie bez budżetu", () => {
+  assert.equal(SYSTEM_PROMPT.includes("ZAKAZ ankiet"), true);
+  assert.equal(SYSTEM_PROMPT.includes("BEZ budżetu"), true);
+  assert.equal(SYSTEM_PROMPT.includes("TY prowadzisz"), true);
+  // Pogoda/klimat NIE są „poza zakresem" — realny incydent: bot odmówił na
+  // „gdzie jest teraz najcieplej w Europie?", czyli pytanie stricte podróżne.
+  assert.equal(SYSTEM_PROMPT.includes("SĄ w zakresie"), true);
+});
+
 test("SYSTEM_PROMPT: zakaz fałszywej presji/sztucznej rzadkości", () => {
   assert.equal(SYSTEM_PROMPT.includes("nie używaj fałszywej presji"), true);
   assert.equal(SYSTEM_PROMPT.includes("ostatnie"), true);
@@ -38,5 +47,9 @@ test("SYSTEM_PROMPT: sprzedażowe domykanie — następny krok + alternatywy prz
 });
 
 test("SYSTEM_PROMPT: koszt — długość promptu pod kontrolą (wysyłany z KAŻDYM requestem)", () => {
-  assert.equal(SYSTEM_PROMPT.length < 6000, true);
+  // Limit 7000 (wcześniej 6000): prompt caching (cache_control w
+  // orkiestratorze) zbija koszt statycznego prefiksu do 10% po pierwszym
+  // wywołaniu, więc stać nas na sekcję o niekonkretnym kliencie. Nadal
+  // pilnujemy sufitu — bez cache'a pierwszy request płaci pełną stawkę.
+  assert.equal(SYSTEM_PROMPT.length < 7000, true);
 });

@@ -210,6 +210,10 @@ export interface TrackEventMap {
     target: "hotel" | "flight";
     city?: string;
   };
+  /** Klik „Spróbuj ponownie" po błędzie odpowiedzi — mierzy tarcie transportu (cold start/timeout). */
+  concierge_retry: {
+    page_path?: string;
+  };
 
   /** Zakup lotu — GA4 ecommerce. `item_category:"flight"` ODRÓŻNIA od hoteli. */
   purchase: {

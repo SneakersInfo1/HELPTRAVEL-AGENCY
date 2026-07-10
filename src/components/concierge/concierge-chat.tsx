@@ -206,6 +206,40 @@ export function ConciergeChat({
   // podwaja realny POST do API. Poprawny wzorzec: policz `next` z aktualnego
   // `messages` (domknięcie, `messages` w deps), ustaw stan zwykłą wartością,
   // dopiero PO TYM (poza updaterem) odpal side effect.
+  // Wspólna „dostawa" tury: POST + dopisanie odpowiedzi albo wiadomości-błędu.
+  // Wydzielona, bo używają jej i sendMessage, i retryLast (ponowienie po
+  // błędzie transportu — realny incydent z preview: pierwsza wiadomość
+  // trafiła na cold start i użytkownik musiał przepisywać ją ręcznie).
+  // try/finally: postChat z założenia nie rzuca, ale `pending` NIE MOŻE
+  // utknąć na true — input byłby zablokowany na zawsze.
+  const deliver = useCallback(async (next: ConciergeMessage[]) => {
+    setPending(true);
+    try {
+      const result = await postChat(next);
+      if (!result.ok) {
+        const errorText =
+          result.kind === "rate-limit"
+            ? "Zbyt wiele wiadomości — odczekaj chwilę i spróbuj ponownie."
+            : "Chwilowo nie mogę się połączyć — spróbuj za moment.";
+        setMessages((cur) => [...cur, { role: "assistant", content: errorText, isError: true }]);
+        return;
+      }
+      if (result.offer) {
+        track("concierge_offer_shown", {
+          city: result.offer.cityPl,
+          total_per_person: result.offer.totalPerPersonPln ?? undefined,
+          partial: result.offer.partial,
+        });
+      }
+      setMessages((cur) => [
+        ...cur,
+        { role: "assistant", content: result.text, offer: result.offer, isError: result.error },
+      ]);
+    } finally {
+      setPending(false);
+    }
+  }, []);
+
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
@@ -215,39 +249,24 @@ export function ConciergeChat({
       const next = [...messages, userMessage];
       setMessages(next);
       setInput("");
-      setPending(true);
       track("concierge_message", { message_chars: trimmed.length });
-
-      // try/finally: postChat z założenia nie rzuca, ale `pending` NIE MOŻE
-      // utknąć na true, gdyby przyszła edycja to zepsuła — input byłby
-      // zablokowany na zawsze.
-      try {
-        const result = await postChat(next);
-        if (!result.ok) {
-          const errorText =
-            result.kind === "rate-limit"
-              ? "Zbyt wiele wiadomości — odczekaj chwilę i spróbuj ponownie."
-              : "Chwilowo nie mogę się połączyć — spróbuj za moment.";
-          setMessages((cur) => [...cur, { role: "assistant", content: errorText, isError: true }]);
-          return;
-        }
-        if (result.offer) {
-          track("concierge_offer_shown", {
-            city: result.offer.cityPl,
-            total_per_person: result.offer.totalPerPersonPln ?? undefined,
-            partial: result.offer.partial,
-          });
-        }
-        setMessages((cur) => [
-          ...cur,
-          { role: "assistant", content: result.text, offer: result.offer, isError: result.error },
-        ]);
-      } finally {
-        setPending(false);
-      }
+      await deliver(next);
     },
-    [pending, messages],
+    [pending, messages, deliver],
   );
+
+  // Ponowienie po błędzie: zdejmij końcowe wiadomości-błędy i wyślij tę samą
+  // historię jeszcze raz — użytkownik NIE przepisuje swojej wiadomości.
+  const retryLast = useCallback(async () => {
+    if (pending) return;
+    let cut = messages.length;
+    while (cut > 0 && messages[cut - 1].isError) cut -= 1;
+    const next = messages.slice(0, cut);
+    if (next.length === 0 || next[next.length - 1].role !== "user") return;
+    setMessages(next);
+    track("concierge_retry", { page_path: window.location.pathname });
+    await deliver(next);
+  }, [pending, messages, deliver]);
 
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -292,6 +311,27 @@ export function ConciergeChat({
             )}
           </div>
         ))}
+
+        {!pending && messages[messages.length - 1]?.isError && (
+          <div className="flex items-start">
+            <button
+              type="button"
+              onClick={() => void retryLast()}
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-900/15 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            >
+              <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                <path
+                  d="M16 10a6 6 0 1 1-1.76-4.24M16 3v3.5h-3.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Spróbuj ponownie
+            </button>
+          </div>
+        )}
 
         {isEmptyState && (
           <div className="flex flex-col gap-2 pt-1">

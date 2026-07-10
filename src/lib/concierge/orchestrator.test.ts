@@ -272,6 +272,22 @@ test("runConcierge: budgetFit — oferta ponad budżet → PRZEKRACZA z kwotą, 
   assert.equal(fit!.note.includes("MIEŚCI"), false);
 });
 
+test("runConcierge: budgetFit — „łącznie” dzielone przez WSZYSTKICH podróżnych, nie sztywno 2", async () => {
+  // Realny incydent: rodzina 2+1 z 6000 zł łącznie → stary /2 dał próg
+  // 3000 zł/os. i „zapas 758 zł" przy ofercie realnie PONAD budżet.
+  const offer = fakeOffer(); // totalPerPersonPln: 2400
+  const { deps, toolContents } = depsForBudgetFit(offer, {
+    cityEn: "Palma", countryEn: "Spain", origin: "WAW", adults: 2, children: 1,
+    budgetPln: 6000, budgetKind: "total_two", // 6000/3 = 2000 zł/os. → przekroczenie 400
+  });
+  await runConcierge([{ role: "user", content: "6000 łącznie, 2+1" }], deps);
+
+  const fit = (JSON.parse(toolContents[0]) as { budgetFit?: { gapPln: number; note: string } }).budgetFit;
+  assert.ok(fit);
+  assert.equal(fit!.gapPln, -400);
+  assert.ok(fit!.note.includes("PRZEKRACZA"));
+});
+
 test("runConcierge: budgetFit — brak budżetu w argumentach → wynik bez budgetFit", async () => {
   const offer = fakeOffer();
   const { deps, toolContents } = depsForBudgetFit(offer, {

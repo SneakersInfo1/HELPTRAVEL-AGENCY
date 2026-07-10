@@ -177,7 +177,13 @@ function computeBudgetFit(
       ? a.budgetPln
       : null;
   if (budgetPln === null) return null;
-  const perPerson = a.budgetKind === "total_two" ? budgetPln / 2 : budgetPln;
+  // „Łącznie" dzielimy przez REALNĄ liczbę podróżnych z argumentów — nie
+  // sztywno przez 2 (realny incydent: rodzina 2+1 z 6000 zł łącznie dostała
+  // „zapas 758 zł/os." przy ofercie 6726 zł > 6000 zł).
+  const adults = typeof a.adults === "number" && a.adults >= 1 ? a.adults : 2;
+  const children = typeof a.children === "number" && a.children >= 0 ? a.children : 0;
+  const pax = Math.max(1, adults + children);
+  const perPerson = a.budgetKind === "total_two" ? budgetPln / pax : budgetPln;
   const gapPln = Math.round(perPerson - totalPerPersonPln);
   const note =
     gapPln >= 0

@@ -100,6 +100,46 @@ test("executeSearchTrips: tylko kierunki w budżecie, kwoty DOKŁADNIE ze snapsh
   assert.ok(typeof out.note === "string" && out.note.includes("ORIENTACYJNA"));
 });
 
+test("executeSearchTrips: BEZ budżetu → szuka bez limitu, od najtańszego + nota o dopytaniu", async () => {
+  // Klient niekonkretny („najtaniej jak się da") — budżet nie może blokować
+  // wyszukiwania; miesiąc/osoby nadal wymagane.
+  assert.ok(themeCities.length >= 2, "fixture sanity");
+  const [c0, c1] = themeCities;
+  const snap: DestinationPriceSnapshot = {
+    [destinationPriceKey(c0.cityEn, c0.countryEn)]: pkgEntry(4200),
+    [destinationPriceKey(c1.cityEn, c1.countryEn)]: pkgEntry(1900),
+  };
+  const exec = createToolExecutors(makeDeps({ readSnapshot: async () => snap }));
+
+  const noBudgetArgs = { theme: THEME, month: 8, adults: 2, wantsFlight: true, wantsHotel: true };
+  const out = await exec.executeSearchTrips(noBudgetArgs);
+  assert.equal(out.reason, undefined); // NIE blokujemy dopytywaniem o budżet
+  assert.equal(out.candidates.length, 2);
+  assert.equal(out.candidates[0].perPersonPln, 1900); // od najtańszego
+  assert.ok(out.note!.includes("NIE podał budżetu"));
+
+  // Kwota BEZ interpretacji (budgetKind) → nadal dopytanie (niejednoznaczne),
+  // z anty-ankietową instrukcją formy.
+  const ambiguous = await exec.executeSearchTrips({ ...noBudgetArgs, budgetPln: 3000 });
+  assert.ok(ambiguous.reason && ambiguous.reason.includes("budgetKind"));
+  assert.ok(ambiguous.reason.includes("Nigdy listą numerowaną"));
+});
+
+test("executeSearchTrips: budżet „łącznie” dzielony przez WSZYSTKICH (rodzina 2+1), nie przez 2", async () => {
+  assert.ok(themeCities.length >= 2, "fixture sanity");
+  const [c0, c1] = themeCities;
+  const snap: DestinationPriceSnapshot = {
+    [destinationPriceKey(c0.cityEn, c0.countryEn)]: pkgEntry(2242), // > 6000/3 → poza progiem
+    [destinationPriceKey(c1.cityEn, c1.countryEn)]: pkgEntry(1900), // ≤ 2000 → w progu
+  };
+  const exec = createToolExecutors(makeDeps({ readSnapshot: async () => snap }));
+  const out = await exec.executeSearchTrips({
+    ...searchArgs, budgetPln: 6000, budgetKind: "total_two", adults: 2, children: 1,
+  });
+  assert.equal(out.candidates.length, 1);
+  assert.equal(out.candidates[0].perPersonPln, 1900);
+});
+
 test("executeSearchTrips: zwraca maksymalnie 5 kandydatów", async () => {
   assert.ok(themeCities.length >= 6, "fixture sanity: motyw ma ≥6 kierunków");
   const snap: DestinationPriceSnapshot = Object.fromEntries(
@@ -307,6 +347,21 @@ test("executeGetTripOffer: month/nights użytkownika → daty w JEGO miesiącu (
   assert.equal(offer.checkout, "2026-12-13");
   assert.ok(offer.hotel!.url.includes("checkin=2026-12-10"));
   assert.ok(offer.flight!.url.includes("depart=2026-12-10"));
+});
+
+test("executeGetTripOffer: month = BIEŻĄCY miesiąc → najbliższy termin w TYM miesiącu, nie za rok", async () => {
+  // Realny incydent: 10 lipca użytkownik prosi o „lipiec" → stara logika
+  // skakała na lipiec NASTĘPNEGO roku (poza horyzontem sprzedaży lotów GDS
+  // → karta bez lotu). now() fixture = 2026-07-07 → minStart = 2026-07-14.
+  const exec = createToolExecutors(makeDeps({
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Larnaca", countryEn: "Cyprus", origin: "WAW", adults: 2, month: 7, nights: 7,
+  });
+  assert.equal(offer.checkin, "2026-07-14");
+  assert.equal(offer.checkout, "2026-07-21");
 });
 
 test("executeGetTripOffer: month już miniony w tym roku → następny rok (nie przeszłość)", async () => {
