@@ -60,8 +60,14 @@ export interface TripOffer {
   /** Suma na osobę: ceil((hotel.totalPln + flight.totalPln) / (adults+children)).
    *  Ta sama konwencja co computePackagePerPerson (hotel dzielony na głowy, lot
    *  już policzony za wszystkich), uogólniona na realną liczbę osób; ceil — nie
-   *  zaniżamy. TYLKO gdy oba komponenty realne, inaczej null (nie zgadujemy). */
+   *  zaniżamy. TYLKO gdy wszystkie CHCIANE komponenty realne, inaczej null
+   *  (przy wantsFlight=false to uczciwa cena SAMEGO hotelu na osobę). */
   totalPerPersonPln: number | null;
-  /** true gdy którykolwiek komponent się nie udał (bot mówi o tym wprost). */
+  /** true gdy CHCIANY komponent się nie udał (bot mówi o tym wprost). */
   partial: boolean;
+  /** false = użytkownik jawnie NIE chce lotu (sam hotel) — karta nie renderuje
+   *  sekcji lotu ani boksu „nie udało się potwierdzić". Brak pola = true. */
+  wantsFlight?: boolean;
+  /** false = użytkownik jawnie NIE chce hotelu (sam lot) — analogicznie. */
+  wantsHotel?: boolean;
 }

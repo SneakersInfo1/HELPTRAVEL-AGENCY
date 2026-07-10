@@ -388,6 +388,45 @@ test("executeGetTripOffer: brak dat i brak świeżego pakietu → błąd kieruj�
   );
 });
 
+// ── Sam hotel / sam lot (bateria konwersyjna: „SAM hotel w Rzymie bez lotu"
+//    dostawał kartę Z LOTEM i ceną pakietu) ────────────────────────────────────
+
+test("executeGetTripOffer: wantsFlight=false → zero wywołań lotów, cena/os. z SAMEGO hotelu, partial=false", async () => {
+  let flightCalls = 0;
+  const exec = createToolExecutors(makeDeps({
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => {
+      flightCalls += 1;
+      return FLIGHT;
+    },
+  }));
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Rome", countryEn: "Italy", origin: "WAW", adults: 2,
+    month: 10, nights: 3, wantsFlight: false,
+  });
+  assert.equal(flightCalls, 0);
+  assert.equal(offer.flight, null);
+  assert.equal(offer.wantsFlight, false);
+  assert.equal(offer.wantsHotel, true);
+  // partial dotyczy tylko CHCIANYCH komponentów; cena/os. = sam hotel.
+  assert.equal(offer.partial, false);
+  assert.equal(offer.totalPerPersonPln, Math.ceil(HOTEL.totalPln / 2));
+});
+
+test("executeGetTripOffer: oba wants=false (nonsens od modelu) → pełny pakiet", async () => {
+  const exec = createToolExecutors(makeDeps({
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Rome", countryEn: "Italy", origin: "WAW", adults: 2,
+    month: 10, wantsFlight: false, wantsHotel: false,
+  });
+  assert.ok(offer.hotel);
+  assert.ok(offer.flight);
+  assert.equal(offer.partial, false);
+});
+
 // ── Aliasy wysp (realny incydent: „A coś na Majorce?" → karta MADRYTU) ───────
 
 test("executeGetTripOffer: wyspa od modelu (Majorka) → kanoniczne miasto seedu we WSZYSTKICH lookupach", async () => {

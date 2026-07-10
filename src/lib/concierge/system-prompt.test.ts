@@ -46,10 +46,22 @@ test("SYSTEM_PROMPT: sprzedażowe domykanie — następny krok + alternatywy prz
   assert.equal(SYSTEM_PROMPT.includes("szukaj dalej"), true);
 });
 
+test("SYSTEM_PROMPT: konwersja bez zmyślania — obiekcja=nowa karta, fakty procesu zakupu", () => {
+  // Bateria konwersyjna 2026-07-11: (a) przy „za drogo" Haiku powtarzał starą
+  // kartę z przekłamanym zapasem zamiast wywołać narzędzie; (b) na pytanie
+  // o płatność ZMYŚLIŁ przelew, „lata działalności" i „vouchery".
+  assert.equal(SYSTEM_PROMPT.includes("W BIEŻĄCEJ turze"), true);
+  assert.equal(SYSTEM_PROMPT.includes("Nie powtarzaj odrzuconej oferty"), true);
+  assert.equal(SYSTEM_PROMPT.includes("all inclusive"), true);
+  assert.equal(SYSTEM_PROMPT.includes("PROCES ZAKUPU"), true);
+  assert.equal(SYSTEM_PROMPT.includes("NUITEE TRAVEL"), true);
+  assert.equal(SYSTEM_PROMPT.includes("DWIE osobne"), true);
+});
+
 test("SYSTEM_PROMPT: koszt — długość promptu pod kontrolą (wysyłany z KAŻDYM requestem)", () => {
-  // Limit 7000 (wcześniej 6000): prompt caching (cache_control w
+  // Limit 8000 (historycznie 6000→7000): prompt caching (cache_control w
   // orkiestratorze) zbija koszt statycznego prefiksu do 10% po pierwszym
-  // wywołaniu, więc stać nas na sekcję o niekonkretnym kliencie. Nadal
-  // pilnujemy sufitu — bez cache'a pierwszy request płaci pełną stawkę.
-  assert.equal(SYSTEM_PROMPT.length < 7000, true);
+  // wywołaniu — sekcje o niekonkretnym kliencie i procesie zakupu są niemal
+  // darmowe. Nadal pilnujemy sufitu: pierwszy request płaci pełną stawkę.
+  assert.equal(SYSTEM_PROMPT.length < 8000, true);
 });

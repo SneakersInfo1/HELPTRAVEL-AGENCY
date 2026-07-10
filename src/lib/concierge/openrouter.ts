@@ -16,10 +16,12 @@ export const MAX_TOKENS = 700;
  */
 export const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
+// Kontrakt czatu to POJEDYNCZY JSON (route → orkiestrator) — martwa obsługa
+// stream/ReadableStream usunięta w audycie czystości 2026-07-11 (nikt jej nie
+// wołał, a zaciemniała typ zwrotny fallbacku modelu).
 interface ChatCompletionArgs {
   messages: Record<string, unknown>[];
   tools: Record<string, unknown>[];
-  stream?: boolean;
 }
 
 /** Błąd OpenRoutera wskazujący na zły/nieistniejący slug modelu (404 + tekst o modelu). */
@@ -34,8 +36,8 @@ function isInvalidModelError(payload: unknown): boolean {
 async function requestChatCompletion(
   apiKey: string,
   model: string,
-  { messages, tools, stream = false }: ChatCompletionArgs,
-): Promise<unknown | ReadableStream<unknown>> {
+  { messages, tools }: ChatCompletionArgs,
+): Promise<unknown> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -45,7 +47,6 @@ async function requestChatCompletion(
       messages,
       temperature: 0.3,
       max_tokens: MAX_TOKENS,
-      stream,
     };
 
     // Include tools only if the array is not empty
@@ -66,17 +67,13 @@ async function requestChatCompletion(
       signal: controller.signal,
     });
 
-    if (stream && response.body) {
-      return response.body;
-    }
-
     return await response.json();
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
-export async function chatCompletion(args: ChatCompletionArgs): Promise<unknown | ReadableStream<unknown>> {
+export async function chatCompletion(args: ChatCompletionArgs): Promise<unknown> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY not configured");
@@ -86,9 +83,8 @@ export async function chatCompletion(args: ChatCompletionArgs): Promise<unknown 
   const result = await requestChatCompletion(apiKey, model, args);
 
   // Fallback: env wskazuje slug, którego OpenRouter nie zna → ponów raz na
-  // modelu wbudowanym (chyba że to on właśnie zawiódł). Strumienia nie da się
-  // zbadać bez konsumpcji, więc fallback dotyczy tylko odpowiedzi JSON.
-  if (model !== DEFAULT_MODEL && !(result instanceof ReadableStream) && isInvalidModelError(result)) {
+  // modelu wbudowanym (chyba że to on właśnie zawiódł).
+  if (model !== DEFAULT_MODEL && isInvalidModelError(result)) {
     console.error(
       `[concierge] OPENROUTER_MODEL="${model}" odrzucony przez OpenRouter (zły/nieistniejący slug) — fallback na ${DEFAULT_MODEL}. Popraw albo usuń zmienną środowiskową.`,
     );

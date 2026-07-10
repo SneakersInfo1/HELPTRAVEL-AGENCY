@@ -195,6 +195,15 @@ const getTripOfferTool: ToolDef = {
           minimum: 0,
           description: "Liczba dzieci uczestniczących w wyjeździe. Pomiń, jeśli nie dotyczy.",
         },
+        wantsFlight: {
+          type: "boolean",
+          description:
+            "Ustaw false TYLKO, gdy użytkownik jawnie chce ofertę BEZ lotu (sam hotel) — karta i cena obejmą wtedy tylko hotel.",
+        },
+        wantsHotel: {
+          type: "boolean",
+          description: "Ustaw false TYLKO, gdy użytkownik jawnie chce SAM lot (bez hotelu).",
+        },
         budgetPln: {
           type: "number",
           description:
@@ -325,6 +334,12 @@ export interface ModelTripCandidate {
    * kraj spoza grzanych kierunków) — cenę zna dopiero karta oferty (live).
    */
   perPersonPln: number | null;
+  /**
+   * GOTOWY zapas/os. względem budżetu użytkownika (próg − perPersonPln) —
+   * liczy SYSTEM, model tylko cytuje (bateria konwersyjna: Haiku liczył
+   * zapasy kandydatów sam i potrafił się mylić). null = brak budżetu.
+   */
+  zapasPln: number | null;
   checkin: string | null;
   checkout: string | null;
 }
@@ -419,6 +434,9 @@ interface GetTripOfferArgs {
   originIata: string;
   adults: number;
   children: number;
+  /** false = oferta bez lotu / bez hotelu (jawna prośba użytkownika). Oba false → traktujemy jak pełny pakiet. */
+  wantsFlight: boolean;
+  wantsHotel: boolean;
 }
 
 /**
@@ -474,6 +492,13 @@ function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
   const nightsRaw = asInt(a.nights);
   const nights =
     nightsRaw !== undefined && nightsRaw >= 1 ? Math.min(nightsRaw, 21) : undefined;
+  // Sam hotel / sam lot — jawne false od modelu; oba false to nonsens → pełny pakiet.
+  let wantsFlight = a.wantsFlight !== false;
+  let wantsHotel = a.wantsHotel !== false;
+  if (!wantsFlight && !wantsHotel) {
+    wantsFlight = true;
+    wantsHotel = true;
+  }
 
   const problems: string[] = [];
   if (!cityEn) problems.push("cityEn");
@@ -508,6 +533,8 @@ function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
     originIata: origin!,
     adults: adults!,
     children,
+    wantsFlight,
+    wantsHotel,
   };
 }
 
@@ -608,13 +635,14 @@ export function createToolExecutors(deps: ToolDeps) {
         countryEn: c.countryEn,
         cityPl: c.cityPl,
         perPersonPln: c.perPersonPln,
+        zapasPln: noBudget ? null : perPersonCap - c.perPersonPln,
         checkin: c.checkin,
         checkout: c.checkout,
       }));
       return {
         candidates,
         note:
-          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę dla dat checkin–checkout (najbliższy dostępny termin). Cytuj ją jako „od X zł/os.”. Nie rozbijaj na lot/hotel i nie licz sum samodzielnie — dokładną, aktualną cenę (także na inny miesiąc) zwraca get_trip_offer." +
+          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę dla dat checkin–checkout (najbliższy dostępny termin). Cytuj ją jako „od X zł/os.”, a zapas/os. bierz z GOTOWEGO pola zapasPln — nie licz go sam. Nie rozbijaj na lot/hotel i nie sumuj — dokładną, aktualną cenę (także na inny miesiąc) zwraca get_trip_offer." +
           (noBudget
             ? " Użytkownik NIE podał budżetu: kandydaci są posortowani od najtańszego. Przy prezentacji karty zapytaj krótko o budżet, żeby policzyć zapas."
             : ""),
@@ -630,6 +658,7 @@ export function createToolExecutors(deps: ToolDeps) {
         countryEn: c.countryEn,
         cityPl: c.cityPl,
         perPersonPln: null,
+        zapasPln: null,
         checkin: null,
         checkout: null,
       }));
@@ -709,17 +738,24 @@ export function createToolExecutors(deps: ToolDeps) {
       checkout = pkg.checkout;
     }
 
+    // Sam hotel / sam lot: niechcianego komponentu w ogóle NIE pobieramy —
+    // szybciej, taniej (zero zbędnych wywołań LiteAPI) i uczciwie: karta oraz
+    // cena/os. obejmują dokładnie to, o co prosił użytkownik.
     const [hotelRes, flightRes] = await Promise.allSettled([
-      deps.findCheapestHotel({
-        cityEn: a.cityEn, countryEn: a.countryEn,
-        checkin, checkout,
-        adults: a.adults, children: a.children,
-      }),
-      deps.findCheapestFlight({
-        originIata: a.originIata, cityEn: a.cityEn, countryEn: a.countryEn,
-        depart: checkin, returnDate: checkout,
-        adults: a.adults, children: a.children,
-      }),
+      a.wantsHotel
+        ? deps.findCheapestHotel({
+            cityEn: a.cityEn, countryEn: a.countryEn,
+            checkin, checkout,
+            adults: a.adults, children: a.children,
+          })
+        : Promise.resolve(null),
+      a.wantsFlight
+        ? deps.findCheapestFlight({
+            originIata: a.originIata, cityEn: a.cityEn, countryEn: a.countryEn,
+            depart: checkin, returnDate: checkout,
+            adults: a.adults, children: a.children,
+          })
+        : Promise.resolve(null),
     ]);
     if (hotelRes.status === "rejected") {
       console.warn("[concierge] komponent hotelowy oferty nieudany:", hotelRes.reason instanceof Error ? hotelRes.reason.message : hotelRes.reason);
@@ -765,12 +801,17 @@ export function createToolExecutors(deps: ToolDeps) {
         }
       : null;
 
-    // Suma na osobę TYLKO gdy oba komponenty realne (konwencja jak
-    // computePackagePerPerson: hotel na głowy + lot już za wszystkich; ceil —
-    // nie zaniżamy). Częściowa oferta → null, bot mówi o braku wprost.
+    // Suma na osobę TYLKO gdy wszystkie CHCIANE komponenty realne (konwencja
+    // jak computePackagePerPerson: hotel na głowy + lot już za wszystkich;
+    // ceil — nie zaniżamy). Przy wantsFlight=false to uczciwa cena SAMEGO
+    // hotelu/os. Brak chcianego komponentu → null + partial, bot mówi wprost.
     const totalPax = a.adults + a.children;
+    const allWantedPresent =
+      (!a.wantsHotel || hotel !== null) && (!a.wantsFlight || flight !== null);
     const totalPerPersonPln =
-      hotel && flight ? Math.ceil((hotel.totalPln + flight.totalPln) / totalPax) : null;
+      allWantedPresent && (hotel || flight)
+        ? Math.ceil(((hotel?.totalPln ?? 0) + (flight?.totalPln ?? 0)) / totalPax)
+        : null;
 
     return {
       cityEn: a.cityEn,
@@ -784,7 +825,9 @@ export function createToolExecutors(deps: ToolDeps) {
       hotel,
       flight,
       totalPerPersonPln,
-      partial: hotel === null || flight === null,
+      partial: !allWantedPresent,
+      wantsFlight: a.wantsFlight,
+      wantsHotel: a.wantsHotel,
     };
   }
 
