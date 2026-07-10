@@ -154,7 +154,7 @@ export function TripOfferCard({
               </div>
             </div>
           </Link>
-        ) : (
+        ) : offer.wantsHotel === false ? null : (
           <p className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-3 py-3 text-xs text-neutral-600">
             Hotelu nie udało się teraz potwierdzić — sprawdź na stronie wyników.
             {flight && (
@@ -204,7 +204,7 @@ export function TripOfferCard({
               <span>Zobacz lot →</span>
             </span>
           </Link>
-        ) : (
+        ) : offer.wantsFlight === false ? null : (
           <p className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-3 py-3 text-xs text-neutral-600">
             Lotu nie udało się teraz potwierdzić — sprawdź na stronie wyników.
             {hotel && (
