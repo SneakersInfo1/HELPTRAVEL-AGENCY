@@ -10,6 +10,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getSiteUrl } from "@/lib/mvp/site";
+import { notifyCritical } from "@/lib/alerting/notify";
+import { saveFailed } from "@/lib/booking/session";
 import { TrackView } from "@/components/analytics/track-view";
 import { CheckoutSteps } from "../_components/checkout-steps";
 import { ConfettiBurst } from "./_components/confetti-burst";
@@ -29,6 +31,28 @@ export const metadata: Metadata = {
 
 const SUPPORT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "pomoc@helptravel.pl";
+
+// Poza komponentem (React Compiler: zakaz Date.now() w renderze). Zapis
+// recovery-record po padzie transportu do /api/booking/book — nigdy nie rzuca.
+async function persistReturnPageFailure(
+  sid: string,
+  paymentIntentId: string | undefined,
+  message: string,
+): Promise<void> {
+  try {
+    await saveFailed({
+      sessionId: sid,
+      paymentIntentId,
+      errorCode: "BOOK_FAILED_AFTER_PAYMENT",
+      message: `return_page_self_fetch_failed: ${message}`,
+      createdAt: Date.now(),
+    });
+  } catch (persistErr) {
+    console.error(
+      `[liteapi][booking][CRITICAL] recovery_record_persist_failed sid=${sid} (return page): ${persistErr instanceof Error ? persistErr.message : String(persistErr)}`,
+    );
+  }
+}
 
 // Display helpers — kept byte-for-byte consistent with the booking-confirmation
 // email template (src/lib/email/templates/booking-confirmation.ts) so the dates,
@@ -161,30 +185,65 @@ export default async function ReturnPage({
     );
   }
 
-  let status = 0;
-  let data: Record<string, unknown> = {};
-  try {
+  // Finalizacja przez self-fetch do /api/booking/book. Audyt 2026-07-10:
+  // pojedynczy fetch w try/catch zostawiał DZIURĘ — gdy sam transport padł
+  // (timeout, cold start, blip DNS), użytkownik z pobraną płatnością widział
+  // tylko ekran z sid, a system NIE zapisywał recovery-record ani nie słał
+  // alertu (loty załatały to samo 2026-06-14 wołaniem finalizacji in-process).
+  // Tu: (1) jedna ponowna próba z nagłówkiem X-Booking-Retry (route najpierw
+  // rekoncyliuje po clientReference — bez ryzyka podwójnego booka; idem-key =
+  // sid dodatkowo to gwarantuje), (2) gdy i ona padnie — persist failed-record
+  // + [CRITICAL] alert BEZPOŚREDNIO stąd (server component, ten sam proces).
+  const postBook = async (retry: boolean) => {
     const res = await fetch(`${getSiteUrl()}/api/booking/book`, {
       method: "POST",
-      headers: { "content-type": "application/json", "idempotency-key": sid },
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": sid,
+        ...(retry ? { "x-booking-retry": "1" } : {}),
+      },
       body: JSON.stringify({
         sessionId: sid,
         ...(paymentIntentId ? { paymentIntentId } : {}),
       }),
       cache: "no-store",
     });
-    status = res.status;
-    data = (await res.json()) as Record<string, unknown>;
-  } catch {
-    return (
-      <Shell tone="warn" title="Nie udało się potwierdzić rezerwacji">
-        <p>
-          Jeśli płatność przeszła, Twoja rezerwacja wymaga ręcznego
-          potwierdzenia. Skontaktuj się z nami, podając ten identyfikator:
-        </p>
-        <p className="font-mono text-xs">{sid}</p>
-      </Shell>
+    return { status: res.status, data: (await res.json()) as Record<string, unknown> };
+  };
+
+  let status = 0;
+  let data: Record<string, unknown> = {};
+  try {
+    ({ status, data } = await postBook(false));
+  } catch (firstErr) {
+    console.warn(
+      `[booking][return] pierwszy POST /api/booking/book padł na transporcie (sid=${sid}): ${firstErr instanceof Error ? firstErr.message : String(firstErr)} — ponawiam z X-Booking-Retry`,
     );
+    try {
+      ({ status, data } = await postBook(true));
+    } catch (secondErr) {
+      const message = secondErr instanceof Error ? secondErr.message : String(secondErr);
+      console.error(
+        `[liteapi][booking][CRITICAL] return_page_book_unreachable sid=${sid} paymentIntentId=${paymentIntentId ?? "n/a"} — płatność mogła zostać pobrana, /api/booking/book nieosiągalny (${message})`,
+      );
+      await persistReturnPageFailure(sid, paymentIntentId, message);
+      notifyCritical({
+        source: "booking",
+        title: "Return page could not reach /api/booking/book",
+        body: "Both POST attempts failed at transport level. Charge may exist on Stripe; /rates/book was likely never called. Reconcile manually.",
+        fields: { sessionId: sid, paymentIntentId },
+      }).catch(() => {});
+      return (
+        <Shell tone="warn" title="Nie udało się potwierdzić rezerwacji">
+          <p>
+            Jeśli płatność przeszła, Twoja rezerwacja wymaga ręcznego
+            potwierdzenia — mamy już zgłoszenie i skontaktujemy się z Tobą.
+            W razie pytań podaj ten identyfikator:
+          </p>
+          <p className="font-mono text-xs">{sid}</p>
+        </Shell>
+      );
+    }
   }
 
   if (status === 200) {
