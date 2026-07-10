@@ -145,7 +145,11 @@ export function QuickSearchLauncher() {
           onClick={openPanel}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className="group fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-2 rounded-full bg-emerald-600 py-3 pl-4 pr-5 text-sm font-bold text-white shadow-[0_10px_30px_rgba(16,84,48,0.35)] outline-none transition hover:bg-emerald-700 hover:shadow-[0_14px_38px_rgba(16,84,48,0.45)] focus-visible:ring-4 focus-visible:ring-emerald-300/60 motion-safe:hover:-translate-y-0.5 sm:bottom-6 sm:right-6"
+          // bottom offset przesunięty W GÓRĘ (było: bottom-[...1rem] / sm:bottom-6) —
+          // ConciergeLauncher (Task 4.2) zajął podstawowy slot bottom-right jako
+          // widget GŁÓWNY; ten FAB układa się nad nim w stosie (patrz komentarz
+          // w concierge-launcher.tsx). Tylko offset pozycji — nic więcej zmienione.
+          className="group fixed bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] right-4 z-40 inline-flex items-center gap-2 rounded-full bg-emerald-600 py-3 pl-4 pr-5 text-sm font-bold text-white shadow-[0_10px_30px_rgba(16,84,48,0.35)] outline-none transition hover:bg-emerald-700 hover:shadow-[0_14px_38px_rgba(16,84,48,0.45)] focus-visible:ring-4 focus-visible:ring-emerald-300/60 motion-safe:hover:-translate-y-0.5 sm:bottom-[5rem] sm:right-6"
         >
           <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-5 w-5">
             <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="2" />

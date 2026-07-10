@@ -190,6 +190,31 @@ export interface TrackEventMap {
     code?: string;
     http_status?: number;
   };
+  // ── AI Concierge (czat doboru wyjazdu) ──
+  concierge_open: {
+    /** Ścieżka strony, na której otwarto czat. */
+    page_path?: string;
+  };
+  concierge_message: {
+    /** Długość wiadomości użytkownika w znakach — świadomie BEZ treści (zero PII). */
+    message_chars?: number;
+  };
+  concierge_offer_shown: {
+    city?: string;
+    total_per_person?: number;
+    /** true = brakowało hotelu albo lotu (oferta częściowa). */
+    partial?: boolean;
+  };
+  /** Klik w podgląd karty oferty — handoff do strony hotelu / wyników lotów. */
+  concierge_offer_click: {
+    target: "hotel" | "flight";
+    city?: string;
+  };
+  /** Klik „Spróbuj ponownie" po błędzie odpowiedzi — mierzy tarcie transportu (cold start/timeout). */
+  concierge_retry: {
+    page_path?: string;
+  };
+
   /** Zakup lotu — GA4 ecommerce. `item_category:"flight"` ODRÓŻNIA od hoteli. */
   purchase: {
     booking_id: string;
