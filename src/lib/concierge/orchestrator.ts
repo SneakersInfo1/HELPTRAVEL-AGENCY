@@ -232,14 +232,23 @@ async function dispatchToolCall(
               children: searchArgs.children ?? 0,
               month: searchArgs.month,
               nights: searchArgs.nights,
+              // Sam hotel / sam lot — auto-oferta respektuje życzenie z search
+              // (inaczej klient „bez lotu" dostawał kartę z lotem i ceną pakietu).
+              wantsFlight: searchArgs.wantsFlight,
+              wantsHotel: searchArgs.wantsHotel,
             });
             const budgetFit = computeBudgetFit(searchArgs, offer.totalPerPersonPln);
             return {
               result: {
                 ...(result as Record<string, unknown>),
+                // Top kandydat JEST auto-ofertą — wycinamy go z listy, żeby
+                // model nie cytował tego samego miasta drugi raz z INNĄ
+                // (snapshotową) ceną jako „alternatywy" (realny incydent:
+                // karta Larnaka 1833 zł/os. + „alternatywa Larnaka od 1081").
+                candidates: candidates!.slice(1),
                 autoOffer: budgetFit ? { ...offer, budgetFit } : offer,
                 autoOfferNote:
-                  "Karta tej oferty (najlepszy kandydat) została JUŻ pokazana użytkownikowi, z linkami „Zobacz hotel” i „Zobacz lot”. Omów jej wartość (cena, daty z karty, zapas do budżetu wg budgetFit) i wymień 1–2 alternatywy z candidates.",
+                  "Karta tej oferty (najlepszy kandydat) została JUŻ pokazana użytkownikowi, z linkami „Zobacz hotel” i „Zobacz lot”. Omów jej wartość (cena, daty z karty, zapas do budżetu wg budgetFit) i wymień 1–2 alternatywy z candidates (to już TYLKO inne kierunki).",
               },
               offer,
             };

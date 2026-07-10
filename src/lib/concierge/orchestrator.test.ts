@@ -288,6 +288,76 @@ test("runConcierge: budgetFit — „łącznie” dzielone przez WSZYSTKICH podr
   assert.ok(fit!.note.includes("PRZEKRACZA"));
 });
 
+test("runConcierge: auto-oferta — top kandydat WYCIĘTY z candidates + wants* przechodzi do oferty", async () => {
+  // Bateria konwersyjna 2026-07-11: model cytował TO SAMO miasto co karta
+  // drugi raz, z inną (snapshotową) ceną — „karta Larnaka 1833 zł/os." i zaraz
+  // „alternatywa: Larnaka od 1081 zł". Top kandydat JEST auto-ofertą, więc
+  // system wycina go z listy dla modelu.
+  let offerArgs: Record<string, unknown> | null = null;
+  let round = 0;
+  const toolContents: string[] = [];
+  const deps = makeDeps({
+    chat: async (args) => {
+      round += 1;
+      if (round === 1) {
+        return {
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  {
+                    id: "t1",
+                    type: "function",
+                    function: {
+                      name: "search_trips",
+                      arguments: JSON.stringify({
+                        theme: "plaza", month: 9, adults: 2,
+                        wantsFlight: false, wantsHotel: true,
+                        budgetPln: 2000, budgetKind: "per_person",
+                      }),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        };
+      }
+      for (const m of (args as ChatArgs).messages) {
+        if ((m as Record<string, unknown>).role === "tool") {
+          toolContents.push(String((m as Record<string, unknown>).content));
+        }
+      }
+      return { choices: [{ message: { content: "ok" } }] };
+    },
+    executors: {
+      executeSearchTrips: async () => ({
+        candidates: [
+          { cityEn: "Larnaca", countryEn: "Cyprus", cityPl: "Larnaka", perPersonPln: 1081, checkin: "2026-08-24", checkout: "2026-08-28" },
+          { cityEn: "Malaga", countryEn: "Spain", cityPl: "Malaga", perPersonPln: 1268, checkin: "2026-08-24", checkout: "2026-08-28" },
+        ],
+      }),
+      executeGetTripOffer: async (args) => {
+        offerArgs = args as Record<string, unknown>;
+        return fakeOffer();
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  await runConcierge([{ role: "user", content: "plaża, sam hotel" }], deps);
+
+  const parsed = JSON.parse(toolContents[0]) as {
+    candidates: Array<{ cityEn: string }>;
+    autoOffer?: unknown;
+  };
+  assert.ok(parsed.autoOffer, "autoOffer musi być doklejona");
+  assert.deepEqual(parsed.candidates.map((c) => c.cityEn), ["Malaga"]);
+  // Sam hotel z search_trips → auto-oferta też bez lotu.
+  assert.equal(offerArgs!.wantsFlight, false);
+  assert.equal(offerArgs!.wantsHotel, true);
+});
+
 test("runConcierge: budgetFit — brak budżetu w argumentach → wynik bez budgetFit", async () => {
   const offer = fakeOffer();
   const { deps, toolContents } = depsForBudgetFit(offer, {
