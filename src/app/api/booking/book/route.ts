@@ -15,6 +15,7 @@ import {
   listBookingsByClientReference,
 } from "@/lib/liteapi";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { normalizeGuestsForRooms } from "@/lib/booking/guests";
 import { notifyCritical } from "@/lib/alerting/notify";
 import { sendBookingConfirmation } from "@/lib/email/send-booking-confirmation";
 import {
@@ -256,7 +257,30 @@ export async function POST(request: NextRequest) {
     );
   }
   const holder = holderResult.data;
-  const guests = guestsResult.data;
+  // GWARANCJA occupancy (incydent 2026-07-10, req 3BiA_qkKx6A8D9nCPYle6):
+  // LiteAPI przyjmuje DOKŁADNIE jednego gościa głównego na pokój (occupancy
+  // 1..rooms z prebooka) — gość per OSOBA przy jednym pokoju = 400 „invalid
+  // occupancy number" PO pobraniu płatności. Normalizujemy tu ponownie (mimo
+  // normalizacji w prebooku), bo ta ścieżka dostaje też sesje sprzed deploya
+  // fixu oraz guests z body (kontrakt Phase 2).
+  const roomsCount =
+    typeof session.rooms === "number" && Number.isInteger(session.rooms) && session.rooms >= 1
+      ? session.rooms
+      : 1;
+  const { guests, changed: guestsNormalized } = normalizeGuestsForRooms(
+    guestsResult.data,
+    holder,
+    roomsCount,
+  );
+  if (guestsNormalized) {
+    console.warn(
+      `[booking][book] guests znormalizowani do ${roomsCount} pokoi dla sessionId=${sessionId} (wejście: ${guestsResult.data.length} wpisów) — sesja sprzed fixu albo payload Phase 2`,
+    );
+  }
+  // Liczba OSÓB do e-maila/strony potwierdzenia — guests.length to teraz
+  // liczba POKOI; realny pax pochodzi z sesji (wyszukiwanie), fallback: pokoje.
+  const paxCount =
+    typeof session.pax === "number" && session.pax >= 1 ? session.pax : guests.length;
 
   // Ops/audit metadata (Vercel headers). Logged WITHOUT PII.
   const ip =
@@ -305,7 +329,7 @@ export async function POST(request: NextRequest) {
         session,
         sessionId,
         holder,
-        guestCount: guests.length,
+        guestCount: paxCount,
         idemKey,
       });
     }
@@ -338,7 +362,7 @@ export async function POST(request: NextRequest) {
       session,
       sessionId,
       holder,
-      guestCount: guests.length,
+      guestCount: paxCount,
       idemKey,
       bookMs,
     });
@@ -359,7 +383,7 @@ export async function POST(request: NextRequest) {
           session,
           sessionId,
           holder,
-          guestCount: guests.length,
+          guestCount: paxCount,
           idemKey,
         });
       }

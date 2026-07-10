@@ -47,6 +47,10 @@ interface Props {
   currency: string;
   board?: string;
   adults: number;
+  /** Liczba POKOI oferty (= occupancies w prebooku). Goście LiteAPI to jeden
+      gość główny NA POKÓJ — nigdy na osobę (incydent „invalid occupancy
+      number" 2026-07-10: 3 gości przy 1 pokoju = 400 PO płatności). */
+  rooms: number;
   publicKey: string;
   returnBaseUrl: string;
   /** Deep link back to the hotel page (same dates/occupancy) — the recovery
@@ -177,23 +181,26 @@ export function ReservationForm({
   currency,
   board,
   adults,
+  rooms,
   publicKey,
   returnBaseUrl,
   backToHotelHref,
   cancel,
   cancelUntil,
 }: Props) {
-  const occupancy = Math.max(1, adults);
+  const roomsCount = Math.max(1, rooms);
   const [holder, setHolder] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
   });
-  // Co-travelers (guests #2..#occupancy) — entirely OPTIONAL. A solo trip in
-  // a multi-occupancy room is valid; only fully-filled rows are sent.
+  // Główni goście pokoi #2..#rooms — OPCJONALNI (puste pole = pokój zapisany
+  // na osobę rezerwującą). LiteAPI przyjmuje dokładnie JEDNEGO gościa na
+  // pokój; imiona pozostałych osób w pokoju NIE są wysyłane (i nie są
+  // zbieranie — minimalizacja danych).
   const [coGuests, setCoGuests] = useState(
-    Array.from({ length: Math.max(0, occupancy - 1) }, () => ({
+    Array.from({ length: Math.max(0, roomsCount - 1) }, () => ({
       firstName: "",
       lastName: "",
     })),
@@ -228,16 +235,16 @@ export function ReservationForm({
       const row = coGuests[i];
       const a = row?.firstName.trim() ?? "";
       const b = row?.lastName.trim() ?? "";
-      if (!a && !b) continue; // empty row = OK (skipped on submit)
+      if (!a && !b) continue; // empty row = OK (pokój zapisany na rezerwującego)
       if (!a || !b)
-        return `Uzupełnij oba pola gościa ${i + 2} lub wyczyść oba pola.`;
+        return `Uzupełnij oba pola głównego gościa pokoju ${i + 2} lub wyczyść oba pola.`;
       const parsed = LiteApiGuestSchema.safeParse({
         occupancyNumber: i + 2,
         firstName: a,
         lastName: b,
       });
       if (!parsed.success)
-        return `Uzupełnij imię i nazwisko gościa ${i + 2}.`;
+        return `Uzupełnij imię i nazwisko głównego gościa pokoju ${i + 2}.`;
     }
     return null;
   }
@@ -265,22 +272,19 @@ export function ReservationForm({
     setStep("submitting");
     track("booking_prebook_start", { hotel_id: hotelId, price, currency });
     try {
-      // guests[0] = holder (always); rows with both fields filled appended.
-      // Result length is between 1 and occupancy.
-      const guests = [
-        {
-          occupancyNumber: 1,
-          firstName: holder.firstName,
-          lastName: holder.lastName,
-        },
-        ...coGuests
-          .map((g, i) => ({
-            occupancyNumber: i + 2,
-            firstName: g.firstName.trim(),
-            lastName: g.lastName.trim(),
-          }))
-          .filter((g) => g.firstName && g.lastName),
-      ];
+      // Semantyka LiteAPI: guests[] = DOKŁADNIE jeden gość główny NA POKÓJ
+      // (occupancy 1..rooms) — nigdy wpis na osobę. Pokój 1 → rezerwujący;
+      // pokoje 2+ → wypełniony wiersz akordeonu albo fallback na
+      // rezerwującego. Serwer normalizuje to samo jeszcze raz (guests.ts).
+      const guests = Array.from({ length: roomsCount }, (_, i) => {
+        const co = i === 0 ? null : coGuests[i - 1];
+        const filled = co && co.firstName.trim() && co.lastName.trim();
+        return {
+          occupancyNumber: i + 1,
+          firstName: filled ? co.firstName.trim() : holder.firstName.trim(),
+          lastName: filled ? co.lastName.trim() : holder.lastName.trim(),
+        };
+      });
 
       const res = await fetch("/api/booking/prebook", {
         method: "POST",
@@ -294,6 +298,8 @@ export function ReservationForm({
           rate: { boardName: board, price, currency, checkin, checkout },
           holder,
           guests,
+          rooms: roomsCount,
+          pax: Math.max(1, adults),
         }),
       });
       const data = (await res.json()) as {
@@ -555,7 +561,7 @@ export function ReservationForm({
                 </div>
 
                 <OptionalGuestsAccordion
-                  occupancy={occupancy}
+                  rooms={roomsCount}
                   value={coGuests}
                   onChange={setCoGuest}
                   disabled={step === "submitting"}
