@@ -77,12 +77,14 @@ const searchTripsTool: ToolDef = {
         },
         budgetPln: {
           type: "number",
-          description: "Budżet użytkownika w złotych (PLN).",
+          description:
+            "Budżet użytkownika w złotych (PLN). Pomiń TYLKO, gdy użytkownik unika podania kwoty («najtaniej», «nie wiem ile») — wyszukiwanie zwróci wtedy kierunki od najtańszego.",
         },
         budgetKind: {
           type: "string",
           enum: ["per_person", "total_two"],
-          description: "Jak interpretować budgetPln: 'per_person' — kwota na jedną osobę, 'total_two' — kwota łącznie za dwie osoby.",
+          description:
+            "Jak interpretować budgetPln: 'per_person' — kwota na jedną osobę, 'total_two' — kwota łącznie za WSZYSTKICH podróżnych (parę, rodzinę). Wymagane, gdy podajesz budgetPln.",
         },
         month: {
           type: "integer",
@@ -108,7 +110,7 @@ const searchTripsTool: ToolDef = {
           type: "integer",
           minimum: 1,
           maximum: 21,
-          description: "Liczba nocy, jeśli użytkownik ją podał (np. trzy noce). Pomiń, gdy nie podał.",
+          description: "Liczba nocy, jeśli użytkownik ją podał (np. trzy noce; «weekend» = 3). Pomiń, gdy nie podał.",
         },
         wantsFlight: {
           type: "boolean",
@@ -120,8 +122,10 @@ const searchTripsTool: ToolDef = {
         },
       },
       // theme celowo POZA required: przy zapytaniu o konkretny kraj wystarczy
-      // country (egzekutor wymaga theme ALBO country).
-      required: ["budgetPln", "budgetKind", "month", "adults", "wantsFlight", "wantsHotel"],
+      // country (egzekutor wymaga theme ALBO country). budgetPln/budgetKind
+      // POZA required: klient niekonkretny („najtaniej") ma dostać wyniki od
+      // najtańszego zamiast kolejnej rundy dopytywania.
+      required: ["month", "adults", "wantsFlight", "wantsHotel"],
     },
   },
 };
@@ -199,7 +203,8 @@ const getTripOfferTool: ToolDef = {
         budgetKind: {
           type: "string",
           enum: ["per_person", "total_two"],
-          description: "Jak interpretować budgetPln: 'per_person' — na osobę, 'total_two' — łącznie za dwie osoby.",
+          description:
+            "Jak interpretować budgetPln: 'per_person' — na osobę, 'total_two' — łącznie za WSZYSTKICH podróżnych.",
         },
       },
       required: ["cityEn", "countryEn", "origin", "adults"],
@@ -418,9 +423,12 @@ interface GetTripOfferArgs {
 
 /**
  * Konkretne daty dla miesiąca wskazanego przez użytkownika: checkin 10. dnia
- * miesiąca (bezpiecznie w środku, GDS ma pełną dostępność), następne
- * wystąpienie co najmniej 7 dni w przyszłości (inaczej → kolejny rok).
- * Czysta funkcja od `todayIso` — deterministyczna w testach.
+ * miesiąca (bezpiecznie w środku, GDS ma pełną dostępność), co najmniej 7 dni
+ * w przyszłości. Gdy 10. dzień już minął, ale miesiąc użytkownika WCIĄŻ trwa
+ * (realny incydent: 10 lipca użytkownik prosi o „lipiec" → skok na lipiec
+ * NASTĘPNEGO roku = poza horyzontem sprzedaży lotów GDS → karta bez lotu),
+ * bierzemy najbliższy możliwy termin w TYM miesiącu; dopiero gdy miesiąc się
+ * kończy — kolejny rok. Czysta funkcja od `todayIso` — deterministyczna w testach.
  */
 function datesForMonth(
   month: number,
@@ -431,7 +439,12 @@ function datesForMonth(
   let checkinDate = new Date(Date.UTC(today.getUTCFullYear(), month - 1, 10));
   const minStart = new Date(today.getTime() + 7 * 86_400_000);
   if (checkinDate < minStart) {
-    checkinDate = new Date(Date.UTC(today.getUTCFullYear() + 1, month - 1, 10));
+    const minStartInUserMonth =
+      minStart.getUTCFullYear() === today.getUTCFullYear() &&
+      minStart.getUTCMonth() === month - 1;
+    checkinDate = minStartInUserMonth
+      ? minStart
+      : new Date(Date.UTC(today.getUTCFullYear() + 1, month - 1, 10));
   }
   const checkoutDate = new Date(checkinDate.getTime() + nights * 86_400_000);
   const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -536,9 +549,19 @@ export function createToolExecutors(deps: ToolDeps) {
     // Kraj zastępuje motyw jako źródło kierunków („chcę Grecję" — realny
     // incydent: motyw plaża nie miał świeżych greckich pakietów i bot
     // odmawiał, mimo że żywe ceny istnieją).
-    const missing = missingFields(intent).filter((f) => !(f === "theme" && country));
+    // Budżet NIE blokuje wyszukiwania (stress-test niekonkretnego klienta:
+    // „najtaniej jak się da" utykało w pętli dopytywania) — bez kwoty szukamy
+    // bez limitu, a lista i tak jest posortowana od najtańszego. Kwota BEZ
+    // interpretacji (budgetKind) nadal wymaga dopytania — to niejednoznaczne.
+    const noBudget = intent.budgetPln === undefined || intent.budgetPln === null;
+    const missing = missingFields(intent).filter(
+      (f) => !(f === "theme" && country) && !(f === "budgetPln" && noBudget),
+    );
     if (missing.length > 0) {
-      return { candidates: [], reason: `Brak wymaganych pól: ${missing.join(", ")} — dopytaj użytkownika.` };
+      return {
+        candidates: [],
+        reason: `Brak wymaganych pól: ${missing.join(", ")} — dopytaj użytkownika JEDNĄ krótką wiadomością pisaną zdaniem z przykładową odpowiedzią. Nigdy listą numerowaną.`,
+      };
     }
 
     let cities: TripSearchCity[];
@@ -557,12 +580,22 @@ export function createToolExecutors(deps: ToolDeps) {
       }
     }
 
+    // Budżet „łącznie" dzielimy przez REALNĄ liczbę podróżnych, nie sztywno
+    // przez 2 (realny incydent: rodzina 2+1 z 6000 zł łącznie dostała próg
+    // 3000 zł/os. zamiast 2000 → bot ogłosił „mieści się" przy 6726 zł).
+    // Przeliczenie na per_person robimy TUTAJ — rank dostaje gotowy próg.
+    const paxCount = Math.max(1, (intent.adults ?? 2) + (intent.children ?? 0));
+    const perPersonCap = noBudget
+      ? Number.MAX_SAFE_INTEGER
+      : intent.budgetKind === "total_two"
+        ? Math.floor(intent.budgetPln! / paxCount)
+        : intent.budgetPln!;
     const snapshot = await deps.readSnapshot();
     const ranked = snapshot
       ? rankTripCandidates(
           cities,
           snapshot,
-          { budgetPln: intent.budgetPln!, budgetKind: intent.budgetKind! },
+          { budgetPln: perPersonCap, budgetKind: "per_person" },
           now(),
         ).slice(0, MAX_TRIP_CANDIDATES)
       : [];
@@ -581,7 +614,10 @@ export function createToolExecutors(deps: ToolDeps) {
       return {
         candidates,
         note:
-          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę dla dat checkin–checkout (najbliższy dostępny termin). Cytuj ją jako „od X zł/os.”. Nie rozbijaj na lot/hotel i nie licz sum samodzielnie — dokładną, aktualną cenę (także na inny miesiąc) zwraca get_trip_offer.",
+          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę dla dat checkin–checkout (najbliższy dostępny termin). Cytuj ją jako „od X zł/os.”. Nie rozbijaj na lot/hotel i nie licz sum samodzielnie — dokładną, aktualną cenę (także na inny miesiąc) zwraca get_trip_offer." +
+          (noBudget
+            ? " Użytkownik NIE podał budżetu: kandydaci są posortowani od najtańszego. Przy prezentacji karty zapytaj krótko o budżet, żeby policzyć zapas."
+            : ""),
       };
     }
 
@@ -607,7 +643,12 @@ export function createToolExecutors(deps: ToolDeps) {
     if (!snapshot) {
       return { candidates: [], reason: "Snapshot cen niedostępny — nie mamy w tej chwili świeżych cen, spróbuj później." };
     }
-    return { candidates: [], reason: "Brak kierunków w tym budżecie/motywie — zaproponuj większy budżet lub inny motyw." };
+    return {
+      candidates: [],
+      reason: noBudget
+        ? "Brak świeżych pakietów dla tego motywu — zaproponuj inny motyw lub miesiąc."
+        : "Brak kierunków w tym budżecie/motywie — zaproponuj większy budżet lub inny motyw.",
+    };
   }
 
   /**
