@@ -114,9 +114,28 @@ test("runConcierge: happy path — jedna runda tool_calls, potem tekst", async (
   assert.deepEqual(searchTripsArgs, { theme: "plaza" });
 
   assert.equal(calls.length, 2);
-  // pierwsza wiadomość w KAŻDYM wywołaniu to system prompt
-  assert.equal(calls[0].messages[0].content, SYSTEM_PROMPT);
-  assert.equal(calls[1].messages[0].content, SYSTEM_PROMPT);
+  // Pierwsza wiadomość w KAŻDYM wywołaniu to system prompt — jako część
+  // tekstowa z breakpointem cache_control (prompt caching: statyczny prefiks
+  // tools+system czytany z cache za 10% ceny wejścia u Anthropic).
+  for (const call of [calls[0], calls[1]]) {
+    const system = call.messages[0] as {
+      role?: string;
+      content?: Array<{ type?: string; text?: string; cache_control?: { type?: string } }>;
+    };
+    assert.equal(system.role, "system");
+    assert.equal(system.content?.[0]?.text, SYSTEM_PROMPT);
+    assert.equal(system.content?.[0]?.cache_control?.type, "ephemeral");
+  }
+  // Drugi breakpoint: OSTATNIA wiadomość historii (tu: jedyna user) też jest
+  // częścią tekstową z cache_control — kolejne rundy narzędzi czytają
+  // historię z cache.
+  const lastHistory = calls[0].messages[1] as {
+    role?: string;
+    content?: Array<{ type?: string; text?: string; cache_control?: { type?: string } }>;
+  };
+  assert.equal(lastHistory.role, "user");
+  assert.equal(lastHistory.content?.[0]?.text, "Szukam plaży");
+  assert.equal(lastHistory.content?.[0]?.cache_control?.type, "ephemeral");
 
   const toolMsg = calls[1].messages.find(
     (m) => (m as Record<string, unknown>).role === "tool",
@@ -176,6 +195,90 @@ test("runConcierge: get_trip_offer — offer w wyniku to DOKŁADNIE wynik egzeku
   assert.equal(result.text, "Polecam!");
   assert.equal(result.error, false);
   assert.deepEqual(result.offer, offer);
+});
+
+// ── 2b. budgetFit — zapas/przekroczenie budżetu liczy SYSTEM, nie model ─────
+// Realny incydent (Majorka, preview): 5474 zł łącznie przy budżecie 5000 zł
+// → Haiku ogłosił „474 zł zapasu" zamiast przekroczenia (zły znak).
+
+function depsForBudgetFit(offer: TripOffer, toolArgs: Record<string, unknown>) {
+  let round = 0;
+  const toolContents: string[] = [];
+  const deps = makeDeps({
+    chat: async (args) => {
+      round += 1;
+      if (round === 1) {
+        return {
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  {
+                    id: "t1",
+                    type: "function",
+                    function: { name: "get_trip_offer", arguments: JSON.stringify(toolArgs) },
+                  },
+                ],
+              },
+            },
+          ],
+        };
+      }
+      for (const m of (args as ChatArgs).messages) {
+        if ((m as Record<string, unknown>).role === "tool") {
+          toolContents.push(String((m as Record<string, unknown>).content));
+        }
+      }
+      return { choices: [{ message: { content: "ok" } }] };
+    },
+    executors: {
+      executeSearchTrips: async () => ({ candidates: [] }),
+      executeGetTripOffer: async () => offer,
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+  return { deps, toolContents };
+}
+
+test("runConcierge: budgetFit — budżet total_two nad ofertą → zapas policzony przez system", async () => {
+  const offer = fakeOffer(); // totalPerPersonPln: 2400
+  const { deps, toolContents } = depsForBudgetFit(offer, {
+    cityEn: "Palma", countryEn: "Spain", origin: "WAW", adults: 2,
+    budgetPln: 5000, budgetKind: "total_two", // 2500 zł/os. → zapas 100
+  });
+  const result = await runConcierge([{ role: "user", content: "Majorka do 5000 łącznie" }], deps);
+
+  assert.equal(result.error, false);
+  const fit = (JSON.parse(toolContents[0]) as { budgetFit?: { gapPln: number; note: string } }).budgetFit;
+  assert.ok(fit, "wynik narzędzia musi nieść budgetFit");
+  assert.equal(fit!.gapPln, 100);
+  assert.ok(fit!.note.includes("MIEŚCI SIĘ"));
+  // Karta (offer) zostaje CZYSTA — budgetFit tylko w treści dla modelu.
+  assert.equal("budgetFit" in (result.offer as unknown as Record<string, unknown>), false);
+});
+
+test("runConcierge: budgetFit — oferta ponad budżet → PRZEKRACZA z kwotą, nigdy „zapas”", async () => {
+  const offer = fakeOffer(); // totalPerPersonPln: 2400
+  const { deps, toolContents } = depsForBudgetFit(offer, {
+    cityEn: "Palma", countryEn: "Spain", origin: "WAW", adults: 2,
+    budgetPln: 4000, budgetKind: "total_two", // 2000 zł/os. → przekroczenie 400
+  });
+  await runConcierge([{ role: "user", content: "Majorka do 4000 łącznie" }], deps);
+
+  const fit = (JSON.parse(toolContents[0]) as { budgetFit?: { gapPln: number; note: string } }).budgetFit;
+  assert.ok(fit);
+  assert.equal(fit!.gapPln, -400);
+  assert.ok(fit!.note.includes("PRZEKRACZA"));
+  assert.equal(fit!.note.includes("MIEŚCI"), false);
+});
+
+test("runConcierge: budgetFit — brak budżetu w argumentach → wynik bez budgetFit", async () => {
+  const offer = fakeOffer();
+  const { deps, toolContents } = depsForBudgetFit(offer, {
+    cityEn: "Palma", countryEn: "Spain", origin: "WAW", adults: 2,
+  });
+  await runConcierge([{ role: "user", content: "Pokaż Majorkę" }], deps);
+  assert.equal(toolContents[0].includes("budgetFit"), false);
 });
 
 // ── 3. Egzekutor rzuca → wynik narzędzia niesie błąd, brak crasha ──────────
@@ -414,8 +517,12 @@ test("runConcierge: przycina historię do MAX_HISTORY_MESSAGES i treść do MAX_
 
   // system + MAX_HISTORY_MESSAGES ostatnich wiadomości
   assert.equal(capturedMessages.length, MAX_HISTORY_MESSAGES + 1);
-  const lastMsg = capturedMessages[capturedMessages.length - 1];
-  assert.equal((lastMsg.content as string).length, MAX_INPUT_CHARS);
+  // Ostatnia wiadomość historii jest częścią tekstową (breakpoint cache) —
+  // przycięcie do MAX_INPUT_CHARS musi zadziałać PRZED opakowaniem.
+  const lastMsg = capturedMessages[capturedMessages.length - 1] as {
+    content: Array<{ text: string }>;
+  };
+  assert.equal(lastMsg.content[0].text.length, MAX_INPUT_CHARS);
 });
 
 // ── 9. Retry na miękko zdeformowaną odpowiedź modelu ────────────────────────

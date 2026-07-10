@@ -145,7 +145,8 @@ const getTripOfferTool: ToolDef = {
       properties: {
         cityEn: {
           type: "string",
-          description: "Angielska nazwa miasta — dokładnie ta wartość co w wyniku search_trips (pole cityEn).",
+          description:
+            "Angielska nazwa miasta — dokładnie ta wartość co w wyniku search_trips (pole cityEn). Gdy użytkownik chce WYSPĘ (Majorka, Kreta, Teneryfa, Gran Canaria, Madera), podaj nazwę wyspy wprost — system sam zamieni ją na główne miasto.",
         },
         countryEn: {
           type: "string",
@@ -189,6 +190,16 @@ const getTripOfferTool: ToolDef = {
           type: "integer",
           minimum: 0,
           description: "Liczba dzieci uczestniczących w wyjeździe. Pomiń, jeśli nie dotyczy.",
+        },
+        budgetPln: {
+          type: "number",
+          description:
+            "Budżet użytkownika w PLN — przekazuj ZAWSZE, gdy go znasz. System policzy zapas/przekroczenie budżetu (pole budgetFit w wyniku) — cytuj TĘ liczbę, nigdy nie licz jej samodzielnie.",
+        },
+        budgetKind: {
+          type: "string",
+          enum: ["per_person", "total_two"],
+          description: "Jak interpretować budgetPln: 'per_person' — na osobę, 'total_two' — łącznie za dwie osoby.",
         },
       },
       required: ["cityEn", "countryEn", "origin", "adults"],
@@ -323,6 +334,30 @@ export interface SearchTripsResult {
 
 /** Maksymalna liczba kandydatów zwracanych modelowi (karty w czacie). */
 const MAX_TRIP_CANDIDATES = 5;
+
+// ── Aliasy wysp/regionów → kanoniczne miasto seedu ───────────────────────────
+// Realny incydent (preview): „A coś na Majorce do 5 tysięcy?" → model nie
+// przetłumaczył wyspy na miasto-klucz seedu, poszedł w search_trips po kraju
+// i użytkownik dostał kartę MADRYTU. Taniemu modelowi nie ufamy w tłumaczeniu
+// nazw wysp — normalizujemy mechanicznie w egzekutorze. Klucz: lowercase
+// wejście od modelu (PL/EN); wartość: kanoniczne nazwy EN zgodne z
+// data/destinations.json (city.en/country.en — to także klucze snapshotu).
+// Nazw już zgodnych z seedem (Rhodes/Rodos, Corfu/Korfu, Ibiza — seed
+// dopasowuje city.en LUB city.pl) nie dublujemy tu bez potrzeby; mapa kryje
+// wyłącznie nazwy, których seed NIE zna.
+const CITY_ALIASES: Record<string, { cityEn: string; countryEn: string }> = {
+  "majorka": { cityEn: "Palma", countryEn: "Spain" },
+  "mallorca": { cityEn: "Palma", countryEn: "Spain" },
+  "majorca": { cityEn: "Palma", countryEn: "Spain" },
+  "palma de mallorca": { cityEn: "Palma", countryEn: "Spain" },
+  "kreta": { cityEn: "Heraklion", countryEn: "Greece" },
+  "crete": { cityEn: "Heraklion", countryEn: "Greece" },
+  "gran canaria": { cityEn: "Las Palmas", countryEn: "Spain" },
+  "tenerife": { cityEn: "Santa Cruz de Tenerife", countryEn: "Spain" },
+  "teneryfa": { cityEn: "Santa Cruz de Tenerife", countryEn: "Spain" },
+  "madera": { cityEn: "Funchal", countryEn: "Portugal" },
+  "madeira": { cityEn: "Funchal", countryEn: "Portugal" },
+};
 
 // ── Parsowanie argumentów z modelu (JSON z tool-calla = nie ufamy niczemu) ──
 
@@ -583,6 +618,14 @@ export function createToolExecutors(deps: ToolDeps) {
    */
   async function executeGetTripOffer(args: unknown): Promise<TripOffer> {
     const a = parseGetTripOfferArgs(args);
+    // Wyspa/region od modelu → kanoniczne miasto seedu PRZED jakimkolwiek
+    // lookupem (snapshot, LiteAPI, IATA — wszystko downstream dostaje
+    // znormalizowane nazwy).
+    const alias = CITY_ALIASES[a.cityEn.trim().toLowerCase()];
+    if (alias) {
+      a.cityEn = alias.cityEn;
+      a.countryEn = alias.countryEn;
+    }
     // Rekord seedu: polska etykieta + KANONICZNE nazwy do klucza snapshotu
     // (pick „Palma de Mallorca" ≠ seed „Palma" — patrz resolveThemeCities).
     const dest = deps.resolveDest(a.cityEn, a.countryEn);

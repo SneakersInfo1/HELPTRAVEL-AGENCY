@@ -51,7 +51,18 @@ function travelersLabel(adults: number, children: number): string {
   return `${total} ${word}`;
 }
 
-export function TripOfferCard({ offer }: { offer: TripOffer }) {
+export function TripOfferCard({
+  offer,
+  onNavigate,
+}: {
+  offer: TripOffer;
+  /**
+   * Wywoływany przy kliknięciu KAŻDEGO linku oferty (hotel/lot) — launcher
+   * używa tego do zminimalizowania czatu na mobile (panel pełnoekranowy
+   * zasłaniałby stronę hotelu/lotu, na którą użytkownik właśnie przeszedł).
+   */
+  onNavigate?: () => void;
+}) {
   const { hotel, flight } = offer;
   const dateRange = formatDateRangePl(offer.checkin, offer.checkout);
   const travelers = travelersLabel(offer.adults, offer.children);
@@ -97,7 +108,10 @@ export function TripOfferCard({ offer }: { offer: TripOffer }) {
         {hotel ? (
           <Link
             href={hotel.url}
-            onClick={() => track("concierge_offer_click", { target: "hotel", city: offer.cityPl })}
+            onClick={() => {
+              track("concierge_offer_click", { target: "hotel", city: offer.cityPl });
+              onNavigate?.();
+            }}
             className="group flex items-stretch gap-3 overflow-hidden rounded-xl border border-emerald-900/10 bg-white transition-colors transition-shadow hover:border-emerald-300 hover:shadow-[0_8px_20px_rgba(16,84,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
           >
             <div className="relative aspect-square w-24 shrink-0 overflow-hidden bg-neutral-100 sm:w-28">
@@ -148,7 +162,10 @@ export function TripOfferCard({ offer }: { offer: TripOffer }) {
                 {" "}
                 <Link
                   href={flight.url}
-                  onClick={() => track("concierge_offer_click", { target: "flight", city: offer.cityPl })}
+                  onClick={() => {
+                    track("concierge_offer_click", { target: "flight", city: offer.cityPl });
+                    onNavigate?.();
+                  }}
                   className="font-semibold text-emerald-700 hover:underline"
                 >
                   <span>Zobacz wyniki lotu →</span>
@@ -162,7 +179,10 @@ export function TripOfferCard({ offer }: { offer: TripOffer }) {
         {flight ? (
           <Link
             href={flight.url}
-            onClick={() => track("concierge_offer_click", { target: "flight", city: offer.cityPl })}
+            onClick={() => {
+              track("concierge_offer_click", { target: "flight", city: offer.cityPl });
+              onNavigate?.();
+            }}
             className="group flex items-center justify-between gap-3 rounded-xl border border-emerald-900/10 bg-white p-3 transition-colors transition-shadow hover:border-emerald-300 hover:shadow-[0_8px_20px_rgba(16,84,48,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
           >
             <div className="min-w-0">
@@ -192,7 +212,10 @@ export function TripOfferCard({ offer }: { offer: TripOffer }) {
                 {" "}
                 <Link
                   href={hotel.url}
-                  onClick={() => track("concierge_offer_click", { target: "hotel", city: offer.cityPl })}
+                  onClick={() => {
+                    track("concierge_offer_click", { target: "hotel", city: offer.cityPl });
+                    onNavigate?.();
+                  }}
                   className="font-semibold text-emerald-700 hover:underline"
                 >
                   <span>Zobacz hotel →</span>

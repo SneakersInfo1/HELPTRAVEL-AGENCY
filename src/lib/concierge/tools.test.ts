@@ -333,6 +333,48 @@ test("executeGetTripOffer: brak dat i brak świeżego pakietu → błąd kieruj�
   );
 });
 
+// ── Aliasy wysp (realny incydent: „A coś na Majorce?" → karta MADRYTU) ───────
+
+test("executeGetTripOffer: wyspa od modelu (Majorka) → kanoniczne miasto seedu we WSZYSTKICH lookupach", async () => {
+  const hotelQueries: Array<{ cityEn: string; countryEn: string }> = [];
+  const flightQueries: Array<{ cityEn: string; countryEn: string }> = [];
+  const exec = createToolExecutors(makeDeps({
+    findCheapestHotel: async (q) => {
+      hotelQueries.push({ cityEn: q.cityEn, countryEn: q.countryEn });
+      return HOTEL;
+    },
+    findCheapestFlight: async (q) => {
+      flightQueries.push({ cityEn: q.cityEn, countryEn: q.countryEn });
+      return FLIGHT;
+    },
+  }));
+
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Majorka", countryEn: "Hiszpania", origin: "WAW", adults: 2, month: 10, nights: 5,
+  });
+  // Kanoniczne nazwy seedu (data/destinations.json: palma-spain) + polska etykieta.
+  assert.equal(offer.cityEn, "Palma");
+  assert.equal(offer.countryEn, "Spain");
+  assert.equal(offer.cityPl, "Palma de Mallorca");
+  // Lookupy LiteAPI dostają ZNORMALIZOWANE nazwy — nie surowe „Majorka".
+  assert.deepEqual(hotelQueries[0], { cityEn: "Palma", countryEn: "Spain" });
+  assert.deepEqual(flightQueries[0], { cityEn: "Palma", countryEn: "Spain" });
+});
+
+test("executeGetTripOffer: Kreta/Crete → Heraklion (Greece)", async () => {
+  const exec = createToolExecutors(makeDeps({
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  for (const cityEn of ["Kreta", "Crete"]) {
+    const offer = await exec.executeGetTripOffer({
+      cityEn, countryEn: "Greece", origin: "WAW", adults: 2, month: 10,
+    });
+    assert.equal(offer.cityEn, "Heraklion");
+    assert.equal(offer.countryEn, "Greece");
+  }
+});
+
 // ── Wyszukiwanie po KRAJU (realny incydent: „chcę Grecję" → fałszywe „brak") ──
 
 const GREEK_CITIES = [
