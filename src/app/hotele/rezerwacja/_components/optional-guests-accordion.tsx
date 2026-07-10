@@ -1,16 +1,20 @@
 "use client";
 
-// Collapsible block for co-traveler names. Holder (guest #1) lives outside —
-// THESE are guests #2..#occupancy and are entirely OPTIONAL. The user may
-// leave them blank (solo trip in a multi-occupancy room) — only fully-filled
-// rows are sent to LiteAPI; rows with exactly one field filled fail
-// validation in the parent (`reservation-form.tsx`). This component does not
-// validate; it only renders rows and forwards changes.
+// Collapsible block: główny gość pokoju #2..#rooms — WYŁĄCZNIE przy rezerwacji
+// wielu pokoi (rooms=1 → nic nie renderujemy). Semantyka LiteAPI /rates/book:
+// guests[] mapuje się 1:1 na POKOJE (jeden gość główny na occupancy), NIE na
+// osoby — wysyłanie gościa per osoba przy jednym pokoju kończyło się 400
+// „invalid occupancy number" PO pobraniu płatności (incydent 2026-07-10).
+// Dlatego nie zbieramy już imion współpodróżnych w ogóle (minimalizacja
+// danych): pytamy tylko o głównego gościa każdego DODATKOWEGO pokoju. Puste
+// pola = pokój zapisany na osobę rezerwującą (fallback po stronie serwera).
+// Ten komponent nie waliduje; walidacja w rodzicu (reservation-form.tsx).
 
 import { useState } from "react";
 
 interface Props {
-  occupancy: number;
+  /** Liczba pokoi oferty — renderujemy rooms-1 wierszy (pokoje 2..rooms). */
+  rooms: number;
   value: { firstName: string; lastName: string }[];
   onChange: (i: number, field: "firstName" | "lastName", v: string) => void;
   disabled?: boolean;
@@ -21,13 +25,13 @@ const inputCls =
 const labelCls = "mb-1 block text-[11px] font-medium uppercase text-neutral-500";
 
 export function OptionalGuestsAccordion({
-  occupancy,
+  rooms,
   value,
   onChange,
   disabled,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const slots = Math.max(0, occupancy - 1);
+  const slots = Math.max(0, rooms - 1);
   if (slots === 0) return null;
 
   return (
@@ -45,23 +49,26 @@ export function OptionalGuestsAccordion({
         >
           ▸
         </span>
-        Dodaj dane współpodróżnych{" "}
+        Główni goście pozostałych pokoi{" "}
         <span className="font-normal text-neutral-500">(opcjonalne)</span>
       </button>
 
       {open && (
         <div id="co-guests-panel" className="mt-3 space-y-3">
           <p className="text-xs text-neutral-500">
-            Wystarczą dane osoby rezerwującej. Imiona pozostałych gości pomagają
-            hotelowi przy odprawie, ale nie są wymagane.
+            Rezerwujesz {rooms} pokoje — możesz wskazać, kto będzie głównym
+            gościem każdego z nich. Puste pola oznaczają, że pokój zostanie
+            zapisany na osobę rezerwującą.
           </p>
           {Array.from({ length: slots }).map((_, i) => {
-            const firstNameId = `co-guest-${i + 2}-first-name`;
-            const lastNameId = `co-guest-${i + 2}-last-name`;
+            const firstNameId = `room-guest-${i + 2}-first-name`;
+            const lastNameId = `room-guest-${i + 2}-last-name`;
             return (
               <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label htmlFor={firstNameId} className={labelCls}>Imię gościa {i + 2}</label>
+                  <label htmlFor={firstNameId} className={labelCls}>
+                    Imię — pokój {i + 2}
+                  </label>
                   <input
                     id={firstNameId}
                     name={firstNameId}
@@ -73,7 +80,9 @@ export function OptionalGuestsAccordion({
                   />
                 </div>
                 <div>
-                  <label htmlFor={lastNameId} className={labelCls}>Nazwisko gościa {i + 2}</label>
+                  <label htmlFor={lastNameId} className={labelCls}>
+                    Nazwisko — pokój {i + 2}
+                  </label>
                   <input
                     id={lastNameId}
                     name={lastNameId}
