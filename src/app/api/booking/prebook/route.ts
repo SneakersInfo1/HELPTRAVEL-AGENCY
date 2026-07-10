@@ -18,6 +18,7 @@ import {
   prebookHotel,
 } from "@/lib/liteapi";
 import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
+import { normalizeGuestsForRooms } from "@/lib/booking/guests";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   SESSION_TTL_SECONDS,
@@ -50,6 +51,10 @@ const BodySchema = z.object({
   // backward compatibility with Phase 2 callers.
   holder: LiteApiHolderSchema.optional(),
   guests: z.array(LiteApiGuestSchema).min(1).optional(),
+  // Liczba pokoi oferty (= liczba occupancies w prebooku LiteAPI) i liczba
+  // osób. Opcjonalne dla starych klientów — brak = 1 pokój.
+  rooms: z.number().int().min(1).max(9).optional(),
+  pax: z.number().int().min(1).max(15).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -85,6 +90,23 @@ export async function POST(request: NextRequest) {
   const b = parsed.data;
   const sessionId = randomUUID();
 
+  // GWARANCJA occupancy (incydent 2026-07-10): goście trafiają do sesji już
+  // ZNORMALIZOWANI do jednego gościa głównego na pokój 1..rooms — nawet gdy
+  // stary/zmanipulowany klient przysłał gościa per OSOBA (occupancy 2..N przy
+  // jednym pokoju), do LiteAPI /rates/book nigdy nie wyjdzie nieistniejące
+  // occupancy. Book-route normalizuje ponownie (sesje sprzed deploya).
+  const roomsCount = b.rooms ?? 1;
+  let guestsForSession = b.guests;
+  if (b.holder) {
+    const normalized = normalizeGuestsForRooms(b.guests, b.holder, roomsCount);
+    if (normalized.changed) {
+      console.warn(
+        `[booking][prebook] guests znormalizowani do ${roomsCount} pokoi (wejście: ${b.guests?.length ?? 0} wpisów) — stary klient albo payload spoza formularza`,
+      );
+    }
+    guestsForSession = normalized.guests;
+  }
+
   try {
     const pre = await prebookHotel({ rateId: b.offerId, clientReference: sessionId });
 
@@ -117,7 +139,9 @@ export async function POST(request: NextRequest) {
         checkout: b.rate.checkout,
       },
       holder: b.holder,
-      guests: b.guests,
+      guests: guestsForSession,
+      rooms: roomsCount,
+      pax: b.pax,
       createdAt: now,
     };
     await saveSession(sessionId, rec); // strict — throws if store unavailable
