@@ -94,6 +94,13 @@ export interface SessionRecord {
   // (Phase 2 callers may still pass holder/guests in the book body).
   holder?: unknown;
   guests?: unknown;
+  // Liczba POKOI oferty (occupancies w prebooku) — book normalizuje guests[]
+  // do dokładnie jednego gościa głównego na pokój (incydent „invalid occupancy
+  // number" 2026-07-10). Brak pola (stara sesja) = 1 pokój.
+  rooms?: number;
+  // Liczba OSÓB (dorośli+dzieci z wyszukiwania) — do e-maila/strony
+  // potwierdzenia; guests.length to od fixu liczba pokoi, nie osób.
+  pax?: number;
   createdAt: number; // epoch ms
 }
 export interface CompletedRecord {

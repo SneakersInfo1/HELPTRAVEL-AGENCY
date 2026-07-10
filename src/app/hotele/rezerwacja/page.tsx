@@ -111,6 +111,11 @@ export default async function ReservationPage({
   const currency = (sp.cur || "PLN").toUpperCase();
   // Cap 15 = 9 adults + 6 children from the guests popover (zadanie 1).
   const adults = sp.adults ? Math.max(1, Math.min(15, Number(sp.adults))) : 1;
+  // Liczba pokoi oferty — MUSI zgadzać się z occupancies, z którymi pobrano
+  // rates (incydent „invalid occupancy number": goście per osoba przy jednym
+  // pokoju = 400 od LiteAPI PO płatności). NaN/0 → 1.
+  const roomsParsed = Number(sp.rooms);
+  const rooms = Number.isInteger(roomsParsed) ? Math.max(1, Math.min(9, roomsParsed)) : 1;
   // Cancellation badge data (set by the hotel-page rate link; absent on old
   // links). Values are validated — anything unexpected renders no badge.
   const cancel = sp.cancel === "free" || sp.cancel === "nrf" ? sp.cancel : undefined;
@@ -183,6 +188,7 @@ export default async function ReservationPage({
           currency={currency}
           board={sp.board}
           adults={adults}
+          rooms={rooms}
           publicKey={publicKey}
           returnBaseUrl={returnBaseUrl}
           backToHotelHref={backToHotelHref}
