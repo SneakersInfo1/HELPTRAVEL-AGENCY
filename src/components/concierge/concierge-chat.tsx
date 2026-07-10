@@ -34,10 +34,13 @@ const MAX_STORED_MESSAGES = 40;
 const MAX_INPUT_LENGTH = 1500;
 const HISTORY_WINDOW = 20;
 
+// Powitanie sprzedażowe (feedback właściciela): otwiera problemem użytkownika
+// („nie wiesz dokąd") i obiecuje TYLKO to, co bot realnie robi — konkretną
+// ofertę lot+hotel z realnymi cenami. Zero fałszywej presji (PRODUCT.md).
 const WELCOME_MESSAGE: ConciergeMessage = {
   role: "assistant",
   content:
-    "Cześć! Jestem asystentem AI HelpTravel — dobiorę Ci wyjazd w Twoim budżecie. Napisz np. „plaża do 3000 zł w sierpniu, 2 osoby”.",
+    "Nie wiesz, dokąd polecieć? Od tego jestem. Napisz budżet, termin i liczbę osób — np. „plaża do 3000 zł w sierpniu, 2 osoby” — a znajdę Ci konkretny lot i hotel w realnych cenach.",
 };
 
 // Startery jako dane strukturalne: ikona TYLKO do renderu (aria-hidden),
@@ -171,7 +174,12 @@ async function postChat(messages: ConciergeMessage[]): Promise<
   };
 }
 
-export function ConciergeChat() {
+export function ConciergeChat({
+  onOfferNavigate,
+}: {
+  /** Przekazywany do TripOfferCard — launcher minimalizuje panel na mobile po kliknięciu oferty. */
+  onOfferNavigate?: () => void;
+}) {
   const [messages, setMessages] = useState<ConciergeMessage[]>(() => readStoredMessages());
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -279,7 +287,7 @@ export function ConciergeChat() {
             </div>
             {message.role === "assistant" && message.offer && (
               <div className="mt-2 w-full max-w-[92%]">
-                <TripOfferCard offer={message.offer} />
+                <TripOfferCard offer={message.offer} onNavigate={onOfferNavigate} />
               </div>
             )}
           </div>

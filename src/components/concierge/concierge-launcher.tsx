@@ -101,6 +101,15 @@ export function ConciergeLauncher() {
     markTeaserDismissed();
   }, []);
 
+  // Klik w link oferty (Zobacz hotel/lot) na MOBILE minimalizuje panel —
+  // pełnoekranowy czat zasłaniałby stronę, na którą użytkownik właśnie
+  // nawiguje (feedback właściciela z testu na telefonie). Na desktopie panel
+  // jest dokowany i nie przeszkadza — zostaje otwarty. Ten sam breakpoint
+  // (sm = 640px) co blokada scrolla tła niżej.
+  const onOfferNavigate = useCallback(() => {
+    if (window.matchMedia("(max-width: 639px)").matches) closePanel();
+  }, [closePanel]);
+
   // Wejście: po zamontowaniu panelu włącz "entered" w kolejnej klatce, żeby
   // CSS-transition (opacity, nie transform w stanie spoczynku) ruszyła; fokus
   // na przycisk zamknięcia panelu.
@@ -178,7 +187,7 @@ export function ConciergeLauncher() {
                   <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
-              Cześć! Dobiorę Ci wyjazd w Twoim budżecie.
+              Nie wiesz, dokąd polecieć? Podaj budżet — znajdę Ci konkretny lot i hotel.
             </div>
           )}
 
@@ -256,7 +265,7 @@ export function ConciergeLauncher() {
               </header>
 
               <div className="min-h-0 flex-1">
-                <ConciergeChat />
+                <ConciergeChat onOfferNavigate={onOfferNavigate} />
               </div>
             </div>
           </div>,

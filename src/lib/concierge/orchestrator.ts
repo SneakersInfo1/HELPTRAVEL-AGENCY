@@ -93,17 +93,30 @@ function trimHistory(history: HistoryMessage[]): Record<string, unknown>[] {
 interface UsageTotals {
   promptTokens: number;
   completionTokens: number;
+  /** Tokeny wejścia odczytane z cache (10% ceny u Anthropic) — weryfikacja, że caching realnie działa. */
+  cachedTokens: number;
   chatCalls: number;
 }
 
 function addUsage(totals: UsageTotals, payload: unknown): void {
   if (!payload || typeof payload !== "object") return;
-  const usage = (payload as { usage?: { prompt_tokens?: number; completion_tokens?: number } })
-    .usage;
+  const usage = (
+    payload as {
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        prompt_tokens_details?: { cached_tokens?: number };
+      };
+    }
+  ).usage;
   if (!usage) return;
   totals.promptTokens += typeof usage.prompt_tokens === "number" ? usage.prompt_tokens : 0;
   totals.completionTokens +=
     typeof usage.completion_tokens === "number" ? usage.completion_tokens : 0;
+  totals.cachedTokens +=
+    typeof usage.prompt_tokens_details?.cached_tokens === "number"
+      ? usage.prompt_tokens_details.cached_tokens
+      : 0;
   totals.chatCalls += 1;
 }
 
@@ -143,6 +156,34 @@ async function chatWithRetry(
     addUsage(usage, response);
   }
   return response;
+}
+
+/**
+ * Zapas/przekroczenie budżetu liczy SYSTEM, nie model. Realny incydent
+ * (Majorka, preview): oferta 5474 zł łącznie przy budżecie 5000 zł → Haiku
+ * ogłosił „masz 474 zł zapasu" zamiast przekroczenia — zły ZNAK odejmowania.
+ * budgetFit dokleja się do wyniku narzędzia (get_trip_offer z budgetPln od
+ * modelu; auto-oferta z budżetu z argumentów search_trips) — model ma tę
+ * liczbę cytować, nigdy liczyć.
+ */
+function computeBudgetFit(
+  args: unknown,
+  totalPerPersonPln: number | null,
+): { budgetPerPersonPln: number; gapPln: number; note: string } | null {
+  if (totalPerPersonPln === null || !args || typeof args !== "object") return null;
+  const a = args as Record<string, unknown>;
+  const budgetPln =
+    typeof a.budgetPln === "number" && Number.isFinite(a.budgetPln) && a.budgetPln > 0
+      ? a.budgetPln
+      : null;
+  if (budgetPln === null) return null;
+  const perPerson = a.budgetKind === "total_two" ? budgetPln / 2 : budgetPln;
+  const gapPln = Math.round(perPerson - totalPerPersonPln);
+  const note =
+    gapPln >= 0
+      ? `Oferta MIEŚCI SIĘ w budżecie: zapas ${gapPln} zł/os. Cytuj dokładnie tę kwotę zapasu.`
+      : `Oferta PRZEKRACZA budżet użytkownika o ${-gapPln} zł/os. — to NIE jest zapas. Powiedz o przekroczeniu wprost i zaproponuj alternatywę (inny kierunek lub termin).`;
+  return { budgetPerPersonPln: Math.round(perPerson), gapPln, note };
 }
 
 /** Dispatch bezpieczny: nigdy nie rzuca — błąd egzekutora/parsowania staje się wynikiem narzędzia. */
@@ -186,12 +227,13 @@ async function dispatchToolCall(
               month: searchArgs.month,
               nights: searchArgs.nights,
             });
+            const budgetFit = computeBudgetFit(searchArgs, offer.totalPerPersonPln);
             return {
               result: {
                 ...(result as Record<string, unknown>),
-                autoOffer: offer,
+                autoOffer: budgetFit ? { ...offer, budgetFit } : offer,
                 autoOfferNote:
-                  "Karta tej oferty (najlepszy kandydat) została JUŻ pokazana użytkownikowi, z linkami „Zobacz hotel” i „Zobacz lot”. Omów jej wartość (cena, daty z karty, zapas do budżetu) i wymień 1–2 alternatywy z candidates.",
+                  "Karta tej oferty (najlepszy kandydat) została JUŻ pokazana użytkownikowi, z linkami „Zobacz hotel” i „Zobacz lot”. Omów jej wartość (cena, daty z karty, zapas do budżetu wg budgetFit) i wymień 1–2 alternatywy z candidates.",
               },
               offer,
             };
@@ -206,7 +248,9 @@ async function dispatchToolCall(
       }
       case "get_trip_offer": {
         const offer = await executors.executeGetTripOffer(args);
-        return { result: offer, offer };
+        // budgetFit tylko w treści DLA MODELU — karta (offer) zostaje czysta.
+        const budgetFit = computeBudgetFit(args, offer.totalPerPersonPln);
+        return { result: budgetFit ? { ...offer, budgetFit } : offer, offer };
       }
       case "list_themes": {
         const result = executors.executeListThemes();
@@ -231,13 +275,38 @@ export async function runConcierge(
   history: HistoryMessage[],
   deps: OrchestratorDeps,
 ): Promise<ConciergeResult> {
+  // PROMPT CACHING (Anthropic przez OpenRouter): schematy narzędzi + system
+  // prompt to STATYCZNY prefiks ~3,5k tokenów wysyłany z każdym wywołaniem —
+  // breakpoint cache_control na system message każe Anthropic cache'ować cały
+  // prefiks (tools+system), odczyt kosztuje 10% ceny wejścia. Drugi breakpoint
+  // na ostatniej wiadomości historii: kolejne rundy narzędzi w TEJ turze i
+  // następna tura rozmowy czytają dotychczasową historię z cache (Anthropic
+  // sam znajduje najdłuższy wcześniej zapisany prefiks). Dostawcy bez cache
+  // (fallback gemini-flash-lite) ignorują adnotację — OpenRouter ją wycina.
+  const trimmed = trimHistory(history);
+  const lastIdx = trimmed.length - 1;
+  if (lastIdx >= 0 && typeof trimmed[lastIdx].content === "string") {
+    trimmed[lastIdx] = {
+      role: trimmed[lastIdx].role,
+      content: [
+        {
+          type: "text",
+          text: trimmed[lastIdx].content,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+    };
+  }
   const messages: Record<string, unknown>[] = [
-    { role: "system", content: SYSTEM_PROMPT },
-    ...trimHistory(history),
+    {
+      role: "system",
+      content: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+    },
+    ...trimmed,
   ];
 
   let offer: TripOffer | null = null;
-  const usage: UsageTotals = { promptTokens: 0, completionTokens: 0, chatCalls: 0 };
+  const usage: UsageTotals = { promptTokens: 0, completionTokens: 0, cachedTokens: 0, chatCalls: 0 };
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const response = await chatWithRetry(deps, { messages, tools: TOOL_DEFS }, usage);
