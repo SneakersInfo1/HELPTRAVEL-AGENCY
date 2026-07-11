@@ -133,3 +133,19 @@ test("szczegóły: brak hotelImages parsuje się (pole opcjonalne)", () => {
   const parsed = LiteApiHotelDetailSchema.safeParse({ ...DETAIL_BASE });
   assert.equal(parsed.success, true);
 });
+
+// 2026-07-11 (pełna pula kierunku) — batch stawek, w którym żaden hotel nie ma
+// ofert, wraca BEZ pola `data`. Sztywne z.array() wywalało cały batch → 50
+// realnie niedostępnych hoteli jako „error" zamiast „brak miejsc".
+test("rates: odpowiedź bez `data` (batch samych wyprzedanych) → pusta lista, nie błąd", async () => {
+  const { LiteApiRatesResponseSchema } = await import("./types");
+  const parsed = LiteApiRatesResponseSchema.safeParse({});
+  assert.equal(parsed.success, true);
+  assert.deepEqual(parsed.success && parsed.data.data, []);
+});
+
+test("rates: `data` w złym kształcie (string) nadal failuje walidację", async () => {
+  const { LiteApiRatesResponseSchema } = await import("./types");
+  const parsed = LiteApiRatesResponseSchema.safeParse({ data: "oops" });
+  assert.equal(parsed.success, false);
+});

@@ -1,15 +1,24 @@
 "use client";
 
 // Single date-range field (zadanie 1) replacing the two native date inputs.
-// Desktop (≥1024px): popover with TWO months side by side. Mobile: full-screen
-// sheet with ONE month + arrows, sticky footer ("Wyczyść" / selected range /
-// "Gotowe"). Field shows the Booking-style label "śr. 17 cze – sob. 20 cze".
+// Desktop (≥1024px): WYŚRODKOWANY dialog (fixed, portal do <body>) z DWOMA
+// miesiącami obok siebie. Mobile: NIEMODALNY bottom-sheet (portal do <body>)
+// z jednym miesiącem + strzałki i stopką "Wyczyść / zakres / Gotowe" — strona
+// pod spodem dalej się przewija (prośba właściciela 2026-07-11).
+// Field shows the Booking-style label "śr. 17 cze – sob. 20 cze".
 // URL contract unchanged: parent keeps checkin/checkout as YYYY-MM-DD strings.
+//
+// DLACZEGO portal + fixed, a nie absolute przy polu: formularz wyszukiwarki ma
+// `backdrop-blur-xl`, a backdrop-filter tworzy containing block dla fixed/
+// absolute — popover kotwiczony w formularzu potrafił wylądować poza ekranem
+// (ucięty kalendarz z góry — zgłoszenie właściciela 2026-07-11). Portal do
+// <body> + pozycja względem viewportu = kalendarz zawsze w całości widoczny.
 
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { RangeValue } from "./range-calendar";
 
@@ -71,10 +80,6 @@ export function DateRangeField({
   const [open, setOpen] = useState(false);
   // Desktop vs mobile decided when the picker opens (lg breakpoint, brief).
   const [isDesktop, setIsDesktop] = useState(true);
-  // Desktop popover flips ABOVE the field when there's not enough room below
-  // (hero form sits at the bottom of the viewport — owner request 2026-06-11:
-  // "na komputerze pole ma pojawiać się nad paskiem").
-  const [flipUp, setFlipUp] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const value: RangeValue = { from: isoToDate(checkin), to: isoToDate(checkout) };
@@ -84,51 +89,23 @@ export function DateRangeField({
     : (checkin && checkout ? formatRangeLabel(checkin, checkout) : null);
   const placeholderText = singleDate ? "Data wylotu" : "Wylot – Powrót";
 
-  // Realna wysokość popovera (2 miesiące + stopka) ≈ 360px. Wcześniej 440px
-  // PRZESZACOWANE → flip-up odpalał się nawet gdy miejsca pod polem było dość,
-  // przez co kalendarz lądował wysoko (oderwany w ciemnym hero). Dokładna
-  // wartość = flip tylko gdy realnie brak miejsca pod polem.
-  const POPOVER_HEIGHT_PX = 360;
-
   const openPicker = () => {
     setIsDesktop(window.matchMedia("(min-width: 1024px)").matches);
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (rect) {
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      setFlipUp(spaceBelow < POPOVER_HEIGHT_PX && spaceAbove > spaceBelow);
-    }
     setOpen(true);
   };
 
-  // Outside click + Escape (desktop popover); Escape also closes the sheet.
+  // Escape zamyka oba warianty (dialog i sheet). Klik poza obsługuje backdrop
+  // (desktop); mobilny sheet jest niemodalny — zamyka go tylko ✕ / Gotowe.
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    if (isDesktop) document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open, isDesktop]);
-
-  // Mobile sheet: lock body scroll while open.
-  useEffect(() => {
-    if (!open || isDesktop) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open, isDesktop]);
+  }, [open]);
 
   const handleRangeChange = (next: RangeValue, completed: boolean) => {
     onChange(next.from ? dateToIso(next.from) : "", next.to ? dateToIso(next.to) : "");
@@ -162,71 +139,97 @@ export function DateRangeField({
         </span>
       </button>
 
-      {open && isDesktop && (
-        <div
-          role="dialog"
-          aria-label="Kalendarz wyboru terminu"
-          className={`absolute left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-emerald-900/10 bg-white p-4 shadow-[0_18px_48px_rgba(16,84,48,0.16)] ${
-            flipUp ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"
-          }`}
-        >
-          <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={2} singleDate={singleDate} />
-          <div className="mt-2 flex items-center justify-between border-t border-emerald-900/8 pt-3">
+      {/* Desktop: dialog WYŚRODKOWANY w viewporcie (portal — patrz nagłówek
+          pliku). Lekki backdrop wyłapuje klik-poza i domyka; z-[80] siedzi nad
+          headerem (z-30), paskami wyników (z-20) i dymkiem konsierża (z-40). */}
+      {open && isDesktop &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
             <button
               type="button"
-              onClick={clear}
-              className="text-xs font-semibold text-emerald-700 transition hover:text-emerald-900"
-            >
-              Wyczyść
-            </button>
-            <span className="text-xs text-emerald-900/55">{footerRangeText}</span>
-          </div>
-        </div>
-      )}
-
-      {open && !isDesktop && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Kalendarz wyboru terminu"
-          className="fixed inset-0 z-[70] flex flex-col bg-white"
-        >
-          <div className="flex items-center justify-between border-b border-emerald-900/10 px-4 py-3">
-            <h2 className="text-base font-bold text-emerald-950">{singleDate ? "Wybierz datę wylotu" : "Wybierz termin"}</h2>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
               aria-label="Zamknij kalendarz"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-900/60 transition hover:bg-emerald-50"
+              onClick={() => setOpen(false)}
+              className="absolute inset-0 cursor-default bg-emerald-950/25"
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Kalendarz wyboru terminu"
+              className="relative rounded-2xl border border-emerald-900/10 bg-white p-4 shadow-[0_24px_64px_rgba(16,84,48,0.28)]"
             >
-              ✕
-            </button>
-          </div>
-          <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-4">
-            <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={1} singleDate={singleDate} />
-          </div>
-          <div className="sticky bottom-0 border-t border-emerald-900/10 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <p className="text-center text-xs font-medium text-emerald-900/70">{footerRangeText}</p>
-            <div className="mt-2 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={clear}
-                className="rounded-xl border border-emerald-900/15 px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
-              >
-                Wyczyść
-              </button>
+              <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={2} singleDate={singleDate} />
+              <div className="mt-2 flex items-center justify-between gap-4 border-t border-emerald-900/8 pt-3">
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="text-xs font-semibold text-emerald-700 transition hover:text-emerald-900"
+                >
+                  Wyczyść
+                </button>
+                <span className="text-xs text-emerald-900/55">{footerRangeText}</span>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  disabled={singleDate ? !value.from : (!value.from || !value.to)}
+                  className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-600/40"
+                >
+                  Gotowe
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Mobile: NIEMODALNY bottom-sheet — strona pod spodem dalej się
+          przewija (bez blokady scrolla body, bez backdropu). Zamknięcie:
+          ✕ / Gotowe / Escape. */}
+      {open && !isDesktop &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-label="Kalendarz wyboru terminu"
+            className="fixed inset-x-0 bottom-0 z-[70] flex max-h-[80vh] flex-col rounded-t-2xl border-t border-emerald-900/10 bg-white shadow-[0_-16px_48px_rgba(16,84,48,0.28)]"
+          >
+            <div className="flex items-center justify-between border-b border-emerald-900/10 px-4 py-3">
+              <h2 className="text-base font-bold text-emerald-950">{singleDate ? "Wybierz datę wylotu" : "Wybierz termin"}</h2>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                disabled={singleDate ? !value.from : (!value.from || !value.to)}
-                className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-600/50"
+                aria-label="Zamknij kalendarz"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-900/60 transition hover:bg-emerald-50"
               >
-                Gotowe
+                ✕
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-4">
+              <RangeCalendar value={value} onChange={handleRangeChange} numberOfMonths={1} singleDate={singleDate} />
+            </div>
+            <div className="border-t border-emerald-900/10 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <p className="text-center text-xs font-medium text-emerald-900/70">{footerRangeText}</p>
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="rounded-xl border border-emerald-900/15 px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
+                >
+                  Wyczyść
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  disabled={singleDate ? !value.from : (!value.from || !value.to)}
+                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-600/50"
+                >
+                  Gotowe
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

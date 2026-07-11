@@ -9,9 +9,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { enforceRateLimit } from "@/lib/rate-limit";
-import { searchFlightRates, toFlightApiError } from "@/lib/flights/client";
+import { toFlightApiError } from "@/lib/flights/client";
+import { searchFlightOffers } from "@/lib/flights/search-offers";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
-import { normalizeRatesResponse } from "@/lib/flights/display";
 import {
   flightRatesCacheKey,
   getCachedFlightOffers,
@@ -21,10 +21,6 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-// Lista pokazuje setki ofert; cap utrzymuje payload <0,5 MB i Redis-friendly.
-// Sort po cenie PRZED capem → najtańsze zawsze zostają; klient re-sortuje wg wyboru.
-const FLIGHT_OFFERS_CAP = 150;
 
 export async function POST(request: NextRequest) {
   const limited = await enforceRateLimit(request, "flights-search");
@@ -54,11 +50,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const res = await searchFlightRates(input);
-    const offers = normalizeRatesResponse(res)
-      .slice()
-      .sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity))
-      .slice(0, FLIGHT_OFFERS_CAP);
+    // Wspólny helper (search → normalize → sort po cenie → cap) — ten sam,
+    // którym cron grzeje cache, więc kształt ofert = identyczny.
+    const offers = await searchFlightOffers(input);
     await setCachedFlightOffers(cacheKey, offers);
     return NextResponse.json({ offers, count: offers.length, cached: false }, { status: 200 });
   } catch (err) {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
+import { POOL_MAX_TOTAL, POOL_PAGE_SIZE, type MetaOffer } from "@/lib/hotels/meta-pool";
 import type { PriceQuery, SlimRate } from "@/lib/hotels/price-batcher";
 import { ensurePrice, getPrice, getVersion, subscribe, type PriceEntry } from "@/lib/hotels/price-store";
 
@@ -10,27 +11,41 @@ import { PriceView } from "./card-price";
 import { HotelPagination } from "./hotel-pagination";
 import { applyFiltersAndSort, type FilterableOffer } from "./filters-logic";
 
-export interface MetaOffer {
-  hotelId: string;
-  name: string;
-  city: string;
-  country?: string;
-  countryCode?: string;
-  latitude?: number;
-  longitude?: number;
-  stars?: number;
-  rating?: number;
-  reviewCount?: number;
-  thumbnailUrl?: string;
-}
+export type { MetaOffer } from "@/lib/hotels/meta-pool";
 
 type PriceCtx = Omit<PriceQuery, "hotelId">;
 
+/** Opis źródła puli — parametry dla /api/hotels/meta (kolejne strony). */
+interface PoolSource {
+  city?: string;
+  country?: string;
+  lat?: number;
+  lng?: number;
+  regionId?: string;
+}
+
+/** Stan dociągania puli: strony metadanych POZA serwerową pierwszą stroną.
+ *  `sig` wiąże stan z kierunkiem (zmiana kierunku = świeży start bez
+ *  setState-w-efekcie); `nextOffset` liczy SUROWE rekordy LiteAPI (przed
+ *  filtrem wyspy), bo offset paginacji działa na surowej liście. */
+interface PoolExpansion {
+  sig: string;
+  hotels: MetaOffer[];
+  nextOffset: number;
+  done: boolean;
+}
+
 interface ResultsListProps {
-  // FULL pool of hotels for this destination (up to 1000). The client owns
-  // sort/filter/paginate so they apply GLOBALLY across the pool, not just
-  // within the current page.
+  // FIRST page of the destination pool (server-rendered, ~300). The client
+  // expands it in the background via /api/hotels/meta until it covers ALL
+  // hotels for the destination (cap POOL_MAX_TOTAL), then owns
+  // sort/filter/paginate GLOBALLY across the full pool.
   pool: MetaOffer[];
+  poolSource?: PoolSource;
+  /** Offset pierwszej niedociągniętej strony (== rozmiar strony serwera). */
+  poolNextOffset?: number;
+  /** Czy serwerowa strona była pełna (są kolejne strony do dociągnięcia). */
+  poolHasMore?: boolean;
   ctx: PriceCtx;
   nights: number;
   childParams: string;
@@ -94,6 +109,9 @@ export function ResultsList(props: ResultsListProps) {
 
   const {
     pool,
+    poolSource,
+    poolNextOffset,
+    poolHasMore,
     ctx,
     nights,
     childParams,
@@ -114,9 +132,81 @@ export function ResultsList(props: ResultsListProps) {
   // Stable identity for the price context so the effect doesn't refire on
   // every render.
   const ctxSig = `${ctx.checkin}|${ctx.checkout}|${ctx.adults}|${ctx.children.join(".")}|${ctx.rooms}|${ctx.currency}`;
+
+  // ── Dociąganie PEŁNEJ puli kierunku (2026-07-11) ──────────────────────────
+  // Serwer wysyła pierwszą stronę (300); tu w tle dociągamy kolejne strony
+  // metadanych z /api/hotels/meta, aż lista obejmie wszystkie hotele kierunku
+  // (sufit POOL_MAX_TOTAL). Sygnatura = tożsamość KIERUNKU (nie dat), więc
+  // zmiana samych dat nie wyrzuca już pobranych metadanych. Efekt pobiera
+  // JEDNĄ stronę na przebieg i podbija stan → kolejny przebieg bierze
+  // następną stronę (sekwencyjnie, bez lawiny równoległych fetchy).
+  const sourceSig = poolSource
+    ? [poolSource.regionId ?? "", poolSource.city ?? "", poolSource.country ?? "", poolSource.lat ?? "", poolSource.lng ?? ""].join("|")
+    : "";
+  const [expansion, setExpansion] = useState<PoolExpansion>({ sig: "", hotels: [], nextOffset: 0, done: false });
+
+  useEffect(() => {
+    if (!poolSource || !poolHasMore || !sourceSig) return;
+    const st: PoolExpansion =
+      expansion.sig === sourceSig
+        ? expansion
+        : { sig: sourceSig, hotels: [], nextOffset: poolNextOffset ?? POOL_PAGE_SIZE, done: false };
+    if (st.done || st.nextOffset >= POOL_MAX_TOTAL) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const qs = new URLSearchParams();
+        if (poolSource.regionId) {
+          qs.set("region", poolSource.regionId);
+        } else {
+          qs.set("city", poolSource.city ?? "");
+          qs.set("country", poolSource.country ?? "");
+          if (typeof poolSource.lat === "number") qs.set("lat", String(poolSource.lat));
+          if (typeof poolSource.lng === "number") qs.set("lng", String(poolSource.lng));
+        }
+        qs.set("offset", String(st.nextOffset));
+        const res = await fetch(`/api/hotels/meta?${qs.toString()}`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = (await res.json()) as { hotels?: MetaOffer[]; count?: number };
+        const got = json.hotels ?? [];
+        const rawCount = json.count ?? got.length;
+        const nextOffset = st.nextOffset + rawCount;
+        // Krótsza strona = koniec listy; sufit chroni budżet skanu stawek.
+        const done = rawCount < POOL_PAGE_SIZE || nextOffset >= POOL_MAX_TOTAL;
+        setExpansion({ sig: sourceSig, hotels: [...st.hotels, ...got], nextOffset, done });
+      } catch {
+        // Awaria dociągania NIE psuje wyników — zostajemy przy tym, co mamy
+        // (co najmniej serwerowe 300). Abort (unmount/zmiana kierunku) ciszej.
+        if (!controller.signal.aborted) {
+          setExpansion({ sig: sourceSig, hotels: st.hotels, nextOffset: st.nextOffset, done: true });
+        }
+      }
+    })();
+    return () => controller.abort();
+    // poolSource świadomie poza deps (nowa tożsamość obiektu co render RSC);
+    // wszystkie jego pola niesie sourceSig.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceSig, poolHasMore, poolNextOffset, expansion]);
+
+  // Pula łączna: serwerowa strona + dociągnięte, dedupe po hotelId (łańcuch
+  // fallbacków w /api/hotels/meta może na styku stron zwrócić duplikaty).
+  const fullPool = useMemo(() => {
+    const extraHotels = expansion.sig === sourceSig ? expansion.hotels : [];
+    if (extraHotels.length === 0) return pool;
+    const seen = new Set(pool.map((o) => o.hotelId));
+    const merged = [...pool];
+    for (const h of extraHotels) {
+      if (!seen.has(h.hotelId)) {
+        seen.add(h.hotelId);
+        merged.push(h);
+      }
+    }
+    return merged;
+  }, [pool, expansion, sourceSig]);
+
   // Stable identity for the pool — id list is the natural key, much cheaper
-  // than deep-comparing 1000 records on every render.
-  const poolIdSig = pool.map((o) => o.hotelId).join(",");
+  // than deep-comparing records on every render.
+  const poolIdSig = fullPool.map((o) => o.hotelId).join(",");
 
   useEffect(() => {
     // Priority queue: enqueue the hotels CURRENTLY VISIBLE first so the
@@ -132,15 +222,17 @@ export function ResultsList(props: ResultsListProps) {
     // the visible page's 20 prices arrive in the FIRST batch every time.
     const currentPageStart = Math.max(0, (pageFromUrl - 1) * pageSize);
     const currentPageEnd = currentPageStart + pageSize;
-    for (let i = currentPageStart; i < Math.min(pool.length, currentPageEnd); i++) {
-      ensurePrice({ hotelId: pool[i].hotelId, ...ctx });
+    for (let i = currentPageStart; i < Math.min(fullPool.length, currentPageEnd); i++) {
+      ensurePrice({ hotelId: fullPool[i].hotelId, ...ctx });
     }
     // Everything off the current page, in metadata order. Skipping the
     // current-page slice avoids re-calling ensurePrice (cheap dedup but
-    // still preserves the FIFO order we just set up).
-    for (let i = 0; i < pool.length; i++) {
+    // still preserves the FIFO order we just set up). Dociągnięte strony puli
+    // wpadają tu naturalnie: poolIdSig rośnie → efekt refire → nowe hotele do
+    // kolejki (ensurePrice dedupe'uje te już w locie).
+    for (let i = 0; i < fullPool.length; i++) {
       if (i >= currentPageStart && i < currentPageEnd) continue;
-      ensurePrice({ hotelId: pool[i].hotelId, ...ctx });
+      ensurePrice({ hotelId: fullPool[i].hotelId, ...ctx });
     }
     // ctxSig + the hotel id list capture every meaningful change.
     // pageFromUrl/pageSize intentionally omitted: ensurePrice is idempotent
@@ -151,7 +243,7 @@ export function ResultsList(props: ResultsListProps) {
 
   const view = useMemo(() => {
     type Row = { offer: MetaOffer; entry: PriceEntry | undefined };
-    const rows: Row[] = pool.map((o) => ({
+    const rows: Row[] = fullPool.map((o) => ({
       offer: o,
       entry: getPrice({ hotelId: o.hotelId, ...ctx }),
     }));
@@ -319,8 +411,13 @@ export function ResultsList(props: ResultsListProps) {
     getVersion(),
   ]);
 
-  const scanComplete = view.scanning === 0;
-  const totalChecked = pool.length - view.scanning;
+  // Skan „gotowy" dopiero gdy: wszystkie znane hotele wycenione ORAZ nie ma
+  // już stron puli do dociągnięcia (inaczej licznik zamarłby na 300/300 tuż
+  // przed dosypaniem kolejnej strony).
+  const expansionPending =
+    Boolean(poolSource && poolHasMore) && !(expansion.sig === sourceSig && expansion.done);
+  const scanComplete = view.scanning === 0 && !expansionPending;
+  const totalChecked = fullPool.length - view.scanning;
 
   return (
     <div className="space-y-4">
@@ -328,7 +425,7 @@ export function ResultsList(props: ResultsListProps) {
         scanComplete={scanComplete}
         availableCount={view.availableCount}
         totalChecked={totalChecked}
-        totalPool={pool.length}
+        totalPool={fullPool.length}
         unavailableCount={view.unavailable}
         failedCount={view.failed}
         nights={nights}
