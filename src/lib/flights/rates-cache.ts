@@ -17,8 +17,20 @@ import type { FlightSearchInput } from "./types";
 // v2 = wartości gzip+base64 (cap 500). Bump wersji zamiast czytać oba
 // formaty: stare wpisy v1 mają TTL ≤10 min, po wdrożeniu same znikną.
 const KEY_VERSION = "v2";
-const TTL_OFFERS_SECONDS = 180; // 3 min — oferty
+// TTL ofert podbite 180 → 600 s (2026-07-11, „maksymalnie przyśpiesz wyniki"):
+// zimny call LiteAPI to ~6 s (zmierzone), a oferty realnie żyją >10 min. Dłuższe
+// okno = więcej trafień dla drugiego/trzeciego użytkownika tej samej trasy.
+// Ryzyko wygaśnięcia offerId pokrywa recovery (?fresh=1 → OFFER_UNAVAILABLE
+// obsłużone w /loty/dodatki), więc trade-off jest bezpieczny.
+const TTL_OFFERS_SECONDS = 600; // 10 min — oferty (on-demand)
+// Cron prewarmingu pisze z DŁUŻSZYM TTL — wpis musi przeżyć cykl crona (30 min),
+// żeby grzana trasa była CIEPŁA także tuż przed kolejnym runem (i gdy jeden run
+// padnie). 40 min = 30 min cyklu + margines.
+const TTL_WARM_SECONDS = 2400; // 40 min — wpisy z crona
 const TTL_EMPTY_SECONDS = 600; // 10 min — negatywny cache martwych tras
+
+/** Rodzaj wpisu do cache — steruje TTL. `on-demand` (użytkownik) vs `warm` (cron). */
+export type FlightCacheKind = "on-demand" | "warm";
 
 interface RedisLike {
   get<T = unknown>(key: string): Promise<T | null>;
@@ -91,12 +103,22 @@ export async function getCachedFlightOffers(key: string): Promise<DisplayOffer[]
   }
 }
 
-/** Zapis (best-effort). Pusta lista → krótszy TTL (negatywny cache martwych tras). */
-export async function setCachedFlightOffers(key: string, offers: DisplayOffer[]): Promise<void> {
+/** Zapis (best-effort). Pusta lista → krótszy TTL (negatywny cache martwych tras).
+ *  `kind="warm"` (cron) → dłuższy TTL, żeby grzana trasa przeżyła cykl crona. */
+export async function setCachedFlightOffers(
+  key: string,
+  offers: DisplayOffer[],
+  kind: FlightCacheKind = "on-demand",
+): Promise<void> {
   const client = getRedis();
   if (!client) return;
   try {
-    const ex = offers.length > 0 ? TTL_OFFERS_SECONDS : TTL_EMPTY_SECONDS;
+    const ex =
+      offers.length === 0
+        ? TTL_EMPTY_SECONDS
+        : kind === "warm"
+          ? TTL_WARM_SECONDS
+          : TTL_OFFERS_SECONDS;
     await client.set(key, packOffers(offers), { ex });
   } catch (err) {
     console.warn("[flights/rates-cache] write skip:", err instanceof Error ? err.message : err);

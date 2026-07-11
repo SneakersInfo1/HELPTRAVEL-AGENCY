@@ -25,11 +25,17 @@ const sampleOffer: DisplayOffer = {
 
 function mapRedis() {
   const store = new Map<string, unknown>();
+  const ttl = new Map<string, number | undefined>();
   return {
     store,
+    ttl,
     client: {
       async get<T = unknown>(k: string): Promise<T | null> { return (store.get(k) as T) ?? null; },
-      async set(k: string, v: unknown): Promise<unknown> { store.set(k, v); return "OK"; },
+      async set(k: string, v: unknown, opts?: { ex?: number }): Promise<unknown> {
+        store.set(k, v);
+        ttl.set(k, opts?.ex);
+        return "OK";
+      },
     },
   };
 }
@@ -84,6 +90,17 @@ test("pusta lista (negatywny cache) zapisana i odczytana jako []", async () => {
   __setFlightRatesRedisForTests(client);
   await setCachedFlightOffers("empty", []);
   assert.deepEqual(await getCachedFlightOffers("empty"), []);
+});
+
+test("TTL: on-demand=600s, warm=2400s, pusta=600s (prewarming przeżywa cykl crona)", async () => {
+  const { client, ttl } = mapRedis();
+  __setFlightRatesRedisForTests(client);
+  await setCachedFlightOffers("k-ondemand", [sampleOffer]);
+  await setCachedFlightOffers("k-warm", [sampleOffer], "warm");
+  await setCachedFlightOffers("k-empty", []);
+  assert.equal(ttl.get("k-ondemand"), 600);
+  assert.equal(ttl.get("k-warm"), 2400);
+  assert.equal(ttl.get("k-empty"), 600);
 });
 
 test("błąd klienta Redis → miss (get=null), set połknięty", async () => {

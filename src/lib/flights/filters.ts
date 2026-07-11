@@ -194,6 +194,9 @@ export function sortOffers(offers: DisplayOffer[], sort: SortKey): DisplayOffer[
     copy.sort((a, b) => offerDepartTime(b).localeCompare(offerDepartTime(a)));
   } else {
     // best — ranking łączony: znormalizowana cena + czas (niżej = lepiej).
+    // Waga CENY 0,7 vs CZAS 0,3 (2026-07-11, „loty jak najtańsze"): domyślna
+    // lista prowadzi tańszymi ofertami, ale waga czasu nadal spycha marne
+    // 2-3-przesiadkowe maratony (czysty sort po cenie wypychał je na górę).
     const prices = copy.map((o) => o.total ?? 0).filter((v) => v > 0);
     const durs = copy.map((o) => o.maxDurationMinutes);
     const pMin = Math.min(...prices, 0);
@@ -202,7 +205,7 @@ export function sortOffers(offers: DisplayOffer[], sort: SortKey): DisplayOffer[
     const dMax = Math.max(...durs, 1);
     const norm = (v: number, lo: number, hi: number) => (hi > lo ? (v - lo) / (hi - lo) : 0);
     const score = (o: DisplayOffer) =>
-      norm(o.total ?? pMax, pMin, pMax) + norm(o.maxDurationMinutes, dMin, dMax);
+      0.7 * norm(o.total ?? pMax, pMin, pMax) + 0.3 * norm(o.maxDurationMinutes, dMin, dMax);
     copy.sort((a, b) => score(a) - score(b));
   }
   return copy;
