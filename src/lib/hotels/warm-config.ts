@@ -81,6 +81,35 @@ export const PACKAGE_DESTINATION_IDS = [
 // (Rzym idx 23, Ateny 48, Stambuł 64…) nie miałyby cen. Union liczony w cronie.
 export const WARM_EXTRA_DESTINATION_IDS: readonly string[] = HOME_TILE_DESTINATION_IDS;
 
+// ── Prewarming LOTÓW (/api/cron/warm-flights, 2026-07-11) ────────────────────
+// PROBLEM: zimny /flights/rates to ~6 s (zmierzone na prod), a loty NIE miały
+// prewarmingu (tylko hotele). TEN cron grzeje cache `flrt:v2` dla popularnych
+// tras WAW→kierunek na typowe okna dat, więc realny użytkownik szukający
+// „WAW→Barcelona, najbliższy weekend" dostaje oferty z cache (<300 ms) zamiast
+// czekać 6 s. Grzejemy WYŁĄCZNIE najczęstszy wariant (2 dorosłych, ECONOMY, PLN)
+// — cache jest kluczowany po (trasa × daty × pax), więc inne pax i tak są zimne.
+//
+// Lotnisko wylotu: WAW dominuje polski ruch leisure. Grupa „Warszawa —
+// wszystkie lotniska" i tak robi fan-out [WAW, WMI, RDO], więc grzane WAW→cel
+// trafia też w leg WAW takiego użytkownika. KRK dodane dla top kierunków.
+export const WARM_FLIGHT_ORIGINS = ["WAW", "KRK"] as const;
+// Ile kierunków grzeje KRK (tylko top-N — reszta tylko z WAW, żeby trzymać
+// wolumen calli w ryzach). WAW grzeje wszystkie WARM_FLIGHT_DEST_IATAS.
+export const WARM_FLIGHT_KRK_TOP = 6;
+// Najczęstsze cele lotów leisure z Polski (realne trasy, zweryfikowane w
+// słowniku lotnisk). Kolejność = priorytet grzania (gdy budżet czasu się kończy,
+// dalsze pozycje mogą zostać pominięte).
+export const WARM_FLIGHT_DEST_IATAS = [
+  "BCN", "AGP", "PMI", "ALC", "AYT", "RHO", "HER", "FAO", "LIS", "SPU",
+  "IST", "ATH", "NCE", "FCO",
+] as const;
+// Pax grzany (najczęstszy leisure — para). Inne pax są zimne (świadomy kompromis).
+export const WARM_FLIGHT_ADULTS = 2;
+// Współbieżność zapytań lotów (każde ~6 s zimno). 6 — jak sekcja lotów w warm-rates.
+export const WARM_FLIGHT_CONCURRENCY = 6;
+// Twardy budżet czasu (funkcja maxDuration 300 s — zostawiamy margines).
+export const WARM_FLIGHT_TIME_BUDGET_MS = 250_000;
+
 export interface WarmWindow {
   checkin: string; // yyyy-MM-dd
   checkout: string;
