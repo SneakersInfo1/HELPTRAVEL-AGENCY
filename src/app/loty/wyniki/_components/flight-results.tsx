@@ -148,6 +148,14 @@ export function FlightResults(props: Props) {
   }, [filters, sort]);
   const rendered = visible.slice(0, shownCount);
   const remaining = visible.length - rendered.length;
+  // Najtańsza oferta z PEŁNEJ puli (sygnał „od X zł" w nagłówku) — cena za
+  // osobę, spójnie z kartą oferty. Stabilne mimo filtra/sortu (liczone z offers).
+  const cheapestPerPerson = useMemo(() => {
+    if (!offers || offers.length === 0 || passengers <= 0) return null;
+    let min = Infinity;
+    for (const o of offers) if (typeof o.total === "number" && o.total < min) min = o.total;
+    return min === Infinity ? null : Math.round(min / passengers);
+  }, [offers, passengers]);
   // Odznaki „Najtańszy/Najszybszy" z PEŁNEJ puli (stabilne mimo filtra/sortu).
   const badges = useMemo(
     () => (offers ? computeOfferBadges(offers) : { cheapestId: null, fastestId: null }),
@@ -185,6 +193,16 @@ export function FlightResults(props: Props) {
                 : ` · ${visible.length} z ${offers.length} ofert`
               : ""}
           </p>
+          {/* Sygnał „najtańszy od X zł/os." — prowadzi decyzję ceną (prośba
+              właściciela: loty jak najtańsze). Cena za osobę, spójnie z kartą. */}
+          {cheapestPerPerson !== null && (
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M2 5.5A2.5 2.5 0 0 1 4.5 3H11a2 2 0 0 1 1.4.6l5 5a2 2 0 0 1 0 2.8l-4.6 4.6a2 2 0 0 1-2.8 0l-5-5A2 2 0 0 1 4 9.6V5.5Zm4 .5a1.25 1.25 0 1 0 0 2.5A1.25 1.25 0 0 0 6 6Z" />
+              </svg>
+              Najtańszy lot od {fmtMoneyPln(cheapestPerPerson, "PLN")}/os.
+            </p>
+          )}
         </div>
         {offers && offers.length > 0 && (
           <div className="flex items-center gap-2">

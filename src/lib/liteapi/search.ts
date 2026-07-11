@@ -56,6 +56,12 @@ export interface HotelsListInput {
   city: string;
   country: string;
   limit?: number;
+  /** Paginacja puli metadanych (ZWERYFIKOWANE żywym callem 2026-07-11:
+   *  offset działa deterministycznie, także >1000 — Barcelona ~3000 hoteli).
+   *  Każda strona = osobny URL fetcha = osobny wpis Next Data Cache, więc
+   *  strony po ~300 rekordów mieszczą się w capie 2 MB, który wcześniej
+   *  wymusił obcięcie puli do 300. */
+  offset?: number;
 }
 
 // Default page size bumped 20 → 50 in Sesja C2 follow-up: user explicitly
@@ -80,6 +86,7 @@ export async function fetchHotelsList(input: HotelsListInput): Promise<LiteApiHo
       countryCode,
       cityName: input.city,
       limit: input.limit ?? DEFAULT_HOTELS_LIMIT,
+      offset: input.offset || undefined,
     },
     // Sesja C2 — server-side Data Cache via Next's fetch patches.
     // Hotels list (IDs + metadata) keyed by countryCode+cityName+limit;
@@ -103,6 +110,7 @@ export async function fetchHotelsList(input: HotelsListInput): Promise<LiteApiHo
 export async function fetchHotelsByPlaceId(input: {
   placeId: string;
   limit?: number;
+  offset?: number;
 }): Promise<LiteApiHotelsListResponse> {
   return liteApiRequest({
     path: "/data/hotels",
@@ -112,6 +120,7 @@ export async function fetchHotelsByPlaceId(input: {
     query: {
       placeId: input.placeId,
       limit: input.limit ?? DEFAULT_HOTELS_LIMIT,
+      offset: input.offset || undefined,
     },
     // Ten sam Next Data Cache co lista miejska (klucz = pełny URL fetcha,
     // czyli placeId+limit) — metadane nie zmieniają się godzinowo.
@@ -127,6 +136,7 @@ export async function fetchHotelsByCoords(input: {
   lng: number;
   radius?: number;
   limit?: number;
+  offset?: number;
 }): Promise<LiteApiHotelsListResponse> {
   return liteApiRequest({
     path: "/data/hotels",
@@ -138,6 +148,7 @@ export async function fetchHotelsByCoords(input: {
       longitude: input.lng,
       radius: input.radius ?? 25_000,
       limit: input.limit ?? DEFAULT_HOTELS_LIMIT,
+      offset: input.offset || undefined,
     },
     nextCache: { revalidate: 86_400, tags: ["liteapi", "liteapi-hotels-list"] },
   });
@@ -202,12 +213,18 @@ export async function fetchHotelsForDestination(input: {
   lat?: number | null;
   lng?: number | null;
   limit?: number;
+  /** Paginacja (strony puli >300 dociąga /api/hotels/meta). Offset stosowany
+   *  do każdej strategii łańcucha — przy offset>0 strategia, która na stronie
+   *  0 nic nie miała, przy wyższym offsecie też zwróci 0, więc łańcuch trafia
+   *  w to samo źródło co strona pierwsza (konsument i tak dedupe'uje po id). */
+  offset?: number;
 }): Promise<LiteApiHotelsListResponse> {
   const limit = input.limit ?? DEFAULT_HOTELS_LIMIT;
+  const offset = input.offset ?? 0;
 
   let byCity: LiteApiHotelsListResponse | null = null;
   try {
-    byCity = await fetchHotelsList({ city: input.city, country: input.country, limit });
+    byCity = await fetchHotelsList({ city: input.city, country: input.country, limit, offset });
     if ((byCity.data?.length ?? 0) > 0) return byCity;
   } catch {
     // Nieznany kraj / odrzucona nazwa → próbujemy współrzędnych/places.
@@ -215,7 +232,7 @@ export async function fetchHotelsForDestination(input: {
 
   if (typeof input.lat === "number" && typeof input.lng === "number") {
     try {
-      const byCoords = await fetchHotelsByCoords({ lat: input.lat, lng: input.lng, limit });
+      const byCoords = await fetchHotelsByCoords({ lat: input.lat, lng: input.lng, limit, offset });
       if ((byCoords.data?.length ?? 0) > 0) return byCoords;
     } catch {
       // spadamy do places
@@ -226,7 +243,7 @@ export async function fetchHotelsForDestination(input: {
     const query = input.country ? `${input.city}, ${input.country}` : input.city;
     const placeId = await resolvePlaceId(query);
     if (placeId) {
-      const byPlace = await fetchHotelsByPlaceId({ placeId, limit });
+      const byPlace = await fetchHotelsByPlaceId({ placeId, limit, offset });
       if ((byPlace.data?.length ?? 0) > 0) return byPlace;
     }
   } catch {

@@ -192,10 +192,14 @@ export function FiltersSidebar() {
         Filtry i sortowanie {stagedCount > 0 ? `(${stagedCount})` : ""}
       </button>
 
+      {/* z-50 (nie z-40): otwarty panel musi przykrywać dymek konsierża
+          (fixed z-40) — wcześniej FAB renderował się NAD przyciskiem
+          „Zastosuj filtry" w otwartym panelu (screenshot właściciela
+          2026-07-11). */}
       <aside
         className={
           openOnMobile
-            ? "fixed inset-0 z-40 flex flex-col bg-white lg:static lg:block"
+            ? "fixed inset-0 z-50 flex flex-col bg-white lg:static lg:block"
             : "hidden lg:block"
         }
       >
