@@ -202,7 +202,14 @@ export const LiteApiHotelRatesSchema = z.object({
 export type LiteApiHotelRates = z.infer<typeof LiteApiHotelRatesSchema>;
 
 export const LiteApiRatesResponseSchema = z.object({
-  data: z.array(LiteApiHotelRatesSchema),
+  // Batch, w którym ŻADEN hotel nie ma ofert (przy pełnej puli kierunku to
+  // codzienność — głęboki ogon listy bywa w całości wyprzedany), wraca BEZ
+  // pola `data` (zaobserwowane na żywo 2026-07-11: „expected array, received
+  // undefined"). Sztywne z.array() wywalało wtedy CAŁY batch → 50 realnie
+  // niedostępnych hoteli lądowało jako „error" zamiast „brak miejsc".
+  // Brak pola → pusta lista (= żaden hotel z batcha nie ma stawek). Inne
+  // nieoczekiwane kształty nadal failują walidację (nie maskujemy błędów).
+  data: z.preprocess((v) => (v == null ? [] : v), z.array(LiteApiHotelRatesSchema)),
 });
 export type LiteApiRatesResponse = z.infer<typeof LiteApiRatesResponseSchema>;
 

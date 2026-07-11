@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { fetchHotelsByPlaceId, fetchHotelsForDestination, LiteApiError } from "@/lib/liteapi";
+import { POOL_PAGE_SIZE, toMetaOffer, type MetaOffer } from "@/lib/hotels/meta-pool";
 import { nightsBetween } from "@/lib/hotels/normalize";
 import { getRegionById, isInRegion, type RegionRecord } from "@/lib/hotels/regions";
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
@@ -27,18 +28,16 @@ export const revalidate = 300;
 // GLOBALLY (not just per current page). Rates are fetched client-side via
 // /api/hotels/rates/batch.
 //
-// POOL SIZE — obniżone 1000 → 300 (2026-06-27, mierzone na prod): przy
-// `limit=1000` odpowiedź dużych miast PRZEKRACZA 2 MB cap Next Data Cache
-// (Valencia = 2 361 040 B → log „items over 2MB can not be cached") → metadane
-// NIGDY się nie cache'owały, więc KAŻDE wyszukiwanie płaciło pełny fetch +
-// wysyłało 2,36 MB RSC do przeglądarki dla strony pokazującej 20 hoteli. 300
-// rekordów ≈ 0,7 MB → mieści się w cache (drugi user = hit), mniejszy payload
-// do przeglądarki i mniej batchy stawek. 300 to wciąż głęboka, sortowalna pula
-// — najtańsze hotele praktycznie zawsze są w top-300 wg trafności LiteAPI, a
-// użytkownik i tak rzadko schodzi poniżej kilku pierwszych stron.
+// POOL SIZE — serwer renderuje PIERWSZĄ stronę puli (300; historię capu 2 MB
+// Next Data Cache opisuje lib/hotels/meta-pool.ts). Od 2026-07-11 to już NIE
+// jest twardy limit widocznych hoteli: ResultsList dociąga kolejne strony
+// metadanych w tle przez /api/hotels/meta (offset zweryfikowany na LiteAPI),
+// aż pula obejmie wszystkie hotele kierunku (sufit POOL_MAX_TOTAL = 2000).
+// Serwerowe 300 zostaje, bo daje natychmiastowy first paint z cache i zerowy
+// wzrost payloadu RSC — reszta puli płynie osobnym torem JSON.
 //
 // Page sizing: 20/page — fewer DOM nodes, faster card images render.
-const HOTEL_POOL_SIZE = 300;
+const HOTEL_POOL_SIZE = POOL_PAGE_SIZE;
 const RESULTS_PER_PAGE = 20;
 
 interface SP {
@@ -188,20 +187,6 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
     : [];
   const nights = nightsBetween(checkin, checkout);
 
-  interface MetaOffer {
-    hotelId: string;
-    name: string;
-    city: string;
-    country?: string;
-    countryCode?: string;
-    latitude?: number;
-    longitude?: number;
-    stars?: number;
-    rating?: number;
-    reviewCount?: number;
-    thumbnailUrl?: string;
-  }
-
   // FAZA 2 — rozwiązujemy rekord katalogu PRZED fetchem: daje kanoniczny EN
   // `cityName` (LiteAPI matchuje dokładny string → polska nazwa = 0 hoteli) oraz
   // lat/lng do fallbacku po współrzędnych, gdy nazwa nie trafi w indeks LiteAPI.
@@ -209,6 +194,9 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
   const canonicalCity = destinationRecord?.city.en ?? destination;
 
   let metaPool: MetaOffer[] = [];
+  // Czy istnieją kolejne strony puli (RAW count == limit strony). Liczone
+  // PRZED filtrem wyspy — offset kolejnych stron liczy się po surowej liście.
+  let poolHasMore = false;
   let errorMessage: string | null = null;
 
   try {
@@ -237,20 +225,9 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
           limit: HOTEL_POOL_SIZE,
         });
     let raw = list.data ?? [];
+    poolHasMore = raw.length >= HOTEL_POOL_SIZE;
     if (region) raw = raw.filter((h) => isInRegion(region, h));
-    metaPool = raw.map((h) => ({
-      hotelId: h.id,
-      name: h.name,
-      city: h.city,
-      country: h.country,
-      countryCode: h.countryCode,
-      latitude: h.latitude ?? h.location?.latitude ?? undefined,
-      longitude: h.longitude ?? h.location?.longitude ?? undefined,
-      stars: h.stars ?? undefined,
-      rating: h.rating ?? undefined,
-      reviewCount: h.reviewCount ?? undefined,
-      thumbnailUrl: h.main_photo ?? h.thumbnail,
-    }));
+    metaPool = raw.map(toMetaOffer);
   } catch (err) {
     errorMessage = err instanceof LiteApiError ? err.userMessagePl : "Coś poszło nie tak. Spróbuj ponownie.";
   }
@@ -330,6 +307,17 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
 
       <ResultsList
         pool={metaPool}
+        // Dociąganie pełnej puli w tle (/api/hotels/meta): opis źródła, od
+        // którego offsetu zacząć i czy w ogóle są kolejne strony.
+        poolSource={{
+          city: region ? undefined : canonicalCity,
+          country: region ? undefined : country,
+          lat: destinationRecord?.lat ?? undefined,
+          lng: destinationRecord?.lng ?? undefined,
+          regionId: region?.id,
+        }}
+        poolNextOffset={HOTEL_POOL_SIZE}
+        poolHasMore={poolHasMore}
         ctx={priceCtx}
         nights={nights}
         childParams={childParams.toString()}

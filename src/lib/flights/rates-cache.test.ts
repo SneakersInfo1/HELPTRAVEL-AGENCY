@@ -63,6 +63,22 @@ test("round-trip z mock Redis: set → get zwraca te same oferty", async () => {
   assert.deepEqual(await getCachedFlightOffers("k1"), [sampleOffer]);
 });
 
+test("v2: wartość w Redis to gzip+base64 (string, magic H4sI), nie surowa tablica", async () => {
+  const { client, store } = mapRedis();
+  __setFlightRatesRedisForTests(client);
+  await setCachedFlightOffers("k-gz", [sampleOffer]);
+  const stored = store.get("k-gz");
+  assert.equal(typeof stored, "string");
+  assert.ok((stored as string).startsWith("H4sI"), "gzip magic w base64");
+});
+
+test("v2: stary format (surowa tablica z wpisu v1) → miss, nie crash", async () => {
+  const { client, store } = mapRedis();
+  __setFlightRatesRedisForTests(client);
+  store.set("k-old", [sampleOffer]);
+  assert.equal(await getCachedFlightOffers("k-old"), null);
+});
+
 test("pusta lista (negatywny cache) zapisana i odczytana jako []", async () => {
   const { client } = mapRedis();
   __setFlightRatesRedisForTests(client);

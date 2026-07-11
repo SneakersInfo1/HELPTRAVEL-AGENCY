@@ -20,6 +20,7 @@
 // dostawcy AI dzieje się W PANELU (stopka ConciergeChat), nie przez
 // ConsentProvider — dlatego ten plik świadomie NIE importuje consent/context.
 
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
@@ -69,6 +70,21 @@ type PanelState = "bubble" | "expanded";
 export function ConciergeLauncher() {
   const [panel, setPanel] = useState<PanelState>("bubble");
   const [entered, setEntered] = useState(false);
+  // Na trasach wyników i lejków (/hotele/*, /loty/*) dymek zwija się do samej
+  // ikony: pełna pigułka „Dobierz wyjazd" nachodziła na „Filtry i sortowanie"
+  // (wyniki hoteli) i pasek ceny (karta hotelu) — zgłoszenie właściciela
+  // 2026-07-11. Na homepage i stronach treści zostaje pełna pigułka. Teaser
+  // też tylko poza wynikami — nad listą hoteli zasłaniał karty.
+  const pathname = usePathname();
+  const pathNoLocale = pathname?.replace(/^\/en(?=\/|$)/, "") ?? "";
+  const compact = pathNoLocale.startsWith("/hotele") || pathNoLocale.startsWith("/loty");
+  // Karta hotelu i kroki lejka mają WŁASNY sticky pasek przy dolnej krawędzi
+  // (cena + „Wybierz pokój" / podsumowanie) — FAB w rogu zasłaniałby to CTA.
+  // Na tych trasach dymek jedzie NAD pasek (~84px). Strony wyników zostają
+  // przy dole: tam pasek filtrów jest wyśrodkowany i kolizji nie ma
+  // (zweryfikowane 375px, 2026-07-11). Pasek znika na lg → wracamy do bottom-6.
+  const isResultsRoute = pathNoLocale.startsWith("/hotele/szukaj") || pathNoLocale.startsWith("/loty/wyniki");
+  const lifted = compact && !isResultsRoute;
   // Server snapshot = true (ukryty): SSR nigdy nie renderuje teasera, więc
   // hydracja jest spójna; klientowy snapshot wchodzi zaraz po niej.
   const teaserDismissed = useSyncExternalStore(subscribeTeaser, readTeaserDismissed, () => true);
@@ -173,9 +189,15 @@ export function ConciergeLauncher() {
   return (
     <>
       {panel === "bubble" && (
-        <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
+        <div
+          className={`fixed right-4 z-40 flex flex-col items-end gap-2 sm:right-6 ${
+            lifted
+              ? "bottom-[max(5.25rem,calc(env(safe-area-inset-bottom)+5.25rem))] lg:bottom-6"
+              : "bottom-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-6"
+          }`}
+        >
           {/* Teaser jednorazowy — dismiss trwały w localStorage, bez liczników/scarcity. */}
-          {!teaserDismissed && (
+          {!teaserDismissed && !compact && (
             <div className="animate-fade-in-up relative max-w-[240px] rounded-2xl rounded-br-md border border-emerald-900/10 bg-white px-4 py-3 text-sm font-medium text-neutral-800 shadow-[0_12px_32px_rgba(16,84,48,0.16)]">
               <button
                 type="button"
@@ -200,7 +222,11 @@ export function ConciergeLauncher() {
             // (odmontowany, gdy panel otwarty), więc dynamiczne wiązanie ze
             // stanem to zawsze-false, które TS słusznie flaguje (TS2367).
             aria-expanded={false}
-            className="animate-bubble-pulse group inline-flex items-center gap-2 rounded-full bg-emerald-600 py-3.5 pl-4 pr-5 text-sm font-bold text-white outline-none transition-colors hover:bg-emerald-700 focus-visible:ring-4 focus-visible:ring-emerald-300/60 motion-reduce:animate-none"
+            aria-label={compact ? "Dobierz wyjazd — asystent AI" : undefined}
+            title={compact ? "Dobierz wyjazd" : undefined}
+            className={`animate-bubble-pulse group inline-flex items-center rounded-full bg-emerald-600 text-sm font-bold text-white outline-none transition-colors hover:bg-emerald-700 focus-visible:ring-4 focus-visible:ring-emerald-300/60 motion-reduce:animate-none ${
+              compact ? "h-13 w-13 justify-center p-3.5" : "gap-2 py-3.5 pl-4 pr-5"
+            }`}
           >
             <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-5 w-5 shrink-0">
               <path
@@ -210,7 +236,7 @@ export function ConciergeLauncher() {
                 strokeLinejoin="round"
               />
             </svg>
-            Dobierz wyjazd
+            {!compact && "Dobierz wyjazd"}
           </button>
         </div>
       )}

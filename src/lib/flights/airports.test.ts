@@ -87,10 +87,41 @@ test("iataForCity: EN nazwy miast z picks nastrojów trafiają w IATA", () => {
   assert.equal(iataForCity(""), null);
 });
 
+test("rozszerzenie 2026-07-11: nowe kierunki wakacyjne wyszukiwalne po polsku", () => {
+  const cases: Array<[string, string]> = [
+    ["ibiza", "IBZ"], ["santorini", "JTR"], ["bodrum", "BJV"], ["madera", "FNC"],
+    ["zakintos", "ZTH"], ["zadar", "ZAD"], ["pafos", "PFO"], ["marsa alam", "RMF"],
+    ["budapeszt", "BUD"], ["malediwy", "MLE"], ["agadir", "AGA"], ["fuerteventura", "FUE"],
+  ];
+  for (const [q, code] of cases) {
+    assert.ok(findsCode(q, code), `'${q}' powinno znaleźć ${code}`);
+  }
+});
+
+test("tolerancja literówek: zapytanie z 1-2 błędami nadal trafia", () => {
+  assert.ok(findsCode("barcelina", "BCN"), "barcelina → BCN (1 literówka)");
+  assert.ok(findsCode("gdanks", "GDN"), "gdanks → GDN (przestawka)");
+  assert.ok(findsCode("santorni", "JTR"), "santorni → JTR (brak litery)");
+  assert.ok(findsCode("majurka", "PMI"), "majurka → PMI");
+});
+
+test("tolerancja literówek NIE psuje normalnych wyników (substring ma pierwszeństwo)", () => {
+  const hits = searchAirports("barcelona", 8);
+  assert.ok(hits.some((o) => o.kind === "airport" && o.airport.code === "BCN"));
+});
+
+test("grupy Rzym i Nowy Jork rozwijają się w fan-out (bez niezweryfikowanego kodu metra)", () => {
+  for (const [id, expected] of [["rome-all", "FCO"], ["newyork-all", "JFK"]] as const) {
+    const group = AIRPORT_GROUPS.find((g) => g.id === id);
+    assert.ok(group, `grupa ${id} istnieje`);
+    const sel = resolveOriginFromOption({ kind: "group", group: group! });
+    assert.ok(sel.codes.length >= 2, `${id}: fan-out ≥2 kody`);
+    assert.ok(sel.codes.includes(expected), `${id}: ${expected} w fan-oucie`);
+  }
+});
+
 test("domyślna lista podpowiedzi prowadzi kierunkami wakacyjnymi (nie tylko huby)", () => {
-  const codes = searchAirports("", 30)
-    .filter((o): o is { kind: "airport"; airport: { code: string } } => o.kind === "airport")
-    .map((o) => o.airport.code);
+  const codes = searchAirports("", 30).flatMap((o) => (o.kind === "airport" ? [o.airport.code] : []));
   // przynajmniej kilka top-plaż jest w domyślnej liście
   const leisureInDefault = ["BCN", "AGP", "PMI", "AYT", "RHO"].filter((c) => codes.includes(c));
   assert.ok(leisureInDefault.length >= 3, `oczekiwano ≥3 plaż w domyślnej liście, jest ${leisureInDefault.length}`);
