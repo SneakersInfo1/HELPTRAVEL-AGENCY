@@ -169,6 +169,63 @@ export const AIRPORTS: readonly Airport[] = [
   { code: "VCE", name: "Wenecja", city: "Wenecja", country: "Włochy", aliases: ["wenecja", "venice", "venezia", "vce"] },
   { code: "NCE", name: "Nicea (Lazurowe Wybrzeże)", city: "Nicea", country: "Francja", aliases: ["nicea", "nice", "nce", "lazurowe wybrzeze", "french riviera"] },
 
+  // ── Rozszerzenie 2026-07-11 („wyszukiwarka jak u gigantów") ─────────────────
+  // Kolejna fala popularnych kierunków PL turysty + stolice regionu + huby,
+  // których brak zgłaszali użytkownicy (wpisanie „Ibiza"/„Santorini"/„Bodrum"
+  // nie dawało NIC). Wszystko realne kody IATA obsługiwane przez GDS.
+  // Hiszpania — Baleary/Kanary/południe
+  { code: "IBZ", name: "Ibiza", city: "Ibiza", country: "Hiszpania", aliases: ["ibiza", "ibz", "eivissa"] },
+  { code: "MAH", name: "Menorka-Mahon", city: "Menorka", country: "Hiszpania", aliases: ["menorka", "minorka", "menorca", "mahon", "mah"] },
+  { code: "FUE", name: "Fuerteventura", city: "Fuerteventura", country: "Hiszpania", aliases: ["fuerteventura", "fue"] },
+  { code: "ACE", name: "Lanzarote", city: "Lanzarote", country: "Hiszpania", aliases: ["lanzarote", "ace", "arrecife"] },
+  { code: "SVQ", name: "Sewilla", city: "Sewilla", country: "Hiszpania", aliases: ["sewilla", "seville", "sevilla", "svq"] },
+  // Grecja — wyspy
+  { code: "JTR", name: "Santorini (Thira)", city: "Santorini", country: "Grecja", aliases: ["santorini", "santoryn", "thira", "jtr"] },
+  { code: "JMK", name: "Mykonos", city: "Mykonos", country: "Grecja", aliases: ["mykonos", "jmk"] },
+  { code: "ZTH", name: "Zakintos", city: "Zakintos", country: "Grecja", aliases: ["zakintos", "zakynthos", "zante", "zth"] },
+  { code: "CHQ", name: "Chania (Kreta)", city: "Chania", country: "Grecja", aliases: ["chania", "kreta chania", "chq", "kreta zachodnia"] },
+  { code: "EFL", name: "Kefalinia", city: "Kefalinia", country: "Grecja", aliases: ["kefalinia", "kefalonia", "cephalonia", "efl"] },
+  // Turcja — riwiera
+  { code: "SAW", name: "Stambuł-Sabiha Gökçen", city: "Stambuł", country: "Turcja", aliases: ["sabiha", "sabiha gokcen", "saw", "stambul sabiha"] },
+  { code: "ADB", name: "Izmir", city: "Izmir", country: "Turcja", aliases: ["izmir", "adb"] },
+  { code: "BJV", name: "Bodrum", city: "Bodrum", country: "Turcja", aliases: ["bodrum", "bjv", "milas"] },
+  { code: "DLM", name: "Dalaman", city: "Dalaman", country: "Turcja", aliases: ["dalaman", "dlm", "marmaris"] },
+  { code: "GZP", name: "Gazipaşa-Alanya", city: "Alanya", country: "Turcja", aliases: ["alanya", "gazipasa", "gzp"] },
+  // Portugalia — wyspy
+  { code: "FNC", name: "Madera-Funchal", city: "Funchal", country: "Portugalia", aliases: ["madera", "madeira", "funchal", "fnc"] },
+  { code: "PDL", name: "Ponta Delgada (Azory)", city: "Ponta Delgada", country: "Portugalia", aliases: ["azory", "azores", "ponta delgada", "pdl", "sao miguel"] },
+  // Afryka Północna
+  { code: "AGA", name: "Agadir", city: "Agadir", country: "Maroko", aliases: ["agadir", "aga"] },
+  { code: "DJE", name: "Djerba", city: "Djerba", country: "Tunezja", aliases: ["djerba", "dzerba", "dje"] },
+  { code: "NBE", name: "Enfidha-Hammamet", city: "Hammamet", country: "Tunezja", aliases: ["enfidha", "hammamet", "nbe", "monastir"] },
+  { code: "TUN", name: "Tunis", city: "Tunis", country: "Tunezja", aliases: ["tunis", "tun", "tunezja"] },
+  { code: "RMF", name: "Marsa Alam", city: "Marsa Alam", country: "Egipt", aliases: ["marsa alam", "rmf", "marsa"] },
+  // Bałkany / Adriatyk
+  { code: "ZAD", name: "Zadar", city: "Zadar", country: "Chorwacja", aliases: ["zadar", "zad"] },
+  { code: "TIV", name: "Tivat", city: "Tivat", country: "Czarnogóra", aliases: ["tivat", "tiv", "kotor", "boka"] },
+  { code: "TGD", name: "Podgorica", city: "Podgorica", country: "Czarnogóra", aliases: ["podgorica", "tgd", "czarnogora", "montenegro"] },
+  { code: "PFO", name: "Pafos", city: "Pafos", country: "Cypr", aliases: ["pafos", "paphos", "pfo"] },
+  // Europa Środkowa / Północna — stolice
+  { code: "BUD", name: "Budapeszt", city: "Budapeszt", country: "Węgry", aliases: ["budapeszt", "budapest", "bud"] },
+  { code: "OTP", name: "Bukareszt-Otopeni", city: "Bukareszt", country: "Rumunia", aliases: ["bukareszt", "bucharest", "otp", "otopeni"] },
+  { code: "SOF", name: "Sofia", city: "Sofia", country: "Bułgaria", aliases: ["sofia", "sof"] },
+  { code: "BEG", name: "Belgrad", city: "Belgrad", country: "Serbia", aliases: ["belgrad", "belgrade", "beg"] },
+  { code: "KEF", name: "Reykjavik-Keflavik", city: "Reykjavik", country: "Islandia", aliases: ["reykjavik", "keflavik", "kef", "islandia", "iceland"] },
+  { code: "HEL", name: "Helsinki", city: "Helsinki", country: "Finlandia", aliases: ["helsinki", "hel"] },
+  { code: "ZRH", name: "Zurych", city: "Zurych", country: "Szwajcaria", aliases: ["zurych", "zurich", "zrh"] },
+  { code: "GVA", name: "Genewa", city: "Genewa", country: "Szwajcaria", aliases: ["genewa", "geneva", "gva"] },
+  // Włochy — południe i wyspy + drugie lotnisko Rzymu
+  { code: "CIA", name: "Rzym-Ciampino", city: "Rzym", country: "Włochy", aliases: ["ciampino", "cia", "rzym ciampino"] },
+  { code: "BRI", name: "Bari", city: "Bari", country: "Włochy", aliases: ["bari", "bri", "apulia", "puglia"] },
+  { code: "PMO", name: "Palermo", city: "Palermo", country: "Włochy", aliases: ["palermo", "pmo"] },
+  { code: "OLB", name: "Olbia (Sardynia)", city: "Olbia", country: "Włochy", aliases: ["olbia", "olb", "sardynia", "sardinia", "costa smeralda"] },
+  { code: "CAG", name: "Cagliari (Sardynia)", city: "Cagliari", country: "Włochy", aliases: ["cagliari", "cag"] },
+  // Egzotyka — wyspy Oceanu Indyjskiego
+  { code: "MLE", name: "Male (Malediwy)", city: "Male", country: "Malediwy", aliases: ["malediwy", "maldives", "male", "mle"] },
+  { code: "CMB", name: "Kolombo", city: "Kolombo", country: "Sri Lanka", aliases: ["kolombo", "colombo", "cmb", "sri lanka"] },
+  { code: "MRU", name: "Mauritius", city: "Mauritius", country: "Mauritius", aliases: ["mauritius", "mru"] },
+  { code: "SEZ", name: "Mahé (Seszele)", city: "Mahé", country: "Seszele", aliases: ["seszele", "seychelles", "mahe", "sez"] },
+
   // ── Poza Europą — główne huby interkontynentalne ────────────────────────────
   // Wylot także spoza Europy (diaspora, przesiadki, podróże dalekie). Kody to
   // realne IATA obsługiwane przez LiteAPI Flights (GDS). Bez grup „wszystkie
@@ -292,6 +349,24 @@ export const AIRPORT_GROUPS: readonly AirportGroup[] = [
     metroCode: "STO", // zweryfikowane: STO → ARN
     aliases: ["sztokholm", "stockholm", "sto", "sztokholm wszystkie"],
   },
+  {
+    id: "rome-all",
+    label: "Rzym — wszystkie lotniska",
+    city: "Rzym",
+    country: "Włochy",
+    airportCodes: ["FCO", "CIA"],
+    // Kod metra ROM NIEzweryfikowany na LiteAPI → bezpieczny fan-out (2 kody).
+    aliases: ["rzym", "rome", "roma", "rzym wszystkie"],
+  },
+  {
+    id: "newyork-all",
+    label: "Nowy Jork — wszystkie lotniska",
+    city: "Nowy Jork",
+    country: "USA",
+    airportCodes: ["JFK", "EWR"],
+    // Kod metra NYC NIEzweryfikowany na LiteAPI → fan-out po JFK/EWR.
+    aliases: ["nowy jork", "new york", "nyc", "nowy jork wszystkie"],
+  },
 ] as const;
 
 // ── Wyszukiwanie / podpowiedzi ────────────────────────────────────────────────
@@ -322,6 +397,48 @@ export function iataForCity(city: string): string | null {
     if (a.aliases.some((al) => foldText(al) === q)) return a.code;
   }
   return null;
+}
+
+// ── Tolerancja literówek (2026-07-11, „jak u gigantów") ──────────────────────
+// „barcelina" / „gdanks" / „santorni" nie dawały ŻADNEJ podpowiedzi, bo match
+// był czysto substringowy. Ograniczona odległość edycyjna Damerau/OSA
+// (przestawienie sąsiadów liczone jako 1 — najczęstsza literówka z klawiatury)
+// z wczesnym wyjściem po wierszu; odpala się TYLKO gdy substring nic nie
+// znalazł — normalne wpisywanie nie płaci nic ekstra, słownik to ~150 rekordów.
+function editDistanceAtMost(a: string, b: string, max: number): boolean {
+  if (Math.abs(a.length - b.length) > max) return false;
+  let prevPrev: number[] | null = null;
+  let prev: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const curr: number[] = [i];
+    let rowMin = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+      // Transpozycja sąsiadów („sk" ↔ „ks") = pojedyncza edycja (OSA).
+      if (prevPrev && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        v = Math.min(v, prevPrev[j - 2] + 1);
+      }
+      curr.push(v);
+      if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > max) return false;
+    prevPrev = prev;
+    prev = curr;
+  }
+  return prev[b.length] <= max;
+}
+
+function fuzzyMatchesQuery(q: string, candidates: readonly string[]): boolean {
+  // Krótkie zapytania → 1 literówka, dłuższe → 2 (Booking-owa praktyka).
+  const max = q.length >= 7 ? 2 : 1;
+  for (const c of candidates) {
+    const f = foldText(c);
+    if (editDistanceAtMost(q, f, max)) return true;
+    // Literówka w PREFIKSIE dłuższej nazwy: „barcelno" vs „barcelona-el prat".
+    if (f.length > q.length && editDistanceAtMost(q, f.slice(0, q.length), max)) return true;
+  }
+  return false;
 }
 
 function groupMatches(g: AirportGroup, q: string): boolean {
@@ -403,6 +520,29 @@ export function searchAirports(query: string, limit = 8): AirportOption[] {
     if (usedCodes.has(a.code)) continue;
     options.push({ kind: "airport", airport: a });
     usedCodes.add(a.code);
+  }
+
+  // 3) Nic nie trafiło substringiem → tolerancja literówek (patrz komentarz
+  //    nad editDistanceAtMost). Grupy przed lotniskami, jak w kroku 1.
+  if (options.length === 0 && q.length >= 4) {
+    for (const g of AIRPORT_GROUPS) {
+      if (!fuzzyMatchesQuery(q, [g.city, ...g.aliases])) continue;
+      options.push({ kind: "group", group: g });
+      for (const code of g.airportCodes) {
+        const a = lookupAirport(code);
+        if (a && !usedCodes.has(code)) {
+          options.push({ kind: "airport", airport: a });
+          usedCodes.add(code);
+        }
+      }
+    }
+    for (const a of AIRPORTS) {
+      if (usedCodes.has(a.code)) continue;
+      if (fuzzyMatchesQuery(q, [a.city, a.name, ...a.aliases])) {
+        options.push({ kind: "airport", airport: a });
+        usedCodes.add(a.code);
+      }
+    }
   }
 
   return options.slice(0, limit);

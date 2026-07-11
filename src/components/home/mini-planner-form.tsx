@@ -12,7 +12,11 @@ import { useLanguage } from "@/components/site/language-provider";
 import { track } from "@/lib/analytics/track";
 import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
+import { readRecentDestinations, saveRecentDestination } from "@/lib/mvp/recent-destinations";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
+
+/** Podpowiedź z flagą „ostatnio szukane" (sekcja nad popularnymi). */
+type SuggestionItem = DestinationSuggestion & { _recent?: boolean };
 
 interface MiniPlannerFormProps {
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
@@ -100,10 +104,14 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   // from /hotele/szukaj?destination=Lisbon shows what the user picked, not
   // the canonical English key.
   const [destQuery, setDestQuery] = useState(initial?.destination ? localizeCity(initial.destination) : "");
-  const [destSuggestions, setDestSuggestions] = useState<DestinationSuggestion[]>([]);
+  const [destSuggestions, setDestSuggestions] = useState<SuggestionItem[]>([]);
   const [destOpen, setDestOpen] = useState(false);
   const [destHighlight, setDestHighlight] = useState(-1);
   const [destFetching, setDestFetching] = useState(false);
+  // Licznik fokusów pustego pola „Dokąd" — każdy fokus przy pustym polu
+  // odpala pobranie popularnych kierunków (+ ostatnich z localStorage), jak
+  // na Booking. 0 = jeszcze nie było fokusa → efekt niżej nic nie robi.
+  const [destFocusTick, setDestFocusTick] = useState(0);
   const [destConfirmed, setDestConfirmed] = useState(Boolean(initial?.destination));
   const [destError, setDestError] = useState("");
   // No default dates — the user must pick them (homepage + results bar).
@@ -125,21 +133,35 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     if (destConfirmed) {
       return;
     }
-    if (destQuery.trim().length < 2) {
+    const trimmed = destQuery.trim();
+    if (trimmed.length < 2 && destFocusTick === 0) {
       setDestSuggestions([]);
       setDestOpen(false);
       setDestFetching(false);
       return;
     }
+    // Puste pole PO fokusie → popularne kierunki (q="" zwraca top wg
+    // popularności, edge-cache 1h) + „ostatnio szukane" z localStorage nad
+    // nimi. Wpisany tekst → dotychczasowe podpowiedzi fuzzy.
+    const popularMode = trimmed.length < 2;
     setDestFetching(true);
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       try {
-        const res = await fetch(`/api/destinations/suggest?q=${encodeURIComponent(destQuery.trim())}`, {
-          signal: controller.signal,
-        });
+        const url = popularMode
+          ? "/api/destinations/suggest?q=&limit=6"
+          : `/api/destinations/suggest?q=${encodeURIComponent(trimmed)}`;
+        const res = await fetch(url, { signal: controller.signal });
         const payload = (await res.json().catch(() => ({ items: [] }))) as { items?: DestinationSuggestion[] };
-        const items = payload.items ?? [];
+        let items: SuggestionItem[] = payload.items ?? [];
+        if (popularMode) {
+          const recent = readRecentDestinations();
+          const recentIds = new Set(recent.map((r) => r.id));
+          items = [
+            ...recent.map((r): SuggestionItem => ({ ...r, _recent: true })),
+            ...items.filter((i) => !recentIds.has(i.id)),
+          ].slice(0, 8);
+        }
         setDestSuggestions(items);
         setDestOpen(true);
         setDestHighlight(-1);
@@ -148,11 +170,15 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       } finally {
         setDestFetching(false);
       }
-    }, 150);
+    }, popularMode ? 50 : 150);
     return () => { controller.abort(); window.clearTimeout(timeout); };
-  }, [destQuery, destConfirmed]);
+  }, [destQuery, destConfirmed, destFocusTick]);
 
-  function selectSuggestion(s: DestinationSuggestion) {
+  function selectSuggestion(s: SuggestionItem) {
+    // „Ostatnie" (localStorage) — bez wewnętrznej flagi _recent.
+    const { _recent, ...plain } = s;
+    void _recent;
+    saveRecentDestination(plain);
     // Backend key (URL param, LiteAPI/IATA lookups) stays English.
     setDestination(s.city);
     setDestinationCountry(s.country);
@@ -214,25 +240,48 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         top = undefined;
       }
       if (!top) {
-        setDestError("Nie znaleziono takiego kierunku. Wybierz miasto z listy podpowiedzi.");
-        setDestOpen(true);
-        return;
+        // Tryb lotów NIE blokuje tutaj: indeks kierunków może nie znać miasta
+        // („Bergamo"), które zna słownik lotnisk — rozstrzygamy niżej po IATA.
+        if (!isFlights) {
+          setDestError("Nie znaleziono takiego kierunku. Wybierz miasto z listy podpowiedzi.");
+          setDestOpen(true);
+          return;
+        }
+      } else {
+        resolvedDest = {
+          kind: top.kind === "region" ? "region" : "city",
+          city: top.city,
+          country: top.country,
+          regionId: top.kind === "region" ? (top.regionId ?? null) : null,
+        };
+        resolvedDestIata = top.airportCode ?? "";
+        // Dosynchronizuj UI, żeby po nawigacji wstecz pole pokazywało wybór.
+        selectSuggestion(top);
       }
-      resolvedDest = {
-        kind: top.kind === "region" ? "region" : "city",
-        city: top.city,
-        country: top.country,
-        regionId: top.kind === "region" ? (top.regionId ?? null) : null,
-      };
-      resolvedDestIata = top.airportCode ?? "";
-      // Dosynchronizuj UI, żeby po nawigacji wstecz pole pokazywało wybór.
-      selectSuggestion(top);
     }
     setDestError("");
 
     // ── TRYB LOTÓW (Faza 2) ──────────────────────────────────────────────
     if (isFlights) {
-      // Cel musi mieć lotnisko (IATA).
+      // Cel musi mieć lotnisko (IATA). Gdy indeks kierunków go nie dał
+      // (miasto spoza indeksu albo wpis bez IATA), ostatnia szansa: słownik
+      // lotnisk (PL/EN aliasy + tolerancja literówek) — „Bergamo" → BGY.
+      if (!resolvedDestIata && destQuery.trim()) {
+        const best = bestAirportOption(destQuery);
+        if (best) {
+          if (best.kind === "airport") {
+            resolvedDestIata = best.airport.code;
+            if (!resolvedDest.city) {
+              resolvedDest = { ...resolvedDest, city: best.airport.city };
+            }
+          } else {
+            resolvedDestIata = best.group.metroCode ?? best.group.airportCodes[0];
+            if (!resolvedDest.city) {
+              resolvedDest = { ...resolvedDest, city: best.group.city };
+            }
+          }
+        }
+      }
       if (!resolvedDestIata) {
         setDestError("Wybierz miasto z lotniskiem z listy podpowiedzi.");
         setDestOpen(true);
@@ -440,7 +489,16 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               setDestError("");
             }}
             onKeyDown={handleDestKeyDown}
-            onFocus={() => { if (destSuggestions.length > 0) setDestOpen(true); }}
+            onFocus={() => {
+              if (destSuggestions.length > 0) {
+                setDestOpen(true);
+                return;
+              }
+              // Puste pole → pokaż popularne + ostatnie (efekt wyżej).
+              if (!destConfirmed && destQuery.trim().length < 2) {
+                setDestFocusTick((t) => t + 1);
+              }
+            }}
             onBlur={() => { window.setTimeout(() => setDestOpen(false), 150); }}
             placeholder="Wpisz miasto lub kraj…"
             autoComplete="off"
@@ -461,9 +519,13 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
                   const isRegion = s.kind === "region";
                   const ctry = localizeCountry(s.country);
                   const reg = isRegion ? "wyspa" : localizeRegion(s.region);
-                  const meta = isRegion
+                  const baseMeta = isRegion
                     ? [reg, ctry].filter(Boolean).join(" · ")
                     : [ctry, reg].filter(Boolean).join(" · ");
+                  // „Ostatnie" ponad popularnymi — oznaczone w metadanych.
+                  const meta = s._recent
+                    ? ["ostatnio szukane", baseMeta].filter(Boolean).join(" · ")
+                    : baseMeta;
                   return (
                     <li
                       key={s.id}

@@ -21,20 +21,17 @@ const LIMIT_PER_MINUTE = 20;
 // not be able to spray arbitrary recipients via the test endpoint (defense
 // in depth against credential leaks / shared screens).
 //
-// stays-search is bumped to 200/min because /hotele/szukaj fetches rates
-// for the full destination pool (up to ~1000 hotels) progressively from
-// the client. With the perf follow-up (BATCH_SIZE 24→50, MAX_CONCURRENT
-// 5→10) a single fresh scan still fires ~20 calls in ~1.5s — well under
-// the cap — but a user bouncing between 3-4 cities in the same minute
-// would have hit the previous 60/min cap. 200/min leaves comfortable
-// headroom for legitimate exploration without making the endpoint a
-// useful abuse vector (it's read-only and LiteAPI rate-limits us upstream
-// anyway).
+// stays-search bumped 200 → 320/min (2026-07-11): /hotele/szukaj skanuje
+// teraz PEŁNĄ pulę kierunku (do POOL_MAX_TOTAL = 2000 hoteli → do 40 batchy
+// stawek po 50) + kilka stron metadanych z /api/hotels/meta na tym samym
+// kluczu. Jeden świeży skan megamiasta ≈ 46 calli; 320/min pozwala na
+// swobodne skakanie między kierunkami bez otwierania wektora nadużyć
+// (endpointy read-only, LiteAPI i tak limituje nas upstream).
 const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   "booking-prebook": 10,
   "booking-book": 10,
   "admin-email-test": 5,
-  "stays-search": 200,
+  "stays-search": 320,
   // concierge: każdy request kosztuje tokeny LLM (OpenRouter) — ciasny limit
   // 10/min/IP chroni budżet przed jednym klientem spamującym czat.
   concierge: 10,

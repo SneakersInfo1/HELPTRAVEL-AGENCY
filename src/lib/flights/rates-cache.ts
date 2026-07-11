@@ -3,15 +3,20 @@
 // Cache MOŻE tylko pomóc, NIGDY nie wywala wyszukiwania.
 //
 // Przechowujemy CHUDE DisplayOffer[] (znormalizowane serwerowo, przycięte w
-// route do ≤150) — wartość <0,5 MB, bezpieczna dla Upstash. TTL krótki, bo
-// offerId i tak re-weryfikujemy przy wyborze (verify na /loty/dodatki).
+// route do ≤500) — od v2 GZIPOWANE (base64), bo 500 ofert ≈ 1,6 MB JSON
+// przekraczałoby limit wartości Upstash; po gzipie ≈ 150-200 KB. TTL krótki,
+// bo offerId i tak re-weryfikujemy przy wyborze (verify na /loty/dodatki).
+
+import { gunzipSync, gzipSync } from "node:zlib";
 
 import { Redis } from "@upstash/redis";
 
 import type { DisplayOffer } from "./display";
 import type { FlightSearchInput } from "./types";
 
-const KEY_VERSION = "v1";
+// v2 = wartości gzip+base64 (cap 500). Bump wersji zamiast czytać oba
+// formaty: stare wpisy v1 mają TTL ≤10 min, po wdrożeniu same znikną.
+const KEY_VERSION = "v2";
 const TTL_OFFERS_SECONDS = 180; // 3 min — oferty
 const TTL_EMPTY_SECONDS = 600; // 10 min — negatywny cache martwych tras
 
@@ -57,13 +62,29 @@ export function flightRatesCacheKey(input: FlightSearchInput): string {
   return `flrt:${KEY_VERSION}:${legs}:${pax}:${input.cabinClass}:${input.currency}`;
 }
 
+/** gzip+base64 — wartości w Redis jako string (patrz nagłówek pliku). */
+function packOffers(offers: DisplayOffer[]): string {
+  return gzipSync(Buffer.from(JSON.stringify(offers), "utf8")).toString("base64");
+}
+
+function unpackOffers(value: unknown): DisplayOffer[] | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  try {
+    const json = gunzipSync(Buffer.from(value, "base64")).toString("utf8");
+    const parsed = JSON.parse(json) as unknown;
+    return Array.isArray(parsed) ? (parsed as DisplayOffer[]) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Odczyt. null = miss (brak env, błąd, brak wpisu). [] = trafiony negatywny cache. */
 export async function getCachedFlightOffers(key: string): Promise<DisplayOffer[] | null> {
   const client = getRedis();
   if (!client) return null;
   try {
-    const v = await client.get<DisplayOffer[]>(key);
-    return Array.isArray(v) ? v : null;
+    const v = await client.get<string>(key);
+    return unpackOffers(v);
   } catch (err) {
     console.warn("[flights/rates-cache] read miss:", err instanceof Error ? err.message : err);
     return null;
@@ -76,7 +97,7 @@ export async function setCachedFlightOffers(key: string, offers: DisplayOffer[])
   if (!client) return;
   try {
     const ex = offers.length > 0 ? TTL_OFFERS_SECONDS : TTL_EMPTY_SECONDS;
-    await client.set(key, offers, { ex });
+    await client.set(key, packOffers(offers), { ex });
   } catch (err) {
     console.warn("[flights/rates-cache] write skip:", err instanceof Error ? err.message : err);
   }

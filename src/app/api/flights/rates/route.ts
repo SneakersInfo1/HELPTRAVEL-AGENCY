@@ -22,9 +22,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// Lista pokazuje setki ofert; cap utrzymuje payload <0,5 MB i Redis-friendly.
-// Sort po cenie PRZED capem → najtańsze zawsze zostają; klient re-sortuje wg wyboru.
-const FLIGHT_OFFERS_CAP = 150;
+// Cap podniesiony 150 → 500 (2026-07-11, „pokazuj wszystkie loty"): realne
+// trasy po normalizacji i dedupe rzadko przekraczają 500 ofert, więc w
+// praktyce user dostaje komplet. Sort po cenie PRZED capem → najtańsze zawsze
+// zostają; klient re-sortuje wg wyboru i renderuje po 20 („Pokaż więcej").
+// Redis: wartość jest teraz gzipowana w rates-cache (patrz KEY_VERSION v2),
+// więc 500 chudych ofert ≈ 150-200 KB w cache zamiast ~1,6 MB.
+const FLIGHT_OFFERS_CAP = 500;
 
 export async function POST(request: NextRequest) {
   const limited = await enforceRateLimit(request, "flights-search");
