@@ -149,17 +149,28 @@ export async function HomePageView() {
     .filter((x): x is { profile: DestinationProfile; pkg: FreshPackage } => x !== null)
     .sort((a, b) => a.pkg.perPersonPln - b.pkg.perPersonPln)
     .slice(0, 10);
+  // Flaga pakietów: gdy ON, karty „Cały wyjazd w jednej cenie" prowadzą do
+  // ŻYWEGO flow pakietów (/pakiety/szukaj) dla dat z karty (cena już z tych dat
+  // — spójne). Gdy OFF (prod), zachowanie bez zmian: link do wyników hoteli.
+  const packagesOn = process.env.NEXT_PUBLIC_FEATURE_PACKAGES === "true";
   const packageDeals: PackageDeal[] = await Promise.all(
     packageCandidates.map(async ({ profile, pkg }): Promise<PackageDeal> => {
       const media = await resolveDestinationMedia(profile);
-      // BEZ checkin/checkout w CTA (właściciel 2026-07-04) — termin ceny
-      // zostaje NA KARCIE, daty user wybiera sam w formularzu wyników.
-      const params = new URLSearchParams({
-        destination: profile.city,
-        country: profile.country,
-        adults: "2",
-        rooms: "1",
-      });
+      const href = packagesOn
+        ? `/pakiety/szukaj?${new URLSearchParams({
+            destination: profile.city,
+            dateFrom: pkg.checkin,
+            dateTo: pkg.checkout,
+            adults: "2",
+          }).toString()}`
+        : // BEZ checkin/checkout w CTA (właściciel 2026-07-04) — termin ceny
+          // zostaje NA KARCIE, daty user wybiera sam w formularzu wyników.
+          `/hotele/szukaj?${new URLSearchParams({
+            destination: profile.city,
+            country: profile.country,
+            adults: "2",
+            rooms: "1",
+          }).toString()}`;
       return {
         slug: profile.slug,
         cityLabel: localizeCity(profile.city),
@@ -168,7 +179,7 @@ export async function HomePageView() {
         perPersonPln: pkg.perPersonPln,
         checkin: pkg.checkin,
         checkout: pkg.checkout,
-        href: `/hotele/szukaj?${params.toString()}`,
+        href,
       };
     }),
   );
