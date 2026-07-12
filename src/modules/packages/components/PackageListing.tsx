@@ -5,6 +5,7 @@
 
 import { formatPLN } from "@/lib/money";
 
+import type { OfferHrefContext } from "../href";
 import type { PackageOffer } from "../types";
 import { PackageResultsList } from "./PackageResultsList";
 
@@ -55,14 +56,14 @@ export function PackageListing({
   originLabel,
   destinationCity,
   destinationCountry,
-  hrefForOffer,
+  hrefContext,
   context,
 }: {
   offers: PackageOffer[];
   originLabel: string;
   destinationCity: string;
   destinationCountry?: string;
-  hrefForOffer?: (offer: PackageOffer) => string;
+  hrefContext?: OfferHrefContext;
   context?: PackageListingContext;
 }) {
   const fromPrice = offers.length
@@ -136,7 +137,7 @@ export function PackageListing({
           originLabel={originLabel}
           destinationCity={destinationCity}
           destinationCountry={destinationCountry}
-          hrefForOffer={hrefForOffer}
+          hrefContext={hrefContext}
         />
       )}
     </section>
