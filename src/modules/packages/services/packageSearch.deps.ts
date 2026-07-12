@@ -49,6 +49,7 @@ export function createProductionDeps(): SearchPackagesDeps {
           name: h.name,
           ...(h.stars != null ? { stars: h.stars } : {}),
           ...(h.rating != null ? { rating: h.rating } : {}),
+          ...(h.reviewCount != null ? { reviewCount: h.reviewCount } : {}),
           ...(h.main_photo || h.thumbnail ? { thumbnailUrl: h.main_photo ?? h.thumbnail } : {}),
         }),
       );

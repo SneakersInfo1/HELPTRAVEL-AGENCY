@@ -23,6 +23,7 @@ export default function PackagesPreviewPage() {
         originLabel="Warszawy"
         destinationCity="Barcelona"
         destinationCountry="Spain"
+        context={{ dateFrom: "2026-08-10", dateTo: "2026-08-13", adults: 2 }}
       />
     </main>
   );

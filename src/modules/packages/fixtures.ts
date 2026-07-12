@@ -1,6 +1,7 @@
 // Dane przykładowe do PODGLĄDU UI pakietów (krok 1/2) bez żywego API.
 // NIE używane w produkcji — wyłącznie strona /pakiety/podglad (za flagą) i testy.
-// Ceny realistyczne, ale zmyślone na potrzeby designu (oznaczone jawnie).
+// Ceny/rozkłady realistyczne, ale zmyślone na potrzeby designu. Kształt 1:1 z
+// tym, co populuje live searchPackages (rozkład tam/powrót, bagaż, wyżywienie).
 
 import type { PackageOffer } from "./types";
 
@@ -13,11 +14,21 @@ export const PREVIEW_OFFERS: PackageOffer[] = [
       name: "Hotel Arts Barcelona",
       stars: 5,
       rating: 9.1,
+      reviewCount: 1240,
+      boardName: "Śniadanie w cenie",
       freeCancellationUntil: "2026-07-28",
       hotelOfferId: "off-arts",
       nights: 3,
     },
-    flight: { offerId: "f-arts", direct: true, carrier: "LO", baggageIncluded: { cabin: true, checked: false } },
+    flight: {
+      offerId: "f-arts",
+      direct: true,
+      carrierCode: "LO",
+      carrierName: "LOT",
+      outbound: { fromCode: "WAW", toCode: "BCN", departISO: "2026-08-10T09:05:00", arriveISO: "2026-08-10T12:20:00", durationMinutes: 195, stops: 0 },
+      inbound: { fromCode: "BCN", toCode: "WAW", departISO: "2026-08-13T13:40:00", arriveISO: "2026-08-13T16:50:00", durationMinutes: 190, stops: 0 },
+      baggageIncluded: { cabin: true, checked: false },
+    },
     pricing: {
       pricePerPerson: pln(1899),
       total: pln(3798),
@@ -30,11 +41,21 @@ export const PREVIEW_OFFERS: PackageOffer[] = [
       name: "Barceló Raval",
       stars: 4,
       rating: 8.4,
+      reviewCount: 890,
+      boardName: "Bez wyżywienia",
       freeCancellationUntil: "2026-07-25",
       hotelOfferId: "off-barcelo",
       nights: 3,
     },
-    flight: { offerId: "f-barcelo", direct: true, carrier: "LO", baggageIncluded: { cabin: true, checked: false } },
+    flight: {
+      offerId: "f-barcelo",
+      direct: true,
+      carrierCode: "LO",
+      carrierName: "LOT",
+      outbound: { fromCode: "WAW", toCode: "BCN", departISO: "2026-08-10T06:15:00", arriveISO: "2026-08-10T09:30:00", durationMinutes: 195, stops: 0 },
+      inbound: { fromCode: "BCN", toCode: "WAW", departISO: "2026-08-13T18:00:00", arriveISO: "2026-08-13T21:15:00", durationMinutes: 195, stops: 0 },
+      baggageIncluded: { cabin: true, checked: false },
+    },
     pricing: {
       pricePerPerson: pln(2149),
       total: pln(4298),
@@ -48,11 +69,21 @@ export const PREVIEW_OFFERS: PackageOffer[] = [
       name: "Catalonia Ronda",
       stars: 3,
       rating: 7.9,
+      reviewCount: 430,
+      boardName: "Śniadanie w cenie",
       freeCancellationUntil: "2026-07-20",
       hotelOfferId: "off-ronda",
       nights: 3,
     },
-    flight: { offerId: "f-ronda", direct: false, carrier: "AF", baggageIncluded: { cabin: true, checked: true } },
+    flight: {
+      offerId: "f-ronda",
+      direct: false,
+      carrierCode: "AF",
+      carrierName: "Air France",
+      outbound: { fromCode: "WAW", toCode: "BCN", departISO: "2026-08-10T07:00:00", arriveISO: "2026-08-10T13:30:00", durationMinutes: 390, stops: 1 },
+      inbound: { fromCode: "BCN", toCode: "WAW", departISO: "2026-08-13T15:00:00", arriveISO: "2026-08-13T21:00:00", durationMinutes: 360, stops: 1 },
+      baggageIncluded: { cabin: true, checked: true },
+    },
     pricing: {
       pricePerPerson: pln(2540),
       total: pln(5080),

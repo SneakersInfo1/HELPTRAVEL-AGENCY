@@ -47,12 +47,16 @@ export async function PackageResults({
     );
   }
 
+  const adults = params.occupancies.reduce((s, o) => s + o.adults, 0);
+  const childrenCount = params.occupancies.reduce((s, o) => s + o.children.length, 0);
+
   return (
     <PackageListing
       offers={result.offers}
       originLabel={originLabel}
       destinationCity={destinationCity}
       destinationCountry={destinationCountry}
+      context={{ dateFrom: params.dateFrom, dateTo: params.dateTo, adults, childrenCount, changeHref: "/" }}
     />
   );
 }
