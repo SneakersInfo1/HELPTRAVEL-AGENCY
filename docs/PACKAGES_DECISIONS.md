@@ -25,10 +25,16 @@
 
 ## Bramka §0 — statusy
 
-### 1. [PRAWNE — PENDING, blokuje Fazę 2]
-LiteAPI nie rozstrzyga roli organizatora — dostarcza dwie niezależne usługi. Model sprzedaży po naszej
-stronie (impreza turystyczna vs powiązane usługi turystyczne; oba modele mają obowiązki — TFG/zabezpieczenia).
-**Do rozstrzygnięcia prawnego: Faza 1 only.** Faza 2 (płatności/saga na prod) zawieszona.
+### 1. [PRAWNE — ROZSTRZYGNIĘTE decyzją właściciela 2026-07-12: POWIĄZANE USŁUGI TURYSTYCZNE]
+LiteAPI nie rozstrzyga roli organizatora — dostarcza dwie niezależne usługi. **Właściciel wybrał model
+„powiązane usługi turystyczne" (PUT).** To jest decyzja biznesowa właściciela, NIE porada prawna z mojej
+strony. Konsekwencje, które pozostają w mocy mimo wyboru PUT:
+- **Obowiązki nie znikają:** ułatwiający nabywanie PUT też podlega zabezpieczeniom (TFG/gwarancja),
+  obowiązkom informacyjnym i odrębnym potwierdzeniom. Do domknięcia przy Fazie 2.
+- Architektura już to wspiera: **dwie odrębne transakcje, dwa descriptory, dwa potwierdzenia** (§4) —
+  spójne z PUT (lżejsza pozycja niż impreza turystyczna z jednym MoR).
+- **Planowanie Fazy 2 ODBLOKOWANE**, ale wejście na prod nadal wymaga: potwierdzenia `DATABASE_URL` na
+  Vercel, potwierdzenia kontraktowego waluty obciążenia (pkt 7) i domknięcia zabezpieczenia/TFG.
 
 ### 2. [PŁATNOŚĆ — ANSWERED]
 Brak wspólnego PaymentIntent. Hotel prebook i flight prebook zwracają OSOBNE `transactionId`/`secretKey`
@@ -94,7 +100,7 @@ do akceptacji jednym tapnięciem). Błąd walidacyjny prebooka → czytelny komu
 - [x] Flaga `NEXT_PUBLIC_FEATURE_PACKAGES` (off na prod, on na staging).
 - [x] Warunek pakietu MVP: tylko hotelowe rate'y z **darmową anulacją** (bezpiecznik kompensacji).
 
-## Zatwierdzone do Fazy 2 (WARUNEK: rozstrzygnięcie prawne pkt 1)
+## Zatwierdzone do Fazy 2 (planowanie ODBLOKOWANE — model PUT; wejście na prod: obowiązki pkt 1 + poniżej)
 
 - [ ] Saga `PackageBooking` w Postgres (stany DRAFT → CONFIRMED + kompensacje, deadline
       `HOTEL_BOOKED_AWAITING_FLIGHT` = min(TTL prebooka, 25 min)).
