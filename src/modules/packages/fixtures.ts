@@ -16,6 +16,7 @@ export const PREVIEW_OFFERS: PackageOffer[] = [
       rating: 9.1,
       reviewCount: 1240,
       boardName: "Śniadanie w cenie",
+      distanceLabel: "0,4 km od centrum · 1,2 km od plaży",
       freeCancellationUntil: "2026-07-28",
       hotelOfferId: "off-arts",
       nights: 3,
