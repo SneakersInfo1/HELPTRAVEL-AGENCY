@@ -21,10 +21,12 @@ type SuggestionItem = DestinationSuggestion & { _recent?: boolean };
 interface MiniPlannerFormProps {
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
   compact?: boolean;
-  /** Tryb wyszukiwarki (Faza 2 toggle Hotele/Loty). Domyślnie "hotels" —
+  /** Tryb wyszukiwarki (toggle Hotele/Loty/Pakiety). Domyślnie "hotels" —
    *  bez zmian dla istniejących użyć (homepage hotelowy, pasek wyników).
-   *  "flights": pokazuje "Skąd" (wymagane), niemowlęta, kieruje na /loty/wyniki. */
-  mode?: "hotels" | "flights";
+   *  "flights": pokazuje "Skąd" (wymagane), niemowlęta, kieruje na /loty/wyniki.
+   *  "packages": pola jak hotelowe (Skąd=Warszawa domyślnie), kieruje na
+   *  /pakiety/szukaj (Lot + Hotel). Za flagą NEXT_PUBLIC_FEATURE_PACKAGES. */
+  mode?: "hotels" | "flights" | "packages";
   /** Initial values when reusing the bar on results pages. Sesja C pkt 2.
       `travelers` is the TOTAL guest count from the `adults` URL param (sum of
       adults+children — product decision); `kids` is the informational
@@ -77,6 +79,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   const router = useRouter();
   const { locale } = useLanguage();
   const isFlights = mode === "flights";
+  const isPackages = mode === "packages";
   const listboxId = useId();
   const destInputRef = useRef<HTMLInputElement>(null);
   const destListRef = useRef<HTMLUListElement>(null);
@@ -342,6 +345,42 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       router.push(`${flightPrefix}/loty/wyniki?${flightParams.toString()}`);
       return;
     }
+
+    // ── TRYB PAKIETÓW (Lot + Hotel) ──────────────────────────────────────
+    if (isPackages) {
+      const trimmedDestination = resolvedDest.city.trim();
+      // Kierunek WYMAGANY (potrzebny lot) — inaczej niż hotele (mogą być puste).
+      if (!trimmedDestination) {
+        setDestError("Wybierz kierunek z listy podpowiedzi.");
+        setDestOpen(true);
+        return;
+      }
+      if (!startDate || !endDate) {
+        setDateError("Wybierz datę wyjazdu i powrotu.");
+        return;
+      }
+      setDateError("");
+      // Dzieci liczone jak dorośli w dół (spójnie z trybem hotelowym) — pakiet
+      // nigdy nie zaniża ceny. Skąd = Warszawa (route ustawia domyślnie).
+      const totalGuests = adults + childCount;
+      const pkgParams = new URLSearchParams({
+        destination: trimmedDestination,
+        dateFrom: startDate,
+        dateTo: endDate,
+        adults: String(totalGuests),
+      });
+      if (childCount > 0) pkgParams.set("kids", String(childCount));
+      sendClientEvent("package_search", {
+        destination: trimmedDestination,
+        checkin: startDate,
+        checkout: endDate,
+        travelers: totalGuests,
+      });
+      const pkgPrefix = locale === "en" ? "/en" : "";
+      router.push(`${pkgPrefix}/pakiety/szukaj?${pkgParams.toString()}`);
+      return;
+    }
+
     // ── TRYB HOTELI (dotychczasowy) ──────────────────────────────────────
     // "Skąd" is optional — but typed-and-unmatched text must not silently
     // turn into "no flights". Exact single match auto-confirms ("krakow" →
@@ -596,7 +635,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
           className="group relative h-12 overflow-hidden whitespace-nowrap rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60"
         >
           <span className="relative z-10 flex items-center justify-center gap-2">
-            {isFlights ? "Szukaj lotów" : "Zaplanuj"}
+            {isPackages ? "Szukaj pakietów" : isFlights ? "Szukaj lotów" : "Zaplanuj"}
             <span aria-hidden className="transition group-hover:translate-x-1">→</span>
           </span>
           <span
@@ -632,9 +671,15 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         </p>
       )}
 
-      {!compact && !isFlights && (
+      {!compact && mode === "hotels" && (
         <p className="mt-3 text-[11px] text-emerald-900/70">
               Dokąd możesz zostawić puste — pomożemy wybrać kierunek po Twoich preferencjach.
+        </p>
+      )}
+
+      {!compact && isPackages && (
+        <p className="mt-3 text-[11px] text-emerald-900/70">
+          Lot z Warszawy w obie strony w cenie — pokazujemy tylko hotele z bezpłatną anulacją.
         </p>
       )}
     </form>
