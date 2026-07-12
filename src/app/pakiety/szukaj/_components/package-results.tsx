@@ -57,6 +57,7 @@ export async function PackageResults({
       destinationCity={destinationCity}
       destinationCountry={destinationCountry}
       context={{ dateFrom: params.dateFrom, dateTo: params.dateTo, adults, childrenCount, changeHref: "/" }}
+      hrefContext={{ destination: params.destinationId, dateFrom: params.dateFrom, dateTo: params.dateTo, adults }}
     />
   );
 }

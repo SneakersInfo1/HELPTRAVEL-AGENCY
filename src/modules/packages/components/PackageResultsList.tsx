@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 
+import { buildOfferHref, type OfferHrefContext } from "../href";
 import type { PackageOffer } from "../types";
 import { PackageCard } from "./PackageCard";
 
@@ -23,13 +24,13 @@ export function PackageResultsList({
   originLabel,
   destinationCity,
   destinationCountry,
-  hrefForOffer,
+  hrefContext,
 }: {
   offers: PackageOffer[];
   originLabel: string;
   destinationCity: string;
   destinationCountry?: string;
-  hrefForOffer?: (offer: PackageOffer) => string;
+  hrefContext?: OfferHrefContext;
 }) {
   const [sort, setSort] = useState<Sort>("recommended");
 
@@ -89,7 +90,7 @@ export function PackageResultsList({
               originLabel={originLabel}
               destinationCity={destinationCity}
               destinationCountry={destinationCountry}
-              href={hrefForOffer?.(offer) ?? "#"}
+              href={hrefContext ? buildOfferHref(hrefContext, offer) : "#"}
               imagePriority={i === 0}
               badges={{ cheapest: offer.hotel.hotelId === cheapestId }}
             />
