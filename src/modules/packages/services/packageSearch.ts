@@ -5,9 +5,10 @@
 // (bestFlight/pricing/assemble/pickCheapestRefundableRate) pozostaje odsprzęgnięty.
 
 import { fromMinor } from "@/lib/money";
-import type { DisplayOffer } from "@/lib/flights/display";
+import type { DisplayLeg, DisplayOffer } from "@/lib/flights/display";
 import type { FlightSearchInput } from "@/lib/flights/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
+import { localizeBoard } from "@/lib/liteapi/translations";
 import {
   nightsBetween,
   pickCheapestRefundableRate,
@@ -16,7 +17,12 @@ import {
   rateTotalMinor,
 } from "@/lib/hotels/normalize";
 
-import type { PackageFlightSummary, PackageSearchParams, PackageSearchResult } from "../types";
+import type {
+  PackageFlightLeg,
+  PackageFlightSummary,
+  PackageSearchParams,
+  PackageSearchResult,
+} from "../types";
 import { assemblePackageOffers, type PackageBaseFlight, type PackageHotelCandidate } from "./assembleOffers";
 import { isDirectOffer, selectBaseFlight } from "./bestFlight";
 import { buildFlightSearchInput } from "./flightSearchInput";
@@ -28,6 +34,7 @@ export interface PackageHotelMeta {
   name: string;
   stars?: number;
   rating?: number;
+  reviewCount?: number;
   thumbnailUrl?: string;
 }
 
@@ -52,16 +59,28 @@ export interface SearchPackagesDeps {
 
 const DEFAULT_HOTEL_LIMIT = 40;
 
-/** DisplayOffer → skrót lotu na kartę pakietu. */
+function toLeg(l: DisplayLeg): PackageFlightLeg {
+  return {
+    fromCode: l.originCode,
+    toCode: l.destinationCode,
+    departISO: l.departureTime,
+    arriveISO: l.arrivalTime,
+    durationMinutes: l.durationMinutes,
+    stops: l.stops,
+  };
+}
+
+/** DisplayOffer → skrót lotu na kartę pakietu (pełny rozkład tam/powrót). */
 function toFlightSummary(offer: DisplayOffer): PackageFlightSummary {
-  const outbound = offer.legs.find((l) => l.direction === "OUTBOUND") ?? offer.legs[0];
-  const inbound = offer.legs.find((l) => l.direction === "INBOUND");
+  const outboundLeg = offer.legs.find((l) => l.direction === "OUTBOUND") ?? offer.legs[0];
+  const inboundLeg = offer.legs.find((l) => l.direction === "INBOUND");
   return {
     offerId: offer.offerId,
     direct: isDirectOffer(offer),
-    carrier: outbound?.carrierCode || undefined,
-    outboundDepart: outbound?.departureTime || undefined,
-    inboundDepart: inbound?.departureTime || undefined,
+    carrierCode: outboundLeg?.carrierCode || undefined,
+    carrierName: outboundLeg?.carriers[0] || undefined,
+    outbound: outboundLeg ? toLeg(outboundLeg) : undefined,
+    inbound: inboundLeg ? toLeg(inboundLeg) : undefined,
     baggageIncluded: { cabin: offer.hasCarryOnBag, checked: offer.hasCheckedBag },
   };
 }
@@ -77,12 +96,15 @@ function toCandidate(
   const minor = rateTotalMinor(pick.rate);
   const currency = rateCurrency(pick.rate);
   if (minor === null || currency !== "PLN") return null; // MVP: wyłącznie PLN
+  const board = pick.rate.boardName ? localizeBoard(pick.rate.boardName) : undefined;
   return {
     hotel: {
       hotelId: meta.id,
       name: meta.name,
       ...(meta.stars !== undefined ? { stars: meta.stars } : {}),
       ...(meta.rating !== undefined ? { rating: meta.rating } : {}),
+      ...(meta.reviewCount !== undefined ? { reviewCount: meta.reviewCount } : {}),
+      ...(board ? { boardName: board } : {}),
       ...(meta.thumbnailUrl ? { thumbnailUrl: meta.thumbnailUrl } : {}),
       freeCancellationUntil: rateCancellationDeadline(pick.rate) ?? "",
       hotelOfferId: pick.offerId,

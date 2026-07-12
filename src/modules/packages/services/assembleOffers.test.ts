@@ -26,7 +26,7 @@ function candidate(id: string, name: string, now: number, taxes?: number): Packa
   };
 }
 
-const flightSummary: PackageFlightSummary = { offerId: "flt-1", direct: true, carrier: "LO" };
+const flightSummary: PackageFlightSummary = { offerId: "flt-1", direct: true, carrierCode: "LO" };
 const baseFlight: PackageBaseFlight = { summary: flightSummary, price: pln(2198) };
 
 // ── testy ─────────────────────────────────────────────────────────────────────

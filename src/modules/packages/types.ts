@@ -30,12 +30,26 @@ export interface PackageHotelSummary {
   name: string;
   stars?: number;
   rating?: number;
-  distanceFromCenterKm?: number;
+  reviewCount?: number;
+  /** Wyżywienie w cenie (zlokalizowane, np. „Śniadanie w cenie"). */
+  boardName?: string;
+  /** Gotowa etykieta dystansu, np. „0,4 km od centrum" (z realnych współrzędnych). */
+  distanceLabel?: string;
   thumbnailUrl?: string;
   /** Warunek MVP: tylko rate z darmową anulacją (bezpiecznik kompensacji sagi). */
   freeCancellationUntil: string; // ISO
   hotelOfferId: string;
   nights: number;
+}
+
+/** Jeden odcinek lotu (tam albo powrót) — do rozkładu na karcie. */
+export interface PackageFlightLeg {
+  fromCode: string; // IATA wylotu
+  toCode: string; // IATA przylotu
+  departISO: string;
+  arriveISO: string;
+  durationMinutes: number;
+  stops: number;
 }
 
 /** Skrót lotu bazowego dla pakietu (jeden lot na listing; delty liczone client-side). */
@@ -44,9 +58,10 @@ export interface PackageFlightSummary {
   /** Ważność oferty z API (`expiration`) — źródło prawdy, nie sztywny TTL. */
   expiration?: string;
   direct: boolean;
-  carrier?: string;
-  outboundDepart?: string;
-  inboundDepart?: string;
+  carrierCode?: string;
+  carrierName?: string;
+  outbound?: PackageFlightLeg;
+  inbound?: PackageFlightLeg;
   baggageIncluded?: { cabin: boolean; checked: boolean };
 }
 
