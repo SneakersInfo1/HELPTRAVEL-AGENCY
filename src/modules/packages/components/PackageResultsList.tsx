@@ -1,11 +1,12 @@
 "use client";
 
-// Lista wyników pakietów z sortowaniem (klient — oferty już pobrane serwerowo,
-// sort client-side jest natychmiastowy). Polecane (kolejność z searchu, waga
-// ceny) / Cena za osobę / Ocena hotelu. Badge „Najtańszy" trzyma się realnie
-// najtańszej oferty niezależnie od sortu.
+// Lista wyników pakietów z FILTRAMI + sortowaniem (klient — oferty już pobrane
+// serwerowo; filtr/sort po pobranym zbiorze, natychmiast, bez re-fetchu §8).
+// Filtry §4 krok 1: bezpośredni lot, śniadanie w cenie, gwiazdki. Sort:
+// Polecane / Cena / Ocena. Badge „Najtańszy" trzyma się realnie najtańszej
+// WIDOCZNEJ oferty.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { buildOfferHref, type OfferHrefContext } from "../href";
 import type { PackageOffer } from "../types";
@@ -18,6 +19,23 @@ const SORTS: { key: Sort; label: string }[] = [
   { key: "price", label: "Cena za osobę" },
   { key: "rating", label: "Ocena hotelu" },
 ];
+
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+        active
+          ? "border-emerald-600 bg-emerald-600 text-white"
+          : "border-emerald-900/15 bg-white text-neutral-700 hover:border-emerald-300"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function PackageResultsList({
   offers,
@@ -33,30 +51,67 @@ export function PackageResultsList({
   hrefContext?: OfferHrefContext;
 }) {
   const [sort, setSort] = useState<Sort>("recommended");
+  const [directOnly, setDirectOnly] = useState(false);
+  const [breakfastOnly, setBreakfastOnly] = useState(false);
+  const [minStars, setMinStars] = useState(0);
+
+  const anyFilter = directOnly || breakfastOnly || minStars > 0;
+  const clearFilters = () => {
+    setDirectOnly(false);
+    setBreakfastOnly(false);
+    setMinStars(0);
+  };
+
+  const filtered = useMemo(
+    () =>
+      offers.filter((o) => {
+        if (directOnly && !o.flight.direct) return false;
+        if (minStars > 0 && (o.hotel.stars ?? 0) < minStars) return false;
+        if (breakfastOnly && !(o.hotel.boardName && /niadan/i.test(o.hotel.boardName))) return false;
+        return true;
+      }),
+    [offers, directOnly, breakfastOnly, minStars],
+  );
 
   const cheapestId = useMemo(() => {
     let id: string | null = null;
     let min = Infinity;
-    for (const o of offers) {
+    for (const o of filtered) {
       if (o.pricing.pricePerPerson.amount < min) {
         min = o.pricing.pricePerPerson.amount;
         id = o.hotel.hotelId;
       }
     }
     return id;
-  }, [offers]);
+  }, [filtered]);
 
   const sorted = useMemo(() => {
-    const arr = [...offers];
+    const arr = [...filtered];
     if (sort === "price") arr.sort((a, b) => a.pricing.pricePerPerson.amount - b.pricing.pricePerPerson.amount);
     else if (sort === "rating") arr.sort((a, b) => (b.hotel.rating ?? 0) - (a.hotel.rating ?? 0));
     return arr; // recommended = kolejność z searchu
-  }, [offers, sort]);
+  }, [filtered, sort]);
 
   return (
     <div>
+      {/* Filtry */}
+      <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
+        <FilterChip active={directOnly} onClick={() => setDirectOnly((v) => !v)}>
+          ✈ Bezpośredni lot
+        </FilterChip>
+        <FilterChip active={breakfastOnly} onClick={() => setBreakfastOnly((v) => !v)}>
+          🍽 Śniadanie w cenie
+        </FilterChip>
+        <span aria-hidden className="h-5 w-px shrink-0 bg-neutral-200" />
+        {[3, 4, 5].map((s) => (
+          <FilterChip key={s} active={minStars === s} onClick={() => setMinStars((v) => (v === s ? 0 : s))}>
+            {s === 5 ? "5★" : `${s}+ ★`}
+          </FilterChip>
+        ))}
+      </div>
+
+      {/* Sort + licznik */}
       <div className="mb-4 flex items-center gap-2 overflow-x-auto">
-        <span className="shrink-0 text-xs font-medium text-neutral-500">Sortuj:</span>
         <div role="tablist" aria-label="Sortowanie pakietów" className="flex gap-1 rounded-full bg-neutral-100 p-1">
           {SORTS.map((s) => {
             const active = sort === s.key;
@@ -76,27 +131,39 @@ export function PackageResultsList({
             );
           })}
         </div>
+        <span className="ml-auto shrink-0 text-xs text-neutral-500">
+          {anyFilter ? `${filtered.length} z ${offers.length}` : `${offers.length} pakietów`}
+        </span>
       </div>
 
-      <ol className="flex flex-col gap-4">
-        {sorted.map((offer, i) => (
-          <li
-            key={offer.hotel.hotelId}
-            className="animate-rise-card"
-            style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
+      {filtered.length === 0 ? (
+        <div className="rounded-2xl border border-emerald-900/10 bg-white p-8 text-center">
+          <p className="text-base font-semibold text-neutral-900">Żaden pakiet nie pasuje do filtrów</p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-3 inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
-            <PackageCard
-              offer={offer}
-              originLabel={originLabel}
-              destinationCity={destinationCity}
-              destinationCountry={destinationCountry}
-              href={hrefContext ? buildOfferHref(hrefContext, offer) : "#"}
-              imagePriority={i === 0}
-              badges={{ cheapest: offer.hotel.hotelId === cheapestId }}
-            />
-          </li>
-        ))}
-      </ol>
+            Wyczyść filtry
+          </button>
+        </div>
+      ) : (
+        <ol className="flex flex-col gap-4">
+          {sorted.map((offer, i) => (
+            <li key={offer.hotel.hotelId} className="animate-rise-card" style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}>
+              <PackageCard
+                offer={offer}
+                originLabel={originLabel}
+                destinationCity={destinationCity}
+                destinationCountry={destinationCountry}
+                href={hrefContext ? buildOfferHref(hrefContext, offer) : "#"}
+                imagePriority={i === 0}
+                badges={{ cheapest: offer.hotel.hotelId === cheapestId }}
+              />
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
