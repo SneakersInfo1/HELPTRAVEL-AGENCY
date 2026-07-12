@@ -5,6 +5,7 @@
 // (bestFlight/pricing/assemble/pickCheapestRefundableRate) pozostaje odsprzęgnięty.
 
 import { fromMinor } from "@/lib/money";
+import { hotelDistanceLabels } from "@/lib/geo/distance-label";
 import type { DisplayLeg, DisplayOffer } from "@/lib/flights/display";
 import type { FlightSearchInput } from "@/lib/flights/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
@@ -36,6 +37,8 @@ export interface PackageHotelMeta {
   rating?: number;
   reviewCount?: number;
   thumbnailUrl?: string;
+  lat?: number;
+  lng?: number;
 }
 
 /** Wstrzykiwane I/O. Domyślne implementacje (produkcyjne) w packageSearch.deps.ts. */
@@ -90,6 +93,8 @@ function toCandidate(
   meta: PackageHotelMeta,
   roomTypes: LiteApiRoomType[],
   nights: number,
+  destinationCity: string,
+  destinationCountry?: string,
 ): PackageHotelCandidate | null {
   const pick = pickCheapestRefundableRate(roomTypes);
   if (!pick) return null; // brak taryfy z darmową anulacją → hotel wypada (§3.4)
@@ -97,6 +102,10 @@ function toCandidate(
   const currency = rateCurrency(pick.rate);
   if (minor === null || currency !== "PLN") return null; // MVP: wyłącznie PLN
   const board = pick.rate.boardName ? localizeBoard(pick.rate.boardName) : undefined;
+  // Dystans od centrum/plaży (te same guardraile co karta hotelowa). Gdy brak
+  // współrzędnych hotelu albo referencji miasta → brak etykiety (nie zgadujemy).
+  const dist = hotelDistanceLabels({ lat: meta.lat, lng: meta.lng }, destinationCity, destinationCountry);
+  const distanceLabel = [dist.center, dist.beach].filter(Boolean).join(" · ") || undefined;
   return {
     hotel: {
       hotelId: meta.id,
@@ -105,6 +114,7 @@ function toCandidate(
       ...(meta.rating !== undefined ? { rating: meta.rating } : {}),
       ...(meta.reviewCount !== undefined ? { reviewCount: meta.reviewCount } : {}),
       ...(board ? { boardName: board } : {}),
+      ...(distanceLabel ? { distanceLabel } : {}),
       ...(meta.thumbnailUrl ? { thumbnailUrl: meta.thumbnailUrl } : {}),
       freeCancellationUntil: rateCancellationDeadline(pick.rate) ?? "",
       hotelOfferId: pick.offerId,
@@ -156,7 +166,7 @@ export async function searchPackages(
 
   const candidates: PackageHotelCandidate[] = [];
   for (const meta of pool) {
-    const cand = toCandidate(meta, ratesByHotel.get(meta.id) ?? [], nights);
+    const cand = toCandidate(meta, ratesByHotel.get(meta.id) ?? [], nights, params.destinationId);
     if (cand) candidates.push(cand);
   }
 

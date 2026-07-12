@@ -50,6 +50,8 @@ export function createProductionDeps(): SearchPackagesDeps {
           ...(h.stars != null ? { stars: h.stars } : {}),
           ...(h.rating != null ? { rating: h.rating } : {}),
           ...(h.reviewCount != null ? { reviewCount: h.reviewCount } : {}),
+          ...(h.latitude != null ? { lat: h.latitude } : {}),
+          ...(h.longitude != null ? { lng: h.longitude } : {}),
           ...(h.main_photo || h.thumbnail ? { thumbnailUrl: h.main_photo ?? h.thumbnail } : {}),
         }),
       );
