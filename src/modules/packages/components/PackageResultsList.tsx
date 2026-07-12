@@ -6,7 +6,9 @@
 // Polecane / Cena / Ocena. Badge „Najtańszy" trzyma się realnie najtańszej
 // WIDOCZNEJ oferty.
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+
+import { track } from "@/lib/analytics/track";
 
 import { buildOfferHref, type OfferHrefContext } from "../href";
 import type { PackageOffer } from "../types";
@@ -51,6 +53,13 @@ export function PackageResultsList({
   hrefContext?: OfferHrefContext;
 }) {
   const [sort, setSort] = useState<Sort>("recommended");
+
+  // package_listing_view — raz przy wejściu na listing (liczba realnych ofert).
+  useEffect(() => {
+    track("package_listing_view", { destination: hrefContext?.destination ?? destinationCity, available_count: offers.length });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [directOnly, setDirectOnly] = useState(false);
   const [breakfastOnly, setBreakfastOnly] = useState(false);
   const [minStars, setMinStars] = useState(0);
@@ -150,7 +159,19 @@ export function PackageResultsList({
       ) : (
         <ol className="flex flex-col gap-4">
           {sorted.map((offer, i) => (
-            <li key={offer.hotel.hotelId} className="animate-rise-card" style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}>
+            <li
+              key={offer.hotel.hotelId}
+              className="animate-rise-card"
+              style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
+              onClick={() =>
+                track("package_hotel_select", {
+                  hotel_id: offer.hotel.hotelId,
+                  destination: hrefContext?.destination ?? destinationCity,
+                  position: i + 1,
+                  price_per_person: offer.pricing.pricePerPerson.amount,
+                })
+              }
+            >
               <PackageCard
                 offer={offer}
                 originLabel={originLabel}

@@ -376,6 +376,13 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         checkout: endDate,
         travelers: totalGuests,
       });
+      track("package_search", {
+        destination: trimmedDestination,
+        checkin: startDate,
+        checkout: endDate,
+        adults: totalGuests,
+        source: "search_bar",
+      });
       const pkgPrefix = locale === "en" ? "/en" : "";
       router.push(`${pkgPrefix}/pakiety/szukaj?${pkgParams.toString()}`);
       return;

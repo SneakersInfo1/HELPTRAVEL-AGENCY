@@ -222,6 +222,43 @@ export interface TrackEventMap {
     currency?: string;
     item_category: "flight";
   };
+
+  // ── Pakiety Lot + Hotel (Faza 1 — lejek §7) ──
+  package_search: {
+    destination: string;
+    checkin?: string;
+    checkout?: string;
+    /** SUMA adults+children (spójnie z hotelami). */
+    adults?: number;
+    source?: "search_bar" | "landing" | "deals_section";
+  };
+  package_listing_view: {
+    destination: string;
+    available_count: number;
+  };
+  /** Klik „Wybierz pakiet" (karta → krok 2 wyboru lotu). */
+  package_hotel_select: {
+    hotel_id: string;
+    destination?: string;
+    /** 1-based pozycja na liście. */
+    position?: number;
+    price_per_person?: number;
+  };
+  package_flight_view: {
+    destination?: string;
+    flight_count: number;
+  };
+  package_flight_change: {
+    destination?: string;
+    sort?: string;
+  };
+  /** Klik split-CTA kroku 2 — mierzy INTENCJĘ (Faza 1: rozdzielone rezerwacje). */
+  package_reserve_click: {
+    service: "hotel" | "flight";
+    destination?: string;
+    hotel_id?: string;
+    value?: number;
+  };
 }
 
 export type TrackEventName = keyof TrackEventMap;

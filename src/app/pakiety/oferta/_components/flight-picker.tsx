@@ -7,8 +7,9 @@
 // ROZDZIELONE „Zarezerwuj hotel / lot" (legalnie bezpieczne, mierzy intencję;
 // płatność pakietowa = Faza 2 po domknięciu prawnym). Mobile-first.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { track } from "@/lib/analytics/track";
 import { fmtDuration, fmtTime, stopsLabel, type DisplayLeg, type DisplayOffer } from "@/lib/flights/display";
 import { sortOffers, type SortKey } from "@/lib/flights/filters";
 import { formatPLN } from "@/lib/money";
@@ -99,6 +100,12 @@ export function FlightPicker({
 
   const sorted = useMemo(() => sortOffers(flights, sort).slice(0, VISIBLE_CAP), [flights, sort]);
   const selected = flights.find((o) => o.offerId === selectedId) ?? flights[0];
+
+  // package_flight_view — raz przy wejściu na krok 2 (liczba realnych lotów).
+  useEffect(() => {
+    track("package_flight_view", { destination: destination.city, flight_count: flights.length });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const flightTotal = selected?.total ?? 0;
   const packageTotal = hotel.pricePln + flightTotal;
@@ -191,7 +198,12 @@ export function FlightPicker({
             <li key={offer.offerId}>
               <button
                 type="button"
-                onClick={() => setSelectedId(offer.offerId)}
+                onClick={() => {
+                  if (offer.offerId !== selectedId) {
+                    track("package_flight_change", { destination: destination.city, sort });
+                  }
+                  setSelectedId(offer.offerId);
+                }}
                 aria-pressed={active}
                 className={`w-full rounded-2xl border bg-white p-4 text-left transition-[border-color,box-shadow] ${
                   active
@@ -248,12 +260,18 @@ export function FlightPicker({
           <div className="flex flex-1 gap-2 sm:justify-end">
             <a
               href={hotelHref}
+              onClick={() =>
+                track("package_reserve_click", { service: "hotel", destination: destination.city, hotel_id: hotel.id, value: hotel.pricePln })
+              }
               className="inline-flex h-11 flex-1 items-center justify-center rounded-lg border border-emerald-600 bg-white px-4 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 sm:flex-none"
             >
               Zarezerwuj hotel
             </a>
             <a
               href={flightHref}
+              onClick={() =>
+                track("package_reserve_click", { service: "flight", destination: destination.city, hotel_id: hotel.id, value: flightTotal })
+              }
               className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:flex-none"
             >
               Zarezerwuj lot
