@@ -105,7 +105,7 @@ export default async function PackageSearchPage({ searchParams }: { searchParams
     <main className="min-h-screen">
       <Suspense
         fallback={
-          <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8">
+          <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
             <PackageSearchSkeleton />
           </div>
         }

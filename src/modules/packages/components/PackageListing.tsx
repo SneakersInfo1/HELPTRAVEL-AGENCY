@@ -71,7 +71,7 @@ export function PackageListing({
     : null;
 
   return (
-    <section className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8">
+    <section className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
       <header className="mb-4">
         <h1 className="text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl">
           Lot + hotel: {destinationCity}

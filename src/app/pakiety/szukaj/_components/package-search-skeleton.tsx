@@ -35,9 +35,24 @@ export function PackageSearchSkeleton() {
   return (
     <div className="flex flex-col gap-4">
       <SearchProgressBanner title="Składamy Twój pakiet Lot + Hotel" messages={PACKAGE_MESSAGES} />
-      {Array.from({ length: 4 }).map((_, i) => (
-        <SkeletonCard key={i} />
-      ))}
+      {/* Lustro układu wyników: sidebar filtrów (lg) + kolumna kart. */}
+      <div className="lg:flex lg:gap-6">
+        <aside className="hidden lg:block lg:w-60 lg:shrink-0">
+          <div className="rounded-2xl border border-emerald-900/10 bg-white p-4">
+            <div className="h-4 w-16 animate-pulse rounded bg-neutral-200" />
+            <div className="mt-4 space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-8 w-full animate-pulse rounded-full bg-neutral-100" />
+              ))}
+            </div>
+          </div>
+        </aside>
+        <div className="flex min-w-0 flex-col gap-4 lg:flex-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
