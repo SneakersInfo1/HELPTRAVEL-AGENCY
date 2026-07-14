@@ -23,6 +23,12 @@ interface HomeHybridHeroProps {
   featured: FeaturedTile[];
   /** Świeża ocena Trustpilot (snapshot z crona) — null = pokazujemy sam link. */
   trustpilot?: TrustpilotDisplay | null;
+  /**
+   * Pas „Popularne kierunki" pod hero. false, gdy jego rolę przejmuje sekcja
+   * „Perełki" (flaga pakietów, właściciel 2026-07-14) — `featured` nadal
+   * potrzebne: karmi CinematicBackdrop.
+   */
+  showDestinations?: boolean;
 }
 
 // Polski zapis oceny: 4.2 → „4,2".
@@ -30,7 +36,7 @@ function formatScore(score: number): string {
   return score.toFixed(1).replace(".", ",");
 }
 
-export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
+export function HomeHybridHero({ featured, trustpilot, showDestinations = true }: HomeHybridHeroProps) {
   const backdropImages = featured.slice(0, 6).map((tile) => ({
     src: tile.heroImage,
     alt: `${tile.destination.city}, ${tile.destination.country}`,
@@ -137,7 +143,8 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
         </div>
 
         {/* Kafelki pod hero — OSOBNA sekcja z własnym, nieprzezroczystym tłem
-            (backdrop już tu nie sięga). */}
+            (backdrop już tu nie sięga). Ukrywana, gdy rolę przejmują „Perełki". */}
+        {showDestinations && (
         <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-6 sm:px-8 sm:py-8 lg:px-12">
           <div className="mb-4 flex items-end justify-between gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
@@ -173,6 +180,7 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
             ))}
           </div>
         </div>
+        )}
       </section>
     </>
   );
