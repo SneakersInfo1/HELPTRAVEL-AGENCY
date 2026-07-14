@@ -6,6 +6,7 @@ import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
+import { PackageGems } from "@/components/home/package-gems";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import { listAllDestinations } from "@/lib/mvp/destinations-seed";
@@ -138,7 +139,15 @@ export async function HomePageView() {
   // dla 1-2), pokazujemy NAJTAŃSZE realnie policzone pakiety z całego seeda.
   // Klucz pakietu match po rekordzie seedu (city.en|country.en — jak w cronie);
   // karta/CTA po PROFILU. Media (Pexels) tylko dla top-N (koszt ISR).
-  const tileIdSet = new Set<string>(HOME_TILE_DESTINATION_IDS);
+  // Flaga pakietów: gdy ON, karty pakietowe prowadzą do ŻYWEGO flow pakietów
+  // (/pakiety/szukaj) dla dat z karty (cena już z tych dat — spójne). Gdy OFF
+  // (prod), zachowanie bez zmian: link do wyników hoteli.
+  const packagesOn = process.env.NEXT_PUBLIC_FEATURE_PACKAGES === "true";
+  // Flaga ON (właściciel 2026-07-14): pas kafelków „Popularne kierunki" znika,
+  // a jego rolę przejmuje sekcja „Perełki" — pula NIE wyklucza już kierunków
+  // kafelkowych (najtańsze pakiety z CAŁEGO seeda). Flaga OFF: rozłączność
+  // sekcji jak dotąd.
+  const tileIdSet = new Set<string>(packagesOn ? [] : HOME_TILE_DESTINATION_IDS);
   const packageCandidates = listAllDestinations()
     .filter((d) => !tileIdSet.has(d.id))
     .map((d) => {
@@ -148,11 +157,7 @@ export async function HomePageView() {
     })
     .filter((x): x is { profile: DestinationProfile; pkg: FreshPackage } => x !== null)
     .sort((a, b) => a.pkg.perPersonPln - b.pkg.perPersonPln)
-    .slice(0, 10);
-  // Flaga pakietów: gdy ON, karty „Cały wyjazd w jednej cenie" prowadzą do
-  // ŻYWEGO flow pakietów (/pakiety/szukaj) dla dat z karty (cena już z tych dat
-  // — spójne). Gdy OFF (prod), zachowanie bez zmian: link do wyników hoteli.
-  const packagesOn = process.env.NEXT_PUBLIC_FEATURE_PACKAGES === "true";
+    .slice(0, packagesOn ? 12 : 10);
   const packageDeals: PackageDeal[] = await Promise.all(
     packageCandidates.map(async ({ profile, pkg }): Promise<PackageDeal> => {
       const media = await resolveDestinationMedia(profile);
@@ -184,12 +189,17 @@ export async function HomePageView() {
     }),
   );
 
+  // „Perełki" zastępują DWIE sekcje (pas kafelków + „Cały wyjazd…") tylko gdy
+  // realnie mają co pokazać (≥3 świeże pakiety) — ubogi snapshot ⇒ homepage
+  // wygląda jak dotąd (kafelki zostają), nigdy nie świecimy pustką.
+  const gemsVisible = packagesOn && packageDeals.length >= 3;
+
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-10 lg:gap-10">
       <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
-        <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} />
+        <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} showDestinations={!gemsVisible} />
       </div>
-      <PackageDeals deals={packageDeals} />
+      {gemsVisible ? <PackageGems deals={packageDeals} /> : <PackageDeals deals={packageDeals} />}
       <ThemeTiles tiles={themeTiles} />
       <TrustHowItWorks trustpilot={trustpilot} />
     </main>
