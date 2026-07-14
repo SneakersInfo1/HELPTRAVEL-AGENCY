@@ -12,7 +12,7 @@
 // NEXT_PUBLIC_FEATURE_PACKAGES i staje się domyślny. Flaga off → zachowanie
 // 1:1 jak dotąd (2 taby, Hotele domyślnie, ta sama pigułka 50%).
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { MiniPlannerForm } from "./mini-planner-form";
 
@@ -20,8 +20,27 @@ type Tab = "packages" | "hotels" | "flights";
 
 const PACKAGES_ON = process.env.NEXT_PUBLIC_FEATURE_PACKAGES === "true";
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  ...(PACKAGES_ON ? [{ key: "packages" as Tab, label: "Lot + Hotel", icon: "🧳" }] : []),
+// Czysta ikona pakietu (walizka, line-art) — zamiast niespójnej systemowo emoji 🧳.
+function PackageIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-[1.05rem] w-[1.05rem]"
+    >
+      <rect x="3.5" y="8" width="17" height="11.5" rx="2.5" />
+      <path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M9.5 8v11.5M14.5 8v11.5" />
+    </svg>
+  );
+}
+
+const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
+  ...(PACKAGES_ON ? [{ key: "packages" as Tab, label: "Lot + Hotel", icon: <PackageIcon /> }] : []),
   { key: "hotels", label: "Hotele", icon: "🏨" },
   { key: "flights", label: "Loty", icon: "✈" },
 ];
@@ -81,7 +100,7 @@ export function HomeSearchTabs() {
               role="tab"
               aria-selected={active}
               onClick={() => selectTab(t.key)}
-              className={`relative z-10 flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-bold transition-colors ${
+              className={`relative z-10 flex h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-bold transition-colors ${
                 active ? "text-emerald-900" : "text-white/90 hover:text-white"
               }`}
             >
