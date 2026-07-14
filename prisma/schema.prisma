@@ -143,6 +143,65 @@ model AffiliateClick {
   @@index([createdAt])
 }
 
+// ── Pakiety Lot + Hotel: saga rezerwacji (Faza 2, spec §3.4) ────────────────
+// Stan sagi w Postgresie (nie in-memory, nie tylko Redis). Optimistic lock na
+// stateVersion — webhook i polling piszą przez jeden serializowany handler
+// (src/modules/packages/saga/orchestrator.ts). Deploy migracji = bramka
+// właściciela (DATABASE_URL na Vercel PROD + `prisma migrate deploy`).
+
+enum PackageSagaState {
+  DRAFT
+  FLIGHT_HELD
+  HOTEL_PREBOOKED
+  HOTEL_PAID
+  HOTEL_BOOKED_AWAITING_FLIGHT
+  FLIGHT_PAID
+  FLIGHT_BOOKED
+  CONFIRMED
+  CANCELLED
+  COMPENSATING
+  REFUNDED
+  NEEDS_MANUAL_ACTION
+}
+
+model PackageBooking {
+  id           String           @id
+  sagaState    PackageSagaState @default(DRAFT)
+  stateVersion Int              @default(0)
+
+  flightPrebookId String?
+  flightBookingId String?
+  hotelPrebookId  String?
+  hotelBookingId  String?
+  txnHotel        String?
+  // AKTUALNY transactionId lotu (B'); historia podmian po attach services
+  // w txnFlightHistoryJson — stary intent jest martwy po każdym attach.
+  txnFlight            String?
+  txnFlightHistoryJson Json?
+
+  prebookExpiresAt DateTime?
+  deadlineAt       DateTime?
+  failureReason    String?
+  stateLogJson        Json?
+  compensationLogJson Json?
+
+  // Kontekst oferty (podsumowanie do maili / confirmation page) + kwoty
+  // w minor units (grosze) — jak w warstwie hotelowej, nigdy float.
+  offerJson         Json?
+  contactEmail      String?
+  amountHotelMinor  Int?
+  amountFlightMinor Int?
+  currency          String @default("PLN")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Sweep crona deadline'ów: WHERE sagaState = 'HOTEL_BOOKED_AWAITING_FLIGHT'
+  // AND deadlineAt <= now() — composite pokrywa oba warunki.
+  @@index([sagaState, deadlineAt])
+  @@index([createdAt])
+}
+
 model Event {
   id          String   @id
   sessionId   String

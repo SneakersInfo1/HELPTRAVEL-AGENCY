@@ -102,11 +102,52 @@ do akceptacji jednym tapnięciem). Błąd walidacyjny prebooka → czytelny komu
 
 ## Zatwierdzone do Fazy 2 (planowanie ODBLOKOWANE — model PUT; wejście na prod: obowiązki pkt 1 + poniżej)
 
-- [ ] Saga `PackageBooking` w Postgres (stany DRAFT → CONFIRMED + kompensacje, deadline
-      `HOTEL_BOOKED_AWAITING_FLIGHT` = min(TTL prebooka, 25 min)).
-- [ ] Webhooki prod (`/api/webhooks/liteapi/flights` + hotelowy) z weryfikacją podpisu.
-- [ ] `DATABASE_URL` potwierdzony na Vercel PROD.
+- [x] Saga `PackageBooking` w Postgres (stany DRAFT → CONFIRMED + kompensacje, deadline
+      `HOTEL_BOOKED_AWAITING_FLIGHT` = min(TTL prebooka, 25 min)) — **KOD GOTOWY (Krok 2.0,
+      2026-07-14)**: model Prisma + migracja `20260714120000_add_package_booking_saga`
+      (deploy = bramka: DATABASE_URL na Vercel), maszyna stanów + orkiestrator + adapter
+      w `src/modules/packages/saga/` (26 testów). Diagram niżej.
+- [ ] Webhooki prod (`/api/webhooks/liteapi/flights` + hotelowy) z weryfikacją podpisu
+      (schemat podpisu = TODO:VERIFY; handler = cienki driver `applySagaEvent`).
+- [ ] `DATABASE_URL` potwierdzony na Vercel PROD (lokalnie PLACEHOLDER `REPLACE_ME_*` —
+      integracyjne testy DB odłożone do provisioningu; adapter sagi celowo NIE ma
+      fallbacku in-memory: brak bazy = głośny wyjątek, checkout się nie zaczyna).
 - [ ] Potwierdzenie kontraktowe waluty obciążenia (pkt 7).
+
+### Maszyna stanów sagi (Krok 2.0 — zaimplementowana, `saga/sagaMachine.ts`)
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT
+    DRAFT --> FLIGHT_HELD: FLIGHT_PREBOOK_OK (hold ~15 min, bez płatności)
+    FLIGHT_HELD --> FLIGHT_HELD: SERVICES_ATTACHED (txn B→B', historia)
+    FLIGHT_HELD --> HOTEL_PREBOOKED: HOTEL_PREBOOK_OK
+    HOTEL_PREBOOKED --> HOTEL_PREBOOKED: HOTEL_PAYMENT_FAILED (retry, zero zwrotów)
+    HOTEL_PREBOOKED --> HOTEL_PAID: HOTEL_PAYMENT_OK (Checkout 1)
+    HOTEL_PAID --> HOTEL_BOOKED_AWAITING_FLIGHT: HOTEL_BOOK_OK → deadline=min(TTL prebooka, 25 min) + e-mail wznawiający
+    HOTEL_PAID --> COMPENSATING: HOTEL_BOOK_FAILED → refund A (bez anulacji — book nie istnieje)
+    HOTEL_BOOKED_AWAITING_FLIGHT --> FLIGHT_PAID: FLIGHT_PAYMENT_OK (Checkout 2)
+    HOTEL_BOOKED_AWAITING_FLIGHT --> HOTEL_BOOKED_AWAITING_FLIGHT: FLIGHT_PAYMENT_FAILED (retry w oknie)
+    HOTEL_BOOKED_AWAITING_FLIGHT --> COMPENSATING: DEADLINE_REACHED → cancel hotelu + refund A + GA4 abandoned
+    FLIGHT_PAID --> FLIGHT_BOOKED: FLIGHT_BOOK_OK (idempotent po prebookId)
+    FLIGHT_PAID --> NEEDS_MANUAL_ACTION: FLIGHT_BOOK_FAILED_PERMANENT → refund B' + cancel + refund A + ALERT
+    FLIGHT_BOOKED --> CONFIRMED: FLIGHT_CONFIRMED (webhook/polling) → e-mail z 2 numerami
+    FLIGHT_BOOKED --> NEEDS_MANUAL_ACTION: FLIGHT_EXPIRED (jak permanent fail)
+    DRAFT --> CANCELLED: USER_ABANDONED
+    FLIGHT_HELD --> CANCELLED: USER_ABANDONED
+    HOTEL_PREBOOKED --> CANCELLED: USER_ABANDONED (przed pieniędzmi)
+    COMPENSATING --> REFUNDED: COMPENSATION_DONE
+    CONFIRMED --> [*]
+    CANCELLED --> [*]
+    REFUNDED --> [*]
+    NEEDS_MANUAL_ACTION --> [*]
+```
+
+Właściwości (pokryte testami): duplikaty webhook-vs-polling = `ignored` (no-op); przejścia
+spoza tabeli = `invalid` (stan nietknięty, log, nigdy wyjątek); zapis przez optimistic lock
+(`stateVersion`, retry z przeładowaniem, max 3); efekty uboczne DEKLARATYWNE, wykonywane PO
+zapisie stanu (at-least-once — sink musi być idempotentny), błąd efektu nie cofa przejścia —
+ląduje w `compensationLogJson` + wyniku (admin widzi, klient nigdy nie dostaje 500).
 
 ## Otwarte TODO:VERIFY (nie zgadujemy — pytamy właściciela / testujemy realną rezerwacją)
 
