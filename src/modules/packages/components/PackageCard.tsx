@@ -135,8 +135,10 @@ export function PackageCard({
         </div>
       </div>
 
-      {/* Treść */}
-      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
+      {/* Treść — min-w-0 KONIECZNE: flex-item ma min-width:auto, więc długa nazwa
+          hotelu / szeroki rozkład lotu rozpychały kolumnę poza kartę i overflow-hidden
+          UCINAŁ prawą krawędź (ocena, godziny, CTA). */}
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-5">
         {/* Hotel: nazwa, gwiazdki, ocena, opinie, wyżywienie */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
