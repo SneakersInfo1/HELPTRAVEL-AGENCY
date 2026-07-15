@@ -91,6 +91,12 @@ export interface PrismaSagaStore extends SagaStore {
   listDueDeadlines(nowIso: string, limit: number): Promise<{ id: string }[]>;
   /** Sweep crona: sagi w FLIGHT_BOOKED czekające na potwierdzenie ticketingu. */
   listAwaitingFlightConfirmation(limit: number): Promise<{ id: string; flightBookingId: string | null }[]>;
+  /**
+   * Kontekst checkoutu (offerJson + kwoty) — POZA maszyną stanów: zapisywany
+   * raz na starcie/holdzie, czytany przez adaptery booku i confirmation page.
+   */
+  setCheckoutContext(id: string, ctx: { offerJson?: unknown; amountHotelMinor?: number; amountFlightMinor?: number }): Promise<void>;
+  loadCheckoutContext(id: string): Promise<{ offerJson: unknown; amountHotelMinor: number | null; amountFlightMinor: number | null } | null>;
 }
 
 export function createPrismaSagaStore(): PrismaSagaStore {
@@ -162,6 +168,29 @@ export function createPrismaSagaStore(): PrismaSagaStore {
         orderBy: { updatedAt: "asc" },
         take: limit,
       });
+    },
+
+    async setCheckoutContext(id, ctx) {
+      const prisma = await requirePrisma();
+      await prisma.packageBooking.update({
+        where: { id },
+        data: {
+          ...(ctx.offerJson !== undefined ? { offerJson: ctx.offerJson } : {}),
+          ...(ctx.amountHotelMinor !== undefined ? { amountHotelMinor: ctx.amountHotelMinor } : {}),
+          ...(ctx.amountFlightMinor !== undefined ? { amountFlightMinor: ctx.amountFlightMinor } : {}),
+        },
+      });
+    },
+
+    async loadCheckoutContext(id) {
+      const prisma = await requirePrisma();
+      const row = await prisma.packageBooking.findUnique({
+        where: { id },
+        select: { offerJson: true, amountHotelMinor: true, amountFlightMinor: true },
+      });
+      return row
+        ? { offerJson: row.offerJson, amountHotelMinor: row.amountHotelMinor, amountFlightMinor: row.amountFlightMinor }
+        : null;
     },
   };
 }
