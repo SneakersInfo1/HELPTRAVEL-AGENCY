@@ -35,6 +35,43 @@ export interface HotelDistanceLabels {
   beach?: string;
 }
 
+export interface HotelDistanceKm {
+  centerKm?: number;
+  beachKm?: number;
+}
+
+/**
+ * Liczbowe odległości (km) — te same guardraile co etykiety (progi
+ * GEO_DISPLAY, walidacja współrzędnych). Do FILTRÓW („do 1 km od centrum"),
+ * gdzie potrzebna jest liczba, nie string. Zaokrąglenie do 0,01 km.
+ */
+export function hotelDistanceKm(
+  hotel: { lat?: number | null; lng?: number | null },
+  city: string | null | undefined,
+  countryCode?: string | null,
+): HotelDistanceKm {
+  const ref = getCityReference(city, countryCode);
+  if (!ref) return {};
+  const hotelCoord: LatLng | null =
+    hotel.lat != null && hotel.lng != null ? { lat: hotel.lat, lng: hotel.lng } : null;
+  if (!isValidCoord(hotelCoord)) return {};
+
+  const out: HotelDistanceKm = {};
+  if (isValidCoord(ref.center)) {
+    const km = haversineKm(hotelCoord, ref.center);
+    if (km > 0 && Number.isFinite(km) && km <= GEO_DISPLAY.MAX_CENTER_KM) {
+      out.centerKm = Math.round(km * 100) / 100;
+    }
+  }
+  if (ref.coastal && isValidCoord(ref.beach)) {
+    const km = haversineKm(hotelCoord, ref.beach);
+    if (km > 0 && Number.isFinite(km) && km <= GEO_DISPLAY.MAX_BEACH_KM) {
+      out.beachKm = Math.round(km * 100) / 100;
+    }
+  }
+  return out;
+}
+
 /**
  * Policz etykiety odległości dla hotelu. Zwraca tylko to, co przeszło progi —
  * pusty obiekt, gdy: brak punktu odniesienia miasta, niepoprawne współrzędne
