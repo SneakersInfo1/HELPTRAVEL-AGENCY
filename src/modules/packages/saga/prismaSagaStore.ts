@@ -50,6 +50,7 @@ function toRecord(row: any): PackageBookingRecord {
     prebookExpiresAt: row.prebookExpiresAt ? row.prebookExpiresAt.toISOString() : null,
     deadlineAt: row.deadlineAt ? row.deadlineAt.toISOString() : null,
     failureReason: row.failureReason,
+    contactEmail: row.contactEmail,
     stateLog: Array.isArray(row.stateLogJson) ? row.stateLogJson : [],
     compensationLog: Array.isArray(row.compensationLogJson) ? row.compensationLogJson : [],
   };
@@ -69,6 +70,7 @@ function toRow(rec: PackageBookingRecord): Record<string, unknown> {
     prebookExpiresAt: rec.prebookExpiresAt ? new Date(rec.prebookExpiresAt) : null,
     deadlineAt: rec.deadlineAt ? new Date(rec.deadlineAt) : null,
     failureReason: rec.failureReason,
+    contactEmail: rec.contactEmail,
     stateLogJson: rec.stateLog,
     // compensationLogJson celowo POZA update'em stanu — append-only przez
     // appendCompensationLog (atomowy konkat), żeby wyścig nie gubił wpisów.
@@ -78,6 +80,17 @@ function toRow(rec: PackageBookingRecord): Record<string, unknown> {
 export interface PrismaSagaStore extends SagaStore {
   /** Utworzenie świeżej sagi (DRAFT) przy wejściu w checkout. */
   create(rec: PackageBookingRecord): Promise<void>;
+  /** Szukanie sagi po zewnętrznych identyfikatorach (webhook nie zna naszego id). */
+  findIdByReference(ref: {
+    flightPrebookId?: string;
+    flightBookingId?: string;
+    hotelPrebookId?: string;
+    hotelBookingId?: string;
+  }): Promise<string | null>;
+  /** Sweep crona: sagi z minionym deadline (HOTEL_BOOKED_AWAITING_FLIGHT). */
+  listDueDeadlines(nowIso: string, limit: number): Promise<{ id: string }[]>;
+  /** Sweep crona: sagi w FLIGHT_BOOKED czekające na potwierdzenie ticketingu. */
+  listAwaitingFlightConfirmation(limit: number): Promise<{ id: string; flightBookingId: string | null }[]>;
 }
 
 export function createPrismaSagaStore(): PrismaSagaStore {
@@ -112,6 +125,43 @@ export function createPrismaSagaStore(): PrismaSagaStore {
         SET "compensationLogJson" =
           COALESCE("compensationLogJson", '[]'::jsonb) || ${JSON.stringify(entries)}::jsonb
         WHERE "id" = ${id}`;
+    },
+
+    async findIdByReference(ref) {
+      const conditions = [
+        ref.flightPrebookId ? { flightPrebookId: ref.flightPrebookId } : null,
+        ref.flightBookingId ? { flightBookingId: ref.flightBookingId } : null,
+        ref.hotelPrebookId ? { hotelPrebookId: ref.hotelPrebookId } : null,
+        ref.hotelBookingId ? { hotelBookingId: ref.hotelBookingId } : null,
+      ].filter((c): c is NonNullable<typeof c> => c !== null);
+      if (!conditions.length) return null;
+      const prisma = await requirePrisma();
+      const row = await prisma.packageBooking.findFirst({
+        where: { OR: conditions },
+        select: { id: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return row?.id ?? null;
+    },
+
+    async listDueDeadlines(nowIso, limit) {
+      const prisma = await requirePrisma();
+      return prisma.packageBooking.findMany({
+        where: { sagaState: "HOTEL_BOOKED_AWAITING_FLIGHT", deadlineAt: { lte: new Date(nowIso) } },
+        select: { id: true },
+        orderBy: { deadlineAt: "asc" },
+        take: limit,
+      });
+    },
+
+    async listAwaitingFlightConfirmation(limit) {
+      const prisma = await requirePrisma();
+      return prisma.packageBooking.findMany({
+        where: { sagaState: "FLIGHT_BOOKED" },
+        select: { id: true, flightBookingId: true },
+        orderBy: { updatedAt: "asc" },
+        take: limit,
+      });
     },
   };
 }

@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/warm-flights",
       "schedule": "15,45 * * * *"
+    },
+    {
+      "path": "/api/cron/package-deadlines",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

@@ -34,6 +34,8 @@ export interface PackageBookingRecord {
   prebookExpiresAt: string | null;
   deadlineAt: string | null;
   failureReason: string | null;
+  /** E-mail klienta (efekty SEND_* — bez niego rzucają, nic nie ginie cicho). */
+  contactEmail: string | null;
   stateLog: SagaStateLogEntry[];
   compensationLog: CompensationLogEntry[];
 }
@@ -167,6 +169,7 @@ export function newPackageBookingRecord(id: string): PackageBookingRecord {
     prebookExpiresAt: null,
     deadlineAt: null,
     failureReason: null,
+    contactEmail: null,
     stateLog: [],
     compensationLog: [],
   };
