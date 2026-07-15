@@ -107,8 +107,16 @@ do akceptacji jednym tapnięciem). Błąd walidacyjny prebooka → czytelny komu
       2026-07-14)**: model Prisma + migracja `20260714120000_add_package_booking_saga`
       (deploy = bramka: DATABASE_URL na Vercel), maszyna stanów + orkiestrator + adapter
       w `src/modules/packages/saga/` (26 testów). Diagram niżej.
-- [ ] Webhooki prod (`/api/webhooks/liteapi/flights` + hotelowy) z weryfikacją podpisu
-      (schemat podpisu = TODO:VERIFY; handler = cienki driver `applySagaEvent`).
+- [x] Webhooki + cron + polling — **KOD GOTOWY (Krok 2.2-backend, 2026-07-15)**:
+      `/api/webhooks/liteapi/flights` (HMAC-SHA256, mapper tolerancyjny, 200 dla eventów
+      spoza pakietów — wspólne konto z hotelowym flow), cron `/api/cron/package-deadlines`
+      co 5 min (sweep deadline'ów + polling `GET /flights/bookings/{id}` jako źródło prawdy),
+      produkcyjny EffectSink (cancel hotelu przez LiteAPI; **REFUNDY ŚWIADOMIE RĘCZNE** —
+      CRITICAL alert do admina, bo mechanika refundu = TODO:VERIFY; e-maile Resend; alerty).
+      Zastrzeżenie: nagłówek/format podpisu i kształt payloadu webhooka oraz enum statusów
+      bookingu = TODO:VERIFY na pierwszym realnym evencie (mapper jest tolerancyjny,
+      nieznany status = pending — nigdy nie kompensujemy na ślepo). Wymaga env
+      `LITEAPI_WEBHOOK_SECRET` (bez niego endpoint odmawia — 503).
 - [ ] `DATABASE_URL` potwierdzony na Vercel PROD (lokalnie PLACEHOLDER `REPLACE_ME_*` —
       integracyjne testy DB odłożone do provisioningu; adapter sagi celowo NIE ma
       fallbacku in-memory: brak bazy = głośny wyjątek, checkout się nie zaczyna).
