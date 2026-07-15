@@ -1,106 +1,78 @@
-// Mapowanie webhooków LiteAPI → zdarzenia sagi (CZYSTE, testowalne) +
-// weryfikacja podpisu HMAC. Nazwy eventów potwierdzone w docs (decyzje pkt 3):
-// flight.book.pending.confirmation / confirmed / failed / expired oraz
-// hotelowe booking.prebook_error / booking.book_error.
+// Wpięcie sagi pakietów w ISTNIEJĄCY webhook lotów
+// (`/api/liteapi/flights-webhook` — kontrakt koperty potwierdzony empirycznie
+// w repo 1.6: { event_id, event_name, request/response jako STRINGI JSON,
+// sandbox }, auth Bearer-tokenem, idempotencja po event_id).
 //
-// TODO:VERIFY (decyzje, „Schemat webhooków"): dokładny kształt payloadu i
-// format podpisu nie są potwierdzone realnym eventem prod — mapper jest
-// TOLERANCYJNY (kilka możliwych pól), a podpis przyjmuje surowy hex lub
-// prefiks "sha256=". Po pierwszym realnym webhooku dokręcić do 1 formatu.
+// Saga NIE ma własnego URL-a webhooka: LiteAPI dostaje jeden endpoint, a route
+// po nieznalezieniu sesji Redis lotów (zwykły flow) pyta sagę pakietową po
+// bookingId/prebookId. Webhook = trigger; źródłem prawdy pozostaje polling
+// GET /flights/bookings/{id} w cron/package-deadlines.
 
-import { createHmac, timingSafeEqual } from "node:crypto";
-
+import { applySagaEvent } from "./orchestrator";
+import { createPrismaSagaStore, SagaStoreUnavailableError } from "./prismaSagaStore";
+import { createProductionEffectSink } from "./productionEffectSink";
 import type { SagaEvent } from "./sagaTypes";
 
-/** Po czym szukamy sagi w bazie (webhook nie zna naszego id). */
-export interface SagaReference {
-  flightPrebookId?: string;
-  flightBookingId?: string;
-  hotelPrebookId?: string;
-  hotelBookingId?: string;
-}
-
-export interface MappedWebhook {
-  event: SagaEvent;
-  ref: SagaReference;
-}
-
-function str(v: unknown): string | undefined {
-  return typeof v === "string" && v.trim() ? v : undefined;
-}
-
-function pick(obj: Record<string, unknown>, keys: string[]): string | undefined {
-  for (const k of keys) {
-    const v = str(obj[k]);
-    if (v) return v;
-  }
-  return undefined;
-}
-
 /**
- * Webhook → zdarzenie sagi. null = event znany, ale bez przejścia (czysto
- * informacyjny albo dotyczy etapu przed pieniędzmi) — handler odpowiada 200
- * i tylko loguje. Nieznany typ eventu też daje null (forward-compatible).
+ * event_name → zdarzenie sagi. null = bez przejścia (informacyjne / obsłużone
+ * synchronicznie w checkoucie / post-terminalne, np. cancelled po CONFIRMED —
+ * to świadoma ręczna operacja, nie automat).
+ *
+ * failed i expired oba mapują na FLIGHT_EXPIRED: maszyna dopuszcza je w
+ * FLIGHT_PAID ORAZ FLIGHT_BOOKED (webhook może wyprzedzić albo spóźnić się
+ * względem naszego POST /flights/bookings) i robi tę samą pełną kompensację.
  */
-export function mapLiteApiWebhook(payload: unknown): MappedWebhook | null {
-  if (!payload || typeof payload !== "object") return null;
-  const root = payload as Record<string, unknown>;
-  const type = str(root.event) ?? str(root.type);
-  if (!type) return null;
-
-  const data = (typeof root.data === "object" && root.data ? root.data : root) as Record<string, unknown>;
-  const flightBookingId = pick(data, ["bookingId", "booking_id", "id"]);
-  const flightPrebookId = pick(data, ["prebookId", "prebook_id"]);
-  const reason =
-    pick(data, ["reason", "error", "message", "failureReason"]) ?? `webhook ${type}`;
-
-  switch (type) {
+export function sagaEventForFlightWebhook(eventName: string, eventId: string): SagaEvent | null {
+  switch (eventName) {
     case "flight.book.confirmed":
-      return {
-        event: { type: "FLIGHT_CONFIRMED" },
-        ref: { flightBookingId, flightPrebookId },
-      };
+      return { type: "FLIGHT_CONFIRMED" };
     case "flight.book.failed":
-      return {
-        event: { type: "FLIGHT_BOOK_FAILED_PERMANENT", reason },
-        ref: { flightBookingId, flightPrebookId },
-      };
     case "flight.book.expired":
-      return {
-        event: { type: "FLIGHT_EXPIRED", reason },
-        ref: { flightBookingId, flightPrebookId },
-      };
-    case "flight.book.pending.confirmation":
-      // Informacyjny: saga i tak jest w FLIGHT_BOOKED po naszym POST.
-      return null;
-    case "booking.book_error":
-      // Hotelowy book po płatności nie wszedł → kompensacja (refund A).
-      return {
-        event: { type: "HOTEL_BOOK_FAILED", reason },
-        ref: {
-          hotelBookingId: flightBookingId, // hotelowy payload używa tych samych nazw pól
-          hotelPrebookId: flightPrebookId,
-        },
-      };
-    case "booking.prebook_error":
-      // Etap przed pieniędzmi — checkout obsługuje to synchronicznie.
-      return null;
+      return { type: "FLIGHT_EXPIRED", reason: `${eventName} (webhook) event_id=${eventId}` };
     default:
       return null;
   }
 }
 
+export interface PackageWebhookInput {
+  eventName: string;
+  eventId: string;
+  bookingId?: string;
+  prebookId?: string;
+}
+
+export type PackageWebhookOutcome =
+  | { handled: true; sagaId: string; kind: string }
+  | { handled: false; reason: string };
+
 /**
- * Weryfikacja podpisu webhooka: HMAC-SHA256(sekret, surowe body) w hex.
- * Akceptuje nagłówek "abc123…" albo "sha256=abc123…". Timing-safe.
- * Brak nagłówka / zła długość / mismatch → false.
+ * Próba obsłużenia eventu przez sagę pakietową. Wołane z istniejącego route'a
+ * webhooka, gdy event nie pasuje do sesji Redis lotów. Wszystkie błędy →
+ * handled:false (route i tak odpowiada 200; zgubiony event domknie polling).
  */
-export function verifyWebhookSignature(rawBody: string, signatureHeader: string | null, secret: string): boolean {
-  if (!signatureHeader || !secret) return false;
-  const given = signatureHeader.startsWith("sha256=") ? signatureHeader.slice(7) : signatureHeader;
-  const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
-  const a = Buffer.from(given.toLowerCase(), "utf8");
-  const b = Buffer.from(expected, "utf8");
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+export async function tryApplyPackageSagaWebhook(input: PackageWebhookInput): Promise<PackageWebhookOutcome> {
+  const event = sagaEventForFlightWebhook(input.eventName, input.eventId);
+  if (!event) return { handled: false, reason: `event ${input.eventName} bez przejścia sagi` };
+  if (!input.bookingId && !input.prebookId) return { handled: false, reason: "brak bookingId/prebookId" };
+
+  try {
+    const store = createPrismaSagaStore();
+    const sagaId = await store.findIdByReference({
+      flightBookingId: input.bookingId,
+      flightPrebookId: input.prebookId,
+    });
+    if (!sagaId) return { handled: false, reason: "brak sagi dla referencji" };
+
+    const result = await applySagaEvent({ store, effects: createProductionEffectSink() }, sagaId, event);
+    if (result.effectErrors.length) {
+      console.error(`[package-saga][webhook] błędy efektów sagi ${sagaId}:`, result.effectErrors);
+    }
+    return { handled: true, sagaId, kind: result.kind };
+  } catch (err) {
+    if (err instanceof SagaStoreUnavailableError) {
+      return { handled: false, reason: "saga store unavailable (DATABASE_URL = bramka Fazy 2)" };
+    }
+    console.error("[package-saga][webhook] błąd:", err instanceof Error ? err.message : err);
+    return { handled: false, reason: "błąd wewnętrzny (polling domknie)" };
+  }
 }

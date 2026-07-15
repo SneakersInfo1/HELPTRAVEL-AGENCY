@@ -44,6 +44,7 @@ import {
   type FlightBookingRecord,
   type FlightTicketingStatus,
 } from "@/lib/flights/session";
+import { tryApplyPackageSagaWebhook } from "@/modules/packages/saga/webhookMapper";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -173,6 +174,14 @@ export async function POST(request: NextRequest) {
   // Walidacja istnienia rekordu PRZED mutacją statusu.
   const resolved = await resolveSession(bookingId, prebookId);
   if (!resolved) {
+    // PAKIETY (Faza 2): rezerwacje lotów z sagi pakietowej nie mają sesji
+    // Redis lotów — sprawdź sagę po bookingId/prebookId. Jeden URL webhooka,
+    // dwa konsumenty; zgubiony event i tak domknie polling (źródło prawdy).
+    const pkg = await tryApplyPackageSagaWebhook({ eventName, eventId, bookingId, prebookId });
+    if (pkg.handled) {
+      console.log(`[flights][webhook] package saga ${pkg.sagaId} ${pkg.kind} event_id=${eventId} name=${eventName}`);
+      return NextResponse.json({ status: "package_saga", kind: pkg.kind }, { status: 200 });
+    }
     console.warn(`[flights][webhook] no matching session — bookingId=${bookingId ?? "-"} prebookId=${prebookId ?? "-"} event_id=${eventId} (ack, ignore)`);
     return NextResponse.json({ status: "no_match" }, { status: 200 });
   }

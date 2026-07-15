@@ -108,15 +108,17 @@ do akceptacji jednym tapnięciem). Błąd walidacyjny prebooka → czytelny komu
       (deploy = bramka: DATABASE_URL na Vercel), maszyna stanów + orkiestrator + adapter
       w `src/modules/packages/saga/` (26 testów). Diagram niżej.
 - [x] Webhooki + cron + polling — **KOD GOTOWY (Krok 2.2-backend, 2026-07-15)**:
-      `/api/webhooks/liteapi/flights` (HMAC-SHA256, mapper tolerancyjny, 200 dla eventów
-      spoza pakietów — wspólne konto z hotelowym flow), cron `/api/cron/package-deadlines`
-      co 5 min (sweep deadline'ów + polling `GET /flights/bookings/{id}` jako źródło prawdy),
-      produkcyjny EffectSink (cancel hotelu przez LiteAPI; **REFUNDY ŚWIADOMIE RĘCZNE** —
-      CRITICAL alert do admina, bo mechanika refundu = TODO:VERIFY; e-maile Resend; alerty).
-      Zastrzeżenie: nagłówek/format podpisu i kształt payloadu webhooka oraz enum statusów
-      bookingu = TODO:VERIFY na pierwszym realnym evencie (mapper jest tolerancyjny,
-      nieznany status = pending — nigdy nie kompensujemy na ślepo). Wymaga env
-      `LITEAPI_WEBHOOK_SECRET` (bez niego endpoint odmawia — 503).
+      saga wpięta w ISTNIEJĄCY webhook lotów `/api/liteapi/flights-webhook` (kontrakt
+      potwierdzony empirycznie w repo 1.6: koperta `{event_id, event_name, request/response
+      jako STRINGI JSON, sandbox}`, auth Bearer `LITEAPI_FLIGHTS_WEBHOOK_AUTH_TOKEN`,
+      idempotencja po event_id) — JEDEN URL, dwa konsumenty: brak sesji Redis lotów →
+      `tryApplyPackageSagaWebhook` szuka sagi po bookingId/prebookId. Cron
+      `/api/cron/package-deadlines` co 5 min (sweep deadline'ów + polling
+      `GET /flights/bookings/{id}` jako źródło prawdy; nieznany status = pending — nigdy
+      nie kompensujemy na ślepo). Produkcyjny EffectSink: cancel hotelu przez LiteAPI;
+      **REFUNDY ŚWIADOMIE RĘCZNE** — CRITICAL alert do admina, bo mechanika refundu =
+      TODO:VERIFY; e-maile Resend; alerty. `flight.book.cancelled` po CONFIRMED = ręczna
+      operacja (bez automatu).
 - [ ] `DATABASE_URL` potwierdzony na Vercel PROD (lokalnie PLACEHOLDER `REPLACE_ME_*` —
       integracyjne testy DB odłożone do provisioningu; adapter sagi celowo NIE ma
       fallbacku in-memory: brak bazy = głośny wyjątek, checkout się nie zaczyna).
@@ -164,5 +166,7 @@ ląduje w `compensationLogJson` + wyniku (admin widzi, klient nigdy nie dostaje 
   Weryfikacja dopiero w Fazie 2 (test z kartą / zgoda właściciela).
 - **Reuse metody płatności między dwoma PaymentIntentami** (karta wpisana raz vs dwa razy) — `TODO:VERIFY`
   na realnym checkoucie (Faza 2).
-- **Schemat webhooków** (pola/podpis HMAC vs JWT) — do potwierdzenia na realnym evencie prod (Faza 2).
+- ~~**Schemat webhooków**~~ — ROZSTRZYGNIĘTE z repo (2026-07-15): koperta + Bearer token,
+  patrz `/api/liteapi/flights-webhook` (żywy na prod od lotów 1.6). Enum statusów
+  `GET /flights/bookings/{id}` nadal tolerancyjnie (nieznany = pending).
 - **APIS / wymogi dokumentowe per trasa** — mapowanie błędu walidacyjnego prebooka na pole (Faza 2).
