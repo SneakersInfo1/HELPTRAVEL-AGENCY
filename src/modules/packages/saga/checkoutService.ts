@@ -32,6 +32,9 @@ export interface HotelPrebookResult {
   prebookId: string;
   transactionId: string;
   secretKey: string;
+  /** Realna kwota/waluta PaymentIntentu z prebooka (do widgetu — zero dryfu). */
+  price?: number;
+  currency?: string;
 }
 
 export interface CheckoutDeps {
