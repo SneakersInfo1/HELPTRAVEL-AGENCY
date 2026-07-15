@@ -5,7 +5,7 @@
 // (bestFlight/pricing/assemble/pickCheapestRefundableRate) pozostaje odsprzęgnięty.
 
 import { fromMinor } from "@/lib/money";
-import { hotelDistanceLabels } from "@/lib/geo/distance-label";
+import { hotelDistanceKm, hotelDistanceLabels } from "@/lib/geo/distance-label";
 import type { DisplayLeg, DisplayOffer } from "@/lib/flights/display";
 import type { FlightSearchInput } from "@/lib/flights/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
@@ -106,6 +106,7 @@ function toCandidate(
   // współrzędnych hotelu albo referencji miasta → brak etykiety (nie zgadujemy).
   const dist = hotelDistanceLabels({ lat: meta.lat, lng: meta.lng }, destinationCity, destinationCountry);
   const distanceLabel = [dist.center, dist.beach].filter(Boolean).join(" · ") || undefined;
+  const distKm = hotelDistanceKm({ lat: meta.lat, lng: meta.lng }, destinationCity, destinationCountry);
   return {
     hotel: {
       hotelId: meta.id,
@@ -115,6 +116,8 @@ function toCandidate(
       ...(meta.reviewCount !== undefined ? { reviewCount: meta.reviewCount } : {}),
       ...(board ? { boardName: board } : {}),
       ...(distanceLabel ? { distanceLabel } : {}),
+      ...(distKm.centerKm !== undefined ? { distanceCenterKm: distKm.centerKm } : {}),
+      ...(distKm.beachKm !== undefined ? { distanceBeachKm: distKm.beachKm } : {}),
       ...(meta.thumbnailUrl ? { thumbnailUrl: meta.thumbnailUrl } : {}),
       freeCancellationUntil: rateCancellationDeadline(pick.rate) ?? "",
       hotelOfferId: pick.offerId,

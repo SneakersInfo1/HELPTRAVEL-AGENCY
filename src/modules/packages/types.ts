@@ -35,6 +35,9 @@ export interface PackageHotelSummary {
   boardName?: string;
   /** Gotowa etykieta dystansu, np. „0,4 km od centrum" (z realnych współrzędnych). */
   distanceLabel?: string;
+  /** Liczbowe dystanse (km, te same guardraile co etykieta) — do FILTRÓW. */
+  distanceCenterKm?: number;
+  distanceBeachKm?: number;
   thumbnailUrl?: string;
   /** Warunek MVP: tylko rate z darmową anulacją (bezpiecznik kompensacji sagi). */
   freeCancellationUntil: string; // ISO
