@@ -80,7 +80,11 @@ export function FlightPicker({
 }) {
   // GDS zwraca dziesiątki taryf tego SAMEGO lotu (te same godziny, różna klasa).
   // Dedup po rozkładzie (godziny tam/powrót + przewoźnik) → 1 wiersz na realny
-  // lot, z NAJTAŃSZĄ taryfą. Bez tego lista to setki bliźniaczych wierszy.
+  // lot z NAJTAŃSZĄ taryfą jako reprezentantem, ale taryfy z ODRZUCANYCH
+  // duplikatów MERGE'ujemy do `fares` — to one są mechanizmem „dodania bagażu"
+  // (branded fares; ta sama decyzja co /loty/dodatki — attach à la carte
+  // świadomie odłożony do testu z kartą). Wizualnie taryfy dedupowane po
+  // (nazwa|bagaż|cena) — GDS potrafi zwrócić tę samą taryfę pod wieloma id.
   const flights = useMemo(() => {
     const byKey = new Map<string, DisplayOffer>();
     for (const o of offers) {
@@ -89,7 +93,27 @@ export function FlightPicker({
       const ib = o.legs.find((l) => l.direction === "INBOUND");
       const key = `${ob?.departureTime}|${ob?.arrivalTime}|${ib?.departureTime}|${ob?.carrierCode}`;
       const prev = byKey.get(key);
-      if (!prev || (o.total ?? Infinity) < (prev.total ?? Infinity)) byKey.set(key, o);
+      if (!prev) {
+        byKey.set(key, { ...o, fares: [...o.fares] });
+        continue;
+      }
+      const mergedFares = [...prev.fares];
+      const seen = new Set(mergedFares.map((f) => f.offerId));
+      for (const f of o.fares) {
+        if (!seen.has(f.offerId)) {
+          mergedFares.push(f);
+          seen.add(f.offerId);
+        }
+      }
+      byKey.set(key, (o.total ?? Infinity) < (prev.total ?? Infinity) ? { ...o, fares: mergedFares } : { ...prev, fares: mergedFares });
+    }
+    for (const v of byKey.values()) {
+      const byDisplay = new Map<string, (typeof v.fares)[number]>();
+      for (const f of [...v.fares].sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity))) {
+        const dk = `${f.fareName}|${f.hasCarryOnBag}|${f.hasCheckedBag}|${f.total}`;
+        if (!byDisplay.has(dk)) byDisplay.set(dk, f);
+      }
+      v.fares = [...byDisplay.values()].slice(0, 6); // max 6 wariantów — czytelność
     }
     return [...byKey.values()];
   }, [offers]);
@@ -101,9 +125,13 @@ export function FlightPicker({
   );
   const [sort, setSort] = useState<SortKey>("best");
   const [selectedId, setSelectedId] = useState<string>(() => selectBaseFlight(flights)?.offerId ?? flights[0]?.offerId ?? "");
+  // Wybrana taryfa AKTYWNEGO lotu; null = najtańsza (fares[0]). Zmiana lotu
+  // resetuje wybór taryfy (każdy rozkład ma własne warianty).
+  const [fareId, setFareId] = useState<string | null>(null);
 
   const sorted = useMemo(() => sortOffers(flights, sort).slice(0, VISIBLE_CAP), [flights, sort]);
   const selected = flights.find((o) => o.offerId === selectedId) ?? flights[0];
+  const selectedFare = selected?.fares.find((f) => f.offerId === fareId) ?? selected?.fares[0];
 
   // package_flight_view — raz przy wejściu na krok 2 (liczba realnych lotów).
   useEffect(() => {
@@ -111,7 +139,8 @@ export function FlightPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const flightTotal = selected?.total ?? 0;
+  // Cena pakietu liczona z WYBRANEJ taryfy (nie zawsze najtańszej).
+  const flightTotal = selectedFare?.total ?? selected?.total ?? 0;
   const packageTotal = hotel.pricePln + flightTotal;
   const perPerson = Math.ceil(packageTotal / Math.max(1, adults));
 
@@ -125,7 +154,7 @@ export function FlightPicker({
     hotelName: hotel.name,
     rateId: hotel.rateId,
     hotelPln: String(hotel.pricePln),
-    flightOfferId: selected?.offerId ?? "",
+    flightOfferId: selectedFare?.offerId ?? selected?.offerId ?? "",
     flightPln: String(flightTotal),
   }).toString()}`;
 
@@ -202,6 +231,7 @@ export function FlightPicker({
                 onClick={() => {
                   if (offer.offerId !== selectedId) {
                     track("package_flight_change", { destination: destination.city, sort });
+                    setFareId(null); // nowy lot = wróć do jego najtańszej taryfy
                   }
                   setSelectedId(offer.offerId);
                 }}
@@ -232,14 +262,68 @@ export function FlightPicker({
                   {inbound && <LegLine leg={inbound} label="Powrót" />}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-neutral-100 pt-2 text-[11px] font-medium">
-                  <span className={offer.hasCarryOnBag ? "text-emerald-800" : "text-neutral-400"}>
-                    {offer.hasCarryOnBag ? "✓" : "✕"} Bagaż podręczny
+                  {/* Chipy bagażu aktywnego lotu odzwierciedlają WYBRANĄ taryfę. */}
+                  <span className={(active && selectedFare ? selectedFare.hasCarryOnBag : offer.hasCarryOnBag) ? "text-emerald-800" : "text-neutral-400"}>
+                    {(active && selectedFare ? selectedFare.hasCarryOnBag : offer.hasCarryOnBag) ? "✓" : "✕"} Bagaż podręczny
                   </span>
-                  <span className={offer.hasCheckedBag ? "text-emerald-800" : "text-neutral-400"}>
-                    {offer.hasCheckedBag ? "✓" : "✕"} Bagaż rejestrowany
+                  <span className={(active && selectedFare ? selectedFare.hasCheckedBag : offer.hasCheckedBag) ? "text-emerald-800" : "text-neutral-400"}>
+                    {(active && selectedFare ? selectedFare.hasCheckedBag : offer.hasCheckedBag) ? "✓" : "✕"} Bagaż rejestrowany
                   </span>
                 </div>
               </button>
+
+              {/* Taryfy bagażowe wybranego lotu (branded fares — realny mechanizm
+                  „dodania bagażu"; à la carte attach = po teście z kartą).
+                  POZA przyciskiem wiersza (zagnieżdżone buttony są niedozwolone). */}
+              {active && offer.fares.length > 1 && (
+                <div className="mt-2 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-2.5">
+                  <div className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">
+                    Taryfa i bagaż
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {offer.fares.map((f) => {
+                      const fBase = offer.fares[0]?.total ?? 0;
+                      const fDelta = (f.total ?? 0) - fBase;
+                      const fActive = (selectedFare?.offerId ?? offer.fares[0]?.offerId) === f.offerId;
+                      return (
+                        <button
+                          key={f.offerId}
+                          type="button"
+                          aria-pressed={fActive}
+                          onClick={() => {
+                            if (!fActive) track("package_flight_change", { destination: destination.city, sort: "fare" });
+                            setFareId(f.offerId);
+                          }}
+                          className={`flex items-center gap-2.5 rounded-xl border bg-white px-3 py-2 text-left transition-[border-color,box-shadow] ${
+                            fActive ? "border-emerald-500 shadow-[0_0_0_1px_rgba(16,185,129,0.5)]" : "border-emerald-900/10 hover:border-emerald-300"
+                          }`}
+                        >
+                          <span
+                            aria-hidden
+                            className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${fActive ? "border-emerald-600 bg-emerald-600" : "border-neutral-300"}`}
+                          >
+                            {fActive && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs font-semibold text-neutral-900">{f.fareName}</span>
+                            <span className="mt-0.5 flex flex-wrap gap-x-3 text-[11px] font-medium">
+                              <span className={f.hasCarryOnBag ? "text-emerald-700" : "text-neutral-400"}>
+                                {f.hasCarryOnBag ? "✓" : "—"} podręczny
+                              </span>
+                              <span className={f.hasCheckedBag ? "text-emerald-700" : "text-neutral-400"}>
+                                {f.hasCheckedBag ? "✓" : "—"} rejestrowany
+                              </span>
+                            </span>
+                          </span>
+                          <span className={`shrink-0 text-xs font-bold tabular-nums ${fDelta === 0 ? "text-emerald-700" : "text-neutral-900"}`}>
+                            {fDelta === 0 ? "+0 zł" : `+${formatPLN(fDelta)}`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </li>
           );
         })}
