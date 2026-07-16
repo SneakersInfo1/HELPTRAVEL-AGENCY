@@ -26,6 +26,9 @@ export interface FlightHoldResult {
   secretKey: string;
   /** TTL holdu z response (źródło prawdy); brak = null. */
   expiresAt: string | null;
+  /** Realna kwota/waluta PaymentIntentu lotu (do widgetu Checkoutu 2). */
+  price?: number;
+  currency?: string;
 }
 
 export interface HotelPrebookResult {
@@ -77,10 +80,12 @@ export async function startPackageCheckout(deps: CheckoutDeps, input: StartCheck
 export async function holdFlight(
   deps: CheckoutDeps,
   sagaId: string,
-  input: { offerId: string },
+  input: { offerId: string; acceptPriceChange?: boolean },
 ): Promise<{ priceChanged: true; total?: number } | ({ priceChanged: false } & FlightHoldResult)> {
   const verify = await deps.verifyFlight(input.offerId);
-  if (verify.priceChanged) return { priceChanged: true, total: verify.total };
+  // Zmiana ceny wraca do UI (jawny banner z deltą); user może ją ŚWIADOMIE
+  // zaakceptować drugim wywołaniem z acceptPriceChange — nigdy domyślnie.
+  if (verify.priceChanged && !input.acceptPriceChange) return { priceChanged: true, total: verify.total };
 
   const hold = await deps.prebookFlight({ offerId: input.offerId });
   const r = await applySagaEvent(deps, sagaId, {

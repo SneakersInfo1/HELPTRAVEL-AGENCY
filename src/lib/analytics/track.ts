@@ -252,11 +252,26 @@ export interface TrackEventMap {
     destination?: string;
     sort?: string;
   };
-  /** Klik split-CTA kroku 2 — mierzy INTENCJĘ (Faza 1: rozdzielone rezerwacje). */
+  /** Klik CTA kroku 2 (Faza 2: „package" = wejście w checkout pakietowy). */
   package_reserve_click: {
-    service: "hotel" | "flight";
+    service: "hotel" | "flight" | "package";
     destination?: string;
     hotel_id?: string;
+    value?: number;
+  };
+  // ── Pakiety — checkout Fazy 2 (§7) ──
+  package_passenger_form_complete: {
+    destination?: string;
+    adults?: number;
+  };
+  package_payment_start: {
+    destination?: string;
+    which: "hotel" | "flight";
+  };
+  /** Sukces płatności+booku części pakietu (hotel po Checkout 1, lot po 2). */
+  package_purchase: {
+    which: "hotel" | "flight";
+    saga?: string;
     value?: number;
   };
 }

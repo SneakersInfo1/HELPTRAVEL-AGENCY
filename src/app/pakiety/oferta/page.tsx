@@ -20,8 +20,10 @@ type SP = Record<string, string | string[] | undefined>;
 function one(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
+// parseFloat, nie parseInt — hotelPln niesie grosze (2398.64); ucięcie ich
+// robiło rozjazd rekapu checkoutu vs karta (kwoty PŁATNOŚCI i tak z prebooków).
 function num(v: string | undefined): number | undefined {
-  const n = Number.parseInt(v ?? "", 10);
+  const n = Number.parseFloat(v ?? "");
   return Number.isFinite(n) ? n : undefined;
 }
 
@@ -50,6 +52,7 @@ export default async function PackageOfferPage({ searchParams }: { searchParams:
     hotelId,
     hotelName,
     hotelPln,
+    rateId: one(sp.rateId)?.trim() ?? "",
     nights: Math.max(1, num(one(sp.nights)) ?? 1),
     ...(num(one(sp.stars)) ? { stars: num(one(sp.stars)) } : {}),
     ...(one(sp.board) ? { board: one(sp.board) } : {}),

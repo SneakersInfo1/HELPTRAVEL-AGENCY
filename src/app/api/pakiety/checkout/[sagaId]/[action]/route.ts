@@ -87,12 +87,13 @@ export async function POST(
           return NextResponse.json({ error: "invalid_body", issues: parsed.error.issues }, { status: 400 });
         }
         const b = parsed.data;
+        const acceptPriceChange = Boolean((json as { acceptPriceChange?: unknown }).acceptPriceChange);
         const deps = buildCheckoutDeps({
           store,
           effects,
           flight: { contact: b.contact, passengers: b.passengers },
         });
-        const result = await holdFlight(deps, sagaId, { offerId: b.offerId });
+        const result = await holdFlight(deps, sagaId, { offerId: b.offerId, acceptPriceChange });
         if (result.priceChanged) {
           // Jawny banner w UI — zero cichych zmian kwot, zero prebooka.
           return NextResponse.json({ priceChanged: true, total: result.total ?? null }, { status: 409 });
@@ -107,6 +108,8 @@ export async function POST(
         return NextResponse.json({
           priceChanged: false,
           secretKey: result.secretKey,
+          amount: result.price ?? null, // realna kwota PaymentIntentu lotu
+          currency: result.currency ?? "PLN",
           widgetEnv: widgetEnv(),
         });
       }
