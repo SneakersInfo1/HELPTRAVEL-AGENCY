@@ -22,6 +22,8 @@ export function buildOfferHref(ctx: OfferHrefContext, offer: PackageOffer): stri
     hotelName: offer.hotel.name,
     hotelPln: String(offer.pricing.breakdown.hotel.amount),
     nights: String(offer.hotel.nights),
+    // Taryfa (offerId ratesa) — checkout Fazy 2 prebookuje dokładnie ją.
+    rateId: offer.hotel.hotelOfferId,
   });
   if (offer.hotel.stars) p.set("stars", String(offer.hotel.stars));
   if (offer.hotel.boardName) p.set("board", offer.hotel.boardName);

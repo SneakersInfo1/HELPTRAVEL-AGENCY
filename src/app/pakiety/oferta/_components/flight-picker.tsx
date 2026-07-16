@@ -3,9 +3,9 @@
 // Krok 2 „Wybierz lot". Hotel już wybrany (z kroku 1, dane w URL); tu user
 // dobiera lot z realnych alternatyw. Taby Najlepsze/Najtańsze/Najszybsze
 // (reuse sortOffers z flights/filters), delty vs najtańszy przelot (nigdy cena
-// absolutna — §2), bagaż, cena pakietu aktualizowana przy wyborze. CTA Fazy 1 =
-// ROZDZIELONE „Zarezerwuj hotel / lot" (legalnie bezpieczne, mierzy intencję;
-// płatność pakietowa = Faza 2 po domknięciu prawnym). Mobile-first.
+// absolutna — §2), bagaż, cena pakietu aktualizowana przy wyborze.
+// CTA = checkout pakietowy Fazy 2 (/pakiety/checkout): dane podróżnych →
+// płatność hotel → płatność lot (dwa odrębne checkouty §4). Mobile-first.
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -20,6 +20,8 @@ interface HotelCtx {
   id: string;
   name: string;
   pricePln: number;
+  /** offerId taryfy (rates) — checkout prebookuje dokładnie ją. */
+  rateId: string;
   nights: number;
   stars?: number;
   board?: string;
@@ -60,8 +62,8 @@ function LegLine({ leg, label }: { leg: DisplayLeg; label: string }) {
 export function FlightPicker({
   offers,
   hotel,
-  origin,
   destination,
+  destinationEn,
   dateFrom,
   dateTo,
   adults,
@@ -70,6 +72,8 @@ export function FlightPicker({
   hotel: HotelCtx;
   origin: { label: string; codes: string[] };
   destination: { city: string; iata: string };
+  /** Miasto (EN) — spójne z searchem; do parametrów checkoutu. */
+  destinationEn: string;
   dateFrom: string;
   dateTo: string;
   adults: number;
@@ -111,21 +115,18 @@ export function FlightPicker({
   const packageTotal = hotel.pricePln + flightTotal;
   const perPerson = Math.ceil(packageTotal / Math.max(1, adults));
 
-  // CTA Fazy 1 — istniejące, żywe flow (osobne usługi).
-  const hotelHref = `/hotele/${encodeURIComponent(hotel.id)}?${new URLSearchParams({
-    checkin: dateFrom,
-    checkout: dateTo,
+  // CTA Fazy 2 — checkout pakietowy: dane podróżnych → hotel → lot.
+  const checkoutHref = `/pakiety/checkout?${new URLSearchParams({
+    destination: destinationEn,
+    dateFrom,
+    dateTo,
     adults: String(adults),
-    rooms: "1",
-  }).toString()}`;
-  const flightHref = `/loty/wyniki?${new URLSearchParams({
-    origin: origin.codes.join(","),
-    destination: destination.iata,
-    depart: dateFrom,
-    return: dateTo,
-    adults: String(adults),
-    ...(origin.label ? { originLabel: origin.label } : {}),
-    destLabel: destination.city,
+    hotelId: hotel.id,
+    hotelName: hotel.name,
+    rateId: hotel.rateId,
+    hotelPln: String(hotel.pricePln),
+    flightOfferId: selected?.offerId ?? "",
+    flightPln: String(flightTotal),
   }).toString()}`;
 
   return (
@@ -259,27 +260,18 @@ export function FlightPicker({
           </div>
           <div className="flex flex-1 gap-2 sm:justify-end">
             <a
-              href={hotelHref}
+              href={checkoutHref}
               onClick={() =>
-                track("package_reserve_click", { service: "hotel", destination: destination.city, hotel_id: hotel.id, value: hotel.pricePln })
+                track("package_reserve_click", { service: "package", destination: destination.city, hotel_id: hotel.id, value: packageTotal })
               }
-              className="inline-flex h-11 flex-1 items-center justify-center rounded-lg border border-emerald-600 bg-white px-4 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 sm:flex-none"
+              className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-bold text-white transition-colors hover:bg-emerald-700 sm:flex-none"
             >
-              Zarezerwuj hotel
-            </a>
-            <a
-              href={flightHref}
-              onClick={() =>
-                track("package_reserve_click", { service: "flight", destination: destination.city, hotel_id: hotel.id, value: flightTotal })
-              }
-              className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:flex-none"
-            >
-              Zarezerwuj lot
+              Zarezerwuj pakiet
             </a>
           </div>
         </div>
         <p className="mx-auto max-w-3xl px-4 pb-2 text-[10px] leading-tight text-neutral-500">
-          Hotel i lot rezerwujesz jako dwie osobne usługi. Ceny w PLN, re-weryfikowane przy rezerwacji.
+          Dwie powiązane usługi, dwie płatności (hotel, potem lot). Ceny w PLN, re-weryfikowane przy rezerwacji.
         </p>
       </div>
     </div>

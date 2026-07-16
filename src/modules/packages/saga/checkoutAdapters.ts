@@ -65,6 +65,8 @@ export function buildCheckoutDeps(args: {
         // LiteAPI nie zwraca expiresAt (zweryfikowane, BOOKING_AUDIT §8) —
         // deadline sagi policzy cap 25 min od booku hotelu.
         expiresAt: null,
+        price: pre.price,
+        currency: pre.currency,
       };
     },
 

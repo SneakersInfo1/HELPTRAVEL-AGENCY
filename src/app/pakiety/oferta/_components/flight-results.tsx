@@ -17,6 +17,8 @@ export interface OfferParams {
   hotelId: string;
   hotelName: string;
   hotelPln: number;
+  /** offerId taryfy hotelu (rates) — checkout prebookuje dokładnie ją. */
+  rateId: string;
   nights: number;
   stars?: number;
   board?: string;
@@ -73,6 +75,7 @@ export async function FlightResults({ params }: { params: OfferParams }) {
         id: params.hotelId,
         name: params.hotelName,
         pricePln: params.hotelPln,
+        rateId: params.rateId,
         nights: params.nights,
         ...(params.stars ? { stars: params.stars } : {}),
         ...(params.board ? { board: params.board } : {}),
@@ -80,6 +83,7 @@ export async function FlightResults({ params }: { params: OfferParams }) {
       }}
       origin={{ label: params.origin, codes: [originIata] }}
       destination={{ city: localizeCity(params.destination), iata: destIata }}
+      destinationEn={params.destination}
       dateFrom={params.dateFrom}
       dateTo={params.dateTo}
       adults={params.adults}
