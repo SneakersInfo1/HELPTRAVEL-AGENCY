@@ -473,6 +473,7 @@ export function PackageCheckout({
           />
           <p className="mt-3 text-[11px] leading-4 text-neutral-500">
             Lot po zakupie jest bezzwrotny. Hotel: bezpłatna anulacja (szczegóły w potwierdzeniu). Na wyciągu: NUITEE TRAVEL.
+            Bagaż zgodnie z taryfą z kroku wyboru lotu — dodatkowy dokupisz u przewoźnika po otrzymaniu potwierdzenia.
           </p>
         </Card>
       </Shell>

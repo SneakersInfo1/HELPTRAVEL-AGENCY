@@ -123,6 +123,16 @@ do akceptacji jednym tapnięciem). Błąd walidacyjny prebooka → czytelny komu
       integracyjne testy DB odłożone do provisioningu; adapter sagi celowo NIE ma
       fallbacku in-memory: brak bazy = głośny wyjątek, checkout się nie zaczyna).
 - [ ] Potwierdzenie kontraktowe waluty obciążenia (pkt 7).
+- [x] **Krok 2.1 KOMPLETNY jako kod (2026-07-16/17)**: route'y API checkoutu
+      (`/api/pakiety/checkout` + akcje hold-flight/prebook-hotel/hotel-paid/flight-paid/
+      payment-failed; book z TRANSACTION_ID = autorytatywna walidacja płatności) + UI
+      (`/pakiety/checkout` 3 kroki z transliteracją i banerem zmiany ceny, strony powrotu,
+      `/pakiety/rezerwacja/[id]` z pollingiem). Sekrety płatności tylko w przeglądarce.
+      Zweryfikowane bez płatności (lokalnie brak DB ⇒ uczciwe 503 przed jakimkolwiek
+      wywołaniem LiteAPI). ZOSTAŁO przed launchem: krok „Dostosuj" (bagaże z
+      `servicesAttachable` + remount payment elementu po attach), wznowienie cross-device
+      (re-verify+re-prebook w HOTEL_BOOKED_AWAITING_FLIGHT), bogatsze szablony maili,
+      **test realną kartą = właściciel na końcu**.
 
 ### Maszyna stanów sagi (Krok 2.0 — zaimplementowana, `saga/sagaMachine.ts`)
 
