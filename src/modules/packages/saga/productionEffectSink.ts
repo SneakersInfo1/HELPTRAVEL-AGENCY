@@ -64,7 +64,7 @@ function emailFor(b: PackageBookingRecord, effect: SagaEffect): { subject: strin
           "Twój hotel jest potwierdzony i opłacony.",
           `Została jeszcze płatność za lot — dokończ ją do ${fmtWhen(b.deadlineAt)}, potem rezerwację automatycznie anulujemy i zwrócimy pełną kwotę za hotel.`,
           "",
-          `Wróć do rezerwacji: ${site}/pakiety/checkout/${b.id}`,
+          `Wróć do rezerwacji: ${site}/pakiety/checkout?saga=${encodeURIComponent(b.id)}&step=flight`,
           "",
           "Zespół helptravel.pl",
         ].join("\n"),

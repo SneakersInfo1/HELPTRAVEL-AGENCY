@@ -69,7 +69,7 @@ test("e-maile: resume ma deadline i link wznawiający, confirmation ma OBA numer
   const [resume, confirm, refund] = calls.emails;
   assert.equal(resume.to, "klient@example.com");
   assert.match(resume.text, /dokończ/i);
-  assert.match(resume.text, /pakiety\/checkout\/pkg-1/);
+  assert.match(resume.text, /pakiety\/checkout\?saga=pkg-1&step=flight/);
   assert.match(confirm.text, /hb-1/);
   assert.match(confirm.text, /fb-1/);
   assert.match(refund.text, /zwrot/i);
