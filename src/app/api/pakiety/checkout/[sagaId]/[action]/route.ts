@@ -26,10 +26,12 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 import type { LiteApiGuest } from "@/lib/liteapi";
 import { buildCheckoutDeps, type HotelBookContext } from "@/modules/packages/saga/checkoutAdapters";
 import {
+  cancelAwaitingPackage,
   confirmFlightPaidAndBook,
   confirmHotelPaidAndBook,
   holdFlight,
   prebookHotelStep,
+  reholdFlight,
   reportPaymentFailure,
 } from "@/modules/packages/saga/checkoutService";
 import { createPrismaSagaStore, SagaStoreUnavailableError } from "@/modules/packages/saga/prismaSagaStore";
@@ -47,7 +49,7 @@ const PaymentFailedSchema = z.object({
 });
 
 interface StoredCheckoutContext {
-  offer?: { rateId?: string };
+  offer?: { rateId?: string; flightOfferId?: string; dateTo?: string };
   holder?: HotelBookContext["holder"];
   guests?: LiteApiGuest[];
 }
@@ -150,6 +152,41 @@ export async function POST(
             ? { ok: true, flightBookingId: r.flightBookingId }
             : { ok: false, manual: true, message: "Finalizujemy Twoją rezerwację — potwierdzenie wyślemy e-mailem w ciągu 30 minut." },
         );
+      }
+
+      case "rehold-flight": {
+        // Wznowienie (mail / inne urządzenie): dane pasażerów wpisywane
+        // PONOWNIE (numerów dokumentów celowo nie przechowujemy); taryfa =
+        // TA SAMA (offerId z kontekstu sagi, nie z requestu).
+        const ctx = (await store.loadCheckoutContext(sagaId))?.offerJson as StoredCheckoutContext | null;
+        const offerId = ctx?.offer?.flightOfferId;
+        if (!offerId) {
+          return NextResponse.json({ error: "missing_offer", message: "Brak taryfy lotu w sadze." }, { status: 409 });
+        }
+        const parsed = FlightPrebookInputSchema.safeParse({ ...(json as object), offerId });
+        if (!parsed.success) {
+          return NextResponse.json({ error: "invalid_body", issues: parsed.error.issues }, { status: 400 });
+        }
+        const b = parsed.data;
+        const acceptPriceChange = Boolean((json as { acceptPriceChange?: unknown }).acceptPriceChange);
+        const deps = buildCheckoutDeps({ store, effects, flight: { contact: b.contact, passengers: b.passengers } });
+        const result = await reholdFlight(deps, sagaId, { offerId, acceptPriceChange });
+        if (result.priceChanged) {
+          return NextResponse.json({ priceChanged: true, total: result.total ?? null }, { status: 409 });
+        }
+        return NextResponse.json({
+          priceChanged: false,
+          secretKey: result.secretKey,
+          amount: result.price ?? null,
+          currency: result.currency ?? "PLN",
+          widgetEnv: widgetEnv(),
+        });
+      }
+
+      case "cancel": {
+        // „Anuluj wszystko — pełny zwrot za hotel" (tylko między checkoutami).
+        await cancelAwaitingPackage(buildCheckoutDeps({ store, effects }), sagaId);
+        return NextResponse.json({ ok: true, refund: true, message: "Rezerwacja anulowana — pełny zwrot płatności jest w drodze." });
       }
 
       case "payment-failed": {
