@@ -50,6 +50,12 @@ export type SagaEvent =
   | { type: "FLIGHT_EXPIRED"; reason?: string } // flight.book.expired / timeout ticketingu
   | { type: "DEADLINE_REACHED" } // cron: porzucenie między checkoutami
   | { type: "USER_ABANDONED" } // jawna rezygnacja PRZED pieniędzmi
+  // Wznowienie w oknie (mail/cross-device): stary hold mógł wygasnąć →
+  // re-verify + re-prebook TEJ SAMEJ taryfy = nowy prebook/txn (stary martwy).
+  | { type: "FLIGHT_REHELD"; flightPrebookId: string; txnFlight: string; prebookExpiresAt: string | null }
+  // Świadoma rezygnacja MIĘDZY checkoutami („Anuluj wszystko — pełny zwrot za
+  // hotel", spec §4) — ta sama kompensacja co deadline, inny powód.
+  | { type: "USER_CANCELLED_AWAITING" }
   | { type: "COMPENSATION_DONE" }; // wszystkie zwroty potwierdzone
 
 /** Efekty uboczne — wykonuje orkiestrator (at-least-once; sink idempotentny). */

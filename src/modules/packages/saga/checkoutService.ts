@@ -98,6 +98,41 @@ export async function holdFlight(
   return { priceChanged: false, ...hold };
 }
 
+/**
+ * Wznowienie w oknie (mail / inne urządzenie): stary hold lotu mógł wygasnąć
+ * albo sekret przepadł z przeglądarką → re-verify + re-prebook TEJ SAMEJ
+ * taryfy (offerId z kontekstu sagi). Zmiana ceny wraca do UI (banner z deltą
+ * i wyborem „Akceptuję / Anuluj wszystko" — spec §4). Deadline BEZ zmian.
+ */
+export async function reholdFlight(
+  deps: CheckoutDeps,
+  sagaId: string,
+  input: { offerId: string; acceptPriceChange?: boolean },
+): Promise<{ priceChanged: true; total?: number } | ({ priceChanged: false } & FlightHoldResult)> {
+  const verify = await deps.verifyFlight(input.offerId);
+  if (verify.priceChanged && !input.acceptPriceChange) return { priceChanged: true, total: verify.total };
+
+  const hold = await deps.prebookFlight({ offerId: input.offerId });
+  const r = await applySagaEvent(deps, sagaId, {
+    type: "FLIGHT_REHELD",
+    flightPrebookId: hold.prebookId,
+    txnFlight: hold.transactionId,
+    prebookExpiresAt: hold.expiresAt,
+  });
+  if (r.kind !== "applied") throw fail("reholdFlight", r);
+  return { priceChanged: false, ...hold };
+}
+
+/**
+ * „Anuluj wszystko (pełny zwrot za hotel)" między checkoutami — świadoma
+ * decyzja klienta; kompensację (cancel + refund + e-mail) robi maszyna.
+ */
+export async function cancelAwaitingPackage(deps: CheckoutDeps, sagaId: string): Promise<{ ok: true }> {
+  const r = await applySagaEvent(deps, sagaId, { type: "USER_CANCELLED_AWAITING" });
+  if (r.kind !== "applied" && r.kind !== "ignored") throw fail("cancelAwaiting", r);
+  return { ok: true };
+}
+
 /** Krok 2: prebook hotelu → PaymentIntent A (secretKey do Checkout 1). */
 export async function prebookHotelStep(
   deps: CheckoutDeps,

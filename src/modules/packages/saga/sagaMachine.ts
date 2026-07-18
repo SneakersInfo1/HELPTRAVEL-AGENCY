@@ -214,6 +214,34 @@ export function transition(snapshot: SagaSnapshot, event: SagaEvent): Transition
       );
     }
 
+    case "FLIGHT_REHELD": {
+      // Tylko w oknie oczekiwania na lot. deadlineAt ŚWIADOMIE bez zmian —
+      // okno liczy się od booku hotelu i NIGDY nie jest przedłużane (nowy
+      // prebook ma własny TTL, ale bezpiecznik kompensacji zostaje).
+      if (state !== "HOTEL_BOOKED_AWAITING_FLIGHT") return invalid(state, event);
+      return applied("HOTEL_BOOKED_AWAITING_FLIGHT", [], {
+        flightPrebookId: event.flightPrebookId,
+        txnFlight: event.txnFlight,
+        txnFlightHistory: [...snapshot.txnFlightHistory, event.txnFlight],
+        prebookExpiresAt: event.prebookExpiresAt,
+      });
+    }
+
+    case "USER_CANCELLED_AWAITING": {
+      // „Anuluj wszystko (pełny zwrot za hotel)" — kompensacja jak deadline.
+      if (state !== "HOTEL_BOOKED_AWAITING_FLIGHT") return invalid(state, event);
+      return applied(
+        "COMPENSATING",
+        [
+          { type: "CANCEL_HOTEL" },
+          { type: "REFUND_HOTEL" },
+          { type: "SEND_REFUND_EMAIL" },
+          { type: "TRACK", event: "package_abandoned_between_checkouts" },
+        ],
+        { failureReason: "rezygnacja klienta między checkoutami (pełny zwrot)" },
+      );
+    }
+
     case "USER_ABANDONED": {
       // Jawna rezygnacja PRZED jakimikolwiek pieniędzmi → zero zwrotów.
       if (state !== "DRAFT" && state !== "FLIGHT_HELD" && state !== "HOTEL_PREBOOKED") {

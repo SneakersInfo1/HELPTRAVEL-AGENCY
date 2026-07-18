@@ -145,6 +145,35 @@ test("USER_ABANDONED po zaksięgowanych pieniądzach jest invalid (od tego są k
   assert.equal(r.next, "HOTEL_BOOKED_AWAITING_FLIGHT");
 });
 
+test("FLIGHT_REHELD: nowy prebook/txn w oknie oczekiwania, historia rośnie, deadline BEZ zmian", () => {
+  const r = transition(snap("HOTEL_BOOKED_AWAITING_FLIGHT", { txnFlightHistory: ["txn-B"] }), {
+    type: "FLIGHT_REHELD",
+    flightPrebookId: "pb-2",
+    txnFlight: "txn-B2",
+    prebookExpiresAt: "2026-08-10T12:40:00Z",
+  });
+  assert.equal(r.kind, "applied");
+  assert.equal(r.next, "HOTEL_BOOKED_AWAITING_FLIGHT");
+  assert.deepEqual(r.patch.txnFlightHistory, ["txn-B", "txn-B2"]);
+  assert.equal(r.patch.flightPrebookId, "pb-2");
+  assert.equal(r.patch.deadlineAt, undefined); // nigdy nie przedłużamy okna
+  assert.deepEqual(r.effects, []);
+
+  // Poza oknem = invalid (np. po opłaceniu lotu).
+  assert.equal(
+    transition(snap("FLIGHT_PAID"), { type: "FLIGHT_REHELD", flightPrebookId: "x", txnFlight: "y", prebookExpiresAt: null }).kind,
+    "invalid",
+  );
+});
+
+test("USER_CANCELLED_AWAITING: kompensacja jak deadline, powód = rezygnacja klienta", () => {
+  const r = transition(snap("HOTEL_BOOKED_AWAITING_FLIGHT"), { type: "USER_CANCELLED_AWAITING" });
+  assert.equal(r.next, "COMPENSATING");
+  assert.deepEqual(effectTypes(r), ["CANCEL_HOTEL", "REFUND_HOTEL", "SEND_REFUND_EMAIL", "TRACK"]);
+  assert.match(r.patch.failureReason ?? "", /rezygnacja klienta/);
+  assert.equal(transition(snap("HOTEL_PAID"), { type: "USER_CANCELLED_AWAITING" }).kind, "invalid");
+});
+
 test("COMPENSATION_DONE domyka kompensację → REFUNDED", () => {
   const r = transition(snap("COMPENSATING"), { type: "COMPENSATION_DONE" });
   assert.equal(r.next, "REFUNDED");

@@ -6,10 +6,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  cancelAwaitingPackage,
   confirmFlightPaidAndBook,
   confirmHotelPaidAndBook,
   holdFlight,
   prebookHotelStep,
+  reholdFlight,
   reportPaymentFailure,
   startPackageCheckout,
   type CheckoutDeps,
@@ -159,6 +161,51 @@ test("nieudana płatność (SDK) jest retryable — saga zostaje w miejscu z pow
   await confirmHotelPaidAndBook(deps, id);
   await reportPaymentFailure(deps, id, "flight", "3DS timeout");
   assert.equal(store.recs.get(id)?.sagaState, "HOTEL_BOOKED_AWAITING_FLIGHT");
+});
+
+test("reholdFlight: nowy hold w oknie oczekiwania (cross-device); zmiana ceny wraca bez prebooka", async () => {
+  const { deps, store } = makeDeps();
+  const id = await startPackageCheckout(deps, START);
+  await holdFlight(deps, id, { offerId: "off-1" });
+  await prebookHotelStep(deps, id, { rateId: "rate-1" });
+  await confirmHotelPaidAndBook(deps, id);
+  assert.equal(store.recs.get(id)?.sagaState, "HOTEL_BOOKED_AWAITING_FLIGHT");
+
+  // Zmiana ceny → banner, zero prebooka, stan bez zmian.
+  const changed = await reholdFlight(
+    { ...deps, verifyFlight: async () => ({ priceChanged: true, total: 2500 }) },
+    id,
+    { offerId: "off-1" },
+  );
+  assert.equal(changed.priceChanged, true);
+  assert.deepEqual(store.recs.get(id)?.txnFlightHistory, ["txn-B"]);
+
+  // Akceptacja / brak zmiany → nowy prebook, txn swap w historii, stan bez zmian.
+  const ok = await reholdFlight(
+    { ...deps, prebookFlight: async () => ({ prebookId: "pb-f2", transactionId: "txn-B2", secretKey: "sec-B2", expiresAt: null }) },
+    id,
+    { offerId: "off-1" },
+  );
+  assert.equal(ok.priceChanged, false);
+  const rec = store.recs.get(id)!;
+  assert.equal(rec.sagaState, "HOTEL_BOOKED_AWAITING_FLIGHT");
+  assert.equal(rec.flightPrebookId, "pb-f2");
+  assert.deepEqual(rec.txnFlightHistory, ["txn-B", "txn-B2"]);
+});
+
+test("cancelAwaitingPackage: pełna kompensacja na życzenie klienta między checkoutami", async () => {
+  const { deps, store, effects } = makeDeps();
+  const id = await startPackageCheckout(deps, START);
+  await holdFlight(deps, id, { offerId: "off-1" });
+  await prebookHotelStep(deps, id, { rateId: "rate-1" });
+  await confirmHotelPaidAndBook(deps, id);
+
+  const r = await cancelAwaitingPackage(deps, id);
+  assert.deepEqual(r, { ok: true });
+  assert.equal(store.recs.get(id)?.sagaState, "COMPENSATING");
+  for (const e of ["CANCEL_HOTEL", "REFUND_HOTEL", "SEND_REFUND_EMAIL"]) {
+    assert.ok(effects.includes(e as SagaEffect["type"]), e);
+  }
 });
 
 test("duplikat potwierdzenia płatności hotelu nie psuje flow (ignored → book i tak idzie)", async () => {
