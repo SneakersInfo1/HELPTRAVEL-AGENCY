@@ -169,6 +169,31 @@ spoza tabeli = `invalid` (stan nietknięty, log, nigdy wyjątek); zapis przez op
 zapisie stanu (at-least-once — sink musi być idempotentny), błąd efektu nie cofa przejścia —
 ląduje w `compensationLogJson` + wyniku (admin widzi, klient nigdy nie dostaje 500).
 
+## Audyt zgodności ze spec (2026-07-17, sekcja po sekcji)
+
+Rdzeń zgodny: §0 decyzje, §3.1–3.2 architektura/hotel-first, §3.4 saga 1:1, §4 kroki 1–2 i
+DWA checkouty + porzucenie, §5.1/5.3 homepage (tab domyślny + sekcja cen z cache), §6 landingi
+(noindex Fazy 1), §7 lejek GA4 (komplet z form_start/payment_method_shown), §9 uczciwość.
+
+**Świadome DYWERGENCJE (nie bugi):**
+- §3.3 stan flow: zamiast `pkg-session` w Redis — kroki 1–2 w URL (bez server-state), od checkoutu
+  saga w POSTGRESIE (mocniejsza gwarancja niż Redis). Timer sidebara pominięty: LiteAPI nie zwraca
+  expiresAt prebooka (BOOKING_AUDIT §8) — fake-timer łamałby §9; realny timer jest tam, gdzie jest
+  realny deadline (okno między checkoutami).
+- §4 krok 3 „Dostosuj": bagaż przez BRANDED FARES w kroku 2 (decyzja jak /loty/dodatki — attach
+  services unieważnia txn, kontrakt do potwierdzenia testem z kartą); wybór pokoju = taryfa z
+  listingu (zmiana pokoju: backlog).
+- §5.2 H1 hero z dynamiczną ceną: hero właściciela (redesign PR #116) — nie ruszamy; rolę „ceny
+  od" pełni sekcja Perełek. §5.4 mood-chipy zostają na landingach nastrojów (są lepszym UX niż
+  przekierowanie na landing jednego miasta; pakietowe CTA na mood-landingach = Faza 3).
+- §8 book 202+polling: book synchroniczny z maxDuration 60 (wzorzec /api/booking/book z prod);
+  asynchroniczna część (ticketing) i tak jest pollowana na stronie potwierdzenia.
+
+**BACKLOG (nie blokuje testu karty):** filtry lotnicze kroku 2 (pora dnia/bagaż/przesiadki),
+paginacja listingu po 20, UI wznowienia cross-device (backend gotowy), bogatsze maile,
+package_saga_failed/abandoned do GA4 server-side (Measurement Protocol), e2e Playwright 390px,
+FAQ+schema.org landingów (Faza 3), GA4 DebugView do potwierdzenia przez właściciela.
+
 ## Otwarte TODO:VERIFY (nie zgadujemy — pytamy właściciela / testujemy realną rezerwacją)
 
 - **`POST /flights/prebooks/{id}/services`**: kontrakt attach→nowy txn/secret — udokumentowany w spec i

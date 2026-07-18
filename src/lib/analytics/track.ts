@@ -260,9 +260,19 @@ export interface TrackEventMap {
     value?: number;
   };
   // ── Pakiety — checkout Fazy 2 (§7) ──
+  package_passenger_form_start: {
+    destination?: string;
+    adults?: number;
+  };
   package_passenger_form_complete: {
     destination?: string;
     adults?: number;
+  };
+  /** Ekran płatności z jawną listą metod (karta/Apple/Google — bez BLIK).
+   *  Pomiar dropu pod przyszłą decyzję o własnym MoR (decyzje pkt 5). */
+  package_payment_method_shown: {
+    which: "hotel" | "flight";
+    destination?: string;
   };
   package_payment_start: {
     destination?: string;

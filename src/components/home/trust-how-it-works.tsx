@@ -24,6 +24,29 @@ const STEPS = [
   },
 ] as const;
 
+// Wariant pakietowy (§5.6 spec, flaga build-time): pakiety = produkt flagowy,
+// więc 3 kroki opowiadają lejek Lot + Hotel. WYŁĄCZNIE uczciwe fakty: dwie
+// płatności (nie „zapłać raz"), hotel w pakiecie zawsze z bezpłatną anulacją.
+const PACKAGES_ON = process.env.NEXT_PUBLIC_FEATURE_PACKAGES === "true";
+const PACKAGE_STEPS = [
+  {
+    n: "1",
+    title: "Wybierasz kierunek",
+    desc: "Pakiet Lot + Hotel w jednej cenie za osobę — a hotele i loty także osobno. Ceny finalne w PLN.",
+  },
+  {
+    n: "2",
+    title: "Dopasowujesz lot i hotel",
+    desc: "Realne taryfy bagażowe, filtry i oceny gości. W pakiecie hotel zawsze z bezpłatną anulacją.",
+  },
+  {
+    n: "3",
+    title: "Płacisz i masz potwierdzenie",
+    desc: "Bezpiecznie przez Stripe: najpierw hotel, zaraz potem lot. Potwierdzenia od razu na e-mail, bez konta.",
+  },
+] as const;
+const ACTIVE_STEPS = PACKAGES_ON ? PACKAGE_STEPS : STEPS;
+
 interface TrustHowItWorksProps {
   /** Świeża ocena Trustpilot (snapshot z crona) — null = sam link bez liczby. */
   trustpilot?: { score: number; reviewCount: number | null } | null;
@@ -72,7 +95,7 @@ export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
             Rezerwujesz w trzech krokach
           </h2>
           <ol className="mt-5 grid gap-4 sm:grid-cols-3">
-            {STEPS.map((s) => (
+            {ACTIVE_STEPS.map((s) => (
               <li key={s.n} className="rounded-2xl bg-emerald-50/60 p-4">
                 <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-700 text-sm font-bold text-white">
                   {s.n}
