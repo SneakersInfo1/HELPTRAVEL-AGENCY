@@ -256,6 +256,19 @@ export function PackageCheckout({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // §7: start formularza (raz, tylko świeże wejście — nie wznowienia) i ekran
+  // płatności z jawną listą metod (pomiar dropu — decyzje pkt 5, brak BLIK).
+  useEffect(() => {
+    if (!resume.sagaId) track("package_passenger_form_start", { destination: offer.destination, adults: offer.adults });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (phase.kind === "hotel" || phase.kind === "flight") {
+      track("package_payment_method_shown", { which: phase.kind, destination: offer.destination });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase.kind]);
+
   const setPaxField = (i: number, field: keyof PaxForm, value: string) => {
     setPax((prev) => prev.map((p, j) => (j === i ? { ...p, [field]: value } : p)));
   };

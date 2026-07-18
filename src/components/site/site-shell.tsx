@@ -8,9 +8,14 @@ import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
 import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
 
+// Flaga pakietów (build-time inline): pozycja „Pakiety" w menu tylko, gdy
+// warstwa jest włączona (§5 spec — pakiety jako produkt flagowy).
+const PACKAGES_ON = process.env.NEXT_PUBLIC_FEATURE_PACKAGES === "true";
+
 const copy = {
   pl: {
     nav: [
+      ...(PACKAGES_ON ? [{ href: "/?tab=pakiety", label: "Pakiety" }] : []),
       { href: "/kierunki", label: "Kierunki" },
       { href: "/inspiracje", label: "Pomysły na wyjazd" },
       { href: "/jak-pracujemy", label: "Jak to działa" },
@@ -35,6 +40,7 @@ const copy = {
       {
         title: "Start",
         links: [
+          ...(PACKAGES_ON ? [{ href: "/?tab=pakiety", label: "Pakiety Lot + Hotel" }] : []),
           { href: "/", label: "Hotele" },
           { href: "/kierunki", label: "Katalog kierunków" },
           { href: "/inspiracje", label: "Pomysły na wyjazd" },
@@ -70,6 +76,7 @@ const copy = {
   },
   en: {
     nav: [
+      ...(PACKAGES_ON ? [{ href: "/?tab=pakiety", label: "Packages" }] : []),
       { href: "/kierunki", label: "Destinations" },
       { href: "/inspiracje", label: "Trip ideas" },
       { href: "/jak-pracujemy", label: "How it works" },
@@ -94,6 +101,7 @@ const copy = {
       {
         title: "Start",
         links: [
+          ...(PACKAGES_ON ? [{ href: "/?tab=pakiety", label: "Flight + Hotel packages" }] : []),
           { href: "/", label: "Hotele" },
           { href: "/kierunki", label: "Destination catalog" },
           { href: "/inspiracje", label: "Trip ideas" },
