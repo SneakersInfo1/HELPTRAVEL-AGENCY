@@ -273,10 +273,15 @@ test("executeGetTripOffer: naprawdę nieprawidłowe argumenty → rzuca (nie zwr
     findCheapestFlight: async () => FLIGHT,
   }));
   await assert.rejects(() => exec.executeGetTripOffer({ ...offerArgs, cityEn: "" }));
-  await assert.rejects(() => exec.executeGetTripOffer({ ...offerArgs, checkin: "10.08.2026" }));
-  await assert.rejects(() => exec.executeGetTripOffer({ ...offerArgs, checkout: "2026-08-01" })); // checkout ≤ checkin
   await assert.rejects(() => exec.executeGetTripOffer({ ...offerArgs, origin: "Warszawa" }));
   await assert.rejects(() => exec.executeGetTripOffer({ ...offerArgs, adults: 0 }));
+  // Daty są celowo MIĘKKIE (LLM halucynuje format/rok): zły format albo
+  // checkout ≤ checkin = potraktowane jak niepodane → egzekutor dobiera
+  // termin systemowo (+21 dni przy pustym snapshocie), NIE rzuca.
+  const badFormat = await exec.executeGetTripOffer({ ...offerArgs, checkin: "10.08.2026", checkout: undefined });
+  assert.equal(badFormat.checkin, "2026-07-28");
+  const inverted = await exec.executeGetTripOffer({ ...offerArgs, checkout: "2026-08-01" }); // ≤ checkin
+  assert.equal(inverted.checkin, "2026-07-28");
 });
 
 // ── executeListThemes ────────────────────────────────────────────────────────
@@ -293,7 +298,10 @@ test("executeListThemes: wszystkie slugi TRAVEL_MOODS z etykietami", () => {
 // ── Daty należą do NAS, nie do LLM (halucynacja roku z tekstu rozmowy) ───────
 // Model potrafi odtworzyć daty z tekstu („12.09" → zgaduje 2024 = przeszłość).
 // Kontrakt: daty z przeszłości/nieobecne → egzekutor bierze świeże daty
-// pakietu ze snapshotu; brak świeżego pakietu → jasny błąd (nie zmyślamy).
+// pakietu ze snapshotu; brak pakietu w snapshocie → MECHANICZNY termin +21 dni
+// (z logów prod 2026-07-18: twardy błąd kosztował rundę LLM i rozmowę bez
+// karty). Ceny na karcie są wtedy w 100% live — dat nie zmyśla ani model,
+// ani my (to deterministyczny offset, jawnie policzony z zegara systemu).
 
 test("executeGetTripOffer: checkin w przeszłości → daty ze snapshotu (nie z modelu)", async () => {
   const snap: DestinationPriceSnapshot = {
@@ -314,6 +322,43 @@ test("executeGetTripOffer: checkin w przeszłości → daty ze snapshotu (nie z 
   assert.equal(offer.checkout, "2026-08-17");
   assert.ok(offer.hotel!.url.includes("checkin=2026-08-10"));
   assert.ok(offer.flight!.url.includes("depart=2026-08-10"));
+});
+
+test("executeGetTripOffer: brak dat, miesiąca I pakietu w snapshocie → mechaniczny termin +21 dni (bez rzucania)", async () => {
+  const exec = createToolExecutors(makeDeps({
+    readSnapshot: async () => null, // kierunek nieznany snapshotowi
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  const offer = await exec.executeGetTripOffer({ ...offerArgs, checkin: undefined, checkout: undefined });
+  // now = 2026-07-07 → +21 dni = 2026-07-28; domyślnie 7 nocy → 2026-08-04.
+  assert.equal(offer.checkin, "2026-07-28");
+  assert.equal(offer.checkout, "2026-08-04");
+});
+
+test("executeGetTripOffer: nights użytkownika NADPISUJE 7-nocne okno snapshotu (kotwica na checkin pakietu)", async () => {
+  const snap: DestinationPriceSnapshot = {
+    [destinationPriceKey("Malaga", "Spain")]: pkgEntry(1500), // pkg 2026-08-10..17 (7 nocy)
+  };
+  const exec = createToolExecutors(makeDeps({
+    readSnapshot: async () => snap,
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  const offer = await exec.executeGetTripOffer({ ...offerArgs, checkin: undefined, checkout: undefined, nights: 3 });
+  assert.equal(offer.checkin, "2026-08-10"); // start ze snapshotu…
+  assert.equal(offer.checkout, "2026-08-13"); // …ale NOCE użytkownika („weekend"=3)
+});
+
+test("executeGetTripOffer: fallback +21 dni respektuje nights z argumentów", async () => {
+  const exec = createToolExecutors(makeDeps({
+    readSnapshot: async () => null,
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+  }));
+  const offer = await exec.executeGetTripOffer({ ...offerArgs, checkin: undefined, checkout: undefined, nights: 3 });
+  assert.equal(offer.checkin, "2026-07-28");
+  assert.equal(offer.checkout, "2026-07-31");
 });
 
 test("executeGetTripOffer: brak dat od modelu → daty ze snapshotu", async () => {
@@ -377,15 +422,17 @@ test("executeGetTripOffer: month już miniony w tym roku → następny rok (nie 
   assert.equal(offer.checkout, "2027-03-17"); // domyślnie 7 nocy
 });
 
-test("executeGetTripOffer: brak dat i brak świeżego pakietu → błąd kierujący do search_trips", async () => {
+test("executeGetTripOffer: brak dat i brak świeżego pakietu → KARTA na termin +21 dni (koniec ślepej uliczki)", async () => {
+  // Do 2026-07-19 ten przypadek RZUCAŁ („wywołaj search_trips…") — logi prod
+  // pokazały, że kosztowało to rundę LLM i rozmowy bez karty. Teraz: termin
+  // mechaniczny, oferta live.
   const exec = createToolExecutors(makeDeps({
     findCheapestHotel: async () => HOTEL,
     findCheapestFlight: async () => FLIGHT,
   })); // readSnapshot → null
-  await assert.rejects(
-    () => exec.executeGetTripOffer({ cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2 }),
-    /search_trips/,
-  );
+  const offer = await exec.executeGetTripOffer({ cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2 });
+  assert.equal(offer.checkin, "2026-07-28");
+  assert.ok(offer.hotel && offer.flight);
 });
 
 // ── Sam hotel / sam lot (bateria konwersyjna: „SAM hotel w Rzymie bez lotu"
