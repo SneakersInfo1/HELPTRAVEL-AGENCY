@@ -283,6 +283,11 @@ function OptionRow({
         {bookingLive ? (
           <Link
             href={reservationHref}
+            // prefetch OFF (incydent 2026-07-19): każdy widok strony hotelu
+            // prefetchował N linków taryf → N SSR-ów /hotele/rezerwacja
+            // (26,7k renderów w 2 dni = top ścieżka serwisu) + wywołania
+            // LiteAPI. Checkout ładuje się dopiero po realnym kliknięciu.
+            prefetch={false}
             className="mt-2 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
           >
             Wybierz
