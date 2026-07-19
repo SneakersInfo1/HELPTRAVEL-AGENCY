@@ -200,6 +200,11 @@ type Phase =
   | { kind: "starting" }
   | { kind: "hotel"; sagaId: string; pay: NonNullable<StoredPay["hotel"]> }
   | { kind: "flight"; sagaId: string; pay: NonNullable<StoredPay["flight"]>; deadlineAt: string | null }
+  // Wznowienie cross-device: hotel opłacony, sekret płatności lotu przepadł
+  // z przeglądarką → ponowne wpisanie pasażerów + re-hold TEJ SAMEJ taryfy.
+  | { kind: "rehold"; sagaId: string; deadlineAt: string | null }
+  | { kind: "reholding"; sagaId: string; deadlineAt: string | null }
+  | { kind: "cancelled"; sagaId: string }
   | { kind: "expired"; sagaId: string; message: string }
   | { kind: "fatal"; message: string };
 
@@ -239,11 +244,18 @@ export function PackageCheckout({
             return;
           }
           if (!stored.flight) {
+            if (state.state === "HOTEL_BOOKED_AWAITING_FLIGHT") {
+              // Inne urządzenie / wyczyszczona przeglądarka → wznowienie:
+              // ponowne dane pasażerów + re-hold tej samej taryfy (backend
+              // rehold-flight). Hotel jest bezpieczny (deadline sam zwróci).
+              setPhase({ kind: "rehold", sagaId, deadlineAt: state.deadlineAt ?? null });
+              return;
+            }
             setPhase({
               kind: "expired",
               sagaId,
               message:
-                "Sesja płatności za lot wygasła w tej przeglądarce. Spokojnie: hotel ma bezpłatną anulację — jeśli nie dokończysz rezerwacji przed deadlinem, anulujemy ją automatycznie i zwrócimy pełną kwotę.",
+                "Ta płatność nie może być wznowiona w tej przeglądarce. Sprawdź status rezerwacji — jeśli nie została dokończona, anulujemy ją automatycznie i zwrócimy pełną kwotę za hotel.",
             });
             return;
           }
@@ -394,6 +406,89 @@ export function PackageCheckout({
     }
   }, [contact, pax, offer, validate]);
 
+  /**
+   * Wznowienie (hotel opłacony, sekret lotu przepadł): ponowny hold TEJ SAMEJ
+   * taryfy (offerId trzyma saga, nie request). Zmiana ceny → banner z wyborem
+   * „Akceptuję / Anuluj wszystko" (spec §4).
+   */
+  const submitRehold = useCallback(
+    async (sagaId: string, deadlineAt: string | null) => {
+      const eMap = validate();
+      setErrors(eMap);
+      if (Object.keys(eMap).length) return;
+      setSubmitError(null);
+      setPhase({ kind: "reholding", sagaId, deadlineAt });
+
+      try {
+        const res = await fetch(`/api/pakiety/checkout/${encodeURIComponent(sagaId)}/rehold-flight`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            lastTravelDate: offer.dateTo || undefined,
+            acceptPriceChange: acceptPriceRef.current,
+            contact: {
+              firstName: contact.firstName.trim(),
+              lastName: contact.lastName.trim(),
+              email: contact.email.trim(),
+              phoneNumber: contact.phoneNumber.trim(),
+              phoneCountryCode: contact.phoneCountryCode,
+            },
+            passengers: pax.map((p) => ({
+              firstName: translit(p.firstName.trim()),
+              lastName: translit(p.lastName.trim()),
+              birthday: p.birthday,
+              gender: p.gender,
+              nationality: p.nationality.toUpperCase(),
+              type: "ADT",
+              documentType: p.documentType,
+              documentNumber: p.documentNumber.trim(),
+              documentExpiry: p.documentExpiry,
+              documentIssueCountry: p.documentIssueCountry.toUpperCase(),
+            })),
+          }),
+        });
+        if (res.status === 409) {
+          const body = (await res.json()) as { priceChanged?: boolean; total?: number | null; message?: string };
+          if (body.priceChanged) {
+            setPriceChange({ total: body.total ?? null });
+            setPhase({ kind: "rehold", sagaId, deadlineAt });
+            return;
+          }
+          setPhase({ kind: "expired", sagaId, message: body.message ?? "Rezerwacja nie czeka już na płatność za lot." });
+          return;
+        }
+        if (res.status === 503) {
+          setPhase({ kind: "fatal", message: "Rezerwacje pakietów są chwilowo niedostępne. Spróbuj za kilka minut — nic nie zostało pobrane." });
+          return;
+        }
+        if (!res.ok) throw new Error(`rehold ${res.status}`);
+        const hold = (await res.json()) as { secretKey: string; amount: number | null; currency: string; widgetEnv: "live" | "sandbox" };
+        patchPay(sagaId, { flight: hold });
+        track("package_payment_start", { destination: offer.destination, which: "flight" });
+        setPhase({ kind: "flight", sagaId, pay: hold, deadlineAt });
+      } catch (err) {
+        console.error("[pakiety/checkout] rehold:", err);
+        setSubmitError("Nie udało się wznowić rezerwacji lotu. Spróbuj ponownie — hotel jest bezpieczny.");
+        setPhase({ kind: "rehold", sagaId, deadlineAt });
+      }
+    },
+    [contact, pax, offer, validate],
+  );
+
+  /** „Anuluj wszystko — pełny zwrot za hotel" (kompensację robi saga). */
+  const cancelAll = useCallback(async (sagaId: string, deadlineAt: string | null) => {
+    setSubmitError(null);
+    try {
+      const res = await fetch(`/api/pakiety/checkout/${encodeURIComponent(sagaId)}/cancel`, { method: "POST" });
+      if (!res.ok) throw new Error(`cancel ${res.status}`);
+      setPhase({ kind: "cancelled", sagaId });
+    } catch (err) {
+      console.error("[pakiety/checkout] cancel:", err);
+      setSubmitError("Nie udało się anulować. Spróbuj ponownie albo po prostu nie kończ płatności — po deadlinie anulujemy i zwrócimy automatycznie.");
+      setPhase({ kind: "rehold", sagaId, deadlineAt });
+    }
+  }, []);
+
   /* ── Render per faza ──────────────────────────────────────────────── */
 
   if (phase.kind === "fatal") {
@@ -417,6 +512,26 @@ export function PackageCheckout({
           <p className="mt-2 text-xs text-neutral-500">Numer rezerwacji: {phase.sagaId}. Status znajdziesz też w e-mailu.</p>
           <Link href={`/pakiety/rezerwacja/${encodeURIComponent(phase.sagaId)}`} className="mt-4 inline-flex h-10 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700">
             Zobacz status rezerwacji
+          </Link>
+        </Card>
+      </Shell>
+    );
+  }
+
+  if (phase.kind === "cancelled") {
+    return (
+      <Shell offer={offer} step={3}>
+        <Card title="Rezerwacja anulowana — pełny zwrot w drodze">
+          <p className="text-sm leading-6 text-neutral-700">
+            Zgodnie z Twoją decyzją anulowaliśmy hotel (miał bezpłatną anulację) i uruchomiliśmy pełny zwrot
+            płatności. Na wyciągu zobaczysz go od NUITEE TRAVEL. Potwierdzenie wysłaliśmy e-mailem.
+          </p>
+          <p className="mt-2 text-xs text-neutral-500">Numer pakietu: {phase.sagaId}</p>
+          <Link
+            href={`/pakiety/rezerwacja/${encodeURIComponent(phase.sagaId)}`}
+            className="mt-4 inline-flex h-10 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            Zobacz status zwrotu
           </Link>
         </Card>
       </Shell>
@@ -493,28 +608,59 @@ export function PackageCheckout({
     );
   }
 
-  /* Faza formularza (+ overlay „starting"). */
+  /* Faza formularza (świeży start LUB wznowienie) + stany „w toku". */
+  const reholdCtx = phase.kind === "rehold" || phase.kind === "reholding" ? phase : null;
+  const busy = phase.kind === "starting" || phase.kind === "reholding";
+
   return (
-    <Shell offer={offer} step={1}>
+    <Shell offer={offer} step={reholdCtx ? 3 : 1}>
+      {reholdCtx && (
+        <>
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white">
+            <span aria-hidden>✓</span> Hotel opłacony i potwierdzony — dokończ płatność za lot
+          </div>
+          {reholdCtx.deadlineAt && <DeadlineNote deadlineAt={reholdCtx.deadlineAt} />}
+          <div className="mb-4 rounded-xl border border-emerald-900/10 bg-white px-3 py-2.5 text-xs leading-5 text-neutral-600">
+            Wznawiasz rezerwację na nowym urządzeniu, więc poprosimy o dane pasażerów jeszcze raz — ze
+            względów bezpieczeństwa nie przechowujemy numerów dokumentów. Taryfa lotu zostaje ta sama.
+          </div>
+        </>
+      )}
       {priceChange && (
         <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <p className="font-semibold">Cena lotu właśnie się zmieniła{priceChange.total !== null ? ` — aktualnie ${formatPLN(priceChange.total)}` : ""}.</p>
-          <p className="mt-1 text-xs leading-5">Linie lotnicze zmieniają ceny w czasie rzeczywistym. Możesz kontynuować z nową ceną albo wrócić do wyników.</p>
-          <div className="mt-2 flex gap-2">
+          <p className="mt-1 text-xs leading-5">
+            Linie lotnicze zmieniają ceny w czasie rzeczywistym.{" "}
+            {reholdCtx
+              ? "Możesz kontynuować z nową ceną albo anulować całość z pełnym zwrotem za hotel."
+              : "Możesz kontynuować z nową ceną albo wrócić do wyników."}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => {
                 acceptPriceRef.current = true;
                 setPriceChange(null);
-                void submitForm();
+                if (reholdCtx) void submitRehold(reholdCtx.sagaId, reholdCtx.deadlineAt);
+                else void submitForm();
               }}
               className="h-9 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700"
             >
               Kontynuuję z nową ceną
             </button>
-            <Link href="/pakiety/szukaj" className="inline-flex h-9 items-center rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900">
-              Wróć do wyników
-            </Link>
+            {reholdCtx ? (
+              <button
+                type="button"
+                onClick={() => void cancelAll(reholdCtx.sagaId, reholdCtx.deadlineAt)}
+                className="inline-flex h-9 items-center rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+              >
+                Anuluj wszystko (pełny zwrot za hotel)
+              </button>
+            ) : (
+              <Link href="/pakiety/szukaj" className="inline-flex h-9 items-center rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900">
+                Wróć do wyników
+              </Link>
+            )}
           </div>
         </div>
       )}
@@ -603,11 +749,25 @@ export function PackageCheckout({
           </Card>
         ))}
 
-        <Card title="Płatność w dwóch krokach" subtitle="Tak działa pakiet — i dzięki temu nigdy nie płacisz za lot przed potwierdzeniem hotelu.">
-          <ol className="space-y-1.5 text-sm text-neutral-700">
-            <li><span className="font-semibold text-emerald-700">1.</span> Płacisz za hotel ({formatPLN(offer.hotelPln)}) — z bezpłatną anulacją.</li>
-            <li><span className="font-semibold text-emerald-700">2.</span> Od razu po potwierdzeniu hotelu płacisz za lot ({formatPLN(offer.flightPln)}).</li>
-          </ol>
+        <Card
+          title={reholdCtx ? "Dokończenie rezerwacji lotu" : "Płatność w dwóch krokach"}
+          subtitle={
+            reholdCtx
+              ? "Hotel jest już opłacony. Została jedna płatność — za lot."
+              : "Tak działa pakiet — i dzięki temu nigdy nie płacisz za lot przed potwierdzeniem hotelu."
+          }
+        >
+          {reholdCtx ? (
+            <p className="text-sm leading-6 text-neutral-700">
+              Potwierdzimy aktualną cenę taryfy i przygotujemy płatność. Jeśli cena się zmieniła, zobaczysz
+              ją jawnie i zdecydujesz — możesz też anulować całość z pełnym zwrotem za hotel.
+            </p>
+          ) : (
+            <ol className="space-y-1.5 text-sm text-neutral-700">
+              <li><span className="font-semibold text-emerald-700">1.</span> Płacisz za hotel ({formatPLN(offer.hotelPln)}) — z bezpłatną anulacją.</li>
+              <li><span className="font-semibold text-emerald-700">2.</span> Od razu po potwierdzeniu hotelu płacisz za lot ({formatPLN(offer.flightPln)}).</li>
+            </ol>
+          )}
           <p className="mt-2 text-[11px] leading-4 text-neutral-500">
             Dwie transakcje, dwa potwierdzenia. Na wyciągu obie jako NUITEE TRAVEL — operator płatności helptravel.pl.
             Karta, Apple Pay lub Google Pay (BLIK niedostępny).
@@ -625,12 +785,30 @@ export function PackageCheckout({
 
           <button
             type="button"
-            disabled={phase.kind === "starting"}
-            onClick={() => void submitForm()}
+            disabled={busy}
+            onClick={() => {
+              if (reholdCtx) void submitRehold(reholdCtx.sagaId, reholdCtx.deadlineAt);
+              else void submitForm();
+            }}
             className="mt-4 h-11 w-full rounded-xl bg-emerald-600 text-sm font-bold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {phase.kind === "starting" ? "Rezerwujemy lot i hotel…" : "Dalej: płatność za hotel"}
+            {busy
+              ? reholdCtx
+                ? "Wznawiamy rezerwację lotu…"
+                : "Rezerwujemy lot i hotel…"
+              : reholdCtx
+                ? "Dalej: płatność za lot"
+                : "Dalej: płatność za hotel"}
           </button>
+          {reholdCtx && !busy && (
+            <button
+              type="button"
+              onClick={() => void cancelAll(reholdCtx.sagaId, reholdCtx.deadlineAt)}
+              className="mt-2 h-9 w-full rounded-lg text-xs font-semibold text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+            >
+              Anuluj wszystko — pełny zwrot za hotel
+            </button>
+          )}
           <p className="mt-2 text-center text-[11px] text-neutral-500">Ten krok jeszcze niczego nie pobiera z karty.</p>
         </Card>
       </div>

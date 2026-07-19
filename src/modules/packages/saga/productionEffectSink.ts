@@ -10,8 +10,8 @@
 //                         (decyzje) → CRITICAL alert do admina z kompletem
 //                         danych (świadomy, bezpieczny default — lepszy
 //                         ręczny zwrot w 30 min niż zły automat na pieniądzach),
-//  • SEND_*_EMAIL       → Resend (proste, uczciwe treści; bogate szablony
-//                         dojdą w Kroku 2.2-polish),
+//  • SEND_*_EMAIL       → Resend, szablony HTML+text z lib/email/templates/
+//                         package-saga (fakty z sagi + kontekst oferty),
 //  • ALERT_ADMIN        → istniejący webhook alertów (Slack/Discord),
 //  • SCHEDULE_DEADLINE  → no-op: deadlineAt siedzi w rekordzie, „zegarem"
 //                         jest cron package-deadlines (sweep),
@@ -20,26 +20,34 @@
 
 import { notify } from "@/lib/alerting/notify";
 import { getBcc, getDefaultFrom, getReplyTo, getResendClient } from "@/lib/email/client";
+import {
+  renderPackageConfirmationEmail,
+  renderPackageRefundEmail,
+  renderPackageResumeEmail,
+  type PackageEmailData,
+  type RenderedEmail,
+} from "@/lib/email/templates/package-saga";
 import { cancelBooking } from "@/lib/liteapi/cancel";
-import { getSiteUrl } from "@/lib/mvp/site";
 
 import type { EffectSink, PackageBookingRecord } from "./orchestrator";
+import { createPrismaSagaStore } from "./prismaSagaStore";
 import type { SagaEffect } from "./sagaTypes";
+
+/** Kontekst oferty do maili (podzbiór offerJson.offer) — brak = mail bez tych linii. */
+export interface OfferEmailContext {
+  hotelName?: string | null;
+  destination?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+}
 
 interface SinkDeps {
   cancelHotelBooking(hotelBookingId: string): Promise<unknown>;
-  sendEmail(input: { to: string; subject: string; text: string }): Promise<void>;
+  sendEmail(input: { to: string; subject: string; text: string; html?: string }): Promise<void>;
+  /** Kontekst oferty z sagi (offerJson) — best-effort, null gdy brak/DB niedostępne. */
+  loadOfferContext(sagaId: string): Promise<OfferEmailContext | null>;
   alert(input: { title: string; body?: string; fields?: Record<string, string | number | null | undefined>; level?: "info" | "warning" | "critical"; source?: string }): Promise<void>;
   log(message: string, payload: Record<string, unknown>): void;
-}
-
-function fmtWhen(iso: string | null): string {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pl-PL", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "Europe/Warsaw",
-  }).format(new Date(iso));
 }
 
 function bookingFields(b: PackageBookingRecord): Record<string, string | null> {
@@ -54,46 +62,27 @@ function bookingFields(b: PackageBookingRecord): Record<string, string | null> {
   };
 }
 
-function emailFor(b: PackageBookingRecord, effect: SagaEffect): { subject: string; text: string } | null {
-  const site = getSiteUrl();
+function toEmailData(b: PackageBookingRecord, ctx: OfferEmailContext | null): PackageEmailData {
+  return {
+    sagaId: b.id,
+    hotelBookingId: b.hotelBookingId,
+    flightBookingId: b.flightBookingId,
+    deadlineAt: b.deadlineAt,
+    hotelName: ctx?.hotelName ?? null,
+    destination: ctx?.destination ?? null,
+    dateFrom: ctx?.dateFrom ?? null,
+    dateTo: ctx?.dateTo ?? null,
+  };
+}
+
+function renderFor(effect: SagaEffect, data: PackageEmailData): RenderedEmail | null {
   switch (effect.type) {
     case "SEND_RESUME_EMAIL":
-      return {
-        subject: "Hotel potwierdzony — dokończ rezerwację lotu",
-        text: [
-          "Twój hotel jest potwierdzony i opłacony.",
-          `Została jeszcze płatność za lot — dokończ ją do ${fmtWhen(b.deadlineAt)}, potem rezerwację automatycznie anulujemy i zwrócimy pełną kwotę za hotel.`,
-          "",
-          `Wróć do rezerwacji: ${site}/pakiety/checkout?saga=${encodeURIComponent(b.id)}&step=flight`,
-          "",
-          "Zespół helptravel.pl",
-        ].join("\n"),
-      };
+      return renderPackageResumeEmail(data);
     case "SEND_REFUND_EMAIL":
-      return {
-        subject: "Rezerwacja anulowana — pełny zwrot w drodze",
-        text: [
-          "Twoja rezerwacja pakietu została anulowana zgodnie z zasadami (hotel miał bezpłatną anulację).",
-          "Pełny zwrot wpłaconej kwoty jest w drodze — na wyciągu zobaczysz go od NUITEE TRAVEL, operatora płatności helptravel.pl.",
-          "",
-          "Jeśli coś się nie zgadza, po prostu odpisz na tę wiadomość.",
-          "",
-          "Zespół helptravel.pl",
-        ].join("\n"),
-      };
+      return renderPackageRefundEmail(data);
     case "SEND_CONFIRMATION_EMAIL":
-      return {
-        subject: "Potwierdzenie pakietu — hotel + lot",
-        text: [
-          "Twój pakiet jest potwierdzony. Dwie rezerwacje, dwa numery:",
-          `• Hotel: ${b.hotelBookingId ?? "—"}`,
-          `• Lot: ${b.flightBookingId ?? "—"}`,
-          "",
-          `Szczegóły i status: ${site}/pakiety/rezerwacja/${b.id}`,
-          "",
-          "Zespół helptravel.pl",
-        ].join("\n"),
-      };
+      return renderPackageConfirmationEmail(data);
     default:
       return null;
   }
@@ -135,9 +124,10 @@ export function createEffectSink(deps: SinkDeps): EffectSink {
           if (!booking.contactEmail) {
             throw new Error(`${effect.type} bez contactEmail (saga ${booking.id})`);
           }
-          const content = emailFor(booking, effect);
-          if (!content) return;
-          await deps.sendEmail({ to: booking.contactEmail, ...content });
+          const ctx = await deps.loadOfferContext(booking.id).catch(() => null);
+          const rendered = renderFor(effect, toEmailData(booking, ctx));
+          if (!rendered) return;
+          await deps.sendEmail({ to: booking.contactEmail, ...rendered });
           return;
         }
 
@@ -165,7 +155,7 @@ export function createEffectSink(deps: SinkDeps): EffectSink {
 export function createProductionEffectSink(): EffectSink {
   return createEffectSink({
     cancelHotelBooking: (id) => cancelBooking(id),
-    async sendEmail({ to, subject, text }) {
+    async sendEmail({ to, subject, text, html }) {
       const resend = getResendClient();
       if (!resend) throw new Error("Resend nieskonfigurowany (RESEND_API_KEY) — e-mail sagi nie wyszedł");
       const bcc = getBcc();
@@ -175,10 +165,24 @@ export function createProductionEffectSink(): EffectSink {
         to,
         subject,
         text,
+        ...(html ? { html } : {}),
         ...(bcc ? { bcc } : {}),
         ...(replyTo ? { replyTo } : {}),
       });
       if (error) throw new Error(`Resend: ${error.message ?? String(error)}`);
+    },
+    async loadOfferContext(sagaId) {
+      // Best-effort: mail bez kontekstu oferty jest wciąż poprawny (same fakty
+      // z sagi). SagaStoreUnavailable i inne błędy → null, nie fail maila.
+      const ctx = await createPrismaSagaStore().loadCheckoutContext(sagaId);
+      const offer = (ctx?.offerJson as { offer?: { hotelName?: string; destination?: string; dateFrom?: string; dateTo?: string } } | null)?.offer;
+      if (!offer) return null;
+      return {
+        hotelName: offer.hotelName ?? null,
+        destination: offer.destination ?? null,
+        dateFrom: offer.dateFrom ?? null,
+        dateTo: offer.dateTo ?? null,
+      };
     },
     alert: (input) => notify(input),
     log: (message, payload) => console.info(message, payload),

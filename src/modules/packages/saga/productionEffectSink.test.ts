@@ -10,7 +10,7 @@ import { createEffectSink } from "./productionEffectSink";
 
 interface Calls {
   cancels: string[];
-  emails: { to: string; subject: string; text: string }[];
+  emails: { to: string; subject: string; text: string; html?: string }[];
   alerts: { title: string; level?: string }[];
   logs: string[];
 }
@@ -20,6 +20,12 @@ function sinkWithCalls() {
   const sink = createEffectSink({
     cancelHotelBooking: async (id) => void calls.cancels.push(id),
     sendEmail: async (input) => void calls.emails.push(input),
+    loadOfferContext: async () => ({
+      hotelName: "Hotel Testowy <Barcelona>",
+      destination: "Barcelona",
+      dateFrom: "2026-08-10",
+      dateTo: "2026-08-14",
+    }),
     alert: async (input) => void calls.alerts.push({ title: input.title, level: input.level }),
     log: (message) => void calls.logs.push(message),
   });
@@ -74,6 +80,15 @@ test("e-maile: resume ma deadline i link wznawiający, confirmation ma OBA numer
   assert.match(confirm.text, /fb-1/);
   assert.match(refund.text, /zwrot/i);
   assert.match(refund.text, /NUITEE TRAVEL/); // descriptor na wyciągu — uczciwość
+
+  // Warianty HTML: kontekst oferty w środku, dane user-supplied ESCAPOWANE.
+  for (const m of [resume, confirm, refund]) {
+    assert.ok(m.html && m.html.includes("<table"), "brak wariantu HTML");
+    assert.match(m.html!, /Hotel Testowy &lt;Barcelona&gt;/); // escHtml działa
+  }
+  assert.match(resume.html!, /Dokończ płatność za lot/);
+  assert.match(confirm.html!, /hb-1/);
+  assert.match(confirm.html!, /fb-1/);
 });
 
 test("e-mail bez contactEmail = błąd (nie gubimy cicho komunikacji z klientem)", async () => {
