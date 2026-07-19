@@ -77,7 +77,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await runConcierge(parsed.data.messages, deps);
+    // Pas bezpieczeństwa NAD budżetem orkiestratora (50 s): gdyby cokolwiek
+    // mimo to wisiało, po 57 s oddajemy 200 z error:true (UI ma „Spróbuj
+    // ponownie") zamiast platformowego 504 z gołym HTML-em (7 szt. w 7 dni).
+    const result = await Promise.race([
+      runConcierge(parsed.data.messages, deps),
+      new Promise<typeof FALLBACK_ERROR_BODY>((resolve) =>
+        setTimeout(() => resolve(FALLBACK_ERROR_BODY), 57_000),
+      ),
+    ]);
     return NextResponse.json(result);
   } catch (err) {
     // runConcierge jest zaprojektowany, by nigdy nie rzucać — to jest siatka

@@ -59,9 +59,10 @@ test("SYSTEM_PROMPT: konwersja bez zmyślania — obiekcja=nowa karta, fakty pro
 });
 
 test("SYSTEM_PROMPT: koszt — długość promptu pod kontrolą (wysyłany z KAŻDYM requestem)", () => {
-  // Limit 8000 (historycznie 6000→7000): prompt caching (cache_control w
-  // orkiestratorze) zbija koszt statycznego prefiksu do 10% po pierwszym
-  // wywołaniu — sekcje o niekonkretnym kliencie i procesie zakupu są niemal
-  // darmowe. Nadal pilnujemy sufitu: pierwszy request płaci pełną stawkę.
-  assert.equal(SYSTEM_PROMPT.length < 8000, true);
+  // Limit 8500 (historycznie 6000→7000→8000; +2026-07-19: twarda odmowa BLIK
+  // po realnym zmyśleniu z baterii smoke + karta od razu dla miasta bez
+  // terminu): prompt caching (cache_control w orkiestratorze) zbija koszt
+  // statycznego prefiksu do 10% po pierwszym wywołaniu. Nadal pilnujemy
+  // sufitu: pierwszy request płaci pełną stawkę.
+  assert.equal(SYSTEM_PROMPT.length < 8500, true);
 });
