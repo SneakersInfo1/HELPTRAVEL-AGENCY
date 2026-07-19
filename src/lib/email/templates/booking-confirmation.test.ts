@@ -12,7 +12,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { renderBookingConfirmation } from "./booking-confirmation.ts";
+import { renderBookingConfirmation } from "./booking-confirmation";
 
 function base() {
   return {

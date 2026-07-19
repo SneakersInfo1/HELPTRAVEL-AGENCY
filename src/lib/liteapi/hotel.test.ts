@@ -65,7 +65,7 @@ const EN_DETAIL = {
 };
 
 // Routes the mock by the `language` query param so one fetch stub can serve
-// both parallel calls getHotelDetail now makes.
+// both sequential calls getHotelDetail makes (PL first, then EN name).
 function mockFetchByLanguage(opts?: { failEn?: boolean }): {
   calls: string[];
   restore: () => void;
@@ -105,9 +105,11 @@ test("getHotelDetail: PL content with the EN (untranslated) hotel name overlaid"
       assert.equal(detail.name, "Seventy Barcelona"); // EN name wins
       assert.equal(detail.hotelDescription, "Polski opis hotelu."); // PL content kept
       assert.deepEqual(detail.amenities, ["Basen", "Parking"]);
-      // Both language variants were actually requested.
-      assert.ok(mock.calls.some((u) => u.includes("language=pl")));
-      assert.ok(mock.calls.some((u) => u.includes("language=en")));
+      // Both language variants requested, PL FIRST (incydent 2026-07-19:
+      // sekwencyjność = martwe id kosztuje 1 wywołanie, nie 2).
+      assert.equal(mock.calls.length, 2);
+      assert.ok(mock.calls[0].includes("language=pl"));
+      assert.ok(mock.calls[1].includes("language=en"));
     } finally {
       mock.restore();
     }
@@ -124,6 +126,53 @@ test("getHotelDetail: EN-name fetch failure degrades to the PL payload (no throw
       assert.equal(detail.hotelDescription, "Polski opis hotelu.");
     } finally {
       mock.restore();
+    }
+  });
+});
+
+test("getHotelDetail: PL failure (martwy hotel) NIE odpala wywołania EN", async () => {
+  const { getHotelDetail } = await import("./hotel");
+  await withEnv({ ...BASE_ENV }, async () => {
+    const original = globalThis.fetch;
+    const calls: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      calls.push(typeof input === "string" ? input : input.toString());
+      return new Response(
+        JSON.stringify({ error: { code: 4002, description: "hotelId is missing or invalid" } }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof fetch;
+    try {
+      await assert.rejects(() => getHotelDetail("lpdeadbeef"));
+      assert.equal(calls.length, 1); // tylko PL — bez podwajania 400 u dostawcy
+      assert.ok(calls[0].includes("language=pl"));
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+test("getHotelDetail: śmieciowy format id odrzucany LOKALNIE (zero sieci, błąd = hotel-not-found)", async () => {
+  const { getHotelDetail } = await import("./hotel");
+  const { isHotelNotFoundError } = await import("./errors");
+  await withEnv({ ...BASE_ENV }, async () => {
+    const original = globalThis.fetch;
+    let networkCalls = 0;
+    globalThis.fetch = (async () => {
+      networkCalls++;
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    try {
+      for (const bad of ["", "lp", "12345", "lp<script>", "lp 27a0d8", "hotele", "lp27a0d8&x=1", "lp".padEnd(40, "a")]) {
+        await assert.rejects(
+          () => getHotelDetail(bad),
+          (err: unknown) => isHotelNotFoundError(err),
+          `id "${bad}" powinien paść na guardzie jako hotel-not-found`,
+        );
+      }
+      assert.equal(networkCalls, 0); // ani jednego hitu do LiteAPI
+    } finally {
+      globalThis.fetch = original;
     }
   });
 });
