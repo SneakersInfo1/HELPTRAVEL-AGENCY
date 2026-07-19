@@ -729,13 +729,30 @@ export function createToolExecutors(deps: ToolDeps) {
             now(),
           )
         : null;
-      if (!pkg) {
-        throw new Error(
-          "Brak świeżych dat pakietu dla tego kierunku — wywołaj search_trips i zaproponuj kierunki z jego wyniku.",
-        );
+      if (pkg) {
+        checkin = pkg.checkin;
+        checkout = pkg.checkout;
+        // Użytkownik określił DŁUGOŚĆ pobytu (np. „weekend" = 3 noce), ale nie
+        // termin: szanujemy jego noce, kotwicząc start na dacie pakietu.
+        // (Bez tego snapshotowe okno — zawsze 7 nocy — nadpisywało nights;
+        // realny defekt z baterii smoke: „weekend w Rzymie" dawał 7 nocy.)
+        if (a.nights) {
+          const s = new Date(`${pkg.checkin}T00:00:00Z`);
+          checkout = new Date(s.getTime() + a.nights * 86_400_000).toISOString().slice(0, 10);
+        }
+      } else {
+        // OSTATNIA LINIA OBRONY (z logów prod 2026-07-18): kierunek bez
+        // pakietu w snapshocie kończył się TWARDYM błędem → stracona runda
+        // LLM i rozmowa bez karty (model musiał „odzyskiwać" przez
+        // search_trips). Zamiast rzucać dobieramy termin MECHANICZNIE:
+        // +21 dni (pełna dostępność GDS, poza last-minute'owym szczytem cen),
+        // noce z argumentów albo 7. Ceny na karcie i tak są LIVE.
+        const fallbackNights = a.nights ?? 7;
+        const start = new Date(new Date(`${todayIso}T00:00:00Z`).getTime() + 21 * 86_400_000);
+        const iso = (d: Date) => d.toISOString().slice(0, 10);
+        checkin = iso(start);
+        checkout = iso(new Date(start.getTime() + fallbackNights * 86_400_000));
       }
-      checkin = pkg.checkin;
-      checkout = pkg.checkout;
     }
 
     // Sam hotel / sam lot: niechcianego komponentu w ogóle NIE pobieramy —

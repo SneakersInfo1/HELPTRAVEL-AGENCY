@@ -22,6 +22,9 @@ export const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 interface ChatCompletionArgs {
   messages: Record<string, unknown>[];
   tools: Record<string, unknown>[];
+  /** Twardy limit czasu wywołania (ms). Domyślnie 30 s; orkiestrator skraca
+   *  go pod koniec budżetu tury (incydent: 7×504 — tura > maxDuration 60 s). */
+  timeoutMs?: number;
 }
 
 /** Błąd OpenRoutera wskazujący na zły/nieistniejący slug modelu (404 + tekst o modelu). */
@@ -36,10 +39,10 @@ function isInvalidModelError(payload: unknown): boolean {
 async function requestChatCompletion(
   apiKey: string,
   model: string,
-  { messages, tools }: ChatCompletionArgs,
+  { messages, tools, timeoutMs }: ChatCompletionArgs,
 ): Promise<unknown> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs ?? 30000);
 
   try {
     const body: Record<string, unknown> = {
