@@ -20,12 +20,15 @@ export interface OrchestratorDeps {
   chat: (args: {
     messages: Record<string, unknown>[];
     tools: Record<string, unknown>[];
+    timeoutMs?: number;
   }) => Promise<unknown>;
   executors: {
     executeSearchTrips: (args: unknown) => Promise<unknown>;
     executeGetTripOffer: (args: unknown) => Promise<TripOffer>;
     executeListThemes: () => unknown;
   };
+  /** Zegar (testy) — domyślnie Date.now. */
+  now?: () => number;
 }
 
 export interface ConciergeResult {
@@ -145,7 +148,7 @@ function isHardApiError(payload: unknown): boolean {
  */
 async function chatWithRetry(
   deps: OrchestratorDeps,
-  args: { messages: Record<string, unknown>[]; tools: Record<string, unknown>[] },
+  args: { messages: Record<string, unknown>[]; tools: Record<string, unknown>[]; timeoutMs?: number },
   usage: UsageTotals,
 ): Promise<unknown> {
   let response = await deps.chat(args);
@@ -157,6 +160,22 @@ async function chatWithRetry(
   }
   return response;
 }
+
+// ── Budżet czasowy tury (incydent: 7×504 w 7 dni na prodzie) ────────────────
+// Tura = do 4 rund LLM (każda ≤30 s) + narzędzia (loty potrafią 10–16 s) —
+// ogon przekraczał maxDuration=60 route'a i user dostawał gołe 504 zamiast
+// odpowiedzi. Mechanicznie: cała tura ma 50 s; gdy budżet topnieje, model
+// dostaje krótszy timeout, a poniżej minimum NIE wołamy go wcale — jeśli
+// karta oferty JUŻ jest, domykamy deterministycznym tekstem (bez LLM),
+// w przeciwnym razie uczciwy błąd z przyciskiem „Spróbuj ponownie" w UI.
+const TURN_BUDGET_MS = 50_000;
+const MIN_CHAT_BUDGET_MS = 6_000;
+const CHAT_TIMEOUT_CAP_MS = 30_000;
+
+const OFFER_FALLBACK_TEXT =
+  "Mam dla Ciebie ofertę — kartę z cenami i linkami widzisz poniżej. " +
+  "Wyszukiwanie trwało dziś dłużej niż zwykle, więc na tym się zatrzymałem. " +
+  "Chcesz zmienić termin, kierunek albo budżet? Napisz śmiało.";
 
 /**
  * Zapas/przekroczenie budżetu liczy SYSTEM, nie model. Realny incydent
@@ -323,8 +342,21 @@ export async function runConcierge(
   let offer: TripOffer | null = null;
   const usage: UsageTotals = { promptTokens: 0, completionTokens: 0, cachedTokens: 0, chatCalls: 0 };
 
+  const nowFn = deps.now ?? Date.now;
+  const startedAt = nowFn();
+  const timeLeft = () => TURN_BUDGET_MS - (nowFn() - startedAt);
+  const chatTimeout = () => Math.min(CHAT_TIMEOUT_CAP_MS, Math.max(MIN_CHAT_BUDGET_MS, timeLeft() - 2_000));
+  const outOfBudget = (): ConciergeResult => {
+    console.warn("[concierge] budżet czasowy tury wyczerpany", { elapsedMs: nowFn() - startedAt, hasOffer: offer !== null });
+    console.log("[concierge] usage", usage);
+    return offer
+      ? { text: OFFER_FALLBACK_TEXT, offer, error: false }
+      : { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
+  };
+
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const response = await chatWithRetry(deps, { messages, tools: TOOL_DEFS }, usage);
+    if (timeLeft() < MIN_CHAT_BUDGET_MS) return outOfBudget();
+    const response = await chatWithRetry(deps, { messages, tools: TOOL_DEFS, timeoutMs: chatTimeout() }, usage);
 
     if (isMalformedResponse(response)) {
       console.error("concierge: OpenRouter error", response);
@@ -345,6 +377,17 @@ export async function runConcierge(
         tool_calls: callsToRun,
       });
       for (const call of callsToRun) {
+        // Budżet krytycznie niski → NIE wykonujemy narzędzia (loty potrafią
+        // 10–16 s), ale KAŻDY tool_call musi dostać odpowiedź role:"tool"
+        // (wiszący id = 400 od providera i martwa rozmowa).
+        if (timeLeft() < MIN_CHAT_BUDGET_MS + 4_000) {
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({ error: "Przekroczono budżet czasu — odpowiedz na podstawie dotychczasowych danych." }),
+          });
+          continue;
+        }
         const { result, offer: callOffer } = await dispatchToolCall(call, deps.executors);
         if (callOffer) offer = callOffer;
         messages.push({
@@ -367,7 +410,8 @@ export async function runConcierge(
   }
 
   // Limit rund osiągnięty — finalne wywołanie BEZ narzędzi, wymusza tekst.
-  const finalResponse = await chatWithRetry(deps, { messages, tools: [] }, usage);
+  if (timeLeft() < MIN_CHAT_BUDGET_MS) return outOfBudget();
+  const finalResponse = await chatWithRetry(deps, { messages, tools: [], timeoutMs: chatTimeout() }, usage);
   if (isMalformedResponse(finalResponse)) {
     console.error("concierge: OpenRouter error", finalResponse);
     return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };

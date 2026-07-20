@@ -763,3 +763,118 @@ test("runConcierge: markdown z modelu (** # * ) zdejmowany mechanicznie z finaln
   assert.ok(result.text.includes("Ateny — super!"));
   assert.ok(result.text.includes("- punkt jeden"));
 });
+
+// ── Budżet czasowy tury (incydent 7×504: tura > maxDuration route'a) ─────────
+
+test("runConcierge: budżet wyczerpany po narzędziu BEZ karty → uczciwy błąd, zero dalszych wywołań LLM", async () => {
+  let t = 0;
+  const calls: ChatArgs[] = [];
+  const deps = makeDeps({
+    now: () => t,
+    chat: async (args) => {
+      calls.push(args as ChatArgs);
+      return {
+        choices: [{
+          message: {
+            role: "assistant",
+            tool_calls: [{ id: "t1", type: "function", function: { name: "search_trips", arguments: "{}" } }],
+          },
+        }],
+      };
+    },
+    executors: {
+      executeSearchTrips: async () => {
+        t = 55_000; // wolne loty+hotele zjadły cały budżet
+        return { candidates: [] };
+      },
+      executeGetTripOffer: async () => { throw new Error("nie powinno być wołane"); },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "plaża" }], deps);
+  assert.equal(result.error, true);
+  assert.equal(result.offer, null);
+  assert.equal(calls.length, 1); // rundy 2 już NIE było — 200 zamiast 504
+});
+
+test("runConcierge: budżet wyczerpany, ale karta JUŻ jest → deterministyczne domknięcie z ofertą (bez LLM)", async () => {
+  let t = 0;
+  const calls: ChatArgs[] = [];
+  const offer = fakeOffer();
+  const deps = makeDeps({
+    now: () => t,
+    chat: async (args) => {
+      calls.push(args as ChatArgs);
+      return {
+        choices: [{
+          message: {
+            role: "assistant",
+            tool_calls: [{
+              id: "t1", type: "function",
+              function: { name: "search_trips", arguments: JSON.stringify({ adults: 2 }) },
+            }],
+          },
+        }],
+      };
+    },
+    executors: {
+      executeSearchTrips: async () => ({
+        candidates: [{ cityEn: "Larnaca", countryEn: "Cyprus", cityPl: "Larnaka", perPersonPln: 1948 }],
+      }),
+      executeGetTripOffer: async () => {
+        t = 55_000; // auto-oferta domknęła się rzutem na taśmę
+        return offer;
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "plaża" }], deps);
+  assert.equal(result.error, false);
+  assert.deepEqual(result.offer, offer); // karta dociera do usera mimo braku czasu na narrację LLM
+  assert.ok(/ofert/i.test(result.text));
+  assert.equal(calls.length, 1);
+});
+
+test("runConcierge: niski budżet → narzędzie POMINIĘTE (z odpowiedzią tool), a LLM dostaje skrócony timeoutMs", async () => {
+  let t = 0;
+  const calls: (ChatArgs & { timeoutMs?: number })[] = [];
+  let themesCalled = 0;
+  const deps = makeDeps({
+    now: () => t,
+    chat: async (args) => {
+      calls.push(args as ChatArgs & { timeoutMs?: number });
+      if (calls.length === 1) {
+        t = 41_000; // pierwsza runda LLM zjadła 41 s → zostało 9 s budżetu
+        return {
+          choices: [{
+            message: {
+              role: "assistant",
+              tool_calls: [{ id: "t1", type: "function", function: { name: "list_themes", arguments: "{}" } }],
+            },
+          }],
+        };
+      }
+      return { choices: [{ message: { role: "assistant", content: "Krótko: polecam plażę." } }] };
+    },
+    executors: {
+      executeSearchTrips: async () => ({ candidates: [] }),
+      executeGetTripOffer: async () => { throw new Error("nie powinno być wołane"); },
+      executeListThemes: () => {
+        themesCalled++;
+        return { themes: [] };
+      },
+    },
+  });
+
+  const result = await runConcierge([{ role: "user", content: "pomysły" }], deps);
+  assert.equal(result.error, false);
+  assert.equal(themesCalled, 0); // egzekutor pominięty — brak czasu na I/O
+  // …ale tool_call dostał odpowiedź (wiszący id = 400 od providera).
+  const toolMsg = calls[1].messages.find((m) => m.role === "tool") as { content: string };
+  assert.ok(toolMsg.content.includes("Przekroczono budżet"));
+  // Druga runda LLM z timeoutem przyciętym do resztki budżetu (9s − 2s zapasu).
+  assert.equal(calls[1].timeoutMs, 7_000);
+  assert.equal(calls[0].timeoutMs, 30_000); // pełny budżet = pełny timeout
+});
