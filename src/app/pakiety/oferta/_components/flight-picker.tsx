@@ -3,9 +3,11 @@
 // Krok 2 „Wybierz lot". Hotel już wybrany (z kroku 1, dane w URL); tu user
 // dobiera lot z realnych alternatyw. Taby Najlepsze/Najtańsze/Najszybsze
 // (reuse sortOffers z flights/filters), delty vs najtańszy przelot (nigdy cena
-// absolutna — §2), bagaż, cena pakietu aktualizowana przy wyborze.
-// CTA = checkout pakietowy Fazy 2 (/pakiety/checkout): dane podróżnych →
-// płatność hotel → płatność lot (dwa odrębne checkouty §4). Mobile-first.
+// absolutna — §2), bagaż, szacunkowa suma aktualizowana przy wyborze.
+// MODEL POROWNYWARKI (bez wpisu do rejestru): DWA odrębne CTA — „Zarezerwuj
+// hotel" (nasza ścieżka pojedynczej usługi) i „Zobacz lot" (zewnętrzna
+// wyszukiwarka). NIE sprzedajemy bundla ani nie pobieramy jednej płatności za
+// kombinację. Mobile-first.
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -144,19 +146,22 @@ export function FlightPicker({
   const packageTotal = hotel.pricePln + flightTotal;
   const perPerson = Math.ceil(packageTotal / Math.max(1, adults));
 
-  // CTA Fazy 2 — checkout pakietowy: dane podróżnych → hotel → lot.
-  const checkoutHref = `/pakiety/checkout?${new URLSearchParams({
-    destination: destinationEn,
-    dateFrom,
-    dateTo,
+  // Model porównywarki (bez wpisu do rejestru turystycznego): DWIE odrębne
+  // rezerwacje zamiast bundla. Hotel → nasza ścieżka pojedynczej usługi; lot →
+  // zewnętrzna wyszukiwarka. Nie pobieramy JEDNEJ płatności za kombinację, więc
+  // nie stajemy się „punktem sprzedaży" powiązanej usługi (art. 6 ustawy o
+  // imprezach tur.) → poza reżimem PUT. Cel lotu łatwo podmienić na program
+  // afiliacyjny lotów (prowizja), gdy będzie podpięty.
+  const hotelHref = `/hotele/${encodeURIComponent(hotel.id)}?${new URLSearchParams({
+    checkin: dateFrom,
+    checkout: dateTo,
     adults: String(adults),
-    hotelId: hotel.id,
-    hotelName: hotel.name,
-    rateId: hotel.rateId,
-    hotelPln: String(hotel.pricePln),
-    flightOfferId: selectedFare?.offerId ?? selected?.offerId ?? "",
-    flightPln: String(flightTotal),
+    destination: destinationEn,
   }).toString()}`;
+  const outboundSel = selected?.legs.find((l) => l.direction === "OUTBOUND") ?? selected?.legs?.[0];
+  const flightFrom = outboundSel?.originCode ?? "WAW";
+  const flightTo = outboundSel?.destinationCode ?? destination.iata;
+  const flightSearchUrl = `https://www.kayak.pl/flights/${flightFrom}-${flightTo}/${dateFrom}/${dateTo}?sort=price_a`;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8">
@@ -329,33 +334,47 @@ export function FlightPicker({
         })}
       </ol>
 
-      {/* Sticky podsumowanie pakietu + CTA (Faza 1: rozdzielone rezerwacje) */}
+      {/* Sticky: DWIE odrębne rezerwacje (porównywarka bez wpisu do rejestru).
+          Hotel u nas (pojedyncza usługa), lot w zewnętrznej wyszukiwarce — nie
+          pobieramy jednej płatności za kombinację. */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-emerald-900/10 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
           <div className="min-w-0">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Pakiet od osoby</div>
-            <div className="text-xl font-bold leading-tight text-emerald-700">
-              {formatPLN(perPerson)}
-              <span className="ml-1 text-xs font-semibold text-emerald-700/80">/ os.</span>
+            <div className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Szacunkowo</div>
+            <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+              <span className="text-lg font-bold leading-tight text-emerald-700">Hotel {formatPLN(hotel.pricePln)}</span>
+              <span aria-hidden className="text-neutral-300">+</span>
+              <span className="text-lg font-bold leading-tight text-emerald-700">Lot {formatPLN(flightTotal)}</span>
             </div>
             <div className="text-[11px] text-neutral-500">
-              {formatPLN(packageTotal)} łącznie · hotel {formatPLN(hotel.pricePln)} + lot {formatPLN(flightTotal)}
+              razem ok. {formatPLN(packageTotal)} ({formatPLN(perPerson)}/os.) — rezerwujesz osobno
             </div>
           </div>
           <div className="flex flex-1 gap-2 sm:justify-end">
             <a
-              href={checkoutHref}
+              href={hotelHref}
               onClick={() =>
-                track("package_reserve_click", { service: "package", destination: destination.city, hotel_id: hotel.id, value: packageTotal })
+                track("package_reserve_click", { service: "hotel", destination: destination.city, hotel_id: hotel.id, value: hotel.pricePln })
               }
-              className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-bold text-white transition-colors hover:bg-emerald-700 sm:flex-none"
+              className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-700 sm:flex-none"
             >
-              Zarezerwuj pakiet
+              Zarezerwuj hotel
+            </a>
+            <a
+              href={flightSearchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() =>
+                track("package_reserve_click", { service: "flight", destination: destination.city, value: flightTotal })
+              }
+              className="inline-flex h-11 flex-1 items-center justify-center rounded-lg border border-emerald-600 bg-white px-4 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-50 sm:flex-none"
+            >
+              Zobacz lot →
             </a>
           </div>
         </div>
         <p className="mx-auto max-w-3xl px-4 pb-2 text-[10px] leading-tight text-neutral-500">
-          Dwie powiązane usługi, dwie płatności (hotel, potem lot). Ceny w PLN, re-weryfikowane przy rezerwacji.
+          Hotel i lot rezerwujesz osobno, każde u swojego dostawcy — HelpTravel pomaga je zestawić. Lot otwiera się w zewnętrznej wyszukiwarce. Ceny orientacyjne w PLN, potwierdzane przy rezerwacji.
         </p>
       </div>
     </div>

@@ -108,7 +108,7 @@ export function PackageCard({
   return (
     <Link
       href={href}
-      aria-label={`Wybierz pakiet: ${hotel.name} w ${destinationCity} z lotem z ${originLabel}, od ${perPerson} od osoby`}
+      aria-label={`Zobacz zestawienie: ${hotel.name} w ${destinationCity} oraz dobrany lot z ${originLabel} — hotel i lot rezerwujesz osobno`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.06)] transition-[border-color,box-shadow] duration-200 hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(16,84,48,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:flex-row"
     >
       {/* Zdjęcie */}
@@ -124,7 +124,7 @@ export function PackageCard({
         <div className="absolute left-2 top-2 flex flex-col gap-1">
           {badges?.cheapest && (
             <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
-              Najtańszy pakiet
+              Najtańsze zestawienie
             </span>
           )}
           {flight.direct && (
@@ -183,7 +183,7 @@ export function PackageCard({
           <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
             <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-900">
               <PlaneIcon className="h-4 w-4 text-emerald-600" />
-              Przelot w cenie
+              Dobrany przelot
             </span>
             <span aria-hidden className="text-emerald-600">·</span>
             <span className="text-emerald-800">z {originLabel} w obie strony</span>
@@ -210,27 +210,29 @@ export function PackageCard({
           </div>
         )}
 
-        {/* Cena — za osobę + łącznie + rozbicie + CTA */}
+        {/* Ceny OSOBNO — porównywarka: hotel i lot rezerwujesz oddzielnie u dostawców,
+            nie kupujesz jednego pakietu. Wspólna suma wyłącznie orientacyjnie (nie jest
+            ceną sprzedaży), żeby model pozostał poza ustawą o imprezach turystycznych. */}
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 border-t border-neutral-100 pt-3">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Pakiet od osoby</div>
-            <div className="text-2xl font-bold leading-tight text-emerald-700">
-              {perPerson}
-              <span className="ml-1 text-xs font-semibold text-emerald-700/80">/ os.</span>
+            <div className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+              Szacunkowo za {nightsLabel(hotel.nights)}
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <span className="text-lg font-bold leading-tight text-emerald-700">Hotel {hotelPart}</span>
+              <span aria-hidden className="text-neutral-300">+</span>
+              <span className="text-lg font-bold leading-tight text-emerald-700">Lot {flightPart}</span>
             </div>
             <div className="text-[11px] text-neutral-500">
-              {total} za {nightsLabel(hotel.nights)} z lotem
+              razem ok. {total} ({perPerson}/os.) — rezerwujesz osobno
               {taxes ? ` · + ${taxes} opłat w hotelu` : ""}
-            </div>
-            <div className="mt-0.5 text-[11px] text-neutral-400">
-              hotel {hotelPart} + lot {flightPart}
             </div>
           </div>
           <span
             aria-hidden
             className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors group-hover:bg-emerald-700"
           >
-            Wybierz pakiet
+            Zobacz szczegóły
           </span>
         </div>
       </div>
