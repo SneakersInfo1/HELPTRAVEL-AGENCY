@@ -4,10 +4,10 @@
 // dobiera lot z realnych alternatyw. Taby Najlepsze/Najtańsze/Najszybsze
 // (reuse sortOffers z flights/filters), delty vs najtańszy przelot (nigdy cena
 // absolutna — §2), bagaż, szacunkowa suma aktualizowana przy wyborze.
-// MODEL POROWNYWARKI (bez wpisu do rejestru): DWA odrębne CTA — „Zarezerwuj
-// hotel" (nasza ścieżka pojedynczej usługi) i „Zobacz lot" (zewnętrzna
-// wyszukiwarka). NIE sprzedajemy bundla ani nie pobieramy jednej płatności za
-// kombinację. Mobile-first.
+// MODEL POROWNYWARKI (jak Booking): DWA odrębne CTA — „Zarezerwuj hotel" i
+// „Zarezerwuj lot" (obie nasze ścieżki pojedynczych usług), OSOBNE płatności,
+// bez bundla i bez jednej ceny. Kwalifikacja prawna zależy od sprzedawcy
+// (Nuitee) — patrz komentarz przy hrefach. Mobile-first.
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -146,12 +146,12 @@ export function FlightPicker({
   const packageTotal = hotel.pricePln + flightTotal;
   const perPerson = Math.ceil(packageTotal / Math.max(1, adults));
 
-  // Model porównywarki (bez wpisu do rejestru turystycznego): DWIE odrębne
-  // rezerwacje zamiast bundla. Hotel → nasza ścieżka pojedynczej usługi; lot →
-  // zewnętrzna wyszukiwarka. Nie pobieramy JEDNEJ płatności za kombinację, więc
-  // nie stajemy się „punktem sprzedaży" powiązanej usługi (art. 6 ustawy o
-  // imprezach tur.) → poza reżimem PUT. Cel lotu łatwo podmienić na program
-  // afiliacyjny lotów (prowizja), gdy będzie podpięty.
+  // Model „jak Booking": Lot + Hotel zestawia oferty, ale klient rezerwuje je
+  // OSOBNO, z OSOBNĄ płatnością — hotel i lot to dwie niezależne transakcje,
+  // nigdy jedna cena/jeden checkout. Oba idą przez nasze ścieżki pojedynczych
+  // usług (rozliczenie: partner NUITEE TRAVEL). UWAGA PRAWNA: przy sprzedaży OBU
+  // u nas kwalifikacja (pośrednik vs PUT) zależy od tego, KTO jest sprzedawcą
+  // lotu/hotelu (Nuitee jako merchant of record?) — do potwierdzenia radca + LiteAPI.
   const hotelHref = `/hotele/${encodeURIComponent(hotel.id)}?${new URLSearchParams({
     checkin: dateFrom,
     checkout: dateTo,
@@ -161,7 +161,13 @@ export function FlightPicker({
   const outboundSel = selected?.legs.find((l) => l.direction === "OUTBOUND") ?? selected?.legs?.[0];
   const flightFrom = outboundSel?.originCode ?? "WAW";
   const flightTo = outboundSel?.destinationCode ?? destination.iata;
-  const flightSearchUrl = `https://www.kayak.pl/flights/${flightFrom}-${flightTo}/${dateFrom}/${dateTo}?sort=price_a`;
+  const flightSearchUrl = `/loty/wyniki?${new URLSearchParams({
+    origin: flightFrom,
+    destination: flightTo,
+    depart: dateFrom,
+    return: dateTo,
+    adults: String(adults),
+  }).toString()}`;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8">
@@ -362,19 +368,17 @@ export function FlightPicker({
             </a>
             <a
               href={flightSearchUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               onClick={() =>
                 track("package_reserve_click", { service: "flight", destination: destination.city, value: flightTotal })
               }
               className="inline-flex h-11 flex-1 items-center justify-center rounded-lg border border-emerald-600 bg-white px-4 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-50 sm:flex-none"
             >
-              Zobacz lot →
+              Zarezerwuj lot
             </a>
           </div>
         </div>
         <p className="mx-auto max-w-3xl px-4 pb-2 text-[10px] leading-tight text-neutral-500">
-          Hotel i lot rezerwujesz osobno, każde u swojego dostawcy — HelpTravel pomaga je zestawić. Lot otwiera się w zewnętrznej wyszukiwarce. Ceny orientacyjne w PLN, potwierdzane przy rezerwacji.
+          Hotel i lot rezerwujesz osobno, z osobną płatnością — nie łączymy ich w jedną cenę ani jedną transakcję. Ceny orientacyjne w PLN, potwierdzane przy rezerwacji.
         </p>
       </div>
     </div>
