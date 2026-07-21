@@ -52,7 +52,7 @@ const faqItems = [
   {
     question: "Dlaczego hotel i lot rezerwuję osobno?",
     answer:
-      "Bo to dwie niezależne usługi u dwóch różnych dostawców. Nocleg rezerwujesz w naszej ścieżce hotelowej, a lot otwiera się w zewnętrznej wyszukiwarce lotów, gdzie płacisz bezpośrednio dostawcy. Nie pobieramy jednej wspólnej płatności za całość.",
+      "Bo to dwie niezależne usługi. Nocleg i lot rezerwujesz w osobnych krokach, z osobną płatnością za każdy — nie łączymy ich w jedną cenę ani w jedną transakcję. Dzięki temu widzisz dokładnie, ile kosztuje hotel, a ile lot, i możesz wybrać tylko jedno.",
   },
   {
     question: "Czy „razem ok.” to cena, którą zapłacę?",
