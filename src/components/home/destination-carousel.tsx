@@ -24,19 +24,34 @@ export interface CarouselItem {
   slug: string;
   /** Cena/os. jeśli znana (do eventu; sama karta renderuje ją sobie). */
   pricePerPerson?: number;
+  /**
+   * Który event GA4 wysłać. Kafelek kierunku i karta pakietu to dwa różne
+   * produkty w lejku — wrzucenie ich pod jeden event skasowałoby możliwość
+   * porównania, który realnie sprzedaje.
+   */
+  kind?: "destination" | "package";
   node: ReactNode;
 }
 
 export function DestinationCarousel({
   items,
-  title,
-  note,
+  header,
+  aside,
+  tone = "dark",
+  slideClassName = "min-w-0 shrink-0 basis-[42%] pl-3 sm:basis-[30%] sm:pl-4 md:basis-[22%] lg:basis-[18%] xl:basis-[14.5%]",
+  ariaLabel,
 }: {
   items: CarouselItem[];
-  /** Nagłówek pasa — renderowany TUTAJ, patrz komentarz przy wierszu nagłówka. */
-  title: string;
-  /** Dopisek po prawej (np. skąd loty). */
-  note: string;
+  /** Lewa strona wiersza nagłówka (nadtytuł pasa albo <h2> sekcji). */
+  header: ReactNode;
+  /** Prawa strona wiersza, PRZED strzałkami — np. dopisek „Loty z Warszawy". */
+  aside?: ReactNode;
+  /** Paleta strzałek: ciemny pas hero vs jasne tło strony. */
+  tone?: "dark" | "light";
+  /** Szerokości slajdu (pakiety mają większe karty niż kafelki kierunków). */
+  slideClassName?: string;
+  /** Etykieta strzałek — na stronie są dwie karuzele, muszą się różnić. */
+  ariaLabel?: { prev: string; next: string };
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
@@ -76,24 +91,24 @@ export function DestinationCarousel({
           zrzutu). Teraz to JEDEN wiersz flex: tytuł, dopisek i strzałki są
           rodzeństwem, więc nachodzenie jest niemożliwe konstrukcyjnie, a nie
           „dobrane offsetem". */}
-      <div className="mb-4 flex items-end justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-bright">
-          {title}
-        </p>
+      <div className="mb-4 flex items-end justify-between gap-x-6 gap-y-1">
+        {header}
         <div className="flex items-end gap-3">
-          {/* Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"
-              do „Lot", więc kontekst wylotu niesie ten dopisek. */}
-          <span className="text-right text-[11px] leading-tight text-white/60">{note}</span>
+          {aside}
           {/* Strzałki: desktop only — na mobile swipe jest naturalniejszy, a
               przyciski zabierałyby szerokość kart. */}
           <div className="hidden shrink-0 gap-1.5 sm:flex">
             <ArrowButton
               direction="prev"
+              tone={tone}
+              label={ariaLabel?.prev ?? "Poprzednie kierunki"}
               disabled={!canPrev}
               onClick={() => emblaApi?.scrollPrev()}
             />
             <ArrowButton
               direction="next"
+              tone={tone}
+              label={ariaLabel?.next ?? "Następne kierunki"}
               disabled={!canNext}
               onClick={() => emblaApi?.scrollNext()}
             />
@@ -106,13 +121,16 @@ export function DestinationCarousel({
           {items.map((item, index) => (
             <div
               key={item.slug}
-              className="min-w-0 shrink-0 basis-[42%] pl-3 sm:basis-[30%] sm:pl-4 md:basis-[22%] lg:basis-[18%] xl:basis-[14.5%]"
+              className={slideClassName}
               onClickCapture={() =>
-                track("destination_card_clicked", {
-                  slug: item.slug,
-                  position: index + 1,
-                  price_per_person: item.pricePerPerson,
-                })
+                track(
+                  item.kind === "package" ? "package_card_clicked" : "destination_card_clicked",
+                  {
+                    slug: item.slug,
+                    position: index + 1,
+                    price_per_person: item.pricePerPerson,
+                  },
+                )
               }
             >
               {item.node}
@@ -128,10 +146,14 @@ function ArrowButton({
   direction,
   disabled,
   onClick,
+  tone,
+  label,
 }: {
   direction: "prev" | "next";
   disabled: boolean;
   onClick: () => void;
+  tone: "dark" | "light";
+  label: string;
 }) {
   const Icon = direction === "prev" ? ChevronLeft : ChevronRight;
   return (
@@ -139,12 +161,16 @@ function ArrowButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={direction === "prev" ? "Poprzednie kierunki" : "Następne kierunki"}
+      aria-label={label}
       className={cn(
         "inline-flex h-9 w-9 items-center justify-center rounded-full border transition",
-        disabled
-          ? "cursor-not-allowed border-white/15 text-white/30"
-          : "border-white/30 text-white hover:border-white/60 hover:bg-white/10",
+        tone === "dark"
+          ? disabled
+            ? "cursor-not-allowed border-white/15 text-white/30"
+            : "border-white/30 text-white hover:border-white/60 hover:bg-white/10"
+          : disabled
+            ? "cursor-not-allowed border-line text-ink-muted/40"
+            : "border-line bg-surface-raised text-ink hover:border-brand/40 hover:bg-brand-soft",
       )}
     >
       <Icon aria-hidden className="h-4 w-4" strokeWidth={2} />

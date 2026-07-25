@@ -147,8 +147,19 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               i obsługa klawiatury. Ucięta karta po prawej zostaje — to
               świadomy sygnał „jest więcej". */}
           <DestinationCarousel
-            title="Popularne kierunki"
-            note="Loty z Warszawy · ceny w PLN"
+            tone="dark"
+            header={
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-bright">
+                Popularne kierunki
+              </p>
+            }
+            aside={
+              // Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"
+              // do „Lot", więc kontekst wylotu niesie ten dopisek.
+              <span className="text-right text-[11px] leading-tight text-white/60">
+                Loty z Warszawy · ceny w PLN
+              </span>
+            }
             items={featured.map((tile) => ({
               slug: tile.destination.slug,
               pricePerPerson: tile.packagePerPerson?.perPersonPln,

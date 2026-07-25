@@ -58,6 +58,10 @@ export async function GET(request: NextRequest) {
     cityPl: h.label,
     countryPl: h.countryPl,
     popularity: h.popularity,
+    // Obecne tylko przy pustym q (redakcyjna lista popularnych) — UI używa ich
+    // do nagłówków grup i podpowiedzi „Heraklion · Kreta".
+    group: h.group,
+    hint: h.hint,
   }));
 
   // Indeks miast miewa wpis o tej samej nazwie co wyspa ("Teneryfa") —

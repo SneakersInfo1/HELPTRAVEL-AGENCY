@@ -383,6 +383,10 @@ export interface DestinationSuggestion {
   kind?: "city" | "region";
   /** Slug z data/regions.ts — wartość parametru `region` na /hotele/szukaj. */
   regionId?: string;
+  /** Grupa listy popularnych („Na plażę" / „Miasto na weekend"). Tylko przy pustym q. */
+  group?: "beach" | "city";
+  /** Nazwa, której użytkownik szuka, gdy różni się od miasta („Kreta" dla Heraklionu). */
+  hint?: string;
 }
 
 export interface TravelPackageOffer {

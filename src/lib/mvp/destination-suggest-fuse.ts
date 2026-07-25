@@ -17,6 +17,10 @@ import "server-only";
 import Fuse from "fuse.js";
 
 import { getDestinationsIndex, type DestinationIndexEntry } from "./destinations-seed";
+import {
+  POPULAR_DESTINATIONS,
+  type PopularGroup,
+} from "./popular-destinations";
 
 export interface SuggestionResponseItem {
   id: string;
@@ -27,6 +31,10 @@ export interface SuggestionResponseItem {
   countryCode: string | null;
   iata: string | null;
   popularity: number;
+  /** Ustawiane TYLKO w trybie „puste pole" — pozwala UI pogrupować listę. */
+  group?: PopularGroup;
+  /** Nazwa, której użytkownik szuka, gdy różni się od miasta („Kreta" dla Heraklionu). */
+  hint?: string;
 }
 
 const fuse: Fuse<DestinationIndexEntry> = new Fuse(getDestinationsIndex() as DestinationIndexEntry[], {
@@ -42,9 +50,22 @@ const fuse: Fuse<DestinationIndexEntry> = new Fuse(getDestinationsIndex() as Des
   includeScore: true,
 });
 
-const allDestinationsSorted: DestinationIndexEntry[] = [...getDestinationsIndex()].sort(
-  (a, b) => b.popularity - a.popularity || a.cityPl.localeCompare(b.cityPl, "pl"),
-);
+// Puste pole „Dokąd" NIE sortuje już po `popularity` z seeda. To pole jest
+// proxy zasięgu geograficznego, nie polskiego popytu — pierwsza dwudziestka po
+// nim to cała Hiszpania, potem cała Portugalia (Kordoba i Braga wyżej niż
+// Rzym), więc użytkownik po kliknięciu dostawał sześć hiszpańskich miast i ani
+// jednego kierunku z Turcji, Egiptu czy Grecji. Zamiast tego jedzie lista
+// redakcyjna, sprawdzana testem względem seeda. Patrz popular-destinations.ts.
+const indexById = new Map(getDestinationsIndex().map((e) => [e.id, e]));
+
+const popularResolved: SuggestionResponseItem[] = POPULAR_DESTINATIONS.flatMap((pick) => {
+  const entry = indexById.get(pick.id);
+  // Kierunek zniknął z seeda po regeneracji → pomijamy zamiast renderować
+  // pozycję, która po kliknięciu nic nie znajdzie. Test `popular-destinations`
+  // i tak wywali build wcześniej; to jest zabezpieczenie runtime'owe.
+  if (!entry) return [];
+  return [{ ...toResponseItem(entry), group: pick.group, hint: pick.hint }];
+});
 
 function toResponseItem(entry: DestinationIndexEntry): SuggestionResponseItem {
   return {
@@ -62,9 +83,10 @@ function toResponseItem(entry: DestinationIndexEntry): SuggestionResponseItem {
 export function suggestDestinations(query: string, limit = 8): SuggestionResponseItem[] {
   const q = query.trim();
   if (!q) {
-    // Empty query → top-N most popular destinations. Same shape so the
-    // UI doesn't have to branch.
-    return allDestinationsSorted.slice(0, limit).map(toResponseItem);
+    // Puste zapytanie → redakcyjna lista kierunków popularnych W POLSCE,
+    // w kolejności z popular-destinations.ts. Ten sam kształt odpowiedzi, więc
+    // UI nie musi się rozgałęziać (dochodzą tylko opcjonalne group/hint).
+    return popularResolved.slice(0, limit);
   }
   const hits = fuse.search(q, { limit: limit * 3 });
   // Combined ranking: low Fuse score (closer match) is good, high

@@ -13,10 +13,47 @@ import { track } from "@/lib/analytics/track";
 import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
 import { readRecentDestinations, saveRecentDestination } from "@/lib/mvp/recent-destinations";
+import { POPULAR_GROUP_LABELS } from "@/lib/mvp/popular-destinations";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
 /** Podpowiedź z flagą „ostatnio szukane" (sekcja nad popularnymi). */
 type SuggestionItem = DestinationSuggestion & { _recent?: boolean };
+
+/**
+ * Dzieli podpowiedzi na sekcje, ZACHOWUJĄC płaski indeks każdej pozycji.
+ *
+ * Indeks jest tu istotny, a nie kosmetyczny: `destHighlight` i obsługa strzałek
+ * operują na płaskiej tablicy `destSuggestions`. Gdyby sekcje renderowały się
+ * z własną numeracją od zera, klawiatura podświetlałaby inny wiersz niż ten,
+ * który Enter faktycznie wybiera.
+ *
+ * Wpisany tekst → wszystkie pozycje trafiają do sekcji bez nagłówka (płaska
+ * lista wyników), więc grupowanie dotyczy wyłącznie trybu „puste pole".
+ */
+function buildSuggestionSections(
+  items: SuggestionItem[],
+): Array<{ label: string | null; rows: Array<{ item: SuggestionItem; index: number }> }> {
+  type Row = { item: SuggestionItem; index: number };
+  const recent: Row[] = [];
+  const beach: Row[] = [];
+  const city: Row[] = [];
+  const flat: Row[] = [];
+
+  items.forEach((item, index) => {
+    const row = { item, index };
+    if (item._recent) recent.push(row);
+    else if (item.group === "beach") beach.push(row);
+    else if (item.group === "city") city.push(row);
+    else flat.push(row);
+  });
+
+  const sections: Array<{ label: string | null; rows: Row[] }> = [];
+  if (recent.length) sections.push({ label: "Ostatnio szukane", rows: recent });
+  if (beach.length) sections.push({ label: POPULAR_GROUP_LABELS.beach, rows: beach });
+  if (city.length) sections.push({ label: POPULAR_GROUP_LABELS.city, rows: city });
+  if (flat.length) sections.push({ label: null, rows: flat });
+  return sections;
+}
 
 interface MiniPlannerFormProps {
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
@@ -148,8 +185,13 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       try {
+        // limit=20 (było 6): właściciel 2026-07-26 — po kliknięciu w puste pole
+        // ma być pełna lista 20 kierunków popularnych w Polsce. Sześć pozycji
+        // to była lista „do przewinięcia i zapomnienia"; dwadzieścia
+        // pogrupowanych (plaża / miasto) to realna ścieżka dla kogoś, kto nie
+        // wie, dokąd chce jechać — czyli dla głównego adresata tej strony.
         const url = popularMode
-          ? "/api/destinations/suggest?q=&limit=6"
+          ? "/api/destinations/suggest?q=&limit=20"
           : `/api/destinations/suggest?q=${encodeURIComponent(trimmed)}`;
         const res = await fetch(url, { signal: controller.signal });
         const payload = (await res.json().catch(() => ({ items: [] }))) as { items?: DestinationSuggestion[] };
@@ -157,10 +199,13 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         if (popularMode) {
           const recent = readRecentDestinations();
           const recentIds = new Set(recent.map((r) => r.id));
+          // Bez .slice(): lista jest pogrupowana i przewijalna, więc obcinanie
+          // do 8 tylko ucinałoby grupę „Miasto na weekend" w połowie. Serwer
+          // i tak oddaje maksymalnie 20 + ostatnio szukane.
           items = [
             ...recent.map((r): SuggestionItem => ({ ...r, _recent: true })),
             ...items.filter((i) => !recentIds.has(i.id)),
-          ].slice(0, 8);
+          ];
         }
         setDestSuggestions(items);
         setDestOpen(true);
@@ -524,44 +569,65 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               id={listboxId}
               ref={destListRef}
               role="listbox"
-              className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-64 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
+              // Wysokość: na telefonie 60vh (lista 20 kierunków w oknie 256 px
+              // to było pięć widocznych wierszy i trzy ekrany przewijania),
+              // na desktopie sufit 24rem, żeby panel nie zjadał całej strony.
+              // overscroll-contain: przewijanie listy nie ciągnie za sobą tła.
+              className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface-raised py-1 shadow-[var(--shadow-lg)]"
             >
               {destFetching ? (
-                <li className="px-3 py-2 text-sm text-emerald-900/56">Szukamy kierunków…</li>
+                <li className="px-3 py-3 text-sm text-ink-muted">Szukamy kierunków…</li>
               ) : destSuggestions.length > 0 ? (
-                destSuggestions.map((s, idx) => {
-                  // Zadanie 2 — wyspy z oznaczeniem typu ("wyspa · Hiszpania").
-                  const isRegion = s.kind === "region";
-                  const ctry = localizeCountry(s.country);
-                  const reg = isRegion ? "wyspa" : localizeRegion(s.region);
-                  const baseMeta = isRegion
-                    ? [reg, ctry].filter(Boolean).join(" · ")
-                    : [ctry, reg].filter(Boolean).join(" · ");
-                  // „Ostatnie" ponad popularnymi — oznaczone w metadanych.
-                  const meta = s._recent
-                    ? ["ostatnio szukane", baseMeta].filter(Boolean).join(" · ")
-                    : baseMeta;
-                  return (
-                    <li
-                      key={s.id}
-                      role="option"
-                      aria-selected={idx === destHighlight}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        selectSuggestion(s);
-                      }}
-                      onMouseEnter={() => setDestHighlight(idx)}
-                      className={`cursor-pointer px-3 py-2 text-sm transition ${
-                        idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
-                      }`}
-                    >
-                      <div className="font-semibold text-emerald-950">{s.cityPl ?? localizeCity(s.city)}</div>
-                      {meta && <div className="text-xs text-emerald-900/56">{meta}</div>}
-                    </li>
-                  );
-                })
+                buildSuggestionSections(destSuggestions).map((section) => (
+                  <li key={section.label ?? "_flat"} role="presentation">
+                    {section.label && (
+                      // Sticky: przy 20 pozycjach nagłówek grupy wyjeżdża
+                      // z ekranu po dwóch wierszach i użytkownik przestaje
+                      // wiedzieć, na co patrzy.
+                      <p className="sticky top-0 z-10 bg-surface-raised px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                        {section.label}
+                      </p>
+                    )}
+                    <ul role="presentation">
+                      {section.rows.map(({ item: s, index: idx }) => {
+                        // Zadanie 2 — wyspy z oznaczeniem typu ("wyspa · Hiszpania").
+                        const isRegion = s.kind === "region";
+                        const ctry = localizeCountry(s.country);
+                        const reg = isRegion ? "wyspa" : localizeRegion(s.region);
+                        // Podpowiedź redakcyjna („Kreta" przy Heraklionie) bije
+                        // nazwę regionu z seeda: to jest słowo, którego
+                        // użytkownik realnie szuka.
+                        const meta = isRegion
+                          ? [reg, ctry].filter(Boolean).join(" · ")
+                          : [s.hint ?? reg, ctry].filter(Boolean).join(" · ");
+                        return (
+                          <li
+                            key={s.id}
+                            role="option"
+                            aria-selected={idx === destHighlight}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              selectSuggestion(s);
+                            }}
+                            onMouseEnter={() => setDestHighlight(idx)}
+                            // min-h-[52px]: wiersz listy to cel dotykowy, a
+                            // py-2 dawało ~40 px. 90% ruchu to telefon.
+                            className={`flex min-h-[52px] cursor-pointer flex-col justify-center px-3 py-2 transition-colors ${
+                              idx === destHighlight ? "bg-brand-soft" : "hover:bg-surface-sunken"
+                            }`}
+                          >
+                            <span className="text-sm font-semibold text-ink">
+                              {s.cityPl ?? localizeCity(s.city)}
+                            </span>
+                            {meta && <span className="text-xs text-ink-muted">{meta}</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))
               ) : (
-                <li className="px-3 py-2 text-sm text-emerald-900/56">
+                <li className="px-3 py-3 text-sm text-ink-muted">
                   Brak wyników dla „{destQuery}&rdquo;. Spróbuj innego miasta lub kraju.
                 </li>
               )}
