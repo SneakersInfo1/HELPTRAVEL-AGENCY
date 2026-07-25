@@ -1,10 +1,24 @@
 import Link from "next/link";
 
-// Sekcja zaufania pod kafelkami (server component, zero fetch). Zastępuje
-// dawną sekcję „Zacznij od pomysłu na wyjazd" (6 kart), która DUBLOWAŁA chipy
-// nastrojów z hero — homepage jest przez to netto krótszy. Treść = wyłącznie
-// weryfikowalne fakty (świeży projekt: zero zmyślonych liczb — patrz
-// PRODUCT.md „Anti-references").
+// Ostatni blok treści przed stopką: jak przebiega rezerwacja i kto za nią stoi
+// (server component, zero fetch).
+//
+// Redesign 2026-07 — dwie rzeczy były tu realnie zepsute:
+//
+// 1. WAGA WIZUALNA. Sekcja miała trzy zagnieżdżone powierzchnie: biała karta →
+//    w niej trzy podkarty kroków → obok ciemny slab `emerald-950`. Ciemny slab
+//    przyciągał wzrok pierwszy, więc informacja POBOCZNA („kto za tym stoi")
+//    krzyczała głośniej niż GŁÓWNA („jak zarezerwować"). Teraz jedna
+//    powierzchnia, hierarchia z typografii i kolejności, a „kto za tym stoi"
+//    jest podpisem pod krokami — czyli tym, czym jest.
+//
+// 2. FAKT. Krok 2 obiecywał BLIK. Checkout go NIE oferuje (patrz
+//    `hotele/rezerwacja/_components/payment-brands.tsx` — świadomie ukryty,
+//    dopóki LiteAPI/Nuitee nie włączą go dla PLN), a czat konsjerża wprost
+//    odmawia („BLIK-u na razie nie obsługujemy", `concierge/system-prompt.ts`).
+//    Strona główna obiecywała więc metodę płatności, której produkt nie ma.
+//    Doszła za to informacja o NUITEE TRAVEL na wyciągu — nieznana nazwa na
+//    liście transakcji to najczęstszy powód reklamacji, a my znamy ją z góry.
 
 const STEPS = [
   {
@@ -15,7 +29,7 @@ const STEPS = [
   {
     n: "2",
     title: "Płacisz bezpiecznie",
-    desc: "Płatność obsługuje Stripe — karta, BLIK lub Google Pay. Dane karty nie przechodzą przez nasze serwery.",
+    desc: "Płatność obsługuje Stripe — kartą lub Google Pay. Dane karty nie przechodzą przez nasze serwery.",
   },
   {
     n: "3",
@@ -38,11 +52,9 @@ function reviewsLabel(n: number): string {
   return `${n} opinii`;
 }
 
-// Pas korzyści (2026-07-03, wzór Trip.com — właściciel: „warto dodatkowo
-// wzbogacić"). WYŁĄCZNIE fakty już komunikowane gdzie indziej w serwisie —
-// zero nowych obietnic.
-// (Stała BENEFITS usunięta razem z pasem korzyści — patrz komentarz przy
-// renderze: te fakty żyją teraz w JEDNYM pasie zaufania pod wyszukiwarką.)
+/** Link-pastylka w pasku „kto za tym stoi". Wysokość 44 px = próg dotykowy. */
+const PILL =
+  "inline-flex h-11 items-center justify-center rounded-full border border-line px-4 text-sm font-semibold transition-colors hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2";
 
 export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
   return (
@@ -50,58 +62,69 @@ export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
       aria-labelledby="how-it-works"
       className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8"
     >
-      {/* Pas korzyści USUNIĘTY (redesign 2026-07): powtarzał to samo, co pas
-          zaufania pod hero (Stripe, brak konta), tylko innymi słowami. Sygnał
-          zaufania powtórzony w czterech miejscach nie sumuje się — rozcieńcza
-          się i wygląda jak wypełniacz. Zostaje JEDEN pas, pod wyszukiwarką.
-          Unikalne fakty stąd (potwierdzenie e-mail, polskie wsparcie) żyją
-          dalej w kolumnie „Kto za tym stoi" i w kroku 3 poniżej. */}
-      <div className="grid gap-6 rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8 lg:grid-cols-[1.5fr_1fr] lg:gap-10">
-        {/* Kolumna A — 3 kroki */}
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-600">
-            Jak to działa
-          </p>
-          <h2 id="how-it-works" className="mt-2 font-display text-2xl leading-tight text-emerald-950 sm:text-3xl">
-            Rezerwujesz w trzech krokach
-          </h2>
-          <ol className="mt-5 grid gap-4 sm:grid-cols-3">
-            {STEPS.map((s) => (
-              <li key={s.n} className="rounded-2xl bg-emerald-50/60 p-4">
-                <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-700 text-sm font-bold text-white">
-                  {s.n}
-                </span>
-                <h3 className="mt-3 text-sm font-bold text-emerald-950">{s.title}</h3>
-                <p className="mt-1 text-xs leading-6 text-emerald-900/75">{s.desc}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
+      <div className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-[var(--shadow-md)] sm:p-8 lg:p-10">
+        {/* Bez nadtytułu „Jak to działa": nagłówek już to mówi, a nadtytuł nad
+            każdą sekcją to najbardziej rozpoznawalny szablon generowanych
+            stron (PRODUCT.md → anti-references). */}
+        <h2 id="how-it-works" className="max-w-xl text-balance font-display text-2xl leading-tight text-ink sm:text-3xl">
+          Rezerwujesz w trzech krokach
+        </h2>
 
-        {/* Kolumna B — kto za tym stoi (fakty weryfikowalne) */}
-        <div className="flex flex-col rounded-2xl border border-emerald-900/10 bg-emerald-950 p-5 text-white sm:p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
-            Kto za tym stoi
-          </p>
-          <p className="mt-3 text-sm leading-7 text-white/85">
-            Rezerwacje realizuje <strong className="font-semibold text-white">LiteAPI</strong> — globalna
-            platforma rezerwacyjna, z której korzystają serwisy podróżnicze na całym świecie.
-            Płatności przetwarza <strong className="font-semibold text-white">Stripe</strong>.
-          </p>
-          <div className="mt-auto flex flex-wrap gap-2 pt-5">
+        {/* Numeracja zostaje, bo to REALNA sekwencja, a nie ozdobnik — kroki
+            dzieją się po kolei i kolejność niesie informację. Kreska łącząca
+            numery (tylko ≥sm, gdzie układ jest poziomy) pokazuje ciągłość,
+            której same cyfry nie dają. */}
+        <ol className="mt-6 grid gap-6 sm:mt-8 sm:grid-cols-3 sm:gap-8">
+          {STEPS.map((s, i) => (
+            <li key={s.n} className="relative">
+              {i < STEPS.length - 1 && (
+                <span
+                  aria-hidden
+                  // left-9 = tuż za kółkiem (2 rem) + 0,25 rem oddechu;
+                  // szerokość dobija do numeru następnego kroku przez gap-8.
+                  className="absolute left-9 top-4 hidden h-px w-[calc(100%-0.25rem)] bg-line sm:block"
+                />
+              )}
+              <span
+                aria-hidden
+                className="relative flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-bold text-white"
+              >
+                {s.n}
+              </span>
+              <h3 className="mt-3 text-sm font-bold text-ink">{s.title}</h3>
+              <p className="mt-1 max-w-[38ch] text-sm leading-6 text-ink-muted">{s.desc}</p>
+            </li>
+          ))}
+        </ol>
+
+        {/* „Kto za tym stoi" — ta sama powierzchnia, oddzielona włoskową linią.
+            Informacja podrzędna wobec kroków, więc i traktowana podrzędnie. */}
+        <div className="mt-8 border-t border-line pt-6 sm:mt-10 sm:flex sm:items-end sm:justify-between sm:gap-8">
+          <div className="max-w-[62ch]">
+            <h3 className="text-sm font-bold text-ink">Kto za tym stoi</h3>
+            <p className="mt-1.5 text-sm leading-6 text-ink-muted">
+              Rezerwacje realizuje <strong className="font-semibold text-ink">LiteAPI</strong> — globalna
+              platforma rezerwacyjna, z której korzystają serwisy podróżnicze na całym świecie. Płatności
+              przetwarza <strong className="font-semibold text-ink">Stripe</strong>. Na wyciągu z karty
+              zobaczysz <strong className="font-semibold text-ink">NUITEE TRAVEL</strong> — to partner
+              rozliczeniowy HelpTravel, nie obca transakcja.
+            </p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2 sm:mt-0 sm:shrink-0">
             <a
               href="https://pl.trustpilot.com/review/helptravel.pl"
               target="_blank"
               rel="noopener nofollow"
-              className="inline-flex min-h-10 items-center justify-center rounded-full bg-white/10 px-4 py-2 text-sm font-semibold ring-1 ring-white/25 transition hover:bg-white/20"
+              className={PILL}
             >
               {/* span: globalne a{color:inherit} bije text-* na <a> */}
-              <span className="text-white">
+              <span className="text-ink">
                 {trustpilot ? (
                   <>
                     ★ {trustpilot.score.toFixed(1).replace(".", ",")}/5 na Trustpilot
                     {typeof trustpilot.reviewCount === "number" && trustpilot.reviewCount > 0 && (
-                      <span className="text-white/70"> · {reviewsLabel(trustpilot.reviewCount)}</span>
+                      <span className="font-medium text-ink-muted"> · {reviewsLabel(trustpilot.reviewCount)}</span>
                     )}
                   </>
                 ) : (
@@ -109,11 +132,8 @@ export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
                 )}
               </span>
             </a>
-            <Link
-              href="/o-nas"
-              className="inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-white/25 transition hover:bg-white/10"
-            >
-              <span className="text-white/90">Poznaj nas →</span>
+            <Link href="/o-nas" className={PILL}>
+              <span className="text-ink">Poznaj nas →</span>
             </Link>
           </div>
         </div>

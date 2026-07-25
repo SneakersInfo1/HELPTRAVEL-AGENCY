@@ -15,8 +15,9 @@ bez zakładania konta".
 ## Product Purpose
 
 HelpTravel — polski serwis rezerwacji podróży: hotele + loty w jednym miejscu.
-Rezerwacje realizuje LiteAPI, płatności przetwarza Stripe (karta/BLIK/Google
-Pay), potwierdzenie od razu na e-mail. Sukces = użycie wyszukiwarki i domknięta
+Rezerwacje realizuje LiteAPI, płatności przetwarza Stripe (karta/Google Pay —
+BLIK NIE jest dostępny, dopóki LiteAPI/Nuitee nie włączą go dla PLN;
+merchant of record: NUITEE TRAVEL), potwierdzenie od razu na e-mail. Sukces = użycie wyszukiwarki i domknięta
 rezerwacja; homepage i podstrony istnieją po to, by najkrótszą drogą doprowadzić
 do wyszukiwarki (search-first, jak Booking). Niezdecydowanych prowadzą chipy
 nastrojów → /wyjazdy/[typ].

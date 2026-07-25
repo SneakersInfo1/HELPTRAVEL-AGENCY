@@ -16,9 +16,21 @@
 // przesunięto WYŻEJ (patrz komentarz w quick-search-launcher.tsx) — jedyna
 // zmiana w tamtym pliku to offset pozycji, nic więcej.
 //
-// Zero gate'owania zgodą (decyzja produktowa z zadania): ujawnienie
-// dostawcy AI dzieje się W PANELU (stopka ConciergeChat), nie przez
-// ConsentProvider — dlatego ten plik świadomie NIE importuje consent/context.
+// FUNKCJA czatu nadal NIE jest gate'owana zgodą (decyzja produktowa z zadania):
+// ujawnienie dostawcy AI dzieje się W PANELU (stopka ConciergeChat), nie przez
+// ConsentProvider. `useConsent` służy tu do czegoś innego — do POZYCJI, nie do
+// uprawnień; patrz niżej.
+//
+// KOLIZJA Z BANEREM COOKIES (zmierzona w przeglądarce 375×812, 2026-07-25):
+// baner zgód to `fixed inset-x-2 bottom-2 z-40`, a ten launcher `fixed right-4
+// bottom-4 z-40`. Ten sam z-index → wygrywa późniejszy w DOM, czyli launcher.
+// Prostokąty realnie nachodziły: dymek zasłaniał WSZYSTKIE TRZY przyciski zgody
+// („Akceptuję wszystkie", „Tylko niezbędne", „Ustawienia"), a sam FAB — przycisk
+// „Ustawienia". Skutki były dwa i oba poważne: (1) użytkownik nie mógł swobodnie
+// podjąć decyzji o cookies, (2) bez zgody nie ładuje się gtag, więc te sesje nie
+// istniały w GA4. Dlatego dopóki decyzja wisi (albo otwarte są ustawienia),
+// launcher się NIE renderuje. Statyczna analiza tego nie widzi — baner renderuje
+// się warunkowo (`needsDecision`), więc defekt wychodzi dopiero z pomiaru.
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -28,6 +40,7 @@ import { Compass } from "lucide-react";
 import { ConciergeChat } from "./concierge-chat";
 import { CONCIERGE_OPEN_EVENT } from "@/lib/concierge/open-event";
 import { track } from "@/lib/analytics/track";
+import { useConsent } from "@/lib/consent/context";
 
 // Kill-switch (domyślnie WŁĄCZONE) — ta sama konwencja co
 // NEXT_PUBLIC_SHOW_QUICK_SEARCH i /api/concierge/chat route.ts.
@@ -95,13 +108,23 @@ export function ConciergeLauncher() {
   // hydracja jest spójna; klientowy snapshot wchodzi zaraz po niej.
   const teaserDismissed = useSyncExternalStore(subscribeTeaser, readTeaserDismissed, () => true);
 
+  // Patrz nagłówek pliku: to jest o POZYCJI (nie zasłaniać przycisków zgody),
+  // nie o uprawnieniach. `isSettingsOpen` dochodzi, bo modal ustawień cookies
+  // wraca do tego samego dolnego rogu.
+  const { needsDecision, isSettingsOpen } = useConsent();
+  const consentBlocking = needsDecision || isSettingsOpen;
+
   // Teaser dopiero po realnym sygnale: 30 s BEZ interakcji. Każdy scroll,
   // klik i klawisz przesuwa termin — użytkownik, który czyta i klika, nie
   // dostaje zaczepki. Raz na sesję: `sessionStorage` pilnuje, żeby po powrocie
   // na stronę dymek nie wyskakiwał od nowa przy każdej nawigacji.
   const [teaserReady, setTeaserReady] = useState(false);
   useEffect(() => {
-    if (teaserDismissed) return;
+    // `consentBlocking` w warunku, nie tylko w renderze: inaczej 30 s odliczałoby
+    // się PODCZAS czytania banera cookies i dymek wyskakiwałby w tej samej chwili,
+    // w której użytkownik klika „Akceptuję". Licznik bezczynności ma mierzyć czas
+    // na STRONIE, a nie czas spędzony w oknie zgód.
+    if (teaserDismissed || consentBlocking) return;
     try {
       if (window.sessionStorage.getItem(TEASER_SHOWN_SESSION_KEY) === "1") return;
     } catch {
@@ -128,7 +151,7 @@ export function ConciergeLauncher() {
       window.clearTimeout(timer);
       for (const event of events) window.removeEventListener(event, arm);
     };
-  }, [teaserDismissed]);
+  }, [teaserDismissed, consentBlocking]);
   const bubbleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | null>(null);
@@ -245,7 +268,7 @@ export function ConciergeLauncher() {
 
   return (
     <>
-      {panel === "bubble" && (
+      {panel === "bubble" && !consentBlocking && (
         <div
           className={`fixed right-4 z-40 flex flex-col items-end gap-2 sm:right-6 ${
             lifted
@@ -265,7 +288,10 @@ export function ConciergeLauncher() {
                 type="button"
                 onClick={dismissTeaser}
                 aria-label="Zamknij podpowiedź"
-                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-900/10 bg-white text-neutral-500 shadow-sm transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                // Kółko zostaje wizualnie 24 px (większe wyglądałoby jak drugi
+                // przycisk obok dymka), ale `before:-inset-[10px]` rozszerza
+                // OBSZAR KLIKU do 44×44 — próg dotykowy bez zmiany wyglądu.
+                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-900/10 bg-white text-neutral-500 shadow-sm transition-colors before:absolute before:-inset-[10px] before:content-[''] hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-3 w-3">
                   <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

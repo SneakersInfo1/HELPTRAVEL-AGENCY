@@ -138,7 +138,10 @@ export function HomeSearchTabs() {
               tabIndex={active ? 0 : -1}
               onClick={() => selectTab(key)}
               className={cn(
-                "relative z-10 flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold transition-colors sm:px-4",
+                // h-11 = 44 px. Zmierzone w przeglądarce przy 375 px: `h-9`
+                // dawało 36 px, czyli poniżej progu dotykowego — a to jest
+                // GŁÓWNY przełącznik całej strony na telefonie (90% ruchu).
+                "relative z-10 flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold transition-colors sm:px-4",
                 active ? "text-brand-strong" : "text-white/90 hover:text-white",
               )}
             >
