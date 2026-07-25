@@ -35,7 +35,34 @@ export interface SuggestionResponseItem {
   group?: PopularGroup;
   /** Nazwa, której użytkownik szuka, gdy różni się od miasta („Kreta" dla Heraklionu). */
   hint?: string;
+  /** Wynik Fuse: 0 = trafienie idealne, 1 = brak podobieństwa. */
+  score?: number;
 }
+
+/**
+ * Powyżej tego wyniku dopasowanie NIE jest podpowiedzią, tylko zgadywaniem.
+ *
+ * Zmierzone na realnym indeksie (2026-07-26) — rozkład jest rozdzielny:
+ *   trafienie dokładne  0,000   (Barcelona)
+ *   nazwa kraju         0,004   (Grecja → Ateny)
+ *   literówka           0,172–0,330 (Barselona, Zakintos, Hurgada, Stambul)
+ *   ── granica ──
+ *   śmieć               0,456–0,848 (Monastyr → Altmünster, Tajlandia → Amsterdam)
+ *
+ * Fuse przepuszczał je mimo `threshold: 0.4`, bo próg działa na dopasowaniu
+ * per-klucz, a zwracany `score` to złożenie ważone po wszystkich kluczach —
+ * może więc przekroczyć próg. Stąd odcięcie PO fakcie. 0,40 zostawia z zapasem
+ * wszystkie literówki i ucina cały pas śmieci.
+ */
+export const MAX_ACCEPTABLE_SCORE = 0.4;
+
+/**
+ * Poniżej tego wyniku uznajemy, że indeks lokalny ZNA odpowiedź i nie ma po co
+ * dopytywać LiteAPI — użytkownik dostaje podpowiedź natychmiast, bez sieci.
+ * Powyżej: trafienie jest niepewne (np. „Bangkok" → Bansko, 0,367) i warto
+ * sięgnąć po globalne /data/places.
+ */
+export const CONFIDENT_SCORE = 0.15;
 
 const fuse: Fuse<DestinationIndexEntry> = new Fuse(getDestinationsIndex() as DestinationIndexEntry[], {
   keys: [
@@ -99,10 +126,25 @@ export function suggestDestinations(query: string, limit = 8): SuggestionRespons
       const popularityWeight = h.item.popularity / 100;
       // Lower combined = better. Fuse score dominates, popularity tiebreaks.
       const combined = score - popularityWeight * 0.15;
-      return { item: h.item, combined };
+      return { item: h.item, score, combined };
     })
+    // Odcięcie śmieci — patrz MAX_ACCEPTABLE_SCORE. Filtrujemy po SUROWYM
+    // wyniku Fuse, nie po `combined`: `combined` zawiera premię za
+    // popularność, więc popularne miasto z fatalnym dopasowaniem prześlizgnęłoby
+    // się przez próg (tak właśnie „Tajlandia" wypychała Amsterdam).
+    .filter((x) => x.score <= MAX_ACCEPTABLE_SCORE)
     .sort((a, b) => a.combined - b.combined)
     .slice(0, limit)
-    .map((x) => toResponseItem(x.item));
-  return ranked;
+    .map((x) => ({ ...toResponseItem(x.item), score: x.score }));
+
+  // Dedupe po nazwie + kraju. Seed ma 26 par duplikatów o różnych `id`
+  // (np. `prague-czechia` i `prague-czech-republic`, `malaga-spain` dwa razy),
+  // więc bez tego użytkownik widział „Malaga (Hiszpania)" dwa razy pod rząd.
+  const seen = new Set<string>();
+  return ranked.filter((item) => {
+    const key = `${item.label.toLowerCase()}|${item.countryPl.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

@@ -387,6 +387,8 @@ export interface DestinationSuggestion {
   group?: "beach" | "city";
   /** Nazwa, której użytkownik szuka, gdy różni się od miasta („Kreta" dla Heraklionu). */
   hint?: string;
+  /** Wynik dopasowania Fuse (0 = idealne). Serwerowy — decyduje, czy dopytać LiteAPI. */
+  score?: number;
 }
 
 export interface TravelPackageOffer {
