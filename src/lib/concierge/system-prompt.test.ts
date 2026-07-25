@@ -59,10 +59,21 @@ test("SYSTEM_PROMPT: konwersja bez zmyślania — obiekcja=nowa karta, fakty pro
 });
 
 test("SYSTEM_PROMPT: koszt — długość promptu pod kontrolą (wysyłany z KAŻDYM requestem)", () => {
-  // Limit 8500 (historycznie 6000→7000→8000; +2026-07-19: twarda odmowa BLIK
-  // po realnym zmyśleniu z baterii smoke + karta od razu dla miasta bez
-  // terminu): prompt caching (cache_control w orkiestratorze) zbija koszt
-  // statycznego prefiksu do 10% po pierwszym wywołaniu. Nadal pilnujemy
-  // sufitu: pierwszy request płaci pełną stawkę.
-  assert.equal(SYSTEM_PROMPT.length < 8500, true);
+  // Limit 9000 (historycznie 6000→7000→8000→8500; +2026-07-24: 8500→9000, by
+  // zmieścić guardraile uczciwości batch 1 (#6 pusty-budżet bez zmyślonej
+  // kwoty, #8 brak danych o pogodzie live) BEZ cięcia dostrojonych fraz —
+  // decyzja właściciela: prompt caching (cache_control w
+  // orkiestratorze) zbija koszt statycznego prefiksu do 10% po pierwszym
+  // wywołaniu, więc ~150 dodatkowych tokenów to ułamek grosza/rozmowę. Nadal
+  // pilnujemy sufitu: pierwszy request płaci pełną stawkę.
+  assert.equal(SYSTEM_PROMPT.length < 9000, true);
+});
+
+test("SYSTEM_PROMPT: guardraile uczciwości (batch 1) — brak zmyślonego progu, pogoda live", () => {
+  // #6: pusty wynik NIE może wymuszać zmyślonej kwoty progu (payload nie zwraca X).
+  assert.equal(SYSTEM_PROMPT.includes("NIE podawaj żadnej liczby"), true);
+  // #8: aktualna pogoda/prognoza — bot mówi wprost, że nie ma danych na żywo.
+  // (#2 „przykładowy termin" wycofany po baterii: dla konkretnego miasta daty
+  //  użytkownika SĄ honorowane, więc disclaimer byłby nieuczciwy.)
+  assert.equal(SYSTEM_PROMPT.includes("AKTUALNEJ pogodzie"), true);
 });
