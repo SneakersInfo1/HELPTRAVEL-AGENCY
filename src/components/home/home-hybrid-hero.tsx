@@ -1,8 +1,9 @@
 import { CinematicBackdrop } from "./cinematic-backdrop";
 import { DestinationCarousel } from "./destination-carousel";
 import { DestinationTile } from "./destination-tile";
+import { ShieldCheck, UserRoundX, Wallet } from "lucide-react";
+
 import { HomeSearchTabs } from "./home-search-tabs";
-import { PaymentMethods } from "./payment-methods";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 interface FeaturedTile {
@@ -110,20 +111,24 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
                   </span>
                 </a>
               </li>
-              {["Płatności obsługuje Stripe", "Ceny finalne w PLN"].map((item) => (
-                <li key={item} className="inline-flex items-center gap-1.5">
-                  <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
-                    <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
-                  </svg>
-                  {item}
+              {/* JEDEN pas zaufania, max 4 punkty. Te same fakty powtarzały
+                  się wcześniej także w sekcji „Jak to działa" — powtórzony
+                  sygnał zaufania nie sumuje się, tylko rozcieńcza. */}
+              {[
+                { Icon: ShieldCheck, text: "Płatność przez Stripe" },
+                { Icon: Wallet, text: "Ceny finalne w PLN" },
+                { Icon: UserRoundX, text: "Bez zakładania konta" },
+              ].map(({ Icon, text }) => (
+                <li key={text} className="inline-flex items-center gap-1.5">
+                  <Icon aria-hidden strokeWidth={2} className="h-3.5 w-3.5 shrink-0 text-white/70" />
+                  {text}
                 </li>
               ))}
             </ul>
 
-            {/* Metody płatności — drobne, tuż pod zaufaniem. */}
-            <div className="mt-3.5 sm:mt-4">
-              <PaymentMethods />
-            </div>
+            {/* Logotypy płatności ZDJĘTE z hero (redesign 2026-07): w miejscu
+                wyboru kierunku nie pomagają, a przy checkoucie — gdzie
+                użytkownik realnie sięga po kartę — są już pokazane. */}
 
             {/* USUNIĘTE: pas chipów „Lub zacznij od pomysłu na wyjazd".
                 Duplikował sekcję „Nie wiesz, dokąd jechać?" niżej — i to z

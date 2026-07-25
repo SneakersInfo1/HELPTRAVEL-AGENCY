@@ -4,18 +4,22 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { Mail, Menu, X } from "lucide-react";
+
+import { HeaderSearchTrigger } from "@/components/site/header-search-trigger";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
 import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
 
 const copy = {
   pl: {
+    // 4 pozycje zamiast 5: „Regulamin" zszedł do menu mobilnego i stopki
+    // (gdzie i tak był). Nawigacja ma prowadzić, a nie wyliczać wszystko.
     nav: [
       { href: "/kierunki", label: "Kierunki" },
       { href: "/inspiracje", label: "Pomysły na wyjazd" },
       { href: "/jak-pracujemy", label: "Jak to działa" },
       { href: "/o-nas", label: "O serwisie" },
-      { href: "/regulamin", label: "Regulamin" },
     ],
     mobileLinks: [
       { href: "/faq", label: "FAQ" },
@@ -24,13 +28,21 @@ const copy = {
       { href: "/regulamin", label: "Regulamin" },
       { href: "/polityka-prywatnosci", label: "Polityka prywatności" },
     ],
-    plannerCta: "Zacznij planować",
+    // „Zacznij planować" nie mówiło, co się stanie po kliknięciu. Nazwa akcji
+    // = to, co użytkownik dostaje (i ta sama fraza co w pasku sticky).
+    plannerCta: "Znajdź wyjazd",
+    stickySearch: "Szukaj wyjazdu",
     menuOpen: "Menu",
     menuClose: "Zamknij menu",
     headerNote: "Kierunek, termin i kolejne kroki wyjazdu bez chaosu.",
     skipToContent: "Przejdź do treści",
-    footerLead: "Pomagamy wybrać wyjazd i przejść dalej spokojnie.",
-    footerBody: "Korzystanie z serwisu jest darmowe. Rezerwacje finalizujesz u partnera, a ostatnie ceny i warunki zawsze sprawdzasz po jego stronie.",
+    footerLead: "Pomagamy wybrać wyjazd i zarezerwować go na miejscu.",
+    // POPRAWKA FAKTOGRAFICZNA (redesign 2026-07): poprzednia treść mówiła
+    // „Rezerwacje finalizujesz u partnera" i „serwis afiliacyjny" — to zostało
+    // po erze Travelpayouts. Dziś rezerwacja i płatność dzieją się TUTAJ
+    // (LiteAPI + Stripe, rozliczenie NUITEE TRAVEL). Stopka na stronie
+    // o zaufaniu nie może opisywać nieistniejącego modelu.
+    footerBody: "Hotel i lot rezerwujesz u nas, w złotówkach i bez zakładania konta. Płatność obsługuje Stripe, a na wyciągu zobaczysz NUITEE TRAVEL — to nasz partner rozliczeniowy. Potwierdzenie z numerem rezerwacji przychodzi e-mailem.",
     footerColumns: [
       {
         title: "Start",
@@ -65,8 +77,11 @@ const copy = {
         ],
       },
     ],
-    footerMetaLeft: "Planner, kierunki i pomysły na wyjazd dla osób z Polski.",
-    footerMetaRight: "Transparentny serwis afiliacyjny. Nie jesteśmy biurem podróży.",
+    footerMetaLeft: "Hotele i loty dla podróżnych z Polski. Ceny finalne w PLN.",
+    // Usunięte „Transparentny serwis afiliacyjny" — nieprawda od czasu
+    // przejścia na własne rezerwacje przez LiteAPI.
+    footerMetaRight: "Rezerwacje realizuje LiteAPI. Płatności: Stripe.",
+    contactTitle: "Kontakt",
   },
   en: {
     nav: [
@@ -74,7 +89,6 @@ const copy = {
       { href: "/inspiracje", label: "Trip ideas" },
       { href: "/jak-pracujemy", label: "How it works" },
       { href: "/o-nas", label: "About" },
-      { href: "/regulamin", label: "Terms" },
     ],
     mobileLinks: [
       { href: "/faq", label: "FAQ" },
@@ -83,13 +97,14 @@ const copy = {
       { href: "/regulamin", label: "Terms" },
       { href: "/polityka-prywatnosci", label: "Privacy policy" },
     ],
-    plannerCta: "Start planning",
+    plannerCta: "Find a trip",
+    stickySearch: "Search trips",
     menuOpen: "Menu",
     menuClose: "Close menu",
     headerNote: "Destination, dates and the next travel steps without the usual clutter.",
     skipToContent: "Skip to content",
-    footerLead: "We help people choose a trip and move forward calmly.",
-    footerBody: "The service is free to use. Final booking happens with the partner, and the last price or policy should always be checked on their site.",
+    footerLead: "We help people choose a trip and book it right here.",
+    footerBody: "You book the hotel and flight with us, in PLN and without creating an account. Payments are handled by Stripe and your statement will show NUITEE TRAVEL — our settlement partner. The confirmation with your booking number arrives by e-mail.",
     footerColumns: [
       {
         title: "Start",
@@ -124,8 +139,9 @@ const copy = {
         ],
       },
     ],
-    footerMetaLeft: "Planner, destinations and trip ideas for short leisure travel.",
-    footerMetaRight: "Transparent affiliate website. Not a travel agency.",
+    footerMetaLeft: "Hotels and flights for travellers from Poland. Final prices in PLN.",
+    footerMetaRight: "Bookings powered by LiteAPI. Payments: Stripe.",
+    contactTitle: "Contact",
   },
 } as const;
 
@@ -181,7 +197,11 @@ export function SiteShell({ children }: { children: ReactNode }) {
             </LocalizedLink>
           </div>
 
-          <nav aria-label="Główne menu" className="hidden items-center gap-2 lg:flex">
+          {/* Linki nawigacyjne są TEKSTEM, nie pigułkami. Wcześniej 5 pozycji
+              w ramkach wyglądało jak 5 przycisków o tej samej wadze co CTA —
+              wszystko krzyczało tak samo, więc nic nie prowadziło. Teraz
+              jedyny element w pełnym kolorze marki to akcja. */}
+          <nav aria-label="Główne menu" className="hidden items-center gap-1 lg:flex">
             {text.nav.map((item) => {
               const active = isActivePath(pathname, item.href);
 
@@ -189,34 +209,47 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <LocalizedLink
                   key={item.href}
                   href={item.href}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
+                  aria-current={active ? "page" : undefined}
+                  className={`rounded-md px-3 py-2 text-sm transition-colors ${
                     active
-                      ? "border-emerald-700 bg-emerald-700 text-white shadow-[0_12px_30px_rgba(21,128,61,0.16)]"
-                      : "border-emerald-900/10 bg-white text-emerald-900 hover:border-emerald-500/50 hover:bg-emerald-50"
+                      ? "font-semibold text-brand"
+                      : "font-medium text-ink-muted hover:text-ink"
                   }`}
                 >
                   {item.label}
                 </LocalizedLink>
               );
             })}
+
+            {/* Kompaktowe wyszukiwanie — pojawia się dopiero po zjechaniu poza
+                hero (wzorzec Booking.com: szukaj z każdego miejsca strony). */}
+            <HeaderSearchTrigger label={text.stickySearch} isHome={isHome} />
+
             <LocalizedLink
               href="/#hero"
-              className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
+              className="ml-1 rounded-full bg-brand px-4 py-2 text-sm font-bold transition hover:opacity-90"
             >
-              {text.plannerCta}
+              <span className="text-white">{text.plannerCta}</span>
             </LocalizedLink>
           </nav>
 
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen((value) => !value)}
-            className="inline-flex min-h-10 items-center rounded-full border border-emerald-900/10 bg-white px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-50 lg:hidden"
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-nav-panel"
-            aria-label={mobileMenuOpen ? text.menuClose : text.menuOpen}
-          >
-            {mobileMenuOpen ? text.menuClose : text.menuOpen}
-          </button>
+          <div className="flex items-center gap-1.5 lg:hidden">
+            <HeaderSearchTrigger label={text.stickySearch} isHome={isHome} compact />
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((value) => !value)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface-raised text-ink shadow-sm transition hover:bg-surface-sunken"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-nav-panel"
+              aria-label={mobileMenuOpen ? text.menuClose : text.menuOpen}
+            >
+              {mobileMenuOpen ? (
+                <X aria-hidden className="h-5 w-5" strokeWidth={2} />
+              ) : (
+                <Menu aria-hidden className="h-5 w-5" strokeWidth={2} />
+              )}
+            </button>
+          </div>
         </div>
 
         {mobileMenuOpen ? (
@@ -320,7 +353,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
         </footer>
       ) : (
       <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr]">
+        {/* Gęściej: 5 kolumn zamiast 4 na desktopie, 2 na tablecie. Trzy
+            rzadkie, wysokie kolumny zostawiały pustkę i wydłużały stronę. */}
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.85fr_0.85fr_0.85fr_0.95fr]">
           <div>
             <Image
               src="/branding/helptravel-logo.png"
@@ -335,13 +370,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           {text.footerColumns.map((column) => (
             <div key={column.title}>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{column.title}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{column.title}</p>
               <div className="mt-4 flex flex-col gap-3">
                 {column.links.map((link) => (
                   <LocalizedLink
                     key={link.href}
                     href={link.href}
-                    className="text-sm font-medium text-emerald-900/78 transition hover:text-emerald-700"
+                    className="text-sm font-medium text-ink-muted transition hover:text-brand"
                   >
                     {link.label}
                   </LocalizedLink>
@@ -349,9 +384,60 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           ))}
+
+          <FooterContactColumn title={text.contactTitle} />
         </div>
       </footer>
       )}
+    </div>
+  );
+}
+
+/**
+ * Kolumna kontaktu i identyfikacji operatora — element ZAUFANIA, nie
+ * formalność: użytkownik przed podaniem karty sprawdza, kto za tym stoi.
+ *
+ * Dane pochodzą z NEXT_PUBLIC_OPERATOR_* (ten sam zestaw, którego używa
+ * /regulamin). Każde pole, którego nie ma w env, po prostu się nie renderuje —
+ * pusta linia jest lepsza niż wymyślony NIP.
+ */
+function FooterContactColumn({ title }: { title: string }) {
+  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
+  const operator = {
+    name: process.env.NEXT_PUBLIC_OPERATOR_NAME?.trim() || null,
+    legalForm: process.env.NEXT_PUBLIC_OPERATOR_LEGAL_FORM?.trim() || null,
+    address: process.env.NEXT_PUBLIC_OPERATOR_ADDRESS?.trim() || null,
+    nip: process.env.NEXT_PUBLIC_OPERATOR_NIP?.trim() || null,
+  };
+
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{title}</p>
+      <div className="mt-4 flex flex-col gap-3 text-sm text-ink-muted">
+        {email ? (
+          <a
+            href={`mailto:${email}`}
+            className="inline-flex items-center gap-2 font-medium transition hover:text-brand"
+          >
+            <Mail aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} />
+            <span>{email}</span>
+          </a>
+        ) : null}
+        <LocalizedLink href="/kontakt" className="font-medium transition hover:text-brand">
+          Formularz kontaktowy
+        </LocalizedLink>
+
+        {operator.name ? (
+          <address className="mt-1 not-italic text-xs leading-5 text-ink-muted">
+            <span className="block font-semibold text-ink">
+              {operator.name}
+              {operator.legalForm ? ` ${operator.legalForm}` : ""}
+            </span>
+            {operator.address ? <span className="block">{operator.address}</span> : null}
+            {operator.nip ? <span className="block">NIP {operator.nip}</span> : null}
+          </address>
+        ) : null}
+      </div>
     </div>
   );
 }
