@@ -338,6 +338,14 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         round_trip: !oneWay,
         cabin_class: "ECONOMY",
       });
+      // Wspólny event startu wyszukiwania (obok istniejących, szczegółowych):
+      // pozwala porównać zakładki JEDNĄ metryką i zobaczyć, czy niezdecydowani
+      // (bez konkretnego kierunku) w ogóle ruszają dalej.
+      track("search_started", {
+        tab: "flights",
+        destination_type: resolvedDestIata ? "specific" : "anywhere",
+        date_mode: "fixed",
+      });
       const flightPrefix = locale === "en" ? "/en" : "";
       router.push(`${flightPrefix}/loty/wyniki?${flightParams.toString()}`);
       return;
@@ -413,6 +421,13 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       source: "search_bar",
       children_count: childCount,
       origin_provided: Boolean(resolvedOrigin),
+    });
+    // Wspólny event startu wyszukiwania — jedna metryka dla wszystkich
+    // zakładek hero (patrz bliźniacze wywołanie w gałęzi lotów).
+    track("search_started", {
+      tab: "hotels",
+      destination_type: trimmedDestination.length > 0 ? "specific" : "anywhere",
+      date_mode: "fixed",
     });
     const prefix = locale === "en" ? "/en" : "";
     router.push(`${prefix}/hotele/szukaj?${params.toString()}`);

@@ -5,7 +5,9 @@
 // przeglądarki jedzie tylko to, co naprawdę potrzebuje interaktywności.
 
 import type { ReactNode } from "react";
-import { MessagesSquare } from "lucide-react";
+// Compass, nie ikona czatu: ta sama ikona co zakładka w hero i dymek
+// launchera — trzy wejścia do jednego produktu mają wyglądać jak jeden produkt.
+import { Compass } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
 import { requestConciergeOpen } from "@/lib/concierge/open-event";
@@ -45,7 +47,7 @@ export function AssistantTile() {
       onClick={() => requestConciergeOpen("category_tile")}
       className="group relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-2xl border border-brand-strong/20 bg-brand-strong p-3 text-left text-white transition hover:-translate-y-1 hover:shadow-lg sm:p-4"
     >
-      <MessagesSquare
+      <Compass
         aria-hidden
         strokeWidth={1.5}
         className="absolute right-3 top-3 h-8 w-8 text-white/25 transition group-hover:text-white/40"

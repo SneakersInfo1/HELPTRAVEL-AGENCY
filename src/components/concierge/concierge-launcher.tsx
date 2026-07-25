@@ -23,6 +23,7 @@
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { Compass } from "lucide-react";
 
 import { ConciergeChat } from "./concierge-chat";
 import { CONCIERGE_OPEN_EVENT } from "@/lib/concierge/open-event";
@@ -33,6 +34,10 @@ import { track } from "@/lib/analytics/track";
 const ENABLED = process.env.NEXT_PUBLIC_SHOW_CONCIERGE?.trim().toLowerCase() !== "false";
 
 const TEASER_DISMISSED_KEY = "helptravel-concierge-teaser-dismissed-v1";
+/** Raz na sesję — inaczej dymek wracałby przy każdej nawigacji po serwisie. */
+const TEASER_SHOWN_SESSION_KEY = "helptravel-concierge-teaser-shown-session";
+/** Bezczynność, po której teaser ma sens (ms). */
+const TEASER_IDLE_MS = 30_000;
 const MOTION_MS = 200;
 
 // Teaser jako mini-„external store" (localStorage) czytany przez
@@ -89,6 +94,41 @@ export function ConciergeLauncher() {
   // Server snapshot = true (ukryty): SSR nigdy nie renderuje teasera, więc
   // hydracja jest spójna; klientowy snapshot wchodzi zaraz po niej.
   const teaserDismissed = useSyncExternalStore(subscribeTeaser, readTeaserDismissed, () => true);
+
+  // Teaser dopiero po realnym sygnale: 30 s BEZ interakcji. Każdy scroll,
+  // klik i klawisz przesuwa termin — użytkownik, który czyta i klika, nie
+  // dostaje zaczepki. Raz na sesję: `sessionStorage` pilnuje, żeby po powrocie
+  // na stronę dymek nie wyskakiwał od nowa przy każdej nawigacji.
+  const [teaserReady, setTeaserReady] = useState(false);
+  useEffect(() => {
+    if (teaserDismissed) return;
+    try {
+      if (window.sessionStorage.getItem(TEASER_SHOWN_SESSION_KEY) === "1") return;
+    } catch {
+      // sessionStorage niedostępny (tryb prywatny) — trudno, licznik po prostu
+      // wystartuje ponownie. Nic się nie psuje.
+    }
+
+    let timer = 0;
+    const arm = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        setTeaserReady(true);
+        try {
+          window.sessionStorage.setItem(TEASER_SHOWN_SESSION_KEY, "1");
+        } catch {}
+      }, TEASER_IDLE_MS);
+    };
+
+    const events = ["scroll", "pointerdown", "keydown"] as const;
+    for (const event of events) window.addEventListener(event, arm, { passive: true });
+    arm();
+
+    return () => {
+      window.clearTimeout(timer);
+      for (const event of events) window.removeEventListener(event, arm);
+    };
+  }, [teaserDismissed]);
   const bubbleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | null>(null);
@@ -213,8 +253,13 @@ export function ConciergeLauncher() {
               : "bottom-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-6"
           }`}
         >
-          {/* Teaser jednorazowy — dismiss trwały w localStorage, bez liczników/scarcity. */}
-          {!teaserDismissed && !compact && (
+          {/* Teaser: jednorazowy, dismiss trwały w localStorage, bez liczników
+              i scarcity. Pokazywany DOPIERO po realnym sygnale (30 s bez
+              interakcji) — wcześniej wyskakiwał natychmiast po wejściu,
+              zasłaniał treść i był odruchowo zamykany, zanim ktokolwiek go
+              przeczytał. Każda interakcja (scroll, klik, klawisz) resetuje
+              odliczanie: kto korzysta ze strony, nie jest zaczepiany. */}
+          {!teaserDismissed && teaserReady && !compact && (
             <div className="animate-fade-in-up relative max-w-[240px] rounded-2xl rounded-br-md border border-emerald-900/10 bg-white px-4 py-3 text-sm font-medium text-neutral-800 shadow-[0_12px_32px_rgba(16,84,48,0.16)]">
               <button
                 type="button"
@@ -241,18 +286,17 @@ export function ConciergeLauncher() {
             aria-expanded={false}
             aria-label={compact ? "Dobierz wyjazd — asystent AI" : undefined}
             title={compact ? "Dobierz wyjazd" : undefined}
-            className={`animate-bubble-pulse group inline-flex items-center rounded-full bg-emerald-600 text-sm font-bold text-white outline-none transition-colors hover:bg-emerald-700 focus-visible:ring-4 focus-visible:ring-emerald-300/60 motion-reduce:animate-none ${
+            // Bez `animate-bubble-pulse`: stała pulsacja niczego nie
+            // komunikowała (dekoracyjny ruch jest zakazany w registerze
+            // `product`) i upodabniała launcher do widgetu supportu.
+            className={`group inline-flex items-center rounded-full bg-brand text-sm font-bold text-white shadow-lg outline-none transition hover:opacity-90 focus-visible:ring-4 focus-visible:ring-brand/40 ${
               compact ? "h-13 w-13 justify-center p-3.5" : "gap-2 py-3.5 pl-4 pr-5"
             }`}
           >
-            <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-5 w-5 shrink-0">
-              <path
-                d="M3 9.5C3 5.9 6.13 3 10 3s7 2.9 7 6.5S13.87 16 10 16c-.8 0-1.57-.12-2.28-.35L4 17l1.1-3.3A6.24 6.24 0 0 1 3 9.5Z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {/* Ta sama ikona co zakładka „Nie wiem dokąd" w hero i kafel
+                w kategoriach — trzy wejścia do JEDNEGO produktu mają wyglądać
+                jak jeden produkt, a nie jak generyczny czat supportu. */}
+            <Compass aria-hidden strokeWidth={2} className="h-5 w-5 shrink-0" />
             {!compact && "Dobierz wyjazd"}
           </button>
         </div>
