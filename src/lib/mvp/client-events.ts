@@ -13,7 +13,8 @@ export type UiEventType =
   | "content_card_clicked"
   | "contact_submit"
   | "affiliate_clicked"
-  | "mini_planner_submitted";
+  | "mini_planner_submitted"
+  | "package_search";
 
 export function sendClientEvent(eventType: UiEventType, payload: Record<string, unknown> = {}) {
   void fetch("/api/events", {

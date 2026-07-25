@@ -44,6 +44,26 @@ const faqItems = [
     answer:
       "Na dole tej strony znajdziesz oficjalne źródła dotyczące komunikatów podróżnych, EKUZ i praw pasażera w Unii Europejskiej.",
   },
+  {
+    question: "Czy „Lot + Hotel” to pakiet albo impreza turystyczna?",
+    answer:
+      "Nie. „Lot + Hotel” to narzędzie porównawcze — pokazujemy dobrany nocleg i przelot obok siebie, żeby ułatwić planowanie. Hotel i lot rezerwujesz osobno, każde u swojego dostawcy, w dwóch niezależnych umowach. HelpTravel nie sprzedaje tego jako jednej imprezy ani pakietu i nie jest organizatorem turystyki.",
+  },
+  {
+    question: "Dlaczego hotel i lot rezerwuję osobno?",
+    answer:
+      "Bo to dwie niezależne usługi. Nocleg i lot rezerwujesz w osobnych krokach, z osobną płatnością za każdy — nie łączymy ich w jedną cenę ani w jedną transakcję. Dzięki temu widzisz dokładnie, ile kosztuje hotel, a ile lot, i możesz wybrać tylko jedno.",
+  },
+  {
+    question: "Czy „razem ok.” to cena, którą zapłacę?",
+    answer:
+      "Nie. Suma „razem ok.” jest wyłącznie orientacyjna i ułatwia porównanie. Wiążące ceny zobaczysz osobno: cenę hotelu w kroku rezerwacji noclegu i cenę lotu w wyszukiwarce lotów, zawsze przed płatnością.",
+  },
+  {
+    question: "Kto odpowiada za mój hotel i za mój lot?",
+    answer:
+      "Za nocleg odpowiada obiekt lub dostawca rezerwacji hotelowej, a za przelot — przewoźnik albo dostawca, u którego rezerwujesz lot. HelpTravel pomaga znaleźć i zestawić oferty; nie jest stroną umowy o nocleg ani o przewóz.",
+  },
 ];
 
 export const metadata: Metadata = {

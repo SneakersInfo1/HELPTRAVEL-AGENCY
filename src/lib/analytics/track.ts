@@ -222,6 +222,68 @@ export interface TrackEventMap {
     currency?: string;
     item_category: "flight";
   };
+
+  // ── Pakiety Lot + Hotel (Faza 1 — lejek §7) ──
+  package_search: {
+    destination: string;
+    checkin?: string;
+    checkout?: string;
+    /** SUMA adults+children (spójnie z hotelami). */
+    adults?: number;
+    source?: "search_bar" | "landing" | "deals_section";
+  };
+  package_listing_view: {
+    destination: string;
+    available_count: number;
+  };
+  /** Klik „Wybierz pakiet" (karta → krok 2 wyboru lotu). */
+  package_hotel_select: {
+    hotel_id: string;
+    destination?: string;
+    /** 1-based pozycja na liście. */
+    position?: number;
+    price_per_person?: number;
+  };
+  package_flight_view: {
+    destination?: string;
+    flight_count: number;
+  };
+  package_flight_change: {
+    destination?: string;
+    sort?: string;
+  };
+  /** Klik CTA kroku 2 (Faza 2: „package" = wejście w checkout pakietowy). */
+  package_reserve_click: {
+    service: "hotel" | "flight" | "package";
+    destination?: string;
+    hotel_id?: string;
+    value?: number;
+  };
+  // ── Pakiety — checkout Fazy 2 (§7) ──
+  package_passenger_form_start: {
+    destination?: string;
+    adults?: number;
+  };
+  package_passenger_form_complete: {
+    destination?: string;
+    adults?: number;
+  };
+  /** Ekran płatności z jawną listą metod (karta/Apple/Google — bez BLIK).
+   *  Pomiar dropu pod przyszłą decyzję o własnym MoR (decyzje pkt 5). */
+  package_payment_method_shown: {
+    which: "hotel" | "flight";
+    destination?: string;
+  };
+  package_payment_start: {
+    destination?: string;
+    which: "hotel" | "flight";
+  };
+  /** Sukces płatności+booku części pakietu (hotel po Checkout 1, lot po 2). */
+  package_purchase: {
+    which: "hotel" | "flight";
+    saga?: string;
+    value?: number;
+  };
 }
 
 export type TrackEventName = keyof TrackEventMap;

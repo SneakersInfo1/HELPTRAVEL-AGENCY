@@ -1,0 +1,196 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Adapter Prisma dla SagaStore (model `PackageBooking`).
+//
+// ZASADA BEZPIECZEŃSTWA: saga trzyma stan REALNYCH pieniędzy — tu NIE MA
+// cichego fallbacku in-memory jak w withPrismaFallback (spec §3.4: „Postgres,
+// nie in-memory i nie tylko Redis"). Brak/placeholder DATABASE_URL ⇒ głośny
+// wyjątek SagaStoreUnavailableError — checkout pakietowy ma się NIE zaczynać
+// bez trwałego stanu (uczciwy komunikat dla klienta, zero udawania).
+//
+// Optimistic lock: UPDATE ... WHERE id AND stateVersion = expected (updateMany
+// → count 0 przy wyścigu). Append logu kompensacji: atomowy konkat JSONB po
+// stronie Postgresa (równoległe appendy się nie nadpisują).
+
+import { getPrisma } from "@/lib/mvp/db";
+
+import type {
+  CompensationLogEntry,
+  PackageBookingRecord,
+  SagaStore,
+} from "./orchestrator";
+
+export class SagaStoreUnavailableError extends Error {
+  constructor() {
+    super(
+      "Saga pakietów wymaga Postgresa: DATABASE_URL nie jest skonfigurowany " +
+        "(bramka Fazy 2 — patrz docs/PACKAGES_DECISIONS.md).",
+    );
+    this.name = "SagaStoreUnavailableError";
+  }
+}
+
+async function requirePrisma(): Promise<any> {
+  const prisma = await getPrisma();
+  if (!prisma) throw new SagaStoreUnavailableError();
+  return prisma;
+}
+
+function toRecord(row: any): PackageBookingRecord {
+  return {
+    id: row.id,
+    sagaState: row.sagaState,
+    stateVersion: row.stateVersion,
+    flightPrebookId: row.flightPrebookId,
+    flightBookingId: row.flightBookingId,
+    hotelPrebookId: row.hotelPrebookId,
+    hotelBookingId: row.hotelBookingId,
+    txnHotel: row.txnHotel,
+    txnFlight: row.txnFlight,
+    txnFlightHistory: Array.isArray(row.txnFlightHistoryJson) ? row.txnFlightHistoryJson : [],
+    prebookExpiresAt: row.prebookExpiresAt ? row.prebookExpiresAt.toISOString() : null,
+    deadlineAt: row.deadlineAt ? row.deadlineAt.toISOString() : null,
+    failureReason: row.failureReason,
+    contactEmail: row.contactEmail,
+    stateLog: Array.isArray(row.stateLogJson) ? row.stateLogJson : [],
+    compensationLog: Array.isArray(row.compensationLogJson) ? row.compensationLogJson : [],
+  };
+}
+
+function toRow(rec: PackageBookingRecord): Record<string, unknown> {
+  return {
+    sagaState: rec.sagaState,
+    stateVersion: rec.stateVersion,
+    flightPrebookId: rec.flightPrebookId,
+    flightBookingId: rec.flightBookingId,
+    hotelPrebookId: rec.hotelPrebookId,
+    hotelBookingId: rec.hotelBookingId,
+    txnHotel: rec.txnHotel,
+    txnFlight: rec.txnFlight,
+    txnFlightHistoryJson: rec.txnFlightHistory,
+    prebookExpiresAt: rec.prebookExpiresAt ? new Date(rec.prebookExpiresAt) : null,
+    deadlineAt: rec.deadlineAt ? new Date(rec.deadlineAt) : null,
+    failureReason: rec.failureReason,
+    contactEmail: rec.contactEmail,
+    stateLogJson: rec.stateLog,
+    // compensationLogJson celowo POZA update'em stanu — append-only przez
+    // appendCompensationLog (atomowy konkat), żeby wyścig nie gubił wpisów.
+  };
+}
+
+export interface PrismaSagaStore extends SagaStore {
+  /** Utworzenie świeżej sagi (DRAFT) przy wejściu w checkout. */
+  create(rec: PackageBookingRecord): Promise<void>;
+  /** Szukanie sagi po zewnętrznych identyfikatorach (webhook nie zna naszego id). */
+  findIdByReference(ref: {
+    flightPrebookId?: string;
+    flightBookingId?: string;
+    hotelPrebookId?: string;
+    hotelBookingId?: string;
+  }): Promise<string | null>;
+  /** Sweep crona: sagi z minionym deadline (HOTEL_BOOKED_AWAITING_FLIGHT). */
+  listDueDeadlines(nowIso: string, limit: number): Promise<{ id: string }[]>;
+  /** Sweep crona: sagi w FLIGHT_BOOKED czekające na potwierdzenie ticketingu. */
+  listAwaitingFlightConfirmation(limit: number): Promise<{ id: string; flightBookingId: string | null }[]>;
+  /**
+   * Kontekst checkoutu (offerJson + kwoty) — POZA maszyną stanów: zapisywany
+   * raz na starcie/holdzie, czytany przez adaptery booku i confirmation page.
+   */
+  setCheckoutContext(id: string, ctx: { offerJson?: unknown; amountHotelMinor?: number; amountFlightMinor?: number }): Promise<void>;
+  loadCheckoutContext(id: string): Promise<{ offerJson: unknown; amountHotelMinor: number | null; amountFlightMinor: number | null } | null>;
+}
+
+export function createPrismaSagaStore(): PrismaSagaStore {
+  return {
+    async create(rec) {
+      const prisma = await requirePrisma();
+      await prisma.packageBooking.create({
+        data: { id: rec.id, ...toRow(rec), compensationLogJson: rec.compensationLog },
+      });
+    },
+
+    async load(id) {
+      const prisma = await requirePrisma();
+      const row = await prisma.packageBooking.findUnique({ where: { id } });
+      return row ? toRecord(row) : null;
+    },
+
+    async update(id, expectedVersion, next) {
+      const prisma = await requirePrisma();
+      const res = await prisma.packageBooking.updateMany({
+        where: { id, stateVersion: expectedVersion },
+        data: toRow(next),
+      });
+      return res.count === 1;
+    },
+
+    async appendCompensationLog(id, entries: CompensationLogEntry[]) {
+      if (!entries.length) return;
+      const prisma = await requirePrisma();
+      await prisma.$executeRaw`
+        UPDATE "PackageBooking"
+        SET "compensationLogJson" =
+          COALESCE("compensationLogJson", '[]'::jsonb) || ${JSON.stringify(entries)}::jsonb
+        WHERE "id" = ${id}`;
+    },
+
+    async findIdByReference(ref) {
+      const conditions = [
+        ref.flightPrebookId ? { flightPrebookId: ref.flightPrebookId } : null,
+        ref.flightBookingId ? { flightBookingId: ref.flightBookingId } : null,
+        ref.hotelPrebookId ? { hotelPrebookId: ref.hotelPrebookId } : null,
+        ref.hotelBookingId ? { hotelBookingId: ref.hotelBookingId } : null,
+      ].filter((c): c is NonNullable<typeof c> => c !== null);
+      if (!conditions.length) return null;
+      const prisma = await requirePrisma();
+      const row = await prisma.packageBooking.findFirst({
+        where: { OR: conditions },
+        select: { id: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return row?.id ?? null;
+    },
+
+    async listDueDeadlines(nowIso, limit) {
+      const prisma = await requirePrisma();
+      return prisma.packageBooking.findMany({
+        where: { sagaState: "HOTEL_BOOKED_AWAITING_FLIGHT", deadlineAt: { lte: new Date(nowIso) } },
+        select: { id: true },
+        orderBy: { deadlineAt: "asc" },
+        take: limit,
+      });
+    },
+
+    async listAwaitingFlightConfirmation(limit) {
+      const prisma = await requirePrisma();
+      return prisma.packageBooking.findMany({
+        where: { sagaState: "FLIGHT_BOOKED" },
+        select: { id: true, flightBookingId: true },
+        orderBy: { updatedAt: "asc" },
+        take: limit,
+      });
+    },
+
+    async setCheckoutContext(id, ctx) {
+      const prisma = await requirePrisma();
+      await prisma.packageBooking.update({
+        where: { id },
+        data: {
+          ...(ctx.offerJson !== undefined ? { offerJson: ctx.offerJson } : {}),
+          ...(ctx.amountHotelMinor !== undefined ? { amountHotelMinor: ctx.amountHotelMinor } : {}),
+          ...(ctx.amountFlightMinor !== undefined ? { amountFlightMinor: ctx.amountFlightMinor } : {}),
+        },
+      });
+    },
+
+    async loadCheckoutContext(id) {
+      const prisma = await requirePrisma();
+      const row = await prisma.packageBooking.findUnique({
+        where: { id },
+        select: { offerJson: true, amountHotelMinor: true, amountFlightMinor: true },
+      });
+      return row
+        ? { offerJson: row.offerJson, amountHotelMinor: row.amountHotelMinor, amountFlightMinor: row.amountFlightMinor }
+        : null;
+    },
+  };
+}

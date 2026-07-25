@@ -12,7 +12,7 @@ import type {
   NormalizedHotelOffer,
 } from "@/lib/liteapi";
 
-interface CheapestPick {
+export interface CheapestPick {
   rate: LiteApiRate;
   offerId: string;
   roomTypeName?: string;
@@ -23,6 +23,29 @@ export function pickCheapestRate(roomTypes: LiteApiRoomType[]): CheapestPick | n
   let bestMinor: bigint | null = null;
   for (const room of roomTypes ?? []) {
     for (const rate of room.rates ?? []) {
+      const total = rateTotalMinor(rate);
+      if (total === null) continue;
+      if (bestMinor === null || total < bestMinor) {
+        bestMinor = total;
+        best = { rate, offerId: room.offerId, roomTypeName: rate.name };
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * Najtańsza taryfa Z DARMOWĄ ANULACJĄ (warunek MVP pakietów, §3.4). Różni się od
+ * pickCheapestRate: pomija bezzwrotne rate'y. To bezpiecznik kompensacji sagi —
+ * pakiet może istnieć tylko na zwrotnym hotelu. Gdy hotel nie ma żadnej zwrotnej
+ * taryfy → null (hotel wypada z listingu pakietów). CZYSTE.
+ */
+export function pickCheapestRefundableRate(roomTypes: LiteApiRoomType[]): CheapestPick | null {
+  let best: CheapestPick | null = null;
+  let bestMinor: bigint | null = null;
+  for (const room of roomTypes ?? []) {
+    for (const rate of room.rates ?? []) {
+      if (!isFreeCancellation(rate)) continue;
       const total = rateTotalMinor(rate);
       if (total === null) continue;
       if (bestMinor === null || total < bestMinor) {
