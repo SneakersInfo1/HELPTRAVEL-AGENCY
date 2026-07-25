@@ -1,102 +1,30 @@
 # HelpTravel
 
-HelpTravel to hybryda:
-- travel plannera
-- katalogu kierunkow
-- serwisu z inspiracjami i przewodnikami
+Polski serwis rezerwacyjny (helptravel.pl): wyszukiwarka i rezerwacja **hoteli** oraz **lotów**, wsparta warstwą treści (kierunki, przewodniki, inspiracje) pod SEO.
 
-Projekt jest zbudowany w Next.js i przygotowany pod publiczny serwis travelowy z tresciami, plannerem, SEO pages oraz flow afiliacyjnym.
+Rezerwacja odbywa się u nas — nie przez przekierowanie do partnera. Rozliczeniowo merchant of record jest NUITEE TRAVEL (LiteAPI), płatność kartą lub Google Pay.
 
 ## Stack
 
-- Next.js App Router + TypeScript + Tailwind CSS
-- Prisma + Postgres
-- Travelpayouts (Hotellook + Aviasales), Stay22, CJ, Geoapify, Pexels
-- opcjonalnie OpenAI do lepszego rozumienia intencji w trybie discovery
-- Vercel jako docelowy deployment
+- Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS
+- **LiteAPI** — jedyny dostawca: hotele (`/data`, `/hotels/rates`, prebook/book) i loty (LiteAPI Flights)
+- Upstash Redis — cache stawek, snapshot cen, rate limiting
+- Prisma + Postgres — analityka, sesje, zapisane wyjazdy
+- OpenRouter — model AI concierge'a (czat doboru wyjazdu)
+- Resend (e-mail), Geoapify (geokodowanie), Pexels (zdjęcia)
+- Vercel — deployment produkcyjny
 
-## Publiczne sekcje
-
-- `/` - strona glowna
-- `/planner` - planner pod discovery i konkretny kierunek
-- `/kierunki` - katalog destination hubow
-- `/kierunki/[slug]` - strony kierunkow
-- `/inspiracje` - index artykulow
-- `/inspiracje/[slug]` - artykuly i scenariusze wyjazdow
-- `/przewodniki`
-- `/city-breaki`
-- `/cieple-kierunki`
-- `/bez-wizy`
-- `/tanie-podroze`
-- `/weekendowe-wyjazdy`
-- `/o-nas`
-- `/kontakt`
-- `/polityka-prywatnosci`
-- `/regulamin`
-- `/linki-partnerskie`
-- `/dla-partnerow`
-- `/standard-redakcyjny`
-- `/mapa-serwisu`
-- `/jak-pracujemy`
-
-## Wymagane env
-
-Podstawowe:
-
-- `DATABASE_URL`
-- `NEXT_PUBLIC_SITE_URL`
-- `NEXT_PUBLIC_CONTACT_EMAIL` - opcjonalne, ale zalecane dla publicznej strony kontaktowej
-- `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` - opcjonalne, jezeli chcesz podpiac Google Search Console
-
-Integracje:
-
-- `NEXT_PUBLIC_TRAVELPAYOUTS_MARKER` - marker affiliate (publiczny, w linkach)
-- `TRAVELPAYOUTS_API_TOKEN` - token API (sekret) do Hotellook i Aviasales Flight Data
-- `NEXT_PUBLIC_STAY22_AID` - AID Stay22 do widgetu/redirectow Booking
-- `PEXELS_API_KEY`
-- `GEOAPIFY_API_KEY`
-- `AFFILIATE_FLIGHTS_TEMPLATE` - szablon deeplinku dla lotow (np. z Travelpayouts/CJ)
-- `AFFILIATE_STAYS_TEMPLATE` - szablon deeplinku dla noclegow
-- `AFFILIATE_ATTRACTIONS_TEMPLATE` - szablon deeplinku dla atrakcji
-- `CJ_HOTELS_COM_TEMPLATE` - wrapper CJ dla wynikow Hotels.com z placeholderem `{urlEncoded}`
-- `CJ_EXPEDIA_TEMPLATE` - wrapper CJ dla wynikow Expedia z placeholderem `{urlEncoded}`
-- `CJ_VRBO_TEMPLATE` - wrapper CJ dla wynikow Vrbo z placeholderem `{urlEncoded}`
-
-Opcjonalne:
-
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL`
-
-Szablony deeplinkow obsluguja placeholdery:
-
-- `{city}`
-- `{country}`
-- `{cityCountry}`
-- `{cityEncoded}`
-- `{countryEncoded}`
-- `{cityCountryEncoded}`
-- `{flightsQuery}` / `{flightsQueryEncoded}`
-- `{staysQuery}` / `{staysQueryEncoded}`
-- `{attractionsQuery}` / `{attractionsQueryEncoded}`
-
-Dodatkowo wrappery CJ dla top kierunkow obsluguja:
-
-- `{url}`
-- `{urlEncoded}`
+> Travelpayouts / Hotellook / Aviasales / Stay22 / CJ zostały **całkowicie usunięte**. Linki kierunkowe prowadzą wyłącznie do naszych własnych ścieżek (`/hotele/szukaj`, wyszukiwarka lotów).
 
 ## Uruchomienie lokalne
 
+Menedżer pakietów: **pnpm** (w repo jest `pnpm-lock.yaml`).
+
 ```bash
 pnpm install
+cp .env.example .env.local   # uzupełnij wartości
 pnpm db:push
-pnpm db:seed
-pnpm dev
-```
-
-Potem otworz:
-
-```text
-http://localhost:3000
+pnpm dev                     # http://localhost:3000
 ```
 
 ## Weryfikacja
@@ -107,25 +35,59 @@ pnpm test
 pnpm build
 ```
 
-## Deploy na Vercel
+Pojedynczy plik testowy:
 
-1. Wypchnij repo na GitHub.
-2. Importuj projekt do Vercela.
-3. Dodaj wszystkie env-y z `.env.example`.
-4. Ustaw `NEXT_PUBLIC_SITE_URL` na produkcyjny adres Vercela lub wlasna domene.
-5. Zrob deploy.
+```bash
+node --import tsx --test src/lib/concierge/tools.test.ts
+```
 
-## Search Console
+Testy uruchamiane są z **jawnej listy plików** w `package.json` — nowy plik `*.test.ts` trzeba tam dopisać, inaczej nigdy się nie wykona.
 
-Jesli chcesz przyspieszyc indeksacje:
+Smoke'i uderzające w prawdziwe API (czytają `.env.local`):
 
-1. Dodaj witryne w Google Search Console.
-2. Pobierz kod weryfikacyjny typu `google-site-verification`.
-3. Wklej go do `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` w `.env.local` i w Vercelu.
-4. Po deployu przejdz do Search Console i wyślij sitemapę: `/sitemap.xml`.
+```bash
+pnpm smoke:liteapi
+pnpm booking:smoke
+```
 
-## Uwagi produktowe
+## Zmienne środowiskowe
 
-- Glowne flow ofertowe ma pokazywac realne ceny tylko z providerow.
-- Gdy feed providerowy nie zwraca danych, aplikacja pokazuje pusty stan zamiast sztucznych cen.
-- Warstwa contentowa ma wspierac SEO, wiarygodnosc wydawnicza i approval w programach afiliacyjnych.
+Źródłem prawdy jest **`.env.example`** — zawiera komplet zmiennych z komentarzami (m.in. które klucze LiteAPI idą w `X-API-Key`, a które są publiczne dla widgetu płatności). Skopiuj go do `.env.local`; na Vercelu dodaj każdą zmienną osobno.
+
+Minimum do startu lokalnego: `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL`, klucze LiteAPI (`sand_` wystarczy do wyszukiwania). Bez `UPSTASH_*` aplikacja działa, tylko bez cache'u i rate limitingu.
+
+Testy płatności obciążają prawdziwą kartę — używaj klucza `sand_`.
+
+## Główne sekcje
+
+Rezerwacje: `/hotele` (wyszukiwarka, karta hotelu, checkout), `/loty` (wyniki, rezerwacja), `/wyjazdy/[typ]`, `/oferta`, `/cennik`.
+
+Treści i SEO: `/kierunki`, `/najlepsze-kierunki`, `/inspiracje`, `/przewodniki`, `/porownanie`, `/raporty`, `/city-breaki`, `/cieple-kierunki`, `/bez-wizy`, `/tanie-podroze`, `/weekendowe-wyjazdy`.
+
+Zaufanie i formalności: `/o-nas`, `/kontakt`, `/faq`, `/jak-pracujemy`, `/redakcja`, `/standard-redakcyjny`, `/regulamin`, `/polityka-prywatnosci`, `/linki-partnerskie`, `/dla-partnerow`, `/mapa-serwisu`.
+
+AI concierge (czat doboru wyjazdu) jest montowany w layoucie na każdej stronie; wyłącznik: `NEXT_PUBLIC_SHOW_CONCIERGE=false`.
+
+## Deploy
+
+Vercel, gałąź **`main` idzie prosto na produkcję**. Zmienne środowiskowe ustawiane w Project Settings.
+
+Crony (`vercel.json`) grzeją cache i budują snapshot cen:
+
+- `/api/cron/warm-rates` — co 30 min
+- `/api/cron/warm-flights` — :15 i :45
+
+Po wdrożeniu: `docs/post-deploy-checklist.md`.
+
+## Zasady produktowe
+
+- **Ceny nigdy nie są zmyślane.** Każda kwota pochodzi z realnego wyszukania LiteAPI; wpis starszy niż 48 h traktujemy jak brak ceny. Gdy dostawca nic nie zwraca, pokazujemy pusty stan — nie szacunek.
+- To samo dotyczy AI concierge'a: kwoty, terminy i oceny wyłącznie z wyników narzędzi, nigdy z „pamięci" modelu.
+- Warstwa treści ma wspierać SEO i wiarygodność wydawniczą.
+
+## Dokumentacja
+
+- `CLAUDE.md` — architektura, konwencje i pułapki (czytaj przed większą zmianą)
+- `docs/booking-flow.md` — ścieżka rezerwacji, `docs/analytics-events.md` — eventy GA4
+- `SEO_MASTER_PLAN.md` — plan i status działań SEO
+- `HELPTRAVEL_MASTER_SPEC.md`, `PRODUCT.md` — specyfikacja i zasady produktowe
