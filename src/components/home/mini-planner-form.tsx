@@ -576,7 +576,33 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface-raised py-1 shadow-[var(--shadow-lg)]"
             >
               {destFetching ? (
-                <li className="px-3 py-3 text-sm text-ink-muted">Szukamy kierunków…</li>
+                // Szkielet, nie napis „Szukamy kierunków…". Odkąd zapytania
+                // spoza seeda idą do LiteAPI (~250–340 ms), lista potrafi się
+                // przebudować w locie — sam tekst kazał czekać na PUSTYM polu
+                // i wyglądał jak brak wyników. Szkielet o wymiarach docelowych
+                // wierszy pokazuje, ILE zaraz przyjdzie, i nie przesuwa układu,
+                // gdy dane dojdą.
+                <li role="presentation" className="space-y-1 px-3 py-2">
+                  {/* aria-hidden TYLKO na kształtach — gdyby siedziało na <li>,
+                      ukryłoby też komunikat dla czytnika ekranu poniżej. */}
+                  <div aria-hidden>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="flex min-h-[52px] flex-col justify-center gap-1.5">
+                        <div
+                          className="h-3.5 animate-pulse rounded bg-surface-sunken motion-reduce:animate-none"
+                          style={{ width: `${58 - i * 9}%` }}
+                        />
+                        <div
+                          className="h-2.5 animate-pulse rounded bg-surface-sunken motion-reduce:animate-none"
+                          style={{ width: `${40 - i * 6}%` }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <span className="sr-only" role="status">
+                    Szukamy kierunków
+                  </span>
+                </li>
               ) : destSuggestions.length > 0 ? (
                 buildSuggestionSections(destSuggestions).map((section) => (
                   <li key={section.label ?? "_flat"} role="presentation">
