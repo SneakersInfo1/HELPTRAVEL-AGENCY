@@ -2,6 +2,7 @@ import Image from "next/image";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { AssistantTile, TrackedTile } from "./theme-tiles-client";
+import { formatPLN } from "@/lib/money";
 
 // „Nie wiesz, dokąd jechać?" — 4 duże kafle tematyczne → /wyjazdy/[typ]
 // (2026-07-03, decyzja właściciela: wizualna wersja mood-chipów wypełnia
@@ -16,6 +17,11 @@ export interface ThemeTile {
   tagline: string;
   heroImage: string;
   imageAlt: string;
+  /**
+   * Najtańszy świeży pakiet (lot+hotel, na osobę) wśród kierunków kategorii.
+   * Brak = kafel bez linii ceny. NIGDY nie liczone tutaj — patrz page.tsx.
+   */
+  fromPerPersonPln?: number;
 }
 
 export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
@@ -51,11 +57,21 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
             <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.85)_55%,rgba(5,18,11,0.92)_100%)] p-3 text-white sm:p-4">
               <h3 className="font-display text-lg leading-tight sm:text-xl">{tile.label}</h3>
               <p className="mt-0.5 hidden text-[11px] text-white/80 sm:block">{tile.tagline}</p>
-              {/* Biel zamiast amber: akcent amber jest zarezerwowany dla ceny
-                  i jednego CTA — na etykiecie nawigacyjnej rozmywał sygnał. */}
-              <p className="mt-1 text-[11px] font-semibold text-white/90">
-                Zobacz kierunki <span aria-hidden>→</span>
-              </p>
+              {tile.fromPerPersonPln ? (
+                // Cena zamiast „Zobacz kierunki": etykieta nawigacyjna nie
+                // niosła żadnej informacji (link i tak prowadzi dalej), a
+                // liczba odpowiada na pytanie, które realnie blokuje kliknięcie.
+                // Akcent amber jest tu na miejscu — jest zarezerwowany właśnie
+                // dla ceny, to ta sama rola co na kafelkach kierunków.
+                <p className="mt-1 text-[13px] font-bold leading-snug text-accent-bright sm:text-sm">
+                  od {formatPLN(tile.fromPerPersonPln)}
+                  <span className="text-[11px] font-semibold text-white/75">/os.</span>
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] font-semibold text-white/90">
+                  Zobacz kierunki <span aria-hidden>→</span>
+                </p>
+              )}
             </div>
           </LocalizedLink>
           </TrackedTile>

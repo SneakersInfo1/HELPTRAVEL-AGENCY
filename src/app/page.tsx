@@ -111,12 +111,27 @@ export async function HomePageView() {
           .find((candidate): candidate is DestinationProfile => Boolean(candidate));
         if (!mood || !profile) return null;
         const media = await resolveDestinationMedia(profile);
+        // Najtańszy ŚWIEŻY pakiet wśród kierunków tej kategorii. Kafle
+        // kategorii były jedynym wejściem na stronie bez ceny — a to właśnie
+        // one obsługują niezdecydowanych, czyli tych, którzy najbardziej
+        // potrzebują punktu odniesienia („czy mnie na to stać?").
+        //
+        // Liczba pochodzi z tego samego snapshotu dstprice:v1 co reszta strony
+        // (cron, realne wyszukania LiteAPI). Kategoria bez ani jednego
+        // świeżego pakietu NIE dostaje ceny — kafel zostaje bez linii, tak jak
+        // kafelki kierunków. Zero doliczania, zero „od” z sufitu.
+        const fromPerPersonPln = mood.picks.reduce<number | null>((min, pick) => {
+          const pkg = pickFreshPackage(priceSnapshot, pick.searchCity, pick.country);
+          if (!pkg) return min;
+          return min === null || pkg.perPersonPln < min ? pkg.perPersonPln : min;
+        }, null);
         return {
           slug: mood.slug,
           label: mood.label,
           tagline: mood.eyebrow,
           heroImage: media.heroImage,
           imageAlt: mood.h1,
+          fromPerPersonPln: fromPerPersonPln ?? undefined,
         };
       }),
     )
