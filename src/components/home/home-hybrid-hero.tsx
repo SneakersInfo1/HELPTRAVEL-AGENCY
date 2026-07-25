@@ -140,21 +140,15 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
         {/* Kafelki pod hero — OSOBNA sekcja z własnym, nieprzezroczystym tłem
             (backdrop już tu nie sięga). */}
         <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-6 sm:px-8 sm:py-8 lg:px-12">
-          <div className="mb-4 flex items-end justify-between gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-              Popularne kierunki
-            </p>
-            {/* Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"
-                do „Lot", więc kontekst wylotu niesie podtytuł sekcji. */}
-            <span className="text-right text-[11px] leading-tight text-white/60">
-              Loty z Warszawy · ceny w PLN
-            </span>
-          </div>
-          {/* Embla zamiast natywnego overflow-x: znika szary pasek przewijania
+          {/* Nagłówek pasa (tytuł + dopisek + strzałki) renderuje sama karuzela
+              — inaczej strzałki, pozycjonowane absolutnie, wchodziły na dopisek.
+              Embla zamiast natywnego overflow-x: znika szary pasek przewijania
               (wyglądał na niedokończony interfejs), dochodzą strzałki, snap
               i obsługa klawiatury. Ucięta karta po prawej zostaje — to
               świadomy sygnał „jest więcej". */}
           <DestinationCarousel
+            title="Popularne kierunki"
+            note="Loty z Warszawy · ceny w PLN"
             items={featured.map((tile) => ({
               slug: tile.destination.slug,
               pricePerPerson: tile.packagePerPerson?.perPersonPln,

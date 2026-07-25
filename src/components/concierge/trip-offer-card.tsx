@@ -23,6 +23,7 @@
 //   jest null (uczciwie: nie mamy zdjęcia, nie udajemy że mamy).
 
 import Link from "next/link";
+import { Building2 } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
 import type { TripOffer } from "@/lib/concierge/types";
@@ -125,8 +126,12 @@ export function TripOfferCard({
                   className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                 />
               ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 p-2 text-center text-white">
-                  <span aria-hidden className="text-lg opacity-90">🏨</span>
+                // Fallback bez zdjęcia. Emoji „🏨" wymieniona na Lucide (ten sam
+                // powód co przy starterach czatu: emoji renderuje font systemowy,
+                // więc wygląda inaczej na każdej platformie, a reszta produktu
+                // mówi Lucide). Building2 = ta sama ikona co zakładka „Hotele".
+                <div className="flex h-full w-full items-center justify-center bg-brand-strong text-white/50">
+                  <Building2 aria-hidden strokeWidth={1.5} className="h-7 w-7" />
                 </div>
               )}
             </div>

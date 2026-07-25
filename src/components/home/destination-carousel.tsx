@@ -27,7 +27,17 @@ export interface CarouselItem {
   node: ReactNode;
 }
 
-export function DestinationCarousel({ items }: { items: CarouselItem[] }) {
+export function DestinationCarousel({
+  items,
+  title,
+  note,
+}: {
+  items: CarouselItem[];
+  /** Nagłówek pasa — renderowany TUTAJ, patrz komentarz przy wierszu nagłówka. */
+  title: string;
+  /** Dopisek po prawej (np. skąd loty). */
+  note: string;
+}) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
@@ -57,20 +67,38 @@ export function DestinationCarousel({ items }: { items: CarouselItem[] }) {
   }, [emblaApi, onSelect]);
 
   return (
-    <div className="relative">
-      {/* Strzałki: desktop only — na mobile swipe jest naturalniejszy, a
-          przyciski zabierałyby szerokość kart. */}
-      <div className="pointer-events-none absolute -top-11 right-0 hidden gap-1.5 sm:flex">
-        <ArrowButton
-          direction="prev"
-          disabled={!canPrev}
-          onClick={() => emblaApi?.scrollPrev()}
-        />
-        <ArrowButton
-          direction="next"
-          disabled={!canNext}
-          onClick={() => emblaApi?.scrollNext()}
-        />
+    <div>
+      {/* Nagłówek pasa renderuje KARUZELA, nie strona. Wcześniej tytuł i
+          dopisek żyły w home-hybrid-hero, a strzałki wisiały nad nimi jako
+          `absolute -top-11 right-0` — czyli dwa niezależnie pozycjonowane
+          elementy walczyły o ten sam prawy górny róg i strzałki wchodziły na
+          napis „Loty z Warszawy · ceny w PLN" (zgłoszenie właściciela ze
+          zrzutu). Teraz to JEDEN wiersz flex: tytuł, dopisek i strzałki są
+          rodzeństwem, więc nachodzenie jest niemożliwe konstrukcyjnie, a nie
+          „dobrane offsetem". */}
+      <div className="mb-4 flex items-end justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-bright">
+          {title}
+        </p>
+        <div className="flex items-end gap-3">
+          {/* Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"
+              do „Lot", więc kontekst wylotu niesie ten dopisek. */}
+          <span className="text-right text-[11px] leading-tight text-white/60">{note}</span>
+          {/* Strzałki: desktop only — na mobile swipe jest naturalniejszy, a
+              przyciski zabierałyby szerokość kart. */}
+          <div className="hidden shrink-0 gap-1.5 sm:flex">
+            <ArrowButton
+              direction="prev"
+              disabled={!canPrev}
+              onClick={() => emblaApi?.scrollPrev()}
+            />
+            <ArrowButton
+              direction="next"
+              disabled={!canNext}
+              onClick={() => emblaApi?.scrollNext()}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden" ref={emblaRef}>
@@ -113,7 +141,7 @@ function ArrowButton({
       disabled={disabled}
       aria-label={direction === "prev" ? "Poprzednie kierunki" : "Następne kierunki"}
       className={cn(
-        "pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border transition",
+        "inline-flex h-9 w-9 items-center justify-center rounded-full border transition",
         disabled
           ? "cursor-not-allowed border-white/15 text-white/30"
           : "border-white/30 text-white hover:border-white/60 hover:bg-white/10",
