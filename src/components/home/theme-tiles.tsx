@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { LocalizedLink } from "@/components/site/localized-link";
+import { AssistantTile, TrackedTile } from "./theme-tiles-client";
 
 // „Nie wiesz, dokąd jechać?" — 4 duże kafle tematyczne → /wyjazdy/[typ]
 // (2026-07-03, decyzja właściciela: wizualna wersja mood-chipów wypełnia
@@ -30,11 +31,15 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
       </p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {tiles.map((tile) => (
+        {/* Kafel konsjerża PIERWSZY: to jedyna ścieżka, która nie wymaga od
+            użytkownika żadnej decyzji z góry — a sekcja istnieje właśnie dla
+            niezdecydowanych. */}
+        <AssistantTile />
+        {tiles.map((tile, index) => (
+          <TrackedTile key={tile.slug} slug={tile.slug} position={index + 1}>
           <LocalizedLink
-            key={tile.slug}
             href={`/wyjazdy/${tile.slug}`}
-            className="group relative flex aspect-[4/3] overflow-hidden rounded-2xl border border-emerald-900/10 bg-emerald-50 shadow-[0_8px_24px_rgba(16,84,48,0.08)] transition hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(16,84,48,0.16)] lg:aspect-[4/3]"
+            className="group relative flex aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-brand-soft shadow-md transition hover:-translate-y-1 hover:shadow-lg lg:aspect-[4/3]"
           >
             <Image
               src={tile.heroImage}
@@ -46,11 +51,14 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
             <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.85)_55%,rgba(5,18,11,0.92)_100%)] p-3 text-white sm:p-4">
               <h3 className="font-display text-lg leading-tight sm:text-xl">{tile.label}</h3>
               <p className="mt-0.5 hidden text-[11px] text-white/80 sm:block">{tile.tagline}</p>
-              <p className="mt-1 text-[11px] font-semibold text-amber-300">
+              {/* Biel zamiast amber: akcent amber jest zarezerwowany dla ceny
+                  i jednego CTA — na etykiecie nawigacyjnej rozmywał sygnał. */}
+              <p className="mt-1 text-[11px] font-semibold text-white/90">
                 Zobacz kierunki <span aria-hidden>→</span>
               </p>
             </div>
           </LocalizedLink>
+          </TrackedTile>
         ))}
       </div>
     </section>

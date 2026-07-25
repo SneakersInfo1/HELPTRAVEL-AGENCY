@@ -1,7 +1,7 @@
 import { CinematicBackdrop } from "./cinematic-backdrop";
+import { DestinationCarousel } from "./destination-carousel";
 import { DestinationTile } from "./destination-tile";
 import { HomeSearchTabs } from "./home-search-tabs";
-import { MoodChips } from "./mood-chips";
 import { PaymentMethods } from "./payment-methods";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
@@ -12,6 +12,8 @@ interface FeaturedTile {
   fromPricePerNight?: number;
   /** Najtańszy lot w obie strony z WAW (snapshot, Faza 6). */
   flightFromPln?: number;
+  /** Cena całego wyjazdu na osobę + termin, z którego wynika (snapshot). */
+  packagePerPerson?: { perPersonPln: number; checkin: string; checkout: string };
 }
 
 export interface TrustpilotDisplay {
@@ -50,18 +52,16 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               formularz jako kotwica. Mood-chipy zeszły POD formularz (mniej
               konkurencji o „gdzie kliknąć"). */}
           <div className="relative z-20 flex min-h-[600px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[620px] sm:px-8 sm:py-12 lg:min-h-[640px] lg:px-12">
-            {/* Eyebrow — jedna, dopracowana linia */}
-            <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90 shadow-[0_2px_12px_rgba(0,0,0,0.18)] backdrop-blur-md sm:tracking-[0.24em] sm:text-[11px]">
-              <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-              Loty · Hotele · cały wyjazd
-            </span>
+            {/* USUNIĘTY eyebrow „Loty · Hotele · cały wyjazd": powtarzał treść
+                nagłówka, a na mobile spychał formularz poniżej pierwszego
+                ekranu. Wraz z chipami (przeniesionymi do sekcji kategorii)
+                to ~120 px odzyskane nad wyszukiwarką. */}
 
-            {/* Headline — jasna obietnica „co to za serwis" (wybór właściciela). */}
-            <h1 className="mt-6 max-w-3xl font-display text-[2.15rem] font-semibold leading-[1.05] text-white drop-shadow-[0_2px_28px_rgba(0,0,0,0.55)] sm:mt-7 sm:text-5xl lg:text-[3.5rem]">
-              Lot i hotel{" "}
-              <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 bg-clip-text text-transparent">
-                w jednym miejscu
-              </span>
+            {/* Headline — jasna obietnica „co to za serwis" (wybór właściciela).
+                Bez gradientu na tekście: jednolita biel czyta się lepiej na
+                zdjęciu i nie jest najbardziej rozpoznawalnym znakiem AI-slopu. */}
+            <h1 className="max-w-3xl text-balance font-display text-hero font-semibold text-white drop-shadow-[0_2px_28px_rgba(0,0,0,0.55)]">
+              Lot i hotel w jednym miejscu
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.45)] sm:text-base sm:leading-8">
               Ceny w PLN, płatność jak w sklepie, bez rejestracji.
@@ -125,14 +125,10 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               <PaymentMethods />
             </div>
 
-            {/* Mood-chipy — ZDEGRADOWANE pod formularz: drugorzędna ścieżka
-                „przeglądania", nie konkurują z głównym CTA (wyszukiwarką). */}
-            <div className="mt-7 w-full max-w-2xl sm:mt-8">
-              <p className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-white/70">
-                Lub zacznij od pomysłu na wyjazd
-              </p>
-              <MoodChips />
-            </div>
+            {/* USUNIĘTE: pas chipów „Lub zacznij od pomysłu na wyjazd".
+                Duplikował sekcję „Nie wiesz, dokąd jechać?" niżej — i to z
+                INNĄ listą kategorii (Góry i Budżet były tylko tutaj). Jedno
+                miejsce z kategoriami, jedna lista: ThemeTiles. */}
           </div>
         </div>
 
@@ -149,29 +145,29 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               Loty z Warszawy · ceny w PLN
             </span>
           </div>
-          {/* Poziomy pasek zamiast siatki (właściciel 2026-07-04: 18 kafli
-              w 3 rzędach zajmowało za dużo pionu). Jeden rząd ze snapem;
-              szerokości dobrane tak, by ZAWSZE wystawał „podgląd" kolejnego
-              kafelka (jawny sygnał, że można przewijać). Ujemne marginesy =
-              scroll bleeduje do krawędzi sekcji, pierwszy kafel wyrównany do
-              treści. */}
-          <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 sm:-mx-8 sm:gap-4 sm:px-8 lg:-mx-12 lg:px-12 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
-            {featured.map((tile) => (
-              <div
-                key={tile.destination.slug}
-                className="w-[42%] shrink-0 snap-start sm:w-[30%] md:w-[22%] lg:w-[18%] xl:w-[14.5%]"
-              >
+          {/* Embla zamiast natywnego overflow-x: znika szary pasek przewijania
+              (wyglądał na niedokończony interfejs), dochodzą strzałki, snap
+              i obsługa klawiatury. Ucięta karta po prawej zostaje — to
+              świadomy sygnał „jest więcej". */}
+          <DestinationCarousel
+            items={featured.map((tile) => ({
+              slug: tile.destination.slug,
+              pricePerPerson: tile.packagePerPerson?.perPersonPln,
+              node: (
+                // Bez badge'a „Polecane": był na KAŻDEJ karcie, więc nie
+                // znaczył nic. Badge wraca tylko tam, gdzie niesie realną
+                // informację (patrz DestinationTile).
                 <DestinationTile
                   destination={tile.destination}
                   heroImage={tile.heroImage}
                   fromPricePerNight={tile.fromPricePerNight}
                   flightFromPln={tile.flightFromPln}
+                  packagePerPerson={tile.packagePerPerson}
                   size="lg"
-                  badge="Polecane"
                 />
-              </div>
-            ))}
-          </div>
+              ),
+            }))}
+          />
         </div>
       </section>
     </>

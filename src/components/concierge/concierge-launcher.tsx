@@ -25,6 +25,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { createPortal } from "react-dom";
 
 import { ConciergeChat } from "./concierge-chat";
+import { CONCIERGE_OPEN_EVENT } from "@/lib/concierge/open-event";
 import { track } from "@/lib/analytics/track";
 
 // Kill-switch (domyślnie WŁĄCZONE) — ta sama konwencja co
@@ -96,11 +97,27 @@ export function ConciergeLauncher() {
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  const openPanel = useCallback(() => {
-    if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    setPanel("expanded");
-    track("concierge_open", { page_path: window.location.pathname });
-  }, []);
+  const openPanel = useCallback(
+    (source: "launcher" | "category_tile" | "proactive" = "launcher") => {
+      if (closeTimer.current) window.clearTimeout(closeTimer.current);
+      setPanel("expanded");
+      track("concierge_open", { page_path: window.location.pathname, source });
+    },
+    [],
+  );
+
+  // Kontrakt dla wejść SPOZA tego drzewa (redesign 2026-07: czat ma trzy
+  // wejścia, nie jeden dymek). Kafel „Powiedz budżet…" w sekcji kategorii
+  // wysyła zdarzenie okna zamiast przeciągać stan przez pół aplikacji —
+  // launcher jest montowany globalnie w layoucie, więc zawsze słucha.
+  useEffect(() => {
+    const onExternalOpen = (event: Event) => {
+      const source = (event as CustomEvent<{ source?: string }>).detail?.source;
+      openPanel(source === "category_tile" ? "category_tile" : "launcher");
+    };
+    window.addEventListener(CONCIERGE_OPEN_EVENT, onExternalOpen);
+    return () => window.removeEventListener(CONCIERGE_OPEN_EVENT, onExternalOpen);
+  }, [openPanel]);
 
   const closePanel = useCallback(() => {
     setEntered(false);
@@ -216,7 +233,7 @@ export function ConciergeLauncher() {
           <button
             ref={bubbleRef}
             type="button"
-            onClick={openPanel}
+            onClick={() => openPanel("launcher")}
             aria-haspopup="dialog"
             // Statycznie false: ten przycisk istnieje TYLKO w stanie "bubble"
             // (odmontowany, gdy panel otwarty), więc dynamiczne wiązanie ze

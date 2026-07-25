@@ -194,6 +194,10 @@ export interface TrackEventMap {
   concierge_open: {
     /** Ścieżka strony, na której otwarto czat. */
     page_path?: string;
+    /** Którym wejściem użytkownik trafił do czatu. Redesign 2026-07 dał trzy
+     *  wejścia zamiast jednego dymka — bez tego parametru nie wiadomo, które
+     *  z nich faktycznie działa i czy warto utrzymywać pozostałe. */
+    source?: "hero_tab" | "category_tile" | "launcher" | "proactive";
   };
   concierge_message: {
     /** Długość wiadomości użytkownika w znakach — świadomie BEZ treści (zero PII). */
@@ -212,6 +216,49 @@ export interface TrackEventMap {
   };
   /** Klik „Spróbuj ponownie" po błędzie odpowiedzi — mierzy tarcie transportu (cold start/timeout). */
   concierge_retry: {
+    page_path?: string;
+  };
+
+  // ── Homepage: lejek NAD wyszukiwarką (redesign 2026-07) ──
+  // Powód istnienia całej tej grupy: do tej pory z homepage leciały tylko
+  // `hotel_search_submit` i `flight_search`, czyli wyłącznie moment WYSŁANIA
+  // formularza. Wszystko wcześniej — co użytkownik w ogóle zobaczył, w co
+  // kliknął, czy przełączył zakładkę — było niewidoczne. Przy konwersji 0,07%
+  // to właśnie ten odcinek trzeba mierzyć, bo tam ludzie odpadają.
+
+  /** Start wyszukiwania z hero. Rozróżnia intencję: konkretny kierunek vs
+   *  „gdziekolwiek" i termin sztywny vs elastyczny — bez tego nie da się
+   *  ocenić, czy niezdecydowani w ogóle ruszają dalej. */
+  search_started: {
+    tab: "hotels" | "flights" | "assistant";
+    destination_type: "specific" | "anywhere";
+    date_mode: "fixed" | "flexible";
+  };
+  /** Przełączenie zakładki hero — mierzy zainteresowanie trzecią ścieżką
+   *  („Nie wiem dokąd”) względem klasycznych formularzy. */
+  hero_tab_changed: {
+    to: "hotels" | "flights" | "assistant";
+  };
+  /** Klik kafla kategorii — czy sekcja „Nie wiesz dokąd" realnie prowadzi dalej. */
+  category_tile_clicked: {
+    slug: string;
+    position?: number;
+  };
+  /** Klik karty kierunku w karuzeli — mierzy też, jak głęboko ludzie przewijają. */
+  destination_card_clicked: {
+    slug: string;
+    position?: number;
+    price_per_person?: number;
+  };
+  /** Klik karty pakietu — najmocniejszy produkt, do tej pory bez pomiaru. */
+  package_card_clicked: {
+    slug: string;
+    position?: number;
+    price_per_person?: number;
+  };
+  /** Użycie zwiniętego paska wyszukiwania w sticky navie — czy wzorzec
+   *  „szukaj z dowolnego miejsca strony" jest w ogóle używany. */
+  sticky_search_used: {
     page_path?: string;
   };
 

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Plane } from "lucide-react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { formatPLN } from "@/lib/money";
@@ -90,8 +91,8 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
                   sizes="(max-width: 640px) 82vw, (max-width: 1024px) 46vw, 24vw"
                   className="object-cover transition duration-300 group-hover:scale-[1.04]"
                 />
-                <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm">
-                  <span aria-hidden>✈</span> Lot + hotel
+                <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm">
+                  <Plane aria-hidden strokeWidth={2} className="h-3.5 w-3.5" /> Lot + hotel
                 </span>
               </div>
               <div className="flex flex-1 flex-col p-4">

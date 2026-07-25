@@ -94,13 +94,21 @@ export async function HomePageView() {
   // Kafle tematyczne „Nie wiesz, dokąd jechać?" — 4 moody z /wyjazdy.
   // Zdjęcie = media pierwszego picka moodu (ten sam resolver co kafelki;
   // pick bez profilu w seedzie → kafel pomijany, nie pusty obrazek).
-  const THEME_SLUGS = ["plaza", "city-break", "slonce-zima", "kultura"] as const;
+  // KOMPLET 6 kategorii. Wcześniej były tu 4, a „Góry" i „Budżet" żyły
+  // wyłącznie w chipach pod hero — po scaleniu duplikatu (redesign 2026-07)
+  // te dwie ścieżki zniknęłyby z serwisu, więc dochodzą tutaj.
+  const THEME_SLUGS = ["plaza", "city-break", "slonce-zima", "kultura", "gory", "budzet"] as const;
   const themeTiles: ThemeTile[] = (
     await Promise.all(
       THEME_SLUGS.map(async (slug): Promise<ThemeTile | null> => {
         const mood = TRAVEL_MOODS.find((m) => m.slug === slug);
-        const pickSlug = mood?.picks[0]?.slug;
-        const profile = pickSlug ? getDestinationProfileBySlug(pickSlug) : undefined;
+        // PIERWSZY pick Z PROFILEM, nie ślepo picks[0]: część picków to wpisy
+        // czysto redakcyjne bez `slug` (np. Innsbruck w moodzie „gory"), więc
+        // sztywne picks[0] wywalało CAŁY kafel kategorii — „Góry" znikały ze
+        // strony, mimo że mood ma dalej kierunki z kompletnym profilem.
+        const profile = mood?.picks
+          .map((pick) => (pick.slug ? getDestinationProfileBySlug(pick.slug) : undefined))
+          .find((candidate): candidate is DestinationProfile => Boolean(candidate));
         if (!mood || !profile) return null;
         const media = await resolveDestinationMedia(profile);
         return {
@@ -129,6 +137,13 @@ export async function HomePageView() {
       pickFreshPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
     flightFromPln:
       pickFreshFlightPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
+    // JEDNA cena całego wyjazdu (lot + noclegi) na osobę — ten sam odczyt,
+    // z którego korzysta sekcja pakietów. Gdy jest, kafelek pokazuje ją
+    // ZAMIAST rozbicia hotel/lot (koniec sumowania w głowie). Gdy jej nie ma
+    // (kierunek bez świeżego pakietu), kafelek zostaje przy tym, co realnie
+    // wiadomo — nic nie jest doliczane lokalnie.
+    packagePerPerson:
+      pickFreshPackage(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
   }));
 
   // Pakiety „Cały wyjazd w jednej cenie" — pula = WSZYSTKIE grzane kierunki

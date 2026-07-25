@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Mail, MessageCircle, ShieldCheck, UserRoundX } from "lucide-react";
 
 // Sekcja zaufania pod kafelkami (server component, zero fetch). Zastępuje
 // dawną sekcję „Zacznij od pomysłu na wyjazd" (6 kart), która DUBLOWAŁA chipy
@@ -41,11 +42,14 @@ function reviewsLabel(n: number): string {
 // Pas korzyści (2026-07-03, wzór Trip.com — właściciel: „warto dodatkowo
 // wzbogacić"). WYŁĄCZNIE fakty już komunikowane gdzie indziej w serwisie —
 // zero nowych obietnic.
+// Ikony z jednego zestawu (Lucide, jednakowy stroke-width) zamiast emoji —
+// emoji renderują się inaczej na każdym systemie i nie da się ich dopasować
+// wagą ani kolorem do reszty interfejsu.
 const BENEFITS = [
-  { icon: "🔒", text: "Bezpieczna płatność Stripe" },
-  { icon: "✉️", text: "Potwierdzenie od razu na e-mail" },
-  { icon: "🇵🇱", text: "Polskie wsparcie" },
-  { icon: "💤", text: "Bez zakładania konta" },
+  { Icon: ShieldCheck, text: "Bezpieczna płatność Stripe" },
+  { Icon: Mail, text: "Potwierdzenie od razu na e-mail" },
+  { Icon: MessageCircle, text: "Polskie wsparcie" },
+  { Icon: UserRoundX, text: "Bez zakładania konta" },
 ] as const;
 
 export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
@@ -55,10 +59,10 @@ export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
       className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8"
     >
       <ul className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-medium text-emerald-950/80 sm:mb-5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-8 sm:text-sm">
-        {BENEFITS.map((b) => (
-          <li key={b.text} className="inline-flex items-center gap-2">
-            <span aria-hidden className="text-base leading-none">{b.icon}</span>
-            {b.text}
+        {BENEFITS.map(({ Icon, text }) => (
+          <li key={text} className="inline-flex items-center gap-2">
+            <Icon aria-hidden strokeWidth={2} className="h-4 w-4 shrink-0 text-brand" />
+            {text}
           </li>
         ))}
       </ul>
