@@ -177,6 +177,46 @@ test("getHotelDetail: śmieciowy format id odrzucany LOKALNIE (zero sieci, błą
   });
 });
 
+// Regresja incydentu prod 2026-07: `LITEAPI_VALIDATION: LiteAPI response failed
+// validation at /data/hotel`. Sparse hotele (lp655ab8cb The Senses Tsilivi,
+// lp656b7245 Azrac Surf, lp6560dcb5 Gdańsk) zwracają `policies:null` (+ amenities/
+// hotelImages/rooms:null). Zanim schemat tolerował null, `fetchDetail("pl")`
+// rzucał LiteApiValidationError → 117× 500 + 35× „Unhandled Rejection". Ten test
+// pilnuje najwierniejszej ścieżki: getHotelDetail dla takiego payloadu NIE rzuca.
+test("getHotelDetail: sparse hotel (policies/amenities/hotelImages/rooms = null) NIE rzuca LITEAPI_VALIDATION", async () => {
+  const { getHotelDetail } = await import("./hotel");
+  await withEnv({ ...BASE_ENV }, async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      // ten sam sparse kształt dla pl i en — dokładnie jak na prod
+      const body = {
+        data: {
+          id: "lp655ab8cb",
+          name: "The Senses Tsilivi",
+          city: "Tsilivi",
+          country: "GR",
+          policies: null,
+          amenities: null,
+          hotelImages: null,
+          rooms: null, // klucz spoza schematu — stripowany, nieszkodliwy
+        },
+      };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    try {
+      const detail = await getHotelDetail("lp655ab8cb");
+      assert.equal(detail.name, "The Senses Tsilivi");
+      assert.deepEqual(detail.policies ?? [], []); // null zdegradowane do []
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
 test("getHotelDetail: explicit language=en stays a single direct fetch", async () => {
   const { getHotelDetail } = await import("./hotel");
   await withEnv({ ...BASE_ENV }, async () => {

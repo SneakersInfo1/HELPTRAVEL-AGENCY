@@ -109,9 +109,18 @@ const HotelImageSchema = z
   .passthrough();
 
 export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
-  description: z.string().optional(),
-  hotelDescription: z.string().optional(),
-  amenities: z.array(z.string()).optional(),
+  // KAŻDE opcjonalne pole detalu jest `.nullish()` (nie `.optional()`). INCYDENT
+  // 2026-07 (`LITEAPI_VALIDATION at /data/hotel`, 117× 500 + 35× unhandled): sparse
+  // hotele (The Senses Tsilivi lp655ab8cb, Azrac Surf lp656b7245, Gdańsk lp6560dcb5)
+  // zwracają `null` dla PUSTYCH pól (policies/amenities/hotelImages/…) zamiast je
+  // pomijać. `.optional()` przepuszcza tylko `undefined` → `null` rzucał
+  // `expected array/string, received null` → CAŁA walidacja detalu padała →
+  // getHotelDetail throw. `.nullish()` = `.nullable().optional()`: sparse ≡ brak,
+  // nie błąd. Konsumenci robią `?? []` / optional-chaining, więc null degraduje się
+  // czysto (patrz page.tsx). To ta sama filozofia co per-element catch na liście.
+  description: z.string().nullish(),
+  hotelDescription: z.string().nullish(),
+  amenities: z.array(z.string()).nullish(),
   // LiteAPI exposes the bulk of a property's REAL feature list under
   // `hotelFacilities` / `facilities`, NOT `amenities` (which is frequently
   // empty). Supplier shapes vary — plain strings for some, `{ name }` objects
@@ -119,8 +128,8 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   // the UI (see lib/liteapi/facilities.ts). Parsing these away is exactly why
   // detail pages looked sparse: the richest, 100%-true data never reached the
   // page. (2026-06)
-  hotelFacilities: z.array(z.unknown()).optional(),
-  facilities: z.array(z.unknown()).optional(),
+  hotelFacilities: z.array(z.unknown()).nullish(),
+  facilities: z.array(z.unknown()).nullish(),
   // TA SAMA klasa błędu co Sharm na liście, ale na STRONIE HOTELU. Sztywne
   // `z.string().url()` na `url`/`urlHd` rzucało invalid_format gdy POJEDYNCZE
   // zdjęcie galerii miało pusty/bezschematowy URL → cała walidacja szczegółów
@@ -128,11 +137,14 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   // znika po kliknięciu"). Teraz: złe zdjęcie WYPADA (per-element filter, jak na
   // liście), urlHd toleruje śmieci → undefined. Hotel ZOSTAJE.
   hotelImages: z.preprocess(
+    // Nie-tablica (null / obiekt / śmieć) → undefined, NIE przepuszczamy dalej:
+    // `hotelImages:null` na sparse hotelu wywalał `expected array, received null`
+    // (część incydentu 2026-07). Brak zdjęć ≡ undefined, hotel ZOSTAJE.
     (val) =>
-      Array.isArray(val) ? val.filter((item) => HotelImageSchema.safeParse(item).success) : val,
+      Array.isArray(val) ? val.filter((item) => HotelImageSchema.safeParse(item).success) : undefined,
     z.array(HotelImageSchema).optional(),
   ),
-  policies: z.array(z.object({ name: z.string(), description: z.string() })).optional(),
+  policies: z.array(z.object({ name: z.string(), description: z.string() })).nullish(),
   // Free-text "important information" block (check-in instructions, deposits,
   // mandatory fees…). Shape is usually a string but kept as unknown so an
   // array/object variant can never break the parse — coerced in the UI.
@@ -145,8 +157,8 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
       checkinStart: z.string().optional(),
       checkinEnd: z.string().optional(),
     })
-    .optional(),
-  currency: z.string().optional(),
+    .nullish(),
+  currency: z.string().nullish(),
 });
 export type LiteApiHotelDetail = z.infer<typeof LiteApiHotelDetailSchema>;
 
