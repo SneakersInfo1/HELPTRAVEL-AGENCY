@@ -27,6 +27,7 @@ import { Check, Search } from "lucide-react";
 
 import {
   BUDGET_BANDS,
+  budgetBandLabel,
   cheapestPrice,
   dealsLabel,
   filterDeals,
@@ -51,9 +52,15 @@ interface TripPickerProps {
   themeMembership: Readonly<Record<string, readonly string[]>>;
 }
 
-/** Wspólny kształt chipa. Wysokość 44 px = próg dotykowy (90% ruchu to telefon). */
+/**
+ * Wspólny kształt chipa. Wysokość 44 px = próg dotykowy (90% ruchu to telefon).
+ *
+ * `active:scale` z tego samego powodu, co na kartach: na telefonie `hover:`
+ * nie istnieje, więc bez stanu wciśnięcia chip nie potwierdza dotknięcia,
+ * dopóki nie przeliczy się licznik.
+ */
 const CHIP_BASE =
-  "inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2";
+  "inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition duration-200 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:active:scale-100";
 
 function Chip({
   active,
@@ -174,7 +181,12 @@ export function TripPicker({ deals, themes, themeMembership }: TripPickerProps) 
       <div className="grid gap-6 sm:gap-7">
         <Step index={1} title="Ile chcesz wydać na osobę?">
           {BUDGET_BANDS.map((b) => (
-            <Chip key={b.id} active={budget === b.id} label={b.label} onClick={() => selectBudget(b.id)} />
+            <Chip
+              key={b.id}
+              active={budget === b.id}
+              label={budgetBandLabel(b)}
+              onClick={() => selectBudget(b.id)}
+            />
           ))}
         </Step>
 
@@ -217,7 +229,7 @@ export function TripPicker({ deals, themes, themeMembership }: TripPickerProps) 
         <a
           href={ctaHref}
           onClick={onSubmit}
-          className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-bold shadow-[var(--shadow-sm)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-bold shadow-[var(--shadow-sm)] transition duration-200 ease-out hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:active:scale-100"
         >
           {/* span: globalne a{color:inherit} bije text-* na <a> */}
           <Search aria-hidden strokeWidth={2} className="h-4 w-4 shrink-0 text-white" />

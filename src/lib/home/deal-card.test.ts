@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 
 import {
   BUDGET_BANDS,
+  budgetBandLabel,
   cheapestPrice,
   dealsLabel,
   filterDeals,
@@ -191,6 +192,27 @@ test("licznik i najniższa cena liczone z TEJ SAMEJ puli co wynik", () => {
   assert.equal(r.length, 2);
   assert.equal(cheapestPrice(r), 737);
   assert.equal(cheapestPrice([]), null, "pusta pula nie może dać ceny");
+});
+
+test("etykiety budżetu mają separator tysięcy i jednostkę tylko raz", () => {
+  const etykiety = BUDGET_BANDS.map(budgetBandLabel);
+  // Spacje niełamliwe zapisane JAWNIE jako \u00A0, nie dosłownym znakiem:
+  // w źródle U+00A0 jest nie do odróżnienia od zwykłej spacji, a różnica
+  // decyduje o tym, czy kwota złamie się na końcu wiersza. Ten test padł przy
+  // pierwszym uruchomieniu dokładnie z tego powodu — oczekiwane napisy
+  // wyglądały poprawnie. Zweryfikowane w node: Intl dla pl-PL wstawia U+00A0
+  // i jako separator tysięcy, i przed symbolem waluty.
+  assert.deepEqual(etykiety, [
+    "do 1\u00A0000\u00A0zł",
+    "1\u00A0000–1\u00A0500\u00A0zł",
+    "1\u00A0500–2\u00A0500\u00A0zł",
+    "powyżej 2\u00A0500\u00A0zł",
+  ]);
+  // Separator MUSI być niełamliwy — inaczej chip złamie się w środku kwoty.
+  for (const e of etykiety) {
+    assert.ok(!/\d \d/.test(e), `zwykła spacja w liczbie: ${e}`);
+    assert.equal(e.match(/zł/g)?.length, 1, `jednostka powtórzona w: ${e}`);
+  }
 });
 
 test("zakresy budżetu pokrywają się granicami, bez dziur", () => {

@@ -114,7 +114,7 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
             node: (
               <LocalizedLink
                 href={deal.href}
-                className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-md)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-lg)]"
+                className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-md)] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-lg)] active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
               >
                 <div className="relative aspect-[16/10] overflow-hidden">
                   <Image
@@ -122,9 +122,9 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
                     alt={`${deal.cityLabel}, ${deal.countryLabel}`}
                     fill
                     sizes="(max-width: 640px) 82vw, (max-width: 1024px) 46vw, 24vw"
-                    className="object-cover transition duration-300 group-hover:scale-[1.04]"
+                    className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                   />
-                  <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm">
+                  <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-sm">
                     <Plane aria-hidden strokeWidth={2} className="h-3.5 w-3.5" /> Lot + hotel
                   </span>
                 </div>
@@ -133,9 +133,9 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
                     <h3 className="truncate font-display text-xl leading-tight text-ink">
                       {deal.cityLabel}
                     </h3>
-                    <span className="shrink-0 text-xs uppercase tracking-wide text-ink-muted">
-                      {deal.countryLabel}
-                    </span>
+                    {/* Zapis zdaniowy, tak samo jak na kafelkach sekcji A —
+                        ta sama informacja ma mieć ten sam kształt w obu pasach. */}
+                    <span className="shrink-0 text-xs text-ink-muted">{deal.countryLabel}</span>
                   </div>
                   <p className="mt-1 text-xs text-ink-muted">
                     {range} · {nightsLabel(nights)}
@@ -161,7 +161,11 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
                         zagnieżdżony element interaktywny dałby drugi tab-stop
                         prowadzący w to samo miejsce. Wysokość 44 px = próg
                         dotykowy, mimo że celem dotyku jest cała karta. */}
-                    <span className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand text-sm font-bold text-white transition group-hover:bg-brand-strong">
+                    {/* `group-hover:opacity-90`, a nie własne przyciemnienie:
+                        to jest wzorzec przycisku podstawowego w tym repo
+                        (dobieracz, konsjerż, pasek nawigacji). Czwarty wariant
+                        hovera na piątym przycisku to początek dryfu. */}
+                    <span className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand text-sm font-bold text-white transition duration-200 ease-out group-hover:opacity-90 motion-reduce:transition-none">
                       Wybierz hotel
                       <ArrowRight aria-hidden strokeWidth={2.5} className="h-4 w-4 shrink-0" />
                     </span>

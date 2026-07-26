@@ -144,13 +144,31 @@ export function priceAnchor(deal: DealCard): { competitor: number; savingPercent
 
 /** Zakresy budżetu w dobieraczu z sekcji C. `maxPln: null` = bez górnej granicy. */
 export const BUDGET_BANDS = [
-  { id: "do-1000", label: "do 1000 zł", minPln: 0, maxPln: 1000 },
-  { id: "1000-1500", label: "1000–1500 zł", minPln: 1000, maxPln: 1500 },
-  { id: "1500-2500", label: "1500–2500 zł", minPln: 1500, maxPln: 2500 },
-  { id: "2500-plus", label: "powyżej 2500 zł", minPln: 2500, maxPln: null },
+  { id: "do-1000", minPln: 0, maxPln: 1000 },
+  { id: "1000-1500", minPln: 1000, maxPln: 1500 },
+  { id: "1500-2500", minPln: 1500, maxPln: 2500 },
+  { id: "2500-plus", minPln: 2500, maxPln: null },
 ] as const;
 
 export type BudgetBandId = (typeof BUDGET_BANDS)[number]["id"];
+
+/**
+ * Etykieta chipa budżetu — WYLICZANA z granic, nie wpisywana ręcznie.
+ *
+ * Wpisane z ręki („1000–1500 zł") omijały `formatPricePln`, więc chipy
+ * pokazywały kwoty bez separatora tysięcy tuż obok kart z „1 480 zł". Ten sam
+ * rodzaj liczby w dwóch zapisach na jednym ekranie wygląda jak niedokończony
+ * interfejs, a przy cenach kosztuje więcej niż wygląd.
+ */
+export function budgetBandLabel(band: (typeof BUDGET_BANDS)[number]): string {
+  if (band.maxPln === null) return `powyżej ${formatPricePln(band.minPln)}`;
+  if (band.minPln === 0) return `do ${formatPricePln(band.maxPln)}`;
+  // Półpauza bez spacji — polski zapis zakresu liczbowego. Jednostka pada raz,
+  // na końcu. Odcięcie przez `\s`, a NIE przez `" zł"`: `Intl` stawia przed
+  // symbolem waluty spację NIEŁAMLIWĄ, więc dosłowna spacja by nie trafiła
+  // i etykieta zostałaby jako „1 000 zł–1 500 zł".
+  return `${formatPricePln(band.minPln).replace(/\s*zł$/u, "")}–${formatPricePln(band.maxPln)}`;
+}
 
 /** Filtr dobieracza. `null` w polu = „bez ograniczenia". */
 export interface DealFilter {

@@ -140,7 +140,12 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
 
         {/* Kafelki pod hero — OSOBNA sekcja z własnym, nieprzezroczystym tłem
             (backdrop już tu nie sięga). */}
-        <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-6 sm:px-8 sm:py-8 lg:px-12">
+        {/* `[--focus-ring:#fff]`: globalny pierścień focusu jest zielony
+            (`--brand`), co na tym pasie daje 1,87:1 przy wymaganych 3:1 —
+            osoba nawigująca klawiaturą nie widziałaby, na której z osiemnastu
+            kart stoi. Zmienną czyta reguła `:focus-visible` w globals.css
+            i dziedziczą ją też strzałki karuzeli. */}
+        <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-6 [--focus-ring:#fff] sm:px-8 sm:py-8 lg:px-12">
           {/* Nagłówek pasa (tytuł + dopisek + strzałki) renderuje sama karuzela
               — inaczej strzałki, pozycjonowane absolutnie, wchodziły na dopisek.
               Embla zamiast natywnego overflow-x: znika szary pasek przewijania
@@ -158,9 +163,14 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
             // bez zmian (18 to jawna decyzja właściciela z 2026-07-03).
             slideClassName="min-w-0 shrink-0 basis-[58%] pl-3 sm:basis-[38%] sm:pl-4 md:basis-[29%] lg:basis-[24%] xl:basis-[19%]"
             header={
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-bright">
+              // <h2>, nie <p>: nazwy miast na kartach to <h3>, więc z tym
+              // nadtytułem jako akapitem dokument skakał z H1 hero prosto na
+              // H3 — czytnik ekranu nie miał czym nazwać tego pasa. Wygląd
+              // bez zmian; ten napis I TAK był nagłówkiem sekcji, tylko
+              // zapisanym niewłaściwym znacznikiem.
+              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-bright">
                 Popularne kierunki
-              </p>
+              </h2>
             }
             aside={
               // Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"

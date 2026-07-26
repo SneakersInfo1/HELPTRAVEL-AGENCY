@@ -76,14 +76,18 @@ export function InspireTile({
   return (
     <LocalizedLink
       href={href}
-      className="group relative flex aspect-[3/4] overflow-hidden rounded-2xl border border-emerald-900/10 bg-emerald-50 shadow-[0_8px_24px_rgba(16,84,48,0.08)] transition hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(16,84,48,0.16)] sm:aspect-[4/5]"
+      // `active:` NIE jest ozdobnikiem: 90% ruchu to telefon, gdzie `hover:`
+      // nie istnieje. Bez stanu wciśnięcia cała informacja zwrotna karty jest
+      // widoczna wyłącznie dla 10% użytkowników, a pozostali dotykają kafelka
+      // i do momentu nawigacji nie dostają żadnego potwierdzenia.
+      className="group relative flex aspect-[3/4] overflow-hidden rounded-2xl bg-brand-soft shadow-[var(--shadow-md)] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-lg)] active:scale-[0.985] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 sm:aspect-[4/5]"
     >
       <Image
         src={heroImage}
         alt={`${cityLabel}, ${countryLabel}`}
         fill
         sizes="(max-width: 640px) 58vw, (max-width: 1024px) 27vw, 17vw"
-        className="object-cover transition duration-300 group-hover:scale-[1.04]"
+        className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
       />
 
       {/* Czas lotu jako CHIP na zdjęciu, nie kolejny wiersz tekstu. Powód:
@@ -92,20 +96,25 @@ export function InspireTile({
           blisko. Wcześniej ta informacja znikała całkowicie, gdy kierunek miał
           cenę pakietu, czyli akurat na kartach, które klika się najczęściej. */}
       {flightHours ? (
-        <span className="absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm">
-          <Plane aria-hidden strokeWidth={2} className="h-3 w-3 shrink-0" />
+        <span className="absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-sm">
+          <Plane aria-hidden strokeWidth={2} className="h-3.5 w-3.5 shrink-0" />
           {flightHours}
           <span className="sr-only"> lotu z Polski</span>
         </span>
       ) : null}
 
       <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.9)_55%,rgba(5,18,11,0.95)_100%)] p-3 text-white">
-        {/* 12 px zamiast 10 px: nadtytuł z krajem był najmniejszym tekstem na
-            całej stronie głównej, a niesie kontekst potrzebny przy miastach,
-            których nazwa nie mówi, gdzie leżą (Faro, Kos, Bari). */}
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200">
-          {countryLabel}
-        </p>
+        {/* 12 px zamiast 10 px: kraj był najmniejszym tekstem na całej stronie
+            głównej, a niesie kontekst potrzebny przy miastach, których nazwa
+            nie mówi, gdzie leżą (Faro, Kos, Bari).
+            Zapis zdaniowy, nie WERSALIKI z rozstrzeleniem: wersaliki czyta się
+            wolniej, a osiemnaście identycznych mikroetykiet nad każdą kartą to
+            szablon, nie hierarchia. Odróżnienie od nazwy miasta niosą rodzina
+            (grotesk vs szeryf), rozmiar i krycie — nie kształt liter.
+            Kolor z krycia bieli, nie `emerald-200`: zieleń poza tokenami
+            konkurowała z bursztynem ceny, a akcent użyty gdziekolwiek indziej
+            przestaje znaczyć „tu jest pieniądz". */}
+        <p className="text-xs font-semibold text-white/70">{countryLabel}</p>
         {/* 18 px na KAŻDYM ekranie, bez skoku do 24 px wyżej. Kafelek w tym
             pasie nie robi się szerszy wraz z ekranem — na 1280 px ma ~197 px,
             czyli mniej niż na telefonie ma proporcjonalnie. Przy 24 px „Palma
@@ -125,7 +134,7 @@ export function InspireTile({
                     karta jest dwa razy szersza i gdzie jest realną ofertą;
                     tutaj wystarczy długość wyjazdu, bo cena jest orientacyjna
                     („od") i ma zachęcić do kliknięcia, a nie zamknąć sprzedaż. */}
-                <p className="text-[11px] leading-snug text-white/80">
+                <p className="text-xs leading-snug text-white/80">
                   lot + {nights ? nightsLabel(nights) : "nocleg"}
                 </p>
                 {/* Cena i jednostka jako JEDEN niełamliwy token: na 375 px
@@ -152,7 +161,7 @@ export function InspireTile({
                   </p>
                 )}
                 {typeof flightFromPln === "number" && (
-                  <p className="mt-0.5 text-[11px] font-medium leading-snug text-white/85">
+                  <p className="mt-0.5 text-xs font-medium leading-snug text-white/85">
                     Lot<span className="hidden sm:inline"> z Warszawy</span>{" "}
                     <span className="whitespace-nowrap">od {formatPricePln(flightFromPln)}</span>
                   </p>
@@ -167,7 +176,7 @@ export function InspireTile({
               na 375 px nie ma. */}
           <span
             aria-hidden
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition group-hover:bg-accent-bright group-hover:text-emerald-950"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition duration-200 ease-out group-hover:bg-accent-bright group-hover:text-brand-strong motion-reduce:transition-none"
           >
             <ChevronRight strokeWidth={2.5} className="h-4 w-4" />
           </span>

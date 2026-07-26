@@ -131,8 +131,22 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Pierścień focus przez ZMIENNĄ, nie przez sztywny token.
+ *
+ * Ta reguła jest poza warstwami, więc bije każdą klasę Tailwinda (utilities są
+ * w `@layer utilities`) — dokładnie ta sama pułapka co przy resecie linków
+ * niżej w pliku. Wniosek: `focus-visible:outline-*` postawione na elemencie
+ * NIE DZIAŁA i nie ma jak zrobić jaśniejszego pierścienia na ciemnym tle.
+ *
+ * A jest to potrzebne: `--brand` na `emerald-950` (pas „Popularne kierunki")
+ * daje 1,87:1 przy wymaganych 3:1 dla wskaźnika focusu (WCAG 1.4.11) — czyli
+ * osoba nawigująca klawiaturą nie widzi, na której z osiemnastu kart stoi.
+ *
+ * Fallback zachowuje dotychczasowe zachowanie wszędzie; ciemne powierzchnie
+ * nadpisują to lokalnie klasą `[--focus-ring:#fff]` na kontenerze.
+ */
 :focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--focus-ring, var(--brand));
   outline-offset: 2px;
   border-radius: 4px;
 }
