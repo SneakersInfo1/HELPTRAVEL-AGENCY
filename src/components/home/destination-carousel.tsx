@@ -12,7 +12,7 @@
 // przewijania i pomiar. Dzięki temu do przeglądarki nie jedzie logika
 // budowania linków ani i18n miast.
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -30,7 +30,39 @@ export interface CarouselItem {
    * porównania, który realnie sprzedaje.
    */
   kind?: "destination" | "package";
+  /** Nazwa pozycji w GA4 (miasto po polsku). */
+  name?: string;
+  /** Kategoria pozycji w GA4 (kraj po polsku). */
+  category?: string;
   node: ReactNode;
+}
+
+/**
+ * Ile sekcji musi być widoczne, żeby uznać ją za obejrzaną. 0,25 — pas kart
+ * jest wysoki, więc „w polu widzenia" ma znaczyć „widać kilka kart", a nie
+ * „wjechał górny piksel". Obie sekcje strony głównej są niższe niż ekran
+ * 375×812, więc ten próg jest osiągalny na każdym urządzeniu docelowym.
+ */
+const VIEW_THRESHOLD = 0.25;
+
+/**
+ * Pozycje w schemacie ecommerce GA4. `index` jest 1-based, żeby zgadzał się
+ * z `position` w starszych eventach — inaczej te same kliknięcia miałyby
+ * w raportach dwie różne numeracje.
+ */
+function toGa4Item(item: CarouselItem, index: number) {
+  return {
+    item_id: item.slug,
+    item_name: item.name ?? item.slug,
+    item_category: item.category,
+    price: item.pricePerPerson,
+    currency: typeof item.pricePerPerson === "number" ? ("PLN" as const) : undefined,
+    index: index + 1,
+  };
+}
+
+function toGa4Items(items: CarouselItem[]) {
+  return items.map(toGa4Item);
 }
 
 export function DestinationCarousel({
@@ -40,6 +72,8 @@ export function DestinationCarousel({
   tone = "dark",
   slideClassName = "min-w-0 shrink-0 basis-[42%] pl-3 sm:basis-[30%] sm:pl-4 md:basis-[22%] lg:basis-[18%] xl:basis-[14.5%]",
   ariaLabel,
+  listId,
+  listName,
 }: {
   items: CarouselItem[];
   /** Lewa strona wiersza nagłówka (nadtytuł pasa albo <h2> sekcji). */
@@ -52,6 +86,15 @@ export function DestinationCarousel({
   slideClassName?: string;
   /** Etykieta strzałek — na stronie są dwie karuzele, muszą się różnić. */
   ariaLabel?: { prev: string; next: string };
+  /**
+   * Identyfikator listy w schemacie ecommerce GA4 (`home_inspire`,
+   * `home_packages`). Podany → pas raportuje `view_item_list` przy wejściu
+   * w pole widzenia i `select_item` przy kliku. Prymitywy, a nie obiekt,
+   * bo obiekt literałowy z rodzica zmieniałby tożsamość co render i restartował
+   * obserwatora.
+   */
+  listId?: string;
+  listName?: string;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
@@ -61,6 +104,10 @@ export function DestinationCarousel({
   });
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Ref, nie stan: „ekspozycja już zaraportowana" nie wpływa na render, a jako
+  // stan wywołałaby przerysowanie całego pasa w momencie przewinięcia do niego.
+  const viewSentRef = useRef(false);
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -81,8 +128,45 @@ export function DestinationCarousel({
     };
   }, [emblaApi, onSelect]);
 
+  // EKSPOZYCJA sekcji. Bez tego znamy tylko licznik kliknięć, więc sekcja
+  // z niskim CTR jest nie do odróżnienia od sekcji, do której nikt nie doscrollował
+  // — a to dwa zupełnie różne wnioski (popraw kartę vs przenieś sekcję wyżej).
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || !listId || viewSentRef.current) return;
+    // Bez IntersectionObserver (stare WebView) po prostu nie raportujemy
+    // ekspozycji. Analityka nigdy nie może wywrócić strony.
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          // Warunkiem jest RATIO, nie `isIntersecting`. Obserwator dostarcza
+          // pierwszy wpis od razu po `observe()`, niezależnie od progu, a
+          // `isIntersecting` jest prawdziwe przy JAKIMKOLWIEK przecięciu. Pas
+          // „Popularne kierunki" zaczyna się na 375×812 poniżej zgięcia, ale
+          // jego górna krawędź wchodzi w ekran już przy scrollu 0 — na samym
+          // `isIntersecting` sekcja raportowałaby ekspozycję każdemu, kto
+          // otworzył stronę i nic nie zrobił. To zawyżałoby wyświetlenia
+          // i zaniżało CTR, czyli odwrotnie do celu tego pomiaru.
+          if (entry.intersectionRatio < VIEW_THRESHOLD || viewSentRef.current) continue;
+          viewSentRef.current = true;
+          io.disconnect();
+          track("view_item_list", {
+            item_list_id: listId,
+            item_list_name: listName ?? listId,
+            items: toGa4Items(items),
+          });
+        }
+      },
+      { threshold: VIEW_THRESHOLD },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [items, listId, listName]);
+
   return (
-    <div>
+    <div ref={rootRef}>
       {/* Nagłówek pasa renderuje KARUZELA, nie strona. Wcześniej tytuł i
           dopisek żyły w home-hybrid-hero, a strzałki wisiały nad nimi jako
           `absolute -top-11 right-0` — czyli dwa niezależnie pozycjonowane
@@ -122,7 +206,7 @@ export function DestinationCarousel({
             <div
               key={item.slug}
               className={slideClassName}
-              onClickCapture={() =>
+              onClickCapture={() => {
                 track(
                   item.kind === "package" ? "package_card_clicked" : "destination_card_clicked",
                   {
@@ -130,8 +214,18 @@ export function DestinationCarousel({
                     position: index + 1,
                     price_per_person: item.pricePerPerson,
                   },
-                )
-              }
+                );
+                // Stary event ZOSTAJE obok nowego: raporty GA4 zbudowane na
+                // `*_card_clicked` mają ciągłość, a `select_item` domyka lejek
+                // ekspozycja → klik w standardowym schemacie ecommerce.
+                if (listId) {
+                  track("select_item", {
+                    item_list_id: listId,
+                    item_list_name: listName ?? listId,
+                    items: [toGa4Item(item, index)],
+                  });
+                }
+              }}
             >
               {item.node}
             </div>

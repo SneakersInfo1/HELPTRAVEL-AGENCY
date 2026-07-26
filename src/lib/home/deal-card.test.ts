@@ -15,6 +15,7 @@ import {
   dealsLabel,
   filterDeals,
   formatDateRange,
+  formatFlightHours,
   formatPricePln,
   nightsBetween,
   nightsLabel,
@@ -129,6 +130,23 @@ test("polska odmiana nocy i wyjazdów", () => {
   assert.equal(dealsLabel(3), "3 wyjazdy");
   assert.equal(dealsLabel(47), "47 wyjazdów");
   assert.equal(dealsLabel(13), "13 wyjazdów");
+});
+
+// ── Czas lotu (kafelek z sekcji A) ──────────────────────────────────────────
+
+test("czas lotu: przecinek dziesiętny, pełne godziny bez „,0”", () => {
+  assert.equal(formatFlightHours(3.5), "~3,5 h");
+  assert.equal(formatFlightHours(3), "~3 h", "„~3,0 h” czyta się jak precyzja, której nie mamy");
+  assert.equal(formatFlightHours(4.25), "~4,3 h");
+});
+
+test("czas lotu: brak danych daje pusty napis, nie „~0 h”", () => {
+  // Kafelek renderuje chip TYLKO dla niepustego napisu — „~0 h” albo „~NaN h”
+  // byłoby widoczną nieprawdą na zdjęciu kierunku.
+  assert.equal(formatFlightHours(0), "");
+  assert.equal(formatFlightHours(-2), "");
+  assert.equal(formatFlightHours(Number.NaN), "");
+  assert.equal(formatFlightHours(Number.POSITIVE_INFINITY), "");
 });
 
 // ── Filtrowanie (dobieracz z sekcji C) ──────────────────────────────────────

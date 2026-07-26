@@ -1,0 +1,178 @@
+import Image from "next/image";
+import { ChevronRight, Plane } from "lucide-react";
+
+import { LocalizedLink } from "@/components/site/localized-link";
+import {
+  formatFlightHours,
+  formatPricePln,
+  nightsBetween,
+  nightsLabel,
+} from "@/lib/home/deal-card";
+import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
+import { DEFAULT_ORIGIN_CITY } from "@/lib/mvp/origin-cities";
+import type { DestinationProfile } from "@/lib/mvp/types";
+
+// Kafelek pasa „Popularne kierunki" (sekcja A).
+//
+// DLACZEGO OSOBNY KOMPONENT, a nie zmiana w DestinationTile: tamten renderuje
+// się także na /kierunki, /o-nas i /inspiracje, gdzie dostaje SAM kierunek bez
+// cen. Przebudowa pod potrzeby strony głównej zmieniłaby trzy strony spoza
+// zakresu tego zadania. Wspólne zostaje to, co i tak było wspólne — model
+// i formatowanie z lib/home/deal-card.
+//
+// CO ODRÓŻNIA TĘ SEKCJĘ OD SEKCJI B (największy problem poprzedniej wersji:
+// dwa sąsiadujące pasy kart pokazywały tę samą treść w dwóch skórkach):
+//   • sekcja A odpowiada na „DOKĄD" → chip z czasem lotu z Polski, bo to jest
+//     realny czynnik wyboru kierunku i jedyna twarda liczba, której sekcja B
+//     nie ma;
+//   • sekcja B odpowiada na „ZA ILE" → okno dat, liczba nocy, cena łączna
+//     i przycisk.
+//
+// Czas lotu pochodzi z profilu kierunku (`typicalFlightHoursFromPL`), a nie
+// z oferty — stąd tylda w `formatFlightHours`.
+
+interface InspireTileProps {
+  destination: DestinationProfile;
+  heroImage: string;
+  defaultTravelers?: number;
+  /** Cena hotelu „od X zł/noc" ze snapshotu dstprice:v1. */
+  fromPricePerNight?: number;
+  /** Najtańszy lot w obie strony z Warszawy (total PLN/os., snapshot). */
+  flightFromPln?: number;
+  /**
+   * JEDNA cena całego wyjazdu (lot + noclegi) na osobę ze snapshotu. Gdy jest,
+   * ZASTĘPUJE rozbicie hotel/lot: dwie ceny do zsumowania w głowie były
+   * zadaniem matematycznym, a przy kierunkach z tanim hotelem i drogim lotem
+   * (Stambuł: 40 zł/noc + 1181 zł lot) tania kotwica hotelowa myliła.
+   */
+  packagePerPerson?: { perPersonPln: number; checkin: string; checkout: string };
+}
+
+export function InspireTile({
+  destination,
+  heroImage,
+  defaultTravelers = 2,
+  fromPricePerNight,
+  flightFromPln,
+  packagePerPerson,
+}: InspireTileProps) {
+  // Daty ŚWIADOMIE niewypełnione — użytkownik wybiera termin sam na wynikach
+  // (decyzja właściciela 2026-07-04: termin ceny zostaje na karcie).
+  const params = new URLSearchParams({
+    destination: destination.city,
+    country: destination.country,
+    origin: DEFAULT_ORIGIN_CITY,
+    adults: String(defaultTravelers),
+    rooms: "1",
+  });
+  const href = `/hotele/szukaj?${params.toString()}`;
+  const cityLabel = localizeCity(destination.city);
+  const countryLabel = localizeCountry(destination.country);
+  const flightHours = formatFlightHours(destination.typicalFlightHoursFromPL);
+  const nights = packagePerPerson
+    ? nightsBetween(packagePerPerson.checkin, packagePerPerson.checkout)
+    : 0;
+
+  return (
+    <LocalizedLink
+      href={href}
+      className="group relative flex aspect-[3/4] overflow-hidden rounded-2xl border border-emerald-900/10 bg-emerald-50 shadow-[0_8px_24px_rgba(16,84,48,0.08)] transition hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(16,84,48,0.16)] sm:aspect-[4/5]"
+    >
+      <Image
+        src={heroImage}
+        alt={`${cityLabel}, ${countryLabel}`}
+        fill
+        sizes="(max-width: 640px) 58vw, (max-width: 1024px) 27vw, 17vw"
+        className="object-cover transition duration-300 group-hover:scale-[1.04]"
+      />
+
+      {/* Czas lotu jako CHIP na zdjęciu, nie kolejny wiersz tekstu. Powód:
+          w bloku tekstowym konkurowałby z ceną o tę samą uwagę, a jako chip
+          jest SKANOWALNY — przewijając pas widać od razu, który kierunek jest
+          blisko. Wcześniej ta informacja znikała całkowicie, gdy kierunek miał
+          cenę pakietu, czyli akurat na kartach, które klika się najczęściej. */}
+      {flightHours ? (
+        <span className="absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm">
+          <Plane aria-hidden strokeWidth={2} className="h-3 w-3 shrink-0" />
+          {flightHours}
+          <span className="sr-only"> lotu z Polski</span>
+        </span>
+      ) : null}
+
+      <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.9)_55%,rgba(5,18,11,0.95)_100%)] p-3 text-white">
+        {/* 12 px zamiast 10 px: nadtytuł z krajem był najmniejszym tekstem na
+            całej stronie głównej, a niesie kontekst potrzebny przy miastach,
+            których nazwa nie mówi, gdzie leżą (Faro, Kos, Bari). */}
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200">
+          {countryLabel}
+        </p>
+        {/* 18 px na KAŻDYM ekranie, bez skoku do 24 px wyżej. Kafelek w tym
+            pasie nie robi się szerszy wraz z ekranem — na 1280 px ma ~197 px,
+            czyli mniej niż na telefonie ma proporcjonalnie. Przy 24 px „Palma
+            de Mallorca" łamała się na dwie linie i scrim TEJ JEDNEJ karty rósł
+            o ćwierć wysokości, więc pas wyglądał na zepsuty. Zmierzone na
+            375 / 768 / 1280 px. */}
+        <h3 className="mt-0.5 font-display text-lg leading-tight">{cityLabel}</h3>
+
+        <div className="mt-1.5 flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            {packagePerPerson ? (
+              <>
+                {/* CO zawiera cena. Bez konkretnego okna dat — zmierzone na
+                    375 px: „lot + 7 nocy · 26.09–3.10" łamało się na dwie linie
+                    na 7 z 18 kart, a scrim rósł w górę i zjadał zdjęcie różnie
+                    na każdej karcie. Dokładny termin niesie sekcja B, gdzie
+                    karta jest dwa razy szersza i gdzie jest realną ofertą;
+                    tutaj wystarczy długość wyjazdu, bo cena jest orientacyjna
+                    („od") i ma zachęcić do kliknięcia, a nie zamknąć sprzedaż. */}
+                <p className="text-[11px] leading-snug text-white/80">
+                  lot + {nights ? nightsLabel(nights) : "nocleg"}
+                </p>
+                {/* Cena i jednostka jako JEDEN niełamliwy token: na 375 px
+                    łamanie w środku ceny zostawiało sierotę „zł" w nowej linii. */}
+                <p className="mt-0.5 text-base font-bold leading-snug text-accent-bright">
+                  <span className="whitespace-nowrap">
+                    od {formatPricePln(packagePerPerson.perPersonPln)}
+                    <span className="text-[11px] font-medium text-white/75">/os.</span>
+                  </span>
+                </p>
+              </>
+            ) : (
+              <>
+                {/* Brak świeżego pakietu → pokazujemy TYLKO to, co realnie mamy.
+                    Nigdy nie sumujemy hotelu i lotu sami — składniki pochodzą
+                    z różnych okien dat, więc suma byłaby zmyślona. */}
+                {typeof fromPricePerNight === "number" && (
+                  <p className="text-sm font-bold leading-snug text-accent-bright">
+                    Hotel{" "}
+                    <span className="whitespace-nowrap">
+                      od {formatPricePln(fromPricePerNight)}
+                      <span className="text-[11px] font-medium text-white/75">/noc</span>
+                    </span>
+                  </p>
+                )}
+                {typeof flightFromPln === "number" && (
+                  <p className="mt-0.5 text-[11px] font-medium leading-snug text-white/85">
+                    Lot<span className="hidden sm:inline"> z Warszawy</span>{" "}
+                    <span className="whitespace-nowrap">od {formatPricePln(flightFromPln)}</span>
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Afordancja „to jest klikalne". Cały kafelek jest linkiem, więc to
+              tylko znacznik wizualny (aria-hidden) — nie osobny cel dotykowy
+              i nie drugi tab-stop. Pełny przycisk zjadłby szerokość, której
+              na 375 px nie ma. */}
+          <span
+            aria-hidden
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition group-hover:bg-accent-bright group-hover:text-emerald-950"
+          >
+            <ChevronRight strokeWidth={2.5} className="h-4 w-4" />
+          </span>
+        </div>
+      </div>
+    </LocalizedLink>
+  );
+}

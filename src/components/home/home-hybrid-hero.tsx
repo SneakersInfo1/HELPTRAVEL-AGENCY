@@ -1,9 +1,10 @@
 import { CinematicBackdrop } from "./cinematic-backdrop";
 import { DestinationCarousel } from "./destination-carousel";
-import { DestinationTile } from "./destination-tile";
+import { InspireTile } from "./inspire-tile";
 import { ShieldCheck, UserRoundX, Wallet } from "lucide-react";
 
 import { HomeSearchTabs } from "./home-search-tabs";
+import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 interface FeaturedTile {
@@ -148,8 +149,16 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               świadomy sygnał „jest więcej". */}
           <DestinationCarousel
             tone="dark"
+            listId="home_inspire"
+            listName="Popularne kierunki"
+            // Karty ~1,4× szersze niż wcześniej. Na 375 px kafelek miał ~150 px
+            // szerokości i mieścił pięć wierszy tekstu — nadtytuł schodził do
+            // 10 px, a cena łamała się w środku. Szerszy kafelek to ten sam pas
+            // i ta sama liczba kierunków, tylko czytelna; liczba kart została
+            // bez zmian (18 to jawna decyzja właściciela z 2026-07-03).
+            slideClassName="min-w-0 shrink-0 basis-[58%] pl-3 sm:basis-[38%] sm:pl-4 md:basis-[29%] lg:basis-[24%] xl:basis-[19%]"
             header={
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-bright">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-bright">
                 Popularne kierunki
               </p>
             }
@@ -163,17 +172,18 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
             items={featured.map((tile) => ({
               slug: tile.destination.slug,
               pricePerPerson: tile.packagePerPerson?.perPersonPln,
+              name: localizeCity(tile.destination.city),
+              category: localizeCountry(tile.destination.country),
               node: (
                 // Bez badge'a „Polecane": był na KAŻDEJ karcie, więc nie
-                // znaczył nic. Badge wraca tylko tam, gdzie niesie realną
-                // informację (patrz DestinationTile).
-                <DestinationTile
+                // znaczył nic. Zamiast niego chip z czasem lotu — etykieta,
+                // która na każdej karcie mówi co innego.
+                <InspireTile
                   destination={tile.destination}
                   heroImage={tile.heroImage}
                   fromPricePerNight={tile.fromPricePerNight}
                   flightFromPln={tile.flightFromPln}
                   packagePerPerson={tile.packagePerPerson}
-                  size="lg"
                 />
               ),
             }))}

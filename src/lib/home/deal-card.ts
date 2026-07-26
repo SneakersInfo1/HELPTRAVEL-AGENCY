@@ -83,6 +83,20 @@ export function formatPricePln(amount: number): string {
   }).format(amount);
 }
 
+/**
+ * Typowy czas lotu z Polski: `~3,5 h`, `~3 h` dla pełnych godzin.
+ *
+ * Tylda jest istotna — to wartość z profilu kierunku (typowy czas przelotu),
+ * a nie czas KONKRETNEGO rejsu z oferty. Bez niej liczba czytałaby się jak
+ * obietnica rozkładu, której nie mamy z czego dotrzymać.
+ */
+export function formatFlightHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours <= 0) return "";
+  return Number.isInteger(hours)
+    ? `~${hours} h`
+    : `~${hours.toFixed(1).replace(".", ",")} h`;
+}
+
 /** Polska odmiana: 1 noc, 2–4 noce, 5+ nocy (z wyjątkiem 12–14). */
 export function nightsLabel(n: number): string {
   if (n === 1) return "1 noc";
