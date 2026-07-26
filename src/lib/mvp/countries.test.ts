@@ -76,6 +76,16 @@ test("dwuliterowy kod przechodzi tylko, gdy REALNIE istnieje", () => {
   assert.equal(resolveCountryCode("Qq"), null);
 });
 
+// Znalezione w review (P1): zawężenie skrótu „dwie litery" do samej tabeli NAZW
+// zabierało poprawne kody rzadkich kierunków. `/api/hotels/search?country=LC`
+// szło wtedy w `Unknown country` i kończyło się odpowiedzią 500 zamiast pustej
+// listy. Walidacja idzie po PEŁNEJ liście ISO 3166-1 alpha-2.
+test("każdy poprawny kod ISO przechodzi, także spoza tabeli nazw", () => {
+  for (const code of ["LC", "GD", "SX", "VC", "AF", "KP", "SY", "TD", "NE", "PS", "GG", "JE", "IM"]) {
+    assert.equal(resolveCountryCode(code), code, `kod ${code} powinien przejść`);
+  }
+});
+
 test("nierozpoznane wejście daje null, a nie zgadywanie", () => {
   for (const bad of ["Atlantis", "", "   ", "?!", "Śródziemie"]) {
     assert.equal(resolveCountryCode(bad), null, `${bad} powinno dać null`);

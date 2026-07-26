@@ -51,18 +51,30 @@ export interface SuggestionResponseItem {
  *
  * Fuse przepuszczał je mimo `threshold: 0.4`, bo próg działa na dopasowaniu
  * per-klucz, a zwracany `score` to złożenie ważone po wszystkich kluczach —
- * może więc przekroczyć próg. Stąd odcięcie PO fakcie. 0,40 zostawia z zapasem
- * wszystkie literówki i ucina cały pas śmieci.
+ * może więc przekroczyć próg. Stąd odcięcie PO fakcie.
+ *
+ * 0,35 (nie 0,40): przy 0,40 przechodziło jeszcze „Bangkok" → Bansko (0,367).
+ * Dopóki LiteAPI odpowiada, wynik globalny wypycha je na dalszą pozycję — ale
+ * gdy dostawca jest niedostępny, `suggestPlaces` zwraca pustą listę i Bansko
+ * zostawało JEDYNĄ podpowiedzią dla „Bangkok", a odpowiedź lądowała w CDN na
+ * godzinę. 0,35 mieści z zapasem wszystkie zmierzone literówki (max 0,330)
+ * i ucina ten przypadek u źródła. Znalezione w review.
  */
-export const MAX_ACCEPTABLE_SCORE = 0.4;
+export const MAX_ACCEPTABLE_SCORE = 0.35;
 
 /**
  * Poniżej tego wyniku uznajemy, że indeks lokalny ZNA odpowiedź i nie ma po co
  * dopytywać LiteAPI — użytkownik dostaje podpowiedź natychmiast, bez sieci.
- * Powyżej: trafienie jest niepewne (np. „Bangkok" → Bansko, 0,367) i warto
- * sięgnąć po globalne /data/places.
+ * Powyżej: trafienie jest niepewne i warto sięgnąć po globalne /data/places.
+ *
+ * 0,20 (nie 0,15): przy 0,15 „Barselona" (dopasowanie do Barcelony 0,172) była
+ * uznawana za niepewną, więc szło zapytanie globalne — a Google zna prawdziwą
+ * „Barselonę" w Wenezueli i wypychała ona Barcelonę na trzecie miejsce.
+ * Polak piszący z literówką dostawał wenezuelską wioskę. Przy 0,20 bliskie
+ * literówki są obsługiwane lokalnie, natychmiast i bez kosztu, a realnie
+ * wątpliwe trafienia (Warna → Larnaka 0,276) dalej idą po wynik globalny.
  */
-export const CONFIDENT_SCORE = 0.15;
+export const CONFIDENT_SCORE = 0.2;
 
 const fuse: Fuse<DestinationIndexEntry> = new Fuse(getDestinationsIndex() as DestinationIndexEntry[], {
   keys: [
@@ -134,17 +146,24 @@ export function suggestDestinations(query: string, limit = 8): SuggestionRespons
     // się przez próg (tak właśnie „Tajlandia" wypychała Amsterdam).
     .filter((x) => x.score <= MAX_ACCEPTABLE_SCORE)
     .sort((a, b) => a.combined - b.combined)
-    .slice(0, limit)
     .map((x) => ({ ...toResponseItem(x.item), score: x.score }));
 
-  // Dedupe po nazwie + kraju. Seed ma 26 par duplikatów o różnych `id`
-  // (np. `prague-czechia` i `prague-czech-republic`, `malaga-spain` dwa razy),
-  // więc bez tego użytkownik widział „Malaga (Hiszpania)" dwa razy pod rząd.
+  // Dedupe po nazwie + kraju, PRZED przycięciem do limitu. Seed ma 26 par
+  // duplikatów o różnych `id` (np. `prague-czechia` i `prague-czech-republic`,
+  // `malaga-spain` dwa razy), więc bez tego użytkownik widział „Malaga
+  // (Hiszpania)" dwa razy pod rząd.
+  //
+  // Kolejność ma znaczenie: przy dedupe PO `.slice()` duplikat zajmował miejsce
+  // w limicie, po czym wypadał — i lista wracała krótsza niż zamówiona, mimo że
+  // były jeszcze dobre trafienia w kolejce. Znalezione w review.
   const seen = new Set<string>();
-  return ranked.filter((item) => {
+  const deduped: typeof ranked = [];
+  for (const item of ranked) {
     const key = `${item.label.toLowerCase()}|${item.countryPl.toLowerCase()}`;
-    if (seen.has(key)) return false;
+    if (seen.has(key)) continue;
     seen.add(key);
-    return true;
-  });
+    deduped.push(item);
+    if (deduped.length === limit) break;
+  }
+  return deduped;
 }

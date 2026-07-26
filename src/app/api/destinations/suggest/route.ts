@@ -16,9 +16,18 @@ import { matchRegions } from "@/lib/hotels/regions";
 import { CONFIDENT_SCORE, suggestDestinations } from "@/lib/mvp/destination-suggest-fuse";
 import { suggestPlaces } from "@/lib/liteapi/places-suggest";
 import { countryNameEn, countryNamePl, resolveCountryCode } from "@/lib/mvp/countries";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
 export async function GET(request: NextRequest) {
+  // Limit PRZED jakąkolwiek pracą: odkąd endpoint potrafi dopytać LiteAPI
+  // /data/places, seria unikalnych zapytań omija 24-godzinny cache (każdy tekst
+  // to inny URL) i generuje realny koszt u dostawcy. Znalezione w review.
+  // Brak Upstash w env → `enforceRateLimit` zwraca null i endpoint działa
+  // normalnie (ta sama zasada „degrade, nie wywalaj" co reszta Redisa).
+  const limited = await enforceRateLimit(request, "destination-suggest");
+  if (limited) return limited;
+
   const q = request.nextUrl.searchParams.get("q") ?? "";
   const limitParam = request.nextUrl.searchParams.get("limit");
   const limit = Math.min(20, Math.max(1, Number(limitParam) || 8));
@@ -89,9 +98,9 @@ export async function GET(request: NextRequest) {
   // ktoś, kto wpisuje „Barcelona", dostaje odpowiedź z pliku w ~0 ms i nie
   // płaci za sieć. Zapytanie idzie dopiero, gdy najlepszy wynik jest niepewny
   // albo nie ma go wcale.
+  // Brak `score` (np. wpis wyspy/regionu) traktujemy jako NIEpewny — stąd `?? 1`.
   const hasConfidentLocal =
-    regionItems.length > 0 ||
-    dedupedCities.some((c) => typeof c.popularity === "number" && (c.score ?? 1) <= CONFIDENT_SCORE);
+    regionItems.length > 0 || dedupedCities.some((c) => (c.score ?? 1) <= CONFIDENT_SCORE);
 
   let globalItems: DestinationSuggestion[] = [];
   if (q.trim().length >= 3 && !hasConfidentLocal) {
@@ -104,14 +113,25 @@ export async function GET(request: NextRequest) {
       .map((p): DestinationSuggestion => {
         // `formattedAddress` niesie kraj („Thailand" dla Bangkoku), a nowy
         // resolwer ISO umie go zamienić na kod — bez tego LiteAPI odrzuciłoby
-        // wyszukanie. Kraj sam w sobie (kind="country") nie ma kraju nadrzędnego.
-        const countryCode = p.countryLabel ? resolveCountryCode(p.countryLabel) : null;
+        // wyszukanie.
+        //
+        // Dla POZYCJI BĘDĄCEJ KRAJEM `formattedAddress` jest PUSTY (potwierdzone
+        // sondą: „Tajlandia" → formattedAddress: ""), więc kraj trzeba wziąć
+        // z własnej nazwy miejsca. Bez tego wybór „Tajlandia — cały kraj" zapisywał
+        // `country=""`, a /hotele/szukaj wymaga jednocześnie `destination`
+        // i `country` (page.tsx: `sp.destination && sp.country`) — wyszukiwanie
+        // po prostu nie ruszało. Znalezione w review, potwierdzone w kodzie.
+        const countryCode =
+          resolveCountryCode(p.countryLabel || "") ??
+          (p.kind === "country" ? resolveCountryCode(p.name) : null);
         const countryPl = countryCode ? countryNamePl(countryCode) : null;
         const countryEn = countryCode ? countryNameEn(countryCode) : p.countryLabel;
         return {
           id: `place-${p.placeId}`,
           city: p.name,
-          country: countryEn || p.countryLabel,
+          // Kraj MUSI być niepusty — patrz wyżej. Gdy nawet nazwa miejsca się
+          // nie rozwiązuje, zostaje surowa etykieta; pusty string nigdy.
+          country: countryEn || p.countryLabel || p.name,
           label: countryPl ? `${p.name}, ${countryPl}` : p.name,
           queryValue: countryPl ? `${p.name}, ${countryPl}` : p.name,
           source: "catalog",
@@ -130,9 +150,33 @@ export async function GET(request: NextRequest) {
   // Warzazat i Warszawa wypełniały limit przed przycięciem. Użytkownik, który
   // wpisał nazwę spoza Europy, ma zobaczyć to, o co pytał — a nie najbliżej
   // brzmiące europejskie miasto.
-  const items = hasConfidentLocal
-    ? [...regionItems, ...dedupedCities, ...globalItems].slice(0, limit)
-    : [...regionItems, ...globalItems, ...dedupedCities].slice(0, limit);
+  const ordered = hasConfidentLocal
+    ? [...regionItems, ...dedupedCities, ...globalItems]
+    : [...regionItems, ...globalItems, ...dedupedCities];
+
+  // `score` to wewnętrzna miara rankingu — służy WYŁĄCZNIE decyzji „czy dopytać
+  // LiteAPI" i nie ma po co jechać do przeglądarki. Zdejmujemy je z odpowiedzi,
+  // żeby publiczny kontrakt API nie obrósł polem, którego nikt nie konsumuje.
+  // Ostatni dedupe — na tym, co użytkownik REALNIE widzi (miasto + kraj).
+  // Wcześniejsze przebiegi dedupe'ują osobno: indeks lokalny po nazwie+kraju
+  // z seeda, a `toPlaceSuggestions` po nazwie + surowym `formattedAddress`.
+  // Żaden nie łapie przypadku, gdy Google zwraca ten sam kierunek z RÓŻNYM
+  // adresem („Thailand" vs „Phuket, Thailand") albo gdy to samo miasto przyjdzie
+  // raz z pliku i raz z LiteAPI. Efekt był widoczny: „Phuket" i „Barselona"
+  // pojawiały się na liście dwa razy pod rząd.
+  const seenFinal = new Set<string>();
+  const items: DestinationSuggestion[] = [];
+  for (const item of ordered) {
+    const key = `${(item.cityPl ?? item.city).toLowerCase()}|${(item.countryPl ?? item.country).toLowerCase()}`;
+    if (seenFinal.has(key)) continue;
+    seenFinal.add(key);
+    // `score` to wewnętrzna miara rankingu — służy WYŁĄCZNIE decyzji „czy
+    // dopytać LiteAPI" i nie ma po co jechać do przeglądarki.
+    const copy = { ...item };
+    delete copy.score;
+    items.push(copy);
+    if (items.length === limit) break;
+  }
 
   return NextResponse.json(
     { items },

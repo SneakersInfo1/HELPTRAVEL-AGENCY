@@ -183,6 +183,13 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     const popularMode = trimmed.length < 2;
     setDestFetching(true);
     const controller = new AbortController();
+    // Znacznik pokolenia efektu. `finally` NIE może gasić wskaźnika ładowania
+    // bezwarunkowo: przy szybkim pisaniu („ban" → „bang") stare, przerwane
+    // żądanie kończyło się PO starcie nowego i ustawiało destFetching=false,
+    // przez co w trakcie trwającego zapytania odsłaniały się poprzednie wyniki
+    // albo „Brak wyników" — i dało się je kliknąć. Znalezione w review.
+    // `cancelled` ustawia dopiero cleanup tego konkretnego przebiegu efektu.
+    let cancelled = false;
     const timeout = window.setTimeout(async () => {
       try {
         // limit=20 (było 6): właściciel 2026-07-26 — po kliknięciu w puste pole
@@ -207,16 +214,22 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             ...items.filter((i) => !recentIds.has(i.id)),
           ];
         }
+        if (cancelled) return;
         setDestSuggestions(items);
         setDestOpen(true);
         setDestHighlight(-1);
       } catch {
         // aborted or network error
       } finally {
-        setDestFetching(false);
+        // Tylko przebieg, który NIE został zastąpiony, gasi wskaźnik.
+        if (!cancelled) setDestFetching(false);
       }
     }, popularMode ? 50 : 150);
-    return () => { controller.abort(); window.clearTimeout(timeout); };
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
   }, [destQuery, destConfirmed, destFocusTick]);
 
   function selectSuggestion(s: SuggestionItem) {
@@ -242,14 +255,37 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     destInputRef.current?.blur();
   }
 
+  /**
+   * Przewinięcie podświetlonej pozycji do widoku.
+   *
+   * Konieczne, odkąd puste pole pokazuje 20 kierunków w panelu na ~6 wierszy:
+   * strzałka w dół przesuwała podświetlenie POZA widoczny obszar, `scrollTop`
+   * listy się nie zmieniał, a Enter wybierał pozycję, której użytkownik nie
+   * widział. Znalezione w review. `block: "nearest"` przewija minimalnie —
+   * lista nie skacze, gdy pozycja i tak jest widoczna.
+   */
+  function scrollHighlightIntoView(index: number) {
+    const list = destListRef.current;
+    if (!list || index < 0) return;
+    list.querySelectorAll<HTMLElement>('[role="option"]')[index]?.scrollIntoView({ block: "nearest" });
+  }
+
   function handleDestKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (!destOpen || destSuggestions.length === 0) return;
+    // Indeks liczony z `destHighlight` (domknięcie), NIE w funkcyjnym updaterze:
+    // React 19 w trybie Strict celowo odpala updatery dwukrotnie, żeby wykryć
+    // nieczystość — przewijanie w środku updatera byłoby side effectem
+    // wykonywanym podwójnie. Ten sam wzorzec opisuje komentarz w concierge-chat.
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setDestHighlight((h) => Math.min(h + 1, destSuggestions.length - 1));
+      const next = Math.min(destHighlight + 1, destSuggestions.length - 1);
+      setDestHighlight(next);
+      scrollHighlightIntoView(next);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setDestHighlight((h) => Math.max(h - 1, 0));
+      const next = Math.max(destHighlight - 1, 0);
+      setDestHighlight(next);
+      scrollHighlightIntoView(next);
     } else if (e.key === "Enter" && destHighlight >= 0) {
       e.preventDefault();
       selectSuggestion(destSuggestions[destHighlight]);
@@ -540,6 +576,11 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             aria-autocomplete="list"
             aria-expanded={destOpen}
             aria-controls={listboxId}
+            // Bez tego czytnik ekranu wiedział tylko, że fokus jest w polu —
+            // strzałki przesuwały podświetlenie, o którym nic nie mówił.
+            aria-activedescendant={
+              destOpen && destHighlight >= 0 ? `${listboxId}-opt-${destHighlight}` : undefined
+            }
             value={destQuery}
             onChange={(e) => {
               setDestQuery(e.target.value);
@@ -605,12 +646,25 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
                 </li>
               ) : destSuggestions.length > 0 ? (
                 buildSuggestionSections(destSuggestions).map((section) => (
-                  <li key={section.label ?? "_flat"} role="presentation">
+                  <li
+                    key={section.label ?? "_flat"}
+                    // `role="group"` z etykietą, nie „presentation": listbox
+                    // dopuszcza dzieci `option` ALBO `group`, a grupa niesie
+                    // czytnikowi ekranu nazwę sekcji („Na plażę"), której samo
+                    // `presentation` by nie przekazało. Sekcja bez nagłówka
+                    // (wyniki wpisanego tekstu) zostaje przezroczysta.
+                    role={section.label ? "group" : "presentation"}
+                    aria-label={section.label ?? undefined}
+                  >
                     {section.label && (
                       // Sticky: przy 20 pozycjach nagłówek grupy wyjeżdża
                       // z ekranu po dwóch wierszach i użytkownik przestaje
-                      // wiedzieć, na co patrzy.
-                      <p className="sticky top-0 z-10 bg-surface-raised px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                      // wiedzieć, na co patrzy. aria-hidden, bo tę samą nazwę
+                      // niesie już aria-label grupy — inaczej czytnik przeczyta ją dwa razy.
+                      <p
+                        aria-hidden
+                        className="sticky top-0 z-10 bg-surface-raised px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted"
+                      >
                         {section.label}
                       </p>
                     )}
@@ -629,6 +683,9 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
                         return (
                           <li
                             key={s.id}
+                            // id zgodne z aria-activedescendant na inpucie —
+                            // indeks jest PŁASKI, ten sam, którym operują strzałki.
+                            id={`${listboxId}-opt-${idx}`}
                             role="option"
                             aria-selected={idx === destHighlight}
                             onMouseDown={(event) => {

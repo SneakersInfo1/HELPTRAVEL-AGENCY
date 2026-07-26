@@ -110,6 +110,13 @@ const ROWS: readonly Row[] = [
   ["RW", "Rwanda", "Rwanda"],
   ["SC", "Seychelles", "Seszele"],
   ["SN", "Senegal", "Senegal"],
+  ["RE", "Réunion", "Reunion", "Reunion"],
+  ["YT", "Mayotte", "Majotta"],
+  ["KM", "Comoros", "Komory"],
+  ["ST", "São Tomé and Príncipe", "Wyspy Świętego Tomasza i Książęca"],
+  ["MW", "Malawi", "Malawi"],
+  ["SZ", "Eswatini", "Eswatini", "Suazi"],
+  ["LS", "Lesotho", "Lesotho"],
   ["TZ", "Tanzania", "Tanzania", "Zanzibar"],
   ["UG", "Uganda", "Uganda"],
   ["ZA", "South Africa", "Republika Południowej Afryki", "RPA"],
@@ -171,6 +178,22 @@ const ROWS: readonly Row[] = [
   ["SV", "El Salvador", "Salwador"],
   ["TC", "Turks and Caicos Islands", "Turks i Caicos"],
   ["TT", "Trinidad and Tobago", "Trynidad i Tobago"],
+  // Małe Antyle i terytoria zamorskie — pojedynczo rzadkie w polskim ruchu, ale
+  // każdy brakujący kod to kierunek, którego po globalnych podpowiedziach NIE
+  // dałoby się wyszukać: `resolveCountryCode` zwróciłby null i LiteAPI
+  // odrzuciłoby zapytanie mimo realnej oferty hotelowej.
+  ["AI", "Anguilla", "Anguilla"],
+  ["BM", "Bermuda", "Bermudy"],
+  ["DM", "Dominica", "Dominika"],
+  ["GD", "Grenada", "Grenada"],
+  ["GP", "Guadeloupe", "Gwadelupa"],
+  ["KN", "Saint Kitts and Nevis", "Saint Kitts i Nevis"],
+  ["LC", "Saint Lucia", "Saint Lucia"],
+  ["MQ", "Martinique", "Martynika"],
+  ["MS", "Montserrat", "Montserrat"],
+  ["SX", "Sint Maarten", "Sint Maarten"],
+  ["VC", "Saint Vincent and the Grenadines", "Saint Vincent i Grenadyny"],
+  ["VG", "British Virgin Islands", "Brytyjskie Wyspy Dziewicze"],
   ["US", "United States", "Stany Zjednoczone", "USA", "United States of America", "America"],
   ["VI", "U.S. Virgin Islands", "Wyspy Dziewicze Stanów Zjednoczonych"],
 
@@ -233,7 +256,25 @@ for (const [code, en, pl, ...aliases] of ROWS) {
  */
 const NAMES_BY_LENGTH_DESC = [...NAME_TO_CODE.keys()].sort((a, b) => b.length - a.length);
 
-const VALID_CODES = new Set(CODE_TO_NAMES.keys());
+/**
+ * KOMPLETNY zbiór kodów ISO 3166-1 alpha-2 — sama walidacja, bez nazw.
+ *
+ * Tabela ROWS wyżej celowo obejmuje tylko kierunki podróżne (ma nazwy PL/EN do
+ * wyświetlania). Gdyby to ona decydowała o skrócie „dwie litery = kod", doszłoby
+ * do REGRESJI: `resolveCountryCode("LC")` zwracało wcześniej „LC", a zwracałoby
+ * null → `fetchHotelsList` rzuca „Unknown country" → /api/hotels/search oddaje
+ * 500 zamiast pustej listy. Ten zbiór przywraca stary kontrakt dla WSZYSTKICH
+ * realnych kodów, nie tracąc odrzucania śmieci („Hi", „Qq" nie są kodami ISO).
+ */
+const ALL_ISO_CODES = new Set(
+  ("AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
+    "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +
+    "GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP " +
+    "KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ " +
+    "NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW " +
+    "SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ " +
+    "UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW").split(" "),
+);
 
 /**
  * Nazwa kraju (PL, EN, alias albo gotowy kod ISO) → kod ISO 3166-1 alpha-2.
@@ -248,11 +289,12 @@ export function resolveCountryCode(country: string): string | null {
   const exact = NAME_TO_CODE.get(key);
   if (exact) return exact;
 
-  // Gotowy kod ISO („TH", „th") — ale TYLKO taki, który realnie istnieje.
-  // Stara wersja zwracała każde dwie litery wielkimi, więc literówka „Hi”
-  // jechała do LiteAPI jako countryCode=HI i kończyła się pustą listą
-  // zamiast czytelnym błędem.
-  if (raw.length === 2 && VALID_CODES.has(raw.toUpperCase())) return raw.toUpperCase();
+  // Gotowy kod ISO („TH", „th") — sprawdzany względem PEŁNEJ listy alpha-2,
+  // nie względem tabeli nazw. Stara wersja zwracała każde dwie litery wielkimi,
+  // więc literówka „Hi" jechała do LiteAPI jako countryCode=HI i kończyła się
+  // pustą listą zamiast czytelnym błędem; zawężenie do samej tabeli nazw
+  // wywaliłoby z kolei poprawne kody rzadkich kierunków (LC, GD, SX…).
+  if (raw.length === 2 && ALL_ISO_CODES.has(raw.toUpperCase())) return raw.toUpperCase();
 
   // Fragment — obsługuje „Republic of Italy", „Kingdom of Spain",
   // „Turkey (Türkiye)". Od najdłuższej nazwy, patrz komentarz wyżej.
