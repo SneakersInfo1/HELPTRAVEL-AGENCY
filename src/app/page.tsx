@@ -7,6 +7,8 @@ import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
+import { TripPicker } from "@/components/home/trip-picker";
+import { nightsBetween, totalFor, type DealCard } from "@/lib/home/deal-card";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import { listAllDestinations } from "@/lib/mvp/destinations-seed";
 import {
@@ -169,12 +171,64 @@ export async function HomePageView() {
   // Klucz pakietu match po rekordzie seedu (city.en|country.en — jak w cronie);
   // karta/CTA po PROFILU. Media (Pexels) tylko dla top-N (koszt ISR).
   const tileIdSet = new Set<string>(HOME_TILE_DESTINATION_IDS);
-  const packageCandidates = listAllDestinations()
-    .filter((d) => !tileIdSet.has(d.id))
+
+  // PEŁNA pula kierunków ze świeżym pakietem — bez odejmowania kafelków hero
+  // i bez obcinania do 10. Ta pula zasila licznik dobieracza („Mamy N wyjazdów
+  // od X zł"), więc MUSI odpowiadać temu, co użytkownik realnie może znaleźć.
+  // Licznik liczony z przyciętej listy pokazywałby mniej, niż serwis ma.
+  const allFreshDeals: DealCard[] = listAllDestinations()
     .map((d) => {
       const pkg = pickFreshPackage(priceSnapshot, d.city.en, d.country.en);
       const profile = pkg ? getDestinationProfileBySlug(d.id) : undefined;
-      return pkg && profile ? { profile, pkg } : null;
+      if (!pkg || !profile) return null;
+      const nights = nightsBetween(pkg.checkin, pkg.checkout);
+      const params = new URLSearchParams({
+        destination: profile.city,
+        country: profile.country,
+        adults: "2",
+        rooms: "1",
+      });
+      return {
+        id: d.id,
+        city: profile.city,
+        cityLabel: localizeCity(profile.city),
+        country: profile.country,
+        countryLabel: localizeCountry(profile.country),
+        // Zdjęcie dociągamy TYLKO dla kart, które realnie renderujemy (koszt
+        // ISR) — pula licznika go nie potrzebuje, bo nic nie wyświetla.
+        imageUrl: "",
+        imageAlt: `${localizeCity(profile.city)}, ${localizeCountry(profile.country)}`,
+        pricePerPersonPln: pkg.perPersonPln,
+        priceTotalPln: totalFor(pkg.perPersonPln),
+        nights,
+        dateFrom: pkg.checkin,
+        dateTo: pkg.checkout,
+        departureAirport: "WAW",
+        searchUrl: `/hotele/szukaj?${params.toString()}`,
+        // hotelName / hotelStars / hotelReviewScore / isDirect / competitorPricePln
+        // ŚWIADOMIE puste — snapshot dstprice:v1 ich nie zawiera, a wypełnienie
+        // przykładowymi byłoby zmyślaniem danych. Patrz lib/home/deal-card.ts.
+      } satisfies DealCard;
+    })
+    .filter((x): x is DealCard => x !== null);
+
+  // Przynależność kierunku do typu wyjazdu — z TRAVEL_MOODS, czyli z tej samej
+  // listy redakcyjnej, która definiuje strony /wyjazdy/[typ]. Dzięki temu
+  // licznik obiecuje dokładnie to, co pokaże strona po kliknięciu.
+  const themeMembership: Record<string, string[]> = {};
+  for (const mood of TRAVEL_MOODS) {
+    themeMembership[mood.slug] = mood.picks
+      .map((p) => p.slug)
+      .filter((s): s is string => Boolean(s));
+  }
+
+  const packageCandidates = allFreshDeals
+    .filter((d) => !tileIdSet.has(d.id))
+    .map((d) => {
+      const profile = getDestinationProfileBySlug(d.id);
+      return profile
+        ? { profile, pkg: { perPersonPln: d.pricePerPersonPln, checkin: d.dateFrom, checkout: d.dateTo } }
+        : null;
     })
     .filter((x): x is { profile: DestinationProfile; pkg: FreshPackage } => x !== null)
     .sort((a, b) => a.pkg.perPersonPln - b.pkg.perPersonPln)
@@ -209,7 +263,28 @@ export async function HomePageView() {
         <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} />
       </div>
       <PackageDeals deals={packageDeals} />
-      <ThemeTiles tiles={themeTiles} />
+      {/* SEKCJA C — przechwycenie intencji. Dobieracz zamiast siedmiu kafli;
+          pod nim MAKSYMALNIE 4 kafle nastrojowe jako alternatywna ścieżka
+          dla kogoś, kto woli kliknąć obrazek niż odpowiadać na pytania. */}
+      <section
+        aria-labelledby="trip-picker"
+        className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8"
+      >
+        <h2 id="trip-picker" className="font-display text-2xl leading-tight text-ink sm:text-3xl">
+          Nie wiesz, dokąd jechać?
+        </h2>
+        <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-muted">
+          Powiedz, ile chcesz wydać i na co masz ochotę — policzę, ile mamy propozycji.
+        </p>
+        <div className="mt-4">
+          <TripPicker
+            deals={allFreshDeals}
+            themes={themeTiles.map((t) => ({ slug: t.slug, label: t.label }))}
+            themeMembership={themeMembership}
+          />
+        </div>
+        <ThemeTiles tiles={themeTiles.slice(0, 4)} />
+      </section>
       <TrustHowItWorks trustpilot={trustpilot} />
     </main>
   );

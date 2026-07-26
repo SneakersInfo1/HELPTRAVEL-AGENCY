@@ -262,6 +262,70 @@ export interface TrackEventMap {
     page_path?: string;
   };
 
+  // ── Sekcje ofertowe strony głównej — schemat ecommerce GA4 ──
+  // Powód użycia `view_item_list`/`select_item` zamiast własnych nazw: GA4 ma
+  // dla nich gotowe raporty (lista → klik → konwersja), więc lejek trzech
+  // sekcji da się porównać bez budowania eksploracji od zera.
+  //
+  // `item_list_id` ROZRÓŻNIA sekcje — bez tego wszystkie kliki zlewają się
+  // w jedną liczbę i nie da się powiedzieć, która sekcja realnie sprzedaje,
+  // a którą można usunąć.
+
+  /** Sekcja ofertowa weszła w pole widzenia. */
+  view_item_list: {
+    /** `home_inspire` (A) · `home_packages` (B) · `home_picker` (C). */
+    item_list_id: string;
+    item_list_name: string;
+    items: Array<{
+      item_id: string;
+      item_name: string;
+      /** Miasto — pozwala zobaczyć, które kierunki niosą listę. */
+      item_category?: string;
+      price?: number;
+      currency?: "PLN";
+      /** 1-based pozycja w liście: mierzy, jak głęboko ludzie przewijają. */
+      index: number;
+    }>;
+  };
+
+  /** Klik w kartę oferty. */
+  select_item: {
+    item_list_id: string;
+    item_list_name: string;
+    items: Array<{
+      item_id: string;
+      item_name: string;
+      item_category?: string;
+      price?: number;
+      currency?: "PLN";
+      index: number;
+    }>;
+  };
+
+  // ── Dobieracz wyjazdu (sekcja C) ──
+  // Osobne eventy, nie ecommerce: to nie jest lista produktów, tylko formularz
+  // intencji. Chcemy wiedzieć, na KTÓRYM kroku ludzie odpadają — sam
+  // `quiz_submit` powiedziałby tylko, ilu doszło do końca.
+
+  /** Pierwsza interakcja z dobieraczem w tej wizycie. */
+  quiz_start: {
+    page_path?: string;
+  };
+  quiz_step_complete: {
+    /** 1 = budżet, 2 = typ wyjazdu. */
+    step: number;
+    step_name: "budget" | "theme";
+    /** Wybrana wartość — pokazuje, których budżetów i typów naprawdę szukają. */
+    value: string;
+  };
+  quiz_submit: {
+    budget: string;
+    theme: string;
+    /** Ile ofert pasowało w momencie kliknięcia — łączy intencję z podażą. */
+    results_count: number;
+    cheapest_price?: number;
+  };
+
   /** Zakup lotu — GA4 ecommerce. `item_category:"flight"` ODRÓŻNIA od hoteli. */
   purchase: {
     booking_id: string;
