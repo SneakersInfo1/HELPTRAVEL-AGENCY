@@ -273,9 +273,11 @@ export interface TrackEventMap {
 
   /** Sekcja ofertowa weszła w pole widzenia. */
   view_item_list: {
-    /** `home_inspire` (A) · `home_packages` (B) · `home_picker` (C). */
+    /** `home_inspire` (A) · `home_packages` (B) · `home_themes` (C, kafle). */
     item_list_id: string;
     item_list_name: string;
+    /** Wariant treści nagłówka/CTA — patrz lib/home/copy.ts. */
+    copy_variant?: string;
     items: Array<{
       item_id: string;
       item_name: string;
@@ -292,6 +294,7 @@ export interface TrackEventMap {
   select_item: {
     item_list_id: string;
     item_list_name: string;
+    copy_variant?: string;
     items: Array<{
       item_id: string;
       item_name: string;
@@ -306,6 +309,21 @@ export interface TrackEventMap {
   // Osobne eventy, nie ecommerce: to nie jest lista produktów, tylko formularz
   // intencji. Chcemy wiedzieć, na KTÓRYM kroku ludzie odpadają — sam
   // `quiz_submit` powiedziałby tylko, ilu doszło do końca.
+
+  /**
+   * Dobieracz wszedł w pole widzenia — MIANOWNIK dla `quiz_start`.
+   *
+   * Bez tego znamy tylko liczbę rozpoczętych doborów, a to za mało na
+   * jakąkolwiek decyzję: niski `quiz_start` znaczy albo „widget nie zachęca",
+   * albo „nikt tu nie doscrollował", a to dwa przeciwne wnioski.
+   */
+  quiz_view: {
+    page_path?: string;
+    /** Ile ofert widget mógł zaoferować w chwili pokazania — sekcja z pustą
+     *  pulą nie jest tym samym co sekcja zignorowana. */
+    available_count?: number;
+    copy_variant?: string;
+  };
 
   /** Pierwsza interakcja z dobieraczem w tej wizycie. */
   quiz_start: {
@@ -324,6 +342,7 @@ export interface TrackEventMap {
     /** Ile ofert pasowało w momencie kliknięcia — łączy intencję z podażą. */
     results_count: number;
     cheapest_price?: number;
+    copy_variant?: string;
   };
 
   /** Zakup lotu — GA4 ecommerce. `item_category:"flight"` ODRÓŻNIA od hoteli. */

@@ -4,6 +4,7 @@ import { InspireTile } from "./inspire-tile";
 import { ShieldCheck, UserRoundX, Wallet } from "lucide-react";
 
 import { HomeSearchTabs } from "./home-search-tabs";
+import { HOME_COPY } from "@/lib/home/copy";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
@@ -27,6 +28,8 @@ interface HomeHybridHeroProps {
   featured: FeaturedTile[];
   /** Świeża ocena Trustpilot (snapshot z crona) — null = pokazujemy sam link. */
   trustpilot?: TrustpilotDisplay | null;
+  /** Nagłówek pasa kierunków — propsem, żeby dało się go testować. */
+  bandHeading?: string;
 }
 
 // Polski zapis oceny: 4.2 → „4,2".
@@ -34,7 +37,11 @@ function formatScore(score: number): string {
   return score.toFixed(1).replace(".", ",");
 }
 
-export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
+export function HomeHybridHero({
+  featured,
+  trustpilot,
+  bandHeading = HOME_COPY.inspire.heading,
+}: HomeHybridHeroProps) {
   const backdropImages = featured.slice(0, 6).map((tile) => ({
     src: tile.heroImage,
     alt: `${tile.destination.city}, ${tile.destination.country}`,
@@ -155,7 +162,7 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
           <DestinationCarousel
             tone="dark"
             listId="home_inspire"
-            listName="Popularne kierunki"
+            listName={bandHeading}
             // Karty ~1,4× szersze niż wcześniej. Na 375 px kafelek miał ~150 px
             // szerokości i mieścił pięć wierszy tekstu — nadtytuł schodził do
             // 10 px, a cena łamała się w środku. Szerszy kafelek to ten sam pas
@@ -169,7 +176,7 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               // bez zmian; ten napis I TAK był nagłówkiem sekcji, tylko
               // zapisanym niewłaściwym znacznikiem.
               <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-bright">
-                Popularne kierunki
+                {bandHeading}
               </h2>
             }
             aside={

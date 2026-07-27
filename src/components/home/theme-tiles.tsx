@@ -1,7 +1,8 @@
 import Image from "next/image";
 
 import { LocalizedLink } from "@/components/site/localized-link";
-import { AssistantTile, TrackedTile } from "./theme-tiles-client";
+import { AssistantTile, ThemeGrid, TrackedTile } from "./theme-tiles-client";
+import { HOME_COPY } from "@/lib/home/copy";
 // `formatPricePln`, a NIE `formatPLN` z lib/money: to drugie zostawia kwoty
 // czterocyfrowe bez separatora (`1137 zł`), bo `Intl` dla pl-PL domyślnie
 // grupuje dopiero od pięciu cyfr. Kafle pokazywały przez to „od 1137 zł/os."
@@ -29,7 +30,14 @@ export interface ThemeTile {
   fromPerPersonPln?: number;
 }
 
-export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
+export function ThemeTiles({
+  tiles,
+  heading = HOME_COPY.themes.heading,
+}: {
+  tiles: ThemeTile[];
+  /** Nagłówek podbloku — propsem, żeby dało się go testować. */
+  heading?: string;
+}) {
   if (tiles.length === 0) return null;
 
   return (
@@ -40,15 +48,28 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
     // zapowiadał „Nie wiesz, dokąd jechać?" dwa razy pod rząd. Zostaje <h3>,
     // który mówi, czym te kafle różnią się od dobieracza nad nimi.
     <div className="mt-8">
-      <h3 className="font-display text-xl leading-tight text-ink">Albo wybierz po klimacie</h3>
+      <h3 className="font-display text-xl leading-tight text-ink">{heading}</h3>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <ThemeGrid
+        className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+        items={tiles.map((t) => ({
+          slug: t.slug,
+          label: t.label,
+          fromPerPersonPln: t.fromPerPersonPln,
+        }))}
+      >
         {/* Kafel konsjerża PIERWSZY: to jedyna ścieżka, która nie wymaga od
             użytkownika żadnej decyzji z góry — a sekcja istnieje właśnie dla
             niezdecydowanych. */}
         <AssistantTile />
         {tiles.map((tile, index) => (
-          <TrackedTile key={tile.slug} slug={tile.slug} position={index + 1}>
+          <TrackedTile
+            key={tile.slug}
+            slug={tile.slug}
+            position={index + 1}
+            label={tile.label}
+            fromPerPersonPln={tile.fromPerPersonPln}
+          >
           <LocalizedLink
             href={`/wyjazdy/${tile.slug}`}
             className="group relative flex aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-brand-soft shadow-md transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 lg:aspect-[4/3]"
@@ -86,7 +107,7 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
           </LocalizedLink>
           </TrackedTile>
         ))}
-      </div>
+      </ThemeGrid>
     </div>
   );
 }

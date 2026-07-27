@@ -8,6 +8,7 @@ import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
 import { TripPicker } from "@/components/home/trip-picker";
+import { HOME_COPY } from "@/lib/home/copy";
 import { nightsBetween, totalFor, type DealCard } from "@/lib/home/deal-card";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import { listAllDestinations } from "@/lib/mvp/destinations-seed";
@@ -271,10 +272,10 @@ export async function HomePageView() {
         className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8"
       >
         <h2 id="trip-picker" className="font-display text-2xl leading-tight text-ink sm:text-3xl">
-          Nie wiesz, dokąd jechać?
+          {HOME_COPY.picker.heading}
         </h2>
         <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-muted">
-          Powiedz, ile chcesz wydać i na co masz ochotę — policzę, ile mamy propozycji.
+          {HOME_COPY.picker.subheading}
         </p>
         <div className="mt-4">
           <TripPicker

@@ -36,6 +36,8 @@ import {
   type DealCard,
 } from "@/lib/home/deal-card";
 import { track } from "@/lib/analytics/track";
+import { useViewOnce } from "@/lib/analytics/use-view-once";
+import { COPY_VARIANT, HOME_COPY } from "@/lib/home/copy";
 import { cn } from "@/lib/ui/cn";
 
 export interface TripPickerTheme {
@@ -50,6 +52,12 @@ interface TripPickerProps {
   themes: readonly TripPickerTheme[];
   /** slug moodu → id kierunków należących do niego. */
   themeMembership: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Etykieta przycisku. Propsem, nie na sztywno — to jedna z dwóch rzeczy
+   * (obok nagłówka), które da się testować bez ruszania danych. Domyślna
+   * wartość i limit długości siedzą w lib/home/copy.ts.
+   */
+  ctaLabel?: string;
 }
 
 /**
@@ -118,12 +126,32 @@ function Step({
   );
 }
 
-export function TripPicker({ deals, themes, themeMembership }: TripPickerProps) {
+export function TripPicker({
+  deals,
+  themes,
+  themeMembership,
+  ctaLabel = HOME_COPY.picker.cta ?? "Pokaż wyjazdy",
+}: TripPickerProps) {
   const [budget, setBudget] = useState<BudgetBandId | null>(null);
   const [theme, setTheme] = useState<string | null>(null);
   // Ref, nie stan: „czy już zaczął" nie wpływa na render, więc trzymanie tego
   // w stanie wywołałoby zbędne przerysowanie przy pierwszym kliknięciu.
   const startedRef = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // MIANOWNIK dla `quiz_start`. Sam licznik rozpoczętych doborów nie pozwala
+  // odróżnić „widget nie zachęca" od „nikt tu nie doscrollował", a to dwa
+  // przeciwne wnioski: przerobić widget albo przenieść sekcję wyżej.
+  useViewOnce(
+    rootRef,
+    useCallback(() => {
+      track("quiz_view", {
+        page_path: window.location.pathname,
+        available_count: deals.length,
+        copy_variant: COPY_VARIANT,
+      });
+    }, [deals.length]),
+  );
 
   const markStarted = useCallback(() => {
     if (startedRef.current) return;
@@ -171,13 +199,17 @@ export function TripPicker({ deals, themes, themeMembership }: TripPickerProps) 
       theme: theme ?? "any",
       results_count: matching.length,
       cheapest_price: from ?? undefined,
+      copy_variant: COPY_VARIANT,
     });
   }, [budget, theme, matching.length, from]);
 
   const hasChoice = budget !== null || theme !== null;
 
   return (
-    <div className="rounded-[2rem] border border-line bg-surface-raised p-5 shadow-[var(--shadow-md)] sm:p-7">
+    <div
+      ref={rootRef}
+      className="rounded-[2rem] border border-line bg-surface-raised p-5 shadow-[var(--shadow-md)] sm:p-7"
+    >
       <div className="grid gap-6 sm:gap-7">
         <Step index={1} title="Ile chcesz wydać na osobę?">
           {BUDGET_BANDS.map((b) => (
@@ -233,7 +265,7 @@ export function TripPicker({ deals, themes, themeMembership }: TripPickerProps) 
         >
           {/* span: globalne a{color:inherit} bije text-* na <a> */}
           <Search aria-hidden strokeWidth={2} className="h-4 w-4 shrink-0 text-white" />
-          <span className="text-white">Pokaż wyjazdy</span>
+          <span className="text-white">{ctaLabel}</span>
         </a>
       </div>
     </div>

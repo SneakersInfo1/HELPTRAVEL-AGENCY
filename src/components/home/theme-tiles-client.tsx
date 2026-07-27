@@ -4,28 +4,106 @@
 // pomiar klików w kafle kategorii. Sama sekcja zostaje serwerowa — do
 // przeglądarki jedzie tylko to, co naprawdę potrzebuje interaktywności.
 
-import type { ReactNode } from "react";
+import { useCallback, useRef, type ReactNode } from "react";
 // Compass, nie ikona czatu: ta sama ikona co zakładka w hero i dymek
 // launchera — trzy wejścia do jednego produktu mają wyglądać jak jeden produkt.
 import { Compass } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
+import { useViewOnce } from "@/lib/analytics/use-view-once";
+import { COPY_VARIANT } from "@/lib/home/copy";
 import { requestConciergeOpen } from "@/lib/concierge/open-event";
+
+/** Pozycja listy kafli w schemacie ecommerce GA4. */
+export interface ThemeGridItem {
+  slug: string;
+  label: string;
+  fromPerPersonPln?: number;
+}
+
+const LIST_ID = "home_themes";
+const LIST_NAME = "Kafle klimatów";
+
+/**
+ * Siatka kafli klimatów z pomiarem ekspozycji.
+ *
+ * Ten sam `item_list_id`/`view_item_list` co pasy A i B — dzięki temu trzy
+ * ścieżki wyboru kierunku (inspiracja, pakiety, klimaty) da się porównać
+ * w JEDNYM raporcie GA4 zamiast zestawiać trzy różne metryki i zgadywać.
+ */
+export function ThemeGrid({
+  items,
+  children,
+  className,
+}: {
+  items: ThemeGridItem[];
+  children: ReactNode;
+  className?: string;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useViewOnce(
+    rootRef,
+    useCallback(() => {
+      track("view_item_list", {
+        item_list_id: LIST_ID,
+        item_list_name: LIST_NAME,
+        items: items.map((item, index) => ({
+          item_id: item.slug,
+          item_name: item.label,
+          price: item.fromPerPersonPln,
+          currency: typeof item.fromPerPersonPln === "number" ? ("PLN" as const) : undefined,
+          index: index + 1,
+        })),
+        copy_variant: COPY_VARIANT,
+      });
+    }, [items]),
+  );
+
+  return (
+    <div ref={rootRef} className={className}>
+      {children}
+    </div>
+  );
+}
 
 /** Przezroczysta obwoluta: łapie klik w kafel kategorii i raportuje pozycję. */
 export function TrackedTile({
   slug,
   position,
+  label,
+  fromPerPersonPln,
   children,
 }: {
   slug: string;
   position: number;
+  label: string;
+  fromPerPersonPln?: number;
   children: ReactNode;
 }) {
   return (
     <div
       className="contents"
-      onClickCapture={() => track("category_tile_clicked", { slug, position })}
+      onClickCapture={() => {
+        // Stary event zostaje — raporty na `category_tile_clicked` mają
+        // ciągłość; `select_item` domyka lejek w tym samym schemacie, w którym
+        // mierzone są dwie sekcje wyżej.
+        track("category_tile_clicked", { slug, position });
+        track("select_item", {
+          item_list_id: LIST_ID,
+          item_list_name: LIST_NAME,
+          items: [
+            {
+              item_id: slug,
+              item_name: label,
+              price: fromPerPersonPln,
+              currency: typeof fromPerPersonPln === "number" ? ("PLN" as const) : undefined,
+              index: position,
+            },
+          ],
+          copy_variant: COPY_VARIANT,
+        });
+      }}
     >
       {children}
     </div>

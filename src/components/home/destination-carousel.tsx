@@ -17,6 +17,8 @@ import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
+import { useViewOnce } from "@/lib/analytics/use-view-once";
+import { COPY_VARIANT } from "@/lib/home/copy";
 import { cn } from "@/lib/ui/cn";
 
 export interface CarouselItem {
@@ -36,14 +38,6 @@ export interface CarouselItem {
   category?: string;
   node: ReactNode;
 }
-
-/**
- * Ile sekcji musi być widoczne, żeby uznać ją za obejrzaną. 0,25 — pas kart
- * jest wysoki, więc „w polu widzenia" ma znaczyć „widać kilka kart", a nie
- * „wjechał górny piksel". Obie sekcje strony głównej są niższe niż ekran
- * 375×812, więc ten próg jest osiągalny na każdym urządzeniu docelowym.
- */
-const VIEW_THRESHOLD = 0.25;
 
 /**
  * Pozycje w schemacie ecommerce GA4. `index` jest 1-based, żeby zgadzał się
@@ -105,9 +99,6 @@ export function DestinationCarousel({
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  // Ref, nie stan: „ekspozycja już zaraportowana" nie wpływa na render, a jako
-  // stan wywołałaby przerysowanie całego pasa w momencie przewinięcia do niego.
-  const viewSentRef = useRef(false);
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -128,42 +119,21 @@ export function DestinationCarousel({
     };
   }, [emblaApi, onSelect]);
 
-  // EKSPOZYCJA sekcji. Bez tego znamy tylko licznik kliknięć, więc sekcja
-  // z niskim CTR jest nie do odróżnienia od sekcji, do której nikt nie doscrollował
-  // — a to dwa zupełnie różne wnioski (popraw kartę vs przenieś sekcję wyżej).
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el || !listId || viewSentRef.current) return;
-    // Bez IntersectionObserver (stare WebView) po prostu nie raportujemy
-    // ekspozycji. Analityka nigdy nie może wywrócić strony.
-    if (typeof IntersectionObserver === "undefined") return;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          // Warunkiem jest RATIO, nie `isIntersecting`. Obserwator dostarcza
-          // pierwszy wpis od razu po `observe()`, niezależnie od progu, a
-          // `isIntersecting` jest prawdziwe przy JAKIMKOLWIEK przecięciu. Pas
-          // „Popularne kierunki" zaczyna się na 375×812 poniżej zgięcia, ale
-          // jego górna krawędź wchodzi w ekran już przy scrollu 0 — na samym
-          // `isIntersecting` sekcja raportowałaby ekspozycję każdemu, kto
-          // otworzył stronę i nic nie zrobił. To zawyżałoby wyświetlenia
-          // i zaniżało CTR, czyli odwrotnie do celu tego pomiaru.
-          if (entry.intersectionRatio < VIEW_THRESHOLD || viewSentRef.current) continue;
-          viewSentRef.current = true;
-          io.disconnect();
-          track("view_item_list", {
-            item_list_id: listId,
-            item_list_name: listName ?? listId,
-            items: toGa4Items(items),
-          });
-        }
-      },
-      { threshold: VIEW_THRESHOLD },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [items, listId, listName]);
+  // Ekspozycja pasa — wspólny hak, żeby pułapka `isIntersecting` vs
+  // `intersectionRatio` była opisana i pilnowana w jednym miejscu.
+  useViewOnce(
+    rootRef,
+    useCallback(() => {
+      if (!listId) return;
+      track("view_item_list", {
+        item_list_id: listId,
+        item_list_name: listName ?? listId,
+        items: toGa4Items(items),
+        copy_variant: COPY_VARIANT,
+      });
+    }, [items, listId, listName]),
+    Boolean(listId),
+  );
 
   return (
     <div ref={rootRef}>
@@ -223,6 +193,7 @@ export function DestinationCarousel({
                     item_list_id: listId,
                     item_list_name: listName ?? listId,
                     items: [toGa4Item(item, index)],
+                    copy_variant: COPY_VARIANT,
                   });
                 }
               }}

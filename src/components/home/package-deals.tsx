@@ -3,6 +3,7 @@ import { ArrowRight, Plane, RefreshCw, Search, Timer } from "lucide-react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { DestinationCarousel } from "./destination-carousel";
+import { HOME_COPY, type SectionCopy } from "@/lib/home/copy";
 import {
   formatDateRange,
   formatPricePln,
@@ -73,7 +74,14 @@ const PRICE_FACTS = [
   { Icon: Search, text: "Każda cena z prawdziwego wyszukania" },
 ] as const;
 
-export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
+export function PackageDeals({
+  deals,
+  copy = HOME_COPY.packages,
+}: {
+  deals: PackageDeal[];
+  /** Nagłówek, zdanie pod nim i etykieta CTA — patrz lib/home/copy.ts. */
+  copy?: SectionCopy;
+}) {
   const sorted = [...deals].sort((a, b) => a.perPersonPln - b.perPersonPln).slice(0, MAX_DEALS);
   if (sorted.length < MIN_DEALS) return null;
 
@@ -86,20 +94,19 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
       <DestinationCarousel
         tone="light"
         listId="home_packages"
-        listName="Cały wyjazd w jednej cenie"
+        listName={copy.heading}
         ariaLabel={{ prev: "Poprzednie pakiety", next: "Następne pakiety" }}
         slideClassName="min-w-0 shrink-0 basis-[82%] pl-3 sm:basis-[46%] sm:pl-4 lg:basis-[31%] xl:basis-[23.5%]"
         header={
           <div>
             <h2 id="package-deals" className="font-display text-2xl leading-tight text-ink sm:text-3xl">
-              Cały wyjazd w jednej cenie
+              {copy.heading}
             </h2>
             {/* Zdanie, które tłumaczy CO to za liczba — pod nagłówkiem,
                 w ścieżce czytania, nie w prawym górnym rogu. */}
-            <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-muted">
-              Lot z Warszawy w obie strony plus hotel — za osobę przy dwóch osobach, z terminu
-              podanego na karcie. Klikasz i wybierasz hotel na swoje daty.
-            </p>
+            {copy.subheading ? (
+              <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-muted">{copy.subheading}</p>
+            ) : null}
           </div>
         }
         items={sorted.map((deal) => {
@@ -166,7 +173,7 @@ export function PackageDeals({ deals }: { deals: PackageDeal[] }) {
                         (dobieracz, konsjerż, pasek nawigacji). Czwarty wariant
                         hovera na piątym przycisku to początek dryfu. */}
                     <span className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand text-sm font-bold text-white transition duration-200 ease-out group-hover:opacity-90 motion-reduce:transition-none">
-                      Wybierz hotel
+                      {copy.cta ?? "Wybierz hotel"}
                       <ArrowRight aria-hidden strokeWidth={2.5} className="h-4 w-4 shrink-0" />
                     </span>
                   </div>
