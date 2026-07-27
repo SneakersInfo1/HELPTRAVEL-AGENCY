@@ -31,6 +31,7 @@ import {
   dealsLabel,
   filterDeals,
   formatPricePln,
+  nightsLabel,
   type BudgetBandId,
   type DealCard,
 } from "@/lib/home/deal-card";
@@ -77,6 +78,9 @@ interface TripPickerProps {
  * nie istnieje, więc bez stanu wciśnięcia chip nie potwierdza dotknięcia,
  * dopóki nie przeliczy się licznik.
  */
+/** Ile ofert pokazujemy na miejscu, zanim odeślemy do pełnej listy. */
+const MAX_WIDOCZNYCH = 5;
+
 const CHIP_BASE =
   "inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition duration-200 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:active:scale-100";
 
@@ -200,7 +204,26 @@ export function TripPicker({
 
   const ctaHref = pickerCtaHref(state);
 
+  // Rozwinięcie wyników NA MIEJSCU.
+  //
+  // Wcześniej przycisk prowadził na /wyjazdy/{typ}. Zmierzone: dobieracz mówił
+  // „Mamy 5 wyjazdów od 1 275 zł/os.", a strona docelowa pokazywała 7 kart
+  // i ANI JEDNEJ ceny. Liczba, która skłoniła do kliknięcia, znikała po
+  // kliknięciu — czyli dokładnie to, przed czym ostrzega komentarz na górze
+  // tego pliku. Pula jest już w pamięci przeglądarki, więc pokazujemy ją tutaj
+  // zamiast odsyłać użytkownika tam, gdzie jej nie ma.
+  const [rozwiniete, setRozwiniete] = useState(false);
+  // Sortowanie po cenie rosnąco jest WYMOGIEM SPÓJNOŚCI, nie preferencją.
+  // Licznik nad listą mówi „od X zł", gdzie X to najtańsza oferta z CAŁEGO
+  // dopasowania. Przy kolejności popularnościowej pierwsza pozycja bywała
+  // droższa (zmierzone: licznik 1 079 zł, najtańszy widoczny 1 275 zł), czyli
+  // nagłówek znowu obiecywał coś, czego pod nim nie było.
+  const widoczne = rozwiniete
+    ? [...matching].sort((a, b) => a.pricePerPersonPln - b.pricePerPersonPln).slice(0, MAX_WIDOCZNYCH)
+    : [];
+
   const onSubmit = useCallback(() => {
+    setRozwiniete(true);
     track("quiz_submit", {
       budget: budget ?? "any",
       theme: theme ?? "any",
@@ -266,16 +289,57 @@ export function TripPicker({
           )}
         </p>
 
-        <a
-          href={ctaHref}
+        {/* <button>, nie <a>: wynik pojawia się TUTAJ, więc nawigacja byłaby
+            kłamstwem o tym, co robi przycisk. */}
+        <button
+          type="button"
           onClick={onSubmit}
-          className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-bold shadow-[var(--shadow-sm)] transition duration-200 ease-out hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:active:scale-100"
+          disabled={summary.kind !== "results"}
+          className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-bold text-white shadow-[var(--shadow-sm)] transition duration-200 ease-out hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none motion-reduce:active:scale-100"
         >
-          {/* span: globalne a{color:inherit} bije text-* na <a> */}
-          <Search aria-hidden strokeWidth={2} className="h-4 w-4 shrink-0 text-white" />
-          <span className="text-white">{ctaLabel}</span>
-        </a>
+          <Search aria-hidden strokeWidth={2} className="h-4 w-4 shrink-0" />
+          {ctaLabel}
+        </button>
       </div>
+
+      {/* Wyniki z TEJ SAMEJ puli, z której policzony jest licznik nad nimi.
+          Każdy wiersz prowadzi do wyszukiwarki hoteli z ustawionym kierunkiem —
+          czyli tam, gdzie użytkownik może z tą ceną coś zrobić. */}
+      {widoczne.length > 0 && (
+        <ul className="mt-4 grid gap-2">
+          {widoczne.map((d) => (
+            <li key={d.id}>
+              <a
+                href={d.searchUrl}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition duration-200 ease-out hover:border-brand/40 hover:bg-brand-soft active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:active:scale-100"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-ink">{d.cityLabel}</span>
+                  <span className="block text-xs text-ink-muted">
+                    {d.countryLabel} · lot + {nightsLabel(d.nights)}
+                  </span>
+                </span>
+                <span className="shrink-0 whitespace-nowrap text-sm font-bold text-brand">
+                  od {formatPricePln(d.pricePerPersonPln)}
+                  <span className="text-[11px] font-semibold text-ink-muted">/os.</span>
+                </span>
+              </a>
+            </li>
+          ))}
+          {matching.length > widoczne.length && (
+            <li className="pt-1 text-center">
+              {/* Wyjście do pełnej listy — świadomie BEZ ceny w etykiecie:
+                  strona typu wyjazdu nie pokazuje cen pakietów, więc obiecywanie
+                  ich tutaj powtórzyłoby ten sam błąd, który ta zmiana naprawia. */}
+              <a href={ctaHref} className="text-sm font-semibold underline underline-offset-2">
+                <span className="text-brand">
+                  Zobacz wszystkie kierunki ({matching.length}) <span aria-hidden>→</span>
+                </span>
+              </a>
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   );
 }

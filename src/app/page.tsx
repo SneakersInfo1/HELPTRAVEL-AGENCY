@@ -190,7 +190,13 @@ export async function HomePageView() {
         rooms: "1",
       });
       return {
-        id: d.id,
+        // Klucz z PROFILU, nie z rekordu seeda. Seed potrafi mieć dwa wpisy
+        // wskazujące na ten sam profil kierunku (zmierzone: Malaga wychodziła
+        // dwa razy na liście wyników dobieracza), a przy `d.id` obie wersje
+        // przechodziły dalej jako osobne oferty i zawyżały licznik. Profilowy
+        // slug jest też kluczem, którego używa TRAVEL_MOODS, więc filtr typu
+        // wyjazdu trafia w te same kierunki, które liczy licznik.
+        id: profile.slug,
         city: profile.city,
         cityLabel: localizeCity(profile.city),
         country: profile.country,
@@ -211,7 +217,16 @@ export async function HomePageView() {
         // przykładowymi byłoby zmyślaniem danych. Patrz lib/home/deal-card.ts.
       } satisfies DealCard;
     })
-    .filter((x): x is DealCard => x !== null);
+    .filter((x): x is DealCard => x !== null)
+    // Deduplikacja po kierunku, z zachowaniem NAJTAŃSZEJ oferty. Bez tego ten
+    // sam kierunek pokazywał się dwa razy na liście wyników, a licznik nad nią
+    // liczył go podwójnie — czyli obiecywał więcej, niż serwis ma.
+    .reduce<DealCard[]>((acc, card) => {
+      const istniejacy = acc.findIndex((x) => x.id === card.id);
+      if (istniejacy === -1) return [...acc, card];
+      if (card.pricePerPersonPln < acc[istniejacy].pricePerPersonPln) acc[istniejacy] = card;
+      return acc;
+    }, []);
 
   // Przynależność kierunku do typu wyjazdu — z TRAVEL_MOODS, czyli z tej samej
   // listy redakcyjnej, która definiuje strony /wyjazdy/[typ]. Dzięki temu
