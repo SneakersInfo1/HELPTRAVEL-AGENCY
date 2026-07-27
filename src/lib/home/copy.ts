@@ -38,10 +38,8 @@ export interface HomeCopy {
   inspire: SectionCopy;
   /** Sekcja B — „Cały wyjazd w jednej cenie". */
   packages: SectionCopy;
-  /** Sekcja C — dobieracz. */
+  /** Sekcja C — „Nie wiesz, dokąd jechać?" (kafle klimatów). */
   picker: SectionCopy;
-  /** Sekcja C — podblok kafli klimatów. */
-  themes: SectionCopy;
 }
 
 /**
@@ -68,10 +66,9 @@ export const HOME_COPY: HomeCopy = {
   },
   picker: {
     heading: "Nie wiesz, dokąd jechać?",
-    subheading: "Powiedz, ile chcesz wydać i na co masz ochotę — policzę, ile mamy propozycji.",
-    cta: "Pokaż wyjazdy",
-  },
-  themes: {
-    heading: "Albo wybierz po klimacie",
+    // Zdanie opisuje KAFLE, bo panel z pytaniami został zdjęty ze strony
+    // (decyzja właściciela 2026-07-27). Wcześniejsze „Powiedz, ile chcesz
+    // wydać…" odnosiło się do widgetu, którego już nie ma.
+    subheading: "Wybierz klimat, na jaki masz ochotę — pokażemy kierunki, które do niego pasują.",
   },
 };

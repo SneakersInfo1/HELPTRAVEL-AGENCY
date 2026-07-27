@@ -7,7 +7,6 @@ import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
-import { TripPicker } from "@/components/home/trip-picker";
 import { HOME_COPY } from "@/lib/home/copy";
 import { nightsBetween, totalFor, type DealCard } from "@/lib/home/deal-card";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
@@ -228,16 +227,6 @@ export async function HomePageView() {
       return acc;
     }, []);
 
-  // Przynależność kierunku do typu wyjazdu — z TRAVEL_MOODS, czyli z tej samej
-  // listy redakcyjnej, która definiuje strony /wyjazdy/[typ]. Dzięki temu
-  // licznik obiecuje dokładnie to, co pokaże strona po kliknięciu.
-  const themeMembership: Record<string, string[]> = {};
-  for (const mood of TRAVEL_MOODS) {
-    themeMembership[mood.slug] = mood.picks
-      .map((p) => p.slug)
-      .filter((s): s is string => Boolean(s));
-  }
-
   const packageCandidates = allFreshDeals
     .filter((d) => !tileIdSet.has(d.id))
     .map((d) => {
@@ -279,9 +268,11 @@ export async function HomePageView() {
         <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} />
       </div>
       <PackageDeals deals={packageDeals} />
-      {/* SEKCJA C — przechwycenie intencji. Dobieracz zamiast siedmiu kafli;
-          pod nim MAKSYMALNIE 4 kafle nastrojowe jako alternatywna ścieżka
-          dla kogoś, kto woli kliknąć obrazek niż odpowiadać na pytania. */}
+      {/* SEKCJA C — ścieżka dla niezdecydowanych: cztery kafle klimatów
+          plus kafel asystenta.
+          2026-07-27, decyzja właściciela: panel z pytaniami (budżet → typ →
+          licznik) ZDJĘTY ze strony. Komponent `TripPicker` i jego testy
+          zostają w repo — gdyby miał wrócić, wraca jedną linią. */}
       <section
         aria-labelledby="trip-picker"
         className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8"
@@ -293,13 +284,8 @@ export async function HomePageView() {
           {HOME_COPY.picker.subheading}
         </p>
         <div className="mt-4">
-          <TripPicker
-            deals={allFreshDeals}
-            themes={themeTiles.map((t) => ({ slug: t.slug, label: t.label }))}
-            themeMembership={themeMembership}
-          />
+          <ThemeTiles tiles={themeTiles.slice(0, 4)} />
         </div>
-        <ThemeTiles tiles={themeTiles.slice(0, 4)} />
       </section>
       <TrustHowItWorks trustpilot={trustpilot} />
     </main>

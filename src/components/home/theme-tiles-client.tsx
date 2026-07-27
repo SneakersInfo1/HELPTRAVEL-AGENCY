@@ -137,9 +137,9 @@ export function AssistantTile() {
           Asystent umie jedno, czego dwa chipy nie umieją: przyjąć warunki
           podane własnymi słowami (konkretne daty, dziecko, limit długości
           lotu). Kafel mówi teraz o tym. */}
-      <h4 className="font-display text-lg leading-tight sm:text-xl">
+      <h3 className="font-display text-lg leading-tight sm:text-xl">
         Opisz wyjazd własnymi słowami
-      </h4>
+      </h3>
       <p className="mt-0.5 hidden text-xs text-white/75 sm:block">
         Daty, dzieci, długość lotu — asystent to uwzględni
       </p>

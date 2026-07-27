@@ -2,7 +2,6 @@ import Image from "next/image";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { AssistantTile, ThemeGrid, TrackedTile } from "./theme-tiles-client";
-import { HOME_COPY } from "@/lib/home/copy";
 // `formatPricePln`, a NIE `formatPLN` z lib/money: to drugie zostawia kwoty
 // czterocyfrowe bez separatora (`1137 zł`), bo `Intl` dla pl-PL domyślnie
 // grupuje dopiero od pięciu cyfr. Kafle pokazywały przez to „od 1137 zł/os."
@@ -30,14 +29,7 @@ export interface ThemeTile {
   fromPerPersonPln?: number;
 }
 
-export function ThemeTiles({
-  tiles,
-  heading = HOME_COPY.themes.heading,
-}: {
-  tiles: ThemeTile[];
-  /** Nagłówek podbloku — propsem, żeby dało się go testować. */
-  heading?: string;
-}) {
+export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
   if (tiles.length === 0) return null;
 
   return (
@@ -47,9 +39,7 @@ export function ThemeTiles({
     // drugiego poziomu i sekcję zagnieżdżoną w sekcji, a czytnik ekranu
     // zapowiadał „Nie wiesz, dokąd jechać?" dwa razy pod rząd. Zostaje <h3>,
     // który mówi, czym te kafle różnią się od dobieracza nad nimi.
-    <div className="mt-8">
-      <h3 className="font-display text-xl leading-tight text-ink">{heading}</h3>
-
+    <div>
       <ThemeGrid
         className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
         items={tiles.map((t) => ({
@@ -91,9 +81,9 @@ export function ThemeTiles({
                 className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
               />
               <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.9)_45%,rgba(5,18,11,0.94)_100%)] p-3 sm:p-4">
-              {/* h4, nie h3: nagłówkiem tej grupy jest teraz „Albo wybierz po
-                  klimacie", więc kafle są o poziom niżej. */}
-              <h4 className="font-display text-lg leading-tight sm:text-xl">{tile.label}</h4>
+              {/* h3: kafle są bezpośrednio pod <h2> sekcji, bez nagłówka
+                  pośredniego (ten zniknął razem z panelem dobieracza). */}
+              <h3 className="font-display text-lg leading-tight sm:text-xl">{tile.label}</h3>
               <p className="mt-0.5 hidden text-xs text-white/80 sm:block">{tile.tagline}</p>
               {tile.fromPerPersonPln ? (
                 // Cena zamiast „Zobacz kierunki": etykieta nawigacyjna nie
