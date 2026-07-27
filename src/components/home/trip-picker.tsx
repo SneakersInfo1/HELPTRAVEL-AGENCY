@@ -28,13 +28,23 @@ import { Check, Search } from "lucide-react";
 import {
   BUDGET_BANDS,
   budgetBandLabel,
-  cheapestPrice,
   dealsLabel,
   filterDeals,
   formatPricePln,
   type BudgetBandId,
   type DealCard,
 } from "@/lib/home/deal-card";
+// Logika stanu żyje w czystym module — komponent jest nad nią cienką powłoką.
+// Dzięki temu przełączanie chipów, trzy stany podsumowania i cel CTA są
+// pokryte testami mimo braku DOM-u w tym repo.
+import {
+  EMPTY_PICKER_STATE,
+  pickerCtaHref,
+  pickerSummary,
+  toggleBudget,
+  toggleTheme,
+  type PickerState,
+} from "@/lib/home/trip-picker-state";
 import { track } from "@/lib/analytics/track";
 import { useViewOnce } from "@/lib/analytics/use-view-once";
 import { COPY_VARIANT, HOME_COPY } from "@/lib/home/copy";
@@ -132,8 +142,8 @@ export function TripPicker({
   themeMembership,
   ctaLabel = HOME_COPY.picker.cta ?? "Pokaż wyjazdy",
 }: TripPickerProps) {
-  const [budget, setBudget] = useState<BudgetBandId | null>(null);
-  const [theme, setTheme] = useState<string | null>(null);
+  const [state, setState] = useState<PickerState>(EMPTY_PICKER_STATE);
+  const { budget, theme } = state;
   // Ref, nie stan: „czy już zaczął" nie wpływa na render, więc trzymanie tego
   // w stanie wywołałoby zbędne przerysowanie przy pierwszym kliknięciu.
   const startedRef = useRef(false);
@@ -163,47 +173,42 @@ export function TripPicker({
     () => filterDeals(deals, { budget, theme }, themeMembership),
     [deals, budget, theme, themeMembership],
   );
-  const from = cheapestPrice(matching);
+  const summary = pickerSummary(state, matching);
 
-  // Krok uznajemy za ukończony, gdy użytkownik dokonał wyboru — pomiar mówi,
-  // na którym kroku ludzie odpadają, a nie tylko ilu doszło do końca.
+  // Krok uznajemy za ukończony, gdy użytkownik dokonał WYBORU — odznaczenie to
+  // cofnięcie, nie postęp. Decyzja siedzi w `toggle*` (pokryta testem), tutaj
+  // zostaje tylko wysłanie eventu.
   const selectBudget = useCallback(
     (id: BudgetBandId) => {
       markStarted();
-      const next = budget === id ? null : id;
-      setBudget(next);
-      if (next) track("quiz_step_complete", { step: 1, step_name: "budget", value: next });
+      const { state: next, reported } = toggleBudget(state, id);
+      setState(next);
+      if (reported) track("quiz_step_complete", { step: 1, step_name: "budget", value: reported });
     },
-    [budget, markStarted],
+    [state, markStarted],
   );
 
   const selectTheme = useCallback(
     (slug: string) => {
       markStarted();
-      const next = theme === slug ? null : slug;
-      setTheme(next);
-      if (next) track("quiz_step_complete", { step: 2, step_name: "theme", value: next });
+      const { state: next, reported } = toggleTheme(state, slug);
+      setState(next);
+      if (reported) track("quiz_step_complete", { step: 2, step_name: "theme", value: reported });
     },
-    [theme, markStarted],
+    [state, markStarted],
   );
 
-  // Dokąd prowadzi CTA. Wybrany typ ma własną stronę z kierunkami; bez typu
-  // idziemy do katalogu. Świadomie NIE budujemy tu URL-a wyszukiwarki hoteli:
-  // nie znamy kierunku ANI dat, więc wyszukiwarka pokazałaby pusty formularz,
-  // a użytkownik straciłby kontekst, który właśnie nam podał.
-  const ctaHref = theme ? `/wyjazdy/${theme}` : "/kierunki";
+  const ctaHref = pickerCtaHref(state);
 
   const onSubmit = useCallback(() => {
     track("quiz_submit", {
       budget: budget ?? "any",
       theme: theme ?? "any",
       results_count: matching.length,
-      cheapest_price: from ?? undefined,
+      cheapest_price: summary.kind === "results" ? (summary.cheapestPln ?? undefined) : undefined,
       copy_variant: COPY_VARIANT,
     });
-  }, [budget, theme, matching.length, from]);
-
-  const hasChoice = budget !== null || theme !== null;
+  }, [budget, theme, matching.length, summary]);
 
   return (
     <div
@@ -239,17 +244,20 @@ export function TripPicker({
           aria-live="polite"
           className="text-sm leading-6 text-ink-muted"
         >
-          {matching.length > 0 ? (
+          {summary.kind === "results" ? (
             <>
-              Mamy <strong className="font-bold text-ink">{dealsLabel(matching.length)}</strong>
-              {from !== null && (
+              Mamy <strong className="font-bold text-ink">{dealsLabel(summary.count)}</strong>
+              {summary.cheapestPln !== null && (
                 <>
                   {" "}
-                  od <strong className="font-bold text-brand">{formatPricePln(from)}/os.</strong>
+                  od{" "}
+                  <strong className="font-bold text-brand">
+                    {formatPricePln(summary.cheapestPln)}/os.
+                  </strong>
                 </>
               )}
             </>
-          ) : hasChoice ? (
+          ) : summary.kind === "empty" ? (
             // Pusty wynik dostaje WYJŚCIE, nie samo „brak". Ślepa uliczka
             // w tym miejscu oznacza wyjście ze strony.
             <>W tym zestawieniu nic teraz nie mamy — spróbuj wyższego budżetu albo innego typu.</>

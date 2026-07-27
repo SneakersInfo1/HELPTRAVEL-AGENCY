@@ -81,7 +81,16 @@ export function ThemeTiles({
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
               className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             />
-            <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.85)_55%,rgba(5,18,11,0.92)_100%)] p-3 text-white sm:p-4">
+            {/* Scrim jak na kafelkach sekcji A: przejście NAD tekstem, blok
+                tekstowy startuje od krycia 0,72. Przy gradiencie zaczynającym
+                się od przezroczystości nazwa klimatu stała na kryciu bliskim
+                zeru — na jasnym zdjęciu to ~1,3:1 przy wymaganych 4,5:1. */}
+            <div className="relative z-10 mt-auto w-full text-white">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
+              />
+              <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.9)_45%,rgba(5,18,11,0.94)_100%)] p-3 sm:p-4">
               {/* h4, nie h3: nagłówkiem tej grupy jest teraz „Albo wybierz po
                   klimacie", więc kafle są o poziom niżej. */}
               <h4 className="font-display text-lg leading-tight sm:text-xl">{tile.label}</h4>
@@ -103,6 +112,7 @@ export function ThemeTiles({
                   Zobacz kierunki <span aria-hidden>→</span>
                 </p>
               )}
+              </div>
             </div>
           </LocalizedLink>
           </TrackedTile>

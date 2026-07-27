@@ -103,7 +103,20 @@ export function InspireTile({
         </span>
       ) : null}
 
-      <div className="relative z-10 mt-auto w-full bg-[linear-gradient(180deg,rgba(5,18,11,0)_0%,rgba(5,18,11,0.9)_55%,rgba(5,18,11,0.95)_100%)] p-3 text-white">
+      {/* PRZEJŚCIE SCRIMU JEST NAD TEKSTEM, nie pod nim.
+          Wcześniej gradient zaczynał się od przezroczystości w GÓRNEJ krawędzi
+          bloku tekstowego — dokładnie tam, gdzie stoi nazwa kraju i miasta.
+          Na jasnym zdjęciu (plaża, niebo, biały mur) krycie w tym miejscu było
+          bliskie zeru, więc kontrast spadał do ~1,3:1 przy wymaganych 4,5:1.
+          Policzone: dopiero krycie 0,72 daje 4,81:1 dla bieli 70% na
+          NAJJAŚNIEJSZYM możliwym tle. Blok tekstowy startuje więc od 0,72,
+          a łagodne wejście robi osobny pasek nad nim. */}
+      <div className="relative z-10 mt-auto w-full text-white">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
+        />
+        <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.93)_45%,rgba(5,18,11,0.96)_100%)] p-3">
         {/* 12 px zamiast 10 px: kraj był najmniejszym tekstem na całej stronie
             głównej, a niesie kontekst potrzebny przy miastach, których nazwa
             nie mówi, gdzie leżą (Faro, Kos, Bari).
@@ -180,6 +193,7 @@ export function InspireTile({
           >
             <ChevronRight strokeWidth={2.5} className="h-4 w-4" />
           </span>
+        </div>
         </div>
       </div>
     </LocalizedLink>
