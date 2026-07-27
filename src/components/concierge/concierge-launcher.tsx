@@ -16,22 +16,41 @@
 // przesunięto WYŻEJ (patrz komentarz w quick-search-launcher.tsx) — jedyna
 // zmiana w tamtym pliku to offset pozycji, nic więcej.
 //
-// Zero gate'owania zgodą (decyzja produktowa z zadania): ujawnienie
-// dostawcy AI dzieje się W PANELU (stopka ConciergeChat), nie przez
-// ConsentProvider — dlatego ten plik świadomie NIE importuje consent/context.
+// FUNKCJA czatu nadal NIE jest gate'owana zgodą (decyzja produktowa z zadania):
+// ujawnienie dostawcy AI dzieje się W PANELU (stopka ConciergeChat), nie przez
+// ConsentProvider. `useConsent` służy tu do czegoś innego — do POZYCJI, nie do
+// uprawnień; patrz niżej.
+//
+// KOLIZJA Z BANEREM COOKIES (zmierzona w przeglądarce 375×812, 2026-07-25):
+// baner zgód to `fixed inset-x-2 bottom-2 z-40`, a ten launcher `fixed right-4
+// bottom-4 z-40`. Ten sam z-index → wygrywa późniejszy w DOM, czyli launcher.
+// Prostokąty realnie nachodziły: dymek zasłaniał WSZYSTKIE TRZY przyciski zgody
+// („Akceptuję wszystkie", „Tylko niezbędne", „Ustawienia"), a sam FAB — przycisk
+// „Ustawienia". Skutki były dwa i oba poważne: (1) użytkownik nie mógł swobodnie
+// podjąć decyzji o cookies, (2) bez zgody nie ładuje się gtag, więc te sesje nie
+// istniały w GA4. Dlatego dopóki decyzja wisi (albo otwarte są ustawienia),
+// launcher się NIE renderuje. Statyczna analiza tego nie widzi — baner renderuje
+// się warunkowo (`needsDecision`), więc defekt wychodzi dopiero z pomiaru.
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { Compass } from "lucide-react";
 
 import { ConciergeChat } from "./concierge-chat";
+import { CONCIERGE_OPEN_EVENT } from "@/lib/concierge/open-event";
 import { track } from "@/lib/analytics/track";
+import { useConsent } from "@/lib/consent/context";
 
 // Kill-switch (domyślnie WŁĄCZONE) — ta sama konwencja co
 // NEXT_PUBLIC_SHOW_QUICK_SEARCH i /api/concierge/chat route.ts.
 const ENABLED = process.env.NEXT_PUBLIC_SHOW_CONCIERGE?.trim().toLowerCase() !== "false";
 
 const TEASER_DISMISSED_KEY = "helptravel-concierge-teaser-dismissed-v1";
+/** Raz na sesję — inaczej dymek wracałby przy każdej nawigacji po serwisie. */
+const TEASER_SHOWN_SESSION_KEY = "helptravel-concierge-teaser-shown-session";
+/** Bezczynność, po której teaser ma sens (ms). */
+const TEASER_IDLE_MS = 30_000;
 const MOTION_MS = 200;
 
 // Teaser jako mini-„external store" (localStorage) czytany przez
@@ -88,6 +107,51 @@ export function ConciergeLauncher() {
   // Server snapshot = true (ukryty): SSR nigdy nie renderuje teasera, więc
   // hydracja jest spójna; klientowy snapshot wchodzi zaraz po niej.
   const teaserDismissed = useSyncExternalStore(subscribeTeaser, readTeaserDismissed, () => true);
+
+  // Patrz nagłówek pliku: to jest o POZYCJI (nie zasłaniać przycisków zgody),
+  // nie o uprawnieniach. `isSettingsOpen` dochodzi, bo modal ustawień cookies
+  // wraca do tego samego dolnego rogu.
+  const { needsDecision, isSettingsOpen } = useConsent();
+  const consentBlocking = needsDecision || isSettingsOpen;
+
+  // Teaser dopiero po realnym sygnale: 30 s BEZ interakcji. Każdy scroll,
+  // klik i klawisz przesuwa termin — użytkownik, który czyta i klika, nie
+  // dostaje zaczepki. Raz na sesję: `sessionStorage` pilnuje, żeby po powrocie
+  // na stronę dymek nie wyskakiwał od nowa przy każdej nawigacji.
+  const [teaserReady, setTeaserReady] = useState(false);
+  useEffect(() => {
+    // `consentBlocking` w warunku, nie tylko w renderze: inaczej 30 s odliczałoby
+    // się PODCZAS czytania banera cookies i dymek wyskakiwałby w tej samej chwili,
+    // w której użytkownik klika „Akceptuję". Licznik bezczynności ma mierzyć czas
+    // na STRONIE, a nie czas spędzony w oknie zgód.
+    if (teaserDismissed || consentBlocking) return;
+    try {
+      if (window.sessionStorage.getItem(TEASER_SHOWN_SESSION_KEY) === "1") return;
+    } catch {
+      // sessionStorage niedostępny (tryb prywatny) — trudno, licznik po prostu
+      // wystartuje ponownie. Nic się nie psuje.
+    }
+
+    let timer = 0;
+    const arm = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        setTeaserReady(true);
+        try {
+          window.sessionStorage.setItem(TEASER_SHOWN_SESSION_KEY, "1");
+        } catch {}
+      }, TEASER_IDLE_MS);
+    };
+
+    const events = ["scroll", "pointerdown", "keydown"] as const;
+    for (const event of events) window.addEventListener(event, arm, { passive: true });
+    arm();
+
+    return () => {
+      window.clearTimeout(timer);
+      for (const event of events) window.removeEventListener(event, arm);
+    };
+  }, [teaserDismissed, consentBlocking]);
   const bubbleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | null>(null);
@@ -96,11 +160,27 @@ export function ConciergeLauncher() {
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  const openPanel = useCallback(() => {
-    if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    setPanel("expanded");
-    track("concierge_open", { page_path: window.location.pathname });
-  }, []);
+  const openPanel = useCallback(
+    (source: "launcher" | "category_tile" | "proactive" = "launcher") => {
+      if (closeTimer.current) window.clearTimeout(closeTimer.current);
+      setPanel("expanded");
+      track("concierge_open", { page_path: window.location.pathname, source });
+    },
+    [],
+  );
+
+  // Kontrakt dla wejść SPOZA tego drzewa (redesign 2026-07: czat ma trzy
+  // wejścia, nie jeden dymek). Kafel „Powiedz budżet…" w sekcji kategorii
+  // wysyła zdarzenie okna zamiast przeciągać stan przez pół aplikacji —
+  // launcher jest montowany globalnie w layoucie, więc zawsze słucha.
+  useEffect(() => {
+    const onExternalOpen = (event: Event) => {
+      const source = (event as CustomEvent<{ source?: string }>).detail?.source;
+      openPanel(source === "category_tile" ? "category_tile" : "launcher");
+    };
+    window.addEventListener(CONCIERGE_OPEN_EVENT, onExternalOpen);
+    return () => window.removeEventListener(CONCIERGE_OPEN_EVENT, onExternalOpen);
+  }, [openPanel]);
 
   const closePanel = useCallback(() => {
     setEntered(false);
@@ -188,7 +268,7 @@ export function ConciergeLauncher() {
 
   return (
     <>
-      {panel === "bubble" && (
+      {panel === "bubble" && !consentBlocking && (
         <div
           className={`fixed right-4 z-40 flex flex-col items-end gap-2 sm:right-6 ${
             lifted
@@ -196,14 +276,22 @@ export function ConciergeLauncher() {
               : "bottom-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-6"
           }`}
         >
-          {/* Teaser jednorazowy — dismiss trwały w localStorage, bez liczników/scarcity. */}
-          {!teaserDismissed && !compact && (
+          {/* Teaser: jednorazowy, dismiss trwały w localStorage, bez liczników
+              i scarcity. Pokazywany DOPIERO po realnym sygnale (30 s bez
+              interakcji) — wcześniej wyskakiwał natychmiast po wejściu,
+              zasłaniał treść i był odruchowo zamykany, zanim ktokolwiek go
+              przeczytał. Każda interakcja (scroll, klik, klawisz) resetuje
+              odliczanie: kto korzysta ze strony, nie jest zaczepiany. */}
+          {!teaserDismissed && teaserReady && !compact && (
             <div className="animate-fade-in-up relative max-w-[240px] rounded-2xl rounded-br-md border border-emerald-900/10 bg-white px-4 py-3 text-sm font-medium text-neutral-800 shadow-[0_12px_32px_rgba(16,84,48,0.16)]">
               <button
                 type="button"
                 onClick={dismissTeaser}
                 aria-label="Zamknij podpowiedź"
-                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-900/10 bg-white text-neutral-500 shadow-sm transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                // Kółko zostaje wizualnie 24 px (większe wyglądałoby jak drugi
+                // przycisk obok dymka), ale `before:-inset-[10px]` rozszerza
+                // OBSZAR KLIKU do 44×44 — próg dotykowy bez zmiany wyglądu.
+                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-900/10 bg-white text-neutral-500 shadow-sm transition-colors before:absolute before:-inset-[10px] before:content-[''] hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-3 w-3">
                   <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -216,7 +304,7 @@ export function ConciergeLauncher() {
           <button
             ref={bubbleRef}
             type="button"
-            onClick={openPanel}
+            onClick={() => openPanel("launcher")}
             aria-haspopup="dialog"
             // Statycznie false: ten przycisk istnieje TYLKO w stanie "bubble"
             // (odmontowany, gdy panel otwarty), więc dynamiczne wiązanie ze
@@ -224,18 +312,17 @@ export function ConciergeLauncher() {
             aria-expanded={false}
             aria-label={compact ? "Dobierz wyjazd — asystent AI" : undefined}
             title={compact ? "Dobierz wyjazd" : undefined}
-            className={`animate-bubble-pulse group inline-flex items-center rounded-full bg-emerald-600 text-sm font-bold text-white outline-none transition-colors hover:bg-emerald-700 focus-visible:ring-4 focus-visible:ring-emerald-300/60 motion-reduce:animate-none ${
+            // Bez `animate-bubble-pulse`: stała pulsacja niczego nie
+            // komunikowała (dekoracyjny ruch jest zakazany w registerze
+            // `product`) i upodabniała launcher do widgetu supportu.
+            className={`group inline-flex items-center rounded-full bg-brand text-sm font-bold text-white shadow-lg outline-none transition hover:opacity-90 focus-visible:ring-4 focus-visible:ring-brand/40 ${
               compact ? "h-13 w-13 justify-center p-3.5" : "gap-2 py-3.5 pl-4 pr-5"
             }`}
           >
-            <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-5 w-5 shrink-0">
-              <path
-                d="M3 9.5C3 5.9 6.13 3 10 3s7 2.9 7 6.5S13.87 16 10 16c-.8 0-1.57-.12-2.28-.35L4 17l1.1-3.3A6.24 6.24 0 0 1 3 9.5Z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {/* Ta sama ikona co zakładka „Nie wiem dokąd" w hero i kafel
+                w kategoriach — trzy wejścia do JEDNEGO produktu mają wyglądać
+                jak jeden produkt, a nie jak generyczny czat supportu. */}
+            <Compass aria-hidden strokeWidth={2} className="h-5 w-5 shrink-0" />
             {!compact && "Dobierz wyjazd"}
           </button>
         </div>

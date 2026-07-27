@@ -1,15 +1,126 @@
 @import "tailwindcss";
 
+/* =============================================================================
+ * DESIGN TOKENS (redesign homepage 2026-07)
+ *
+ * Strategia koloru: RESTRAINED (register `product` z PRODUCT.md) — tinted
+ * neutrals + jeden akcent. Zieleń butelkowa = kolor MARKI (ciemne bloki,
+ * akcje), nie kolor tapety. Amber = WYŁĄCZNIE cena i jedno CTA.
+ *
+ * Zapis w OKLCH: równe skoki jasności są tu percepcyjnie równe, więc rampa
+ * neutralnych nie „skacze" jak w HSL. Neutralne są delikatnie podbarwione
+ * w stronę zieleni marki (chroma 0.003–0.014 przy hue 164) — spójność bez
+ * miętowego tła, które było wcześniej (#f4f8f2 + gradient na body).
+ *
+ * KONTRAST (WCAG AA, weryfikowane): --ink na --surface ≈ 14:1;
+ * --ink-muted (L 0.48) na --surface ≈ 4.8:1 — to PODŁOGA dla tekstu
+ * pomocniczego. --neutral-500 (L 0.55) daje ~3.6:1 → wolno go używać tylko
+ * do obramowań i ikon dekoracyjnych, NIGDY do tekstu.
+ * ========================================================================== */
 :root {
-  --background: #f4f8f2;
-  --foreground: #163324;
+  /* — Marka: zieleń butelkowa (1 podstawowa + 2 odcienie) — */
+  --brand: oklch(0.42 0.085 164);
+  --brand-strong: oklch(0.26 0.045 165);
+  --brand-soft: oklch(0.96 0.018 164);
+
+  /* — Akcent: amber. TYLKO cena i jedno CTA. Nie nagłówki, nie badge. — */
+  --accent: oklch(0.55 0.125 58);
+  --accent-bright: oklch(0.74 0.145 68);
+
+  /* — Neutralne: 6 stopni — */
+  --surface: oklch(0.988 0.002 164);
+  --surface-raised: oklch(1 0 0);
+  --surface-sunken: oklch(0.965 0.004 164);
+  --border: oklch(0.915 0.006 164);
+  --neutral-500: oklch(0.55 0.01 164);
+  --ink-muted: oklch(0.48 0.012 164);
+  --ink: oklch(0.24 0.014 164);
+
+  /* — Semantyczne — */
+  --success: oklch(0.52 0.12 152);
+  --warning: oklch(0.68 0.14 75);
+  --error: oklch(0.52 0.19 25);
+
+  /* — Kompatybilność wsteczna (istniejące komponenty) — */
+  --background: var(--surface);
+  --foreground: var(--ink);
+
+  /* — Promienie: 3 stopnie — */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+
+  /* — Cienie: 3 stopnie, subtelne (poprzednie były „gumowe": 80px blur) — */
+  --shadow-sm: 0 1px 2px oklch(0.24 0.014 164 / 0.06);
+  --shadow-md: 0 2px 8px oklch(0.24 0.014 164 / 0.08);
+  --shadow-lg: 0 8px 28px oklch(0.24 0.014 164 / 0.10);
+
+  /* — Warstwy: skala semantyczna zamiast 999/9999 — */
+  --z-sticky: 30;
+  --z-dropdown: 40;
+  --z-overlay: 50;
+  --z-modal: 60;
+  --z-toast: 70;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-line: var(--border);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-neutral-soft: var(--neutral-500);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+
   --font-sans: var(--font-ui);
   --font-display: var(--font-display);
+
+  /* Skala typograficzna: stała w rem (register `product` — fluid clamp na
+     każdym nagłówku szkodzi UI zadaniowemu). Clamp TYLKO na h1 hero, bo to
+     jedyna powierzchnia marketingowa na stronie. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.5;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.35;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 1.25;
+  --text-2xl--letter-spacing: -0.015em;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 1.15;
+  --text-3xl--letter-spacing: -0.02em;
+  --text-hero: clamp(2.25rem, 6vw, 3.5rem);
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.025em;
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  /* Jedna szerokość kontenera dla całego serwisu. */
+  --container-page: 75rem;
 }
 
 * {
@@ -20,8 +131,22 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Pierścień focus przez ZMIENNĄ, nie przez sztywny token.
+ *
+ * Ta reguła jest poza warstwami, więc bije każdą klasę Tailwinda (utilities są
+ * w `@layer utilities`) — dokładnie ta sama pułapka co przy resecie linków
+ * niżej w pliku. Wniosek: `focus-visible:outline-*` postawione na elemencie
+ * NIE DZIAŁA i nie ma jak zrobić jaśniejszego pierścienia na ciemnym tle.
+ *
+ * A jest to potrzebne: `--brand` na `emerald-950` (pas „Popularne kierunki")
+ * daje 1,87:1 przy wymaganych 3:1 dla wskaźnika focusu (WCAG 1.4.11) — czyli
+ * osoba nawigująca klawiaturą nie widzi, na której z osiemnastu kart stoi.
+ *
+ * Fallback zachowuje dotychczasowe zachowanie wszędzie; ciemne powierzchnie
+ * nadpisują to lokalnie klasą `[--focus-ring:#fff]` na kontenerze.
+ */
 :focus-visible {
-  outline: 2px solid #047857;
+  outline: 2px solid var(--focus-ring, var(--brand));
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -43,7 +168,7 @@ html {
   width: auto;
   height: auto;
   padding: 12px 20px;
-  background: #047857;
+  background: var(--brand);
   color: white;
   font-weight: 700;
   border-radius: 999px;
@@ -51,25 +176,22 @@ html {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
+/* Tło: płaskie, neutralne, blisko bieli. Zieleń wróciła na ciemne bloki i
+   akcje — poprzednia miętowa tapeta (radial + linear gradient na fixed)
+   barwiła KAŻDĄ stronę i kradła kontrast kartom. */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--surface);
+  color: var(--ink);
   font-family: var(--font-ui), sans-serif;
-  background-image:
-    radial-gradient(circle at top left, rgba(72, 164, 103, 0.14), transparent 22%),
-    linear-gradient(180deg, #f8fbf7 0%, #eef6ef 48%, #e6f0e8 100%);
-  background-attachment: fixed;
 }
 
-:focus-visible {
-  outline: 3px solid rgba(21, 128, 61, 0.35);
-  outline-offset: 2px;
-}
+/* UWAGA: był tu drugi `:focus-visible` (3px, zielony 35% alpha), który
+   nadpisywał ten z góry pliku — została JEDNA definicja na tokenie. */
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 24px 80px rgba(14, 55, 32, 0.08);
+  background: color-mix(in oklab, var(--surface-raised) 88%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-lg);
 }
 
 .animate-fade-in {

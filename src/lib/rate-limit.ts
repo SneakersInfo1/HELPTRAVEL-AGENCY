@@ -11,7 +11,8 @@ type LimiterKey =
   | "booking-prebook"
   | "booking-book"
   | "admin-email-test"
-  | "concierge";
+  | "concierge"
+  | "destination-suggest";
 
 const LIMIT_PER_MINUTE = 20;
 
@@ -35,6 +36,13 @@ const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   // concierge: każdy request kosztuje tokeny LLM (OpenRouter) — ciasny limit
   // 10/min/IP chroni budżet przed jednym klientem spamującym czat.
   concierge: 10,
+  // destination-suggest: normalnie odpowiada z lokalnego indeksu (0 kosztu),
+  // ale przy braku pewnego trafienia dopytuje LiteAPI /data/places. Cache 24 h
+  // chroni POWTÓRZONE zapytania — nie chroni serii UNIKALNYCH („aaa1", „aaa2"…),
+  // bo każdy tekst to inny URL. 120/min/IP mieści zwykłe pisanie w polu
+  // (debounce 150 ms ⇒ realnie kilkanaście zapytań na wyszukanie) i zamyka
+  // wektor generowania kosztu przez unikalne ciągi. Znalezione w review.
+  "destination-suggest": 120,
 };
 
 let warnedMissingEnv = false;

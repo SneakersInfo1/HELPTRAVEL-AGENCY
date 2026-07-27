@@ -32,6 +32,41 @@ interface DestinationTileProps {
   fromPricePerNight?: number;
   /** Najtańszy lot w obie strony z Warszawy (total PLN/os., snapshot). */
   flightFromPln?: number;
+  /** JEDNA cena całego wyjazdu (lot + nocleg) na osobę, ze snapshotu —
+   *  `pickFreshPackage`. Gdy jest, ZASTĘPUJE rozbicie hotel/lot: dwie ceny
+   *  do zsumowania w głowie były zadaniem matematycznym, a przy kierunkach
+   *  z tanim hotelem i drogim lotem (Stambuł: 40 zł/noc + 1181 zł lot)
+   *  tania kotwica hotelowa wprowadzała w błąd. */
+  packagePerPerson?: { perPersonPln: number; checkin: string; checkout: string };
+}
+
+/** „2026-03-12" + „2026-03-19" → „12–19.03" (polski zapis, bez roku: termin
+ *  jest zawsze w najbliższych tygodniach, rok tylko zaśmieca kafelek). */
+function formatDateRange(checkin: string, checkout: string): string | null {
+  const from = new Date(`${checkin}T00:00:00Z`);
+  const to = new Date(`${checkout}T00:00:00Z`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+  const d = (x: Date) => x.getUTCDate();
+  const m = (x: Date) => String(x.getUTCMonth() + 1).padStart(2, "0");
+  return m(from) === m(to)
+    ? `${d(from)}–${d(to)}.${m(to)}`
+    : `${d(from)}.${m(from)}–${d(to)}.${m(to)}`;
+}
+
+function nightsBetween(checkin: string, checkout: string): number | null {
+  const from = Date.parse(`${checkin}T00:00:00Z`);
+  const to = Date.parse(`${checkout}T00:00:00Z`);
+  if (Number.isNaN(from) || Number.isNaN(to) || to <= from) return null;
+  return Math.round((to - from) / 86_400_000);
+}
+
+/** „7 nocy" / „3 noce" / „1 noc" — polska odmiana. */
+function nightsLabel(n: number): string {
+  if (n === 1) return "1 noc";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return `${n} noce`;
+  return `${n} nocy`;
 }
 
 export function DestinationTile({
@@ -43,6 +78,7 @@ export function DestinationTile({
   size = "default",
   fromPricePerNight,
   flightFromPln,
+  packagePerPerson,
 }: DestinationTileProps) {
   const isLarge = size === "lg";
   // Sesja C1 FIX 7: chips link directly to the unified results page with
@@ -98,33 +134,54 @@ export function DestinationTile({
           {localizeCountry(destination.country)}
         </p>
         <h3 className={`mt-1 font-display leading-tight ${isLarge ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"}`}>{cityLabel}</h3>
-        {/* „~X h z PL" tylko gdy NIE mamy ceny lotu — z ceną („Lot z Warszawy
-            od…") dublowałaby informację, a na 375px (kafelek ~150px) każda
-            linia mniej ratuje kolizję tekstu z badge „Polecane". */}
-        {typeof flightFromPln !== "number" && (
-          <p className="mt-1.5 text-[11px] text-white/80">{flightHoursLabel}</p>
-        )}
-        {/* Ceny: jednostka (liczba + „zł/noc" / „od X zł") jest JEDNYM
-            niełamliwym tokenem. Na 375px (2 kolumny → ~150px treści) łamanie
-            w środku ceny dawało sieroty „noc" / „zł" w osobnych liniach
-            (screenshot właściciela 2026-07-03). Zawijać wolno tylko między
-            słowami etykiety. */}
-        {typeof fromPricePerNight === "number" && (
-          <p className="mt-1 text-[13px] font-bold leading-snug text-amber-300 sm:text-sm">
-            Hotel{" "}
-            <span className="whitespace-nowrap">
-              od {fromPricePerNight} zł
-              <span className="text-[10px] font-medium text-white/75">/noc</span>
-            </span>
-          </p>
-        )}
-        {/* ≤sm: „Lot od X zł" — „z Warszawy" niesie podtytuł sekcji (kafelek
-            ~120px nie mieści 3 słów + ceny w jednej linii). */}
-        {typeof flightFromPln === "number" && (
-          <p className="mt-0.5 text-[11px] font-medium leading-snug text-white/85">
-            Lot<span className="hidden sm:inline"> z Warszawy</span>{" "}
-            <span className="whitespace-nowrap">od {flightFromPln} zł</span>
-          </p>
+        {/* CENA — jedna, na osobę, za cały wyjazd (signature element).
+            Jednostka jest JEDNYM niełamliwym tokenem: na 375px łamanie
+            w środku ceny dawało sieroty „zł" w osobnej linii. */}
+        {packagePerPerson ? (
+          (() => {
+            const n = nightsBetween(packagePerPerson.checkin, packagePerPerson.checkout);
+            const range = formatDateRange(packagePerPerson.checkin, packagePerPerson.checkout);
+            return (
+              <>
+                <p className="mt-1.5 text-[15px] font-bold leading-snug text-accent-bright sm:text-base">
+                  <span className="whitespace-nowrap">
+                    od {packagePerPerson.perPersonPln} zł
+                    <span className="text-[10px] font-medium text-white/75">/os.</span>
+                  </span>
+                </p>
+                <p className="mt-0.5 text-[11px] leading-snug text-white/80">
+                  lot + {n ? nightsLabel(n) : "nocleg"}
+                  {/* Termin, z którego wynika cena: cena bez terminu jest
+                      niesprawdzalna, a niesprawdzalna cena wygląda podejrzanie. */}
+                  {range ? <span className="whitespace-nowrap"> · {range}</span> : null}
+                </p>
+              </>
+            );
+          })()
+        ) : (
+          <>
+            {/* Brak świeżego pakietu → pokazujemy TYLKO to, co realnie mamy.
+                Nigdy nie sumujemy hotelu i lotu sami — składniki pochodzą
+                z różnych okien dat, więc suma byłaby zmyślona. */}
+            {typeof flightFromPln !== "number" && (
+              <p className="mt-1.5 text-[11px] text-white/80">{flightHoursLabel}</p>
+            )}
+            {typeof fromPricePerNight === "number" && (
+              <p className="mt-1 text-[13px] font-bold leading-snug text-accent-bright sm:text-sm">
+                Hotel{" "}
+                <span className="whitespace-nowrap">
+                  od {fromPricePerNight} zł
+                  <span className="text-[10px] font-medium text-white/75">/noc</span>
+                </span>
+              </p>
+            )}
+            {typeof flightFromPln === "number" && (
+              <p className="mt-0.5 text-[11px] font-medium leading-snug text-white/85">
+                Lot<span className="hidden sm:inline"> z Warszawy</span>{" "}
+                <span className="whitespace-nowrap">od {flightFromPln} zł</span>
+              </p>
+            )}
+          </>
         )}
       </div>
     </LocalizedLink>

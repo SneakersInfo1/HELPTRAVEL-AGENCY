@@ -13,10 +13,47 @@ import { track } from "@/lib/analytics/track";
 import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
 import { readRecentDestinations, saveRecentDestination } from "@/lib/mvp/recent-destinations";
+import { POPULAR_GROUP_LABELS } from "@/lib/mvp/popular-destinations";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
 /** Podpowiedź z flagą „ostatnio szukane" (sekcja nad popularnymi). */
 type SuggestionItem = DestinationSuggestion & { _recent?: boolean };
+
+/**
+ * Dzieli podpowiedzi na sekcje, ZACHOWUJĄC płaski indeks każdej pozycji.
+ *
+ * Indeks jest tu istotny, a nie kosmetyczny: `destHighlight` i obsługa strzałek
+ * operują na płaskiej tablicy `destSuggestions`. Gdyby sekcje renderowały się
+ * z własną numeracją od zera, klawiatura podświetlałaby inny wiersz niż ten,
+ * który Enter faktycznie wybiera.
+ *
+ * Wpisany tekst → wszystkie pozycje trafiają do sekcji bez nagłówka (płaska
+ * lista wyników), więc grupowanie dotyczy wyłącznie trybu „puste pole".
+ */
+function buildSuggestionSections(
+  items: SuggestionItem[],
+): Array<{ label: string | null; rows: Array<{ item: SuggestionItem; index: number }> }> {
+  type Row = { item: SuggestionItem; index: number };
+  const recent: Row[] = [];
+  const beach: Row[] = [];
+  const city: Row[] = [];
+  const flat: Row[] = [];
+
+  items.forEach((item, index) => {
+    const row = { item, index };
+    if (item._recent) recent.push(row);
+    else if (item.group === "beach") beach.push(row);
+    else if (item.group === "city") city.push(row);
+    else flat.push(row);
+  });
+
+  const sections: Array<{ label: string | null; rows: Row[] }> = [];
+  if (recent.length) sections.push({ label: "Ostatnio szukane", rows: recent });
+  if (beach.length) sections.push({ label: POPULAR_GROUP_LABELS.beach, rows: beach });
+  if (city.length) sections.push({ label: POPULAR_GROUP_LABELS.city, rows: city });
+  if (flat.length) sections.push({ label: null, rows: flat });
+  return sections;
+}
 
 interface MiniPlannerFormProps {
   // Kompakt = true ukrywa opis ponizej (gdy form jest w cinematic hero).
@@ -146,10 +183,22 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     const popularMode = trimmed.length < 2;
     setDestFetching(true);
     const controller = new AbortController();
+    // Znacznik pokolenia efektu. `finally` NIE może gasić wskaźnika ładowania
+    // bezwarunkowo: przy szybkim pisaniu („ban" → „bang") stare, przerwane
+    // żądanie kończyło się PO starcie nowego i ustawiało destFetching=false,
+    // przez co w trakcie trwającego zapytania odsłaniały się poprzednie wyniki
+    // albo „Brak wyników" — i dało się je kliknąć. Znalezione w review.
+    // `cancelled` ustawia dopiero cleanup tego konkretnego przebiegu efektu.
+    let cancelled = false;
     const timeout = window.setTimeout(async () => {
       try {
+        // limit=20 (było 6): właściciel 2026-07-26 — po kliknięciu w puste pole
+        // ma być pełna lista 20 kierunków popularnych w Polsce. Sześć pozycji
+        // to była lista „do przewinięcia i zapomnienia"; dwadzieścia
+        // pogrupowanych (plaża / miasto) to realna ścieżka dla kogoś, kto nie
+        // wie, dokąd chce jechać — czyli dla głównego adresata tej strony.
         const url = popularMode
-          ? "/api/destinations/suggest?q=&limit=6"
+          ? "/api/destinations/suggest?q=&limit=20"
           : `/api/destinations/suggest?q=${encodeURIComponent(trimmed)}`;
         const res = await fetch(url, { signal: controller.signal });
         const payload = (await res.json().catch(() => ({ items: [] }))) as { items?: DestinationSuggestion[] };
@@ -157,21 +206,30 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         if (popularMode) {
           const recent = readRecentDestinations();
           const recentIds = new Set(recent.map((r) => r.id));
+          // Bez .slice(): lista jest pogrupowana i przewijalna, więc obcinanie
+          // do 8 tylko ucinałoby grupę „Miasto na weekend" w połowie. Serwer
+          // i tak oddaje maksymalnie 20 + ostatnio szukane.
           items = [
             ...recent.map((r): SuggestionItem => ({ ...r, _recent: true })),
             ...items.filter((i) => !recentIds.has(i.id)),
-          ].slice(0, 8);
+          ];
         }
+        if (cancelled) return;
         setDestSuggestions(items);
         setDestOpen(true);
         setDestHighlight(-1);
       } catch {
         // aborted or network error
       } finally {
-        setDestFetching(false);
+        // Tylko przebieg, który NIE został zastąpiony, gasi wskaźnik.
+        if (!cancelled) setDestFetching(false);
       }
     }, popularMode ? 50 : 150);
-    return () => { controller.abort(); window.clearTimeout(timeout); };
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
   }, [destQuery, destConfirmed, destFocusTick]);
 
   function selectSuggestion(s: SuggestionItem) {
@@ -197,14 +255,37 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     destInputRef.current?.blur();
   }
 
+  /**
+   * Przewinięcie podświetlonej pozycji do widoku.
+   *
+   * Konieczne, odkąd puste pole pokazuje 20 kierunków w panelu na ~6 wierszy:
+   * strzałka w dół przesuwała podświetlenie POZA widoczny obszar, `scrollTop`
+   * listy się nie zmieniał, a Enter wybierał pozycję, której użytkownik nie
+   * widział. Znalezione w review. `block: "nearest"` przewija minimalnie —
+   * lista nie skacze, gdy pozycja i tak jest widoczna.
+   */
+  function scrollHighlightIntoView(index: number) {
+    const list = destListRef.current;
+    if (!list || index < 0) return;
+    list.querySelectorAll<HTMLElement>('[role="option"]')[index]?.scrollIntoView({ block: "nearest" });
+  }
+
   function handleDestKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (!destOpen || destSuggestions.length === 0) return;
+    // Indeks liczony z `destHighlight` (domknięcie), NIE w funkcyjnym updaterze:
+    // React 19 w trybie Strict celowo odpala updatery dwukrotnie, żeby wykryć
+    // nieczystość — przewijanie w środku updatera byłoby side effectem
+    // wykonywanym podwójnie. Ten sam wzorzec opisuje komentarz w concierge-chat.
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setDestHighlight((h) => Math.min(h + 1, destSuggestions.length - 1));
+      const next = Math.min(destHighlight + 1, destSuggestions.length - 1);
+      setDestHighlight(next);
+      scrollHighlightIntoView(next);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setDestHighlight((h) => Math.max(h - 1, 0));
+      const next = Math.max(destHighlight - 1, 0);
+      setDestHighlight(next);
+      scrollHighlightIntoView(next);
     } else if (e.key === "Enter" && destHighlight >= 0) {
       e.preventDefault();
       selectSuggestion(destSuggestions[destHighlight]);
@@ -338,6 +419,14 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         round_trip: !oneWay,
         cabin_class: "ECONOMY",
       });
+      // Wspólny event startu wyszukiwania (obok istniejących, szczegółowych):
+      // pozwala porównać zakładki JEDNĄ metryką i zobaczyć, czy niezdecydowani
+      // (bez konkretnego kierunku) w ogóle ruszają dalej.
+      track("search_started", {
+        tab: "flights",
+        destination_type: resolvedDestIata ? "specific" : "anywhere",
+        date_mode: "fixed",
+      });
       const flightPrefix = locale === "en" ? "/en" : "";
       router.push(`${flightPrefix}/loty/wyniki?${flightParams.toString()}`);
       return;
@@ -414,6 +503,13 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       children_count: childCount,
       origin_provided: Boolean(resolvedOrigin),
     });
+    // Wspólny event startu wyszukiwania — jedna metryka dla wszystkich
+    // zakładek hero (patrz bliźniacze wywołanie w gałęzi lotów).
+    track("search_started", {
+      tab: "hotels",
+      destination_type: trimmedDestination.length > 0 ? "specific" : "anywhere",
+      date_mode: "fixed",
+    });
     const prefix = locale === "en" ? "/en" : "";
     router.push(`${prefix}/hotele/szukaj?${params.toString()}`);
   }
@@ -480,6 +576,11 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             aria-autocomplete="list"
             aria-expanded={destOpen}
             aria-controls={listboxId}
+            // Bez tego czytnik ekranu wiedział tylko, że fokus jest w polu —
+            // strzałki przesuwały podświetlenie, o którym nic nie mówił.
+            aria-activedescendant={
+              destOpen && destHighlight >= 0 ? `${listboxId}-opt-${destHighlight}` : undefined
+            }
             value={destQuery}
             onChange={(e) => {
               setDestQuery(e.target.value);
@@ -509,44 +610,107 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               id={listboxId}
               ref={destListRef}
               role="listbox"
-              className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-64 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
+              // Wysokość: na telefonie 60vh (lista 20 kierunków w oknie 256 px
+              // to było pięć widocznych wierszy i trzy ekrany przewijania),
+              // na desktopie sufit 24rem, żeby panel nie zjadał całej strony.
+              // overscroll-contain: przewijanie listy nie ciągnie za sobą tła.
+              className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface-raised py-1 shadow-[var(--shadow-lg)]"
             >
               {destFetching ? (
-                <li className="px-3 py-2 text-sm text-emerald-900/56">Szukamy kierunków…</li>
+                // Szkielet, nie napis „Szukamy kierunków…". Odkąd zapytania
+                // spoza seeda idą do LiteAPI (~250–340 ms), lista potrafi się
+                // przebudować w locie — sam tekst kazał czekać na PUSTYM polu
+                // i wyglądał jak brak wyników. Szkielet o wymiarach docelowych
+                // wierszy pokazuje, ILE zaraz przyjdzie, i nie przesuwa układu,
+                // gdy dane dojdą.
+                <li role="presentation" className="space-y-1 px-3 py-2">
+                  {/* aria-hidden TYLKO na kształtach — gdyby siedziało na <li>,
+                      ukryłoby też komunikat dla czytnika ekranu poniżej. */}
+                  <div aria-hidden>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="flex min-h-[52px] flex-col justify-center gap-1.5">
+                        <div
+                          className="h-3.5 animate-pulse rounded bg-surface-sunken motion-reduce:animate-none"
+                          style={{ width: `${58 - i * 9}%` }}
+                        />
+                        <div
+                          className="h-2.5 animate-pulse rounded bg-surface-sunken motion-reduce:animate-none"
+                          style={{ width: `${40 - i * 6}%` }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <span className="sr-only" role="status">
+                    Szukamy kierunków
+                  </span>
+                </li>
               ) : destSuggestions.length > 0 ? (
-                destSuggestions.map((s, idx) => {
-                  // Zadanie 2 — wyspy z oznaczeniem typu ("wyspa · Hiszpania").
-                  const isRegion = s.kind === "region";
-                  const ctry = localizeCountry(s.country);
-                  const reg = isRegion ? "wyspa" : localizeRegion(s.region);
-                  const baseMeta = isRegion
-                    ? [reg, ctry].filter(Boolean).join(" · ")
-                    : [ctry, reg].filter(Boolean).join(" · ");
-                  // „Ostatnie" ponad popularnymi — oznaczone w metadanych.
-                  const meta = s._recent
-                    ? ["ostatnio szukane", baseMeta].filter(Boolean).join(" · ")
-                    : baseMeta;
-                  return (
-                    <li
-                      key={s.id}
-                      role="option"
-                      aria-selected={idx === destHighlight}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        selectSuggestion(s);
-                      }}
-                      onMouseEnter={() => setDestHighlight(idx)}
-                      className={`cursor-pointer px-3 py-2 text-sm transition ${
-                        idx === destHighlight ? "bg-emerald-50" : "hover:bg-emerald-50/60"
-                      }`}
-                    >
-                      <div className="font-semibold text-emerald-950">{s.cityPl ?? localizeCity(s.city)}</div>
-                      {meta && <div className="text-xs text-emerald-900/56">{meta}</div>}
-                    </li>
-                  );
-                })
+                buildSuggestionSections(destSuggestions).map((section) => (
+                  <li
+                    key={section.label ?? "_flat"}
+                    // `role="group"` z etykietą, nie „presentation": listbox
+                    // dopuszcza dzieci `option` ALBO `group`, a grupa niesie
+                    // czytnikowi ekranu nazwę sekcji („Na plażę"), której samo
+                    // `presentation` by nie przekazało. Sekcja bez nagłówka
+                    // (wyniki wpisanego tekstu) zostaje przezroczysta.
+                    role={section.label ? "group" : "presentation"}
+                    aria-label={section.label ?? undefined}
+                  >
+                    {section.label && (
+                      // Sticky: przy 20 pozycjach nagłówek grupy wyjeżdża
+                      // z ekranu po dwóch wierszach i użytkownik przestaje
+                      // wiedzieć, na co patrzy. aria-hidden, bo tę samą nazwę
+                      // niesie już aria-label grupy — inaczej czytnik przeczyta ją dwa razy.
+                      <p
+                        aria-hidden
+                        className="sticky top-0 z-10 bg-surface-raised px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted"
+                      >
+                        {section.label}
+                      </p>
+                    )}
+                    <ul role="presentation">
+                      {section.rows.map(({ item: s, index: idx }) => {
+                        // Zadanie 2 — wyspy z oznaczeniem typu ("wyspa · Hiszpania").
+                        const isRegion = s.kind === "region";
+                        const ctry = localizeCountry(s.country);
+                        const reg = isRegion ? "wyspa" : localizeRegion(s.region);
+                        // Podpowiedź redakcyjna („Kreta" przy Heraklionie) bije
+                        // nazwę regionu z seeda: to jest słowo, którego
+                        // użytkownik realnie szuka.
+                        const meta = isRegion
+                          ? [reg, ctry].filter(Boolean).join(" · ")
+                          : [s.hint ?? reg, ctry].filter(Boolean).join(" · ");
+                        return (
+                          <li
+                            key={s.id}
+                            // id zgodne z aria-activedescendant na inpucie —
+                            // indeks jest PŁASKI, ten sam, którym operują strzałki.
+                            id={`${listboxId}-opt-${idx}`}
+                            role="option"
+                            aria-selected={idx === destHighlight}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              selectSuggestion(s);
+                            }}
+                            onMouseEnter={() => setDestHighlight(idx)}
+                            // min-h-[52px]: wiersz listy to cel dotykowy, a
+                            // py-2 dawało ~40 px. 90% ruchu to telefon.
+                            className={`flex min-h-[52px] cursor-pointer flex-col justify-center px-3 py-2 transition-colors ${
+                              idx === destHighlight ? "bg-brand-soft" : "hover:bg-surface-sunken"
+                            }`}
+                          >
+                            <span className="text-sm font-semibold text-ink">
+                              {s.cityPl ?? localizeCity(s.city)}
+                            </span>
+                            {meta && <span className="text-xs text-ink-muted">{meta}</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))
               ) : (
-                <li className="px-3 py-2 text-sm text-emerald-900/56">
+                <li className="px-3 py-3 text-sm text-ink-muted">
                   Brak wyników dla „{destQuery}&rdquo;. Spróbuj innego miasta lub kraju.
                 </li>
               )}

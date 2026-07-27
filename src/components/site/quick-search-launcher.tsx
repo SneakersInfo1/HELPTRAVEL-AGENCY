@@ -19,12 +19,21 @@
 //
 // Widoczność: pokazujemy na stronach treści; chowamy na `/` (ma hero-search),
 // całym `/hotele/*` (jest pasek albo booking + sticky bar) i lejku lotów.
+//
+// …oraz dopóki wisi decyzja o cookies. To NIE jest consent-gate w sensie
+// uprawnień (patrz akapit wyżej — ta funkcja żadnych cookies nie stawia), tylko
+// kwestia POZYCJI: baner zgód to `fixed inset-x-2 bottom-2 z-40`, ten FAB to
+// `fixed bottom-[4.5rem] right-4 z-40`. Przy tym samym z-index wygrywa późniejszy
+// w DOM, a przy 375 px baner jest wysoki na ~490 px, więc FAB lądował na jego
+// przyciskach. Ten sam defekt zmierzono na homepage dla ConciergeLauncher
+// (2026-07-25) — tam wnioski i pomiary opisano szerzej.
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { HomeSearchTabs } from "@/components/home/home-search-tabs";
+import { useConsent } from "@/lib/consent/context";
 
 // Kill-switch (domyślnie WŁĄCZONE — ustaw NEXT_PUBLIC_SHOW_QUICK_SEARCH=false, by wyłączyć).
 const ENABLED = process.env.NEXT_PUBLIC_SHOW_QUICK_SEARCH?.trim().toLowerCase() !== "false";
@@ -44,6 +53,8 @@ const MOTION_MS = 220;
 
 export function QuickSearchLauncher() {
   const pathname = usePathname();
+  // Hook PRZED jakimkolwiek wczesnym `return null` (reguły hooków).
+  const { needsDecision, isSettingsOpen } = useConsent();
   const [open, setOpen] = useState(false);
   const [entered, setEntered] = useState(false); // stan wizualny (animacja wejścia)
   const fabRef = useRef<HTMLButtonElement>(null);
@@ -134,6 +145,8 @@ export function QuickSearchLauncher() {
   };
 
   if (!shouldShow(pathname)) return null;
+  // Baner zgód zajmuje dolną krawędź — patrz akapit „…oraz dopóki wisi decyzja".
+  if (needsDecision || isSettingsOpen) return null;
 
   return (
     <>

@@ -7,6 +7,8 @@ import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
+import { HOME_COPY } from "@/lib/home/copy";
+import { nightsBetween, totalFor, type DealCard } from "@/lib/home/deal-card";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import { listAllDestinations } from "@/lib/mvp/destinations-seed";
 import {
@@ -94,21 +96,44 @@ export async function HomePageView() {
   // Kafle tematyczne „Nie wiesz, dokąd jechać?" — 4 moody z /wyjazdy.
   // Zdjęcie = media pierwszego picka moodu (ten sam resolver co kafelki;
   // pick bez profilu w seedzie → kafel pomijany, nie pusty obrazek).
-  const THEME_SLUGS = ["plaza", "city-break", "slonce-zima", "kultura"] as const;
+  // KOMPLET 6 kategorii. Wcześniej były tu 4, a „Góry" i „Budżet" żyły
+  // wyłącznie w chipach pod hero — po scaleniu duplikatu (redesign 2026-07)
+  // te dwie ścieżki zniknęłyby z serwisu, więc dochodzą tutaj.
+  const THEME_SLUGS = ["plaza", "city-break", "slonce-zima", "kultura", "gory", "budzet"] as const;
   const themeTiles: ThemeTile[] = (
     await Promise.all(
       THEME_SLUGS.map(async (slug): Promise<ThemeTile | null> => {
         const mood = TRAVEL_MOODS.find((m) => m.slug === slug);
-        const pickSlug = mood?.picks[0]?.slug;
-        const profile = pickSlug ? getDestinationProfileBySlug(pickSlug) : undefined;
+        // PIERWSZY pick Z PROFILEM, nie ślepo picks[0]: część picków to wpisy
+        // czysto redakcyjne bez `slug` (np. Innsbruck w moodzie „gory"), więc
+        // sztywne picks[0] wywalało CAŁY kafel kategorii — „Góry" znikały ze
+        // strony, mimo że mood ma dalej kierunki z kompletnym profilem.
+        const profile = mood?.picks
+          .map((pick) => (pick.slug ? getDestinationProfileBySlug(pick.slug) : undefined))
+          .find((candidate): candidate is DestinationProfile => Boolean(candidate));
         if (!mood || !profile) return null;
         const media = await resolveDestinationMedia(profile);
+        // Najtańszy ŚWIEŻY pakiet wśród kierunków tej kategorii. Kafle
+        // kategorii były jedynym wejściem na stronie bez ceny — a to właśnie
+        // one obsługują niezdecydowanych, czyli tych, którzy najbardziej
+        // potrzebują punktu odniesienia („czy mnie na to stać?").
+        //
+        // Liczba pochodzi z tego samego snapshotu dstprice:v1 co reszta strony
+        // (cron, realne wyszukania LiteAPI). Kategoria bez ani jednego
+        // świeżego pakietu NIE dostaje ceny — kafel zostaje bez linii, tak jak
+        // kafelki kierunków. Zero doliczania, zero „od” z sufitu.
+        const fromPerPersonPln = mood.picks.reduce<number | null>((min, pick) => {
+          const pkg = pickFreshPackage(priceSnapshot, pick.searchCity, pick.country);
+          if (!pkg) return min;
+          return min === null || pkg.perPersonPln < min ? pkg.perPersonPln : min;
+        }, null);
         return {
           slug: mood.slug,
           label: mood.label,
           tagline: mood.eyebrow,
           heroImage: media.heroImage,
           imageAlt: mood.h1,
+          fromPerPersonPln: fromPerPersonPln ?? undefined,
         };
       }),
     )
@@ -129,6 +154,13 @@ export async function HomePageView() {
       pickFreshPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
     flightFromPln:
       pickFreshFlightPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
+    // JEDNA cena całego wyjazdu (lot + noclegi) na osobę — ten sam odczyt,
+    // z którego korzysta sekcja pakietów. Gdy jest, kafelek pokazuje ją
+    // ZAMIAST rozbicia hotel/lot (koniec sumowania w głowie). Gdy jej nie ma
+    // (kierunek bez świeżego pakietu), kafelek zostaje przy tym, co realnie
+    // wiadomo — nic nie jest doliczane lokalnie.
+    packagePerPerson:
+      pickFreshPackage(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
   }));
 
   // Pakiety „Cały wyjazd w jednej cenie" — pula = WSZYSTKIE grzane kierunki
@@ -139,12 +171,69 @@ export async function HomePageView() {
   // Klucz pakietu match po rekordzie seedu (city.en|country.en — jak w cronie);
   // karta/CTA po PROFILU. Media (Pexels) tylko dla top-N (koszt ISR).
   const tileIdSet = new Set<string>(HOME_TILE_DESTINATION_IDS);
-  const packageCandidates = listAllDestinations()
-    .filter((d) => !tileIdSet.has(d.id))
+
+  // PEŁNA pula kierunków ze świeżym pakietem — bez odejmowania kafelków hero
+  // i bez obcinania do 10. Ta pula zasila licznik dobieracza („Mamy N wyjazdów
+  // od X zł"), więc MUSI odpowiadać temu, co użytkownik realnie może znaleźć.
+  // Licznik liczony z przyciętej listy pokazywałby mniej, niż serwis ma.
+  const allFreshDeals: DealCard[] = listAllDestinations()
     .map((d) => {
       const pkg = pickFreshPackage(priceSnapshot, d.city.en, d.country.en);
       const profile = pkg ? getDestinationProfileBySlug(d.id) : undefined;
-      return pkg && profile ? { profile, pkg } : null;
+      if (!pkg || !profile) return null;
+      const nights = nightsBetween(pkg.checkin, pkg.checkout);
+      const params = new URLSearchParams({
+        destination: profile.city,
+        country: profile.country,
+        adults: "2",
+        rooms: "1",
+      });
+      return {
+        // Klucz z PROFILU, nie z rekordu seeda. Seed potrafi mieć dwa wpisy
+        // wskazujące na ten sam profil kierunku (zmierzone: Malaga wychodziła
+        // dwa razy na liście wyników dobieracza), a przy `d.id` obie wersje
+        // przechodziły dalej jako osobne oferty i zawyżały licznik. Profilowy
+        // slug jest też kluczem, którego używa TRAVEL_MOODS, więc filtr typu
+        // wyjazdu trafia w te same kierunki, które liczy licznik.
+        id: profile.slug,
+        city: profile.city,
+        cityLabel: localizeCity(profile.city),
+        country: profile.country,
+        countryLabel: localizeCountry(profile.country),
+        // Zdjęcie dociągamy TYLKO dla kart, które realnie renderujemy (koszt
+        // ISR) — pula licznika go nie potrzebuje, bo nic nie wyświetla.
+        imageUrl: "",
+        imageAlt: `${localizeCity(profile.city)}, ${localizeCountry(profile.country)}`,
+        pricePerPersonPln: pkg.perPersonPln,
+        priceTotalPln: totalFor(pkg.perPersonPln),
+        nights,
+        dateFrom: pkg.checkin,
+        dateTo: pkg.checkout,
+        departureAirport: "WAW",
+        searchUrl: `/hotele/szukaj?${params.toString()}`,
+        // hotelName / hotelStars / hotelReviewScore / isDirect / competitorPricePln
+        // ŚWIADOMIE puste — snapshot dstprice:v1 ich nie zawiera, a wypełnienie
+        // przykładowymi byłoby zmyślaniem danych. Patrz lib/home/deal-card.ts.
+      } satisfies DealCard;
+    })
+    .filter((x): x is DealCard => x !== null)
+    // Deduplikacja po kierunku, z zachowaniem NAJTAŃSZEJ oferty. Bez tego ten
+    // sam kierunek pokazywał się dwa razy na liście wyników, a licznik nad nią
+    // liczył go podwójnie — czyli obiecywał więcej, niż serwis ma.
+    .reduce<DealCard[]>((acc, card) => {
+      const istniejacy = acc.findIndex((x) => x.id === card.id);
+      if (istniejacy === -1) return [...acc, card];
+      if (card.pricePerPersonPln < acc[istniejacy].pricePerPersonPln) acc[istniejacy] = card;
+      return acc;
+    }, []);
+
+  const packageCandidates = allFreshDeals
+    .filter((d) => !tileIdSet.has(d.id))
+    .map((d) => {
+      const profile = getDestinationProfileBySlug(d.id);
+      return profile
+        ? { profile, pkg: { perPersonPln: d.pricePerPersonPln, checkin: d.dateFrom, checkout: d.dateTo } }
+        : null;
     })
     .filter((x): x is { profile: DestinationProfile; pkg: FreshPackage } => x !== null)
     .sort((a, b) => a.pkg.perPersonPln - b.pkg.perPersonPln)
@@ -179,7 +268,25 @@ export async function HomePageView() {
         <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} />
       </div>
       <PackageDeals deals={packageDeals} />
-      <ThemeTiles tiles={themeTiles} />
+      {/* SEKCJA C — ścieżka dla niezdecydowanych: cztery kafle klimatów
+          plus kafel asystenta.
+          2026-07-27, decyzja właściciela: panel z pytaniami (budżet → typ →
+          licznik) ZDJĘTY ze strony. Komponent `TripPicker` i jego testy
+          zostają w repo — gdyby miał wrócić, wraca jedną linią. */}
+      <section
+        aria-labelledby="trip-picker"
+        className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8"
+      >
+        <h2 id="trip-picker" className="font-display text-2xl leading-tight text-ink sm:text-3xl">
+          {HOME_COPY.picker.heading}
+        </h2>
+        <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-muted">
+          {HOME_COPY.picker.subheading}
+        </p>
+        <div className="mt-4">
+          <ThemeTiles tiles={themeTiles.slice(0, 4)} />
+        </div>
+      </section>
       <TrustHowItWorks trustpilot={trustpilot} />
     </main>
   );

@@ -1,8 +1,11 @@
 import { CinematicBackdrop } from "./cinematic-backdrop";
-import { DestinationTile } from "./destination-tile";
+import { DestinationCarousel } from "./destination-carousel";
+import { InspireTile } from "./inspire-tile";
+import { ShieldCheck, UserRoundX, Wallet } from "lucide-react";
+
 import { HomeSearchTabs } from "./home-search-tabs";
-import { MoodChips } from "./mood-chips";
-import { PaymentMethods } from "./payment-methods";
+import { HOME_COPY } from "@/lib/home/copy";
+import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 interface FeaturedTile {
@@ -12,6 +15,8 @@ interface FeaturedTile {
   fromPricePerNight?: number;
   /** Najtańszy lot w obie strony z WAW (snapshot, Faza 6). */
   flightFromPln?: number;
+  /** Cena całego wyjazdu na osobę + termin, z którego wynika (snapshot). */
+  packagePerPerson?: { perPersonPln: number; checkin: string; checkout: string };
 }
 
 export interface TrustpilotDisplay {
@@ -23,6 +28,8 @@ interface HomeHybridHeroProps {
   featured: FeaturedTile[];
   /** Świeża ocena Trustpilot (snapshot z crona) — null = pokazujemy sam link. */
   trustpilot?: TrustpilotDisplay | null;
+  /** Nagłówek pasa kierunków — propsem, żeby dało się go testować. */
+  bandHeading?: string;
 }
 
 // Polski zapis oceny: 4.2 → „4,2".
@@ -30,7 +37,11 @@ function formatScore(score: number): string {
   return score.toFixed(1).replace(".", ",");
 }
 
-export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
+export function HomeHybridHero({
+  featured,
+  trustpilot,
+  bandHeading = HOME_COPY.inspire.heading,
+}: HomeHybridHeroProps) {
   const backdropImages = featured.slice(0, 6).map((tile) => ({
     src: tile.heroImage,
     alt: `${tile.destination.city}, ${tile.destination.country}`,
@@ -50,18 +61,16 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
               formularz jako kotwica. Mood-chipy zeszły POD formularz (mniej
               konkurencji o „gdzie kliknąć"). */}
           <div className="relative z-20 flex min-h-[600px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[620px] sm:px-8 sm:py-12 lg:min-h-[640px] lg:px-12">
-            {/* Eyebrow — jedna, dopracowana linia */}
-            <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90 shadow-[0_2px_12px_rgba(0,0,0,0.18)] backdrop-blur-md sm:tracking-[0.24em] sm:text-[11px]">
-              <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-              Loty · Hotele · cały wyjazd
-            </span>
+            {/* USUNIĘTY eyebrow „Loty · Hotele · cały wyjazd": powtarzał treść
+                nagłówka, a na mobile spychał formularz poniżej pierwszego
+                ekranu. Wraz z chipami (przeniesionymi do sekcji kategorii)
+                to ~120 px odzyskane nad wyszukiwarką. */}
 
-            {/* Headline — jasna obietnica „co to za serwis" (wybór właściciela). */}
-            <h1 className="mt-6 max-w-3xl font-display text-[2.15rem] font-semibold leading-[1.05] text-white drop-shadow-[0_2px_28px_rgba(0,0,0,0.55)] sm:mt-7 sm:text-5xl lg:text-[3.5rem]">
-              Lot i hotel{" "}
-              <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 bg-clip-text text-transparent">
-                w jednym miejscu
-              </span>
+            {/* Headline — jasna obietnica „co to za serwis" (wybór właściciela).
+                Bez gradientu na tekście: jednolita biel czyta się lepiej na
+                zdjęciu i nie jest najbardziej rozpoznawalnym znakiem AI-slopu. */}
+            <h1 className="max-w-3xl text-balance font-display text-hero font-semibold text-white drop-shadow-[0_2px_28px_rgba(0,0,0,0.55)]">
+              Lot i hotel w jednym miejscu
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.45)] sm:text-base sm:leading-8">
               Ceny w PLN, płatność jak w sklepie, bez rejestracji.
@@ -110,68 +119,92 @@ export function HomeHybridHero({ featured, trustpilot }: HomeHybridHeroProps) {
                   </span>
                 </a>
               </li>
-              {["Płatności obsługuje Stripe", "Ceny finalne w PLN"].map((item) => (
-                <li key={item} className="inline-flex items-center gap-1.5">
-                  <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-300">
-                    <path d="M8.05 13.6 4.4 9.95l1.4-1.4 2.25 2.25 6.15-6.15 1.4 1.4z" />
-                  </svg>
-                  {item}
+              {/* JEDEN pas zaufania, max 4 punkty. Te same fakty powtarzały
+                  się wcześniej także w sekcji „Jak to działa" — powtórzony
+                  sygnał zaufania nie sumuje się, tylko rozcieńcza. */}
+              {[
+                { Icon: ShieldCheck, text: "Płatność przez Stripe" },
+                { Icon: Wallet, text: "Ceny finalne w PLN" },
+                { Icon: UserRoundX, text: "Bez zakładania konta" },
+              ].map(({ Icon, text }) => (
+                <li key={text} className="inline-flex items-center gap-1.5">
+                  <Icon aria-hidden strokeWidth={2} className="h-3.5 w-3.5 shrink-0 text-white/70" />
+                  {text}
                 </li>
               ))}
             </ul>
 
-            {/* Metody płatności — drobne, tuż pod zaufaniem. */}
-            <div className="mt-3.5 sm:mt-4">
-              <PaymentMethods />
-            </div>
+            {/* Logotypy płatności ZDJĘTE z hero (redesign 2026-07): w miejscu
+                wyboru kierunku nie pomagają, a przy checkoucie — gdzie
+                użytkownik realnie sięga po kartę — są już pokazane. */}
 
-            {/* Mood-chipy — ZDEGRADOWANE pod formularz: drugorzędna ścieżka
-                „przeglądania", nie konkurują z głównym CTA (wyszukiwarką). */}
-            <div className="mt-7 w-full max-w-2xl sm:mt-8">
-              <p className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-white/70">
-                Lub zacznij od pomysłu na wyjazd
-              </p>
-              <MoodChips />
-            </div>
+            {/* USUNIĘTE: pas chipów „Lub zacznij od pomysłu na wyjazd".
+                Duplikował sekcję „Nie wiesz, dokąd jechać?" niżej — i to z
+                INNĄ listą kategorii (Góry i Budżet były tylko tutaj). Jedno
+                miejsce z kategoriami, jedna lista: ThemeTiles. */}
           </div>
         </div>
 
         {/* Kafelki pod hero — OSOBNA sekcja z własnym, nieprzezroczystym tłem
             (backdrop już tu nie sięga). */}
-        <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-6 sm:px-8 sm:py-8 lg:px-12">
-          <div className="mb-4 flex items-end justify-between gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-              Popularne kierunki
-            </p>
-            {/* Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"
-                do „Lot", więc kontekst wylotu niesie podtytuł sekcji. */}
-            <span className="text-right text-[11px] leading-tight text-white/60">
-              Loty z Warszawy · ceny w PLN
-            </span>
-          </div>
-          {/* Poziomy pasek zamiast siatki (właściciel 2026-07-04: 18 kafli
-              w 3 rzędach zajmowało za dużo pionu). Jeden rząd ze snapem;
-              szerokości dobrane tak, by ZAWSZE wystawał „podgląd" kolejnego
-              kafelka (jawny sygnał, że można przewijać). Ujemne marginesy =
-              scroll bleeduje do krawędzi sekcji, pierwszy kafel wyrównany do
-              treści. */}
-          <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 sm:-mx-8 sm:gap-4 sm:px-8 lg:-mx-12 lg:px-12 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
-            {featured.map((tile) => (
-              <div
-                key={tile.destination.slug}
-                className="w-[42%] shrink-0 snap-start sm:w-[30%] md:w-[22%] lg:w-[18%] xl:w-[14.5%]"
-              >
-                <DestinationTile
+        {/* `[--focus-ring:#fff]`: globalny pierścień focusu jest zielony
+            (`--brand`), co na tym pasie daje 1,87:1 przy wymaganych 3:1 —
+            osoba nawigująca klawiaturą nie widziałaby, na której z osiemnastu
+            kart stoi. Zmienną czyta reguła `:focus-visible` w globals.css
+            i dziedziczą ją też strzałki karuzeli. */}
+        <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-6 [--focus-ring:#fff] sm:px-8 sm:py-8 lg:px-12">
+          {/* Nagłówek pasa (tytuł + dopisek + strzałki) renderuje sama karuzela
+              — inaczej strzałki, pozycjonowane absolutnie, wchodziły na dopisek.
+              Embla zamiast natywnego overflow-x: znika szary pasek przewijania
+              (wyglądał na niedokończony interfejs), dochodzą strzałki, snap
+              i obsługa klawiatury. Ucięta karta po prawej zostaje — to
+              świadomy sygnał „jest więcej". */}
+          <DestinationCarousel
+            tone="dark"
+            listId="home_inspire"
+            listName={bandHeading}
+            // Karty ~1,4× szersze niż wcześniej. Na 375 px kafelek miał ~150 px
+            // szerokości i mieścił pięć wierszy tekstu — nadtytuł schodził do
+            // 10 px, a cena łamała się w środku. Szerszy kafelek to ten sam pas
+            // i ta sama liczba kierunków, tylko czytelna; liczba kart została
+            // bez zmian (18 to jawna decyzja właściciela z 2026-07-03).
+            slideClassName="min-w-0 shrink-0 basis-[58%] pl-3 sm:basis-[38%] sm:pl-4 md:basis-[29%] lg:basis-[24%] xl:basis-[19%]"
+            header={
+              // <h2>, nie <p>: nazwy miast na kartach to <h3>, więc z tym
+              // nadtytułem jako akapitem dokument skakał z H1 hero prosto na
+              // H3 — czytnik ekranu nie miał czym nazwać tego pasa. Wygląd
+              // bez zmian; ten napis I TAK był nagłówkiem sekcji, tylko
+              // zapisanym niewłaściwym znacznikiem.
+              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-bright">
+                {bandHeading}
+              </h2>
+            }
+            aside={
+              // Widoczny też na mobile: kafelki skracają tam „Lot z Warszawy"
+              // do „Lot", więc kontekst wylotu niesie ten dopisek.
+              <span className="text-right text-[11px] leading-tight text-white/60">
+                Loty z Warszawy · ceny w PLN
+              </span>
+            }
+            items={featured.map((tile) => ({
+              slug: tile.destination.slug,
+              pricePerPerson: tile.packagePerPerson?.perPersonPln,
+              name: localizeCity(tile.destination.city),
+              category: localizeCountry(tile.destination.country),
+              node: (
+                // Bez badge'a „Polecane": był na KAŻDEJ karcie, więc nie
+                // znaczył nic. Zamiast niego chip z czasem lotu — etykieta,
+                // która na każdej karcie mówi co innego.
+                <InspireTile
                   destination={tile.destination}
                   heroImage={tile.heroImage}
                   fromPricePerNight={tile.fromPricePerNight}
                   flightFromPln={tile.flightFromPln}
-                  size="lg"
-                  badge="Polecane"
+                  packagePerPerson={tile.packagePerPerson}
                 />
-              </div>
-            ))}
-          </div>
+              ),
+            }))}
+          />
         </div>
       </section>
     </>

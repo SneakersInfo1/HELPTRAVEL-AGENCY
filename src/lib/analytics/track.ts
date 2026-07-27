@@ -194,6 +194,10 @@ export interface TrackEventMap {
   concierge_open: {
     /** Ścieżka strony, na której otwarto czat. */
     page_path?: string;
+    /** Którym wejściem użytkownik trafił do czatu. Redesign 2026-07 dał trzy
+     *  wejścia zamiast jednego dymka — bez tego parametru nie wiadomo, które
+     *  z nich faktycznie działa i czy warto utrzymywać pozostałe. */
+    source?: "hero_tab" | "category_tile" | "launcher" | "proactive";
   };
   concierge_message: {
     /** Długość wiadomości użytkownika w znakach — świadomie BEZ treści (zero PII). */
@@ -213,6 +217,132 @@ export interface TrackEventMap {
   /** Klik „Spróbuj ponownie" po błędzie odpowiedzi — mierzy tarcie transportu (cold start/timeout). */
   concierge_retry: {
     page_path?: string;
+  };
+
+  // ── Homepage: lejek NAD wyszukiwarką (redesign 2026-07) ──
+  // Powód istnienia całej tej grupy: do tej pory z homepage leciały tylko
+  // `hotel_search_submit` i `flight_search`, czyli wyłącznie moment WYSŁANIA
+  // formularza. Wszystko wcześniej — co użytkownik w ogóle zobaczył, w co
+  // kliknął, czy przełączył zakładkę — było niewidoczne. Przy konwersji 0,07%
+  // to właśnie ten odcinek trzeba mierzyć, bo tam ludzie odpadają.
+
+  /** Start wyszukiwania z hero. Rozróżnia intencję: konkretny kierunek vs
+   *  „gdziekolwiek" i termin sztywny vs elastyczny — bez tego nie da się
+   *  ocenić, czy niezdecydowani w ogóle ruszają dalej. */
+  search_started: {
+    tab: "hotels" | "flights" | "assistant";
+    destination_type: "specific" | "anywhere";
+    date_mode: "fixed" | "flexible";
+  };
+  /** Przełączenie zakładki hero — mierzy zainteresowanie trzecią ścieżką
+   *  („Nie wiem dokąd”) względem klasycznych formularzy. */
+  hero_tab_changed: {
+    to: "hotels" | "flights" | "assistant";
+  };
+  /** Klik kafla kategorii — czy sekcja „Nie wiesz dokąd" realnie prowadzi dalej. */
+  category_tile_clicked: {
+    slug: string;
+    position?: number;
+  };
+  /** Klik karty kierunku w karuzeli — mierzy też, jak głęboko ludzie przewijają. */
+  destination_card_clicked: {
+    slug: string;
+    position?: number;
+    price_per_person?: number;
+  };
+  /** Klik karty pakietu — najmocniejszy produkt, do tej pory bez pomiaru. */
+  package_card_clicked: {
+    slug: string;
+    position?: number;
+    price_per_person?: number;
+  };
+  /** Użycie zwiniętego paska wyszukiwania w sticky navie — czy wzorzec
+   *  „szukaj z dowolnego miejsca strony" jest w ogóle używany. */
+  sticky_search_used: {
+    page_path?: string;
+  };
+
+  // ── Sekcje ofertowe strony głównej — schemat ecommerce GA4 ──
+  // Powód użycia `view_item_list`/`select_item` zamiast własnych nazw: GA4 ma
+  // dla nich gotowe raporty (lista → klik → konwersja), więc lejek trzech
+  // sekcji da się porównać bez budowania eksploracji od zera.
+  //
+  // `item_list_id` ROZRÓŻNIA sekcje — bez tego wszystkie kliki zlewają się
+  // w jedną liczbę i nie da się powiedzieć, która sekcja realnie sprzedaje,
+  // a którą można usunąć.
+
+  /** Sekcja ofertowa weszła w pole widzenia. */
+  view_item_list: {
+    /** `home_inspire` (A) · `home_packages` (B) · `home_themes` (C, kafle). */
+    item_list_id: string;
+    item_list_name: string;
+    /** Wariant treści nagłówka/CTA — patrz lib/home/copy.ts. */
+    copy_variant?: string;
+    items: Array<{
+      item_id: string;
+      item_name: string;
+      /** Miasto — pozwala zobaczyć, które kierunki niosą listę. */
+      item_category?: string;
+      price?: number;
+      currency?: "PLN";
+      /** 1-based pozycja w liście: mierzy, jak głęboko ludzie przewijają. */
+      index: number;
+    }>;
+  };
+
+  /** Klik w kartę oferty. */
+  select_item: {
+    item_list_id: string;
+    item_list_name: string;
+    copy_variant?: string;
+    items: Array<{
+      item_id: string;
+      item_name: string;
+      item_category?: string;
+      price?: number;
+      currency?: "PLN";
+      index: number;
+    }>;
+  };
+
+  // ── Dobieracz wyjazdu (sekcja C) ──
+  // Osobne eventy, nie ecommerce: to nie jest lista produktów, tylko formularz
+  // intencji. Chcemy wiedzieć, na KTÓRYM kroku ludzie odpadają — sam
+  // `quiz_submit` powiedziałby tylko, ilu doszło do końca.
+
+  /**
+   * Dobieracz wszedł w pole widzenia — MIANOWNIK dla `quiz_start`.
+   *
+   * Bez tego znamy tylko liczbę rozpoczętych doborów, a to za mało na
+   * jakąkolwiek decyzję: niski `quiz_start` znaczy albo „widget nie zachęca",
+   * albo „nikt tu nie doscrollował", a to dwa przeciwne wnioski.
+   */
+  quiz_view: {
+    page_path?: string;
+    /** Ile ofert widget mógł zaoferować w chwili pokazania — sekcja z pustą
+     *  pulą nie jest tym samym co sekcja zignorowana. */
+    available_count?: number;
+    copy_variant?: string;
+  };
+
+  /** Pierwsza interakcja z dobieraczem w tej wizycie. */
+  quiz_start: {
+    page_path?: string;
+  };
+  quiz_step_complete: {
+    /** 1 = budżet, 2 = typ wyjazdu. */
+    step: number;
+    step_name: "budget" | "theme";
+    /** Wybrana wartość — pokazuje, których budżetów i typów naprawdę szukają. */
+    value: string;
+  };
+  quiz_submit: {
+    budget: string;
+    theme: string;
+    /** Ile ofert pasowało w momencie kliknięcia — łączy intencję z podażą. */
+    results_count: number;
+    cheapest_price?: number;
+    copy_variant?: string;
   };
 
   /** Zakup lotu — GA4 ecommerce. `item_category:"flight"` ODRÓŻNIA od hoteli. */

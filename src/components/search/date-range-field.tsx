@@ -16,6 +16,7 @@
 
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { CalendarDays } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -133,7 +134,11 @@ export function DateRangeField({
         aria-label={label ? `Termin: ${label}` : (singleDate ? "Wybierz datę wylotu" : "Wybierz termin podróży")}
         className={`${fieldClassName} flex items-center gap-2 text-left`}
       >
-        <span aria-hidden className="text-emerald-900/45">📅</span>
+        {/* Lucide, nie emoji: emoji renderuje font systemowy, więc ten sam znak
+            wygląda inaczej na Androidzie, iOS i Windowsie — nie da się tego
+            zaprojektować, a obok pozostałych ikon formularza czytał się jak
+            wklejka z komunikatora. */}
+        <CalendarDays aria-hidden strokeWidth={2} className="h-4 w-4 shrink-0 text-emerald-900/45" />
         <span className={`truncate ${label ? "" : "text-emerald-950/45"}`}>
           {label ?? placeholderText}
         </span>

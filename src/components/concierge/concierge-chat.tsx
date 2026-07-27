@@ -16,6 +16,7 @@
 // useState — NIGDY w efekcie + setState (React Compiler constraint z zadania).
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { ArrowRight, Building2, Sun, Umbrella } from "lucide-react";
 
 import { TripOfferCard } from "./trip-offer-card";
 import { track } from "@/lib/analytics/track";
@@ -44,15 +45,23 @@ const WELCOME_MESSAGE: ConciergeMessage = {
 };
 
 // Startery jako dane strukturalne: ikona TYLKO do renderu (aria-hidden),
-// prompt wysyłany do API to osobny, czysty string. Poprzednia wersja wycinała
-// emoji regexem /^\p{Emoji}\s*/u z etykiety — \p{Emoji} łapie JEDEN code
-// point, a „🏖️"/„☀️" to emoji + U+FE0F (variation selector), więc niewidzialny
-// U+FE0F przeciekał do payloadu API i historii. Zero manipulacji stringami =
-// zero takich bugów.
+// prompt wysyłany do API to osobny, czysty string.
+//
+// Ikony Lucide, NIE emoji (zgłoszenie właściciela 2026-07-25: „paskudne
+// emoji"). Trzy powody, dla których to nie jest kwestia gustu:
+//   • Emoji renderuje font systemowy, więc ten sam znak wygląda inaczej na
+//     Androidzie, iOS i Windowsie — nie da się tego zaprojektować.
+//   • Reszta produktu mówi Lucide (Compass w trzech wejściach czatu, Building2
+//     i Plane w zakładkach hero). Emoji wyglądały jak wklejone z czatu.
+//   • Znikają całe klasy bugów ze stringami: poprzednia wersja wycinała emoji
+//     regexem /^\p{Emoji}\s*/u, a \p{Emoji} łapie JEDEN code point — „🏖️"/„☀️"
+//     to emoji + U+FE0F (variation selector), więc niewidzialny U+FE0F
+//     przeciekał do payloadu API i do historii rozmowy.
+// Building2 celowo to samo, co zakładka „Hotele" — ta sama rzecz, ta sama ikona.
 const STARTERS = [
-  { icon: "🏖️", label: "Plaża do 3000 zł w sierpniu", prompt: "Plaża do 3000 zł w sierpniu" },
-  { icon: "🌆", label: "City break do 1500 zł", prompt: "City break do 1500 zł" },
-  { icon: "☀️", label: "Słońce zimą do 4000 zł", prompt: "Słońce zimą do 4000 zł" },
+  { Icon: Umbrella, label: "Plaża do 3000 zł w sierpniu", prompt: "Plaża do 3000 zł w sierpniu" },
+  { Icon: Building2, label: "City break do 1500 zł", prompt: "City break do 1500 zł" },
+  { Icon: Sun, label: "Słońce zimą do 4000 zł", prompt: "Słońce zimą do 4000 zł" },
 ] as const;
 
 // --- Walidacja rehydratacji z sessionStorage -------------------------------
@@ -298,10 +307,10 @@ export function ConciergeChat({
             <div
               className={
                 message.role === "user"
-                  ? "max-w-[85%] rounded-2xl rounded-br-md bg-emerald-600 px-3.5 py-2.5 text-sm font-medium text-white shadow-[0_2px_8px_rgba(16,84,48,0.15)]"
+                  ? "max-w-[85%] rounded-2xl rounded-br-md bg-brand px-3.5 py-2.5 text-sm font-medium leading-6 text-white"
                   : message.isError
-                    ? "max-w-[85%] rounded-2xl rounded-bl-md border border-neutral-200 bg-neutral-50 px-3.5 py-2.5 text-sm text-neutral-500"
-                    : "max-w-[85%] rounded-2xl rounded-bl-md border border-emerald-900/10 bg-white px-3.5 py-2.5 text-sm text-neutral-800 shadow-[0_2px_8px_rgba(16,84,48,0.06)]"
+                    ? "max-w-[85%] rounded-2xl rounded-bl-md border border-line bg-surface-sunken px-3.5 py-2.5 text-sm leading-6 text-ink-muted"
+                    : "max-w-[85%] rounded-2xl rounded-bl-md border border-line bg-surface-raised px-3.5 py-2.5 text-sm leading-6 text-ink shadow-[var(--shadow-sm)]"
               }
             >
               {message.content}
@@ -319,7 +328,7 @@ export function ConciergeChat({
             <button
               type="button"
               onClick={() => void retryLast()}
-              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-900/15 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-surface-raised px-4 text-sm font-semibold text-brand shadow-[var(--shadow-sm)] transition-colors hover:border-brand/40 hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                 <path
@@ -336,15 +345,28 @@ export function ConciergeChat({
         )}
 
         {isEmptyState && (
-          <div className="flex flex-col gap-2 pt-1">
-            {STARTERS.map((starter) => (
+          <div className="flex flex-col gap-1.5 pt-1">
+            {STARTERS.map(({ Icon, label, prompt }) => (
               <button
-                key={starter.prompt}
+                key={prompt}
                 type="button"
-                onClick={() => void sendMessage(starter.prompt)}
-                className="rounded-xl border border-emerald-900/15 bg-emerald-50/60 px-3.5 py-2.5 text-left text-sm font-semibold text-emerald-800 transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                onClick={() => void sendMessage(prompt)}
+                className="group flex items-center gap-3 rounded-xl border border-line bg-surface-raised px-3 py-2.5 text-left transition-colors hover:border-brand/40 hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
               >
-                <span aria-hidden>{starter.icon}</span> {starter.label}
+                <span
+                  aria-hidden
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand transition-colors group-hover:bg-surface-raised"
+                >
+                  <Icon className="h-4 w-4" strokeWidth={2} />
+                </span>
+                <span className="min-w-0 flex-1 text-sm font-semibold text-ink">{label}</span>
+                {/* Strzałka niesie afordancję, której sam prostokąt nie daje:
+                    kliknięcie NIE wkleja tekstu do pola, tylko od razu wysyła. */}
+                <ArrowRight
+                  aria-hidden
+                  strokeWidth={2}
+                  className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5"
+                />
               </button>
             ))}
           </div>
@@ -352,19 +374,19 @@ export function ConciergeChat({
 
         {pending && (
           <div className="flex items-start">
-            <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-emerald-900/10 bg-white px-3.5 py-2.5 shadow-[0_2px_8px_rgba(16,84,48,0.06)]">
-              <span className="text-xs font-medium text-neutral-500">Asystent pisze</span>
+            <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-line bg-surface-raised px-3.5 py-2.5 shadow-[var(--shadow-sm)]">
+              <span className="text-xs font-medium text-ink-muted">Asystent pisze</span>
               <span className="flex gap-0.5" aria-hidden>
-                <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-emerald-400 [animation-delay:-0.3s] motion-reduce:animate-none" />
-                <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-emerald-400 [animation-delay:-0.15s] motion-reduce:animate-none" />
-                <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-emerald-400 motion-reduce:animate-none" />
+                <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-brand/60 [animation-delay:-0.3s] motion-reduce:animate-none" />
+                <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-brand/60 [animation-delay:-0.15s] motion-reduce:animate-none" />
+                <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-brand/60 motion-reduce:animate-none" />
               </span>
             </div>
           </div>
         )}
       </div>
 
-      <div className="shrink-0 border-t border-emerald-900/10 bg-white px-3 py-2.5">
+      <div className="shrink-0 border-t border-line bg-surface-raised px-3 py-2.5">
         <form onSubmit={onSubmit} className="flex items-center gap-2">
           <label htmlFor={inputId} className="sr-only">
             Napisz wiadomość do asystenta
@@ -378,13 +400,15 @@ export function ConciergeChat({
             maxLength={MAX_INPUT_LENGTH}
             disabled={pending}
             placeholder="Napisz, dokąd chcesz jechać…"
-            className="h-11 min-w-0 flex-1 rounded-full border border-neutral-200 bg-neutral-50 px-4 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus-visible:border-emerald-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-emerald-500/40 disabled:opacity-60"
+            // placeholder na ink-muted (6,5:1), nie na neutral-400 — domyślna
+            // jasna szarość placeholdera nie przechodzi progu 4.5:1.
+            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-surface-sunken px-4 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus-visible:border-brand/50 focus-visible:bg-surface-raised focus-visible:ring-2 focus-visible:ring-brand/30 disabled:opacity-60"
           />
           <button
             type="submit"
             disabled={pending || input.trim().length === 0}
             aria-label="Wyślij wiadomość"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-neutral-300"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-5 w-5">
               <path
@@ -397,14 +421,17 @@ export function ConciergeChat({
             </svg>
           </button>
         </form>
-        <p className="mt-2 text-center text-[11px] leading-snug text-neutral-400">
+        {/* Treść ujawnienia bez zmian (to obowiązek informacyjny, nie ozdoba),
+            ale kolor z `neutral-400` na `ink-muted`: jasna szarość nie
+            przechodziła progu 4,5:1, a to jest tekst, który MA być przeczytany. */}
+        <p className="mt-2 text-center text-[11px] leading-snug text-ink-muted">
           Rozmowę przetwarza dostawca AI (OpenRouter). Ceny i oferty pochodzą z wyszukiwarki
           HelpTravel. Nie podawaj danych osobowych.{" "}
           <a
             href="/polityka-prywatnosci"
             target="_blank"
             rel="noopener"
-            className="font-medium text-neutral-500 underline underline-offset-2 hover:text-emerald-700"
+            className="font-medium underline underline-offset-2"
           >
             Polityka prywatności
           </a>
