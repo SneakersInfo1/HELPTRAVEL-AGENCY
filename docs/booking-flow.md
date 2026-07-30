@@ -1,5 +1,9 @@
 # Hotel Booking Flow (LiteAPI Payments)
 
+> **Uwaga:** `BOOKING_AUDIT.md`, `BOOKING_BLOCKERS.md` i `BOOKING_PROGRESS_LOG.md`
+> to dokumenty wewnętrzne — od 2026-07-30 trzymane POZA repozytorium
+> (`../helptravel-docs-prywatne/`), bo repo jest publiczne.
+
 How online hotel booking with card payment works on helptravel.pl, how to
 operate it, and how to recover a paid-but-unbooked reservation.
 

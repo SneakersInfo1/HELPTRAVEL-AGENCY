@@ -89,5 +89,4 @@ Po wdrożeniu: `docs/post-deploy-checklist.md`.
 
 - `CLAUDE.md` — architektura, konwencje i pułapki (czytaj przed większą zmianą)
 - `docs/booking-flow.md` — ścieżka rezerwacji, `docs/analytics-events.md` — eventy GA4
-- `SEO_MASTER_PLAN.md` — plan i status działań SEO
-- `HELPTRAVEL_MASTER_SPEC.md`, `PRODUCT.md` — specyfikacja i zasady produktowe
+- `PRODUCT.md` — zasady produktowe

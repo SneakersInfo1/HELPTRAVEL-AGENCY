@@ -51,3 +51,15 @@ next-env.d.ts
 
 # build artifacts
 /data/.cache/
+
+# internal strategy docs — moved out of the repo 2026-07-30 (repo is public)
+/SEO_MASTER_PLAN.md
+/HELPTRAVEL_MASTER_SPEC.md
+/BOOKING_AUDIT.md
+/BOOKING_BLOCKERS.md
+/BOOKING_PROGRESS_LOG.md
+/FIXES_LOG.md
+/INTEGRATION_PLAN.md
+/PURGE_REPORT.md
+/CONTEXT.md
+/PLANS/
