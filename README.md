@@ -62,9 +62,9 @@ Testy płatności obciążają prawdziwą kartę — używaj klucza `sand_`.
 
 Rezerwacje: `/hotele` (wyszukiwarka, karta hotelu, checkout), `/loty` (wyniki, rezerwacja), `/wyjazdy/[typ]`, `/oferta`, `/cennik`.
 
-Treści i SEO: `/kierunki`, `/najlepsze-kierunki`, `/inspiracje`, `/przewodniki`, `/porownanie`, `/raporty`, `/city-breaki`, `/cieple-kierunki`, `/bez-wizy`, `/tanie-podroze`, `/weekendowe-wyjazdy`.
+Treści i SEO: `/kierunki`, `/najlepsze-kierunki`, `/inspiracje`, `/przewodniki`, `/porownanie`, `/city-breaki`, `/cieple-kierunki`, `/bez-wizy`, `/tanie-podroze`, `/weekendowe-wyjazdy`.
 
-Zaufanie i formalności: `/o-nas`, `/kontakt`, `/faq`, `/jak-pracujemy`, `/redakcja`, `/standard-redakcyjny`, `/regulamin`, `/polityka-prywatnosci`, `/linki-partnerskie`, `/dla-partnerow`, `/mapa-serwisu`.
+Zaufanie i formalności: `/o-nas`, `/faq`, `/jak-pracujemy`, `/redakcja`, `/standard-redakcyjny`, `/regulamin`, `/polityka-prywatnosci`, `/dla-partnerow`, `/mapa-serwisu`.
 
 AI concierge (czat doboru wyjazdu) jest montowany w layoucie na każdej stronie; wyłącznik: `NEXT_PUBLIC_SHOW_CONCIERGE=false`.
 
