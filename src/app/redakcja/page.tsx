@@ -178,15 +178,6 @@ export default function RedakcjaPage() {
             <Link href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 transition hover:bg-emerald-100">
               <span className="text-emerald-900/85">Jak działa HelpTravel</span>
             </Link>
-            <Link href="/linki-partnerskie" className="rounded-2xl bg-emerald-50/75 px-4 py-3 transition hover:bg-emerald-100">
-              <span className="text-emerald-900/85">Model afiliacyjny (linki partnerskie)</span>
-            </Link>
-            <Link href="/raporty" className="rounded-2xl bg-emerald-50/75 px-4 py-3 transition hover:bg-emerald-100">
-              <span className="text-emerald-900/85">Raporty i dane</span>
-            </Link>
-            <Link href="/kontakt" className="rounded-2xl bg-emerald-50/75 px-4 py-3 transition hover:bg-emerald-100">
-              <span className="text-emerald-900/85">Kontakt z redakcją</span>
-            </Link>
           </div>
         </article>
       </section>

@@ -23,8 +23,6 @@ const copy = {
     ],
     mobileLinks: [
       { href: "/faq", label: "FAQ" },
-      { href: "/kontakt", label: "Kontakt" },
-      { href: "/linki-partnerskie", label: "Linki partnerskie" },
       { href: "/regulamin", label: "Regulamin" },
       { href: "/polityka-prywatnosci", label: "Polityka prywatności" },
     ],
@@ -59,16 +57,13 @@ const copy = {
           { href: "/jak-pracujemy", label: "Jak to działa" },
           { href: "/o-nas", label: "O serwisie" },
           { href: "/redakcja", label: "Redakcja" },
-          { href: "/raporty", label: "Raporty i dane" },
           { href: "/faq", label: "FAQ" },
-          { href: "/kontakt", label: "Kontakt" },
         ],
       },
       {
         title: "Pomoc i dokumenty",
         links: [
           { href: "/cennik", label: "Cennik" },
-          { href: "/linki-partnerskie", label: "Linki partnerskie" },
           { href: "/polityka-prywatnosci", label: "Polityka prywatności" },
           { href: "/regulamin", label: "Regulamin" },
           { href: "/dla-partnerow", label: "Dla partnerów" },
@@ -92,8 +87,6 @@ const copy = {
     ],
     mobileLinks: [
       { href: "/faq", label: "FAQ" },
-      { href: "/kontakt", label: "Contact" },
-      { href: "/linki-partnerskie", label: "Affiliate links" },
       { href: "/regulamin", label: "Terms" },
       { href: "/polityka-prywatnosci", label: "Privacy policy" },
     ],
@@ -121,16 +114,13 @@ const copy = {
           { href: "/jak-pracujemy", label: "How it works" },
           { href: "/o-nas", label: "About" },
           { href: "/redakcja", label: "Editorial team" },
-          { href: "/raporty", label: "Reports & data" },
           { href: "/faq", label: "FAQ" },
-          { href: "/kontakt", label: "Contact" },
         ],
       },
       {
         title: "Help and documents",
         links: [
           { href: "/cennik", label: "Pricing" },
-          { href: "/linki-partnerskie", label: "Affiliate links" },
           { href: "/polityka-prywatnosci", label: "Privacy policy" },
           { href: "/regulamin", label: "Terms" },
           { href: "/dla-partnerow", label: "For partners" },
@@ -326,14 +316,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     { href: "/regulamin", label: "Terms" },
                     { href: "/polityka-prywatnosci", label: "Privacy" },
                     { href: "/cennik", label: "Pricing" },
-                    { href: "/kontakt", label: "Contact" },
                     { href: "#cookie-settings", label: "Cookies" },
                   ]
                 : [
                     { href: "/regulamin", label: "Regulamin" },
                     { href: "/polityka-prywatnosci", label: "Polityka prywatności" },
                     { href: "/cennik", label: "Cennik" },
-                    { href: "/kontakt", label: "Kontakt" },
                     { href: "#cookie-settings", label: "Ustawienia cookies" },
                   ]
               ).map((link) => (
@@ -402,7 +390,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
  * pusta linia jest lepsza niż wymyślony NIP.
  */
 function FooterContactColumn({ title }: { title: string }) {
-  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
+  // Fallback JAK W REGULAMINIE I POLITYCE PRYWATNOŚCI — te dokumenty podają
+  // `kontakt@helptravel.pl`, gdy zmienna nie jest ustawiona. Po zdjęciu strony
+  // /kontakt (decyzja właściciela 2026-07-30) ten adres jest JEDYNĄ wskazaną
+  // drogą kontaktu, więc nie może zniknąć przy braku zmiennej na Vercelu —
+  // serwis przyjmujący płatności musi mieć gdzie odesłać reklamację.
+  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "kontakt@helptravel.pl";
   const operator = {
     name: process.env.NEXT_PUBLIC_OPERATOR_NAME?.trim() || null,
     legalForm: process.env.NEXT_PUBLIC_OPERATOR_LEGAL_FORM?.trim() || null,
@@ -423,9 +416,6 @@ function FooterContactColumn({ title }: { title: string }) {
             <span>{email}</span>
           </a>
         ) : null}
-        <LocalizedLink href="/kontakt" className="font-medium transition hover:text-brand">
-          Formularz kontaktowy
-        </LocalizedLink>
 
         {operator.name ? (
           <address className="mt-1 not-italic text-xs leading-5 text-ink-muted">

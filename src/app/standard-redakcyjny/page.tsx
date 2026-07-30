@@ -87,10 +87,7 @@ export default function EditorialStandardPage() {
             </Link>
             <Link href="/inspiracje" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
               Pomysły na wyjazd
-            </Link>
-            <Link href="/kontakt" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              Kontakt
-            </Link>
+            </Link>
           </div>
         </article>
       </section>

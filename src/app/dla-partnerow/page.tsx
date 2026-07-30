@@ -79,7 +79,9 @@ export default function PartnersPage() {
   const destinations = getPublishedDestinations();
   const articles = getEditorialArticles();
   const categories = getEditorialCategories();
-  const emailHref = contactEmail ? `mailto:${contactEmail}?subject=Współpraca%20HelpTravel` : "/kontakt";
+  // Fallback na adres, nie na stronę /kontakt — ta została zdjęta 2026-07-30,
+  // a link do nieistniejącej strony jest gorszy niż domyślny e-mail.
+  const emailHref = `mailto:${contactEmail || "kontakt@helptravel.pl"}?subject=Współpraca%20HelpTravel`;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -99,12 +101,6 @@ export default function PartnersPage() {
                 className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
               >
                 Napisz w sprawie współpracy
-              </LocalizedLink>
-              <LocalizedLink
-                href="/linki-partnerskie"
-                className="rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
-              >
-                Jak oznaczamy linki partnerskie
               </LocalizedLink>
             </div>
           </div>
@@ -201,12 +197,6 @@ export default function PartnersPage() {
             >
               Napisz do nas
             </LocalizedLink>
-            <LocalizedLink
-              href="/kontakt"
-              className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
-            >
-              Kontakt i szczegoly
-            </LocalizedLink>
           </div>
         </article>
       </section>
@@ -233,9 +223,6 @@ export default function PartnersPage() {
           </LocalizedLink>
           <LocalizedLink href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
             Jak pracujemy
-          </LocalizedLink>
-          <LocalizedLink href="/linki-partnerskie" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
-            Linki partnerskie
           </LocalizedLink>
         </div>
       </section>

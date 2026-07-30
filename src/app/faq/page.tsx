@@ -93,13 +93,7 @@ export default function FaqPage() {
             className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
           >
             Otwórz wyszukiwarkę hoteli →
-          </Link>
-          <Link
-            href="/kontakt"
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
-          >
-            Nie ma tu odpowiedzi — napisz
-          </Link>
+          </Link>
         </div>
       </section>
 
@@ -124,13 +118,7 @@ export default function FaqPage() {
             </Link>
             <Link href="/cennik" className="rounded-2xl bg-white px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
               Cennik i model płatności
-            </Link>
-            <Link href="/linki-partnerskie" className="rounded-2xl bg-white px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
-              Linki partnerskie
-            </Link>
-            <Link href="/kontakt" className="rounded-2xl bg-white px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
-              Kontakt
-            </Link>
+            </Link>
           </div>
         </article>
 

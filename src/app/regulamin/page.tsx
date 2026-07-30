@@ -334,8 +334,10 @@ const sections: Section[] = [
     intro:
       "Reklamacje dotyczące działania Serwisu (np. błędów technicznych, nieprawidłowości w funkcjonowaniu Planera, problemów z przebiegiem rezerwacji po stronie Operatora) Użytkownik może składać:",
     numbered: [
-      { body: `pocztą elektroniczną na adres ${operator.email}, z dopiskiem „Reklamacja”;` },
-      { body: "korzystając z formularza kontaktowego dostępnego na stronie /kontakt." },
+      // Strona /kontakt zdjęta 2026-07-30 (decyzja właściciela). Reklamację
+      // składa się e-mailem — regulamin nie może wskazywać adresu, który
+      // zwraca przekierowanie zamiast formularza.
+      { body: `pocztą elektroniczną na adres ${operator.email}, z dopiskiem „Reklamacja”.` },
     ],
     paragraphs: [
       "Reklamacja powinna zawierać co najmniej: imię i nazwisko (lub firmę) Użytkownika, adres do korespondencji elektronicznej, zwięzły opis okoliczności i przedmiotu reklamacji, datę i godzinę zdarzenia oraz, w miarę możliwości, identyfikator Sesji lub numer rezerwacji.",
@@ -351,7 +353,10 @@ const sections: Section[] = [
       "Serwis korzysta z modelu afiliacyjnego. Niektóre odnośniki prowadzące do Partnerów Afiliacyjnych zawierają parametry identyfikujące Serwis, dzięki którym Operator może otrzymać wynagrodzenie prowizyjne od Partnera w przypadku dokonania przez Użytkownika zakupu po przejściu z Serwisu.",
       "Korzystanie z Linków Afiliacyjnych nie zwiększa ceny usługi po stronie Partnera Afiliacyjnego ani nie nakłada na Użytkownika żadnych dodatkowych zobowiązań wobec Operatora.",
       "Po kliknięciu Linku Afiliacyjnego Użytkownik opuszcza Serwis i korzysta z platformy Partnera Afiliacyjnego na zasadach określonych w regulaminie i polityce prywatności tego Partnera. Operator nie jest stroną umów zawieranych przez Użytkownika z Partnerami Afiliacyjnymi.",
-      "Lista Partnerów Afiliacyjnych dostępna jest pod adresem /linki-partnerskie i może być aktualizowana w miarę rozwoju Serwisu.",
+      // Strona /linki-partnerskie zdjęta 2026-07-30. Wskazywanie w regulaminie
+      // adresu, pod którym nic nie ma, jest gorsze niż brak wskazania — lista
+      // dostępna jest na żądanie pod adresem kontaktowym Operatora.
+      `Lista Partnerów Afiliacyjnych udostępniana jest na żądanie Użytkownika, po zgłoszeniu na adres ${operator.email}.`,
     ],
   },
   {
@@ -501,12 +506,12 @@ export default function TermsPage() {
           >
             Polityka prywatności →
           </Link>
-          <Link
-            href="/kontakt"
+          <a
+            href={`mailto:${operator.email}`}
             className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 transition hover:bg-emerald-50"
           >
-            Kontakt →
-          </Link>
+            <span className="text-emerald-900">Kontakt →</span>
+          </a>
         </div>
       </section>
 

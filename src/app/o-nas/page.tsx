@@ -244,13 +244,7 @@ export default async function AboutPage() {
               Ceny i warunki zawsze warto sprawdzić w ostatnim kroku po stronie partnera.
             </p>
           </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/linki-partnerskie"
-              className="rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
-            >
-              Jak działają linki partnerskie
-            </Link>
+          <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/faq"
               className="rounded-full border border-emerald-900/10 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"

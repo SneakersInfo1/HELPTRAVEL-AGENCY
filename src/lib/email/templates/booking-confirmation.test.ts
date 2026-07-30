@@ -195,5 +195,9 @@ test("plain text contains site footer links", () => {
   const out = renderBookingConfirmation(base());
   assert.match(out.text, /\/regulamin/);
   assert.match(out.text, /\/polityka-prywatnosci/);
-  assert.match(out.text, /\/linki-partnerskie/);
+  // Stopka maila NIE może linkować do /linki-partnerskie — strona zdjęta
+  // 2026-07-30. Mail idzie do klienta, który zapłacił; martwy link w takim
+  // miejscu kosztuje więcej niż gdziekolwiek indziej.
+  assert.doesNotMatch(out.text, /\/linki-partnerskie/);
+  assert.doesNotMatch(out.html, /\/linki-partnerskie/);
 });

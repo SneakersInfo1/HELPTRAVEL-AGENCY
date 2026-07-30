@@ -222,8 +222,7 @@ export function renderBookingConfirmation(data: BookingConfirmationData): Render
           <div>
             HelpTravel ·
             <a href="${escHtml(siteUrl)}/regulamin" style="color:#3b5d4d;text-decoration:underline;">Regulamin</a> ·
-            <a href="${escHtml(siteUrl)}/polityka-prywatnosci" style="color:#3b5d4d;text-decoration:underline;">Polityka prywatności</a> ·
-            <a href="${escHtml(siteUrl)}/linki-partnerskie" style="color:#3b5d4d;text-decoration:underline;">Linki partnerskie</a>
+            <a href="${escHtml(siteUrl)}/polityka-prywatnosci" style="color:#3b5d4d;text-decoration:underline;">Polityka prywatności</a>
           </div>
           <div style="margin-top:8px;">
             Ten e-mail został wysłany na adres ${escHtml(data.holder.email)} ponieważ wykonałeś rezerwację w HelpTravel. Nie jest to wiadomość marketingowa.
@@ -268,7 +267,6 @@ export function renderBookingConfirmation(data: BookingConfirmationData): Render
     `--`,
     `Regulamin: ${siteUrl}/regulamin`,
     `Polityka prywatności: ${siteUrl}/polityka-prywatnosci`,
-    `Linki partnerskie: ${siteUrl}/linki-partnerskie`,
   ];
 
   const text = textLines.filter((l): l is string => l !== null).join("\n");

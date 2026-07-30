@@ -75,6 +75,16 @@ const nextConfig: NextConfig = {
         destination: "/",
         permanent: true,
       },
+      // Strony zdjęte 2026-07-30 (decyzja właściciela: „bez sensu").
+      // 301, a NIE 404: /raporty/[slug] było zasobem pod SEO ze znacznikami
+      // Article/Dataset, więc mogło mieć linki z zewnątrz i pozycje w Google.
+      // Przekierowanie przenosi siłę linkującą na stronę główną zamiast ją
+      // gubić i nie wystawia użytkownika z wyszukiwarki na błąd, dopóki
+      // indeks się nie odświeży.
+      { source: "/kontakt", destination: "/", permanent: true },
+      { source: "/linki-partnerskie", destination: "/", permanent: true },
+      { source: "/raporty", destination: "/", permanent: true },
+      { source: "/raporty/:slug*", destination: "/", permanent: true },
     ];
   },
   images: {

@@ -634,13 +634,7 @@ export default function PrivacyPolicyPage() {
             className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 transition hover:bg-emerald-50"
           >
             Ustawienia cookies →
-          </a>
-          <Link
-            href="/kontakt"
-            className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 transition hover:bg-emerald-50"
-          >
-            Kontakt →
-          </Link>
+          </a>
         </div>
       </section>
 

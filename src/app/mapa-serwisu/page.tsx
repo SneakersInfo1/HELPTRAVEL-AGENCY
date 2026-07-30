@@ -65,14 +65,12 @@ export default function SiteMapPage() {
         <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
           <h2 className="text-2xl font-bold text-emerald-950">Zaufanie</h2>
           <div className="mt-4 flex flex-col gap-3 text-sm text-emerald-900/78">
-            <Link href="/o-nas" className="hover:text-emerald-700">O serwisie</Link>
-            <Link href="/kontakt" className="hover:text-emerald-700">Kontakt</Link>
+            <Link href="/o-nas" className="hover:text-emerald-700">O serwisie</Link>
             <Link href="/oferta" className="hover:text-emerald-700">Oferta</Link>
             <Link href="/faq" className="hover:text-emerald-700">FAQ</Link>
             <Link href="/cennik" className="hover:text-emerald-700">Cennik</Link>
             <Link href="/polityka-prywatnosci" className="hover:text-emerald-700">Polityka prywatnosci</Link>
-            <Link href="/regulamin" className="hover:text-emerald-700">Regulamin</Link>
-            <Link href="/linki-partnerskie" className="hover:text-emerald-700">Linki partnerskie</Link>
+            <Link href="/regulamin" className="hover:text-emerald-700">Regulamin</Link>
             <Link href="/dla-partnerow" className="hover:text-emerald-700">Dla partnerów</Link>
             <Link href="/standard-redakcyjny" className="hover:text-emerald-700">Standard redakcyjny</Link>
           </div>
