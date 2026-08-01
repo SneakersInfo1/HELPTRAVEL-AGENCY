@@ -31,26 +31,25 @@ const productBlocks = [
 export default function OfferPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Oferta</p>
-        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
           HelpTravel pomaga wybrać kierunek i przejść do kolejnych kroków wyjazdu.
         </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
+        <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">
           Nie trzeba znać całej trasy od razu. Możesz zacząć od miasta albo tylko od potrzeby, a dalej przejść do noclegów, lotów i rzeczy, które pomagają domknąć wyjazd.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/hotele/szukaj"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 py-3 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Otwórz wyszukiwarkę hoteli →
+            <span className="text-sm font-bold text-white">Otwórz wyszukiwarkę hoteli</span>
           </Link>
           <Link
             href="/kierunki"
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-5 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Nie wiem dokąd lecieć
+            <span className="text-sm font-semibold text-ink">Nie wiem dokąd lecieć</span>
           </Link>
         </div>
       </section>
@@ -59,36 +58,36 @@ export default function OfferPage() {
         {productBlocks.map((block) => (
           <article
             key={block.title}
-            className="rounded-[1.8rem] border border-emerald-900/10 bg-white/95 p-5 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
+            className="rounded-2xl border border-line bg-surface-raised p-5 shadow-sm"
           >
-            <h2 className="text-2xl font-bold text-emerald-950">{block.title}</h2>
-            <p className="mt-3 text-sm leading-7 text-emerald-900/78">{block.body}</p>
+            <h2 className="text-2xl font-bold text-ink">{block.title}</h2>
+            <p className="mt-3 text-sm leading-7 text-ink-muted">{block.body}</p>
           </article>
         ))}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="text-2xl font-bold text-emerald-950">Najprostsze wejścia do serwisu</h2>
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-ink">Najprostsze wejścia do serwisu</h2>
           <div className="mt-4 grid gap-3 text-sm">
-              <Link href="/hotele/szukaj" className="rounded-2xl bg-white px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-                Mam kierunek
+              <Link href="/hotele/szukaj" className="group inline-flex min-h-11 items-center justify-center rounded-2xl bg-surface-raised px-4 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+                <span className="text-ink-muted transition group-hover:text-brand">Mam kierunek</span>
               </Link>
-            <Link href="/kierunki" className="rounded-2xl bg-white px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              Pomóż mi wybrać
+            <Link href="/kierunki" className="group inline-flex min-h-11 items-center justify-center rounded-2xl bg-surface-raised px-4 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+              <span className="text-ink-muted transition group-hover:text-brand">Pomóż mi wybrać</span>
             </Link>
-            <Link href="/kierunki" className="rounded-2xl bg-white px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              Katalog kierunków
+            <Link href="/kierunki" className="group inline-flex min-h-11 items-center justify-center rounded-2xl bg-surface-raised px-4 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+              <span className="text-ink-muted transition group-hover:text-brand">Katalog kierunków</span>
             </Link>
-            <Link href="/inspiracje" className="rounded-2xl bg-white px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              Pomysły na wyjazd
+            <Link href="/inspiracje" className="group inline-flex min-h-11 items-center justify-center rounded-2xl bg-surface-raised px-4 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+              <span className="text-ink-muted transition group-hover:text-brand">Pomysły na wyjazd</span>
             </Link>
           </div>
         </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="text-2xl font-bold text-emerald-950">Ważne ograniczenia</h2>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-ink">Ważne ograniczenia</h2>
+          <div className="mt-4 space-y-3 text-sm leading-7 text-ink-muted">
             <p>Nie każdy kierunek ma taki sam poziom rozbudowania treści.</p>
             <p>Finalna rezerwacja może odbywać się u partnera, nie w samym HelpTravel.</p>
             <p>Ceny i dostępność potrafią zmieniać się po stronie partnera.</p>
@@ -98,5 +97,4 @@ export default function OfferPage() {
     </main>
   );
 }
-
 

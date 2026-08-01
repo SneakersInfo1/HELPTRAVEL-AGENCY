@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 interface FinalCtaBannerProps {
-  eyebrow: string;
   title: string;
   body: string;
   primaryHref: string;
@@ -10,11 +9,19 @@ interface FinalCtaBannerProps {
   secondaryLabel?: string;
 }
 
-// Dark emerald closing CTA with the amber→orange→rose gradient button —
-// mirrors the homepage "Zacznij teraz" section so the conversion moment
-// feels consistent across the site.
+// Closing CTA: dark brand band, one unmistakable primary action.
+//
+// The previous version used an amber→orange→rose gradient pill with an orange
+// glow shadow and an UPPERCASE label. Three problems. The gradient belongs to
+// no token in the design system, so the most important button on the page was
+// the one element nothing else on the site matched. The glow was a fourth
+// shadow level next to the three the system defines. And the accent ramp is
+// reserved for prices — spending it on a button is exactly how "this number is
+// money" stops meaning anything.
+//
+// On this dark band the primary action is a solid white pill: maximum contrast,
+// no token borrowed, and it reads as primary without decoration.
 export function FinalCtaBanner({
-  eyebrow,
   title,
   body,
   primaryHref,
@@ -23,30 +30,26 @@ export function FinalCtaBanner({
   secondaryLabel,
 }: FinalCtaBannerProps) {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-emerald-900/20 bg-emerald-950 p-8 text-white shadow-[0_28px_80px_rgba(6,29,16,0.22)] sm:p-10">
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(110,231,183,0.20),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.14),transparent_32%)]"
-      />
-      <div className="relative flex flex-wrap items-center justify-between gap-6">
+    <section className="rounded-[2rem] bg-brand-strong p-6 text-white [--focus-ring:#fff] sm:p-10">
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
         <div className="min-w-[16rem] flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-200">{eyebrow}</p>
-          <h2 className="mt-3 max-w-2xl font-display text-3xl leading-tight sm:text-4xl">{title}</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-50/80">{body}</p>
+          <h2 className="max-w-2xl text-balance font-display text-2xl sm:text-3xl">{title}</h2>
+          <p className="mt-3 max-w-2xl text-pretty text-sm leading-7 text-white/85">{body}</p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex w-full flex-wrap gap-3 sm:w-auto">
           <Link
             href={primaryHref}
-            className="inline-flex h-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 px-7 text-sm font-bold uppercase tracking-[0.08em] text-emerald-950 shadow-[0_12px_40px_rgba(234,88,12,0.45)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_50px_rgba(234,88,12,0.6)]"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-white px-7 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 sm:flex-none"
           >
-            {primaryLabel} →
+            {/* Global `a { color: inherit }` beats text-* on the anchor itself. */}
+            <span className="text-sm font-bold text-brand-strong">{primaryLabel}</span>
           </Link>
           {secondaryHref && secondaryLabel ? (
             <Link
               href={secondaryHref}
-              className="inline-flex h-12 items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20"
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-white/35 px-6 py-3 transition duration-150 ease-out hover:bg-white/10 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 sm:flex-none"
             >
-              {secondaryLabel}
+              <span className="text-sm font-semibold text-white">{secondaryLabel}</span>
             </Link>
           ) : null}
         </div>

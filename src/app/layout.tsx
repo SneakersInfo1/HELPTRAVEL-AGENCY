@@ -30,8 +30,13 @@ const uiFont = Manrope({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  // Tytuł i opisy poniżej to teksty, które Google pokazuje przy KAŻDEJ stronie
+  // serwisu. Do 2026-07-31 obiecywały „plan wyjazdu w 3 minuty" i „0 zł":
+  // planera nie ma od zwrotu na rezerwacje własne, „3 minuty" nie miały źródła,
+  // a „0 zł" mówiło o serwisie, w którym płaci się za nocleg. Wynik wyszukiwania
+  // był więc pierwszą rzeczą, jaką klient czytał — i pierwszą nieprawdą.
   title: {
-    default: "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zł",
+    default: "HelpTravel — hotele i loty w jednym miejscu, ceny w złotówkach",
     template: "%s | HelpTravel",
   },
   alternates: {
@@ -46,7 +51,7 @@ export const metadata: Metadata = {
     },
   },
   description:
-    "Zaplanuj wyjazd w 3 minuty: lot + hotel + gotowy plan dnia. Ponad 80 lotnisk w Polsce, Europie i na świecie. Bez rejestracji. 100% darmowe — płacisz tylko za rezerwacje u partnerów.",
+    "Rezerwuj hotel i lot w jednym miejscu. Ceny w złotówkach, z podatkami i opłatami, potwierdzenie e-mailem od razu. Bez zakładania konta.",
   keywords: [
     "tani lot i hotel",
     "planer podróży",
@@ -66,9 +71,9 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty",
+    title: "HelpTravel — hotele i loty w jednym miejscu, ceny w złotówkach",
     description:
-      "Zaplanuj cały wyjazd w 3 minuty: lot, hotel i plan dnia w jednym kliku. Ponad 80 lotnisk PL, EU i świat. Bez rejestracji. 100% darmowe.",
+      "Rezerwuj hotel i lot bez skakania po serwisach. Ceny w PLN z podatkami i opłatami, potwierdzenie e-mailem, bez zakładania konta.",
     url: siteUrl,
     siteName: "HelpTravel",
     locale: "pl_PL",
@@ -79,13 +84,21 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "HelpTravel - Loty + hotel i plan w 3 minuty",
-    description: "Zaplanuj wyjazd w 3 minuty: lot, hotel i plan dnia. Ponad 80 lotnisk PL, EU i świat. Bez rejestracji. 0 zł.",
+    title: "HelpTravel — hotele i loty w jednym miejscu",
+    description: "Ceny w złotówkach z podatkami i opłatami, potwierdzenie e-mailem, bez zakładania konta.",
     // images: generowane przez src/app/twitter-image.tsx (fallback do opengraph-image)
   },
+  // PERF: favicon wskazywał na `helptravel-mark.png` — 640 KB w rozdzielczości
+  // 747×747, pobierane przez przeglądarkę przy każdym wejściu na dowolną
+  // podstronę, żeby narysować ikonę 16 px w karcie. Teraz 2 KB (32 px)
+  // i 18 KB (180 px, ekrany o wysokim DPI). Duży plik zostaje wyłącznie dla
+  // Open Graph i schema.org, czyli dla crawlerów, nie dla użytkownika.
   icons: {
-    icon: [{ url: "/branding/helptravel-mark.png", type: "image/png" }],
-    shortcut: ["/branding/helptravel-mark.png"],
+    icon: [
+      { url: "/branding/helptravel-mark-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/branding/helptravel-mark-180.png", type: "image/png", sizes: "180x180" },
+    ],
+    shortcut: ["/branding/helptravel-mark-32.png"],
     apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
   },
   verification: googleVerification ? { google: googleVerification } : undefined,
@@ -102,7 +115,7 @@ const structuredData = {
       url: siteUrl,
       inLanguage: ["pl-PL", "en-US"],
       description:
-        "Planer podróży, który łączy lot, hotel i gotowy plan dnia w jednym kliku. Ponad 80 lotnisk PL, EU i świat. Bez rejestracji.",
+        "Serwis rezerwacji hoteli i lotów dla polskiego podróżnego. Ceny w złotówkach, rezerwacja bez zakładania konta.",
       publisher: { "@id": `${siteUrl}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
@@ -119,13 +132,15 @@ const structuredData = {
       name: "HelpTravel",
       legalName: "HelpTravel",
       url: siteUrl,
+      // Wymiary zgodne z plikiem: źródło ma 747×747, nie 512×512. Deklarowanie
+      // rozmiaru, którego obraz nie ma, to dla walidatora schema.org błąd.
       logo: {
         "@type": "ImageObject",
         url: `${siteUrl}/branding/helptravel-mark.png`,
-        width: 512,
-        height: 512,
+        width: 747,
+        height: 747,
       },
-      slogan: "Lot + hotel i plan wyjazdu w 3 minuty",
+      slogan: "Hotele i loty w jednym miejscu, w złotówkach",
       description:
         "Niezależny polski serwis travelowy: planer wyjazdów z lotem, hotelem i planem dnia w jednym kliku, oparty o sprawdzonych partnerów rezerwacyjnych.",
       areaServed: [

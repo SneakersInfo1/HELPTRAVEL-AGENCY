@@ -130,7 +130,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
+      <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         <div className="relative flex min-h-[24rem] flex-col justify-end sm:min-h-[26rem]">
           <Image src={heroImage} alt={article.title} fill priority className="object-cover" sizes="100vw" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.16)_0%,rgba(5,18,11,0.76)_100%)]" />
@@ -142,9 +142,6 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
                 { label: article.title },
               ]}
             />
-            <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
-              Artykuł praktyczny
-            </p>
             <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">{article.title}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/86">{article.hero}</p>
           </div>
@@ -158,19 +155,15 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
       />
 
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Wprowadzenie</p>
-          <h2 className="mt-3 font-display text-4xl text-emerald-950">{article.excerpt}</h2>
-          <p className="mt-4 text-base leading-8 text-emerald-900/78">{article.description}</p>
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="mt-3 font-display text-4xl text-ink">{article.excerpt}</h2>
+          <p className="mt-4 text-base leading-8 text-ink-muted">{article.description}</p>
         </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-            Jak wykorzystac ten scenariusz
-          </p>
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
           <div className="mt-4 space-y-3">
             {article.practicalBullets.map((item) => (
-              <div key={item} className="rounded-2xl bg-white px-4 py-3 text-sm leading-7 text-emerald-900/78">
+              <div key={item} className="rounded-2xl bg-surface-raised px-4 py-3 text-sm leading-7 text-ink-muted">
                 {item}
               </div>
             ))}
@@ -178,9 +171,9 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
           <div className="mt-5">
             <Link
               href="/hotele/szukaj"
-              className="rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-4 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              Przejdź do wyszukiwarki hoteli
+              <span className="text-sm font-bold text-white">Przejdź do wyszukiwarki hoteli</span>
             </Link>
           </div>
         </article>
@@ -190,19 +183,18 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
         {article.sections.map((section) => (
           <article
             key={section.title}
-            className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
+            className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm"
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Sekcja praktyczna</p>
-            <h2 className="mt-3 text-2xl font-bold text-emerald-950">{section.title}</h2>
-            <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
+            <h2 className="mt-3 text-2xl font-bold text-ink">{section.title}</h2>
+            <div className="mt-4 space-y-3 text-sm leading-7 text-ink-muted">
               {section.paragraphs.map((paragraph) => (
                 <p key={paragraph}>{paragraph}</p>
               ))}
             </div>
             {section.bullets?.length ? (
-              <ul className="mt-4 space-y-2 text-sm leading-7 text-emerald-900/78">
+              <ul className="mt-4 space-y-2 text-sm leading-7 text-ink-muted">
                 {section.bullets.map((bullet) => (
-                  <li key={bullet} className="rounded-2xl bg-emerald-50/75 px-4 py-3">
+                  <li key={bullet} className="rounded-2xl bg-surface-sunken px-4 py-3">
                     {bullet}
                   </li>
                 ))}
@@ -212,16 +204,13 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
         ))}
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+      <section className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Polecane kierunki</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">
-              Miejsca, które najlepiej pasuja do tego tematu.
-            </h2>
-          </div>
-          <Link href="/kierunki" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-            Zobacz wszystkie kierunki
+          <h2 className="mt-2 font-display text-4xl text-ink">
+            Miejsca, które najlepiej pasuja do tego tematu.
+          </h2>
+          <Link href="/kierunki" className="group text-sm font-semibold">
+            <span className="text-ink transition group-hover:text-brand">Zobacz wszystkie kierunki</span>
           </Link>
         </div>
         <div className="mt-6 grid gap-5 lg:grid-cols-3">
@@ -239,20 +228,18 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">FAQ</p>
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <div className="mt-5 space-y-4">
             {article.faq.map((item) => (
-              <article key={item.question} className="rounded-2xl bg-emerald-50/75 px-4 py-4">
-                <h3 className="text-base font-bold text-emerald-950">{item.question}</h3>
-                <p className="mt-2 text-sm leading-7 text-emerald-900/78">{item.answer}</p>
+              <article key={item.question} className="rounded-2xl bg-surface-sunken px-4 py-4">
+                <h3 className="text-base font-bold text-ink">{item.question}</h3>
+                <p className="mt-2 text-sm leading-7 text-ink-muted">{item.answer}</p>
               </article>
             ))}
           </div>
         </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(7,30,18,0.96),rgba(8,40,24,0.92))] p-6 text-white shadow-[0_20px_54px_rgba(8,40,24,0.18)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Nastepny krok</p>
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(7,30,18,0.96),rgba(8,40,24,0.92))] p-6 text-white shadow-sm">
           <h2 className="mt-3 font-display text-4xl">Przejdź z artykułu do konkretnego wyszukiwania.</h2>
           <p className="mt-4 text-sm leading-7 text-white/82">
             Artykuł daje kontekst i porzadkuje scenariusz, ale finalnie najważniejsze jest przejście do realnego planu:
@@ -261,28 +248,23 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/hotele/szukaj"
-              className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              Sprawdź hotele
+              <span className="text-sm font-bold text-ink">Sprawdź hotele</span>
             </Link>
             <Link
               href="/kierunki"
-              className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/12"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/12 bg-white/8 px-5 py-3 transition duration-150 ease-out hover:bg-white/12 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              Wybiorę kierunek
+              <span className="text-sm font-semibold text-white">Wybiorę kierunek</span>
             </Link>
           </div>
         </article>
       </section>
 
       {relatedArticles.length > 0 ? (
-        <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane artykuły</p>
-              <h2 className="mt-2 font-display text-4xl text-emerald-950">Czytaj dalej w podobnym temacie.</h2>
-            </div>
-          </div>
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="mt-2 font-display text-4xl text-ink">Czytaj dalej w podobnym temacie.</h2>
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
             {relatedArticles.map((item) => (
               <EditorialArticleCard key={item.slug} article={item} compact />

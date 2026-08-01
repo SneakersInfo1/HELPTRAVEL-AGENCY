@@ -38,12 +38,11 @@ const editorialChecklist = [
 export default function EditorialStandardPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Standard redakcyjny</p>
-        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
           Jak przygotowujemy przewodniki, artykuły i praktyczne opisy kierunków
         </h1>
-        <p className="mt-4 max-w-4xl text-base leading-8 text-emerald-900/78">
+        <p className="mt-4 max-w-4xl text-base leading-8 text-ink-muted">
           To proste wyjasnienie, jak przygotowujemy treści w HelpTravel. Zalezy nam, żeby użytkownik wiedzial, skąd
           biorą się opisy kierunków, jak podchodzimy do porównań i dlaczego nie wypełniamy serwisu pustymi stronami.
         </p>
@@ -53,18 +52,18 @@ export default function EditorialStandardPage() {
         {standards.map((item) => (
           <article
             key={item.title}
-            className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
+            className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm"
           >
-            <h2 className="text-2xl font-bold text-emerald-950">{item.title}</h2>
-            <p className="mt-4 text-sm leading-7 text-emerald-900/78">{item.body}</p>
+            <h2 className="text-2xl font-bold text-ink">{item.title}</h2>
+            <p className="mt-4 text-sm leading-7 text-ink-muted">{item.body}</p>
           </article>
         ))}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Checklist przed publikacja</p>
-          <ul className="mt-4 space-y-2 text-sm leading-7 text-emerald-900/78">
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Checklist przed publikacja</h2>
+          <ul className="mt-4 space-y-2 text-sm leading-7 text-ink-muted">
             {editorialChecklist.map((item) => (
               <li key={item} className="rounded-2xl bg-white px-4 py-3">
                 {item}
@@ -73,38 +72,38 @@ export default function EditorialStandardPage() {
           </ul>
         </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane strony</p>
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Powiązane strony</h2>
           <div className="mt-4 grid gap-3 text-sm">
-            <Link href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
+            <Link href="/jak-pracujemy" className="rounded-2xl bg-surface-sunken px-4 py-3 text-ink-muted transition hover:text-brand">
               Jak to działa
             </Link>
-            <Link href="/o-nas" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
+            <Link href="/o-nas" className="rounded-2xl bg-surface-sunken px-4 py-3 text-ink-muted transition hover:text-brand">
               O serwisie
             </Link>
-            <Link href="/kierunki" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
+            <Link href="/kierunki" className="rounded-2xl bg-surface-sunken px-4 py-3 text-ink-muted transition hover:text-brand">
               Kierunki
             </Link>
-            <Link href="/inspiracje" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
+            <Link href="/inspiracje" className="rounded-2xl bg-surface-sunken px-4 py-3 text-ink-muted transition hover:text-brand">
               Pomysły na wyjazd
-            </Link>
+            </Link>
           </div>
         </article>
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="text-2xl font-bold text-emerald-950">Dodatkowe strony wspierajace decyzje i zaufanie</h2>
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="text-2xl font-bold text-ink">Dodatkowe strony wspierajace decyzje i zaufanie</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/faq" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <Link href="/faq" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             FAQ
           </Link>
-          <Link href="/cennik" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <Link href="/cennik" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             Cennik
           </Link>
-          <Link href="/oferta" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <Link href="/oferta" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             Oferta
           </Link>
-          <Link href="/mapa-serwisu" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <Link href="/mapa-serwisu" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             Mapa serwisu
           </Link>
         </div>

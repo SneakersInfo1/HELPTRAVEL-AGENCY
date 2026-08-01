@@ -80,20 +80,19 @@ export default function FaqPage() {
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pomoc i przejrzystość</p>
-        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">Najczęstsze pytania o HelpTravel</h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">Najczęstsze pytania o HelpTravel</h1>
+        <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">
           To miejsce dla osób, które chcą szybko sprawdzić, jak działa planner, gdzie trafia finalna rezerwacja i co
           warto wiedzieć przed kliknięciem w ofertę.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/hotele/szukaj"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 py-3 text-sm font-bold text-white transition hover:bg-brand-strong"
           >
-            Otwórz wyszukiwarkę hoteli →
-          </Link>
+            Otwórz wyszukiwarkę hoteli
+          </Link>
         </div>
       </section>
 
@@ -101,29 +100,29 @@ export default function FaqPage() {
         {faqItems.map((item) => (
           <article
             key={item.question}
-            className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
+            className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm"
           >
-            <h2 className="text-2xl font-bold text-emerald-950">{item.question}</h2>
-            <p className="mt-4 text-sm leading-7 text-emerald-900/78">{item.answer}</p>
+            <h2 className="text-2xl font-bold text-ink">{item.question}</h2>
+            <p className="mt-4 text-sm leading-7 text-ink-muted">{item.answer}</p>
           </article>
         ))}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane strony</p>
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Powiązane strony</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Link href="/oferta" className="rounded-2xl bg-white px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+            <Link href="/oferta" className="rounded-2xl bg-white px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
               Oferta i główne funkcje
             </Link>
-            <Link href="/cennik" className="rounded-2xl bg-white px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+            <Link href="/cennik" className="rounded-2xl bg-white px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
               Cennik i model płatności
-            </Link>
+            </Link>
           </div>
         </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Oficjalne źródła</p>
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Oficjalne źródła</h2>
           <div className="mt-4 grid gap-3">
             {TRUSTED_TRAVEL_RESOURCES.map((resource) => (
               <a
@@ -131,10 +130,10 @@ export default function FaqPage() {
                 href={resource.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-2xl border border-emerald-900/10 bg-emerald-50/70 px-4 py-4 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+                className="rounded-2xl border border-line bg-surface-sunken px-4 py-4 transition hover:border-brand hover:bg-brand-soft"
               >
-                <p className="text-sm font-semibold text-emerald-950">{resource.label.pl}</p>
-                <p className="mt-1 text-sm leading-6 text-emerald-900/74">{resource.description.pl}</p>
+                <p className="text-sm font-semibold text-ink">{resource.label.pl}</p>
+                <p className="mt-1 text-sm leading-6 text-ink-muted">{resource.description.pl}</p>
               </a>
             ))}
           </div>

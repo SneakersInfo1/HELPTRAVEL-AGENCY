@@ -134,24 +134,9 @@ const sections: Section[] = [
           "podmiot zewnętrzny (m.in. hotel, sięć hotelowa, agregator rezerwacyjny, operator platformy bookingowej, w tym LiteAPI Travel Ltd. wraz z dostawcami noclegów), za pomocą którego Użytkownik finalizuje rezerwację noclegu i z którym Użytkownik zawiera właściwą umowę o świadczenie usługi noclegowej.",
       },
       {
-        label: "Partner Afiliacyjny",
-        body:
-          "podmiot zewnętrzny (m.in. Booking.com, Hotels.com, Expedia, Vrbo, CJ Affiliate, Stay22), do którego Użytkownik może przejść za pośrednictwem Linku Afiliacyjnego.",
-      },
-      {
-        label: "Link Afiliacyjny",
-        body:
-          "hiperłącze prowadzące do platformy Partnera Afiliacyjnego, oznaczone parametrem identyfikującym Serwis, z którego pochodzi przejście, umożliwiającym Operatorowi otrzymanie prowizji od Partnera w razie późniejszego zakupu.",
-      },
-      {
         label: "Sesja",
         body:
-          "anonimowa, technicznie generowana sesja Użytkownika w Serwisie, identyfikowana losowym ciągiem znaków, służąca m.in. do zapamiętywania preferencji wyjazdu, zapisanych planów oraz przebiegu rezerwacji hotelowej; Serwis nie wymaga zakładania konta.",
-      },
-      {
-        label: "Planer",
-        body:
-          "interaktywne narzędzie Serwisu umożliwiające wprowadzenie preferencji wyjazdu i otrzymanie propozycji kierunków, terminów oraz dalszych kroków planowania.",
+          "anonimowa, technicznie generowana sesja Użytkownika w Serwisie, identyfikowana losowym ciągiem znaków, służąca m.in. do zapamiętywania preferencji wyjazdu oraz przebiegu rezerwacji hotelowej; Serwis nie wymaga zakładania konta.",
       },
       {
         label: "Rezerwacja Hotelowa",
@@ -166,7 +151,7 @@ const sections: Section[] = [
       {
         label: "Treści Serwisu",
         body:
-          "wszelkie materiały tekstowe, graficzne, audiowizualne, układy stron, kompozycje opisów kierunków, planerów, przewodników, oznaczenia, logo i inne utwory w rozumieniu prawa autorskiego, publikowane w Serwisie.",
+          "wszelkie materiały tekstowe, graficzne, audiowizualne, układy stron, kompozycje opisów kierunków, przewodników, oznaczenia, logo i inne utwory w rozumieniu prawa autorskiego, publikowane w Serwisie.",
       },
     ],
   },
@@ -175,9 +160,9 @@ const sections: Section[] = [
     ord: "§ 4",
     title: "Charakter Serwisu i jego rola prawna",
     paragraphs: [
-      `Serwis ${SITE_NAME} jest niezależnym serwisem informacyjnym, planerem podróży oraz pośrednikiem technologicznym. Operator nie jest organizatorem turystyki ani agentem turystycznym w rozumieniu ustawy z dnia 24 listopada 2017 r. o imprezach turystycznych i powiązanych usługach turystycznych, a Serwis nie świadczy usług polegających na łączeniu co najmniej dwóch różnych rodzajów usług turystycznych na potrzeby tej samej podróży lub wakacji.`,
+      `Serwis ${SITE_NAME} jest niezależnym serwisem informacyjnym oraz pośrednikiem technologicznym. Operator nie jest organizatorem turystyki ani agentem turystycznym w rozumieniu ustawy z dnia 24 listopada 2017 r. o imprezach turystycznych i powiązanych usługach turystycznych, a Serwis nie świadczy usług polegających na łączeniu co najmniej dwóch różnych rodzajów usług turystycznych na potrzeby tej samej podróży lub wakacji.`,
       `Serwis nie organizuje wyjazdów, nie sprzedaje imprez turystycznych ani pakietów dynamicznych, nie pobiera od Użytkowników wpłat na poczet usług turystycznych innych podmiotów oraz nie ponosi odpowiedzialności organizatora turystyki.`,
-      `Rolą Operatora jest: (a) udostępnianie treści informacyjnych i porównawczych, (b) udostępnianie Planera i innych narzędzi wspierających decyzje podróżne, (c) świadczenie pośrednictwa technologicznego umożliwiającego zawarcie Rezerwacji Hotelowej z Partnerem Rezerwacyjnym, (d) udostępnianie Linków Afiliacyjnych do Partnerów Afiliacyjnych.`,
+      `Rolą Operatora jest: (a) udostępnianie treści informacyjnych i porównawczych, (b) udostępnianie narzędzi wyszukiwania noclegów i przelotów, (c) świadczenie pośrednictwa technologicznego umożliwiającego zawarcie Rezerwacji Hotelowej z Partnerem Rezerwacyjnym.`,
       `W przypadku Rezerwacji Hotelowej stronami umowy o świadczenie usługi noclegowej są Użytkownik i właściwy Partner Rezerwacyjny. Operator występuje wyłącznie w roli pośrednika technologicznego oraz, w odniesieniu do płatności, pośrednika płatniczego.`,
     ],
   },
@@ -188,20 +173,14 @@ const sections: Section[] = [
     intro: "Operator świadczy w Serwisie drogą elektroniczną następujące usługi nieodpłatne na rzecz Użytkownika:",
     numbered: [
       { body: "udostępnianie treści informacyjnych, inspiracyjnych i poradnikowych dotyczących podróży;" },
-      { body: "udostępnianie Planera, w tym otrzymywanie sugestii kierunków na podstawie zapytania;" },
-      { body: "udostępnianie wyszukiwarek lotów, noclegów i aktywności (w tym z wykorzystaniem danych Partnerów Afiliacyjnych);" },
-      { body: "zapisywanie planów wyjazdu w ramach anonimowej Sesji;" },
-      {
-        body:
-          "udostępnianie Linków Afiliacyjnych umożliwiających przejście do Partnerów Afiliacyjnych i zawarcie umowy bezpośrednio z nimi;",
-      },
+      { body: "udostępnianie wyszukiwarek noclegów i przelotów;" },
       {
         body:
           "pośrednictwo technologiczne w zawarciu Rezerwacji Hotelowej z Partnerem Rezerwacyjnym, obejmujące w szczególności: wyszukanie obiektu, prezentację stawek, prebooking, obsługę formularza danych gościa, przekierowanie do bezpiecznej autoryzacji płatności oraz prezentację Vouchera.",
       },
     ],
     paragraphs: [
-      `Korzystanie z usług, o których mowa w ust. 1 pkt 1–6, jest dla Użytkownika nieodpłatne. Operator pobiera wynagrodzenie wyłącznie od Partnerów (w modelu prowizyjnym), co nie wpływa na cenę usługi prezentowaną Użytkownikowi.`,
+      `Korzystanie z usług, o których mowa w ust. 1 pkt 1–3, jest dla Użytkownika nieodpłatne. Operator pobiera wynagrodzenie wyłącznie od Partnerów (w modelu prowizyjnym), co nie wpływa na cenę usługi prezentowaną Użytkownikowi.`,
       `Operator zastrzega prawo do udostępniania w przyszłości dodatkowych usług, w tym usług płatnych — które wymagają odrębnej, wyraźnej akceptacji warunków przez Użytkownika przed ich uruchomieniem.`,
     ],
   },
@@ -265,7 +244,7 @@ const sections: Section[] = [
     ord: "§ 9",
     title: "Ceny i płatności",
     paragraphs: [
-      "Ceny prezentowane w Serwisie pochodzą bezpośrednio od Partnerów Rezerwacyjnych lub Partnerów Afiliacyjnych i mogą się zmieniać w czasie rzeczywistym. Cena wiążąca to cena zaprezentowana w ostatnim kroku rezerwacji u danego Partnera, bezpośrednio przed autoryzacją płatności.",
+      "Ceny prezentowane w Serwisie pochodzą bezpośrednio od Partnerów Rezerwacyjnych i mogą się zmieniać w czasie rzeczywistym. Cena wiążąca to cena zaprezentowana w podsumowaniu rezerwacji, bezpośrednio przed autoryzacją płatności.",
       "Cena obejmuje koszty wskazane jako wliczone w cenę przez Partnera Rezerwacyjnego. Dodatkowe opłaty pobierane w obiekcie (tzw. resort fee, opłata klimatyczna, opłata miejscowa, kaucja, opłaty za parking, śniadanie, sprzątanie itp.) są opłatami Partnera Rezerwacyjnego pobieranymi na miejscu i nie są przekazywane Operatorowi.",
       "Płatności w ramach Rezerwacji Hotelowej obsługiwane są przez dostawców usług płatniczych (m.in. Stripe Payments Europe, Ltd.) zintegrowanych z infrastrukturą Partnera Rezerwacyjnego. Operator nie ma dostępu do pełnych danych instrumentu płatniczego Użytkownika.",
       "Operator nie pobiera od Użytkownika dodatkowego wynagrodzenia ponad cenę zaprezentowaną przez Partnera. Wynagrodzenie Operatora to wyłącznie prowizja wypłacana przez Partnerów, niewpływająca na cenę usługi.",
@@ -332,7 +311,7 @@ const sections: Section[] = [
     ord: "§ 12",
     title: "Reklamacje",
     intro:
-      "Reklamacje dotyczące działania Serwisu (np. błędów technicznych, nieprawidłowości w funkcjonowaniu Planera, problemów z przebiegiem rezerwacji po stronie Operatora) Użytkownik może składać:",
+      "Reklamacje dotyczące działania Serwisu (np. błędów technicznych, nieprawidłowości w działaniu wyszukiwarki, problemów z przebiegiem rezerwacji po stronie Operatora) Użytkownik może składać:",
     numbered: [
       // Strona /kontakt zdjęta 2026-07-30 (decyzja właściciela). Reklamację
       // składa się e-mailem — regulamin nie może wskazywać adresu, który
@@ -346,17 +325,18 @@ const sections: Section[] = [
     ],
   },
   {
+    // PRZEPISANE 2026-07-31 (treść, nie numeracja). Paragraf opisywał model
+    // przekierowań do Booking.com, Hotels.com, Expedia, Vrbo, CJ Affiliate
+    // i Stay22 — integracje usunięte z Serwisu. Numer § i identyfikator kotwicy
+    // zostają nietknięte, bo ich zmiana przesunęłaby numerację całego dokumentu
+    // i unieważniła zewnętrzne odesłania do konkretnych paragrafów.
     id: "afiliacja",
     ord: "§ 13",
-    title: "Linki Afiliacyjne i transparentność",
+    title: "Wynagrodzenie Operatora i transparentność",
     paragraphs: [
-      "Serwis korzysta z modelu afiliacyjnego. Niektóre odnośniki prowadzące do Partnerów Afiliacyjnych zawierają parametry identyfikujące Serwis, dzięki którym Operator może otrzymać wynagrodzenie prowizyjne od Partnera w przypadku dokonania przez Użytkownika zakupu po przejściu z Serwisu.",
-      "Korzystanie z Linków Afiliacyjnych nie zwiększa ceny usługi po stronie Partnera Afiliacyjnego ani nie nakłada na Użytkownika żadnych dodatkowych zobowiązań wobec Operatora.",
-      "Po kliknięciu Linku Afiliacyjnego Użytkownik opuszcza Serwis i korzysta z platformy Partnera Afiliacyjnego na zasadach określonych w regulaminie i polityce prywatności tego Partnera. Operator nie jest stroną umów zawieranych przez Użytkownika z Partnerami Afiliacyjnymi.",
-      // Strona /linki-partnerskie zdjęta 2026-07-30. Wskazywanie w regulaminie
-      // adresu, pod którym nic nie ma, jest gorsze niż brak wskazania — lista
-      // dostępna jest na żądanie pod adresem kontaktowym Operatora.
-      `Lista Partnerów Afiliacyjnych udostępniana jest na żądanie Użytkownika, po zgłoszeniu na adres ${operator.email}.`,
+      "Korzystanie z Serwisu jest dla Użytkownika nieodpłatne. Operator nie pobiera od Użytkownika prowizji, opłaty serwisowej ani abonamentu — ani przed rezerwacją, ani po niej.",
+      "Wynagrodzenie Operatora pochodzi wyłącznie od Partnera Rezerwacyjnego i ma charakter prowizyjny — jest naliczane od rezerwacji zawartych za pośrednictwem Serwisu. Nie wpływa ono na cenę prezentowaną Użytkownikowi ani nie nakłada na niego żadnych dodatkowych zobowiązań wobec Operatora.",
+      "Serwis nie przekierowuje Użytkownika do zewnętrznych platform rezerwacyjnych w celu dokonania zakupu. Rezerwacja Hotelowa zawierana jest w ścieżce Serwisu, a rozliczenie płatności prowadzi dostawca usług płatniczych Partnera Rezerwacyjnego — z tego powodu na wyciągu z rachunku Użytkownika może widnieć nazwa tego podmiotu, a nie nazwa Operatora.",
     ],
   },
   {
@@ -402,7 +382,7 @@ const sections: Section[] = [
     title: "Odpowiedzialność",
     paragraphs: [
       "Operator odpowiada za prawidłowe działanie technicznej infrastruktury Serwisu w granicach określonych przepisami prawa. Operator dokłada starań, aby treści informacyjne były aktualne i rzetelne, jednak nie gwarantuje ich bezbłędności ani kompletności.",
-      "Operator nie ponosi odpowiedzialności za: jakość, terminowość ani zgodność z opisem usług noclegowych świadczonych przez Partnerów Rezerwacyjnych, decyzje Partnerów Afiliacyjnych w zakresie cen i dostępności, działania osób trzecich oraz zdarzenia siły wyższej.",
+      "Operator nie ponosi odpowiedzialności za: jakość, terminowość ani zgodność z opisem usług noclegowych świadczonych przez Partnerów Rezerwacyjnych, decyzje Partnerów Rezerwacyjnych w zakresie cen i dostępności, działania osób trzecich oraz zdarzenia siły wyższej.",
       "W stosunku do Użytkownika niebędącego Konsumentem ani osobą, o której mowa w art. 7aa lub 38a ustawy o prawach konsumenta, odpowiedzialność Operatora ograniczona jest do strat rzeczywistych (z wyłączeniem utraconych korzyści) oraz do wysokości wynagrodzenia prowizyjnego otrzymanego przez Operatora w związku z daną transakcją.",
       "Postanowienia ust. 3 nie ograniczają odpowiedzialności Operatora wobec Konsumenta ani osoby, o której mowa w art. 7aa lub 38a ustawy o prawach konsumenta, w zakresie, w jakim ograniczenia takie są niedopuszczalne na gruncie obowiązujących przepisów.",
     ],
@@ -454,25 +434,30 @@ const sections: Section[] = [
 // Render
 // ────────────────────────────────────────────────────────────────────────────
 
+// Treść prawna czyta się w `text-base`, nie w `text-sm`. To dokument, który
+// konsument ma realnie przeczytać przed zapłatą — 14 px na telefonie zniechęca
+// do lektury skuteczniej niż jakakolwiek klauzula.
 function RenderList({ items, ordered }: { items: ListItem[]; ordered?: boolean }) {
   if (ordered) {
     return (
-      <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-emerald-900/82 marker:text-emerald-700">
+      <ol className="mt-4 list-decimal space-y-3 pl-5 text-base leading-8 text-ink marker:text-ink-muted">
         {items.map((item, idx) => (
           <li key={idx} className="pl-1">
-            {item.label ? <span className="font-semibold text-emerald-950">{item.label}: </span> : null}
+            {item.label ? <span className="font-semibold">{item.label}: </span> : null}
             {item.body}
           </li>
         ))}
       </ol>
     );
   }
+  // Bez tła na każdej pozycji: definicje wewnątrz sekcji tworzyły kartę
+  // w karcie, a przy kilkunastu pojęciach zamieniały paragraf w tapetę.
   return (
-    <dl className="mt-4 grid gap-3 text-sm leading-7 text-emerald-900/82">
+    <dl className="mt-4 space-y-4 text-base leading-8 text-ink">
       {items.map((item, idx) => (
-        <div key={idx} className="rounded-2xl bg-emerald-50/75 px-4 py-3">
-          {item.label ? <dt className="font-semibold text-emerald-950">{item.label}</dt> : null}
-          <dd className={item.label ? "mt-1" : ""}>{item.body}</dd>
+        <div key={idx}>
+          {item.label ? <dt className="font-semibold">{item.label}</dt> : null}
+          <dd className={item.label ? "mt-1 text-ink-muted" : ""}>{item.body}</dd>
         </div>
       ))}
     </dl>
@@ -481,74 +466,57 @@ function RenderList({ items, ordered }: { items: ListItem[]; ordered?: boolean }
 
 export default function TermsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)] sm:p-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-          Warunki korzystania z Serwisu
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-12">
+      <header>
+        <h1 className="font-display text-3xl text-ink sm:text-hero">Regulamin</h1>
+        <p className="mt-5 text-pretty text-base leading-8 text-ink">
+          Dokument określa zasady świadczenia usług drogą elektroniczną w serwisie {SITE_NAME}: korzystania
+          z wyszukiwarki i treści informacyjnych oraz pośrednictwa technologicznego przy Rezerwacji Hotelowej.
+          Zredagowany zgodnie z prawem polskim i UE.
         </p>
-        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">Regulamin</h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/82">
-          Niniejszy dokument określa zasady świadczenia usług drogą elektroniczną w serwisie {SITE_NAME}, w tym usług
-          informacyjnych, działania Planera, korzystania z Linków Afiliacyjnych oraz pośrednictwa technologicznego w
-          Rezerwacji Hotelowej. Regulamin został zredagowany zgodnie z prawem polskim i UE i jest skonstruowany w sposób
-          przejrzysty dla Konsumenta.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center gap-3 text-xs font-semibold text-emerald-800">
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5">
-            Wersja obowiązująca od:{" "}
-            <time dateTime={EFFECTIVE_DATE_ISO} className="font-bold">
-              {EFFECTIVE_DATE}
-            </time>
-          </span>
-          <Link
-            href="/polityka-prywatnosci"
-            className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 transition hover:bg-emerald-50"
-          >
-            Polityka prywatności →
+        <p className="mt-5 text-sm text-ink-muted">
+          Wersja obowiązująca od{" "}
+          <time dateTime={EFFECTIVE_DATE_ISO} className="font-semibold text-ink">
+            {EFFECTIVE_DATE}
+          </time>
+          {" · "}
+          <Link href="/polityka-prywatnosci" className="underline underline-offset-4">
+            <span className="font-semibold text-brand">Polityka prywatności</span>
           </Link>
-          <a
-            href={`mailto:${operator.email}`}
-            className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 transition hover:bg-emerald-50"
-          >
-            <span className="text-emerald-900">Kontakt →</span>
+          {" · "}
+          <a href={`mailto:${operator.email}`} className="underline underline-offset-4">
+            <span className="font-semibold text-brand">{operator.email}</span>
           </a>
-        </div>
-      </section>
+        </p>
+      </header>
 
-      {/* Spis treści */}
-      <nav
-        aria-label="Spis treści Regulaminu"
-        className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8"
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Spis treści</p>
-        <ol className="mt-4 grid gap-2 text-sm leading-7 text-emerald-900/82 sm:grid-cols-2">
+      <nav aria-label="Spis treści Regulaminu" className="mt-10 border-y border-line py-6">
+        <h2 className="text-sm font-bold text-ink">Spis treści</h2>
+        <ol className="mt-3 grid gap-x-8 gap-y-1 sm:grid-cols-2">
           {sections.map((s) => (
             <li key={s.id}>
-              <a
-                href={`#${s.id}`}
-                className="block rounded-xl px-3 py-2 transition hover:bg-emerald-50 hover:text-emerald-900"
-              >
-                <span className="font-semibold text-emerald-950">{s.ord}.</span> {s.title}
+              <a href={`#${s.id}`} className="block py-1.5 underline-offset-4 hover:underline">
+                <span className="text-base leading-7 text-ink">
+                  <span className="font-semibold">{s.ord}.</span> {s.title}
+                </span>
               </a>
             </li>
           ))}
         </ol>
       </nav>
 
-      {/* Sekcje */}
+      {/* Dokument ciągły, nie kilkanaście kart pod sobą: sekcja w karcie
+          rozbija lekturę na wyspy, a przy 15 sekcjach strona wygląda jak
+          lista niepowiązanych komunikatów zamiast jak umowa. */}
       {sections.map((section) => (
-        <section
-          key={section.id}
-          id={section.id}
-          className="scroll-mt-24 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8"
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{section.ord}</p>
-          <h2 className="mt-2 text-2xl font-bold text-emerald-950">{section.title}</h2>
-          {section.intro ? (
-            <p className="mt-4 text-sm leading-7 text-emerald-900/82">{section.intro}</p>
-          ) : null}
+        <section key={section.id} id={section.id} className="mt-10 scroll-mt-24">
+          <h2 className="text-xl font-bold text-ink sm:text-2xl">
+            <span className="text-ink-muted">{section.ord}. </span>
+            {section.title}
+          </h2>
+          {section.intro ? <p className="mt-4 text-base leading-8 text-ink">{section.intro}</p> : null}
           {section.paragraphs?.map((p, idx) => (
-            <p key={idx} className="mt-3 text-sm leading-7 text-emerald-900/82">
+            <p key={idx} className="mt-4 text-base leading-8 text-ink">
               {p}
             </p>
           ))}
@@ -557,17 +525,16 @@ export default function TermsPage() {
         </section>
       ))}
 
-      {/* Stopka regulaminowa */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <h2 className="text-xl font-bold text-emerald-950">Kontakt w sprawach regulaminowych</h2>
-        <p className="mt-3 text-sm leading-7 text-emerald-900/82">
+      <section className="mt-12 border-t border-line pt-8">
+        <h2 className="text-xl font-bold text-ink">Kontakt w sprawach regulaminowych</h2>
+        <p className="mt-4 text-base leading-8 text-ink">
           Pytania, reklamacje oraz wnioski związane z Regulaminem prosimy kierować na adres{" "}
-          <a className="font-semibold text-emerald-700 underline-offset-2 hover:underline" href={`mailto:${operator.email}`}>
-            {operator.email}
+          <a className="underline underline-offset-4" href={`mailto:${operator.email}`}>
+            <span className="font-semibold text-brand">{operator.email}</span>
           </a>
           . Czas odpowiedzi na reklamacje: do 14 dni od dnia otrzymania zgłoszenia.
         </p>
-        <p className="mt-3 text-xs leading-6 text-emerald-900/80">
+        <p className="mt-4 text-sm leading-7 text-ink-muted">
           Wersja Regulaminu: {EFFECTIVE_DATE}. Operator: {operator.name}
           {operator.nip ? `, NIP ${operator.nip}` : ""}
           {operator.address ? `, ${operator.address}` : ""}.

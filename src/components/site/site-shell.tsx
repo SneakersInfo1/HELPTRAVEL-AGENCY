@@ -176,11 +176,17 @@ export function SiteShell({ children }: { children: ReactNode }) {
               aria-label="HelpTravel"
               className="flex items-center"
             >
+              {/* PERF: było `helptravel-logo.png` — 1018 KB źródła 1254×1254
+                  renderowane w 48 px, z `priority`, czyli preładowane na KAŻDEJ
+                  stronie serwisu. Custom loader (`cdn-loader.ts`) przepuszcza
+                  pliki z /public bez zmian, więc Vercel tego nie skalował i do
+                  przeglądarki szedł pełny megabajt. Wariant 384 px pokrywa
+                  56 px CSS przy DPR 3 z zapasem i waży 52 KB. */}
               <Image
-                src="/branding/helptravel-logo.png"
+                src="/branding/helptravel-logo-384.png"
                 alt="HelpTravel"
-                width={160}
-                height={160}
+                width={384}
+                height={384}
                 className="block h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
                 priority
               />
@@ -300,11 +306,15 @@ export function SiteShell({ children }: { children: ReactNode }) {
            that can pull the buyer back out of the funnel. */
         <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
+            {/* Kwadrat 384×384: poprzednie `width={150} height={93}` deklarowało
+                proporcje, których plik nie ma (źródło jest kwadratowe), więc
+                miejsce rezerwowane pod obraz nie zgadzało się z tym, co się
+                wyrenderowało — czyli przeskok układu przy ładowaniu. */}
             <Image
-              src="/branding/helptravel-logo.png"
+              src="/branding/helptravel-logo-384.png"
               alt="HelpTravel"
-              width={150}
-              height={93}
+              width={384}
+              height={384}
               className="h-auto w-[120px]"
             />
             <nav

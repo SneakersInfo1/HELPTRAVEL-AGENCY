@@ -85,48 +85,47 @@ export default function PartnersPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white/95 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
+      <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="p-6 sm:p-8">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Współpraca</p>
-            <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
+            <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
               Współpraca z HelpTravel
             </h1>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
+            <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">
               HelpTravel to serwis dla osób, które chcą szybciej wybrać kierunek, ustawić plan i przejść do rezerwacji u partnera. Ta strona zbiera najważniejsze informacje dla partnerów, bez ukrywania modelu afiliacyjnego.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <LocalizedLink
                 href={emailHref}
-                className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+                className="rounded-full bg-brand px-5 py-3 text-sm font-bold text-white transition hover:bg-brand-strong"
               >
                 Napisz w sprawie współpracy
               </LocalizedLink>
             </div>
           </div>
 
-          <div className="border-t border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 sm:p-8 lg:border-l lg:border-t-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Serwis w liczbach</p>
+          <div className="border-t border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 sm:p-8 lg:border-l lg:border-t-0">
+            <h2 className="font-display text-2xl text-ink">Serwis w liczbach</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.5rem] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(16,84,48,0.05)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Kierunki</p>
-                <p className="mt-2 text-3xl font-bold text-emerald-950">{destinations.length}</p>
-                <p className="mt-1 text-sm text-emerald-900/72">stron kierunków z lokalnym opisem i FAQ.</p>
+              <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Kierunki</p>
+                <p className="mt-2 text-3xl font-bold text-ink">{destinations.length}</p>
+                <p className="mt-1 text-sm text-ink-muted">stron kierunków z lokalnym opisem i FAQ.</p>
               </div>
-              <div className="rounded-[1.5rem] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(16,84,48,0.05)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Artykuły</p>
-                <p className="mt-2 text-3xl font-bold text-emerald-950">{articles.length}</p>
-                <p className="mt-1 text-sm text-emerald-900/72">praktycznych tekstow wokół wyjazdów i kierunków.</p>
+              <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Artykuły</p>
+                <p className="mt-2 text-3xl font-bold text-ink">{articles.length}</p>
+                <p className="mt-1 text-sm text-ink-muted">praktycznych tekstow wokół wyjazdów i kierunków.</p>
               </div>
-              <div className="rounded-[1.5rem] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(16,84,48,0.05)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Kategorie</p>
-                <p className="mt-2 text-3xl font-bold text-emerald-950">{categories.length}</p>
-                <p className="mt-1 text-sm text-emerald-900/72">główne wejscia tematyczne dla czytelnika.</p>
+              <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Kategorie</p>
+                <p className="mt-2 text-3xl font-bold text-ink">{categories.length}</p>
+                <p className="mt-1 text-sm text-ink-muted">główne wejscia tematyczne dla czytelnika.</p>
               </div>
-              <div className="rounded-[1.5rem] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(16,84,48,0.05)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Kontakt</p>
-                <p className="mt-2 text-3xl font-bold text-emerald-950">{contactEmail ? "aktywny" : "przez formularz"}</p>
-                <p className="mt-1 text-sm text-emerald-900/72">jawny punkt kontaktu dla partnerów.</p>
+              <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Kontakt</p>
+                <p className="mt-2 text-3xl font-bold text-ink">{contactEmail ? "aktywny" : "przez formularz"}</p>
+                <p className="mt-1 text-sm text-ink-muted">jawny punkt kontaktu dla partnerów.</p>
               </div>
             </div>
           </div>
@@ -137,30 +136,30 @@ export default function PartnersPage() {
         {audienceCards.map((card) => (
           <article
             key={card.title}
-            className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
+            className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm"
           >
-            <h2 className="text-2xl font-bold text-emerald-950">{card.title}</h2>
-            <p className="mt-4 text-sm leading-7 text-emerald-900/78">{card.body}</p>
+            <h2 className="text-2xl font-bold text-ink">{card.title}</h2>
+            <p className="mt-4 text-sm leading-7 text-ink-muted">{card.body}</p>
           </article>
         ))}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Gdzie możemy pokazać partnera</p>
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+            <h2 className="font-display text-2xl text-ink">Gdzie możemy pokazać partnera</h2>
           <div className="mt-4 grid gap-3">
             {placementFormats.map((format) => (
-              <div key={format.title} className="rounded-2xl bg-emerald-50/75 px-4 py-4">
-                <h3 className="text-lg font-bold text-emerald-950">{format.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-emerald-900/78">{format.body}</p>
+              <div key={format.title} className="rounded-2xl bg-surface-sunken px-4 py-4">
+                <h3 className="text-lg font-bold text-ink">{format.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-ink-muted">{format.body}</p>
               </div>
             ))}
           </div>
         </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Dlaczego to ma sens</p>
-          <ul className="mt-4 space-y-2 text-sm leading-7 text-emerald-900/78">
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Dlaczego to ma sens</h2>
+          <ul className="mt-4 space-y-2 text-sm leading-7 text-ink-muted">
             {partnerBenefits.map((item) => (
               <li key={item} className="rounded-2xl bg-white px-4 py-3">
                 {item}
@@ -171,19 +170,19 @@ export default function PartnersPage() {
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Co jest już publiczne</p>
-          <ul className="mt-4 space-y-2 text-sm leading-7 text-emerald-900/78">
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Co jest już publiczne</h2>
+          <ul className="mt-4 space-y-2 text-sm leading-7 text-ink-muted">
             {reviewSignals.map((item) => (
-              <li key={item} className="rounded-2xl bg-emerald-50/75 px-4 py-3">
+              <li key={item} className="rounded-2xl bg-surface-sunken px-4 py-3">
                 {item}
               </li>
             ))}
           </ul>
         </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(7,30,18,0.96),rgba(8,40,24,0.92))] p-6 text-white shadow-[0_20px_54px_rgba(8,40,24,0.18)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Jak wygląda współpraca</p>
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(7,30,18,0.96),rgba(8,40,24,0.92))] p-6 text-white shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Jak wygląda współpraca</h2>
           <div className="mt-4 space-y-3 text-sm leading-7 text-white/82">
             <p>1. Ustalamy, czy chodzi o treść, planner, kierunek czy konkretny scenariusz wyjazdu.</p>
             <p>2. Dobieramy miejsce widocznosci i sposób przejścia do partnera.</p>
@@ -193,7 +192,7 @@ export default function PartnersPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <LocalizedLink
               href={emailHref}
-              className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 text-sm font-bold text-white transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               Napisz do nas
             </LocalizedLink>
@@ -201,27 +200,26 @@ export default function PartnersPage() {
         </article>
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Dodatkowe wejscia</p>
-            <h2 className="mt-2 font-display text-4xl text-emerald-950">Strony, które warto sprawdzić przed rozmową.</h2>
+            <h2 className="mt-2 font-display text-4xl text-ink">Strony, które warto sprawdzić przed rozmową.</h2>
           </div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <LocalizedLink href="/mapa-serwisu" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <LocalizedLink href="/mapa-serwisu" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             Mapa serwisu
           </LocalizedLink>
-          <LocalizedLink href="/oferta" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <LocalizedLink href="/oferta" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             Oferta
           </LocalizedLink>
-          <LocalizedLink href="/faq" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <LocalizedLink href="/faq" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             FAQ
           </LocalizedLink>
-          <LocalizedLink href="/standard-redakcyjny" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <LocalizedLink href="/standard-redakcyjny" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             Standard redakcyjny
           </LocalizedLink>
-          <LocalizedLink href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-sm text-emerald-900/78 transition hover:text-emerald-700">
+          <LocalizedLink href="/jak-pracujemy" className="rounded-2xl bg-surface-sunken px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
             Jak pracujemy
           </LocalizedLink>
         </div>

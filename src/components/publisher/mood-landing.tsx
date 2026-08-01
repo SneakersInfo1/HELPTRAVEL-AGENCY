@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Check, Plus } from "lucide-react";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { MoodDestinationCard } from "@/components/publisher/mood-destination-card";
@@ -154,70 +155,49 @@ export async function MoodLanding({ slug }: { slug: string }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      {/* Futuristic hero */}
-      <section className="relative overflow-hidden rounded-[2.5rem] border border-emerald-900/20 bg-emerald-950 px-6 py-10 text-white shadow-[0_30px_80px_rgba(6,40,24,0.35)] sm:px-10 sm:py-14">
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-to-br ${mood.aura} blur-3xl`}
+      {/* PRZEBUDOWANE 2026-08-01. Poprzedni „futuristic hero" był zbiorem
+          wszystkiego, czego zabrania system projektowy naraz: gradient na <h1>
+          (`bg-clip-text`), dwie rozmyte aury, siatka z maską radialną,
+          `backdrop-blur` w czterech miejscach, dingbat ✦ i emoji w odznace.
+          Żaden z tych elementów niczego nie komunikował — a rozmycia i maski to
+          najdroższy sposób malowania piksela, płacony na telefonie przy każdym
+          przewinięciu. Zostaje ciemny pas marki i solidna biel na nagłówku. */}
+      <section className="rounded-[2rem] bg-brand-strong px-6 py-10 text-white [--focus-ring:#fff] sm:px-10 sm:py-14">
+        <Breadcrumbs
+          items={[
+            { label: "Start", href: "/" },
+            { label: "Pomysły na wyjazd", href: "/inspiracje" },
+            { label: mood.label },
+          ]}
         />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-gradient-to-tr from-emerald-500/25 to-transparent blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:38px_38px] [mask-image:radial-gradient(ellipse_at_top,black,transparent_72%)]"
-        />
+        <h1 className="mt-6 max-w-4xl text-balance font-display text-hero font-semibold text-white">{mood.h1}</h1>
+        <p className="mt-5 max-w-[65ch] text-pretty text-base leading-8 text-white/90 sm:text-lg">{mood.lead}</p>
 
-        <div className="relative">
-          <Breadcrumbs
-            items={[
-              { label: "Start", href: "/" },
-              { label: "Pomysły na wyjazd", href: "/inspiracje" },
-              { label: mood.label },
-            ]}
-          />
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-100 backdrop-blur-md">
-            <span aria-hidden className="text-base">{mood.icon}</span>
-            {mood.eyebrow}
-          </div>
-          <h1 className="mt-4 max-w-4xl bg-gradient-to-r from-white via-emerald-100 to-emerald-300 bg-clip-text font-display text-4xl leading-[1.02] text-transparent sm:text-5xl lg:text-6xl">
-            {mood.h1}
-          </h1>
-          <p className="mt-5 max-w-3xl text-base leading-8 text-emerald-50/85 sm:text-lg">{mood.lead}</p>
+        <ul className="mt-7 flex flex-wrap gap-2">
+          {mood.highlights.map((h) => (
+            <li key={h} className="rounded-full border border-white/30 px-3.5 py-1.5 text-sm text-white/90">
+              {h}
+            </li>
+          ))}
+        </ul>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            {mood.highlights.map((h) => (
-              <span
-                key={h}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-emerald-50/90 backdrop-blur-md"
-              >
-                <span aria-hidden className="text-emerald-300">✦</span>
-                {h}
-              </span>
-            ))}
-          </div>
-
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link
-              href="/hotele/szukaj"
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-400 px-5 py-3 text-sm font-bold shadow-lg transition hover:bg-amber-300"
-            >
-              {/* Label in a <span>: globals.css has an UNLAYERED
-                  `a { color: inherit }`, which in Tailwind v4 beats the
-                  text-* utilities (they sit in @layer utilities). On an <a>
-                  that made the label inherit the hero's white text → an
-                  invisible white-on-white button. A <span> isn't an <a>, so
-                  text-emerald-950 applies normally. */}
-              <span className="text-emerald-950">Otwórz wyszukiwarkę hoteli →</span>
-            </Link>
-            <Link
-              href="/kierunki"
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold backdrop-blur-md transition hover:bg-white/20"
-            >
-              <span className="text-white">Wszystkie kierunki</span>
-            </Link>
-          </div>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/hotele/szukaj"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+          >
+            {/* Etykieta w <span>: `globals.css` ma NIEWARSTWOWE `a{color:inherit}`,
+                które w Tailwindzie v4 bije utility `text-*` (te siedzą
+                w @layer utilities). Na samym <a> etykieta dziedziczyłaby biel
+                hero — biały napis na białym przycisku. */}
+            <span className="text-sm font-bold text-brand-strong">Otwórz wyszukiwarkę hoteli</span>
+          </Link>
+          <Link
+            href="/kierunki"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/35 px-6 py-3 transition duration-150 ease-out hover:bg-white/10 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+          >
+            <span className="text-sm font-semibold text-white">Wszystkie kierunki</span>
+          </Link>
         </div>
       </section>
 
@@ -230,14 +210,13 @@ export async function MoodLanding({ slug }: { slug: string }) {
               key={m.slug}
               href={`/wyjazdy/${m.slug}`}
               aria-current={active ? "page" : undefined}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                active
-                  ? "border-emerald-600 bg-emerald-600 text-white"
-                  : "border-emerald-900/10 bg-white text-emerald-950 hover:border-emerald-300 hover:bg-emerald-50"
+              className={`inline-flex min-h-11 items-center rounded-full border px-4 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${
+                active ? "border-brand bg-brand" : "border-line bg-surface-raised hover:bg-brand-soft"
               }`}
             >
-              <span aria-hidden>{m.icon}</span>
-              {m.label}
+              {/* Emoji z `m.icon` usunięte: renderuje je font systemowy, więc ten
+                  sam znak wygląda inaczej na Androidzie, iOS i Windowsie. */}
+              <span className={`text-sm font-semibold ${active ? "text-white" : "text-ink"}`}>{m.label}</span>
             </Link>
           );
         })}
@@ -247,14 +226,11 @@ export async function MoodLanding({ slug }: { slug: string }) {
       <section>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="max-w-2xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Dopasowane kierunki</p>
-            <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">
-              {mood.label}: od tych kierunków zacznij
-            </h2>
-            <p className="mt-2 text-sm leading-7 text-emerald-900/72">{mood.gridIntro}</p>
+            <h2 className="font-display text-2xl text-ink sm:text-3xl">{mood.label}: od tych kierunków zacznij</h2>
+            <p className="mt-3 text-base leading-7 text-ink-muted">{mood.gridIntro}</p>
           </div>
-          <Link href="/kierunki" className="text-sm font-semibold text-emerald-900 transition hover:text-emerald-700">
-            Zobacz wszystkie kierunki →
+          <Link href="/kierunki" className="underline underline-offset-4">
+            <span className="text-sm font-semibold text-brand">Zobacz wszystkie kierunki</span>
           </Link>
         </div>
 
@@ -275,24 +251,23 @@ export async function MoodLanding({ slug }: { slug: string }) {
       </section>
 
       {/* Editorial content — human-written, SEO */}
-      <section className="grid gap-5 lg:grid-cols-2">
+      {/* Treść redakcyjna czyta się jak tekst, nie jak kafelki: karty zamieniały
+          dwa akapity w dwa pudełka z cieniem, a to jest sekcja do przeczytania. */}
+      <section className="grid gap-x-12 gap-y-10 lg:grid-cols-2">
         {mood.sections.map((s) => (
-          <article
-            key={s.title}
-            className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
-          >
-            <h2 className="font-display text-2xl text-emerald-950">{s.title}</h2>
+          <article key={s.title} className="border-t border-line pt-6">
+            <h2 className="font-display text-2xl text-ink">{s.title}</h2>
             {s.paragraphs.map((p, i) => (
-              <p key={i} className="mt-3 text-sm leading-7 text-emerald-900/78">
+              <p key={i} className="mt-4 max-w-[65ch] text-base leading-8 text-ink">
                 {p}
               </p>
             ))}
             {s.bullets && (
-              <ul className="mt-4 space-y-2">
+              <ul className="mt-5 space-y-3">
                 {s.bullets.map((b, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-emerald-900/80">
-                    <span aria-hidden className="mt-0.5 text-emerald-600">✓</span>
-                    <span>{b}</span>
+                  <li key={i} className="flex items-start gap-3">
+                    <Check aria-hidden className="mt-1.5 size-4 shrink-0 text-brand" />
+                    <span className="text-base leading-7 text-ink">{b}</span>
                   </li>
                 ))}
               </ul>
@@ -302,17 +277,19 @@ export async function MoodLanding({ slug }: { slug: string }) {
       </section>
 
       {/* FAQ */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Najczęstsze pytania</p>
-        <h2 className="mt-2 font-display text-3xl text-emerald-950">Zanim wybierzesz kierunek</h2>
-        <div className="mt-5 divide-y divide-emerald-900/10">
+      <section>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Zanim wybierzesz kierunek</h2>
+        <div className="mt-6 divide-y divide-line border-y border-line">
           {mood.faq.map((f) => (
-            <details key={f.question} className="group py-3">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-emerald-950">
+            <details key={f.question} className="group py-2">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-base font-bold text-ink marker:content-none">
                 {f.question}
-                <span aria-hidden className="text-emerald-600 transition group-open:rotate-45">+</span>
+                <Plus
+                  aria-hidden
+                  className="size-4 shrink-0 text-brand transition duration-200 ease-out group-open:rotate-45 motion-reduce:transition-none"
+                />
               </summary>
-              <p className="mt-2 text-sm leading-7 text-emerald-900/78">{f.answer}</p>
+              <p className="mt-3 max-w-[65ch] text-base leading-7 text-ink-muted">{f.answer}</p>
             </details>
           ))}
         </div>

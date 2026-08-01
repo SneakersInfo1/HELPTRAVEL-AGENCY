@@ -4,26 +4,36 @@ import Link from "next/link";
 import { MediaHero } from "@/components/site/media-hero";
 import { FinalCtaBanner } from "@/components/site/final-cta-banner";
 import { DestinationTile } from "@/components/home/destination-tile";
-import { getPublishedDestinations } from "@/lib/mvp/publisher-content";
+import { getEditorialArticles, getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
-// ISR: the hero + teaser tiles resolve Pexels media. Serve from the static
-// cache and regenerate daily so we never hit Pexels on the request path.
+// ISR: hero + kafelki rozwiązują media z Pexels. Serwuj z cache, odświeżaj raz
+// na dobę, żeby nie odpytywać Pexels na ścieżce żądania.
 export const revalidate = 86400;
+
+// PRZEPISANE 2026-07-31. Poprzednia wersja opisywała serwis, którego nie ma:
+// „darmowy planner", „plan dnia", „finalną rezerwację robisz u sprawdzonego
+// partnera", „0 zł", „3 min od pomysłu do gotowego planu", „ponad 80 lotnisk".
+// Planera nie ma od czasu zwrotu na rezerwacje, rezerwacja hotelu i lotu
+// odbywa się na helptravel.pl, a „3 min" i „80 lotnisk" to liczby bez źródła —
+// czyli dokładnie to, czego PRODUCT.md zabrania w sekcji anti-references.
+//
+// Zadanie tej strony wynika z profilu użytkownika w PRODUCT.md: „jest nieufny
+// wobec nowych serwisów — zanim poda kartę, sprawdza, kto za tym stoi".
+// Dlatego rdzeniem jest teraz podział ról (kto przyjmuje pieniądze, kto widnieje
+// na wyciągu, kto dotyka danych karty), a nie kafelki z hasłami.
 
 export const metadata: Metadata = {
   title: "O serwisie",
   description:
-    "HelpTravel to darmowy planner krótkich wyjazdów dla osób z Polski: kierunek, loty, hotel i plan dnia w jednym miejscu. Poznaj, jak działamy i czego nie udajemy.",
-  alternates: {
-    canonical: "/o-nas",
-  },
+    "HelpTravel to polski serwis rezerwacji hoteli i lotów. Sprawdź, kto przyjmuje płatność, dlaczego na wyciągu widnieje NUITEE TRAVEL i czego na tej stronie nie robimy.",
+  alternates: { canonical: "/o-nas" },
   openGraph: {
     title: "O serwisie | HelpTravel",
     description:
-      "Prosty, darmowy planner krótkich wyjazdów. Łączymy kierunek, loty, hotel i plan dnia — bez rejestracji i bez ściemy.",
+      "Kto prowadzi serwis, kto obsługuje rezerwację i płatność, i jakich chwytów tu nie znajdziesz.",
     url: "/o-nas",
     type: "website",
     locale: "pl_PL",
@@ -33,39 +43,40 @@ export const metadata: Metadata = {
 const HERO_SLUG = "barcelona-spain";
 const TILE_SLUGS = ["malaga-spain", "lisbon-portugal", "rome-italy", "athens-greece"] as const;
 
-const facts = [
+const ROLES = [
   {
-    icon: "🧭",
-    title: "Dla kogo jest HelpTravel",
-    body: "Dla osób z Polski, które planują krótkie i średnie wyjazdy: city break, ciepły wypad, weekend we dwoje albo prosty urlop 3-7 dni.",
+    name: "HelpTravel",
+    role: "prowadzi serwis",
+    body: "Wyszukiwarka, ceny przeliczone na złotówki, opisy pokoi i udogodnień po polsku, kontakt w sprawie rezerwacji. To wszystko jest po naszej stronie.",
   },
   {
-    icon: "⚡",
-    title: "Co robimy",
-    body: "Pomagamy wybrać kierunek, ustawić podstawy wyjazdu i płynnie przejść do noclegów, lotów oraz kolejnych kroków — bez skakania po dziesięciu zakładkach.",
+    name: "Nuitee Travel (LiteAPI)",
+    role: "przyjmuje rezerwację i rozlicza płatność",
+    body: "Dostarcza oferty hoteli i lotów, potwierdza rezerwację u obiektu i jest podmiotem rozliczającym płatność. Dlatego na wyciągu z karty zobaczysz NUITEE TRAVEL, a nie HelpTravel.",
   },
   {
-    icon: "🤝",
-    title: "Czego nie udajemy",
-    body: "Nie jesteśmy biurem podróży, nie wystawiamy fikcyjnych opinii i nie udajemy, że finalna rezerwacja odbywa się u nas.",
+    name: "Stripe",
+    role: "obsługuje pola karty",
+    body: "Numer karty wpisujesz w komponencie Stripe osadzonym w formularzu płatności. Dane karty nie przechodzą przez serwery HelpTravel i nie są u nas zapisywane.",
   },
 ];
 
-const journey = [
+const HONESTY = [
   {
-    step: "01",
-    title: "Wybierasz kierunek",
-    body: "Masz gotowe miasto albo tylko luźny pomysł typu „ciepło na 5 dni”. Pomagamy zawęzić wybór do kilku sensownych opcji.",
+    title: "Nie wymyślamy cen",
+    body: "Każda kwota pochodzi z realnego zapytania do dostawcy. Jeśli dla kierunku nie mamy świeżej ceny, kafelek jest bez ceny — zamiast pokazać liczbę „mniej więcej”.",
   },
   {
-    step: "02",
-    title: "Ustawiasz szczegóły",
-    body: "Termin, lotnisko wylotu i liczba osób. Te same dane wędrują dalej, więc nie wpisujesz ich kilka razy.",
+    title: "Nie robimy sztucznej presji",
+    body: "Żadnych odliczanych zegarów, „ostatni pokój” ani „7 osób ogląda teraz tę ofertę”, o ile nie stoją za tym prawdziwe dane. Zwykle nie stoją, więc tego nie ma.",
   },
   {
-    step: "03",
-    title: "Przechodzisz do oferty",
-    body: "Sprawdzasz hotele i loty na wybrany termin, a finalną rezerwację robisz u sprawdzonego partnera.",
+    title: "Nie publikujemy opinii, których nie zebraliśmy",
+    body: "Nie ma tu wystawionych przez nas gwiazdek ani cytatów od zmyślonych klientów. Oceny obiektów pochodzą od dostawcy i są opisane jako jego oceny.",
+  },
+  {
+    title: "Nie chowamy tego, czego nie umiemy",
+    body: "BLIK-a na razie nie obsługujemy i piszemy o tym na stronie z cenami, a nie dopiero na ekranie płatności.",
   },
 ];
 
@@ -82,195 +93,89 @@ export default async function AboutPage() {
   const tiles = (await Promise.all(TILE_SLUGS.map(resolveTile))).filter(
     (tile): tile is { destination: DestinationProfile; heroImage: string } => tile !== null,
   );
-  const destinationCount = getPublishedDestinations().length;
 
-  const stats = [
-    { value: "0 zł", label: "tyle płacisz za korzystanie z serwisu" },
-    { value: "3 min", label: "od pomysłu do gotowego planu wyjazdu" },
-    { value: `${destinationCount}+`, label: "kierunków z gotowymi przewodnikami" },
-    { value: "PLN", label: "ceny bez ukrytych przeliczników" },
-  ];
+  // Obie liczby są liczone z zacommitowanego seeda, nie wpisane z ręki.
+  const destinationCount = getPublishedDestinations().length;
+  const articleCount = getEditorialArticles().length;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8">
       <MediaHero
         imageUrl={heroMedia?.heroImage ?? null}
         imageAlt="Barcelona — panorama miasta"
-        eyebrow="O serwisie"
-        title={
-          <>
-            Cały wyjazd ogarnięty{" "}
-            <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 bg-clip-text text-transparent">
-              w jednym miejscu
-            </span>{" "}
-            — szybciej i bez chaosu.
-          </>
-        }
-        intro="HelpTravel łączy planner, katalog kierunków i praktyczne treści, żebyś szybko wiedział dokąd warto lecieć, na ile dni i od czego zacząć — a potem płynnie przeszedł do hotelu i lotu."
+        title="Kto stoi za Twoją rezerwacją"
+        intro="HelpTravel to polski serwis rezerwacji hoteli i lotów. Rezerwujesz i płacisz tutaj, w złotówkach, bez zakładania konta — a poniżej piszemy wprost, kto obsługuje którą część tej transakcji."
       >
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/hotele/szukaj"
-            className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-400 px-6 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
-          >
-            Zaplanuj wyjazd →
-          </Link>
-          <Link
-            href="/kierunki"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20"
-          >
-            Zobacz kierunki
-          </Link>
-        </div>
-        <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90">
-          <span className="rounded-full bg-white/12 px-3 py-1">100% darmowe</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">bez rejestracji</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">ceny w PLN</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">ponad 80 lotnisk PL, EU i świat</span>
-        </div>
+        <Link
+          href="/hotele/szukaj"
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+        >
+          <span className="text-sm font-bold text-brand-strong">Otwórz wyszukiwarkę</span>
+        </Link>
       </MediaHero>
 
-      {/* MISJA — dlaczego powstał HelpTravel */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-emerald-900/20 bg-emerald-950 px-6 py-9 text-white shadow-[0_28px_80px_rgba(6,29,16,0.22)] sm:px-10 sm:py-11">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(110,231,183,0.20),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.14),transparent_30%)]"
-        />
-        <div className="relative">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-200">Po co powstaliśmy</p>
-          <h2 className="mt-3 max-w-4xl font-display text-3xl leading-[1.15] sm:text-4xl md:text-[2.75rem]">
-            <span className="text-white/75">Booking pokaże hotel. Wyszukiwarka pokaże lot.</span>
-            <br />
-            My układamy Ci{" "}
-            <span className="text-amber-300">cały wyjazd</span> — w kilka minut i za 0 zł.
-          </h2>
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            {[
-              {
-                icon: "✈️",
-                title: "Lot i hotel z jednego startu",
-                body: "Mniej zakładek, mniej chaosu i szybsza decyzja na podstawie tych samych dat.",
-              },
-              {
-                icon: "🗺️",
-                title: "Plan dnia, nie sama rezerwacja",
-                body: "Co zobaczyć, gdzie spać i jak przejść do kolejnych kroków bez zgadywania.",
-              },
-              {
-                icon: "🌍",
-                title: "Start z Polski i Europy",
-                body: "Dla krótkich wyjazdów, city breaków i ciepłych kierunków na 3-7 dni.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm transition hover:border-emerald-300/40 hover:bg-white/[0.08]"
-              >
-                <span aria-hidden className="text-2xl">
-                  {item.icon}
-                </span>
-                <p className="mt-2 text-base font-bold text-white">{item.title}</p>
-                <p className="mt-1 text-sm leading-6 text-emerald-50/75">{item.body}</p>
-              </div>
-            ))}
-          </div>
+      <section>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Co tu znajdziesz</h2>
+        <div className="mt-5 max-w-[65ch] space-y-4 text-base leading-8 text-ink">
+          <p>
+            Serwis powstał dla jednej konkretnej sytuacji: chcesz gdzieś polecieć, masz mniej więcej termin
+            i budżet, i nie chcesz spędzić wieczoru na przeskakiwaniu między pięcioma zakładkami, żeby na
+            końcu zobaczyć cenę w euro.
+          </p>
+          <p>
+            Hotele i loty pochodzą od jednego dostawcy, więc daty i liczba osób nie gubią się po drodze.
+            Ceny są przeliczone na złotówki. Do rezerwacji nie trzeba konta ani aplikacji. Poza samą
+            wyszukiwarką mamy {destinationCount} kierunków z opisami i {articleCount} artykułów, które
+            pomagają wybrać, jeśli jeszcze nie wiesz dokąd.
+          </p>
         </div>
       </section>
 
-      {/* STATY */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-[1.5rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-5 text-center shadow-[0_14px_36px_rgba(16,84,48,0.06)]"
-          >
-            <p className="font-display text-3xl text-emerald-800 sm:text-4xl">{stat.value}</p>
-            <p className="mt-2 text-xs leading-5 text-emerald-900/70">{stat.label}</p>
-          </div>
-        ))}
-      </section>
-
-      {/* DLA KOGO / CO ROBIMY / CZEGO NIE UDAJEMY */}
-      <section className="grid gap-4 lg:grid-cols-3">
-        {facts.map((item) => (
-          <article
-            key={item.title}
-            className="rounded-[1.8rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-2xl">
-              {item.icon}
+      {/* Rdzeń strony. Trzy role, nie trzy kafelki z ikonką — bo tu liczy się
+          rozgraniczenie odpowiedzialności, a nie wyliczanka zalet. */}
+      <section>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Kto obsługuje którą część</h2>
+        <p className="mt-3 max-w-[65ch] text-base leading-7 text-ink-muted">
+          Pytanie „komu właściwie płacę?” jest przy nowym serwisie całkowicie zasadne. Oto pełna odpowiedź.
+        </p>
+        <dl className="mt-7 divide-y divide-line border-y border-line">
+          {ROLES.map((item) => (
+            <div key={item.name} className="grid gap-2 py-6 sm:grid-cols-[15rem_1fr] sm:gap-8">
+              <dt>
+                <span className="block text-base font-bold text-ink">{item.name}</span>
+                <span className="mt-0.5 block text-sm text-ink-muted">{item.role}</span>
+              </dt>
+              <dd className="max-w-[65ch] text-base leading-7 text-ink">{item.body}</dd>
             </div>
-            <h2 className="mt-4 text-xl font-bold text-emerald-950">{item.title}</h2>
-            <p className="mt-2 text-sm leading-7 text-emerald-900/78">{item.body}</p>
-          </article>
-        ))}
+          ))}
+        </dl>
       </section>
 
-      {/* TYPOWA ŚCIEŻKA + UCZCIWY MODEL */}
-      <section className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Jak to wygląda</p>
-          <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Typowa ścieżka w 3 krokach</h2>
-          <div className="mt-6 space-y-3">
-            {journey.map((item) => (
-              <div
-                key={item.step}
-                className="flex gap-4 rounded-2xl border border-emerald-900/10 bg-emerald-50/50 p-4 transition hover:border-emerald-300 hover:bg-emerald-50"
-              >
-                <span className="font-display text-3xl leading-none text-emerald-300">{item.step}</span>
-                <div>
-                  <h3 className="text-base font-bold text-emerald-950">{item.title}</h3>
-                  <p className="mt-1 text-sm leading-6 text-emerald-900/75">{item.body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="flex flex-col rounded-[2rem] border border-emerald-900/10 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Uczciwy model</p>
-          <h2 className="mt-2 font-display text-3xl text-emerald-950">Jak na tym zarabiamy</h2>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
-            <p className="flex gap-2">
-              <span aria-hidden className="text-emerald-600">✓</span>
-              Korzystanie z HelpTravel jest darmowe — nie pobieramy opłat od użytkowników.
-            </p>
-            <p className="flex gap-2">
-              <span aria-hidden className="text-emerald-600">✓</span>
-              Gdy przechodzisz do oferty, finalna rezerwacja może odbywać się u partnera.
-            </p>
-            <p className="flex gap-2">
-              <span aria-hidden className="text-emerald-600">✓</span>
-              Ceny i warunki zawsze warto sprawdzić w ostatnim kroku po stronie partnera.
-            </p>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/faq"
-              className="rounded-full border border-emerald-900/10 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
-            >
-              FAQ
-            </Link>
-          </div>
-        </article>
+      <section className="rounded-[2rem] bg-brand-strong p-6 text-white [--focus-ring:#fff] sm:p-10">
+        <h2 className="max-w-2xl text-balance font-display text-2xl sm:text-3xl">Czego tu nie ma</h2>
+        <p className="mt-3 max-w-[60ch] text-sm leading-7 text-white/85">
+          Deklaracja „jesteśmy uczciwi” nic nie znaczy, dopóki nie powie się, z czego konkretnie się
+          rezygnuje. Cztery rzeczy, których na tej stronie nie znajdziesz:
+        </p>
+        <div className="mt-8 grid gap-x-10 gap-y-7 sm:grid-cols-2">
+          {HONESTY.map((item) => (
+            <div key={item.title}>
+              <h3 className="text-base font-bold text-white">{item.title}</h3>
+              <p className="mt-2 text-sm leading-7 text-white/85">{item.body}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
-      {/* POPULARNE KIERUNKI — realne zdjęcia + przejście do oferty */}
       {tiles.length > 0 && (
-        <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
+        <section>
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Zacznij od pomysłu</p>
-              <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Popularne kierunki na start</h2>
-            </div>
-            <Link
-              href="/kierunki"
-              className="rounded-full border border-emerald-900/10 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
-            >
-              Wszystkie kierunki →
+            <h2 className="font-display text-2xl text-ink sm:text-3xl">Popularne kierunki</h2>
+            <Link href="/kierunki" className="underline underline-offset-4">
+              <span className="text-sm font-semibold text-brand">Wszystkie kierunki</span>
             </Link>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
             {tiles.map((tile) => (
               <DestinationTile key={tile.destination.slug} destination={tile.destination} heroImage={tile.heroImage} />
             ))}
@@ -279,13 +184,12 @@ export default async function AboutPage() {
       )}
 
       <FinalCtaBanner
-        eyebrow="Gotowy na wyjazd?"
-        title="Zacznij planować w kilka minut"
-        body="Wpisz kierunek albo opisz pomysł na wyjazd. Resztę — termin, hotel, lot i plan dnia — ułożysz w jednym miejscu."
+        title="Sprawdź, czy mamy coś na Twój termin"
+        body="Wpisz kierunek i daty. Zobaczysz realne ceny w złotówkach, z podatkami i opłatami — bez zakładania konta."
         primaryHref="/hotele/szukaj"
-        primaryLabel="Zaplanuj wyjazd"
-        secondaryHref="/inspiracje"
-        secondaryLabel="Zobacz pomysły na wyjazd"
+        primaryLabel="Otwórz wyszukiwarkę"
+        secondaryHref="/cennik"
+        secondaryLabel="Ile to kosztuje"
       />
     </main>
   );
