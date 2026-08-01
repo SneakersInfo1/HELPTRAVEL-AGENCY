@@ -353,7 +353,7 @@ export default async function ComparisonPage({ params }: PageProps) {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white/95 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
+      <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         {/* Split "vs" hero — realne foto obu kierunków (widoczne + w schema image). */}
         <div className="relative grid grid-cols-2">
           {[
@@ -368,13 +368,13 @@ export default async function ComparisonPage({ params }: PageProps) {
               )}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.05)_0%,rgba(5,18,11,0.62)_100%)]" />
               <span
-                className={`absolute bottom-3 ${align} font-display text-xl text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] sm:text-2xl`}
+                className={`absolute bottom-3 ${align} font-display text-xl text-white drop-shadow-sm sm:text-2xl`}
               >
                 {name}
               </span>
             </div>
           ))}
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-white/95 px-3.5 py-1 text-xs font-bold uppercase tracking-[0.1em] text-emerald-900 shadow-lg">
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-surface-raised px-3.5 py-1 text-xs font-bold uppercase tracking-[0.1em] text-ink shadow-lg">
             vs
           </span>
         </div>
@@ -386,79 +386,72 @@ export default async function ComparisonPage({ params }: PageProps) {
               { label: `${nameA} vs ${nameB}` },
             ]}
           />
-          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Porównanie kierunków</p>
-          <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
+          <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
             {nameA} czy {nameB}? Porównanie pod realną decyzję wyjazdową.
           </h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{pair.intent}.</p>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">{pair.intent}.</p>
           <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} className="mt-5" />
         </div>
       </section>
 
       {/* SZYBKA ODPOWIEDŹ — bezpośredni werdykt pod featured snippet + wysoki CTR */}
-      <section className="rounded-[2rem] border border-emerald-300/50 bg-emerald-50/80 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Szybka odpowiedź</p>
-        <p className="mt-2 max-w-3xl text-base leading-8 text-emerald-950 sm:text-lg">{quickAnswer}</p>
+      <section className="rounded-[2rem] border border-brand/50 bg-surface-sunken p-6 shadow-sm">
+        <p className="mt-2 max-w-3xl text-base leading-8 text-ink sm:text-lg">{quickAnswer}</p>
       </section>
 
       {/* NA ŻYWO Z NASZEJ BAZY — realne, aktualne dane (audit action C, top porównania).
           Informacja, której nie ma żadna statyczna strona konkurencji. 100% prawdziwe:
           gdy LiteAPI nie odpowie, sekcja po prostu się nie pokazuje. */}
       {isTop && (statsA || statsB) && (
-        <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                Na żywo z naszej bazy
-              </p>
-              <h2 className="mt-2 font-display text-2xl text-emerald-950 sm:text-3xl">
-                Realne hotele w naszej bazie: {nameA} vs {nameB}
-              </h2>
-            </div>
-            {liveDateLabel && <span className="text-xs text-emerald-900/55">Dane z {liveDateLabel}</span>}
+            <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">
+              Realne hotele w naszej bazie: {nameA} vs {nameB}
+            </h2>
+            {liveDateLabel && <span className="text-xs text-ink-muted">Dane z {liveDateLabel}</span>}
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {[
               { stats: statsA, name: nameA },
               { stats: statsB, name: nameB },
             ].map(({ stats, name }) => (
-              <article key={name} className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
-                <h3 className="font-display text-xl text-emerald-950">{name}</h3>
+              <article key={name} className="rounded-2xl border border-line bg-surface-sunken p-5">
+                <h3 className="font-display text-xl text-ink">{name}</h3>
                 {stats ? (
                   <>
                     <dl className="mt-3 grid grid-cols-2 gap-3">
                       <div>
-                        <dt className="text-[11px] uppercase tracking-[0.14em] text-emerald-700">Hotele w bazie</dt>
-                        <dd className="mt-1 text-2xl font-bold text-emerald-950">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-brand">Hotele w bazie</dt>
+                        <dd className="mt-1 text-2xl font-bold text-ink">
                           {stats.propertyCount.toLocaleString("pl-PL")}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-[11px] uppercase tracking-[0.14em] text-emerald-700">Średnia ocena gości</dt>
-                        <dd className="mt-1 text-2xl font-bold text-emerald-950">
+                        <dt className="text-xs uppercase tracking-[0.14em] text-brand">Średnia ocena gości</dt>
+                        <dd className="mt-1 text-2xl font-bold text-ink">
                           {stats.avgGuestRating ? `${stats.avgGuestRating}/10` : "—"}
                           {stats.avgGuestRating && stats.ratedCount > 0 ? (
-                            <span className="ml-1 text-xs font-normal text-emerald-900/55">z {stats.ratedCount}</span>
+                            <span className="ml-1 text-xs font-normal text-ink-muted">z {stats.ratedCount}</span>
                           ) : null}
                         </dd>
                       </div>
                     </dl>
                     {stats.topHotels.length > 0 && (
-                      <p className="mt-3 text-xs leading-6 text-emerald-900/60">
-                        <span className="font-semibold text-emerald-800">Wysoko oceniane:</span>{" "}
+                      <p className="mt-3 text-xs leading-6 text-ink-muted">
+                        <span className="font-semibold text-ink">Wysoko oceniane:</span>{" "}
                         {stats.topHotels.slice(0, 3).map((h) => h.name).join(", ")}
                       </p>
                     )}
                   </>
                 ) : (
-                  <p className="mt-3 text-sm text-emerald-900/60">
+                  <p className="mt-3 text-sm text-ink-muted">
                     Dane na żywo chwilowo niedostępne — sprawdź aktualne oferty w wyszukiwarce poniżej.
                   </p>
                 )}
               </article>
             ))}
           </div>
-          <p className="mt-3 text-xs leading-6 text-emerald-900/55">
+          <p className="mt-3 text-xs leading-6 text-ink-muted">
             Liczba obiektów i oceny gości pochodzą na żywo z naszej bazy (LiteAPI) i mogą się zmieniać. Aktualne ceny
             dla Twoich dat sprawdzisz w wyszukiwarce poniżej.
           </p>
@@ -466,22 +459,22 @@ export default async function ComparisonPage({ params }: PageProps) {
       )}
 
       {/* TABELA RÓŻNIC */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] overflow-x-auto">
-        <h2 className="mb-4 font-display text-2xl text-emerald-950">{nameA} vs {nameB} — tabela różnic</h2>
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm overflow-x-auto">
+        <h2 className="mb-4 font-display text-2xl text-ink">{nameA} vs {nameB} — tabela różnic</h2>
         <table className="w-full min-w-[36rem] text-sm">
           <thead>
-            <tr className="text-left text-emerald-900/70">
+            <tr className="text-left text-ink-muted">
               <th className="py-2 pr-4 font-semibold">Parametr</th>
-              <th className="py-2 px-3 font-semibold text-emerald-950">{nameA}</th>
-              <th className="py-2 px-3 font-semibold text-emerald-950">{nameB}</th>
+              <th className="py-2 px-3 font-semibold text-ink">{nameA}</th>
+              <th className="py-2 px-3 font-semibold text-ink">{nameB}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-emerald-900/10">
+          <tbody className="divide-y divide-line">
             {compareRows.map((row) => (
               <tr key={row.label}>
-                <td className="py-2 pr-4 text-emerald-900/80">{row.label}</td>
-                <td className="py-2 px-3 font-semibold text-emerald-950">{row.av}</td>
-                <td className="py-2 px-3 font-semibold text-emerald-950">{row.bv}</td>
+                <td className="py-2 pr-4 text-ink-muted">{row.label}</td>
+                <td className="py-2 px-3 font-semibold text-ink">{row.av}</td>
+                <td className="py-2 px-3 font-semibold text-ink">{row.bv}</td>
               </tr>
             ))}
           </tbody>
@@ -490,32 +483,28 @@ export default async function ComparisonPage({ params }: PageProps) {
 
       {/* W CZYM WYGRYWA KTÓRY KIERUNEK */}
       <section>
-        <h2 className="mb-4 font-display text-2xl text-emerald-950 sm:text-3xl">W czym wygrywa który kierunek</h2>
+        <h2 className="mb-4 font-display text-2xl text-ink sm:text-3xl">W czym wygrywa który kierunek</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {verdicts.map((v) => (
-            <article key={v.title} className="rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/72 p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{v.title}</p>
-              <p className="mt-2 text-sm leading-7 text-emerald-900/82">{v.body}</p>
+            <article key={v.title} className="rounded-2xl border border-line bg-surface-sunken p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{v.title}</p>
+              <p className="mt-2 text-sm leading-7 text-ink-muted">{v.body}</p>
             </article>
           ))}
         </div>
       </section>
 
       {/* DLA KOGO */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Dla kogo</p>
-        <h2 className="mt-2 font-display text-2xl text-emerald-950 sm:text-3xl">Dla kogo lepszy będzie każdy kierunek?</h2>
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Dla kogo lepszy będzie każdy kierunek?</h2>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {destPanels.map(({ dest, name }) => (
-            <article key={dest.slug} className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
-              <h3 className="font-display text-xl text-emerald-950">{name}</h3>
-              <p className="mt-1 text-sm text-emerald-900/70">Najlepszy wybór dla miłośników:</p>
+            <article key={dest.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
+              <h3 className="font-display text-xl text-ink">{name}</h3>
+              <p className="mt-1 text-sm text-ink-muted">Najlepszy wybór dla miłośników:</p>
               <ul className="mt-3 space-y-2">
                 {audienceTags(dest).map((tag) => (
-                  <li key={tag} className="flex gap-2 text-sm leading-6 text-emerald-900/82">
-                    <span aria-hidden className="text-emerald-600">✓</span>
-                    {tag}
-                  </li>
+                  <li key={tag} className="flex gap-2 text-sm leading-6 text-ink-muted">{tag}</li>
                 ))}
               </ul>
             </article>
@@ -524,27 +513,26 @@ export default async function ComparisonPage({ params }: PageProps) {
       </section>
 
       {/* KIEDY JECHAĆ */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kiedy jechać</p>
-        <h2 className="mt-2 font-display text-2xl text-emerald-950 sm:text-3xl">Kiedy najlepiej jechać?</h2>
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Kiedy najlepiej jechać?</h2>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {destPanels.map(({ dest, name }) => {
             const months = bestMonths(dest);
             return (
-              <article key={dest.slug} className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
-                <h3 className="font-display text-xl text-emerald-950">{name}</h3>
-                <p className="mt-2 text-sm leading-6 text-emerald-900/78">
+              <article key={dest.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
+                <h3 className="font-display text-xl text-ink">{name}</h3>
+                <p className="mt-2 text-sm leading-6 text-ink-muted">
                   Komfortowe miesiące (18-30°C). Lato ~{summerAvg(dest.avgTempByMonth)}°C, zima ~{winterAvg(dest.avgTempByMonth)}°C.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {months.length > 0 ? (
                     months.map((m) => (
-                      <span key={m} className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                      <span key={m} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-ink">
                         {m}
                       </span>
                     ))
                   ) : (
-                    <span className="text-sm text-emerald-900/72">Cały rok bywa chłodniejszy — sprawdź szczegóły w przewodniku.</span>
+                    <span className="text-sm text-ink-muted">Cały rok bywa chłodniejszy — sprawdź szczegóły w przewodniku.</span>
                   )}
                 </div>
               </article>
@@ -554,21 +542,20 @@ export default async function ComparisonPage({ params }: PageProps) {
       </section>
 
       {/* BUDŻET */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Koszty</p>
-        <h2 className="mt-2 font-display text-2xl text-emerald-950 sm:text-3xl">Ile kosztuje wyjazd?</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/80">
+      <section className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
+        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Ile kosztuje wyjazd?</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
           Orientacyjny budżet dla 2 osób na 4 dni (lot z Polski, nocleg, jedzenie, transport lokalny):
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {destPanels.map(({ dest, name }) => (
-            <div key={dest.slug} className="rounded-2xl bg-white/80 px-5 py-4">
-              <p className="text-sm font-semibold text-emerald-900/70">{name}</p>
-              <p className="mt-1 font-display text-3xl text-emerald-800">~{budget(dest).toLocaleString("pl-PL")} zł</p>
+            <div key={dest.slug} className="rounded-2xl bg-surface-raised px-5 py-4">
+              <p className="text-sm font-semibold text-ink-muted">{name}</p>
+              <p className="mt-1 font-display text-3xl text-ink">~{budget(dest).toLocaleString("pl-PL")} zł</p>
             </div>
           ))}
         </div>
-        <p className="mt-4 text-xs leading-6 text-emerald-900/60">
+        <p className="mt-4 text-xs leading-6 text-ink-muted">
           To szacunek orientacyjny — realne ceny zależą od terminu i standardu. Sprawdź aktualne stawki w wyszukiwarce poniżej.
         </p>
       </section>
@@ -578,25 +565,25 @@ export default async function ComparisonPage({ params }: PageProps) {
         {destPanels.map(({ dest, guide, name }) => (
           <article
             key={dest.slug}
-            className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
+            className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm"
           >
-            <h2 className="font-display text-2xl text-emerald-950">{name}</h2>
-            <p className="mt-2 text-sm leading-7 text-emerald-900/78">{guide.overview}</p>
+            <h2 className="font-display text-2xl text-ink">{name}</h2>
+            <p className="mt-2 text-sm leading-7 text-ink-muted">{guide.overview}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 href={`/kierunki/${dest.slug}`}
-                className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold transition hover:bg-emerald-800"
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-4 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                <span className="text-white">Pełny przewodnik</span>
+                <span className="text-xs font-bold text-white">Pełny przewodnik</span>
               </Link>
               <Link
                 href={`/hotele/szukaj?${new URLSearchParams({
                   destination: dest.city,
                   country: dest.country,
                 }).toString()}`}
-                className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-4 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                Sprawdź hotele i loty
+                <span className="text-xs font-semibold text-ink">Sprawdź hotele i loty</span>
               </Link>
             </div>
           </article>
@@ -612,27 +599,27 @@ export default async function ComparisonPage({ params }: PageProps) {
           }).toString()}`;
           return (
             <div key={dest.slug} className="flex flex-col gap-4">
-              <article className="rounded-[1.6rem] border border-emerald-900/10 bg-emerald-700 p-5 text-white">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">Hotele</p>
+              <article className="rounded-2xl border border-line bg-brand p-5 text-white">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white">Hotele</p>
                 <h3 className="mt-1 font-display text-2xl">Konkretne ceny — {name}</h3>
-                <p className="mt-2 text-sm leading-7 text-emerald-50/85">
+                <p className="mt-2 text-sm leading-7 text-white/85">
                   Sprawdź ceny noclegów w PLN dla swoich dat. Bez wychodzenia ze strony.
                 </p>
                 <Link
                   href={hotelHref}
-                  className="mt-4 inline-flex w-fit rounded-full bg-white px-5 py-2.5 text-sm font-bold transition hover:bg-emerald-100"
+                  className="mt-4 inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-white px-5 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
                   {/* span: bg is white inside an emerald-700 (text-white) card,
                       so without it the global a{color:inherit} makes the label
                       white-on-white. */}
-                  <span className="text-emerald-900">Zobacz hotele: {name}</span>
+                  <span className="text-sm font-bold text-ink">Zobacz hotele: {name}</span>
                 </Link>
               </article>
               <Link
                 href="/?tab=loty"
-                className="flex flex-col justify-center rounded-[1.6rem] border border-emerald-950 bg-emerald-950 p-5 text-white shadow-[0_20px_52px_rgba(7,31,18,0.18)] transition hover:-translate-y-1 hover:bg-emerald-900"
+                className="flex flex-col justify-center rounded-2xl border border-brand-strong bg-brand-strong p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Loty</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Loty</p>
                 <h3 className="mt-2 text-xl font-bold text-white">Sprawdź loty do {dest.city}</h3>
                 <p className="mt-2 text-sm leading-6 text-white/78">
                   Wyszukaj loty z dowolnego lotniska w Polsce. Lot ok. {dest.typicalFlightHoursFromPL.toFixed(1)} h.
@@ -644,13 +631,13 @@ export default async function ComparisonPage({ params }: PageProps) {
       </section>
 
       {/* FAQ — widoczny accordion + zgodny ze schema FAQPage */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-2xl text-emerald-950 sm:text-3xl">Najczęściej zadawane pytania</h2>
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Najczęściej zadawane pytania</h2>
         <div className="mt-5 space-y-3">
           {faq.map((item) => (
-            <details key={item.question} className="rounded-2xl bg-emerald-50/60 px-5 py-4 transition hover:bg-emerald-50">
-              <summary className="cursor-pointer text-base font-bold text-emerald-950">{item.question}</summary>
-              <p className="mt-3 text-sm leading-7 text-emerald-900/82">{item.answer}</p>
+            <details key={item.question} className="rounded-2xl bg-surface-sunken px-5 py-4 transition hover:bg-surface-sunken">
+              <summary className="cursor-pointer text-base font-bold text-ink">{item.question}</summary>
+              <p className="mt-3 text-sm leading-7 text-ink-muted">{item.answer}</p>
             </details>
           ))}
         </div>
@@ -658,16 +645,16 @@ export default async function ComparisonPage({ params }: PageProps) {
 
       {/* POWIĄZANE ARTYKUŁY */}
       {articleLinks.length > 0 ? (
-        <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="font-display text-2xl text-emerald-950">Powiązane poradniki</h2>
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Powiązane poradniki</h2>
           <div className="mt-4 flex flex-wrap gap-2">
             {articleLinks.map((article) => (
               <Link
                 key={article.slug}
                 href={`/inspiracje/${article.slug}`}
-                className="rounded-full border border-emerald-900/10 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-4 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                {article.title}
+                <span className="text-xs font-semibold text-ink">{article.title}</span>
               </Link>
             ))}
           </div>
@@ -675,11 +662,11 @@ export default async function ComparisonPage({ params }: PageProps) {
       ) : null}
 
       {/* INNE PORÓWNANIA */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-display text-2xl text-emerald-950">Inne porównania</h2>
-          <Link href="/porownanie" className="text-sm font-semibold text-emerald-700 transition hover:text-emerald-800">
-            Wszystkie porównania →
+          <h2 className="font-display text-2xl text-ink">Inne porównania</h2>
+          <Link href="/porownanie" className="group text-sm font-semibold">
+            <span className="text-brand transition group-hover:text-ink">Wszystkie porównania</span>
           </Link>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -696,9 +683,9 @@ export default async function ComparisonPage({ params }: PageProps) {
                 <Link
                   key={p.slug}
                   href={`/porownanie/${p.slug}`}
-                  className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100"
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1.5 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
-                  {labelA} vs {labelB}
+                  <span className="text-xs font-semibold text-ink">{labelA} vs {labelB}</span>
                 </Link>
               );
             })}

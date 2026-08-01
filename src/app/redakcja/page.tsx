@@ -73,22 +73,21 @@ export default function RedakcjaPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)] sm:p-8">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm sm:p-8">
         <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: "Redakcja" }]} />
-        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Redakcja</p>
-        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl md:text-5xl md:leading-[0.95]">
+        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-ink sm:text-4xl md:text-5xl md:leading-[0.95]">
           Kto tworzy HelpTravel i na jakich danych
         </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
+        <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">
           Wierzymy, że za treścią powinien stać człowiek i jasna metoda. Poniżej znajdziesz autora
           serwisu oraz dokładnie to, skąd biorą się nasze ceny, dane o pogodzie i rekomendacje.
         </p>
       </section>
 
       {/* AUTOR */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-          <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-700 text-3xl font-bold text-white">
+          <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-3xl font-bold text-white">
             {author.image ? (
               <Image
                 src={author.image}
@@ -102,16 +101,13 @@ export default function RedakcjaPage() {
             )}
           </span>
           <div>
-            <h2 className="font-display text-2xl text-emerald-950 sm:text-3xl">{author.name}</h2>
-            <p className="mt-1 text-sm font-semibold text-emerald-700">{author.role}</p>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-900/80">{author.bio}</p>
+            <h2 className="font-display text-2xl text-ink sm:text-3xl">{author.name}</h2>
+            <p className="mt-1 text-sm font-semibold text-brand">{author.role}</p>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-ink-muted">{author.bio}</p>
             {author.experience && author.experience.length > 0 && (
               <ul className="mt-4 space-y-2">
                 {author.experience.map((item) => (
-                  <li key={item} className="flex gap-2 text-sm leading-7 text-emerald-900/82">
-                    <span aria-hidden className="text-emerald-600">
-                      ✓
-                    </span>
+                  <li key={item} className="flex gap-2 text-sm leading-7 text-ink-muted">
                     {item}
                   </li>
                 ))}
@@ -123,9 +119,9 @@ export default function RedakcjaPage() {
                   <Link
                     key={href}
                     href={href}
-                    className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 text-xs font-semibold"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1.5 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                   >
-                    <span className="text-emerald-800">Profil →</span>
+                    <span className="text-xs font-semibold text-ink">Profil</span>
                   </Link>
                 ))}
               </div>
@@ -135,17 +131,16 @@ export default function RedakcjaPage() {
       </section>
 
       {/* METODOLOGIA — skąd biorą się dane (silne E-E-A-T: transparentność) */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Metodologia</p>
-        <h2 className="mt-2 font-display text-2xl text-emerald-950 sm:text-3xl">Skąd biorą się nasze dane</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/78">
+      <section className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm sm:p-8">
+        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Skąd biorą się nasze dane</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
           Każdy przewodnik, porównanie i raport opieramy na realnych, sprawdzalnych źródłach. Oto one:
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {dataSources.map((source) => (
-            <article key={source.title} className="rounded-2xl border border-emerald-900/10 bg-white/85 p-5">
-              <h3 className="text-sm font-bold text-emerald-950">{source.title}</h3>
-              <p className="mt-2 text-sm leading-7 text-emerald-900/74">{source.body}</p>
+            <article key={source.title} className="rounded-2xl border border-line bg-white/85 p-5">
+              <h3 className="text-sm font-bold text-ink">{source.title}</h3>
+              <p className="mt-2 text-sm leading-7 text-ink-muted">{source.body}</p>
             </article>
           ))}
         </div>
@@ -153,30 +148,29 @@ export default function RedakcjaPage() {
 
       {/* ZASADY + LINKI */}
       <section className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Nasze zasady</p>
-          <h2 className="mt-2 font-display text-2xl text-emerald-950">Czego nie robimy</h2>
-          <ul className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/80">
-            <li className="rounded-2xl bg-emerald-50/70 px-4 py-3">
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="mt-2 font-display text-2xl text-ink">Czego nie robimy</h2>
+          <ul className="mt-4 space-y-3 text-sm leading-7 text-ink-muted">
+            <li className="rounded-2xl bg-surface-sunken px-4 py-3">
               Nie wymyślamy recenzji, partnerstw, nagród ani liczb. Jeśli czegoś nie mamy — nie udajemy, że mamy.
             </li>
-            <li className="rounded-2xl bg-emerald-50/70 px-4 py-3">
+            <li className="rounded-2xl bg-surface-sunken px-4 py-3">
               Nie budujemy pustych stron pod samo SEO. Każda strona ma realny powód istnienia i pomaga podjąć decyzję.
             </li>
-            <li className="rounded-2xl bg-emerald-50/70 px-4 py-3">
+            <li className="rounded-2xl bg-surface-sunken px-4 py-3">
               Jawnie informujemy o modelu afiliacyjnym: planowanie jest darmowe, płacisz wyłącznie u partnera rezerwacyjnego.
             </li>
           </ul>
         </article>
 
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Powiązane</p>
+        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink">Powiązane</h2>
           <div className="mt-4 grid gap-3 text-sm">
-            <Link href="/standard-redakcyjny" className="rounded-2xl bg-emerald-50/75 px-4 py-3 transition hover:bg-emerald-100">
-              <span className="text-emerald-900/85">Standard redakcyjny</span>
+            <Link href="/standard-redakcyjny" className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-surface-sunken px-4 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+              <span className="text-ink-muted">Standard redakcyjny</span>
             </Link>
-            <Link href="/jak-pracujemy" className="rounded-2xl bg-emerald-50/75 px-4 py-3 transition hover:bg-emerald-100">
-              <span className="text-emerald-900/85">Jak działa HelpTravel</span>
+            <Link href="/jak-pracujemy" className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-surface-sunken px-4 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+              <span className="text-ink-muted">Jak działa HelpTravel</span>
             </Link>
           </div>
         </article>

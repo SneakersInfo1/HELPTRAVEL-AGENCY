@@ -80,7 +80,7 @@ type SeasonTier = "peak" | "shoulder" | "low";
 // Tourist-season classifier — powers the "kiedy taniej / mniej tłoczno"
 // content that converts informational visitors (people planning a trip)
 // into booking-funnel clicks. Beach destinations peak in high summer; city
-// breaks peak late-spring→summer plus festive December.
+// breaks peak late-springsummer plus festive December.
 function classifySeason(temp: number, monthIndex: number, beachScore: number): SeasonTier {
   const highSummer = monthIndex >= 5 && monthIndex <= 8; // czerwiec–wrzesień
   if (beachScore >= 0.6) {
@@ -137,7 +137,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // "od X zł" hook — we don't have live LiteAPI prices at static-build
   // time, so we use the modeled budget as a lower bound. The budget is per
   // 2 osoby / 4 dni, so an "od /noc" estimate ≈ budget.min / 4 / 2 hotels
-  // → rough but trustworthy. Future: swap to live cached LiteAPI median.
+  // rough but trustworthy. Future: swap to live cached LiteAPI median.
   const hotelFromPln = Math.round(budget.min / 4 / 2);
   const year = new Date().getFullYear();
 
@@ -188,7 +188,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
   const weather = describeWeather(temp);
   const baseUrl = getSiteUrl();
 
-  // Per-month unique signals (data-driven → scale across 2800 pages without
+  // Per-month unique signals (data-driven scale across 2800 pages without
   // hand-writing): sea temp for the coast, tourist season, and the
   // warmest/cheapest months for internal "kiedy taniej" cross-linking.
   const beachForward = guide.destination.beachScore >= 0.6;
@@ -324,7 +324,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <Breadcrumbs
           items={[
             { label: "Start", href: "/" },
@@ -333,13 +333,10 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
             { label: `${monthLabel}` },
           ]}
         />
-        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-          Wyjazd w {monthInfl}
-        </p>
-        <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
+        <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
           {guide.destination.city} w {monthInfl} — pogoda {temp}°C, hotele i kiedy lecieć
         </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
+        <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">
           W {monthInfl} w {guide.destination.city} jest {weather} (śr. {temp}°C
           {seaTemp !== null ? `, morze ~${seaTemp}°C` : ""}). To {seasonInfo.label.toLowerCase()} —{" "}
           {seasonInfo.crowd}, {seasonInfo.price}. Poniżej orientacyjny budżet, najlepszy termin
@@ -349,88 +346,88 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
         <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} className="mt-5" />
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Średnia temperatura</p>
-            <p className="mt-1 text-3xl font-bold text-emerald-950">{temp}°C</p>
-            <p className="mt-1 text-xs text-emerald-900/70">{weather}</p>
+          <div className="rounded-2xl bg-surface-sunken p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Średnia temperatura</p>
+            <p className="mt-1 text-3xl font-bold text-ink">{temp}°C</p>
+            <p className="mt-1 text-xs text-ink-muted">{weather}</p>
           </div>
-          <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Pozycja w roku</p>
-            <p className="mt-1 text-3xl font-bold text-emerald-950 capitalize">{tempPosition}</p>
-            <p className="mt-1 text-xs text-emerald-900/70">Roczny zakres: {yearMin}-{yearMax}°C</p>
+          <div className="rounded-2xl bg-surface-sunken p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Pozycja w roku</p>
+            <p className="mt-1 text-3xl font-bold text-ink capitalize">{tempPosition}</p>
+            <p className="mt-1 text-xs text-ink-muted">Roczny zakres: {yearMin}-{yearMax}°C</p>
           </div>
-          <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Budżet 2 os / 4 dni</p>
-            <p className="mt-1 text-2xl font-bold text-emerald-950">
+          <div className="rounded-2xl bg-surface-sunken p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Budżet 2 os / 4 dni</p>
+            <p className="mt-1 text-2xl font-bold text-ink">
               {budget.min.toLocaleString("pl-PL")}-{budget.max.toLocaleString("pl-PL")} PLN
             </p>
-            <p className="mt-1 text-xs text-emerald-900/70">Loty, nocleg, jedzenie, transport.</p>
+            <p className="mt-1 text-xs text-ink-muted">Loty, nocleg, jedzenie, transport.</p>
           </div>
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-3xl text-emerald-950">Czy warto lecieć do {guide.destination.city} w {monthInfl}?</h2>
-        <p className="mt-3 max-w-3xl text-base leading-8 text-emerald-900/80">{verdict}</p>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/72">{guide.overview}</p>
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="font-display text-3xl text-ink">Czy warto lecieć do {guide.destination.city} w {monthInfl}?</h2>
+        <p className="mt-3 max-w-3xl text-base leading-8 text-ink-muted">{verdict}</p>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">{guide.overview}</p>
       </section>
 
       {/* Season / prices / sea — unique per city×month (fixes thin-content
           indexing) + drives "kiedy taniej" intent into the booking funnel. */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-3xl text-emerald-950">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="font-display text-3xl text-ink">
           Sezon, ceny i morze w {guide.destination.city} w {monthInfl}
         </h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Sezon</p>
-            <p className="mt-1 text-xl font-bold text-emerald-950">{seasonInfo.label}</p>
-            <p className="mt-1 text-xs text-emerald-900/70">
+          <div className="rounded-2xl bg-surface-sunken p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Sezon</p>
+            <p className="mt-1 text-xl font-bold text-ink">{seasonInfo.label}</p>
+            <p className="mt-1 text-xs text-ink-muted">
               {seasonInfo.crowd}, {seasonInfo.price}
             </p>
           </div>
           {seaTemp !== null && (
-            <div className="rounded-2xl bg-emerald-50 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            <div className="rounded-2xl bg-surface-sunken p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
                 Temperatura morza
               </p>
-              <p className="mt-1 text-3xl font-bold text-emerald-950">~{seaTemp}°C</p>
-              <p className="mt-1 text-xs text-emerald-900/70">Orientacyjnie, ze średnich wieloletnich.</p>
+              <p className="mt-1 text-3xl font-bold text-ink">~{seaTemp}°C</p>
+              <p className="mt-1 text-xs text-ink-muted">Orientacyjnie, ze średnich wieloletnich.</p>
             </div>
           )}
-          <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          <div className="rounded-2xl bg-surface-sunken p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
               Najcieplejszy miesiąc
             </p>
-            <p className="mt-1 text-xl font-bold capitalize text-emerald-950">
+            <p className="mt-1 text-xl font-bold capitalize text-ink">
               {polishMonthLabels[warmestSlug]}
             </p>
-            <p className="mt-1 text-xs text-emerald-900/70">Szczyt temperatur ({yearMax}°C)</p>
+            <p className="mt-1 text-xs text-ink-muted">Szczyt temperatur ({yearMax}°C)</p>
           </div>
         </div>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-900/78">
+        <p className="mt-4 max-w-3xl text-sm leading-7 text-ink-muted">
           {monthLabel.charAt(0).toUpperCase()}
           {monthLabel.slice(1)} to w {guide.destination.city} {seasonInfo.label.toLowerCase()} (
           {seasonInfo.crowd}, {seasonInfo.price}). Najcieplej jest w{" "}
           <Link
             href={`/kierunki/${slug}/${warmestSlug}`}
-            className="font-semibold text-emerald-700 underline-offset-2 hover:underline"
+            className="font-semibold underline-offset-2 hover:underline"
           >
-            {polishMonthLabels[warmestSlug].toLowerCase()}
+            <span className="text-brand">{polishMonthLabels[warmestSlug].toLowerCase()}</span>
           </Link>
           , a najspokojniej i zwykle najtaniej w{" "}
           <Link
             href={`/kierunki/${slug}/${coldestSlug}`}
-            className="font-semibold text-emerald-700 underline-offset-2 hover:underline"
+            className="font-semibold underline-offset-2 hover:underline"
           >
-            {polishMonthLabels[coldestSlug].toLowerCase()}
+            <span className="text-brand">{polishMonthLabels[coldestSlug].toLowerCase()}</span>
           </Link>
           . Jeśli zależy Ci na niższej cenie, rozważ termin poza szczytem sezonu.
         </p>
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-emerald-50/72 p-6">
-        <h2 className="font-display text-3xl text-emerald-950">Pogoda w {guide.destination.city} w ciagu roku</h2>
+      <section className="rounded-[2rem] border border-line bg-surface-sunken p-6">
+        <h2 className="font-display text-3xl text-ink">Pogoda w {guide.destination.city} w ciagu roku</h2>
         <div className="mt-4 grid gap-2 sm:grid-cols-4">
           {polishMonthSlugs.map((m, idx) => {
             const t = yearTemps[idx];
@@ -441,12 +438,12 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
                 href={`/kierunki/${slug}/${m}`}
                 className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition ${
                   isCurrent
-                    ? "border-emerald-700 bg-white font-semibold text-emerald-950"
-                    : "border-emerald-900/10 bg-white/72 text-emerald-900 hover:border-emerald-500/40 hover:bg-white"
+                    ? "border-brand bg-white font-semibold"
+                    : "border-line bg-white/72 hover:border-brand hover:bg-white"
                 }`}
               >
-                <span className="capitalize">{polishMonthLabels[m]}</span>
-                <span className="font-semibold">{t}°C</span>
+                <span className="capitalize text-ink">{polishMonthLabels[m]}</span>
+                <span className="font-semibold text-ink">{t}°C</span>
               </Link>
             );
           })}
@@ -455,13 +452,12 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
 
       {/* 2-CTA block: hotele (LiteAPI) + loty (wewnętrzna wyszukiwarka). */}
       <section className="grid gap-5 lg:grid-cols-2">
-        <article className="flex flex-col justify-between rounded-[1.8rem] border border-emerald-900/10 bg-emerald-700 p-6 text-white shadow-[0_18px_42px_rgba(7,31,18,0.18)]">
+        <article className="flex flex-col justify-between rounded-2xl border border-line bg-brand p-6 text-white shadow-sm">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">Hotele</p>
             <h2 className="mt-2 font-display text-3xl leading-tight">
               Sprawdź hotele w {guide.destination.city} w {monthInfl}
             </h2>
-            <p className="mt-3 text-sm leading-7 text-emerald-50/85">
+            <p className="mt-3 text-sm leading-7 text-white/85">
               Wyszukiwarka ustawiona na {monthInfl} — ceny w PLN, finalna płatność u dostawcy.
               Bez wychodzenia ze strony.
             </p>
@@ -469,52 +465,54 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
               href={internalHotelHref}
-              className="inline-flex w-fit items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100"
+              className="inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-white px-6 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              Sprawdź hotele w {monthInfl}
+              <span className="text-sm font-bold text-ink">Sprawdź hotele w {monthInfl}</span>
             </Link>
             {commercialCity && (
               <Link
                 href={`/hotele/w/${commercialCity.slug}`}
-                className="inline-flex w-fit items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+                className="inline-flex min-h-11 w-fit items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-3 transition duration-150 ease-out hover:bg-white/20 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                Przewodnik: hotele {commercialCity.preposition} {commercialCity.cityLocative}
+                <span className="text-sm font-semibold text-white">
+                  Przewodnik: hotele {commercialCity.preposition} {commercialCity.cityLocative}
+                </span>
               </Link>
             )}
           </div>
         </article>
         <Link
           href="/?tab=loty"
-          className="flex flex-col justify-center rounded-[1.6rem] border border-emerald-950 bg-emerald-950 p-5 text-white shadow-[0_20px_52px_rgba(7,31,18,0.18)] transition hover:-translate-y-1 hover:bg-emerald-900"
+          className="flex flex-col justify-center rounded-2xl border border-brand-strong bg-brand-strong p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0"
         >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Loty</p>
-          <h3 className="mt-2 text-xl font-bold">Sprawdź loty do {guide.destination.city}</h3>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Loty</p>
+          <h3 className="mt-2 text-xl font-bold text-white">Sprawdź loty do {guide.destination.city}</h3>
           <p className="mt-2 text-sm leading-6 text-white/78">
             Wyszukaj loty z dowolnego lotniska w Polsce. Lot ok. {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h.
           </p>
         </Link>
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-3xl text-emerald-950">Co dalej</h2>
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="font-display text-3xl text-ink">Co dalej</h2>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             href={`/kierunki/${slug}`}
-            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-5 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Pełny przewodnik po {guide.destination.city}
+            <span className="text-sm font-semibold text-ink">Pełny przewodnik po {guide.destination.city}</span>
           </Link>
           <Link
             href={internalHotelHref}
-            className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 py-3 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Sprawdź hotele i loty
+            <span className="text-sm font-bold text-white">Sprawdź hotele i loty</span>
           </Link>
           <Link
             href="/kierunki"
-            className="rounded-full border border-emerald-900/10 bg-white px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 py-3 transition duration-150 ease-out hover:bg-surface-sunken active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Zobacz wszystkie kierunki
+            <span className="text-sm font-semibold text-ink">Zobacz wszystkie kierunki</span>
           </Link>
         </div>
       </section>

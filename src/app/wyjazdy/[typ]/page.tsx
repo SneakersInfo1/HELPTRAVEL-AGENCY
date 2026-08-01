@@ -26,7 +26,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { typ } = await params;
   const mood = getMoodBySlug(typ);
-  if (!mood) return { title: "Pomysły na wyjazd | HelpTravel" };
+  if (!mood) return { title: "Pomysły na wyjazd" };
   return {
     title: mood.metaTitle,
     description: mood.metaDescription,

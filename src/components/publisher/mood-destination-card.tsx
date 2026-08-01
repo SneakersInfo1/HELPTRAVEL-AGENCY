@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { formatPricePln } from "@/lib/home/deal-card";
 import type { MoodPick } from "@/lib/mvp/travel-moods";
 import type { DestinationMedia } from "@/lib/mvp/visuals";
 
@@ -28,76 +29,81 @@ export function MoodDestinationCard({
   flightsHref?: string;
 }) {
   return (
-    <article className="group flex flex-col overflow-hidden rounded-[1.5rem] border border-emerald-900/10 bg-white shadow-[0_16px_40px_rgba(16,84,48,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(16,84,48,0.14)]">
-      <div className="relative h-52 overflow-hidden">
+    <article className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+      <div className="relative aspect-[16/10] overflow-hidden">
         <Image
           src={media.heroImage}
-          alt={`${pick.name}, ${pick.countryPl}`}
+          alt=""
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover transition duration-500 group-hover:scale-105"
+          className="object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,26,15,0.06)_0%,rgba(8,26,15,0.64)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
-            {pick.region} · {pick.countryPl}
-          </p>
-          <h3 className="mt-1 font-display text-2xl leading-tight">{pick.name}</h3>
+        {/* Scrim przypięty do tekstu, 0,72 = zmierzona podłoga dla 4,5:1 bieli
+            na najjaśniejszym zdjęciu z puli. Wcześniej gradient startował od
+            0,06 i nazwa miasta ginęła na jasnym kadrze. */}
+        <div className="absolute inset-x-0 bottom-0">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
+          />
+          <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.93)_45%,rgba(5,18,11,0.96)_100%)] p-4 text-white">
+            <p className="text-xs text-white/85">
+              {pick.region} · {pick.countryPl}
+            </p>
+            <h3 className="mt-0.5 font-display text-xl leading-tight text-white">{pick.name}</h3>
+          </div>
         </div>
       </div>
 
       <div className="flex flex-1 flex-col p-5">
-        <p className="text-sm leading-7 text-emerald-900/80">{pick.overview}</p>
+        <p className="text-sm leading-6 text-ink-muted">{pick.overview}</p>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-1.5">
           {pick.tags.map((t) => (
-            <span
-              key={t}
-              className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800"
-            >
+            <span key={t} className="rounded-sm bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-ink">
               {t}
             </span>
           ))}
         </div>
 
+        {/* Ceny przez `formatPricePln`: `Intl` dla pl-PL domyślnie NIE grupuje
+            kwot czterocyfrowych, więc cena lotu wychodziła jako „1500 zł". */}
         {typeof fromPricePerNight === "number" && (
-          <p className="mt-3 text-sm font-bold text-emerald-700">
-            Hotel od {fromPricePerNight} zł
-            <span className="ml-1 text-[11px] font-medium text-emerald-900/70">/ noc</span>
+          <p className="mt-4 text-base font-bold text-accent">
+            Hotel od {formatPricePln(fromPricePerNight)}
+            <span className="ml-1 text-sm font-medium text-ink-muted">/ noc</span>
           </p>
         )}
         {typeof flightFromPln === "number" && (
-          <p className="mt-0.5 text-xs font-medium text-emerald-900/75">
-            Lot z Warszawy od {flightFromPln} zł
-          </p>
+          <p className="mt-1 text-sm text-ink-muted">Lot z Warszawy od {formatPricePln(flightFromPln)}</p>
         )}
 
-        <p className="mt-3 text-xs text-emerald-900/60">
-          <span className="font-semibold text-emerald-800">Najlepszy czas:</span> {pick.season}
+        <p className="mt-4 text-sm text-ink-muted">
+          <span className="font-semibold text-ink">Najlepszy czas:</span> {pick.season}
         </p>
 
         <div className="mt-auto flex flex-wrap gap-2 pt-5">
           <Link
             href={hotelsHref}
-            className="inline-flex min-h-10 items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold transition hover:bg-emerald-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            {/* span keeps the label white despite the global a{color:inherit} */}
-            <span className="text-white">Zobacz hotele →</span>
+            {/* Etykieta w <span> — globalne `a{color:inherit}` bije `text-*` na <a>. */}
+            <span className="text-sm font-bold text-white">Zobacz hotele</span>
           </Link>
           {flightsHref && (
             <Link
               href={flightsHref}
-              className="inline-flex min-h-10 items-center justify-center rounded-full border border-emerald-900/10 bg-white px-4 py-2 text-sm font-semibold transition hover:bg-emerald-50"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-5 transition duration-150 ease-out hover:bg-surface-sunken active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              <span className="text-emerald-950">Sprawdź loty</span>
+              <span className="text-sm font-semibold text-ink">Sprawdź loty</span>
             </Link>
           )}
           {guideHref && (
             <Link
               href={guideHref}
-              className="inline-flex min-h-10 items-center justify-center rounded-full border border-emerald-900/10 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-5 transition duration-150 ease-out hover:bg-surface-sunken active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              Przewodnik
+              <span className="text-sm font-semibold text-ink">Przewodnik</span>
             </Link>
           )}
         </div>

@@ -134,26 +134,23 @@ export default async function SeasonRankingPage({ params }: PageProps) {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_20px_60px_rgba(16,84,48,0.06)]">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <Breadcrumbs
           items={[
             { label: "Start", href: "/" },
             { label: `Najlepsze kierunki na ${seasonInflected[sezon]}` },
           ]}
         />
-        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-          Ranking sezonowy
-        </p>
-        <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
+        <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
           {seasonHeading[sezon]}
         </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">{seasonIntro[sezon]}</p>
+        <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">{seasonIntro[sezon]}</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             href="/hotele/szukaj"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 py-3 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Otwórz wyszukiwarkę hoteli →
+            <span className="text-sm font-bold text-white">Otwórz wyszukiwarkę hoteli</span>
           </Link>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
@@ -163,9 +160,9 @@ export default async function SeasonRankingPage({ params }: PageProps) {
               <Link
                 key={s}
                 href={`/najlepsze-kierunki/${s}`}
-                className="rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1.5 font-semibold uppercase tracking-[0.12em] text-emerald-900 transition hover:bg-emerald-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1.5 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                Na {seasonInflected[s]}
+                <span className="font-semibold uppercase tracking-[0.12em] text-ink">Na {seasonInflected[s]}</span>
               </Link>
             ))}
         </div>
@@ -175,21 +172,21 @@ export default async function SeasonRankingPage({ params }: PageProps) {
         {ranked.map((entry, index) => (
           <article
             key={entry.destination.slug}
-            className="rounded-[1.6rem] border border-emerald-900/10 bg-white/95 p-5 shadow-[0_12px_32px_rgba(16,84,48,0.05)]"
+            className="rounded-2xl border border-line bg-surface-raised p-5 shadow-sm"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-baseline gap-3">
-                <span className="text-2xl font-bold text-emerald-700">#{index + 1}</span>
-                <h2 className="font-display text-2xl text-emerald-950">
-                  <Link href={`/kierunki/${entry.destination.slug}`} className="hover:text-emerald-700">
-                    {entry.destination.city}
+                <span className="text-2xl font-bold text-brand">#{index + 1}</span>
+                <h2 className="font-display text-2xl text-ink">
+                  <Link href={`/kierunki/${entry.destination.slug}`}>
+                    <span className="transition hover:text-brand">{entry.destination.city}</span>
                   </Link>
-                  <span className="ml-2 text-sm font-normal text-emerald-900/70">{entry.destination.country}</span>
+                  <span className="ml-2 text-sm font-normal text-ink-muted">{entry.destination.country}</span>
                 </h2>
               </div>
-              <div className="flex gap-3 text-sm text-emerald-900/80">
-                <span className="rounded-full bg-emerald-50 px-3 py-1.5">{entry.temp}°C średnio</span>
-                <span className="rounded-full bg-emerald-50 px-3 py-1.5">
+              <div className="flex gap-3 text-sm text-ink-muted">
+                <span className="rounded-full bg-surface-sunken px-3 py-1.5">{entry.temp}°C średnio</span>
+                <span className="rounded-full bg-surface-sunken px-3 py-1.5">
                   Lot ~{entry.destination.typicalFlightHoursFromPL}h
                 </span>
               </div>
@@ -201,9 +198,11 @@ export default async function SeasonRankingPage({ params }: PageProps) {
                   <Link
                     key={monthIdx}
                     href={`/kierunki/${entry.destination.slug}/${monthSlug}`}
-                    className="rounded-full border border-emerald-900/10 bg-emerald-50/72 px-3 py-1 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                   >
-                    {entry.destination.city} w {polishMonthInflected[monthSlug]} ({entry.destination.avgTempByMonth[monthIdx]}°C)
+                    <span className="text-xs font-semibold text-ink">
+                      {entry.destination.city} w {polishMonthInflected[monthSlug]} ({entry.destination.avgTempByMonth[monthIdx]}°C)
+                    </span>
                   </Link>
                 );
               })}
@@ -212,9 +211,9 @@ export default async function SeasonRankingPage({ params }: PageProps) {
         ))}
       </section>
 
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-3xl text-emerald-950">Jak czytać ten ranking</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-emerald-900/72">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="font-display text-3xl text-ink">Jak czytać ten ranking</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
           Pozycja w rankingu liczy się z trzech rzeczy: średnia temperatura w sezonie (komfort 22-28°C dostaje najwięcej punktów),
           dostępność lotów z Polski oraz indeks kosztów. Ranking ma orientować szybko, a finalną decyzję warto sprawdzić
           w wyszukiwarce hoteli i lotów — uwzględnia ona długość wyjazdu, budżet i preferencje stylu.
@@ -222,15 +221,15 @@ export default async function SeasonRankingPage({ params }: PageProps) {
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             href="/hotele/szukaj"
-            className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 py-3 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Otwórz wyszukiwarkę hoteli →
+            <span className="text-sm font-bold text-white">Otwórz wyszukiwarkę hoteli</span>
           </Link>
           <Link
             href="/kierunki"
-            className="rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-5 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Pełny katalog kierunków
+            <span className="text-sm font-semibold text-ink">Pełny katalog kierunków</span>
           </Link>
         </div>
       </section>

@@ -73,7 +73,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
     aura: "from-sky-400/30 via-emerald-300/20 to-amber-200/30",
     eyebrow: "Morze i słońce",
     h1: "Kierunki na plażę — gdzie polecieć po morze i słońce",
-    metaTitle: "Wyjazd na plażę — najlepsze kierunki nad morze z Polski | HelpTravel",
+    metaTitle: "Wyjazd na plażę — najlepsze kierunki nad morze z Polski",
     metaDescription:
       "Kierunki plażowe z bezpośrednim lotem z Polski: ciepłe morze, dobre plaże i hotele blisko wody. Sprawdź ceny hoteli i lotów dla każdego kierunku.",
     lead:
@@ -163,7 +163,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
     aura: "from-indigo-400/30 via-fuchsia-300/20 to-emerald-300/25",
     eyebrow: "Miasto na krótko",
     h1: "City break — najlepsze miasta na krótki wyjazd z Polski",
-    metaTitle: "City break — najlepsze miasta na weekend i 3–5 dni | HelpTravel",
+    metaTitle: "City break — najlepsze miasta na weekend i 3–5 dni",
     metaDescription:
       "Najlepsze city breaki z Polski: czytelne miasta na 2–5 dni z dobrym dojazdem. Porównaj kierunki, sprawdź ceny hoteli i lotów w PLN.",
     lead:
@@ -253,7 +253,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
     aura: "from-emerald-500/30 via-teal-300/20 to-sky-300/25",
     eyebrow: "Góry, szlaki i krajobraz",
     h1: "Góry i natura — kierunki na aktywny wyjazd z Polski",
-    metaTitle: "Wyjazd w góry — kierunki na narty, szlaki i krajobraz | HelpTravel",
+    metaTitle: "Wyjazd w góry — kierunki na narty, szlaki i krajobraz",
     metaDescription:
       "Kierunki w góry i naturę z Polski: Alpy, fiordy, wulkany i szlaki. Narty zimą, trekking latem. Sprawdź ceny hoteli i lotów w PLN dla każdego kierunku.",
     lead:
@@ -343,7 +343,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
     aura: "from-amber-400/30 via-rose-300/20 to-indigo-300/25",
     eyebrow: "Zabytki i historia",
     h1: "Kultura i zabytki — kierunki dla miłośników historii",
-    metaTitle: "Wyjazd kulturalny — miasta pełne zabytków i historii | HelpTravel",
+    metaTitle: "Wyjazd kulturalny — miasta pełne zabytków i historii",
     metaDescription:
       "Kierunki dla osób, które chcą zabytków, muzeów i historii: miasta z najmocniejszym profilem kulturalnym. Sprawdź ceny hoteli i lotów w PLN.",
     lead:
@@ -433,7 +433,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
     aura: "from-emerald-400/30 via-lime-300/20 to-amber-200/25",
     eyebrow: "Dobra cena",
     h1: "Tanie kierunki z Polski — wyjazd w dobrym budżecie",
-    metaTitle: "Tanie kierunki z Polski — najlepszy stosunek ceny do jakości | HelpTravel",
+    metaTitle: "Tanie kierunki z Polski — najlepszy stosunek ceny do jakości",
     metaDescription:
       "Kierunki z najlepszym stosunkiem ceny do jakości: niższe koszty noclegu i życia na miejscu bez schodzenia do najniższego standardu. Ceny hoteli i lotów w PLN.",
     lead:
@@ -523,7 +523,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
     aura: "from-amber-400/35 via-orange-300/20 to-sky-300/25",
     eyebrow: "Ucieczka od zimy",
     h1: "Słońce zimą — gdzie polecieć z Polski po ciepło",
-    metaTitle: "Słońce zimą — ciepłe kierunki na zimową ucieczkę z Polski | HelpTravel",
+    metaTitle: "Słońce zimą — ciepłe kierunki na zimową ucieczkę z Polski",
     metaDescription:
       "Gdzie polecieć zimą po słońce: najcieplejsze kierunki w grudniu, styczniu i lutym w zasięgu lotu z Polski. Sprawdź ceny hoteli i lotów w PLN.",
     lead:

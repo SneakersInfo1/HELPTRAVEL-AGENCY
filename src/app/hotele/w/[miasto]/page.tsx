@@ -356,7 +356,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
       />
 
       {/* HERO */}
-      <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
+      <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         {/* min-h + flex/justify-end (not a fixed height with absolute
             content): on mobile the H1 + intro + CTAs are taller than 24rem,
             so a fixed height with overflow-hidden CLIPPED the H1. Now the
@@ -384,9 +384,6 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
                 { label: `Hotele ${inLoc}` },
               ]}
             />
-            <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
-              Najlepsze hotele {inLoc}
-            </p>
             <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">
               Hotele {inLoc} {year}
             </h1>
@@ -396,18 +393,18 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href={searchHref}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-400 px-6 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
+                className="inline-flex min-h-11 h-12 items-center justify-center rounded-full bg-white px-6 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                Sprawdź dostępne hotele →
+                <span className="text-sm font-bold text-ink">Sprawdź dostępne hotele</span>
               </Link>
               <Link
                 href={profile ? `/kierunki/${profile.slug}` : "/kierunki"}
-                className="inline-flex h-12 items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20"
+                className="inline-flex min-h-11 h-12 items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 transition duration-150 ease-out hover:bg-white/20 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                Przewodnik po {city.cityLocative}
+                <span className="text-sm font-semibold text-white">Przewodnik po {city.cityLocative}</span>
               </Link>
             </div>
-            <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90">
+            <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-white/90">
               <span className="rounded-full bg-white/12 px-3 py-1">od {budget.perNight} zł/noc</span>
               {profile && (
                 <span className="rounded-full bg-white/12 px-3 py-1">
@@ -421,9 +418,9 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-900/10 bg-white px-5 py-3 shadow-[0_10px_30px_rgba(16,84,48,0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-raised px-5 py-3 shadow-sm">
         <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} />
-        <span className="text-xs text-emerald-900/55">Ceny i dostępność hoteli na żywo z naszej bazy</span>
+        <span className="text-xs text-ink-muted">Ceny i dostępność hoteli na żywo z naszej bazy</span>
       </div>
 
       {/* WHY US */}
@@ -432,55 +429,47 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           {
             title: "Ceny w PLN bez ukrytych opłat",
             body: "Pokazujemy finalną cenę, jaką zapłacisz — bez przeliczników karty i niespodzianek przy kasie.",
-            icon: "💰",
           },
           {
             title: "Bezpłatna anulacja",
             body: "Większość ofert ma okres bezpłatnej anulacji (zwykle 24-48 h przed przyjazdem).",
-            icon: "✅",
           },
           {
             title: "Polskie wsparcie",
             body: "Pomoc po polsku przed i po rezerwacji — emailem i telefonicznie w dni robocze.",
-            icon: "🇵🇱",
           },
           {
             title: "Sprawdzone hotele",
             body: "Oferty od globalnego dostawcy LiteAPI z prawdziwymi opiniami gości i aktualnymi cenami.",
-            icon: "⭐",
           },
         ].map((item) => (
           <article
             key={item.title}
-            className="rounded-2xl border border-emerald-900/10 bg-white p-5 shadow-[0_8px_24px_rgba(16,84,48,0.04)]"
+            className="rounded-2xl border border-line bg-surface-raised p-5 shadow-sm"
           >
-            <div className="text-2xl">{item.icon}</div>
-            <h3 className="mt-2 text-sm font-bold text-emerald-950">{item.title}</h3>
-            <p className="mt-2 text-xs leading-6 text-emerald-900/72">{item.body}</p>
+            <h3 className="mt-2 text-sm font-bold text-ink">{item.title}</h3>
+            <p className="mt-2 text-xs leading-6 text-ink-muted">{item.body}</p>
           </article>
         ))}
       </section>
 
       {/* FEATURED HOTELS */}
       {featuredHotels.length > 0 && (
-        <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                Najlepsze hotele {inLoc}
-              </p>
-              <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">
+              <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">
                 Polecane hotele {inLoc}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-emerald-900/72">
+              <p className="mt-2 text-sm leading-6 text-ink-muted">
                 Wybrane z {profile?.city ? "naszej bazy" : "katalogu"} — sprawdź szczegóły i ceny na żywo.
               </p>
             </div>
             <Link
               href={searchHref}
-              className="rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 py-3 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              Wszystkie hotele →
+              <span className="text-sm font-bold text-white">Wszystkie hotele</span>
             </Link>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -495,7 +484,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
                   adults: "2",
                   rooms: "1",
                 }).toString()}`}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white transition hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(16,84,48,0.12)]"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface-raised transition hover:border-brand hover:shadow-md"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-100">
                   {hotel.main_photo || hotel.thumbnail ? (
@@ -514,16 +503,16 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-4">
-                  <h3 className="line-clamp-2 text-base font-semibold text-emerald-950">{hotel.name}</h3>
-                  <div className="flex items-center gap-2 text-xs text-emerald-900/72">
+                  <h3 className="line-clamp-2 text-base font-semibold text-ink">{hotel.name}</h3>
+                  <div className="flex items-center gap-2 text-xs text-ink-muted">
                     {hotel.stars && hotel.stars > 0 && (
                       <span className="text-amber-500">{"★".repeat(Math.round(hotel.stars))}</span>
                     )}
                     <span>{hotel.city}</span>
                   </div>
                   {hotel.rating && hotel.rating > 0 && (
-                    <div className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">
-                      <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                    <div className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-md bg-surface-sunken px-2 py-1 text-xs font-semibold text-ink">
+                      <span className="rounded bg-brand px-1.5 py-0.5 text-xs font-bold text-white">
                         {hotel.rating.toFixed(1)}
                       </span>
                       <span>Ocena gości</span>
@@ -539,14 +528,11 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
       {/* BEST TIME + LOCAL TIPS */}
       {profile && (
         <section className="grid gap-5 lg:grid-cols-2">
-          <article className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-              Kiedy jechać
-            </p>
-            <h2 className="mt-2 font-display text-3xl text-emerald-950">
+          <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+            <h2 className="mt-2 font-display text-3xl text-ink">
               Najlepszy termin na wyjazd {dirPrep} {dirForm}
             </h2>
-            <p className="mt-3 text-sm leading-7 text-emerald-900/78">
+            <p className="mt-3 text-sm leading-7 text-ink-muted">
               Najbardziej komfortowe miesiące (temperatury 18-30°C):
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -554,36 +540,33 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
                 bestMonths.slice(0, 8).map((m) => (
                   <span
                     key={m}
-                    className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900"
+                    className="rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-semibold text-ink"
                   >
                     {m}
                   </span>
                 ))
               ) : (
-                <span className="text-sm text-emerald-900/72">Cały rok</span>
+                <span className="text-sm text-ink-muted">Cały rok</span>
               )}
             </div>
-            <p className="mt-4 text-sm leading-7 text-emerald-900/78">
+            <p className="mt-4 text-sm leading-7 text-ink-muted">
               Lot z Polski zajmuje około{" "}
-              <strong className="text-emerald-950">{profile.typicalFlightHoursFromPL.toFixed(1)} h</strong>.
+              <strong className="text-ink">{profile.typicalFlightHoursFromPL.toFixed(1)} h</strong>.
               Idealna długość wyjazdu zależy od dystansu — sprawdź planowanie w przewodniku.
             </p>
             <Link
               href={`/kierunki/${profile.slug}`}
-              className="mt-4 inline-flex h-10 items-center justify-center rounded-full border border-emerald-700 bg-white px-5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full border border-brand bg-white px-5 transition duration-150 ease-out hover:bg-surface-sunken active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              Pełny przewodnik po {city.cityLocative}
+              <span className="text-sm font-semibold text-brand">Pełny przewodnik po {city.cityLocative}</span>
             </Link>
           </article>
 
-          <article className="rounded-[2rem] border border-emerald-900/10 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-              Sprawdź na wybrany termin
-            </p>
-            <h2 className="mt-2 font-display text-3xl text-emerald-950">
+          <article className="rounded-[2rem] border border-line bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm">
+            <h2 className="mt-2 font-display text-3xl text-ink">
               {city.cityNominative} miesiąc po miesiącu
             </h2>
-            <p className="mt-3 text-sm leading-7 text-emerald-900/78">
+            <p className="mt-3 text-sm leading-7 text-ink-muted">
               Pogoda, budżet i porady na konkretny miesiąc — wybierz termin wyjazdu.
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -591,9 +574,9 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
                 <Link
                   key={m}
                   href={`/kierunki/${profile.slug}/${m}`}
-                  className="rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-center text-xs font-semibold text-emerald-900 transition hover:border-emerald-300 hover:text-emerald-700"
+                  className="group rounded-xl border border-line bg-white px-3 py-2 text-center text-xs font-semibold transition hover:border-brand"
                 >
-                  {polishMonthLabels[m]}
+                  <span className="text-ink transition group-hover:text-brand">{polishMonthLabels[m]}</span>
                 </Link>
               ))}
             </div>
@@ -603,14 +586,11 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
 
       {/* GDZIE SIĘ ZATRZYMAĆ — unique per-city editorial (anti-doorway) +
           high-intent "hotele {miasto} centrum / gdzie się zatrzymać" copy */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-          Gdzie się zatrzymać
-        </p>
-        <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">
           Najlepsze okolice {inLoc}
         </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-7 text-emerald-900/72">
+        <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-muted">
           Każda dzielnica ma swój charakter i cenę. Oto gdzie najczęściej szukają noclegu
           podróżni — od centrum po spokojniejsze okolice.
         </p>
@@ -618,60 +598,52 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           {city.neighborhoods.map((area) => (
             <article
               key={area.name}
-              className="flex gap-3 rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-4"
+              className="flex gap-3 rounded-2xl border border-line bg-surface-sunken p-4"
             >
-              <span aria-hidden className="mt-0.5 text-lg leading-none text-emerald-600">
-                📍
-              </span>
               <div>
-                <h3 className="text-sm font-bold text-emerald-950">{area.name}</h3>
-                <p className="mt-1 text-xs leading-6 text-emerald-900/72">{area.blurb}</p>
+                <h3 className="text-sm font-bold text-ink">{area.name}</h3>
+                <p className="mt-1 text-xs leading-6 text-ink-muted">{area.blurb}</p>
               </div>
             </article>
           ))}
         </div>
         <Link
           href={searchHref}
-          className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 text-sm font-bold text-white transition hover:bg-emerald-800"
+          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
         >
-          Zobacz hotele {inLoc} →
+          <span className="text-sm font-bold text-white">Zobacz hotele {inLoc}</span>
         </Link>
       </section>
 
       {/* FAQ */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-        <h2 className="font-display text-3xl text-emerald-950">Najczęściej zadawane pytania</h2>
+      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+        <h2 className="font-display text-3xl text-ink">Najczęściej zadawane pytania</h2>
         <div className="mt-5 space-y-4">
           {(structuredData["@graph"].find((g) => g["@type"] === "FAQPage") as { mainEntity: Array<{ name: string; acceptedAnswer: { text: string } }> } | undefined)?.mainEntity.map((q) => (
             <details
               key={q.name}
-              className="rounded-2xl bg-emerald-50/60 px-5 py-4 transition hover:bg-emerald-50"
+              className="rounded-2xl bg-surface-sunken px-5 py-4 transition hover:bg-surface-sunken"
             >
-              <summary className="cursor-pointer text-base font-bold text-emerald-950">
+              <summary className="cursor-pointer text-base font-bold text-ink">
                 {q.name}
               </summary>
-              <p className="mt-3 text-sm leading-7 text-emerald-900/82">{q.acceptedAnswer.text}</p>
+              <p className="mt-3 text-sm leading-7 text-ink-muted">{q.acceptedAnswer.text}</p>
             </details>
           ))}
         </div>
       </section>
 
       {/* CROSS-LINKING */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-gradient-to-br from-emerald-50/60 to-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+      <section className="rounded-[2rem] border border-line bg-gradient-to-br from-emerald-50/60 to-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-              Sprawdź też
-            </p>
-            <h2 className="mt-2 font-display text-3xl text-emerald-950">
-              Hotele w innych popularnych miastach
-            </h2>
-          </div>
+          <h2 className="mt-2 font-display text-3xl text-ink">
+            Hotele w innych popularnych miastach
+          </h2>
           <Link
             href="/kierunki"
-            className="rounded-full border border-emerald-900/10 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Wszystkie kierunki →
+            <span className="text-sm font-semibold text-ink">Wszystkie kierunki</span>
           </Link>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -679,31 +651,27 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
             <Link
               key={c.slug}
               href={`/hotele/w/${c.slug}`}
-              className="group flex items-center justify-between rounded-2xl border border-emerald-900/10 bg-white px-4 py-3 transition hover:border-emerald-300 hover:shadow-[0_8px_20px_rgba(16,84,48,0.08)]"
+              className="group inline-flex min-h-11 items-center justify-center rounded-2xl border border-line bg-surface-raised px-4 py-3 transition duration-150 ease-out hover:border-brand hover:shadow-md active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               <div>
-                <p className="text-sm font-bold text-emerald-950 group-hover:text-emerald-700">
+                <p className="text-sm font-bold text-ink group-hover:text-brand">
                   Hotele {c.preposition} {c.cityLocative}
                 </p>
-                <p className="text-xs text-emerald-900/60">{c.countryNominative}</p>
+                <p className="text-xs text-ink-muted">{c.countryNominative}</p>
               </div>
-              <span className="text-emerald-700">→</span>
             </Link>
           ))}
         </div>
         {monthLinks.length > 0 && (
-          <div className="mt-5 border-t border-emerald-900/10 pt-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-              Przewodniki sezonowe dla {city.cityGenitive}
-            </p>
+          <div className="mt-5 border-t border-line pt-5">
             <div className="mt-3 flex flex-wrap gap-2">
               {monthLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:bg-emerald-800"
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-4 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
-                  {link.label}
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-white">{link.label}</span>
                 </Link>
               ))}
             </div>
@@ -712,12 +680,9 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
       </section>
 
       {/* FINAL CTA */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-emerald-950 p-8 text-white shadow-[0_20px_54px_rgba(8,40,24,0.18)]">
+      <section className="rounded-[2rem] border border-line bg-brand-strong p-8 text-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-5">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
-              Gotowy do rezerwacji?
-            </p>
             <h2 className="mt-2 font-display text-3xl">
               Sprawdź dostępne hotele {inLoc} na wybrany termin
             </h2>
@@ -727,9 +692,9 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           </div>
           <Link
             href={searchHref}
-            className="rounded-full bg-emerald-400 px-7 py-3 text-base font-bold text-emerald-950 transition hover:bg-emerald-300"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-7 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Sprawdź hotele →
+            <span className="text-base font-bold text-ink">Sprawdź hotele</span>
           </Link>
         </div>
       </section>
