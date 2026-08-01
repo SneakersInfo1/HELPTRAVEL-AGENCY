@@ -355,11 +355,18 @@ export function SiteShell({ children }: { children: ReactNode }) {
             rzadkie, wysokie kolumny zostawiały pustkę i wydłużały stronę. */}
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.85fr_0.85fr_0.85fr_0.95fr]">
           <div>
+            {/* TRZECIE użycie tego samego pliku 1018 KB — stopka głównego
+                layoutu, czyli KAŻDA strona serwisu. Przeoczone przy pierwszym
+                przebiegu i wychwycone dopiero pomiarem produkcji po wdrożeniu:
+                w HTML strony głównej dalej stał `helptravel-logo.png`.
+                `width/height` 220×136 deklarowało też proporcje, których plik
+                nie ma (źródło jest kwadratowe) — czyli rezerwowane miejsce nie
+                zgadzało się z tym, co się wyrenderowało. */}
             <Image
-              src="/branding/helptravel-logo.png"
+              src="/branding/helptravel-logo-384.png"
               alt="HelpTravel"
-              width={220}
-              height={136}
+              width={384}
+              height={384}
               className="h-auto w-[140px] sm:w-[200px]"
             />
             <p className="mt-3 text-base font-bold leading-snug text-emerald-950 sm:text-lg">{text.footerLead}</p>

@@ -38,12 +38,20 @@ export function getHomeMetadata(locale: SiteLocale): Metadata {
   const isEnglish = locale === "en";
 
   return {
+    // TYLKO METADANE, układ strony głównej nietknięty. To jest tekst, który
+    // Google pokazuje jako główny wynik dla marki, a obiecywał „plan wyjazdu
+    // w 3 minuty" i „0 zł". Planera nie ma od zwrotu na rezerwacje własne,
+    // „3 minuty" i „ponad 80 lotnisk" nie mają źródła w danych, a „płacisz
+    // tylko za rezerwacje u partnerów" jest nieprawdą: rezerwacja i płatność
+    // odbywają się na helptravel.pl (BOOKING_FLOW_MODE=live), rozlicza je
+    // Nuitee Travel. Root layout został poprawiony wcześniej, ale ta funkcja
+    // NADPISUJE go dla „/" — więc na produkcji dalej szła stara wersja.
     title: isEnglish
-      ? "HelpTravel - Flight + hotel and full trip plan in 3 minutes | Free"
-      : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty | 0 zł",
+      ? "HelpTravel - hotels and flights in one place, prices in PLN"
+      : "HelpTravel — hotele i loty w jednym miejscu, ceny w złotówkach",
     description: isEnglish
-      ? "Plan a full trip in 3 minutes: flight, hotel and a real day-by-day plan. 22 airports across Poland and Europe. No signup. Free to use - you only pay partners when you book."
-      : "Zaplanuj wyjazd w 3 minuty: lot, hotel i gotowy plan dnia. Ponad 80 lotnisk w Polsce, Europie i na świecie. Bez rejestracji. 100% darmowe - płacisz tylko za rezerwacje u partnerów.",
+      ? "Book hotels and flights in one place. Prices in PLN including taxes and fees, e-mail confirmation, no account needed."
+      : "Rezerwuj hotel i lot w jednym miejscu. Ceny w złotówkach, z podatkami i opłatami, potwierdzenie e-mailem od razu. Bez zakładania konta.",
     alternates: {
       canonical: locale === "en" ? "/en" : "/",
       // hreflang.languages omitted — /en/* paths 308-redirect to Polish root,
@@ -52,11 +60,11 @@ export function getHomeMetadata(locale: SiteLocale): Metadata {
     },
     openGraph: {
       title: isEnglish
-        ? "HelpTravel - Flight + hotel and full trip plan in 3 minutes"
-        : "HelpTravel - Loty + hotel i plan wyjazdu w 3 minuty",
+        ? "HelpTravel - hotels and flights in one place"
+        : "HelpTravel — hotele i loty w jednym miejscu",
       description: isEnglish
-        ? "Plan a full trip in 3 minutes: flight, hotel and a real day-by-day plan. 22 airports PL+EU. No signup. 100% free."
-        : "Zaplanuj cały wyjazd w 3 minuty: lot, hotel i plan dnia. Ponad 80 lotnisk PL, EU i świat. Bez rejestracji. 100% darmowe.",
+        ? "Book hotels and flights in one place. Prices in PLN with taxes and fees, e-mail confirmation, no account needed."
+        : "Rezerwuj hotel i lot bez skakania po serwisach. Ceny w PLN z podatkami i opłatami, potwierdzenie e-mailem, bez zakładania konta.",
       url: locale === "en" ? `${siteUrl}/en` : siteUrl,
       locale: locale === "en" ? "en_US" : "pl_PL",
       alternateLocale: locale === "en" ? ["pl_PL"] : ["en_US"],
