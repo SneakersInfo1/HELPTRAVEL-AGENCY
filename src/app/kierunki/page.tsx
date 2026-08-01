@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { Plane, Plus, Sun } from "lucide-react";
 
 import { MediaHero } from "@/components/site/media-hero";
 import { FinalCtaBanner } from "@/components/site/final-cta-banner";
@@ -103,7 +104,20 @@ const MONTHS_LOCATIVE_PL = [
   "lipcu", "sierpniu", "wrześniu", "październiku", "listopadzie", "grudniu",
 ];
 
-const flightLabel = (h?: number) => (typeof h === "number" ? `~${h.toFixed(1)} h z PL` : null);
+// Przecinek, nie kropka — to liczba pokazywana polskiemu użytkownikowi.
+const flightLabel = (h?: number) =>
+  typeof h === "number" ? `~${h.toFixed(1).replace(".", ",")} h z PL` : null;
+
+// Odmiana „kierunek" — wcześniej przy każdym regionie stało sztywne
+// „N kierunków", więc region z trzema pozycjami czytał się jak błąd językowy.
+// Pułapka: 2–4 to „kierunki", ale 12–14 już „kierunków".
+function pluralDestinations(n: number): string {
+  const lastTwo = n % 100;
+  const last = n % 10;
+  if (n === 1) return "1 kierunek";
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return `${n} kierunki`;
+  return `${n} kierunków`;
+}
 
 // Compact card for a COMMERCIAL money-page (/hotele/w/[slug]) — image + real
 // data (czas lotu, pogoda teraz). This is the SEO/conversion spine: it passes
@@ -128,38 +142,45 @@ function CommercialCityCard({
   return (
     <Link
       href={`/hotele/w/${slug}`}
-      className="group relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-[1.5rem] border border-emerald-900/10 shadow-[0_12px_34px_rgba(16,84,48,0.10)] transition hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(16,84,48,0.18)]"
+      className="group relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-2xl border border-line shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
     >
       {image ? (
         <Image
           src={image}
-          alt={`Hotele — ${city}, ${country}`}
+          alt=""
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover transition duration-500 group-hover:scale-[1.05]"
+          className="object-cover"
         />
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-emerald-950" />
+        <div className="absolute inset-0 bg-brand-strong" />
       )}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0)_30%,rgba(5,18,11,0.6)_64%,rgba(5,18,11,0.94)_100%)]" />
-      <div className="relative z-10 p-4 text-white">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">{country}</p>
-        <h3 className="mt-0.5 font-display text-2xl leading-tight">{city}</h3>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
-          {flightLabel(flightHours) && (
-            <span className="rounded-full bg-white/15 px-2 py-0.5 text-white backdrop-blur-sm">
-              ✈ {flightLabel(flightHours)}
-            </span>
-          )}
-          {typeof tempNow === "number" && (
-            <span className="rounded-full bg-white/15 px-2 py-0.5 text-white backdrop-blur-sm">
-              ☀ teraz ~{Math.round(tempNow)}°C
-            </span>
-          )}
+      <div className="relative z-10 mt-auto w-full text-white">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
+        />
+        <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.93)_45%,rgba(5,18,11,0.96)_100%)] p-4">
+          <p className="text-xs text-white/85">{country}</p>
+          <h3 className="mt-0.5 font-display text-xl leading-tight text-white">{city}</h3>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {flightLabel(flightHours) && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-white/20 px-2 py-0.5 text-xs font-semibold text-white">
+                <Plane aria-hidden className="size-3" />
+                {flightLabel(flightHours)}
+              </span>
+            )}
+            {typeof tempNow === "number" && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-white/20 px-2 py-0.5 text-xs font-semibold text-white">
+                <Sun aria-hidden className="size-3" />
+                teraz ~{Math.round(tempNow)}°C
+              </span>
+            )}
+          </div>
+          <span className="mt-2.5 block text-sm font-bold text-white group-hover:underline group-hover:underline-offset-4">
+            Zobacz hotele
+          </span>
         </div>
-        <span className="mt-2.5 inline-flex items-center gap-1 text-sm font-semibold text-amber-200">
-          Zobacz hotele <span aria-hidden className="transition group-hover:translate-x-0.5">→</span>
-        </span>
       </div>
     </Link>
   );
@@ -325,46 +346,39 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
       <MediaHero
         imageUrl={heroImage}
         imageAlt="Barcelona — panorama miasta i wybrzeża"
-        eyebrow={text.eyebrow}
-        title={
-          <>
-            Twój następny wyjazd zaczyna się od{" "}
-            <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 bg-clip-text text-transparent">
-              kierunku
-            </span>
-            .
-          </>
-        }
-        intro="Ponad 235 miast i wysp na city break, wakacje nad morzem i ciepłe ucieczki z Polski. Przy każdym podajemy realne ceny hoteli w PLN, czas lotu i pogodę — i przechodzisz prosto do rezerwacji."
+        title="Zacznij od kierunku"
+        /* Liczba z `allDestinations.length`, nie wpisana z ręki. Wcześniej
+           w tym zdaniu stało „Ponad 235", podczas gdy tuż obok renderowała się
+           prawdziwa wartość — dwie różne liczby o tym samym w jednym hero.
+           Usunięte przy okazji: „loty z ponad 80 lotnisk" (twierdzenie bez
+           źródła w danych). */
+        intro={`${allDestinations.length} miast i wysp na city break, wakacje nad morzem i ciepłe ucieczki z Polski. Przy każdym kierunku znajdziesz czas lotu, pogodę i realne ceny hoteli w złotówkach.`}
       >
         <div className="flex flex-wrap gap-3">
           <Link
             href="/hotele/szukaj"
-            className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-400 px-6 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Otwórz wyszukiwarkę →
+            <span className="text-sm font-bold text-brand-strong">Otwórz wyszukiwarkę</span>
           </Link>
           <a
             href="#style"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/35 px-6 py-3 transition duration-150 ease-out hover:bg-white/10 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            Przeglądaj według stylu
+            <span className="text-sm font-semibold text-white">Przeglądaj według stylu</span>
           </a>
         </div>
-        <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90">
-          <span className="rounded-full bg-white/12 px-3 py-1">{allDestinations.length}+ kierunków</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">loty z ponad 80 lotnisk</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">ceny finalne w PLN</span>
-        </div>
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-6 flex flex-wrap gap-2">
           {categories.map((category) => (
             <LocalizedLink
               key={category.slug}
               href={`/${foldCategorySlug(category.slug)}`}
               locale={locale}
-              className="rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white/20"
+              className="inline-flex min-h-11 items-center rounded-full border border-white/30 px-4 transition duration-150 ease-out hover:bg-white/10 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              {getLocalizedCategoryTitle(category.slug, category.title, locale)}
+              <span className="text-sm font-semibold text-white">
+                {getLocalizedCategoryTitle(category.slug, category.title, locale)}
+              </span>
             </LocalizedLink>
           ))}
         </div>
@@ -373,13 +387,12 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
       {/* POPULARNE KIERUNKI TERAZ — tiles → hotel search */}
       {popularTiles.length > 0 && (
         <section>
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Gorące teraz</p>
-              <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Popularne kierunki w {MONTHS_LOCATIVE_PL[monthIdx]}</h2>
-            </div>
-            <Link href="/hotele/szukaj" className="rounded-full border border-emerald-900/10 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50">
-              Wszystkie hotele →
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <h2 className="font-display text-2xl text-ink sm:text-3xl">
+              Popularne kierunki w {MONTHS_LOCATIVE_PL[monthIdx]}
+            </h2>
+            <Link href="/hotele/szukaj" className="underline underline-offset-4">
+              <span className="text-sm font-semibold text-brand">Wszystkie hotele</span>
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -391,37 +404,24 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
       )}
 
       {/* HOTELE W POPULARNYCH MIASTACH — commercial money pages */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-emerald-900/20 bg-emerald-950 p-6 text-white shadow-[0_28px_80px_rgba(6,29,16,0.22)] sm:p-8">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(110,231,183,0.18),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(251,191,36,0.12),transparent_34%)]"
-        />
-        <div className="relative">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-200">Najczęściej wyszukiwane</p>
-              <h2 className="mt-2 max-w-2xl font-display text-3xl leading-tight sm:text-4xl">
-                Hotele w popularnych miastach i na wyspach
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-emerald-50/80">
-                Gotowe strony z realnymi cenami w PLN, najlepszymi dzielnicami i terminami — wejdź i rezerwuj.
-              </p>
-            </div>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {commercialCards.map((c) => (
-              <CommercialCityCard key={c.slug} {...c} />
-            ))}
-          </div>
+      <section className="rounded-[2rem] bg-brand-strong p-6 text-white [--focus-ring:#fff] sm:p-10">
+        <h2 className="max-w-2xl text-balance font-display text-2xl sm:text-3xl">
+          Hotele w popularnych miastach i na wyspach
+        </h2>
+        <p className="mt-3 max-w-[60ch] text-sm leading-7 text-white/85">
+          Osobna strona dla każdego z tych kierunków: ceny w złotówkach, opis dzielnic i przejście prosto do
+          wyszukiwarki z ustawionym miastem.
+        </p>
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
+          {commercialCards.map((c) => (
+            <CommercialCityCard key={c.slug} {...c} />
+          ))}
         </div>
       </section>
 
       {/* WEDŁUG STYLU — category image tiles */}
       <section id="style" className="scroll-mt-20">
-        <div className="mb-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Przeglądaj według stylu</p>
-          <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Jaki wyjazd masz na myśli?</h2>
-        </div>
+        <h2 className="mb-6 font-display text-2xl text-ink sm:text-3xl">Jaki wyjazd masz na myśli?</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => {
             const image = imageBySlug.get(CATEGORY_IMAGE_SLUG[category.slug] ?? "") ?? null;
@@ -430,29 +430,33 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
                 key={category.slug}
                 href={`/${foldCategorySlug(category.slug)}`}
                 locale={locale}
-                className="group relative flex aspect-[16/10] flex-col justify-end overflow-hidden rounded-[1.5rem] border border-emerald-900/10 shadow-[0_12px_34px_rgba(16,84,48,0.08)] transition hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(16,84,48,0.16)]"
+                className="group relative flex aspect-[16/10] flex-col justify-end overflow-hidden rounded-2xl border border-line shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
               >
                 {image ? (
                   <Image
                     src={image}
-                    alt={getLocalizedCategoryTitle(category.slug, category.title, locale)}
+                    alt=""
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition duration-500 group-hover:scale-[1.05]"
+                    className="object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-emerald-900" />
+                  <div className="absolute inset-0 bg-brand-strong" />
                 )}
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0)_35%,rgba(5,18,11,0.55)_70%,rgba(5,18,11,0.9)_100%)]" />
-                <div className="relative z-10 p-5 text-white">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">{category.eyebrow}</p>
-                  <h3 className="mt-1 font-display text-2xl leading-tight">
-                    {getLocalizedCategoryTitle(category.slug, category.title, locale)}
-                  </h3>
-                  <p className="mt-1.5 text-sm leading-6 text-white/82 line-clamp-2">{category.description}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-200">
-                    Zobacz kierunki <span aria-hidden className="transition group-hover:translate-x-0.5">→</span>
-                  </span>
+                <div className="relative z-10 mt-auto w-full text-white">
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
+                  />
+                  <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.93)_45%,rgba(5,18,11,0.96)_100%)] p-4 sm:p-5">
+                    <h3 className="font-display text-xl leading-tight text-white">
+                      {getLocalizedCategoryTitle(category.slug, category.title, locale)}
+                    </h3>
+                    <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/90">{category.description}</p>
+                    <span className="mt-3 block text-sm font-bold text-white group-hover:underline group-hover:underline-offset-4">
+                      Zobacz kierunki
+                    </span>
+                  </div>
                 </div>
               </LocalizedLink>
             );
@@ -462,36 +466,29 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
 
       {/* NAJLEPSZE NA SEZON — season image tiles */}
       <section>
-        <div className="mb-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Kiedy jedziesz?</p>
-          <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Najlepsze kierunki na sezon</h2>
-        </div>
+        <h2 className="mb-6 font-display text-2xl text-ink sm:text-3xl">Najlepsze kierunki na sezon</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {seasonCards.map((s) => (
             <LocalizedLink
               key={s.key}
               href={`/najlepsze-kierunki/${s.key}`}
               locale={locale}
-              className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[1.5rem] border border-emerald-900/10 shadow-[0_12px_34px_rgba(16,84,48,0.08)] transition hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(16,84,48,0.16)]"
+              className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-2xl border border-line shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
             >
               {s.image ? (
-                <Image
-                  src={s.image}
-                  alt={s.label}
-                  fill
-                  sizes="(max-width: 640px) 50vw, 25vw"
-                  className="object-cover transition duration-500 group-hover:scale-[1.05]"
-                />
+                <Image src={s.image} alt="" fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-emerald-900" />
+                <div className="absolute inset-0 bg-brand-strong" />
               )}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0)_30%,rgba(5,18,11,0.6)_70%,rgba(5,18,11,0.94)_100%)]" />
-              <div className="relative z-10 p-4 text-white">
-                <h3 className="font-display text-2xl leading-tight">{s.label}</h3>
-                <p className="mt-1 text-[12px] leading-5 text-white/85">{s.hook}</p>
-                <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-amber-200">
-                  Zobacz <span aria-hidden className="transition group-hover:translate-x-0.5">→</span>
-                </span>
+              <div className="relative z-10 mt-auto w-full text-white">
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
+                />
+                <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.93)_45%,rgba(5,18,11,0.96)_100%)] p-4">
+                  <h3 className="font-display text-xl leading-tight text-white">{s.label}</h3>
+                  <p className="mt-1 text-xs leading-5 text-white/90">{s.hook}</p>
+                </div>
               </div>
             </LocalizedLink>
           ))}
@@ -501,10 +498,9 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
       {/* PEŁNE PRZEWODNIKI */}
       {guideCards.length > 0 && (
         <section>
-          <div className="mb-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pełne przewodniki</p>
-            <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Przewodniki po najważniejszych kierunkach</h2>
-          </div>
+          <h2 className="mb-6 font-display text-2xl text-ink sm:text-3xl">
+            Przewodniki po najważniejszych kierunkach
+          </h2>
           <div className="grid gap-5 lg:grid-cols-3">
             {guideCards.map((item) => (
               <DestinationGuideCard
@@ -520,24 +516,22 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
       )}
 
       {/* PEŁNY KATALOG WG REGIONU */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Pełny katalog</p>
-            <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Wszystkie kierunki według regionu</h2>
-          </div>
-          <p className="max-w-xl text-sm leading-7 text-emerald-900/72">
-            Ponad {allDestinations.length} miast i wysp pogrupowanych regionalnie — kliknij dowolne, by zobaczyć przewodnik, pogodę i ceny.
+      {/* Bez karty opakowującej: karta w karcie to zagnieżdżenie, którego
+          system projektowy zabrania, a tu i tak nic nie wnosiła. */}
+      <section>
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">Wszystkie kierunki według regionu</h2>
+          <p className="max-w-xl text-sm leading-7 text-ink-muted">
+            {allDestinations.length} miast i wysp pogrupowanych regionalnie — kliknij dowolne, by zobaczyć
+            przewodnik, pogodę i ceny.
           </p>
         </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="mt-7 grid gap-x-10 gap-y-8 lg:grid-cols-2">
           {regionGroups.map((group) => (
-            <article key={group.region} className="rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/72 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-xl font-bold text-emerald-950">{group.region}</h3>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900">
-                  {group.items.length} kierunków
-                </span>
+            <div key={group.region} className="border-t border-line pt-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="text-lg font-bold text-ink">{group.region}</h3>
+                <span className="text-sm text-ink-muted">{pluralDestinations(group.items.length)}</span>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {group.items.slice(0, 12).map((item) => (
@@ -545,40 +539,41 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
                     key={item.slug}
                     href={`/kierunki/${profileSlugByLocation.get(`${item.city}|${item.country}`) ?? item.slug}`}
                     locale={locale}
-                    className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:border-emerald-500/40 hover:bg-emerald-100"
+                    className="inline-flex min-h-11 items-center rounded-sm bg-surface-sunken px-3.5 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
                   >
-                    {item.city}
+                    <span className="text-sm font-semibold text-ink">{item.city}</span>
                   </LocalizedLink>
                 ))}
               </div>
-            </article>
+            </div>
           ))}
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Najczęstsze pytania</p>
-        <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Zanim wybierzesz kierunek</h2>
-        <div className="mt-6 divide-y divide-emerald-900/10">
+      <section>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Zanim wybierzesz kierunek</h2>
+        <div className="mt-6 divide-y divide-line border-y border-line">
           {faqs.map((f) => (
-            <details key={f.q} className="group py-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-semibold text-emerald-950">
+            <details key={f.q} className="group py-2">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-bold text-ink marker:content-none">
                 {f.q}
-                <span aria-hidden className="shrink-0 text-emerald-600 transition group-open:rotate-45">+</span>
+                <Plus
+                  aria-hidden
+                  className="size-4 shrink-0 text-brand transition duration-200 ease-out group-open:rotate-45 motion-reduce:transition-none"
+                />
               </summary>
-              <p className="mt-3 text-sm leading-7 text-emerald-900/80">{f.a}</p>
+              <p className="mt-3 max-w-[65ch] text-base leading-7 text-ink-muted">{f.a}</p>
             </details>
           ))}
         </div>
       </section>
 
       <FinalCtaBanner
-        eyebrow="Masz już kierunek?"
-        title="Sprawdź ceny i zarezerwuj w kilka minut"
-        body="Wpisz miasto albo wybierz z katalogu. Hotel z finalną ceną w PLN, czas lotu i terminy ułożysz w jednym miejscu — za 0 zł i bez rejestracji."
+        title="Sprawdź ceny dla swojego terminu"
+        body="Wpisz miasto albo wybierz je z katalogu powyżej. Zobaczysz ceny hoteli w złotówkach, z podatkami i opłatami — bez zakładania konta."
         primaryHref="/hotele/szukaj"
-        primaryLabel="Zaplanuj wyjazd"
+        primaryLabel="Otwórz wyszukiwarkę"
         secondaryHref="/inspiracje"
         secondaryLabel="Zobacz pomysły na wyjazd"
       />

@@ -1600,7 +1600,7 @@ const editorialCategories: EditorialCategory[] = [
     slug: "przewodniki",
     title: "Przewodniki",
     description:
-      "Praktyczne przewodniki i scenariusze wyjazdów, które łączą treść wydawnicza z mozliwoscia przejscia do planera.",
+      "Praktyczne przewodniki i scenariusze wyjazdów — od wyboru kierunku po sprawdzenie cen w wyszukiwarce.",
     eyebrow: "Praktyczne treści",
     hero: "Treśći dla osób, które chcą zrozumieć kierunek przed kliknieciem w oferty.",
     articleSlugs: [

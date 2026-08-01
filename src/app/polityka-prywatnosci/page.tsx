@@ -153,7 +153,7 @@ const sections: Section[] = [
       headers: ["Cel przetwarzania", "Podstawa prawna (RODO)", "Okres retencji"],
       rows: [
         [
-          "Świadczenie nieodpłatnych usług w Serwisie (planer, treści, sesja anonimowa)",
+          "Świadczenie nieodpłatnych usług w Serwisie (wyszukiwarka, treści, sesja anonimowa)",
           "art. 6 ust. 1 lit. b — wykonanie umowy",
           "do 24 godzin (TTL sesji w Upstash Redis)",
         ],
@@ -183,7 +183,7 @@ const sections: Section[] = [
           "12 miesięcy lub do cofnięcia zgody",
         ],
         [
-          "Marketing własny i afiliacja (cookies marketingowe, identyfikatory partnerskie)",
+          "Marketing własny (cookies marketingowe, pomiar skuteczności kampanii)",
           "art. 6 ust. 1 lit. a — zgoda",
           "do 12 miesięcy lub do cofnięcia zgody",
         ],
@@ -234,7 +234,7 @@ const sections: Section[] = [
       {
         label: "Dane o korzystaniu z Serwisu",
         body:
-          "zapytania do planera, wybrane kierunki, kliknięcia w linki partnerów (Pomoc, Linki partnerskie), zapisane plany. Dane przypisane są wyłącznie do anonimowej Sesji.",
+          "zapytania wyszukiwania, wybrane kierunki i terminy, przeglądane oferty. Dane przypisane są wyłącznie do anonimowej Sesji.",
       },
       {
         label: "Treść rozmowy z asystentem AI",
@@ -244,7 +244,7 @@ const sections: Section[] = [
       {
         label: "Dane z plików cookie",
         body:
-          "preferencja języka, zapis decyzji o cookies, identyfikatory analityczne i partnerskie (jeżeli Użytkownik wyraził zgodę). Szczegóły — § 13.",
+          "preferencja języka, zapis decyzji o cookies, identyfikatory analityczne (jeżeli Użytkownik wyraził zgodę). Szczegóły — § 13.",
       },
     ],
   },
@@ -311,18 +311,14 @@ const sections: Section[] = [
           "UE/EOG",
           "Dostarczanie zdjęć hoteli prezentowanych w Serwisie",
         ],
-        [
-          "CJ Affiliate (Commission Junction LLC)",
-          "Joint Controller",
-          "USA (SCC)",
-          "Afiliacja Hotels.com, Expedia, Vrbo — atrybucja kliknięcia",
-        ],
-        [
-          "Stay22 Inc.",
-          "Joint Controller",
-          "Kanada (decyzja stwierdzająca odpowiedni stopień ochrony)",
-          "Mapy noclegowe + afiliacja Booking.com / Airbnb",
-        ],
+        // USUNIĘTE 2026-07-31: CJ Affiliate (Commission Junction LLC) oraz
+        // Stay22 Inc. Integracje afiliacyjne zostały wycofane z Serwisu, więc
+        // żadne dane do tych podmiotów nie trafiają. Wymienianie w polityce
+        // odbiorcy, który danych nie otrzymuje, jest samo w sobie naruszeniem
+        // rzetelności informacji z art. 13 ust. 1 lit. e RODO — to nie była
+        // nadmiarowa ostrożność, tylko nieprawdziwa informacja dla podmiotu
+        // danych. Tak samo usunięte: Booking.com, Hotels.com, Expedia, Vrbo,
+        // Airbnb (występowały wyłącznie w opisach tych dwóch wierszy).
         [
           "Google LLC (Google Analytics 4)",
           "Procesor (po wyrażeniu zgody na cookies analityczne)",
@@ -454,7 +450,7 @@ const sections: Section[] = [
     numbered: [
       {
         body:
-          "korzystanie z planera, czytanie treści i przeglądanie kierunków — nie wymaga podawania danych osobowych;",
+          "korzystanie z wyszukiwarki, czytanie treści i przeglądanie kierunków — nie wymaga podawania danych osobowych;",
       },
       {
         body:
@@ -472,7 +468,7 @@ const sections: Section[] = [
     title: "Automatyczne podejmowanie decyzji i profilowanie",
     paragraphs: [
       "Administrator nie podejmuje wobec Użytkowników decyzji opartych wyłącznie na zautomatyzowanym przetwarzaniu, w tym profilowaniu, które wywoływałyby skutki prawne lub w podobny sposób istotnie wpływały na Użytkownika (art. 22 RODO).",
-      "Wyniki Planera, rekomendacje kierunków oraz propozycje asystenta wyjazdowego (czat AI) stanowią zalecenia informacyjne mające pomóc w wyborze wyjazdu. Nie generują wiążących prawnie decyzji i nie różnicują Użytkowników w sposób istotny; każda propozycja asystenta prowadzi do standardowej, jednakowej dla wszystkich ścieżki rezerwacji.",
+      "Wyniki wyszukiwania, rekomendacje kierunków oraz propozycje asystenta wyjazdowego (czat AI) stanowią zalecenia informacyjne mające pomóc w wyborze wyjazdu. Nie generują wiążących prawnie decyzji i nie różnicują Użytkowników w sposób istotny; każda propozycja asystenta prowadzi do standardowej, jednakowej dla wszystkich ścieżki rezerwacji.",
     ],
   },
   {
@@ -497,8 +493,8 @@ const sections: Section[] = [
           "Administrator (1st-party) lub procesor analityczny po wdrożeniu",
         ],
         [
-          "Marketingowe / afiliacyjne (wymagają zgody)",
-          "Identyfikatory atrybucji kliknięć w linki partnerów afiliacyjnych (m.in. CJ, Stay22), pomiar skuteczności kampanii.",
+          "Marketingowe (wymagają zgody)",
+          "Pomiar skuteczności kampanii marketingowych prowadzonych przez Operatora.",
           "do 12 miesięcy",
           "1st-party + odpowiedni partner (3rd-party)",
         ],
@@ -550,10 +546,10 @@ const sections: Section[] = [
 function RenderList({ items, ordered }: { items: ListItem[]; ordered?: boolean }) {
   if (ordered) {
     return (
-      <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-emerald-900/82 marker:text-emerald-700">
+      <ol className="mt-4 list-decimal space-y-3 pl-5 text-base leading-8 text-ink marker:text-ink-muted">
         {items.map((item, idx) => (
           <li key={idx} className="pl-1">
-            {item.label ? <span className="font-semibold text-emerald-950">{item.label}: </span> : null}
+            {item.label ? <span className="font-semibold">{item.label}: </span> : null}
             {item.body}
           </li>
         ))}
@@ -561,11 +557,11 @@ function RenderList({ items, ordered }: { items: ListItem[]; ordered?: boolean }
     );
   }
   return (
-    <dl className="mt-4 grid gap-3 text-sm leading-7 text-emerald-900/82">
+    <dl className="mt-4 space-y-4 text-base leading-8 text-ink">
       {items.map((item, idx) => (
-        <div key={idx} className="rounded-2xl bg-emerald-50/75 px-4 py-3">
-          {item.label ? <dt className="font-semibold text-emerald-950">{item.label}</dt> : null}
-          <dd className={item.label ? "mt-1" : ""}>{item.body}</dd>
+        <div key={idx}>
+          {item.label ? <dt className="font-semibold">{item.label}</dt> : null}
+          <dd className={item.label ? "mt-1 text-ink-muted" : ""}>{item.body}</dd>
         </div>
       ))}
     </dl>
@@ -574,22 +570,22 @@ function RenderList({ items, ordered }: { items: ListItem[]; ordered?: boolean }
 
 function RenderTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="mt-4 overflow-x-auto rounded-2xl border border-emerald-900/10 bg-white">
+    <div className="mt-4 overflow-x-auto rounded-md border border-line">
       <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="bg-emerald-50/80 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+        <thead className="bg-surface-sunken">
           <tr>
             {headers.map((h) => (
-              <th key={h} className="px-4 py-3">
+              <th key={h} className="px-4 py-3 font-semibold text-ink">
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-emerald-900/10">
+        <tbody className="divide-y divide-line">
           {rows.map((row, idx) => (
-            <tr key={idx} className="text-emerald-900/82">
+            <tr key={idx}>
               {row.map((cell, cidx) => (
-                <td key={cidx} className="px-4 py-3 align-top leading-6">
+                <td key={cidx} className="px-4 py-3 align-top leading-6 text-ink">
                   {cell}
                 </td>
               ))}
@@ -603,73 +599,54 @@ function RenderTable({ headers, rows }: { headers: string[]; rows: string[][] })
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)] sm:p-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-          Ochrona danych osobowych
-        </p>
-        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
-          Polityka prywatności
-        </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/82">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-12">
+      <header>
+        <h1 className="font-display text-3xl text-ink sm:text-hero">Polityka prywatności</h1>
+        <p className="mt-5 text-pretty text-base leading-8 text-ink">
           Niniejszy dokument opisuje, w jaki sposób przetwarzamy Twoje dane osobowe podczas korzystania z serwisu{" "}
           {SITE_NAME}. Polityka spełnia wymogi RODO, ustawy o ochronie danych osobowych, ustawy o świadczeniu usług
           drogą elektroniczną oraz Dyrektywy ePrivacy. Jest podzielona na § sekcje dla łatwej nawigacji.
         </p>
-        <div className="mt-6 flex flex-wrap items-center gap-3 text-xs font-semibold text-emerald-800">
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5">
-            Wersja obowiązująca od:{" "}
-            <time dateTime={EFFECTIVE_DATE_ISO} className="font-bold">
-              {EFFECTIVE_DATE}
-            </time>
-          </span>
-          <Link
-            href="/regulamin"
-            className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 transition hover:bg-emerald-50"
-          >
-            Regulamin →
+        <p className="mt-5 text-sm text-ink-muted">
+          Wersja obowiązująca od{" "}
+          <time dateTime={EFFECTIVE_DATE_ISO} className="font-semibold text-ink">
+            {EFFECTIVE_DATE}
+          </time>
+          {" · "}
+          <Link href="/regulamin" className="underline underline-offset-4">
+            <span className="font-semibold text-brand">Regulamin</span>
           </Link>
-          <a
-            href="#cookie-settings"
-            className="rounded-full border border-emerald-900/10 bg-white px-3 py-1.5 transition hover:bg-emerald-50"
-          >
-            Ustawienia cookies →
-          </a>
-        </div>
-      </section>
+          {" · "}
+          <a href="#cookie-settings" className="underline underline-offset-4">
+            <span className="font-semibold text-brand">Ustawienia cookies</span>
+          </a>
+        </p>
+      </header>
 
-      {/* Spis treści */}
-      <nav
-        aria-label="Spis treści Polityki prywatności"
-        className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8"
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Spis treści</p>
-        <ol className="mt-4 grid gap-2 text-sm leading-7 text-emerald-900/82 sm:grid-cols-2">
+      <nav aria-label="Spis treści Polityki prywatności" className="mt-10 border-y border-line py-6">
+        <h2 className="text-sm font-bold text-ink">Spis treści</h2>
+        <ol className="mt-3 grid gap-x-8 gap-y-1 sm:grid-cols-2">
           {sections.map((s) => (
             <li key={s.id}>
-              <a
-                href={`#${s.id}`}
-                className="block rounded-xl px-3 py-2 transition hover:bg-emerald-50 hover:text-emerald-900"
-              >
-                <span className="font-semibold text-emerald-950">{s.ord}.</span> {s.title}
+              <a href={`#${s.id}`} className="block py-1.5 underline-offset-4 hover:underline">
+                <span className="text-base leading-7 text-ink">
+                  <span className="font-semibold">{s.ord}.</span> {s.title}
+                </span>
               </a>
             </li>
           ))}
         </ol>
       </nav>
 
-      {/* Sekcje */}
+      {/* Dokument ciągły — uzasadnienie jak w regulaminie: sekcja zamknięta
+          w karcie rozbija lekturę na wyspy, a tu sekcji jest kilkanaście. */}
       {sections.map((section) => (
-        <section
-          key={section.id}
-          id={section.id}
-          className="scroll-mt-24 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8"
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{section.ord}</p>
-          <h2 className="mt-2 text-2xl font-bold text-emerald-950">{section.title}</h2>
-          {section.intro ? (
-            <p className="mt-4 text-sm leading-7 text-emerald-900/82">{section.intro}</p>
-          ) : null}
+        <section key={section.id} id={section.id} className="mt-10 scroll-mt-24">
+          <h2 className="text-xl font-bold text-ink sm:text-2xl">
+            <span className="text-ink-muted">{section.ord}. </span>
+            {section.title}
+          </h2>
+          {section.intro ? <p className="mt-4 text-base leading-8 text-ink">{section.intro}</p> : null}
           {section.list ? <RenderList items={section.list} /> : null}
           {section.numbered ? <RenderList items={section.numbered} ordered /> : null}
           {section.table ? <RenderTable headers={section.table.headers} rows={section.table.rows} /> : null}
@@ -677,11 +654,11 @@ export default function PrivacyPolicyPage() {
             /<a /.test(p) ? (
               <p
                 key={idx}
-                className="mt-3 text-sm leading-7 text-emerald-900/82 [&_a]:font-semibold [&_a]:text-emerald-700 [&_a]:underline-offset-2 hover:[&_a]:underline"
+                className="mt-4 text-base leading-8 text-ink [&_a]:font-semibold [&_a]:text-brand [&_a]:underline [&_a]:underline-offset-4"
                 dangerouslySetInnerHTML={{ __html: p }}
               />
             ) : (
-              <p key={idx} className="mt-3 text-sm leading-7 text-emerald-900/82">
+              <p key={idx} className="mt-4 text-base leading-8 text-ink">
                 {p}
               </p>
             ),
@@ -689,17 +666,16 @@ export default function PrivacyPolicyPage() {
         </section>
       ))}
 
-      {/* Stopka dokumentu */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <h2 className="text-xl font-bold text-emerald-950">Kontakt w sprawach prywatności</h2>
-        <p className="mt-3 text-sm leading-7 text-emerald-900/82">
+      <section className="mt-12 border-t border-line pt-8">
+        <h2 className="text-xl font-bold text-ink">Kontakt w sprawach prywatności</h2>
+        <p className="mt-4 text-base leading-8 text-ink">
           Wnioski o realizację praw, zapytania o przetwarzanie danych oraz wycofanie zgody prosimy kierować na adres{" "}
-          <a className="font-semibold text-emerald-700 underline-offset-2 hover:underline" href={`mailto:${admin.email}`}>
-            {admin.email}
+          <a className="underline underline-offset-4" href={`mailto:${admin.email}`}>
+            <span className="font-semibold text-brand">{admin.email}</span>
           </a>
           . Termin odpowiedzi: do 30 dni od dnia otrzymania żądania.
         </p>
-        <p className="mt-3 text-xs leading-6 text-emerald-900/80">
+        <p className="mt-4 text-sm leading-7 text-ink-muted">
           Wersja Polityki: {EFFECTIVE_DATE}. Administrator: {admin.name}
           {admin.nip ? `, NIP ${admin.nip}` : ""}
           {admin.address ? `, ${admin.address}` : ""}.

@@ -1,95 +1,180 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Check, CreditCard, Mail, ShieldCheck } from "lucide-react";
+
+import { PaymentMethods } from "@/components/home/payment-methods";
+import { FinalCtaBanner } from "@/components/site/final-cta-banner";
+
+// Ta strona opisywała model, którego już nie ma: „częściowo przez linki
+// partnerskie", „finalna cena jest po stronie partnera", „planner". Rezerwacja
+// hotelu i lotu odbywa się na helptravel.pl, płatność też — więc zdanie
+// „płacisz gdzie indziej" było nie tylko nieprawdziwe, ale mówiło kupującemu,
+// że transakcja, którą właśnie zaczyna, dzieje się poza serwisem.
+//
+// Każda liczba i każde twierdzenie poniżej ma pokrycie w kodzie:
+//   • „wł. podatków i opłat · płatność w PLN" — booking-summary-card.tsx:249
+//   • NUITEE TRAVEL jako rozliczający — reservation-form.tsx:440, payment-slot.tsx:183
+//   • brak BLIK-a — payment-brands.tsx:43
+//   • „Bezpłatna anulacja do {data}" przy ofercie — card-price.tsx:86
+//   • lot = osobna płatność — loty/platnosc/page.tsx:93
 
 export const metadata: Metadata = {
-  title: "Cennik",
-  description: "Korzystanie z HelpTravel jest darmowe. Zobacz, co jest bezpłatne i kiedy finalna cena zależy od partnera.",
-  alternates: {
-    canonical: "/cennik",
-  },
+  title: "Ile kosztuje rezerwacja",
+  description:
+    "Wyszukiwanie i porównywanie jest bezpłatne. Płacisz za nocleg lub przelot — kwotę z podsumowania, w złotówkach, z podatkami i opłatami w środku.",
+  alternates: { canonical: "/cennik" },
   openGraph: {
-    title: "Cennik | HelpTravel",
-    description: "Korzystanie z HelpTravel jest darmowe. Finalne ceny i warunki zawsze sprawdzasz u partnera.",
+    title: "Ile kosztuje rezerwacja | HelpTravel",
+    description:
+      "Za wyszukiwanie nie płacisz nic. Za nocleg płacisz tyle, ile widnieje w podsumowaniu — w PLN, z podatkami i opłatami.",
     url: "/cennik",
   },
 };
 
-const cards = [
+const FREE = [
+  "Wyszukiwanie hoteli i lotów, filtry i porównywanie cen",
+  "Katalog kierunków, przewodniki i poradniki",
+  "Rezerwacja bez zakładania konta",
+  "Anulacja w ofertach oznaczonych „bezpłatna anulacja” — do terminu podanego przy ofercie",
+];
+
+const STEPS = [
   {
-    title: "Korzystanie z serwisu",
-    body: "Planner, katalog kierunków i treści są darmowe. Nie ma abonamentu ani opłaty za samo planowanie wyjazdu.",
+    icon: ShieldCheck,
+    title: "Wybierasz ofertę i podajesz dane gości",
+    body: "Do tego momentu nic nie płacisz i niczego nie potwierdzasz. Cenę i warunki widzisz przed przejściem dalej.",
   },
   {
-    title: "Skąd biorą się ceny",
-    body: "Ceny noclegów, lotów i innych usług pochodzą od partnerów. Ostatni krok i finalna cena są zawsze po ich stronie.",
+    icon: CreditCard,
+    title: "Płacisz kartą lub portfelem cyfrowym",
+    body: "Pola karty obsługuje Stripe wewnątrz formularza naszego partnera rezerwacyjnego. Dane karty nie przechodzą przez serwery HelpTravel.",
   },
   {
-    title: "Jak zarabia serwis",
-    body: "Częściowo przez linki partnerskie. Kliknięcie nie powinno podnosić ceny, ale może oznaczać prowizję dla serwisu.",
+    icon: Mail,
+    title: "Potwierdzenie dostajesz mailem",
+    body: "Numer rezerwacji, termin, hotel i zapłacona kwota trafiają na Twój adres zaraz po udanej płatności.",
   },
 ];
 
 export default function PricingPage() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_18px_50px_rgba(16,84,48,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Cennik</p>
-        <h1 className="mt-3 font-display text-3xl leading-[1.08] text-emerald-950 sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">Korzystanie z HelpTravel jest darmowe.</h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-emerald-900/78">
-          Pomagamy planować wyjazd i prowadzimy do kolejnych kroków. Gdy przechodzisz do konkretnej oferty, cena i
-          warunki są już po stronie partnera rezerwacyjnego.
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+      <header className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm sm:p-10">
+        <h1 className="max-w-3xl text-balance font-display text-3xl text-ink sm:text-hero">
+          Ile kosztuje rezerwacja
+        </h1>
+        <p className="mt-5 max-w-[65ch] text-pretty text-base leading-8 text-ink">
+          Za wyszukiwanie, porównywanie i przeglądanie kierunków nie płacisz nic. Płacisz za nocleg albo
+          przelot — dokładnie tyle, ile widnieje w podsumowaniu tuż przed płatnością. Kwota jest w złotówkach
+          i zawiera podatki oraz opłaty.
         </p>
-        {/* Prominent above-the-fold CTA — landings from Google SERP sitelinks
-            need an immediate path to the search, not buried at the bottom. */}
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/hotele/szukaj"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
-          >
-            Otwórz wyszukiwarkę hoteli →
-          </Link>
-          <Link
-            href="/kierunki"
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100"
-          >
-            Nie wiem dokąd lecieć
-          </Link>
+        <Link
+          href="/hotele/szukaj"
+          className="mt-7 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+        >
+          <span className="text-sm font-bold text-white">Otwórz wyszukiwarkę hoteli</span>
+        </Link>
+      </header>
+
+      {/* Asymetrycznie, nie dwiema bliźniaczymi kartami: lista bezpłatnych
+          rzeczy jest długa, a płatne są dwie — zrównanie ich wagi sugerowałoby
+          symetrię, której nie ma. */}
+      <section className="grid gap-8 lg:grid-cols-[1.35fr_1fr] lg:gap-12">
+        <div>
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">Bezpłatne</h2>
+          <ul className="mt-5 space-y-3">
+            {FREE.map((item) => (
+              <li key={item} className="flex gap-3">
+                <Check aria-hidden className="mt-1 size-4 shrink-0 text-brand" />
+                <span className="text-base leading-7 text-ink">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">Płatne</h2>
+          <dl className="mt-5 space-y-5">
+            <div className="rounded-lg bg-surface-sunken p-5">
+              <dt className="text-base font-bold text-ink">Nocleg</dt>
+              <dd className="mt-1.5 text-base leading-7 text-ink-muted">
+                Kwota z podsumowania rezerwacji, w PLN, wraz z podatkami i opłatami.
+              </dd>
+            </div>
+            <div className="rounded-lg bg-surface-sunken p-5">
+              <dt className="text-base font-bold text-ink">Przelot</dt>
+              <dd className="mt-1.5 text-base leading-7 text-ink-muted">
+                Osobna rezerwacja i osobna płatność — lot i hotel nie są sprzedawane jako jeden pakiet.
+              </dd>
+            </div>
+          </dl>
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        {cards.map((card) => (
-          <article key={card.title} className="rounded-[1.8rem] border border-emerald-900/10 bg-white/95 p-5 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-            <h2 className="text-2xl font-bold text-emerald-950">{card.title}</h2>
-            <p className="mt-3 text-sm leading-7 text-emerald-900/78">{card.body}</p>
-          </article>
-        ))}
+      <section className="rounded-[2rem] bg-brand-strong p-6 text-white [--focus-ring:#fff] sm:p-10">
+        <h2 className="max-w-2xl text-balance font-display text-2xl sm:text-3xl">Jak przebiega płatność</h2>
+        <ol className="mt-7 grid gap-6 sm:grid-cols-3">
+          {STEPS.map(({ icon: Icon, title, body }, index) => (
+            <li key={title}>
+              <Icon aria-hidden className="size-5 text-white" />
+              <h3 className="mt-3 text-base font-bold text-white">
+                <span className="text-white/60">{index + 1}. </span>
+                {title}
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-white/85">{body}</p>
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-9 border-t border-white/15 pt-7">
+          <div className="flex justify-center sm:justify-start">
+            <PaymentMethods />
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2">
+            <p className="text-sm leading-7 text-white/85">
+              <strong className="font-bold text-white">Na wyciągu zobaczysz NUITEE&nbsp;TRAVEL.</strong>{" "}
+              Rozliczenie prowadzi Nuitee Travel — nasz partner rezerwacyjny i podmiot rozliczający
+              płatność. Obciążenie pod tą nazwą jest prawidłowe.
+            </p>
+            <p className="text-sm leading-7 text-white/85">
+              <strong className="font-bold text-white">BLIK-a na razie nie obsługujemy.</strong> Do wyboru
+              są karta i portfele cyfrowe. Mówimy o tym tutaj, żeby nie okazało się to niespodzianką
+              dopiero przy płatności.
+            </p>
+          </div>
+        </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="text-2xl font-bold text-emerald-950">Co warto sprawdzić przed rezerwacją</h2>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-emerald-900/78">
-            <p>Walutę, politykę anulacji i ewentualne opłaty dodatkowe.</p>
-            <p>To, czy termin, liczba osób i typ pokoju zgadzają się w ostatnim kroku.</p>
-            <p>Czy oferta nie zmieniła się od momentu pierwszego wyszukania.</p>
-          </div>
-        </article>
-
-        <article className="rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
-          <h2 className="text-2xl font-bold text-emerald-950">Powiązane strony</h2>
-          <div className="mt-4 grid gap-3 text-sm">
-            <Link href="/faq" className="rounded-2xl bg-emerald-50/75 px-4 py-3 text-emerald-900/78 transition hover:text-emerald-700">
-              FAQ
-            </Link>
-          <Link href="/hotele/szukaj" className="rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800">
-            Otwórz wyszukiwarkę hoteli
-          </Link>
-          </div>
-        </article>
+      <section>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Anulacja i zmiany</h2>
+        <div className="mt-5 max-w-[65ch] space-y-4 text-base leading-8 text-ink">
+          <p>
+            Warunki ustala hotel w konkretnej taryfie, nie HelpTravel. Dlatego dwa pokoje w tym samym
+            obiekcie potrafią mieć różne zasady — i dlatego nie obiecujemy jednej reguły dla wszystkich.
+          </p>
+          <p>
+            Oferty z bezpłatną anulacją mają to napisane wprost, razem z datą, do której obowiązuje.
+            W wyszukiwarce możesz zawęzić wyniki filtrem <span className="font-semibold">Bezpłatna anulacja</span>,
+            jeśli termin nie jest jeszcze pewny.
+          </p>
+          <p>
+            Pytania, które wracają najczęściej, zebraliśmy w{" "}
+            <Link href="/faq" className="underline underline-offset-4">
+              <span className="font-semibold text-brand">FAQ</span>
+            </Link>
+            .
+          </p>
+        </div>
       </section>
+
+      <FinalCtaBanner
+        title="Sprawdź cenę dla swojego terminu"
+        body="Ceny zależą od dat i liczby osób. Wpisz kierunek i termin, a zobaczysz realne kwoty w złotówkach — bez zakładania konta."
+        primaryHref="/hotele/szukaj"
+        primaryLabel="Otwórz wyszukiwarkę"
+        secondaryHref="/kierunki"
+        secondaryLabel="Przeglądaj kierunki"
+      />
     </main>
   );
 }
-
-

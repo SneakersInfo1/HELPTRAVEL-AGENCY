@@ -6,21 +6,28 @@ import { MediaHero } from "@/components/site/media-hero";
 import { FinalCtaBanner } from "@/components/site/final-cta-banner";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
+import { formatFlightHours } from "@/lib/home/deal-card";
 import { getSiteUrl } from "@/lib/mvp/site";
 
-// ISR: hero + example photo come from Pexels — cache and regenerate daily.
+// ISR: hero + zdjęcie przykładu pochodzą z Pexels — cache, odświeżanie dobowe.
 export const revalidate = 86400;
+
+// PRZEPISANE 2026-07-31. Stara wersja opisywała trzy kroki kończące się na
+// „finalną rezerwację robisz u sprawdzonego partnera" i obiecywała plan dnia
+// oraz zapis planu na później. Rezerwacja odbywa się tutaj, planera nie ma,
+// a zapis planu opiera się o bazę, która nie jest podpięta (DATABASE_URL to
+// placeholder) — czyli strona opisywała trzy funkcje, z których żadna nie
+// działa tak, jak napisano. Poniżej jest przebieg, który faktycznie ma
+// miejsce, krok po kroku, zgodnie z docs/booking-flow.md.
 
 export const metadata: Metadata = {
   title: "Jak to działa",
   description:
-    "Zobacz, jak HelpTravel prowadzi Cię od pomysłu na wyjazd do gotowego planu: wybierasz kierunek, ustawiasz termin i skład, a potem przechodzisz do hotelu i lotu. Za darmo, bez rejestracji.",
-  alternates: {
-    canonical: "/jak-pracujemy",
-  },
+    "Od wyszukania do potwierdzenia: pięć kroków rezerwacji na helptravel.pl. Kiedy podajesz dane, kiedy płacisz, kto pobiera pieniądze i co dostajesz na e-mail.",
+  alternates: { canonical: "/jak-pracujemy" },
   openGraph: {
     title: "Jak to działa | HelpTravel",
-    description: "Od pomysłu na wyjazd do gotowego planu w 3 krokach — kierunek, termin, hotel i lot w jednym miejscu.",
+    description: "Pięć kroków od wyszukania do potwierdzenia rezerwacji — bez niespodzianek przy płatności.",
     url: "/jak-pracujemy",
     type: "website",
     locale: "pl_PL",
@@ -30,54 +37,59 @@ export const metadata: Metadata = {
 const HERO_SLUG = "rome-italy";
 const EXAMPLE_SLUG = "lisbon-portugal";
 
-const steps = [
+const STEPS = [
   {
-    step: "01",
-    icon: "🧭",
-    title: "Wybierasz kierunek",
-    body: "Masz gotowe miasto albo tylko luźny pomysł, np. „ciepło na 5 dni”. Pomagamy zawęzić to do kilku konkretnych opcji.",
+    title: "Szukasz",
+    body: "Podajesz kierunek, termin i liczbę osób. Wyniki pokazują ceny przeliczone na złotówki, a filtrami zawężasz je do tego, co Cię interesuje — na przykład wyłącznie do ofert z bezpłatną anulacją.",
   },
   {
-    step: "02",
-    icon: "📅",
-    title: "Ustawiasz termin i skład",
-    body: "Daty, lotnisko wylotu i liczba osób. Wpisujesz raz — te same dane wędrują dalej do hotelu i lotu.",
+    title: "Wybierasz pokój",
+    body: "Przy każdej ofercie widać cenę za cały pobyt i to, czy anulacja jest bezpłatna oraz do kiedy. Warunki ustala hotel w danej taryfie, więc dwa pokoje w tym samym obiekcie mogą mieć różne zasady.",
   },
   {
-    step: "03",
-    icon: "🏨",
-    title: "Przechodzisz do oferty",
-    body: "Sprawdzasz hotele i loty na wybrany termin, a finalną rezerwację robisz u sprawdzonego partnera.",
+    title: "Podajesz dane gości",
+    body: "Imię, nazwisko i adres e-mail osoby rezerwującej oraz dane pozostałych gości. Na tym etapie nadal nic nie płacisz i nic nie jest potwierdzone — możesz się wycofać.",
+  },
+  {
+    title: "Płacisz",
+    body: "Kartą lub portfelem cyfrowym, w formularzu naszego partnera rezerwacyjnego. Pola karty obsługuje Stripe, a rozliczenie prowadzi Nuitee Travel — dlatego na wyciągu zobaczysz NUITEE TRAVEL. BLIK-a na razie nie ma.",
+  },
+  {
+    title: "Dostajesz potwierdzenie",
+    body: "Zaraz po udanej płatności na Twój adres przychodzi e-mail z numerem rezerwacji, nazwą hotelu, terminem i zapłaconą kwotą. Rezerwacja jest w tym momencie złożona u obiektu.",
   },
 ];
 
-const perks = [
-  { icon: "✈️", title: "Lot i hotel z jednego startu", body: "Mniej zakładek i mniej chaosu — wszystko trzyma się tego samego terminu." },
-  { icon: "🗺️", title: "Plan dnia, nie sama rezerwacja", body: "Podpowiadamy, co zobaczyć i gdzie spać, a nie tylko gdzie kliknąć." },
-  { icon: "💾", title: "Zapis planu na później", body: "Wracasz do wyjazdu, kiedy chcesz — nic nie ginie po zamknięciu karty." },
-  { icon: "💰", title: "Ceny w PLN bez ściemy", body: "Pokazujemy realne ceny w złotówkach, bez ukrytych przeliczników karty." },
-];
-
-const faq = [
-  {
-    question: "Czy korzystanie z HelpTravel jest darmowe?",
-    answer:
-      "Tak. Planowanie wyjazdu, przeglądanie kierunków i porównywanie ofert jest w 100% darmowe. Płacisz dopiero za samą rezerwację u partnera, jeśli zdecydujesz się ją złożyć.",
-  },
+const FAQ = [
   {
     question: "Czy muszę zakładać konto?",
     answer:
-      "Nie. Możesz zaplanować cały wyjazd bez rejestracji. Konto nie jest potrzebne, żeby sprawdzić kierunki, ceny i dostępność hoteli.",
+      "Nie. Do rezerwacji wystarczy imię, nazwisko i adres e-mail. Nie ma rejestracji, hasła ani aplikacji do zainstalowania.",
   },
   {
-    question: "Gdzie odbywa się finalna rezerwacja?",
+    question: "Komu właściwie płacę?",
     answer:
-      "Hotel rezerwujesz bezpośrednio w HelpTravel, a w przypadku lotów i wybranych ofert finalny krok może prowadzić do sprawdzonego partnera. Zawsze warto potwierdzić cenę i warunki w ostatnim kroku.",
+      "Płatność składasz na helptravel.pl, ale podmiotem rozliczającym jest Nuitee Travel — nasz partner rezerwacyjny. Dlatego na wyciągu z karty zobaczysz pozycję NUITEE TRAVEL, a nie HelpTravel. Pola karty obsługuje Stripe, więc numer karty nie przechodzi przez nasze serwery.",
   },
   {
-    question: "Czy ceny są w złotówkach?",
+    question: "Czy mogę zapłacić BLIK-iem?",
     answer:
-      "Tak — ceny pokazujemy w PLN, bez ukrytych przeliczników. Dzięki temu od razu wiesz, ile realnie zapłacisz.",
+      "Na razie nie. Dostępne są karty płatnicze i portfele cyfrowe. Piszemy o tym wcześniej, żeby nie okazało się to niespodzianką dopiero na ekranie płatności.",
+  },
+  {
+    question: "Czy cena, którą widzę, jest ostateczna?",
+    answer:
+      "Kwota w podsumowaniu rezerwacji jest podana w złotówkach i zawiera podatki oraz opłaty. To ta kwota obciąża kartę. Niektóre obiekty pobierają na miejscu lokalną opłatę klimatyczną — jeśli tak jest, informacja pochodzi od obiektu i widnieje w warunkach oferty.",
+  },
+  {
+    question: "Czy mogę anulować rezerwację?",
+    answer:
+      "To zależy od wybranej taryfy, nie od serwisu. Oferty z bezpłatną anulacją są oznaczone wprost, razem z datą, do której anulacja nic nie kosztuje. W wyszukiwarce możesz włączyć filtr pokazujący wyłącznie takie oferty.",
+  },
+  {
+    question: "Czy lot i hotel to jedna rezerwacja?",
+    answer:
+      "Nie. To dwie osobne rezerwacje i dwie osobne płatności. Nie sprzedajemy lotu i hotelu jako jednego pakietu — kupujesz je niezależnie, każde z własnym potwierdzeniem.",
   },
 ];
 
@@ -87,7 +99,7 @@ export default async function HowItWorksPage() {
 
   const exampleProfile = getDestinationProfileBySlug(EXAMPLE_SLUG);
   const exampleMedia = exampleProfile ? await resolveDestinationMedia(exampleProfile) : null;
-  const exampleFlightHours = exampleProfile ? exampleProfile.typicalFlightHoursFromPL.toFixed(1) : "3.5";
+  const exampleFlight = exampleProfile ? formatFlightHours(exampleProfile.typicalFlightHoursFromPL) : "";
   const exampleSearchHref = `/hotele/szukaj?${new URLSearchParams({
     destination: exampleProfile?.city ?? "Lisbon",
     country: exampleProfile?.country ?? "Portugal",
@@ -98,7 +110,7 @@ export default async function HowItWorksPage() {
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: faq.map((item) => ({
+    mainEntity: FAQ.map((item) => ({
       "@type": "Question",
       name: item.question,
       acceptedAnswer: { "@type": "Answer", text: item.answer },
@@ -107,96 +119,46 @@ export default async function HowItWorksPage() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       <MediaHero
         imageUrl={heroMedia?.heroImage ?? null}
         imageAlt="Rzym — uliczki starego miasta"
-        eyebrow="Jak to działa"
-        title={
-          <>
-            Od pomysłu na wyjazd do{" "}
-            <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 bg-clip-text text-transparent">
-              gotowego planu
-            </span>
-            .
-          </>
-        }
-        intro="Nie musisz zaczynać od idealnego planu. Wystarczy kierunek albo luźny pomysł — resztę układamy razem, w lekkiej i czytelnej kolejności."
+        title="Pięć kroków do potwierdzonej rezerwacji"
+        intro="Rezerwujesz i płacisz na helptravel.pl. Poniżej jest dokładnie to, co się dzieje po kolei — łącznie z tym, w którym momencie pobierane są pieniądze i czyja nazwa pojawi się na wyciągu."
       >
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/hotele/szukaj"
-            className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-400 px-6 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
-          >
-            Otwórz wyszukiwarkę →
-          </Link>
-          <Link
-            href="/kierunki"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20"
-          >
-            Nie wiem dokąd lecieć
-          </Link>
-        </div>
-        <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90">
-          <span className="rounded-full bg-white/12 px-3 py-1">3 minuty</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">bez rejestracji</span>
-          <span className="rounded-full bg-white/12 px-3 py-1">100% darmowe</span>
-        </div>
+        <Link
+          href="/hotele/szukaj"
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+        >
+          <span className="text-sm font-bold text-brand-strong">Otwórz wyszukiwarkę</span>
+        </Link>
       </MediaHero>
 
-      {/* 3 KROKI */}
+      {/* Numery są tu zasłużone: to naprawdę jest sekwencja, a kolejność niesie
+          informację (kiedy jeszcze nie płacisz, kiedy już tak). */}
       <section>
-        <div className="mb-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Trzy kroki</p>
-          <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Jak przejść do konkretu</h2>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {steps.map((item) => (
-            <article
-              key={item.step}
-              className="relative overflow-hidden rounded-[1.8rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)]"
-            >
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Przebieg rezerwacji</h2>
+        <ol className="mt-7 space-y-7 border-l border-line pl-6 sm:pl-8">
+          {STEPS.map((step, index) => (
+            <li key={step.title} className="relative">
               <span
                 aria-hidden
-                className="pointer-events-none absolute -right-2 -top-4 font-display text-[5.5rem] leading-none text-emerald-100"
+                className="absolute -left-[1.9rem] top-0.5 flex size-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white sm:-left-[2.4rem]"
               >
-                {item.step}
+                {index + 1}
               </span>
-              <div className="relative">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-2xl">
-                  {item.icon}
-                </div>
-                <h3 className="mt-4 text-lg font-bold text-emerald-950">{item.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-emerald-900/78">{item.body}</p>
-              </div>
-            </article>
+              <h3 className="text-lg font-bold text-ink">{step.title}</h3>
+              <p className="mt-2 max-w-[65ch] text-base leading-7 text-ink">{step.body}</p>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
-      {/* CO DOSTAJESZ */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Co dostajesz po kliknięciu</p>
-        <h2 className="mt-2 font-display text-3xl text-emerald-950 sm:text-4xl">Konkrety, nie kolejna zakładka</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {perks.map((perk) => (
-            <div key={perk.title} className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-5">
-              <span aria-hidden className="text-2xl">
-                {perk.icon}
-              </span>
-              <h3 className="mt-2 text-sm font-bold text-emerald-950">{perk.title}</h3>
-              <p className="mt-2 text-xs leading-6 text-emerald-900/72">{perk.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* PRZYKŁAD NA ŻYWO */}
-      <section className="overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_16px_42px_rgba(16,84,48,0.06)]">
+      <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         <div className="grid lg:grid-cols-2">
-          <div className="relative min-h-[16rem] lg:min-h-full">
+          <div className="relative min-h-[14rem] lg:min-h-full">
             {exampleMedia?.heroImage ? (
               <Image
                 src={exampleMedia.heroImage}
@@ -206,75 +168,46 @@ export default async function HowItWorksPage() {
                 className="object-cover"
               />
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-emerald-900" />
+              <div className="absolute inset-0 bg-brand-strong" />
             )}
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.1)_0%,rgba(5,18,11,0.5)_100%)]" />
-            <div className="absolute bottom-0 left-0 p-6 text-white">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-200">Przykład</p>
-              <p className="mt-1 font-display text-3xl">Lizbona, 4 dni</p>
-            </div>
           </div>
-          <div className="p-6 sm:p-8">
-            <h2 className="font-display text-2xl text-emerald-950 sm:text-3xl">Zobacz to na konkrecie</h2>
-            <p className="mt-2 text-sm leading-7 text-emerald-900/75">
-              Masz pomysł: <em>„ciepło, niedaleko, na 4 dni we dwoje”</em>. Oto jak wygląda to w HelpTravel:
+          <div className="p-6 sm:p-10">
+            <h2 className="font-display text-2xl text-ink sm:text-3xl">Zobacz to na konkrecie</h2>
+            <p className="mt-3 max-w-[65ch] text-base leading-7 text-ink">
+              Lizbona, dwie osoby, jeden pokój{exampleFlight ? `, lot z Polski ${exampleFlight}` : ""}. Poniższy
+              link otwiera wyszukiwarkę z już ustawionym kierunkiem i składem — zostaje wybrać termin.
             </p>
-            <ol className="mt-5 space-y-3 text-sm leading-7 text-emerald-900/80">
-              <li className="flex gap-3 rounded-2xl bg-emerald-50/60 px-4 py-3">
-                <span className="font-bold text-emerald-700">1.</span>
-                Wpisujesz pomysł — podpowiadamy Lizbonę (lot z Polski ok. {exampleFlightHours} h, łagodny klimat).
-              </li>
-              <li className="flex gap-3 rounded-2xl bg-emerald-50/60 px-4 py-3">
-                <span className="font-bold text-emerald-700">2.</span>
-                Ustawiasz: 4 dni, 2 osoby, wylot z Twojego lotniska.
-              </li>
-              <li className="flex gap-3 rounded-2xl bg-emerald-50/60 px-4 py-3">
-                <span className="font-bold text-emerald-700">3.</span>
-                Sprawdzasz hotele blisko centrum i lot na ten sam termin — gotowe.
-              </li>
-            </ol>
             <Link
               href={exampleSearchHref}
-              className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 text-sm font-bold text-white transition hover:bg-emerald-800"
+              className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 py-3 transition duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              Zobacz hotele w Lizbonie →
+              <span className="text-sm font-bold text-white">Zobacz hotele w Lizbonie</span>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* CZEGO NIE ROBIMY */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">Gramy w otwarte karty</p>
-        <h2 className="mt-2 font-display text-3xl text-emerald-950">Czego nie robimy</h2>
-        <div className="mt-4 grid gap-3 text-sm leading-7 text-emerald-900/78 sm:grid-cols-3">
-          <p className="rounded-2xl bg-white/70 px-4 py-3">Nie udajemy biura podróży ani nie obiecujemy cen, których nie kontrolujemy.</p>
-          <p className="rounded-2xl bg-white/70 px-4 py-3">Nie wypełniamy serwisu fikcyjnymi opiniami ani sztucznym social proof.</p>
-          <p className="rounded-2xl bg-white/70 px-4 py-3">Nie chowamy tego, że końcowy krok rezerwacji może prowadzić do partnera.</p>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="rounded-[2rem] border border-emerald-900/10 bg-white p-6 shadow-[0_16px_42px_rgba(16,84,48,0.06)] sm:p-8">
-        <h2 className="font-display text-3xl text-emerald-950">Najczęściej zadawane pytania</h2>
-        <div className="mt-5 space-y-3">
-          {faq.map((item) => (
-            <details key={item.question} className="rounded-2xl bg-emerald-50/60 px-5 py-4 transition hover:bg-emerald-50">
-              <summary className="cursor-pointer text-base font-bold text-emerald-950">{item.question}</summary>
-              <p className="mt-3 text-sm leading-7 text-emerald-900/82">{item.answer}</p>
+      <section>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Częste pytania</h2>
+        <div className="mt-6 divide-y divide-line border-y border-line">
+          {FAQ.map((item) => (
+            <details key={item.question} className="group py-2">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center text-base font-bold text-ink marker:content-none">
+                {item.question}
+              </summary>
+              <p className="mt-3 max-w-[65ch] text-base leading-7 text-ink-muted">{item.answer}</p>
             </details>
           ))}
         </div>
       </section>
 
       <FinalCtaBanner
-        eyebrow="Wszystko jasne?"
-        title="Sprawdź, jak szybko to działa"
-        body="Otwórz wyszukiwarkę i ustaw kierunek oraz termin. Hotel, lot i plan dnia ułożysz w jednym miejscu — za 0 zł."
+        title="Wpisz kierunek i termin"
+        body="Ceny zmieniają się z datami, więc jedyny sposób, żeby poznać swoją, to ją sprawdzić. Zajmuje to tyle, co wpisanie miasta."
         primaryHref="/hotele/szukaj"
         primaryLabel="Otwórz wyszukiwarkę"
-        secondaryHref="/kierunki"
-        secondaryLabel="Przeglądaj kierunki"
+        secondaryHref="/cennik"
+        secondaryLabel="Ile to kosztuje"
       />
     </main>
   );

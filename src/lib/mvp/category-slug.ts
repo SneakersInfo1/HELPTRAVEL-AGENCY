@@ -25,3 +25,31 @@ const SLUG_DIACRITICS: Record<string, string> = {
 export function foldCategorySlug(slug: string): string {
   return slug.toLowerCase().replace(/[ąćęłńóśźż]/g, (ch) => SLUG_DIACRITICS[ch] ?? ch);
 }
+
+// Polskie nazwy kategorii, kluczowane po ZWINIĘTYM slugu, żeby obie formy
+// ("tanie-podróże" i "tanie-podroze") trafiały w ten sam wpis.
+//
+// Powód istnienia: karty artykułów budowały etykietę chipa przez
+// `slug.replace(/-/g, " ")`, co dawało „tanie podróże" i „cieple kierunki" —
+// małą literą i bez diakrytyków. Nazwy są tu, a nie w komponencie, bo karta
+// jest kliencka: import `publisher-content` wciągnąłby do bundla przeglądarki
+// całą treść redakcyjną. Ten moduł jest bezzależnościowy i celowo taki zostaje.
+//
+// Wartości pochodzą z `editorialCategories` w `publisher-content.ts`. Gdy
+// dojdzie nowa kategoria, brak wpisu nie psuje UI — fallback kapitalizuje slug.
+const CATEGORY_LABELS_PL: Record<string, string> = {
+  przewodniki: "Przewodniki",
+  "city-breaki": "City breaki",
+  "cieple-kierunki": "Ciepłe kierunki",
+  "bez-wizy": "Bez wizy",
+  "tanie-podroze": "Tanie podróże",
+  "weekendowe-wyjazdy": "Weekendowe wyjazdy",
+};
+
+export function categoryLabelPl(slug: string): string {
+  const folded = foldCategorySlug(slug);
+  const known = CATEGORY_LABELS_PL[folded];
+  if (known) return known;
+  const spaced = slug.replace(/-/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
