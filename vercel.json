@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/warm-featured-hotels",
       "schedule": "5 */6 * * *"
+    },
+    {
+      "path": "/api/cron/warm-flight-deals",
+      "schedule": "35 */2 * * *"
     }
   ]
 }

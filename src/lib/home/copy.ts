@@ -38,6 +38,8 @@ export interface HomeCopy {
   inspire: SectionCopy;
   /** Sekcja B — „Polecane hotele" (snapshot hotfeat:v1, rotacja co 6 h). */
   featuredHotels: SectionCopy;
+  /** Sekcja B2 — „Okazje lotnicze" (snapshot fltdeal:v1, rotacja co 2 h). */
+  flightDeals: SectionCopy;
   /** Sekcja C — „Nie wiesz, dokąd jechać?" (kafle klimatów). */
   picker: SectionCopy;
 }
@@ -73,6 +75,27 @@ export const HOME_COPY: HomeCopy = {
     subheading:
       "Dobrze oceniane obiekty z tańszej części ofert na te daty. Ceny za dobę dla dwóch osób, zestaw zmienia się co sześć godzin.",
     cta: "Zobacz hotel",
+  },
+  // Sekcja lotów stoi ZARAZ POD hotelami, więc jej zdanie musi w jednym
+  // oddechu powiedzieć, czym się od nich różni — inaczej użytkownik widzi
+  // trzeci pas kart z rzędu i przewija wszystkie trzy.
+  flightDeals: {
+    heading: "Okazje lotnicze",
+    // „Zwykle" jest tu w cudzysłowie CELOWO i od razu zdefiniowane. To jedyna
+    // liczba na tej stronie, która jest PORÓWNANIEM, a nie ceną — a porównanie
+    // bez podanej podstawy to dokładnie ten rodzaj rabatu, którego zakazuje
+    // dyrektywa Omnibus i którego zabrania PRODUCT.md. Podstawa jest realna:
+    // mediana z sześciu terminów, które cron faktycznie wyszukał na tej trasie
+    // (patrz `median` w lib/flights/flight-deals.ts). Gdyby dobór przestał
+    // liczyć medianę, to zdanie trzeba usunąć razem z nim.
+    subheading:
+      // NIE „z sześciu terminów", choć cron próbkuje sześć: termin, na który
+      // da się polecieć wyłącznie kilkunastogodzinną trasą, wypada z próby
+      // (patrz `cheapestSaneOffer`), więc realnie bywa ich pięć albo cztery.
+      // Dokładną liczbę niesie każda karta osobno, w opisie dla czytnika ekranu.
+      "Ceny wyraźnie niższe niż zwykle na tej trasie. „Zwykle” to mediana z kilku terminów sprawdzonych w najbliższych miesiącach.",
+    // Bez `cta`: karta okazji jest jednym wierszem, w którym etykieta przycisku
+    // byłaby piątą linią tekstu. Cały wiersz i tak jest linkiem.
   },
   picker: {
     heading: "Nie wiesz, dokąd jechać?",
