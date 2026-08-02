@@ -383,6 +383,48 @@ export function airportLabel(code: string): string {
   return a ? `${a.city} (${a.code})` : code;
 }
 
+/**
+ * Dopełniacz miasta wylotu — do zdań „lot z Warszawy", „z Krakowa".
+ *
+ * Istnieje, bo polszczyzna nie wybacza: pas okazji lotniczych renderował
+ * „z Warszawa", co natychmiast zdradza tekst sklejony z bazy danych zamiast
+ * napisany. Miasto w mianowniku wystarcza w etykiecie pola formularza, ale nie
+ * w zdaniu.
+ *
+ * Tablica obejmuje WYŁĄCZNIE polskie lotniska, bo tylko one bywają punktem
+ * wylotu w naszych treściach. Brak formy → zwracamy mianownik: to świadomy
+ * kompromis (drobna niezręczność zamiast pustego miejsca), a test przy puli
+ * tras pilnuje, żeby żaden realnie używany kod nie wpadł w ten fallback.
+ */
+const CITY_GENITIVE: Readonly<Record<string, string>> = {
+  Warszawa: "Warszawy",
+  Kraków: "Krakowa",
+  Gdańsk: "Gdańska",
+  Wrocław: "Wrocławia",
+  Katowice: "Katowic",
+  Poznań: "Poznania",
+  Rzeszów: "Rzeszowa",
+  Lublin: "Lublina",
+  Szczecin: "Szczecina",
+  Bydgoszcz: "Bydgoszczy",
+  Łódź: "Łodzi",
+  Olsztyn: "Olsztyna",
+  "Zielona Góra": "Zielonej Góry",
+  Radom: "Radomia",
+};
+
+export function airportCityGenitive(code: string): string {
+  const city = lookupAirport(code)?.city;
+  if (!city) return code;
+  return CITY_GENITIVE[city] ?? city;
+}
+
+/** Czy dla miasta tego lotniska znamy dopełniacz (do testów kontraktowych). */
+export function hasCityGenitive(code: string): boolean {
+  const city = lookupAirport(code)?.city;
+  return Boolean(city && CITY_GENITIVE[city]);
+}
+
 /** IATA głównego lotniska miasta po nazwie (PL/EN/aliasy, fold). Dopasowanie
  *  TYLKO exact (nie substring — „Pary" nie może trafić w Paryż). Miasto z
  *  wieloma lotniskami → pierwsze z datasetu (główne lotnisko jest pierwsze).

@@ -38,6 +38,8 @@ export interface HomeCopy {
   inspire: SectionCopy;
   /** Sekcja B — „Polecane hotele" (snapshot hotfeat:v1, rotacja co 6 h). */
   featuredHotels: SectionCopy;
+  /** Sekcja B2 — „Okazje lotnicze" (snapshot fltdeal:v1, rotacja co 2 h). */
+  flightDeals: SectionCopy;
   /** Sekcja C — „Nie wiesz, dokąd jechać?" (kafle klimatów). */
   picker: SectionCopy;
 }
@@ -73,6 +75,31 @@ export const HOME_COPY: HomeCopy = {
     subheading:
       "Dobrze oceniane obiekty z tańszej części ofert na te daty. Ceny za dobę dla dwóch osób, zestaw zmienia się co sześć godzin.",
     cta: "Zobacz hotel",
+  },
+  // NAZWA I TON TEJ SEKCJI SĄ WYMUSZONE PRAWEM, nie gustem — nie zmieniaj ich
+  // bez sprawdzenia poniższego.
+  //
+  // Pierwsza wersja nazywała się „Okazje lotnicze" i miała plakietkę „−35%".
+  // UOKiK wymienia słowo „okazja" DOSŁOWNIE obok „obniżki", „promocji"
+  // i „przeceny" jako komunikat, przy którym trzeba podać najniższą cenę tej
+  // usługi z 30 dni przed obniżką (art. 4 ustawy o informowaniu o cenach,
+  // wdrożenie dyrektywy Omnibus). Takiej historii cen NIE MAMY i mieć nie
+  // będziemy — snapshot żyje kilkanaście godzin.
+  //
+  // Ale my w ogóle nie ogłaszamy obniżki: nikt tej ceny nie obniżał. Mówimy,
+  // że JEDEN TERMIN jest tańszy od INNYCH TERMINÓW tej samej trasy. To jest
+  // porównanie dat, nie promocja — i tak właśnie musi być napisane, żeby
+  // czytelnik (i regulator) nie zobaczyli pozornego rabatu tam, gdzie go nie
+  // ma. Stąd nagłówek o terminach, a nie o okazjach, i brak procentu na karcie.
+  flightDeals: {
+    heading: "Tańsze terminy lotów",
+    subheading:
+      // Bez słowa „obniżka" nawet w przeczeniu: zdanie ma nie zawierać
+      // słownictwa, po którym w ogóle szuka się komunikatów o obniżkach.
+      // „Porównujemy terminy, a nie ceny w czasie" mówi to samo precyzyjniej.
+      "Na tych trasach wybrany termin jest wyraźnie tańszy od pozostałych, które sprawdziliśmy. Porównujemy terminy, a nie ceny w czasie.",
+    // Bez `cta`: karta jest jednym wierszem, w którym etykieta przycisku byłaby
+    // piątą linią tekstu. Cały wiersz i tak jest linkiem.
   },
   picker: {
     heading: "Nie wiesz, dokąd jechać?",

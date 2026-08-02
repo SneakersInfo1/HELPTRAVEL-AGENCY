@@ -6,10 +6,11 @@
 // (Chopin, Okęcie, Modlin, Heathrow…). Komponent kontrolowany przez rodzica
 // (query + potwierdzony wybór w stanie formularza), wzorem OriginCombobox.
 
-import { useId, useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { Plane, PlaneTakeoff } from "lucide-react";
 
 import { searchAirports, type AirportOption } from "@/lib/flights/airports";
+import { useDismissOnOutside } from "@/lib/ui/use-dismiss-on-outside";
 
 interface Props {
   query: string;
@@ -49,6 +50,10 @@ export function AirportCombobox({
   // Bez tego klik w pole „Lotnisko Chopina (WAW)" filtrował po tym tekście →
   // 0 trafień → komunikat „Brak lotniska dla…" zamiast listy do zmiany.
   const [typed, setTyped] = useState(false);
+  // Granica komponentu dla zamykania listy. Zamknięcie NIE może wisieć na
+  // utracie fokusu: naciśnięcie paska przewijania też ją powoduje, a wtedy
+  // lista znikała w trakcie przewijania (zgłoszenie właściciela 2026-08-02).
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   // Dopóki user nie zacznie pisać, traktujemy pole jak puste → lista domyślna
   // („Polska — dowolne lotnisko" + cała PL + grupy EU + popularne huby).
@@ -78,8 +83,10 @@ export function AirportCombobox({
     }
   }
 
+  useDismissOnOutside(wrapRef, open, () => setOpen(false));
+
   return (
-    <div className="relative flex flex-col gap-1.5">
+    <div ref={wrapRef} className="relative flex flex-col gap-1.5">
       <span className={labelClassName}>{label}</span>
       <div className="relative">
         <input
@@ -104,8 +111,12 @@ export function AirportCombobox({
             setTyped(false);
             e.currentTarget.select();
           }}
-          onBlur={() => {
-            window.setTimeout(() => setOpen(false), 150);
+          onBlur={(event) => {
+            // Tylko realne przeniesienie fokusu zamyka listę; `relatedTarget`
+            // równy null (pasek przewijania, klik w tło) zostawia decyzję
+            // hakowi wyżej, który odróżnia pasek od kliknięcia poza polem.
+            const next = event.relatedTarget as Node | null;
+            if (next && !wrapRef.current?.contains(next)) setOpen(false);
           }}
           placeholder={placeholder}
           autoComplete="off"
@@ -119,7 +130,11 @@ export function AirportCombobox({
               setOpen(false);
             }}
             aria-label="Wyczyść lotnisko"
-            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-emerald-900/45 transition hover:bg-emerald-50 hover:text-emerald-900"
+            // Kształt zostaje 24 px (większy krzyżyk zdominowałby pole), ale
+            // OBSZAR KLIKU rośnie pseudo-elementem do 44 px — minimum z WCAG
+            // 2.5.8. Zmierzone przed zmianą: 24×24, czyli cel, w który na
+            // telefonie trafia się co drugi raz, a 90% ruchu to telefon.
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-emerald-900/45 transition before:absolute before:-inset-[10px] before:content-[''] hover:bg-emerald-50 hover:text-emerald-900"
           >
             ×
           </button>

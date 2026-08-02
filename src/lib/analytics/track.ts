@@ -273,6 +273,18 @@ export interface TrackEventMap {
     position?: number;
     price_per_person?: number;
   };
+  /** Klik karty w pasie „Okazje lotnicze" (2026-08-02). `slug` to klucz trasy
+   *  (`WAW-BCN`), a nie kierunek z seeda — ta sama zasada rozdziału co przy
+   *  hotelach: trasa i kierunek to dwa różne wymiary i wspólny event zlepiłby
+   *  je w jedną, nierozdzielną liczbę. `saving_percent` jest tu kluczowy:
+   *  pozwala sprawdzić, czy wielkość rabatu w ogóle przekłada się na kliki,
+   *  czy tylko na naszą satysfakcję z algorytmu. */
+  flight_deal_card_clicked: {
+    slug: string;
+    position?: number;
+    price_per_person?: number;
+    saving_percent?: number;
+  };
   /** Użycie zwiniętego paska wyszukiwania w sticky navie — czy wzorzec
    *  „szukaj z dowolnego miejsca strony" jest w ogóle używany. */
   sticky_search_used: {

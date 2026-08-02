@@ -6,10 +6,12 @@ import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
 import { FeaturedHotels } from "@/components/home/featured-hotels";
+import { FlightDeals, type FlightDealView } from "@/components/home/flight-deals";
 import { RecentSearches } from "@/components/home/recent-searches";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
 import { foldText } from "@/lib/flights/airports";
 import { HOME_COPY } from "@/lib/home/copy";
+import { pickFreshDeals, readFlightDeals } from "@/lib/flights/flight-deals";
 import { pickFreshFeatured, readFeaturedHotels } from "@/lib/hotels/featured-hotels";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import {
@@ -103,7 +105,34 @@ export async function HomePageView() {
   // Polecane hotele (snapshot hotfeat:v1, cron co 6 h). `pickFreshFeatured`
   // zwraca pustą tablicę przy braku Redisa, nieświeżym zestawie albo zbyt
   // małej liczbie kart — sekcja po prostu się wtedy nie renderuje.
-  const featuredHotels = pickFreshFeatured(await readFeaturedHotels());
+  // Oba snapshoty JEDNOCZEŚNIE: to dwa niezależne klucze Upstash, więc
+  // sekwencyjne `await` dokładałoby pełny czas przelotu do generowania strony
+  // bez żadnego powodu. Każdy z nich degraduje osobno do braku sekcji.
+  const [featuredSnapshot, dealsSnapshot] = await Promise.all([
+    readFeaturedHotels(),
+    readFlightDeals(),
+  ]);
+  const featuredHotels = pickFreshFeatured(featuredSnapshot);
+
+  // Okazje lotnicze (snapshot fltdeal:v1, cron co 2 h). Zdjęcie kierunku
+  // dokładamy TUTAJ, a nie w snapshocie: adres z Pexels bywa podmieniany, więc
+  // zamrożony w Redisie na kilkanaście godzin potrafiłby prowadzić donikąd.
+  // Rozwiązujemy po ZBIORZE slugów, nie po kartach: dwie okazje do tego samego
+  // miasta (np. z Warszawy i z Krakowa) to jedno zapytanie, nie dwa.
+  const freshDeals = pickFreshDeals(dealsSnapshot);
+  const dealMedia = new Map(
+    await Promise.all(
+      [...new Set(freshDeals.map((d) => d.destinationId))].map(async (slug): Promise<[string, string | undefined]> => {
+        const profile = getDestinationProfileBySlug(slug);
+        if (!profile) return [slug, undefined];
+        return [slug, (await resolveDestinationMedia(profile)).heroImage];
+      }),
+    ),
+  );
+  const flightDeals: FlightDealView[] = freshDeals.map((deal) => ({
+    ...deal,
+    imageUrl: dealMedia.get(deal.destinationId),
+  }));
 
   // Kafle tematyczne „Nie wiesz, dokąd jechać?" — 4 moody z /wyjazdy.
   // Zdjęcie = media pierwszego picka moodu (ten sam resolver co kafelki;
@@ -209,6 +238,12 @@ export async function HomePageView() {
           więc karta dostaje obrazek bez ani jednego dodatkowego zapytania. */}
       <RecentSearches imageByKey={destinationImages} />
       <FeaturedHotels hotels={featuredHotels} />
+      {/* Okazje lotnicze POD hotelami (prośba właściciela). Kolejność nie jest
+          obojętna: hotel to nadal główny produkt serwisu i najczęstsze wejście
+          w lejek, a lot bez noclegu jest zakupem uzupełniającym. Sekcja znika
+          w całości, gdy cron nie zebrał kompletu okazji — brak realnych
+          przecen jest normalnym stanem rynku, a nie awarią do zamaskowania. */}
+      <FlightDeals deals={flightDeals} />
       {/* SEKCJA C — ścieżka dla niezdecydowanych: cztery kafle klimatów
           plus kafel asystenta.
           2026-07-27, decyzja właściciela: panel z pytaniami (budżet → typ →
