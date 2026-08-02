@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     "Rezerwuj hotel i lot w jednym miejscu. Ceny w złotówkach, z podatkami i opłatami, potwierdzenie e-mailem od razu. Bez zakładania konta.",
   keywords: [
     "tani lot i hotel",
-    "planer podróży",
+    "rezerwacja hotelu",
     "porównywarka lotów",
     "city break",
     "krótkie wyjazdy z Polski",
@@ -142,7 +142,7 @@ const structuredData = {
       },
       slogan: "Hotele i loty w jednym miejscu, w złotówkach",
       description:
-        "Niezależny polski serwis travelowy: planer wyjazdów z lotem, hotelem i planem dnia w jednym kliku, oparty o sprawdzonych partnerów rezerwacyjnych.",
+        "Polski serwis rezerwacji hoteli i lotów. Ceny w złotówkach z podatkami i opłatami, rezerwacja bez zakładania konta.",
       areaServed: [
         { "@type": "Country", name: "Poland" },
         { "@type": "Place", name: "Europe" },
@@ -152,19 +152,22 @@ const structuredData = {
         "https://helptravel.pl",
       ],
     },
+    // Ten blok był najgorszym miejscem starej nieprawdy, bo mówił ją MASZYNIE:
+    // deklarował Google'owi `price: "0"` i „płatność następuje wyłącznie
+    // u partnera rezerwacyjnego" dla usługi nazwanej „Planer wyjazdów". Planera
+    // nie ma, a nocleg kupuje się i płaci na helptravel.pl. Structured data
+    // trafia do rich resultów, więc fałszywa cena 0 PLN jest tam groźniejsza
+    // niż w tekście strony — użytkownik widzi ją, zanim w ogóle kliknie.
     {
       "@type": "Service",
       "@id": `${siteUrl}/#service`,
-      serviceType: "Trip planning and booking comparison",
-      name: "Planer wyjazdów HelpTravel",
+      serviceType: "Hotel and flight booking",
+      name: "Rezerwacja hoteli i lotów HelpTravel",
       provider: { "@id": `${siteUrl}/#organization` },
       areaServed: { "@type": "Place", name: "Europe" },
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "PLN",
-        description: "Korzystanie z planera jest darmowe. Płatność następuje wyłącznie u partnera rezerwacyjnego.",
-      },
+      // Bez `offers`: cena zależy od obiektu, terminu i liczby osób, więc
+      // każda liczba wpisana tutaj byłaby zmyślona. Brak deklaracji jest
+      // uczciwszy niż deklaracja nieprawdziwa.
       audience: { "@type": "Audience", audienceType: "Polish travelers and Polish diaspora in Europe" },
     },
   ],
