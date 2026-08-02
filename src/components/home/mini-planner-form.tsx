@@ -11,6 +11,7 @@ import { AirportCombobox } from "@/components/flights/airport-combobox";
 import { bestAirportOption, resolveOriginFromOption } from "@/lib/flights/airports";
 import { useLanguage } from "@/components/site/language-provider";
 import { track } from "@/lib/analytics/track";
+import { useDismissOnOutside } from "@/lib/ui/use-dismiss-on-outside";
 import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
 import { readRecentDestinations, saveRecentDestination } from "@/lib/mvp/recent-destinations";
@@ -151,6 +152,8 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   const listboxId = useId();
   const destInputRef = useRef<HTMLInputElement>(null);
   const destListRef = useRef<HTMLUListElement>(null);
+  // Opakowanie pola i listy — granica „wewnątrz komponentu" dla zamykania.
+  const destWrapRef = useRef<HTMLDivElement>(null);
   // "Skąd" is OPTIONAL now (zadanie 1): no default airport. `origin` holds a
   // CONFIRMED city from the list (or ""), `originQuery` the visible text —
   // same confirmed/query split the destination combobox uses.
@@ -185,6 +188,10 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   const [destQuery, setDestQuery] = useState(initial?.destination ? localizeCity(initial.destination) : "");
   const [destSuggestions, setDestSuggestions] = useState<SuggestionItem[]>([]);
   const [destOpen, setDestOpen] = useState(false);
+  // Zamknięcie listy podpowiedzi decyduje się na `pointerdown` poza polem,
+  // a nie na utracie fokusu — patrz nagłówek use-dismiss-on-outside.ts
+  // (naciśnięcie paska przewijania na desktopie też zabiera fokus).
+  useDismissOnOutside(destWrapRef, destOpen, () => setDestOpen(false));
   const [destHighlight, setDestHighlight] = useState(-1);
   const [destFetching, setDestFetching] = useState(false);
   // Licznik fokusów pustego pola „Dokąd" — każdy fokus przy pustym polu
@@ -687,18 +694,35 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     router.push(`${prefix}${href}`);
   }
 
+  // PULAPKA REPO: `text-*` na <input>/<button> NIE DZIALA. Reset
+  // `button, input, select, textarea { font-size: inherit }` stoi POZA
+  // warstwami CSS, a utility Tailwinda siedza w `@layer utilities` — styl
+  // bez warstwy zawsze bije styl z warstwy. Zmierzone: pole z klasa
+  // `text-sm` renderowalo sie jako 16 px (dziedziczone z body), nie 14 px.
+  // Dlatego rozmiar pisma pol ustawia KONTENER (`text-lg` na siatce nizej),
+  // a tutaj zostaje tylko to, co na inpucie faktycznie dziala.
+  //
+  // Wysokosc 56 px (bylo 48) na prosbe wlasciciela — pasek ma byc wiekszy.
   const fieldCls =
-    "h-12 rounded-sm border border-white/60 bg-white/95 px-3 text-sm font-medium text-emerald-950 shadow-inner transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400";
+    "h-14 rounded-sm border border-white/60 bg-white/95 px-3.5 font-medium text-emerald-950 shadow-inner transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400";
   const labelCls =
-    "text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-800/80";
+    "text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800/80";
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-md border border-white/40 bg-white/80 p-4 shadow-[0_24px_60px_rgba(16,84,48,0.24)] backdrop-blur-xl sm:p-5"
+      // `text-left` JAWNIE: hero wysrodkowuje tekst, a wyrownanie dziedziczy
+      // sie w dol — przez to etykiety pol i CALA lista podpowiedzi renderowaly
+      // sie wysrodkowane, wiec nazwy miast nie mialy wspolnej krawedzi
+      // (zgloszenie wlasciciela: „zeby napisane byly rowniutko"). Formularz
+      // nie ma prawa dziedziczyc wyrownania naglowka.
+      className="rounded-md border border-white/40 bg-white/80 p-4 text-left shadow-[0_24px_60px_rgba(16,84,48,0.24)] backdrop-blur-xl sm:p-5"
     >
+      {/* `text-lg` na SIATCE, nie na polach: patrz komentarz przy `fieldCls`
+          — pola dziedzicza rozmiar pisma z rodzica, bo wlasne `text-*` jest
+          na nich martwe. 18 px zamiast 16 px, na prosbe wlasciciela. */}
       <div
-        className={`grid gap-3 lg:items-end ${
+        className={`grid gap-3 text-lg lg:items-end ${
           isFlights
             ? "lg:grid-cols-[minmax(195px,1.45fr)_minmax(180px,1.35fr)_minmax(150px,1.05fr)_minmax(118px,0.85fr)_auto]"
             : "lg:grid-cols-[1.4fr_1.3fr_1fr_auto]"
@@ -739,7 +763,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         )}
 
         {/* DOKAD — autocomplete combobox */}
-        <div className="relative flex flex-col gap-1.5">
+        <div ref={destWrapRef} className="relative flex flex-col gap-1.5">
             <span className={labelCls}>Dokąd</span>
           <input
             ref={destInputRef}
@@ -777,7 +801,14 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
                 setDestFocusTick((t) => t + 1);
               }
             }}
-            onBlur={() => { window.setTimeout(() => setDestOpen(false), 150); }}
+            onBlur={(event) => {
+              // Zamykamy WYŁĄCZNIE wtedy, gdy fokus poszedł na konkretny element
+              // poza komponentem (tabulator, klik w inne pole). `relatedTarget`
+              // równy null to m.in. naciśnięcie paska przewijania — tam lista
+              // ma zostać otwarta, a decyzję podejmuje `useDismissOnOutside`.
+              const next = event.relatedTarget as Node | null;
+              if (next && !destWrapRef.current?.contains(next)) setDestOpen(false);
+            }}
             placeholder="Wpisz miasto lub kraj…"
             autoComplete="off"
             className={fieldCls}
@@ -957,9 +988,16 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
           // i wysyła formularz dwa razy.
           disabled={resolving}
           aria-busy={resolving}
-          className="group relative h-12 overflow-hidden whitespace-nowrap rounded-sm bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60 disabled:cursor-progress disabled:opacity-80"
+          // Bez `text-*`: <button> ma nielayerowany `font-size: inherit`, wiec i tak
+          // wziolby rozmiar z siatki (18 px). Klasa tutaj bylaby martwa i mylaca.
+          className="group relative h-14 overflow-hidden whitespace-nowrap rounded-sm bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-5 font-bold uppercase tracking-[0.06em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60 disabled:cursor-progress disabled:opacity-80"
         >
-          <span className="relative z-10 flex items-center justify-center gap-2">
+          {/* Rozmiar pisma NA SPANIE, nie na <button>: reset poza warstwami CSS
+              wymusza na przyciskach `font-size: inherit`, wiec klasa na samym
+              przycisku jest martwa (patrz komentarz przy `fieldCls`). Etykieta
+              zostaje przy 16 px — przy 18 px „Szukaj lotow" nie miescilo sie
+              w kolumnie siatki w trybie lotow (zmierzone: brakowalo 7 px). */}
+          <span className="relative z-10 flex items-center justify-center gap-2 text-base">
             {resolving ? "Szukam hotelu…" : isFlights ? "Szukaj lotów" : "Zaplanuj"}
             <span aria-hidden className="transition group-hover:translate-x-1">→</span>
           </span>
