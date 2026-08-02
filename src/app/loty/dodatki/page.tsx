@@ -12,7 +12,7 @@ import type { Metadata } from "next";
 import { FlightExtras } from "./_components/flight-extras";
 
 export const metadata: Metadata = {
-  title: "Bagaż i taryfa | HelpTravel",
+  title: "Bagaż i taryfa",
   robots: "noindex, nofollow",
 };
 

@@ -2,12 +2,7 @@ import Image from "next/image";
 import { ChevronRight, Plane } from "lucide-react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
-import {
-  formatFlightHours,
-  formatPricePln,
-  nightsBetween,
-  nightsLabel,
-} from "@/lib/home/deal-card";
+import { formatFlightHours, formatPricePln } from "@/lib/home/deal-card";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import { DEFAULT_ORIGIN_CITY } from "@/lib/mvp/origin-cities";
 import type { DestinationProfile } from "@/lib/mvp/types";
@@ -39,13 +34,6 @@ interface InspireTileProps {
   fromPricePerNight?: number;
   /** Najtańszy lot w obie strony z Warszawy (total PLN/os., snapshot). */
   flightFromPln?: number;
-  /**
-   * JEDNA cena całego wyjazdu (lot + noclegi) na osobę ze snapshotu. Gdy jest,
-   * ZASTĘPUJE rozbicie hotel/lot: dwie ceny do zsumowania w głowie były
-   * zadaniem matematycznym, a przy kierunkach z tanim hotelem i drogim lotem
-   * (Stambuł: 40 zł/noc + 1181 zł lot) tania kotwica hotelowa myliła.
-   */
-  packagePerPerson?: { perPersonPln: number; checkin: string; checkout: string };
 }
 
 export function InspireTile({
@@ -54,7 +42,6 @@ export function InspireTile({
   defaultTravelers = 2,
   fromPricePerNight,
   flightFromPln,
-  packagePerPerson,
 }: InspireTileProps) {
   // Daty ŚWIADOMIE niewypełnione — użytkownik wybiera termin sam na wynikach
   // (decyzja właściciela 2026-07-04: termin ceny zostaje na karcie).
@@ -69,9 +56,6 @@ export function InspireTile({
   const cityLabel = localizeCity(destination.city);
   const countryLabel = localizeCountry(destination.country);
   const flightHours = formatFlightHours(destination.typicalFlightHoursFromPL);
-  const nights = packagePerPerson
-    ? nightsBetween(packagePerPerson.checkin, packagePerPerson.checkout)
-    : 0;
 
   return (
     <LocalizedLink
@@ -80,7 +64,7 @@ export function InspireTile({
       // nie istnieje. Bez stanu wciśnięcia cała informacja zwrotna karty jest
       // widoczna wyłącznie dla 10% użytkowników, a pozostali dotykają kafelka
       // i do momentu nawigacji nie dostają żadnego potwierdzenia.
-      className="group relative flex aspect-[3/4] overflow-hidden rounded-2xl bg-brand-soft shadow-[var(--shadow-md)] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-lg)] active:scale-[0.985] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 sm:aspect-[4/5]"
+      className="group relative flex aspect-[3/4] overflow-hidden rounded-md bg-brand-soft shadow-[var(--shadow-md)] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-lg)] active:scale-[0.985] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 sm:aspect-[4/5]"
     >
       <Image
         src={heroImage}
@@ -138,48 +122,30 @@ export function InspireTile({
 
         <div className="mt-1.5 flex items-end justify-between gap-2">
           <div className="min-w-0">
-            {packagePerPerson ? (
-              <>
-                {/* CO zawiera cena. Bez konkretnego okna dat — zmierzone na
-                    375 px: „lot + 7 nocy · 26.09–3.10" łamało się na dwie linie
-                    na 7 z 18 kart, a scrim rósł w górę i zjadał zdjęcie różnie
-                    na każdej karcie. Dokładny termin niesie sekcja B, gdzie
-                    karta jest dwa razy szersza i gdzie jest realną ofertą;
-                    tutaj wystarczy długość wyjazdu, bo cena jest orientacyjna
-                    („od") i ma zachęcić do kliknięcia, a nie zamknąć sprzedaż. */}
-                <p className="text-xs leading-snug text-white/80">
-                  lot + {nights ? nightsLabel(nights) : "nocleg"}
-                </p>
-                {/* Cena i jednostka jako JEDEN niełamliwy token: na 375 px
-                    łamanie w środku ceny zostawiało sierotę „zł" w nowej linii. */}
-                <p className="mt-0.5 text-base font-bold leading-snug text-accent-bright">
-                  <span className="whitespace-nowrap">
-                    od {formatPricePln(packagePerPerson.perPersonPln)}
-                    <span className="text-[11px] font-medium text-white/75">/os.</span>
-                  </span>
-                </p>
-              </>
-            ) : (
-              <>
-                {/* Brak świeżego pakietu → pokazujemy TYLKO to, co realnie mamy.
-                    Nigdy nie sumujemy hotelu i lotu sami — składniki pochodzą
-                    z różnych okien dat, więc suma byłaby zmyślona. */}
-                {typeof fromPricePerNight === "number" && (
-                  <p className="text-sm font-bold leading-snug text-accent-bright">
-                    Hotel{" "}
-                    <span className="whitespace-nowrap">
-                      od {formatPricePln(fromPricePerNight)}
-                      <span className="text-[11px] font-medium text-white/75">/noc</span>
-                    </span>
-                  </p>
-                )}
-                {typeof flightFromPln === "number" && (
-                  <p className="mt-0.5 text-xs font-medium leading-snug text-white/85">
-                    Lot<span className="hidden sm:inline"> z Warszawy</span>{" "}
-                    <span className="whitespace-nowrap">od {formatPricePln(flightFromPln)}</span>
-                  </p>
-                )}
-              </>
+            {/* DWIE OSOBNE LICZBY, nigdy ich suma.
+                Do 2026-08-02 kafelek pokazywał tu jedną cenę pakietu
+                („lot + 7 nocy · od 1431 zł/os."), bo jeden komplet liczb czyta
+                się łatwiej niż dwa. Problem był w tym, dokąd ten kafelek
+                prowadzi: `/hotele/szukaj` świadomie nie miesza lotów do lejka
+                hotelowego, więc obietnica lotu nie miała pokrycia na następnym
+                ekranie — a tak wygląda utrata zaufania w serwisie, w którym za
+                chwilę podaje się kartę.
+                Hotel i lot pochodzą z RÓŻNYCH okien dat, więc nie wolno ich tu
+                dodać — suma byłaby liczbą, której nikt nie policzył. */}
+            {typeof fromPricePerNight === "number" && (
+              <p className="text-sm font-bold leading-snug text-accent-bright">
+                Hotel{" "}
+                <span className="whitespace-nowrap">
+                  od {formatPricePln(fromPricePerNight)}
+                  <span className="text-[11px] font-medium text-white/75">/noc</span>
+                </span>
+              </p>
+            )}
+            {typeof flightFromPln === "number" && (
+              <p className="mt-0.5 text-xs font-medium leading-snug text-white/85">
+                Lot<span className="hidden sm:inline"> z Warszawy</span>{" "}
+                <span className="whitespace-nowrap">od {formatPricePln(flightFromPln)}</span>
+              </p>
             )}
           </div>
 

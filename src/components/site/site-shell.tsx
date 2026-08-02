@@ -157,18 +157,41 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // treść tekstowa nie może się rozjeżdżać na całą szerokość monitora.
   const isHome = stripLocalePrefix(pathname) === "/";
 
+  // PEŁNA SZEROKOŚĆ NA STRONIE GŁÓWNEJ (właściciel 2026-08-02: „żeby nie było
+  // białych pasków po bokach na mobile i na pc").
+  //
+  // Białe pasy brały się STĄD, a nie z samej strony: ta rama nakładała
+  // `px-4 sm:px-6 lg:px-8` również na `/`, więc hero ze zdjęciem kończył się
+  // 16 px przed krawędzią telefonu i 32 px przed krawędzią monitora. Na home
+  // padding schodzi do zera i należy do poszczególnych sekcji, dzięki czemu
+  // tło hero i pas kierunków idą od krawędzi do krawędzi, a tekst dalej ma
+  // swój margines.
+  //
+  // Pozostałe strony (artykuły, wyniki, checkout) zostają w `max-w-7xl`
+  // z paddingiem: treść tekstowa rozjechana na całą szerokość monitora jest
+  // nieczytelna, a tego zadanie nie dotyczyło.
+  const ramaCls = isHome ? "max-w-none" : "max-w-7xl px-4 pb-4 sm:px-6 lg:px-8";
+  // Sekcje pełnoszerokościowe biorą padding same — ten sam zestaw wartości,
+  // żeby nagłówek, stopka i sekcje strony miały wspólną linię lewego marginesu.
+  const bleedPadCls = "px-4 sm:px-6 xl:px-8";
+
   return (
-    <div
-      className={`mx-auto flex min-h-screen w-full flex-col px-4 pb-4 sm:px-6 lg:px-8 ${
-        isHome ? "max-w-none" : "max-w-7xl"
-      }`}
-    >
+    <div className={`mx-auto flex min-h-screen w-full flex-col ${ramaCls}`}>
       {/* Skip link removed 2026-05-26 — it duplicated the one already rendered
           by src/app/layout.tsx (both pointed at #main-content, creating two
           competing focus targets for keyboard/AT users). Layout's skip link
           is canonical; this site-shell only owns the #main-content wrapper. */}
 
-      <header className="sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/10 bg-white px-3 py-2 shadow-[0_10px_30px_rgba(12,58,34,0.055)] sm:px-4">
+      {/* Na home nagłówek jest PASEM przyklejonym do krawędzi: pływająca
+          pastylka z marginesem i promieniem 1,2rem wyglądałaby jak wyspa nad
+          treścią, która idzie od brzegu do brzegu. Poza home bez zmian. */}
+      <header
+        className={
+          isHome
+            ? `sticky top-0 z-30 border-b border-emerald-900/10 bg-white py-2 shadow-[0_1px_0_rgba(12,58,34,0.06)] ${bleedPadCls}`
+            : "sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/10 bg-white px-3 py-2 shadow-[0_10px_30px_rgba(12,58,34,0.055)] sm:px-4"
+        }
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <LocalizedLink
@@ -350,7 +373,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </p>
         </footer>
       ) : (
-      <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
+      <footer
+        className={
+          isHome
+            ? `mt-8 border-t border-emerald-900/10 bg-white/95 py-8 ${bleedPadCls}`
+            : "mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]"
+        }
+      >
         {/* Gęściej: 5 kolumn zamiast 4 na desktopie, 2 na tablecie. Trzy
             rzadkie, wysokie kolumny zostawiały pustkę i wydłużały stronę. */}
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.85fr_0.85fr_0.85fr_0.95fr]">

@@ -123,7 +123,7 @@ export function AssistantTile() {
     <button
       type="button"
       onClick={() => requestConciergeOpen("category_tile")}
-      className="group relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-2xl border border-brand-strong/20 bg-brand-strong p-3 text-left text-white transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 sm:p-4"
+      className="group relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-md border border-brand-strong/20 bg-brand-strong p-3 text-left text-white transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 sm:p-4"
     >
       <Compass
         aria-hidden

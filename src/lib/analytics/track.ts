@@ -41,8 +41,22 @@ export interface TrackEventMap {
     /** SUM of adults+children (product decision: children count as adults). */
     adults?: number;
     rooms?: number;
-    /** Where the search was launched from. */
-    source?: "search_bar" | "landing_cta" | "destination_guide" | "month_page" | "homepage";
+    /**
+     * Where the search was launched from.
+     *
+     * `search_bar_hotel` (2026-08-02) to ta sama wyszukiwarka, ale INNA
+     * intencja: użytkownik wpisał nazwę obiektu i trafił prosto na jego stronę,
+     * z pominięciem listy wyników. Wrzucone pod `search_bar` byłoby nierozróżnialne
+     * od szukania kierunku, więc nie dałoby się sprawdzić, czy ta ścieżka
+     * w ogóle jest używana ani jak konwertuje.
+     */
+    source?:
+      | "search_bar"
+      | "search_bar_hotel"
+      | "landing_cta"
+      | "destination_guide"
+      | "month_page"
+      | "homepage";
     /** Children picked in the guests popover (informational split). */
     children_count?: number;
     /** Whether the optional "Skąd" field was filled. */

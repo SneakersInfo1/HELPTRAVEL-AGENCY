@@ -54,7 +54,7 @@ export interface PlaceSuggestion {
   name: string;
   /** „Thailand" dla Bangkoku; pusty string dla samego kraju. */
   countryLabel: string;
-  kind: "country" | "region" | "city";
+  kind: "country" | "region" | "city" | "hotel";
 }
 
 /** Typy Google Places, które są realnym KIERUNKIEM podróży. */
@@ -68,17 +68,41 @@ const REGION_TYPES = new Set([
   "archipelago",
 ]);
 /**
+ * Typy oznaczające NOCLEG. Do 2026-08-02 leżały na liście odrzuceń — sekcja
+ * podpowiedzi obsługiwała wyłącznie kierunki, więc „Chopin Boutique" nie
+ * zwracało niczego. Użytkownik przychodzący z Google zna nazwę obiektu i tego
+ * właśnie próbuje; Booking od lat na to odpowiada.
+ *
+ * `lodging` jest typem nadrzędnym Google Places dla noclegów; pozostałe
+ * dochodzą, bo część obiektów ma wyłącznie typ szczegółowy.
+ */
+const LODGING_TYPES = new Set([
+  "lodging",
+  "hotel",
+  "motel",
+  "resort_hotel",
+  "bed_and_breakfast",
+  "guest_house",
+  "hostel",
+  "extended_stay_hotel",
+  "cottage",
+  "farmstay",
+  "campground",
+  "rv_park",
+]);
+
+/**
  * Typy dyskwalifikujące. Bez tego filtra lista wygląda jak wyniki Map, a nie
  * wyszukiwarka wyjazdów: zapytanie „Bangkok" zwracało „The Bangkok Lounge"
  * (bar w Charleston) i „Bangkok Nail Spa LLC", a „Wietnam" — kościół baptystów.
  * Lotniska też odpadają: użytkownik wybiera MIASTO, kod IATA dokłada formularz.
+ *
+ * `lodging`/`hotel` ZNIKNĘŁY z tej listy — obsługuje je LODGING_TYPES wyżej.
+ * Bar i spa dalej odpadają, bo nie mają żadnego typu noclegowego.
  */
 const REJECT_TYPES = [
   "establishment",
   "point_of_interest",
-  "airport",
-  "lodging",
-  "hotel",
   "restaurant",
   "store",
   "route",
@@ -106,20 +130,44 @@ export function classifyPlace(place: {
   const isCity = types.some((t) => CITY_TYPES.has(t));
   const isRegion = types.some((t) => REGION_TYPES.has(t));
   const isCountry = types.includes("country");
-  if (!isCity && !isRegion && !isCountry) return null;
-  if (!isCity && !isCountry && types.some((t) => REJECT_TYPES.some((r) => t.includes(r)))) return null;
+  // Nocleg rozpoznajemy PRZED miastem, ale ustępuje mu przy remisie: Google
+  // tagował „Malta" jako `locality` i przy okazji obiekty noclegowe o tej samej
+  // nazwie. Kto wpisuje nazwę miasta, szuka miasta.
+  const isLodging = types.some((t) => LODGING_TYPES.has(t));
+  if (!isCity && !isRegion && !isCountry && !isLodging) return null;
+  // Lotnisko odpada ZAWSZE — użytkownik wybiera miasto albo hotel, kod IATA
+  // dokłada formularz. Sprawdzane przed resztą, bo terminal bywa otagowany
+  // także jako `lodging` (hotele tranzytowe w budynku lotniska).
   if (types.some((t) => t.includes("airport"))) return null;
+  if (
+    !isCity &&
+    !isCountry &&
+    !isLodging &&
+    types.some((t) => REJECT_TYPES.some((r) => t.includes(r)))
+  ) {
+    return null;
+  }
 
   return {
     placeId: place.placeId,
     name,
     countryLabel: place.formattedAddress?.trim() ?? "",
-    kind: isCountry ? "country" : isCity ? "city" : "region",
+    kind: isCountry ? "country" : isCity ? "city" : isRegion ? "region" : "hotel",
   };
 }
 
-/** Kolejność: miasta, potem regiony/wyspy, na końcu całe kraje. */
-const KIND_ORDER: Record<PlaceSuggestion["kind"], number> = { city: 0, region: 1, country: 2 };
+/** Kolejność: miasta, potem regiony/wyspy, hotele, na końcu całe kraje.
+ *
+ *  Hotele NAD krajami, ale POD kierunkami: zapytanie „Malaga" ma pokazać
+ *  najpierw miasto, bo tego szuka większość — ale zapytanie „Hotel Larios"
+ *  i tak zwróci wyłącznie noclegi, więc kolejność nie zaszkodzi temu, kto
+ *  wpisał nazwę obiektu. */
+const KIND_ORDER: Record<PlaceSuggestion["kind"], number> = {
+  city: 0,
+  region: 1,
+  hotel: 2,
+  country: 3,
+};
 
 /** Czysta część potoku: klasyfikacja + dedupe + sortowanie. Testowalna. */
 export function toPlaceSuggestions(

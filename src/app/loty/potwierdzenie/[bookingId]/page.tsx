@@ -9,7 +9,7 @@ import { FlightConfirmation } from "./_components/flight-confirmation";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Potwierdzenie rezerwacji lotu | HelpTravel",
+  title: "Potwierdzenie rezerwacji lotu",
   robots: { index: false, follow: false },
 };
 

@@ -14,7 +14,7 @@ import { getSiteUrl } from "@/lib/mvp/site";
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: "Porównania kierunków — który wybrać na wyjazd? | HelpTravel",
+  title: "Porównania kierunków — który wybrać na wyjazd?",
   description:
     "Bezpośrednie porównania popularnych kierunków z Polski: pogoda, koszty, plaża, zwiedzanie i dolot. Kreta czy Turcja, Majorka czy Cypr, Rzym czy Ateny i wiele więcej.",
   alternates: { canonical: "/porownanie" },

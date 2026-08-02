@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { BedDouble, Building2, Globe, Palmtree, Plane } from "lucide-react";
 
 import { DateRangeField } from "@/components/search/date-range-field";
 import { GuestsField } from "@/components/search/guests-field";
@@ -13,6 +14,8 @@ import { track } from "@/lib/analytics/track";
 import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
 import { readRecentDestinations, saveRecentDestination } from "@/lib/mvp/recent-destinations";
+import { saveRecentSearch } from "@/lib/mvp/recent-searches";
+import { foldText } from "@/lib/flights/airports";
 import { POPULAR_GROUP_LABELS } from "@/lib/mvp/popular-destinations";
 import type { DestinationSuggestion } from "@/lib/mvp/types";
 
@@ -38,10 +41,16 @@ function buildSuggestionSections(
   const beach: Row[] = [];
   const city: Row[] = [];
   const flat: Row[] = [];
+  // Hotele w OSOBNEJ sekcji (2026-08-02): „Chopin Boutique" i „Warszawa" to
+  // dwie różne rzeczy — jedna otwiera obiekt, druga listę wyników. Wrzucone
+  // w jeden ciąg wyglądają jak warianty tego samego, a klikając, użytkownik
+  // dostaje dwa różne zachowania bez ostrzeżenia.
+  const hotels: Row[] = [];
 
   items.forEach((item, index) => {
     const row = { item, index };
     if (item._recent) recent.push(row);
+    else if (item.kind === "hotel") hotels.push(row);
     else if (item.group === "beach") beach.push(row);
     else if (item.group === "city") city.push(row);
     else flat.push(row);
@@ -51,8 +60,29 @@ function buildSuggestionSections(
   if (recent.length) sections.push({ label: "Ostatnio szukane", rows: recent });
   if (beach.length) sections.push({ label: POPULAR_GROUP_LABELS.beach, rows: beach });
   if (city.length) sections.push({ label: POPULAR_GROUP_LABELS.city, rows: city });
-  if (flat.length) sections.push({ label: null, rows: flat });
+  // Kierunki PRZED hotelami: kto wpisuje „Barcelona", szuka miasta.
+  if (flat.length) sections.push({ label: hotels.length ? "Kierunki" : null, rows: flat });
+  if (hotels.length) sections.push({ label: "Hotele", rows: hotels });
   return sections;
+}
+
+/**
+ * Ikona typu podpowiedzi — jak na Bookingu.
+ *
+ * To nie jest dekoracja: lista miesza teraz cztery różne rzeczy (miasto,
+ * wyspa, kraj, konkretny obiekt), a każda z nich zachowuje się po kliknięciu
+ * inaczej. Kształt ikony jest jedyną informacją o tym, co się stanie, którą
+ * da się przeczytać jednym rzutem oka — nazwa „Malta" wygląda tak samo jako
+ * wyspa i jako pensjonat.
+ */
+function suggestionIcon(item: SuggestionItem) {
+  if (item.kind === "hotel") return BedDouble;
+  if (item.kind === "region") return Palmtree;
+  if (item.kind === "country") return Globe;
+  // Miasto z lotniskiem dostaje samolot — to jest kierunek, do którego
+  // formularz potrafi dobrać lot, i jedyny sygnał tej różnicy na liście.
+  if (item.airportCode) return Plane;
+  return Building2;
 }
 
 interface MiniPlannerFormProps {
@@ -95,12 +125,16 @@ interface MiniPlannerFormProps {
   }>;
 }
 
-/** Wynik rozstrzygnięcia pola "Dokąd" na submit (miasto albo wyspa/region). */
+/** Wynik rozstrzygnięcia pola "Dokąd" na submit (miasto, wyspa/region albo hotel). */
 interface ResolvedDestination {
-  kind: "city" | "region";
+  kind: "city" | "region" | "hotel";
   city: string;
   country: string;
   regionId: string | null;
+  /** Google Place ID — tylko dla `kind: "hotel"`, wejście do rozwiązania hotelId. */
+  placeId?: string;
+  /** Nazwa obiektu, o którą pytał użytkownik (bramka „czy to na pewno TEN hotel"). */
+  hotelName?: string;
 }
 
 function diffNights(start: string, end: string): number {
@@ -137,6 +171,14 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   // Zadanie 2 — wybrana wyspa/region (null = zwykłe miasto). Wpisywanie
   // czegokolwiek w pole zeruje wybór, jak destConfirmed.
   const [destRegionId, setDestRegionId] = useState<string | null>(initial?.regionId ?? null);
+  // Wybrany KONKRETNY obiekt (2026-08-02). Pusty placeId = użytkownik wybrał
+  // kierunek, nie hotel — czyli dotychczasowe zachowanie formularza.
+  const [destPlaceId, setDestPlaceId] = useState("");
+  const [destHotelName, setDestHotelName] = useState("");
+  // Rozwiązanie hotelu (jedno wywołanie API po kliknięciu „Zaplanuj") potrafi
+  // zająć chwilę — bez tego przycisk nie dawał żadnego sygnału i użytkownik
+  // klikał drugi raz.
+  const [resolving, setResolving] = useState(false);
   // Visible input gets the Polish exonym (e.g. "Lizbona") so collapsing back
   // from /hotele/szukaj?destination=Lisbon shows what the user picked, not
   // the canonical English key.
@@ -203,6 +245,10 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         const res = await fetch(url, { signal: controller.signal });
         const payload = (await res.json().catch(() => ({ items: [] }))) as { items?: DestinationSuggestion[] };
         let items: SuggestionItem[] = payload.items ?? [];
+        // Tryb LOTÓW nie przyjmuje hoteli: celem lotu jest lotnisko, a obiekt
+        // noclegowy nie ma kodu IATA. Bez tego filtra „Chopin Boutique"
+        // pojawiałoby się na liście i kończyło błędem po kliknięciu „Szukaj".
+        if (isFlights) items = items.filter((i) => i.kind !== "hotel");
         if (popularMode) {
           const recent = readRecentDestinations();
           const recentIds = new Set(recent.map((r) => r.id));
@@ -230,7 +276,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [destQuery, destConfirmed, destFocusTick]);
+  }, [destQuery, destConfirmed, destFocusTick, isFlights]);
 
   function selectSuggestion(s: SuggestionItem) {
     // „Ostatnie" (localStorage) — bez wewnętrznej flagi _recent.
@@ -242,6 +288,10 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     setDestinationCountry(s.country);
     // Zadanie 2 — wyspa/region niesie regionId; miasto je zeruje.
     setDestRegionId(s.kind === "region" ? (s.regionId ?? null) : null);
+    // Hotel niesie placeId i własną nazwę; każdy inny wybór je czyści —
+    // inaczej wybór miasta PO hotelu dalej skakałby do obiektu.
+    setDestPlaceId(s.kind === "hotel" ? (s.placeId ?? "") : "");
+    setDestHotelName(s.kind === "hotel" ? s.label : "");
     // Faza 2 (loty): zapamiętaj IATA celu (z autocomplete: airportCode).
     setDestIata(s.airportCode ?? "");
     // Visible input gets the Polish exonym so the user sees what they picked.
@@ -301,10 +351,12 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     // Warszawa, "majorka" → wyspa Majorka). Błąd dopiero gdy podpowiedzi
     // nie ma wcale (czyli tekst nie przypomina żadnego kierunku).
     let resolvedDest: ResolvedDestination = {
-      kind: destRegionId ? "region" : "city",
+      kind: destPlaceId ? "hotel" : destRegionId ? "region" : "city",
       city: destination,
       country: destinationCountry,
       regionId: destRegionId,
+      placeId: destPlaceId || undefined,
+      hotelName: destHotelName || undefined,
     };
     let resolvedDestIata = destIata; // IATA celu (tryb lotów)
     if (destQuery.trim().length > 0 && !destConfirmed) {
@@ -330,10 +382,15 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         }
       } else {
         resolvedDest = {
-          kind: top.kind === "region" ? "region" : "city",
+          kind: top.kind === "region" ? "region" : top.kind === "hotel" ? "hotel" : "city",
           city: top.city,
           country: top.country,
           regionId: top.kind === "region" ? (top.regionId ?? null) : null,
+          // Wpisana nazwa obiektu bez kliknięcia w listę też ma prowadzić do
+          // hotelu — inaczej „Chopin Boutique" + Enter zachowywałoby się
+          // inaczej niż „Chopin Boutique" + klik, a to ta sama intencja.
+          placeId: top.kind === "hotel" ? top.placeId : undefined,
+          hotelName: top.kind === "hotel" ? top.label : undefined,
         };
         resolvedDestIata = top.airportCode ?? "";
         // Dosynchronizuj UI, żeby po nawigacji wstecz pole pokazywało wybór.
@@ -456,6 +513,72 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     setDateError("");
     const nights = diffNights(startDate, endDate);
     const trimmedDestination = resolvedDest.city.trim();
+    const totalGuestsForJump = adults + childCount;
+
+    // ── SKOK DO KONKRETNEGO HOTELU (2026-08-02) ─────────────────────────────
+    // Wpisanie nazwy obiektu + termin ma otworzyć TEN obiekt, a nie listę
+    // wyników — dokładnie jak na Bookingu. Publiczne LiteAPI nie wyszukuje
+    // hoteli po nazwie, więc drogę robią dwa kroki: Google Place ID
+    // z podpowiedzi → `/data/hotels?placeId=…` → hotelId (patrz
+    // /api/hotels/resolve-place).
+    //
+    // NIEUDANE ROZWIĄZANIE NIE JEST BŁĘDEM. Endpoint zwraca `null`, gdy nazwa
+    // znalezionego hotelu nie zgadza się z tym, o co pytał użytkownik (Google
+    // na „Burj Al Arab" zwraca plażę o tej nazwie). Wtedy po prostu lecimy
+    // dalej wyszukiwaniem w mieście obiektu — zero ślepych uliczek.
+    if (resolvedDest.kind === "hotel" && resolvedDest.placeId) {
+      setResolving(true);
+      let hotelId: string | null = null;
+      try {
+        const res = await fetch(
+          `/api/hotels/resolve-place?placeId=${encodeURIComponent(resolvedDest.placeId)}&name=${encodeURIComponent(resolvedDest.hotelName ?? destQuery)}`,
+        );
+        const payload = (await res.json().catch(() => ({}))) as { hotelId?: string | null };
+        hotelId = payload.hotelId ?? null;
+      } catch {
+        hotelId = null;
+      }
+      setResolving(false);
+
+      if (hotelId) {
+        const hotelParams = new URLSearchParams({
+          checkin: startDate,
+          checkout: endDate,
+          adults: String(totalGuestsForJump),
+          rooms: "1",
+        });
+        if (childCount > 0) hotelParams.set("children", String(childCount));
+        const hotelHref = `/hotele/${hotelId}?${hotelParams.toString()}`;
+        saveRecentSearch({
+          id: `hotel:${hotelId}|${startDate}|${endDate}`,
+          kind: "hotel",
+          title: resolvedDest.hotelName ?? destQuery.trim(),
+          subtitle: resolvedDest.city ? `${resolvedDest.city}` : undefined,
+          checkin: startDate,
+          checkout: endDate,
+          guests: totalGuestsForJump,
+          rooms: 1,
+          href: hotelHref,
+        });
+        track("hotel_search_submit", {
+          destination: resolvedDest.hotelName ?? destQuery.trim(),
+          country: resolvedDest.country || undefined,
+          checkin: startDate,
+          checkout: endDate,
+          adults: totalGuestsForJump,
+          rooms: 1,
+          // Osobne źródło: to jest inna intencja niż szukanie kierunku i musi
+          // dać się odróżnić w lejku, inaczej nie wiadomo, czy ta ścieżka
+          // w ogóle jest używana.
+          source: "search_bar_hotel",
+          children_count: childCount,
+          origin_provided: Boolean(resolvedOrigin),
+        });
+        const hotelPrefix = locale === "en" ? "/en" : "";
+        router.push(`${hotelPrefix}${hotelHref}`);
+        return;
+      }
+    }
     // PRODUCT DECISION (zadanie 1): children count as adults downstream —
     // LiteAPI occupancies and the flights search both read the summed
     // `adults` param. `kids` is informational only (restores the UI split).
@@ -510,19 +633,39 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       destination_type: trimmedDestination.length > 0 ? "specific" : "anywhere",
       date_mode: "fixed",
     });
+    const href = `/hotele/szukaj?${params.toString()}`;
+    // Sekcja „Ostatnio wyszukiwane" na stronie głównej. Zapis jest lokalny
+    // (localStorage) i celowo NIE obejmuje trybu lotów: karta ma kształt
+    // hotelowy (noce, goście, pokoje), a trasa lotu opisana tymi polami
+    // znaczyłaby coś innego niż to, co na niej pisze.
+    saveRecentSearch({
+      id: `dest:${foldText(trimmedDestination)}|${foldText(resolvedDest.country)}|${startDate}|${endDate}`,
+      kind: "destination",
+      title: localizeCity(trimmedDestination),
+      subtitle: localizeCountry(resolvedDest.country),
+      // Ten sam klucz co po stronie serwera (foldowane „miasto|kraj" po
+      // angielsku) — dzięki temu strona główna dokłada do karty zdjęcie,
+      // które i tak rozwiązała dla kafelków.
+      imageKey: foldText(`${trimmedDestination}|${resolvedDest.country}`),
+      checkin: startDate,
+      checkout: endDate,
+      guests: totalGuests,
+      rooms: 1,
+      href,
+    });
     const prefix = locale === "en" ? "/en" : "";
-    router.push(`${prefix}/hotele/szukaj?${params.toString()}`);
+    router.push(`${prefix}${href}`);
   }
 
   const fieldCls =
-    "h-12 rounded-xl border border-white/60 bg-white/95 px-3 text-sm font-medium text-emerald-950 shadow-inner transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400";
+    "h-12 rounded-sm border border-white/60 bg-white/95 px-3 text-sm font-medium text-emerald-950 shadow-inner transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400";
   const labelCls =
     "text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-800/80";
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-white/40 bg-white/80 p-4 shadow-[0_24px_60px_rgba(16,84,48,0.24)] backdrop-blur-xl sm:p-5"
+      className="rounded-md border border-white/40 bg-white/80 p-4 shadow-[0_24px_60px_rgba(16,84,48,0.24)] backdrop-blur-xl sm:p-5"
     >
       <div
         className={`grid gap-3 lg:items-end ${
@@ -586,6 +729,10 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               setDestQuery(e.target.value);
               setDestination(e.target.value);
               setDestRegionId(null);
+              // Zmiana tekstu unieważnia WYBRANY obiekt — bez tego dopisanie
+              // litery do nazwy hotelu dalej skakałoby do poprzedniego.
+              setDestPlaceId("");
+              setDestHotelName("");
               setDestConfirmed(false);
               setDestError("");
             }}
@@ -614,7 +761,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               // to było pięć widocznych wierszy i trzy ekrany przewijania),
               // na desktopie sufit 24rem, żeby panel nie zjadał całej strony.
               // overscroll-contain: przewijanie listy nie ciągnie za sobą tła.
-              className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface-raised py-1 shadow-[var(--shadow-lg)]"
+              className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain rounded-md border border-line bg-surface-raised py-1 shadow-[var(--shadow-lg)]"
             >
               {destFetching ? (
                 // Szkielet, nie napis „Szukamy kierunków…". Odkąd zapytania
@@ -672,14 +819,20 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
                       {section.rows.map(({ item: s, index: idx }) => {
                         // Zadanie 2 — wyspy z oznaczeniem typu ("wyspa · Hiszpania").
                         const isRegion = s.kind === "region";
+                        const isHotel = s.kind === "hotel";
                         const ctry = localizeCountry(s.country);
                         const reg = isRegion ? "wyspa" : localizeRegion(s.region);
                         // Podpowiedź redakcyjna („Kreta" przy Heraklionie) bije
                         // nazwę regionu z seeda: to jest słowo, którego
                         // użytkownik realnie szuka.
-                        const meta = isRegion
-                          ? [reg, ctry].filter(Boolean).join(" · ")
-                          : [s.hint ?? reg, ctry].filter(Boolean).join(" · ");
+                        // Hotel pokazuje ADRES — dwa obiekty o tej samej nazwie
+                        // w jednym mieście to norma, a nazwa sama ich nie rozróżni.
+                        const meta = isHotel
+                          ? (s.secondary ?? ctry)
+                          : isRegion
+                            ? [reg, ctry].filter(Boolean).join(" · ")
+                            : [s.hint ?? reg, ctry].filter(Boolean).join(" · ");
+                        const Icon = suggestionIcon(s);
                         return (
                           <li
                             key={s.id}
@@ -695,14 +848,26 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
                             onMouseEnter={() => setDestHighlight(idx)}
                             // min-h-[52px]: wiersz listy to cel dotykowy, a
                             // py-2 dawało ~40 px. 90% ruchu to telefon.
-                            className={`flex min-h-[52px] cursor-pointer flex-col justify-center px-3 py-2 transition-colors ${
+                            className={`flex min-h-[52px] cursor-pointer items-center gap-2.5 px-3 py-2 transition-colors ${
                               idx === destHighlight ? "bg-brand-soft" : "hover:bg-surface-sunken"
                             }`}
                           >
-                            <span className="text-sm font-semibold text-ink">
-                              {s.cityPl ?? localizeCity(s.city)}
+                            {/* Ikona typu — jak na Bookingu. `aria-hidden`, bo
+                                informację o typie niesie już tekst pod nazwą
+                                („wyspa · Hiszpania", adres hotelu); dla czytnika
+                                ekranu byłaby drugą, gorszą kopią tej samej rzeczy. */}
+                            <span
+                              aria-hidden
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-muted"
+                            >
+                              <Icon className="h-4 w-4" strokeWidth={2} />
                             </span>
-                            {meta && <span className="text-xs text-ink-muted">{meta}</span>}
+                            <span className="flex min-w-0 flex-col">
+                              <span className="truncate text-sm font-semibold text-ink">
+                                {s.cityPl ?? localizeCity(s.city)}
+                              </span>
+                              {meta && <span className="truncate text-xs text-ink-muted">{meta}</span>}
+                            </span>
                           </li>
                         );
                       })}
@@ -717,7 +882,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             </ul>
           )}
           {destError && (
-            <p className="mt-1 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
+            <p className="mt-1 rounded-sm bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
               {destError}
             </p>
           )}
@@ -757,10 +922,15 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         {/* CTA */}
         <button
           type="submit"
-          className="group relative h-12 overflow-hidden whitespace-nowrap rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60"
+          // Blokada na czas rozwiązywania hotelu: jedno wywołanie API dzieli
+          // kliknięcie od nawigacji, a bez sygnału użytkownik klika drugi raz
+          // i wysyła formularz dwa razy.
+          disabled={resolving}
+          aria-busy={resolving}
+          className="group relative h-12 overflow-hidden whitespace-nowrap rounded-sm bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60 disabled:cursor-progress disabled:opacity-80"
         >
           <span className="relative z-10 flex items-center justify-center gap-2">
-            {isFlights ? "Szukaj lotów" : "Zaplanuj"}
+            {resolving ? "Szukam hotelu…" : isFlights ? "Szukaj lotów" : "Zaplanuj"}
             <span aria-hidden className="transition group-hover:translate-x-1">→</span>
           </span>
           <span
@@ -791,7 +961,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       )}
 
       {dateError && (
-        <p className="mt-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
+        <p className="mt-2 rounded-sm bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
           {dateError}
         </p>
       )}

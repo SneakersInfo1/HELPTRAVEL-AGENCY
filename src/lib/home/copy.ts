@@ -36,8 +36,8 @@ export interface SectionCopy {
 export interface HomeCopy {
   /** Sekcja A — pas „Popularne kierunki". */
   inspire: SectionCopy;
-  /** Sekcja B — „Cały wyjazd w jednej cenie". */
-  packages: SectionCopy;
+  /** Sekcja B — „Polecane hotele" (snapshot hotfeat:v1, rotacja co 6 h). */
+  featuredHotels: SectionCopy;
   /** Sekcja C — „Nie wiesz, dokąd jechać?" (kafle klimatów). */
   picker: SectionCopy;
 }
@@ -56,13 +56,17 @@ export const HOME_COPY: HomeCopy = {
   inspire: {
     heading: "Popularne kierunki",
   },
-  packages: {
-    heading: "Cały wyjazd w jednej cenie",
+  // Poprzednik tej sekcji („Cały wyjazd w jednej cenie") został zdjęty ze
+  // strony 2026-08-02: obiecywał lot z hotelem, a link prowadził na listę
+  // samych hoteli. Następczyni pokazuje KONKRETNY hotel z ceną z realnego
+  // wyszukania — i prowadzi dokładnie do niego, na te same daty.
+  featuredHotels: {
+    heading: "Polecane hotele",
+    // Zdanie mówi trzy rzeczy, których użytkownik nie ma skąd wiedzieć:
+    // czym jest ta cena, dla kogo jest policzona i jak stara jest liczba.
     subheading:
-      "Lot z Warszawy w obie strony plus hotel — za osobę przy dwóch osobach, z terminu podanego na karcie. Klikasz i wybierasz hotel na swoje daty.",
-    // „Wybierz hotel", a nie „Zobacz wyjazd": link prowadzi do wyników hoteli,
-    // gdzie lotów nie ma. CTA nazywa następny krok zgodnie z prawdą.
-    cta: "Wybierz hotel",
+      "Ceny za dobę dla dwóch osób, sprawdzone w ostatnich godzinach. Zestaw zmienia się co sześć godzin.",
+    cta: "Zobacz hotel",
   },
   picker: {
     heading: "Nie wiesz, dokąd jechać?",
