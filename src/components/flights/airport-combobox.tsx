@@ -130,7 +130,11 @@ export function AirportCombobox({
               setOpen(false);
             }}
             aria-label="Wyczyść lotnisko"
-            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-emerald-900/45 transition hover:bg-emerald-50 hover:text-emerald-900"
+            // Kształt zostaje 24 px (większy krzyżyk zdominowałby pole), ale
+            // OBSZAR KLIKU rośnie pseudo-elementem do 44 px — minimum z WCAG
+            // 2.5.8. Zmierzone przed zmianą: 24×24, czyli cel, w który na
+            // telefonie trafia się co drugi raz, a 90% ruchu to telefon.
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-emerald-900/45 transition before:absolute before:-inset-[10px] before:content-[''] hover:bg-emerald-50 hover:text-emerald-900"
           >
             ×
           </button>

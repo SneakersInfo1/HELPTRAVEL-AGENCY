@@ -22,6 +22,7 @@ import {
 } from "@/lib/flights/deals-config";
 import type { DisplayOffer } from "@/lib/flights/display";
 import {
+  DEAL_MIN_SAMPLES,
   DEAL_ROTATION_MS,
   isDisplayableDeal,
   median,
@@ -101,7 +102,20 @@ function routeKey(route: DealRoute): string {
 function cheapestSaneOffer(offers: DisplayOffer[]): { offer: DisplayOffer; total: number } | null {
   const priced = offers.filter(
     (o): o is DisplayOffer & { total: number } =>
-      typeof o.total === "number" && Number.isFinite(o.total) && o.total > 0,
+      typeof o.total === "number" &&
+      Number.isFinite(o.total) &&
+      o.total > 0 &&
+      // WALUTA JAWNIE, mimo że zapytanie wymusza PLN. `normalizeRatesResponse`
+      // podstawia „PLN" tam, gdzie dostawca w ogóle nie podał waluty — czyli
+      // liczba w innej walucie trafiłaby na kartę z napisem „zł". Zasada
+      // projektu jest tu jednoznaczna: dostawcy się nie ufa.
+      o.currency === "PLN" &&
+      // Karta i stopka sekcji mówią „przelot w obie strony", więc oferta MUSI
+      // mieć oba odcinki. Normalizator dopuszcza journey z samym powrotem
+      // (np. gdy segmenty wylotu nie doszły) — bez tego warunku taka oferta
+      // wyceniałaby połowę podróży jako całość.
+      o.legs.some((l) => l.direction === "OUTBOUND") &&
+      o.legs.some((l) => l.direction === "INBOUND"),
   );
   if (priced.length === 0) return null;
   const fastest = Math.min(...priced.map((o) => o.maxDurationMinutes));
@@ -185,17 +199,30 @@ export async function GET(request: NextRequest) {
   // wpis wisiałby na stronie aż do wygaśnięcia świeżości, mimo że przewoźnik
   // zdążył podnieść cenę (patrz komentarz przy `mergeFlightDeals`).
   const checkedWithoutDeal: string[] = [];
+  // Trasy, dla których zabrakło pomiarów, żeby cokolwiek orzec. W logu
+  // ODDZIELNIE od `withoutDeal`: pierwsze to stan rynku, drugie to nasza
+  // awaria — zlepione w jedną liczbę nie dają się odróżnić przy incydencie.
+  let undermeasured = 0;
   for (const route of routes) {
     const key = routeKey(route);
     try {
       const samples = samplesByRoute.get(key) ?? [];
-      const typicalPln = median(samples.map((sample) => sample.total));
-      if (typicalPln === null || samples.length === 0) {
-        // Zero próbek to najczęściej awaria wyszukiwania, a nie wiedza o cenie.
-        // Kasowanie wpisu na tej podstawie gasiłoby sekcję przy każdym
-        // przejściowym błędzie LiteAPI — o takim wpisie decyduje świeżość.
+      // NIEPEŁNY POMIAR ≠ BRAK OKAZJI (poprawka po review, klasa błędu, która
+      // sama się nie zgłasza). Do próbek trafiają wyłącznie udane wyceny, więc
+      // gdy pięć z sześciu okien padło na timeoucie LiteAPI, zostaje jedna
+      // próbka — `qualifiesAsDeal` słusznie mówi „nie", ale to jest zdanie
+      // o NASZEJ awarii, nie o rynku. Bez tego warunku przejściowy błąd
+      // dostawcy kasował z klucza prawdziwą, wciąż aktualną okazję.
+      //
+      // Wyrokujemy więc dopiero, gdy zebraliśmy tyle pomiarów, ile w ogóle
+      // wystarcza do policzenia „typowej ceny". Poniżej tego progu wpis
+      // zostaje nietknięty i decyduje o nim świeżość.
+      if (samples.length < DEAL_MIN_SAMPLES) {
+        undermeasured++;
         continue;
       }
+      const typicalPln = median(samples.map((sample) => sample.total));
+      if (typicalPln === null) continue;
       const cheapest = samples.reduce((best, sample) => (sample.total < best.total ? sample : best));
       const pricePln = Math.round(cheapest.total);
       if (!qualifiesAsDeal(pricePln, typicalPln, samples.length)) {
@@ -205,7 +232,11 @@ export async function GET(request: NextRequest) {
 
       const destination = DESTINATION_BY_ID.get(route.destinationId);
       if (!destination) throw new Error(`brak destinationId '${route.destinationId}' w seedzie`);
-      const outbound = cheapest.offer.legs[0];
+      // Odcinek TAM po kierunku, nie po pozycji. `normalizeJourney` odsiewa
+      // puste odcinki, więc przy ofercie bez segmentów OUTBOUND `legs[0]`
+      // byłoby odcinkiem POWROTNYM — i karta podpisałaby jego czas jako
+      // „w jedną stronę" dla lotu tam.
+      const outbound = cheapest.offer.legs.find((leg) => leg.direction === "OUTBOUND");
       if (!outbound) throw new Error("najtańsza oferta nie ma odcinka OUTBOUND");
 
       const candidate: FlightDeal = {
@@ -260,6 +291,7 @@ export async function GET(request: NextRequest) {
     // rynku — ale bez tej liczby w logu nie da się odróżnić „dziś nie ma
     // przecen" od „coś przestało liczyć medianę".
     withoutDeal: checkedWithoutDeal.length,
+    undermeasured,
     skipped,
     failed,
     durationMs: Date.now() - startedAt,

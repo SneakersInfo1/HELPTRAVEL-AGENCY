@@ -103,8 +103,15 @@ export function FlightDeals({
       {/* Trzy warunki, bez których cena lotu jest nieporównywalna z żadną inną.
           Raz pod siatką, a nie osiem razy na kartach: powtórzony na każdym
           wierszu ten sam dopisek przestaje być czytany już przy drugim. */}
-      <p className="mt-3 text-xs leading-5 text-ink-muted">
-        Ceny za osobę, przelot w obie strony, z podatkami i opłatami lotniskowymi.
+      {/* Trzy warunki, bez których cena lotu jest nieporównywalna z żadną inną,
+          plus jedno zastrzeżenie, którego brak byłby cichą obietnicą. Ceny
+          pochodzą ze sprawdzenia sprzed najwyżej kilkunastu godzin, a bilety
+          zmieniają się w godzinach — po kliknięciu wyszukujemy je od nowa,
+          więc mogą się różnić. Lepiej napisać to raz tutaj niż tłumaczyć się
+          z tego na ekranie wyników. */}
+      <p className="mt-3 max-w-[80ch] text-xs leading-5 text-ink-muted">
+        Ceny za osobę, przelot w obie strony, z podatkami i opłatami lotniskowymi. Sprawdzamy je
+        co dwie godziny, a po kliknięciu wyszukujemy od nowa — mogą się różnić.
       </p>
     </section>
   );
@@ -156,16 +163,12 @@ function FlightDealCard({ deal }: { deal: FlightDealView }) {
               <span className="block truncate">{deal.cityLabel}</span>
             </LocalizedLink>
           </h3>
-          <span className="shrink-0 rounded-sm bg-brand-soft px-1.5 py-0.5 text-[11px] font-bold leading-5 text-brand-strong">
-            <span aria-hidden>−{deal.savingPercent}%</span>
-            {/* Plakietka „−35%" bez kontekstu jest dla czytnika ekranu pustym
-                sygnałem sprzedażowym. Ten opis mówi WOBEC CZEGO jest taniej
-                i na ilu pomiarach stoi porównanie. */}
-            <span className="sr-only">
-              Cena o {deal.savingPercent}% niższa od mediany cen tej trasy, policzonej
-              z {deal.sampleCount} sprawdzonych terminów.
-            </span>
-          </span>
+          {/* BEZ PLAKIETKI „−35%" — usunięta świadomie po review prawnym.
+              Procent w takiej ramce to gramatyka rabatu, a rabatu tu nie ma:
+              nikt nie obniżył ceny, po prostu inne daty kosztują więcej.
+              Informację niesie zestawienie dwóch kwot w wierszu ceny, gdzie
+              druga jest wprost podpisana jako „inne terminy". Szczegóły
+              i podstawa prawna — komentarz przy `flightDeals` w lib/home/copy.ts. */}
         </div>
 
         <p className="truncate text-xs leading-5 text-ink-muted">
@@ -192,13 +195,24 @@ function FlightDealCard({ deal }: { deal: FlightDealView }) {
           </span>
         </p>
 
-        <div className="mt-auto flex items-baseline justify-between gap-2 border-t border-line pt-2">
-          <p className="whitespace-nowrap text-base font-bold leading-tight text-ink">
+        {/* Cena i odniesienie JEDNO POD DRUGIM, nie obok siebie. Zmierzone:
+            w układzie w wierszu podpis „inne terminy ok. 2 064 zł" ucinał się
+            na pięciu z sześciu kart — a to jest dokładnie ta liczba, która
+            czyni całe porównanie sprawdzalnym. Wyższa karta jest tańsza niż
+            urwane odniesienie. */}
+        <div className="mt-auto border-t border-line pt-2">
+          {/* Akcent jest w tym systemie zarezerwowany dla ceny — i to jedyne
+              miejsce na karcie, gdzie kolor cokolwiek znaczy. */}
+          <p className="whitespace-nowrap text-lg font-bold leading-tight text-accent">
             {formatPricePln(deal.pricePln)}
             <span className="text-[11px] font-medium text-ink-muted">/os.</span>
           </p>
+          {/* „Inne terminy", a nie „zwykle": nazywa wprost, co jest podstawą
+              porównania — inne DATY tej samej trasy, a nie wcześniejsza cena
+              tej samej oferty. Bez przekreślenia, bo to nigdy nie była cena,
+              którą ktoś obniżył. */}
           <p className="truncate text-[11px] leading-tight text-ink-muted">
-            zwykle ok. {formatPricePln(deal.typicalPln)}
+            inne terminy <span className="sr-only">kosztują </span>ok. {formatPricePln(deal.typicalPln)}
           </p>
         </div>
       </div>

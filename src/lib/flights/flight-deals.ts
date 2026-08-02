@@ -55,19 +55,20 @@ const KEY = "fltdeal:v1";
 /** TTL chroni przed wiecznym wpisem; osobny próg niżej pilnuje świeżości kart. */
 const TTL_SECONDS = 3 * 24 * 3600;
 /**
- * Świeżość do WYŚWIETLENIA: 9 h.
+ * Świeżość do WYŚWIETLENIA: 13 h.
  *
- * Wyliczenie, nie okrągła liczba: pełny obrót puli to 36 tras ÷ 12 na przebieg
- * = 3 przebiegi co 2 h, czyli 6 h. Do tego jeden nieudany przebieg (2 h) plus
- * godzina zapasu. Efekt: karta zniknie dopiero, gdy jej trasy nie udało się
- * potwierdzić DWA obroty pod rząd.
+ * ARYTMETYKA POPRAWIONA PO REVIEW. Pierwotne 9 h opierało się na błędzie:
+ * „pełny obrót 6 h plus jeden nieudany przebieg 2 h". Nieudany przebieg NIE
+ * kosztuje dwóch godzin — konkretna trasa wraca dopiero po pełnym obrocie,
+ * czyli po SZEŚCIU. Sukces o 00:35, awaria o 06:35, kolejna próba dopiero
+ * o 12:35: przy progu 9 h karta znikała między 09:35 a 12:35 mimo JEDNEJ
+ * awarii. 12 h pokrywa ten scenariusz, 13 h daje godzinę zapasu.
  *
- * Próg jest wyraźnie ciaśniejszy niż 13 h przy polecanych hotelach i 48 h przy
- * cenach kierunków, bo bilet lotniczy zmienia cenę w ciągu godzin, a nie dni —
- * a karta niesie konkretną kwotę na konkretny termin, którą użytkownik
- * sprawdzi jednym kliknięciem.
+ * To jest odporność OPERACYJNA, a nie deklaracja aktualności ceny. Aktualność
+ * jest z natury krótsza (bilety zmieniają się w godzinach) i sekcja mówi o tym
+ * wprost pod siatką kart, zamiast udawać, że liczba jest wiążąca.
  */
-export const DEAL_FRESH_MS = 9 * 3600 * 1000;
+export const DEAL_FRESH_MS = 13 * 3600 * 1000;
 export const DEAL_ROTATION_MS = 2 * 3600 * 1000;
 /**
  * Ile kart pokazuje sekcja. Sześć, bo tyle dzieli się bez reszty przez każdą
@@ -262,6 +263,16 @@ export async function mergeFlightDeals(
     const current = await client.get<FlightDealsSnapshot>(KEY);
     const existing = current && typeof current === "object" && !Array.isArray(current) ? current : {};
     const merged: FlightDealsSnapshot = { ...existing, ...validEntries };
+    // Wpisy tak stare, że żaden odczyt już ich nie pokaże, a merge w kółko
+    // odnawia im TTL — np. trasa kiedyś wykreślona z puli, do której cron już
+    // nigdy nie zajrzy. Zapas dwukrotny wobec progu świeżości, żeby nie
+    // skasować niczego, co jeszcze może wrócić do gry.
+    const nieodwracalnieStare = Date.now() - DEAL_FRESH_MS * 2;
+    for (const [key, deal] of Object.entries(merged)) {
+      if (!Number.isFinite(deal?.computedAt) || deal.computedAt < nieodwracalnieStare) {
+        delete merged[key];
+      }
+    }
     for (const key of checkedWithoutDeal) {
       // Trasa, dla której w tym samym przebiegu powstał świeży wpis, nie może
       // zostać skasowana przez pomyłkę w liście „bez okazji".

@@ -76,26 +76,30 @@ export const HOME_COPY: HomeCopy = {
       "Dobrze oceniane obiekty z tańszej części ofert na te daty. Ceny za dobę dla dwóch osób, zestaw zmienia się co sześć godzin.",
     cta: "Zobacz hotel",
   },
-  // Sekcja lotów stoi ZARAZ POD hotelami, więc jej zdanie musi w jednym
-  // oddechu powiedzieć, czym się od nich różni — inaczej użytkownik widzi
-  // trzeci pas kart z rzędu i przewija wszystkie trzy.
+  // NAZWA I TON TEJ SEKCJI SĄ WYMUSZONE PRAWEM, nie gustem — nie zmieniaj ich
+  // bez sprawdzenia poniższego.
+  //
+  // Pierwsza wersja nazywała się „Okazje lotnicze" i miała plakietkę „−35%".
+  // UOKiK wymienia słowo „okazja" DOSŁOWNIE obok „obniżki", „promocji"
+  // i „przeceny" jako komunikat, przy którym trzeba podać najniższą cenę tej
+  // usługi z 30 dni przed obniżką (art. 4 ustawy o informowaniu o cenach,
+  // wdrożenie dyrektywy Omnibus). Takiej historii cen NIE MAMY i mieć nie
+  // będziemy — snapshot żyje kilkanaście godzin.
+  //
+  // Ale my w ogóle nie ogłaszamy obniżki: nikt tej ceny nie obniżał. Mówimy,
+  // że JEDEN TERMIN jest tańszy od INNYCH TERMINÓW tej samej trasy. To jest
+  // porównanie dat, nie promocja — i tak właśnie musi być napisane, żeby
+  // czytelnik (i regulator) nie zobaczyli pozornego rabatu tam, gdzie go nie
+  // ma. Stąd nagłówek o terminach, a nie o okazjach, i brak procentu na karcie.
   flightDeals: {
-    heading: "Okazje lotnicze",
-    // „Zwykle" jest tu w cudzysłowie CELOWO i od razu zdefiniowane. To jedyna
-    // liczba na tej stronie, która jest PORÓWNANIEM, a nie ceną — a porównanie
-    // bez podanej podstawy to dokładnie ten rodzaj rabatu, którego zakazuje
-    // dyrektywa Omnibus i którego zabrania PRODUCT.md. Podstawa jest realna:
-    // mediana z sześciu terminów, które cron faktycznie wyszukał na tej trasie
-    // (patrz `median` w lib/flights/flight-deals.ts). Gdyby dobór przestał
-    // liczyć medianę, to zdanie trzeba usunąć razem z nim.
+    heading: "Tańsze terminy lotów",
     subheading:
-      // NIE „z sześciu terminów", choć cron próbkuje sześć: termin, na który
-      // da się polecieć wyłącznie kilkunastogodzinną trasą, wypada z próby
-      // (patrz `cheapestSaneOffer`), więc realnie bywa ich pięć albo cztery.
-      // Dokładną liczbę niesie każda karta osobno, w opisie dla czytnika ekranu.
-      "Ceny wyraźnie niższe niż zwykle na tej trasie. „Zwykle” to mediana z kilku terminów sprawdzonych w najbliższych miesiącach.",
-    // Bez `cta`: karta okazji jest jednym wierszem, w którym etykieta przycisku
-    // byłaby piątą linią tekstu. Cały wiersz i tak jest linkiem.
+      // Bez słowa „obniżka" nawet w przeczeniu: zdanie ma nie zawierać
+      // słownictwa, po którym w ogóle szuka się komunikatów o obniżkach.
+      // „Porównujemy terminy, a nie ceny w czasie" mówi to samo precyzyjniej.
+      "Na tych trasach wybrany termin jest wyraźnie tańszy od pozostałych, które sprawdziliśmy. Porównujemy terminy, a nie ceny w czasie.",
+    // Bez `cta`: karta jest jednym wierszem, w którym etykieta przycisku byłaby
+    // piątą linią tekstu. Cały wiersz i tak jest linkiem.
   },
   picker: {
     heading: "Nie wiesz, dokąd jechać?",

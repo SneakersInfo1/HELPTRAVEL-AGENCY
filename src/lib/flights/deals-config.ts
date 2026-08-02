@@ -138,8 +138,21 @@ export const DEAL_MAX_DURATION_RATIO = 1.5;
  */
 export const DEAL_MAX_DURATION_MINUTES = 720;
 export const DEAL_CONCURRENCY = 6;
-// Zostaje 50 sekund marginesu względem limitu funkcji Vercel.
-export const DEAL_TIME_BUDGET_MS = 250_000;
+/**
+ * Budżet czasu przebiegu. 185 s, a nie 250 s — poprawka po review.
+ *
+ * Budżet jest sprawdzany PRZED startem zadania, a pojedyncze wyszukanie potrafi
+ * trwać wielokrotnie dłużej niż średni pomiar: klient LiteAPI ma 30 s timeoutu
+ * i do trzech prób z backoffem (`lib/liteapi/client.ts`), czyli w najgorszym
+ * razie ok. 100 s. Zadanie wystartowane tuż przed 250. sekundą kończyłoby się
+ * więc po ~350 s, a `maxDuration` to 300 s — funkcja zostaje ubita PRZED
+ * zapisem i CAŁY przebieg przepada, razem z każdą zebraną ceną.
+ *
+ * 185 s + 100 s najgorszego ogona mieści się w limicie razem z zapisem do
+ * Redisa. Zmierzony realny przebieg to ~110 s, więc niższy budżet nie kosztuje
+ * w praktyce ani jednej trasy.
+ */
+export const DEAL_TIME_BUDGET_MS = 185_000;
 
 function iso(date: Date): string {
   return date.toISOString().slice(0, 10);

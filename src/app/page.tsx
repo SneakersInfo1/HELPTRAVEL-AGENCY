@@ -105,15 +105,21 @@ export async function HomePageView() {
   // Polecane hotele (snapshot hotfeat:v1, cron co 6 h). `pickFreshFeatured`
   // zwraca pustą tablicę przy braku Redisa, nieświeżym zestawie albo zbyt
   // małej liczbie kart — sekcja po prostu się wtedy nie renderuje.
-  const featuredHotels = pickFreshFeatured(await readFeaturedHotels());
+  // Oba snapshoty JEDNOCZEŚNIE: to dwa niezależne klucze Upstash, więc
+  // sekwencyjne `await` dokładałoby pełny czas przelotu do generowania strony
+  // bez żadnego powodu. Każdy z nich degraduje osobno do braku sekcji.
+  const [featuredSnapshot, dealsSnapshot] = await Promise.all([
+    readFeaturedHotels(),
+    readFlightDeals(),
+  ]);
+  const featuredHotels = pickFreshFeatured(featuredSnapshot);
 
   // Okazje lotnicze (snapshot fltdeal:v1, cron co 2 h). Zdjęcie kierunku
   // dokładamy TUTAJ, a nie w snapshocie: adres z Pexels bywa podmieniany, więc
-  // zamrożony w Redisie na kilkanaście godzin potrafiłby prowadzić donikąd —
-  // a i tak rozwiązujemy media dla kafelków w tym samym renderze.
-  // `Promise.all` po ZBIORZE slugów, nie po kartach: dwie okazje do tego
-  // samego miasta (WAW i KRK) to jedno zapytanie, nie dwa.
-  const freshDeals = pickFreshDeals(await readFlightDeals());
+  // zamrożony w Redisie na kilkanaście godzin potrafiłby prowadzić donikąd.
+  // Rozwiązujemy po ZBIORZE slugów, nie po kartach: dwie okazje do tego samego
+  // miasta (np. z Warszawy i z Krakowa) to jedno zapytanie, nie dwa.
+  const freshDeals = pickFreshDeals(dealsSnapshot);
   const dealMedia = new Map(
     await Promise.all(
       [...new Set(freshDeals.map((d) => d.destinationId))].map(async (slug): Promise<[string, string | undefined]> => {
