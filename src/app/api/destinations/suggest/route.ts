@@ -173,6 +173,11 @@ export async function GET(request: NextRequest) {
           source: "catalog",
           cityPl: p.name,
           countryPl: countryPl ?? p.countryLabel,
+          // `kind` jedzie do UI — od 2026-08-02 dobiera ikonę wiersza (glob dla
+          // kraju, palma dla regionu). Regiony z Google celowo BEZ `regionId`:
+          // to nie są wyspy z naszego słownika, więc formularz traktuje je jak
+          // zwykłe miasto-cel (parametr `region` wymaga regionId i nie powstaje).
+          kind: p.kind === "country" ? "country" : p.kind === "region" ? "region" : undefined,
           hint: p.kind === "country" ? "cały kraj" : p.kind === "region" ? "region" : undefined,
         };
       });
@@ -203,7 +208,14 @@ export async function GET(request: NextRequest) {
   const seenFinal = new Set<string>();
   const items: DestinationSuggestion[] = [];
   for (const item of ordered) {
-    const key = `${(item.cityPl ?? item.city).toLowerCase()}|${(item.countryPl ?? item.country).toLowerCase()}`;
+    // Hotel dedupe'uje się po placeId, nie po nazwie: dwa różne obiekty
+    // „Hotel Bristol" w jednym kraju to norma, a klucz nazwa|kraj zwijał je
+    // do jednej pozycji — drugi obiekt był nieosiągalny, a bramka nazwy nie
+    // miała jak tego wykryć, bo nazwy są identyczne. Znalezione w review.
+    const key =
+      item.kind === "hotel" && item.placeId
+        ? `hotel|${item.placeId}`
+        : `${(item.cityPl ?? item.city).toLowerCase()}|${(item.countryPl ?? item.country).toLowerCase()}`;
     if (seenFinal.has(key)) continue;
     seenFinal.add(key);
     // `score` to wewnętrzna miara rankingu — służy WYŁĄCZNIE decyzji „czy

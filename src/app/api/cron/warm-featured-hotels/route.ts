@@ -28,6 +28,7 @@ import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import type { RateCacheContext } from "@/lib/hotels/rate-cache";
 import {
+  FEATURED_MIN,
   credibilityScore,
   rotationBucket,
   rotateSlice,
@@ -186,7 +187,7 @@ export async function GET(request: NextRequest) {
   // Zapis TYLKO gdy zestaw jest kompletny na tyle, żeby sekcja się pokazała.
   // Nadpisanie działającego snapshotu wynikiem nieudanego przebiegu skasowałoby
   // sekcję na sześć godzin — lepiej zostawić poprzednie, wciąż świeże dane.
-  const wrote = collected.length >= 4;
+  const wrote = collected.length >= FEATURED_MIN;
   if (wrote) await writeFeaturedHotels(collected, startedAt);
   else console.warn(`[cron/warm-featured] tylko ${collected.length} hoteli — zostawiam poprzedni snapshot`);
 

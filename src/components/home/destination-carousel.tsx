@@ -35,11 +35,12 @@ export interface CarouselItem {
    */
   pricePerPerson?: number;
   /**
-   * Który event GA4 wysłać. Wariant „package" odszedł razem z sekcją pakietów;
-   * pole zostaje, bo pasy o różnej roli w lejku muszą dać się rozróżnić
-   * w raportach, gdy dojdzie kolejny.
+   * Który event GA4 wysłać. Kafelek kierunku i karta konkretnego hotelu to
+   * dwa różne produkty w lejku — wspólny event z `lp…` w polu `slug`
+   * zaśmiecałby raporty kierunków i nie dałby się odfiltrować. Ta sama
+   * zasada, dla której istniał wcześniej wariant „package".
    */
-  kind?: "destination";
+  kind?: "destination" | "hotel";
   /** Nazwa pozycji w GA4 (miasto po polsku). */
   name?: string;
   /** Kategoria pozycji w GA4 (kraj po polsku). */
@@ -185,11 +186,14 @@ export function DestinationCarousel({
               key={item.slug}
               className={slideClassName}
               onClickCapture={() => {
-                track("destination_card_clicked", {
-                  slug: item.slug,
-                  position: index + 1,
-                  price_per_person: item.pricePerPerson,
-                });
+                track(
+                  item.kind === "hotel" ? "featured_hotel_card_clicked" : "destination_card_clicked",
+                  {
+                    slug: item.slug,
+                    position: index + 1,
+                    price_per_person: item.pricePerPerson,
+                  },
+                );
                 // Stary event ZOSTAJE obok nowego: raporty GA4 zbudowane na
                 // `*_card_clicked` mają ciągłość, a `select_item` domyka lejek
                 // ekspozycja → klik w standardowym schemacie ecommerce.

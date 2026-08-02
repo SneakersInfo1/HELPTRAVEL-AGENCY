@@ -245,10 +245,6 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         const res = await fetch(url, { signal: controller.signal });
         const payload = (await res.json().catch(() => ({ items: [] }))) as { items?: DestinationSuggestion[] };
         let items: SuggestionItem[] = payload.items ?? [];
-        // Tryb LOTÓW nie przyjmuje hoteli: celem lotu jest lotnisko, a obiekt
-        // noclegowy nie ma kodu IATA. Bez tego filtra „Chopin Boutique"
-        // pojawiałoby się na liście i kończyło błędem po kliknięciu „Szukaj".
-        if (isFlights) items = items.filter((i) => i.kind !== "hotel");
         if (popularMode) {
           const recent = readRecentDestinations();
           const recentIds = new Set(recent.map((r) => r.id));
@@ -260,6 +256,13 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             ...items.filter((i) => !recentIds.has(i.id)),
           ];
         }
+        // Tryb LOTÓW nie przyjmuje hoteli: celem lotu jest lotnisko, a obiekt
+        // noclegowy nie ma kodu IATA. Filtr stoi PO scaleniu „ostatnio
+        // szukanych" — hotel wybrany wcześniej w zakładce Hotele wraca przez
+        // localStorage z zachowanym `kind`, więc filtr wyłącznie na wynikach
+        // serwera przepuszczał go w tryb lotów, gdzie klik kończył się błędem
+        // „wybierz miasto z lotniskiem". Znalezione w review.
+        if (isFlights) items = items.filter((i) => i.kind !== "hotel");
         if (cancelled) return;
         setDestSuggestions(items);
         setDestOpen(true);
@@ -532,6 +535,11 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       try {
         const res = await fetch(
           `/api/hotels/resolve-place?placeId=${encodeURIComponent(resolvedDest.placeId)}&name=${encodeURIComponent(resolvedDest.hotelName ?? destQuery)}`,
+          // Twardy limit czasu: bez niego zawieszony endpoint trzymał przycisk
+          // w „Szukam hotelu…" do timeoutu przeglądarki. Po 6 s przerywamy
+          // i lecimy ścieżką awaryjną (wyszukiwanie w mieście) — użytkownik
+          // dostaje wynik, tylko o jeden krok dalszy. Znalezione w review.
+          { signal: AbortSignal.timeout(6000) },
         );
         const payload = (await res.json().catch(() => ({}))) as { hotelId?: string | null };
         hotelId = payload.hotelId ?? null;
@@ -541,19 +549,33 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       setResolving(false);
 
       if (hotelId) {
+        // BEZ parametru `children`. Strona hotelu parsuje go jako listę WIEKÓW
+        // („5,9"), a formularz zna tylko LICZBĘ dzieci — wysłane `children=2`
+        // dokładałoby do obsady zmyślonego dwulatka OBOK dzieci już wliczonych
+        // w sumę `adults`, więc cena na stronie hotelu byłaby policzona dla
+        // złej liczby osób. To jest dokładnie klasa incydentu occupancy
+        // z 2026-07-10. Znalezione w review.
         const hotelParams = new URLSearchParams({
           checkin: startDate,
           checkout: endDate,
           adults: String(totalGuestsForJump),
           rooms: "1",
         });
-        if (childCount > 0) hotelParams.set("children", String(childCount));
         const hotelHref = `/hotele/${hotelId}?${hotelParams.toString()}`;
         saveRecentSearch({
           id: `hotel:${hotelId}|${startDate}|${endDate}`,
           kind: "hotel",
           title: resolvedDest.hotelName ?? destQuery.trim(),
-          subtitle: resolvedDest.city ? `${resolvedDest.city}` : undefined,
+          // Miasto po polsku + kraj po polsku — surowy segment adresu Google
+          // bywał angielski („Warsaw"), a druga linia karty ma czytać się jak
+          // reszta serwisu.
+          subtitle:
+            [
+              resolvedDest.city ? localizeCity(resolvedDest.city) : null,
+              resolvedDest.country ? localizeCountry(resolvedDest.country) : null,
+            ]
+              .filter(Boolean)
+              .join(", ") || undefined,
           checkin: startDate,
           checkout: endDate,
           guests: totalGuestsForJump,
@@ -573,6 +595,14 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
           source: "search_bar_hotel",
           children_count: childCount,
           origin_provided: Boolean(resolvedOrigin),
+        });
+        // Wspólna metryka startu wyszukiwania — skok do hotelu to nadal
+        // wyszukanie w zakładce Hotele; bez tego eventu lejek per-zakładka
+        // niedoliczałby właśnie najbardziej zdecydowanych użytkowników.
+        track("search_started", {
+          tab: "hotels",
+          destination_type: "specific",
+          date_mode: "fixed",
         });
         const hotelPrefix = locale === "en" ? "/en" : "";
         router.push(`${hotelPrefix}${hotelHref}`);

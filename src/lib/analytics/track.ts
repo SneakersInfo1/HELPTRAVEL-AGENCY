@@ -264,8 +264,11 @@ export interface TrackEventMap {
     position?: number;
     price_per_person?: number;
   };
-  /** Klik karty pakietu — najmocniejszy produkt, do tej pory bez pomiaru. */
-  package_card_clicked: {
+  /** Klik karty w pasie „Polecane hotele" (2026-08-02). `slug` to hotelId
+   *  LiteAPI (`lp…`) — celowo OSOBNY event, żeby identyfikatory hoteli nie
+   *  zaśmiecały raportu kierunków. Zastępuje `package_card_clicked`, który
+   *  odszedł razem z sekcją pakietów (ostatnie dane sprzed 2026-08-02). */
+  featured_hotel_card_clicked: {
     slug: string;
     position?: number;
     price_per_person?: number;

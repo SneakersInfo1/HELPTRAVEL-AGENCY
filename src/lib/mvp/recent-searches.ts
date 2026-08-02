@@ -48,7 +48,12 @@ function isRecentSearch(v: unknown): v is RecentSearch {
     typeof s.title === "string" &&
     s.title.length > 0 &&
     typeof s.href === "string" &&
+    // Wyłącznie ścieżka względna TEGO serwisu. Samo `startsWith("/")`
+    // przepuszczało adres protocol-relative (`//obcy.przyklad`), który
+    // przeglądarka rozwiązuje do CUDZEGO hosta — wpis w localStorage nie ma
+    // prawa wyprowadzić kliknięcia poza serwis. Znalezione w review.
     s.href.startsWith("/") &&
+    !s.href.startsWith("//") &&
     typeof s.checkin === "string" &&
     typeof s.checkout === "string" &&
     typeof s.guests === "number" &&

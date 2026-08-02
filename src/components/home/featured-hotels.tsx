@@ -66,7 +66,7 @@ export function FeaturedHotels({
   const window = formatDateRange(hotels[0].checkin, hotels[0].checkout);
 
   return (
-    <section aria-labelledby="featured-hotels" className="w-full px-4 sm:px-6 xl:px-8">
+    <section aria-labelledby="featured-hotels" className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8">
       <DestinationCarousel
         tone="light"
         listId="home_featured_hotels"
@@ -92,8 +92,15 @@ export function FeaturedHotels({
         }
         items={hotels.map((h) => ({
           slug: h.id,
+          // `kind: "hotel"` → osobny event GA4 (featured_hotel_card_clicked).
+          // Bez tego identyfikatory `lp…` lądowały w raporcie KIERUNKÓW jako
+          // slugi i nie dało się ich odfiltrować. Znalezione w review.
+          kind: "hotel" as const,
           name: h.name,
           category: h.cityLabel,
+          // BEZ `pricePerPerson`: karta zna cenę za DOBĘ dla dwóch osób, a pole
+          // eventu nazywa się „za osobę" — liczba w źle podpisanej metryce jest
+          // gorsza niż brak liczby (ta sama zasada co przy kafelkach hero).
           node: <FeaturedHotelCard hotel={h} cta={copy.cta} />,
         }))}
       />

@@ -74,6 +74,9 @@ test("śmieci ze storage są odsiewane, a nie wywracają sekcji", () => {
     // Adres absolutny mógłby być przekierowaniem poza serwis — wpis
     // z localStorage nie ma prawa wskazywać na obcy host.
     wpis({ id: "obcy", href: "https://example.com/phishing" }),
+    // Protocol-relative przechodzi test `startsWith("/")`, a rozwiązuje się
+    // do CUDZEGO hosta — musi wypaść tak samo jak absolutny.
+    wpis({ id: "obcy2", href: "//example.com/phishing" }),
   ] as RecentSearch[];
   const wynik = usableSearches(brudne, DZIS);
   assert.equal(wynik.length, 1);
