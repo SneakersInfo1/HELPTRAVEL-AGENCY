@@ -312,9 +312,14 @@ body {
 }
 
 /* Kropki „Asystent pisze…" (concierge-chat.tsx) i puls dymka launchera
-   (concierge-launcher.tsx) — celowo NIE animate-bounce (elastic/bounce
-   easing jest zbanowany w impeccable: „real objects decelerate smoothly").
-   ease-out kwadratowy, brak odbicia. */
+   (concierge-launcher.tsx). Świadomie własne keyframes, a nie gotowa klasa
+   odbicia z Tailwinda: krzywe sprężyste są w tym projekcie zakazane, bo realne
+   obiekty wytracają prędkość płynnie. Tu jest ease-out kwadratowy, zero odbicia.
+
+   Uwaga dla następnego autora: poprzednia wersja tego komentarza wymieniała
+   zakazaną klasę z nazwy, przez co detektor projektowy zgłaszał ją bez końca
+   jako trafienie — mimo że w całym src/ nie ma ani jednego użycia. Opis reguły
+   nie powinien zawierać dosłownego ciągu, który ta reguła wyłapuje. */
 @keyframes typingDot {
   0%,
   80%,
