@@ -11,7 +11,7 @@ import { FlightResults } from "./_components/flight-results";
 import { FlightSearchBar } from "./_components/flight-search-bar";
 
 export const metadata: Metadata = {
-  title: "Wyniki lotów | HelpTravel",
+  title: "Wyniki lotów",
   robots: "noindex, follow",
 };
 

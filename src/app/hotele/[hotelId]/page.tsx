@@ -155,14 +155,18 @@ export async function generateMetadata({
   const { hotelId } = await params;
   const detail = await fetchDetailForMeta(hotelId);
   if (!detail) {
-    return { title: "Hotel | HelpTravel", robots: { index: false, follow: false } };
+    // Bez sufiksu „| HelpTravel" — dokłada go szablon `title.template`
+    // z głównego layoutu. Wpisany tutaj dawał „… | HelpTravel | HelpTravel"
+    // (zmierzone w przeglądarce 2026-08-02) — ta sama pomyłka, którą naprawiono
+    // wcześniej na stronach /wyjazdy.
+    return { title: "Hotel", robots: { index: false, follow: false } };
   }
   const cityCountry = [detail.city, localizeCountry(detail.country)].filter(Boolean).join(", ");
   const desc = `Zarezerwuj ${detail.name} w ${detail.city}. Ceny finalne w PLN, bezpłatna anulacja w wybranych hotelach.${
     detail.amenities?.[0] ? ` ${detail.amenities[0]}.` : ""
   }${detail.amenities?.[1] ? ` ${detail.amenities[1]}.` : ""}`;
   return {
-    title: `${detail.name} — ${cityCountry} | HelpTravel`,
+    title: `${detail.name} — ${cityCountry}`,
     description: desc.slice(0, 160),
     alternates: { canonical: `/hotele/${hotelId}` },
     openGraph: {

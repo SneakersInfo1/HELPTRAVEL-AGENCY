@@ -62,7 +62,7 @@ export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
       aria-labelledby="how-it-works"
       className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8"
     >
-      <div className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-[var(--shadow-md)] sm:p-8 lg:p-10">
+      <div className="rounded-md border border-line bg-surface-raised p-6 shadow-[var(--shadow-md)] sm:p-8 lg:p-10">
         {/* Bez nadtytułu „Jak to działa": nagłówek już to mówi, a nadtytuł nad
             każdą sekcją to najbardziej rozpoznawalny szablon generowanych
             stron (PRODUCT.md → anti-references). */}

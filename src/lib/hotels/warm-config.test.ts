@@ -141,3 +141,24 @@ test("pokrycie mood-picks: ≥90% unikalnych picks rozwiązuje się w seedzie (k
   }
   assert.ok(hit / seen.size >= 0.9, `w seedzie ${hit}/${seen.size} — za mało (karty bez cen)`);
 });
+
+test("pula polecanych hoteli: każdy slug istnieje w seedzie i nie ma duplikatów", async () => {
+  // Slug spoza seeda nie wywala crona — po prostu wypada w ciszy, a okno
+  // rotacji przynosi o jeden kierunek mniej. Sekcja robi się wtedy chudsza
+  // z powodu literówki, której nikt nie zobaczy w logach.
+  const { FEATURED_DESTINATION_POOL, FEATURED_DESTINATIONS_PER_RUN } = await import("./warm-config");
+  const dests = (seedJson as { destinations: Array<{ id: string }> }).destinations;
+  const ids = new Set(dests.map((d) => d.id));
+  const brakujace = FEATURED_DESTINATION_POOL.filter((slug) => !ids.has(slug));
+  assert.deepEqual(brakujace, [], "slugi spoza seeda");
+
+  const duplikaty = FEATURED_DESTINATION_POOL.filter((s, i, a) => a.indexOf(s) !== i);
+  assert.deepEqual(duplikaty, [], "duplikat w puli = ten sam kierunek dwa razy w jednym oknie");
+
+  // Pula musi być WYRAŹNIE szersza niż jedno okno, inaczej rotacja nic nie
+  // zmienia i obietnica „zestaw zmienia się co 6 godzin" przestaje być prawdą.
+  assert.ok(
+    FEATURED_DESTINATION_POOL.length >= FEATURED_DESTINATIONS_PER_RUN * 3,
+    `pula ${FEATURED_DESTINATION_POOL.length} przy oknie ${FEATURED_DESTINATIONS_PER_RUN} — za mało na sensowną rotację`,
+  );
+});

@@ -41,8 +41,22 @@ export interface TrackEventMap {
     /** SUM of adults+children (product decision: children count as adults). */
     adults?: number;
     rooms?: number;
-    /** Where the search was launched from. */
-    source?: "search_bar" | "landing_cta" | "destination_guide" | "month_page" | "homepage";
+    /**
+     * Where the search was launched from.
+     *
+     * `search_bar_hotel` (2026-08-02) to ta sama wyszukiwarka, ale INNA
+     * intencja: użytkownik wpisał nazwę obiektu i trafił prosto na jego stronę,
+     * z pominięciem listy wyników. Wrzucone pod `search_bar` byłoby nierozróżnialne
+     * od szukania kierunku, więc nie dałoby się sprawdzić, czy ta ścieżka
+     * w ogóle jest używana ani jak konwertuje.
+     */
+    source?:
+      | "search_bar"
+      | "search_bar_hotel"
+      | "landing_cta"
+      | "destination_guide"
+      | "month_page"
+      | "homepage";
     /** Children picked in the guests popover (informational split). */
     children_count?: number;
     /** Whether the optional "Skąd" field was filled. */
@@ -250,8 +264,11 @@ export interface TrackEventMap {
     position?: number;
     price_per_person?: number;
   };
-  /** Klik karty pakietu — najmocniejszy produkt, do tej pory bez pomiaru. */
-  package_card_clicked: {
+  /** Klik karty w pasie „Polecane hotele" (2026-08-02). `slug` to hotelId
+   *  LiteAPI (`lp…`) — celowo OSOBNY event, żeby identyfikatory hoteli nie
+   *  zaśmiecały raportu kierunków. Zastępuje `package_card_clicked`, który
+   *  odszedł razem z sekcją pakietów (ostatnie dane sprzed 2026-08-02). */
+  featured_hotel_card_clicked: {
     slug: string;
     position?: number;
     price_per_person?: number;

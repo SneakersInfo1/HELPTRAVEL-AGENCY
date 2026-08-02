@@ -176,7 +176,7 @@ export function HomeSearchTabs() {
  *  tutaj i kontynuować w rogu ekranu po przejściu na inną stronę. */
 function AssistantPanel() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-surface-raised text-left shadow-lg">
+    <div className="overflow-hidden rounded-md border border-line bg-surface-raised text-left shadow-lg">
       <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
         <Compass aria-hidden className="h-4 w-4 text-brand" strokeWidth={2} />
         <p className="text-sm font-semibold text-ink">

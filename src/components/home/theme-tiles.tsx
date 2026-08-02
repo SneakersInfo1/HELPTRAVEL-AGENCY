@@ -62,7 +62,7 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
           >
           <LocalizedLink
             href={`/wyjazdy/${tile.slug}`}
-            className="group relative flex aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-brand-soft shadow-md transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 lg:aspect-[4/3]"
+            className="group relative flex aspect-[4/3] overflow-hidden rounded-md border border-line bg-brand-soft shadow-md transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 lg:aspect-[4/3]"
           >
             <Image
               src={tile.heroImage}

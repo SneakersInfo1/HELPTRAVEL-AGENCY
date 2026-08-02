@@ -111,6 +111,42 @@ export async function GET(request: NextRequest) {
     globalItems = places
       .filter((p) => !localNames.has(p.name.toLowerCase()))
       .map((p): DestinationSuggestion => {
+        // ── HOTEL (2026-08-02) ────────────────────────────────────────────
+        // Publiczne LiteAPI nie ma wyszukiwania hoteli po nazwie (sonda:
+        // /hotels/search-by-name → 404, /data/hotels?hotelName= → 400 „szukaj
+        // po countryCode, lat/lng, placeId…"). Ale `/data/places` zwraca
+        // obiekty noclegowe z `placeId`, a `/data/hotels?placeId=…` oddaje
+        // dokładnie ten hotel jako pierwszy wynik — zweryfikowane na żywo dla
+        // Chopin Boutique, Bristolu, Larios Málaga i Courtyard Marriott.
+        //
+        // Adres z Google jest listą po przecinkach („Smolna, Warszawa,
+        // Poland"), więc kraj bierzemy z OSTATNIEGO segmentu, a miasto
+        // z przedostatniego. `resolveCountryCode` na całym ciągu zwraca null.
+        if (p.kind === "hotel") {
+          const czesci = p.countryLabel.split(",").map((s) => s.trim()).filter(Boolean);
+          const krajRaw = czesci.at(-1) ?? "";
+          const miastoRaw = czesci.length >= 2 ? czesci.at(-2)! : "";
+          const kod = resolveCountryCode(krajRaw);
+          return {
+            id: `hotel-${p.placeId}`,
+            kind: "hotel",
+            placeId: p.placeId,
+            // `city`/`country` to ŚCIEŻKA AWARYJNA: gdyby rozwiązanie placeId
+            // na hotelId się nie udało, formularz szuka w mieście obiektu
+            // zamiast zostawić użytkownika bez wyniku.
+            city: miastoRaw || p.name,
+            // `countryNameEn/Pl` zwracają null dla kodu spoza tablicy —
+            // wtedy zostaje surowy segment adresu. Pusty `country` wywala
+            // wyszukiwanie awaryjne (/hotele/szukaj wymaga obu pól).
+            country: (kod ? countryNameEn(kod) : null) ?? krajRaw,
+            label: p.name,
+            queryValue: p.name,
+            source: "catalog",
+            cityPl: p.name,
+            countryPl: (kod ? countryNamePl(kod) : null) ?? krajRaw,
+            secondary: czesci.join(", "),
+          };
+        }
         // `formattedAddress` niesie kraj („Thailand" dla Bangkoku), a nowy
         // resolwer ISO umie go zamienić na kod — bez tego LiteAPI odrzuciłoby
         // wyszukanie.
@@ -137,6 +173,11 @@ export async function GET(request: NextRequest) {
           source: "catalog",
           cityPl: p.name,
           countryPl: countryPl ?? p.countryLabel,
+          // `kind` jedzie do UI — od 2026-08-02 dobiera ikonę wiersza (glob dla
+          // kraju, palma dla regionu). Regiony z Google celowo BEZ `regionId`:
+          // to nie są wyspy z naszego słownika, więc formularz traktuje je jak
+          // zwykłe miasto-cel (parametr `region` wymaga regionId i nie powstaje).
+          kind: p.kind === "country" ? "country" : p.kind === "region" ? "region" : undefined,
           hint: p.kind === "country" ? "cały kraj" : p.kind === "region" ? "region" : undefined,
         };
       });
@@ -167,7 +208,14 @@ export async function GET(request: NextRequest) {
   const seenFinal = new Set<string>();
   const items: DestinationSuggestion[] = [];
   for (const item of ordered) {
-    const key = `${(item.cityPl ?? item.city).toLowerCase()}|${(item.countryPl ?? item.country).toLowerCase()}`;
+    // Hotel dedupe'uje się po placeId, nie po nazwie: dwa różne obiekty
+    // „Hotel Bristol" w jednym kraju to norma, a klucz nazwa|kraj zwijał je
+    // do jednej pozycji — drugi obiekt był nieosiągalny, a bramka nazwy nie
+    // miała jak tego wykryć, bo nazwy są identyczne. Znalezione w review.
+    const key =
+      item.kind === "hotel" && item.placeId
+        ? `hotel|${item.placeId}`
+        : `${(item.cityPl ?? item.city).toLowerCase()}|${(item.countryPl ?? item.country).toLowerCase()}`;
     if (seenFinal.has(key)) continue;
     seenFinal.add(key);
     // `score` to wewnętrzna miara rankingu — służy WYŁĄCZNIE decyzji „czy

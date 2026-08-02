@@ -15,8 +15,6 @@ interface FeaturedTile {
   fromPricePerNight?: number;
   /** Najtańszy lot w obie strony z WAW (snapshot, Faza 6). */
   flightFromPln?: number;
-  /** Cena całego wyjazdu na osobę + termin, z którego wynika (snapshot). */
-  packagePerPerson?: { perPersonPln: number; checkin: string; checkout: string };
 }
 
 export interface TrustpilotDisplay {
@@ -49,7 +47,12 @@ export function HomeHybridHero({
 
   return (
     <>
-      <section id="hero" className="relative scroll-mt-20 overflow-hidden rounded-b-[2rem] shadow-[0_30px_80px_rgba(16,84,48,0.22)] sm:rounded-[2rem]">
+      {/* BEZ promienia i BEZ cienia (2026-08-02). Oba miały sens, dopóki hero
+          był kartą leżącą na tle strony — po przejściu na pełną szerokość
+          zaokrąglone rogi zostawiały cztery białe trójkąty przy krawędziach
+          ekranu, a rzucany cień padał na nic. Pas idący od brzegu do brzegu
+          nie potrzebuje udawać, że unosi się nad czymś. */}
+      <section id="hero" className="relative scroll-mt-20 overflow-hidden">
         {/* HERO (nagłówek + formularz) — tło zdjęciowe jest tutaj, a NIE na całej
             sekcji. Wcześniej backdrop pokrywał też pas kafelków (~2089 px wys.),
             więc object-cover musiał ~5× powiększać zdjęcie → pikseloza. Teraz
@@ -188,7 +191,6 @@ export function HomeHybridHero({
             }
             items={featured.map((tile) => ({
               slug: tile.destination.slug,
-              pricePerPerson: tile.packagePerPerson?.perPersonPln,
               name: localizeCity(tile.destination.city),
               category: localizeCountry(tile.destination.country),
               node: (
@@ -200,7 +202,6 @@ export function HomeHybridHero({
                   heroImage={tile.heroImage}
                   fromPricePerNight={tile.fromPricePerNight}
                   flightFromPln={tile.flightFromPln}
-                  packagePerPerson={tile.packagePerPerson}
                 />
               ),
             }))}

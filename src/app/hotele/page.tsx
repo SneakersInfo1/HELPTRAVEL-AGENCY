@@ -6,7 +6,7 @@ import Link from "next/link";
 import { MiniPlannerForm } from "@/components/home/mini-planner-form";
 
 export const metadata: Metadata = {
-  title: "Hotele w Europie i basenie Morza Śródziemnego | HelpTravel",
+  title: "Hotele w Europie i basenie Morza Śródziemnego",
   description:
     "Znajdź hotel z prawdziwymi cenami w PLN. Bezpłatna anulacja w wybranych hotelach, polskie wsparcie, faktura VAT na życzenie.",
   alternates: { canonical: "/hotele" },

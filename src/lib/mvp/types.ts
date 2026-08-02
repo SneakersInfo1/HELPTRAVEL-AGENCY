@@ -380,9 +380,24 @@ export interface DestinationSuggestion {
   popularity?: number;
   // Zadanie 2 — wyspy/regiony w podpowiedziach. Brak pola = "city"
   // (kompatybilność wsteczna ze starymi klientami).
-  kind?: "city" | "region";
+  //
+  // 2026-08-02 doszły „hotel" i „country". Do tej pory podpowiedzi znały
+  // wyłącznie kierunki, więc wpisanie nazwy obiektu („Chopin Boutique")
+  // nie miało jak zadziałać — a to jest zapytanie, z którym użytkownik
+  // przychodzi z Google i którego oczekuje po Bookingu.
+  kind?: "city" | "region" | "hotel" | "country";
   /** Slug z data/regions.ts — wartość parametru `region` na /hotele/szukaj. */
   regionId?: string;
+  /**
+   * Google Place ID (z LiteAPI /data/places). Dla `kind: "hotel"` to jedyny
+   * uchwyt, którym da się dojść do konkretnego obiektu: publiczne LiteAPI nie
+   * ma wyszukiwania hoteli po nazwie (sonda 2026-08-02: /hotels/search-by-name
+   * → 404, /data/hotels?hotelName= → 400), ale `/data/hotels?placeId=…` zwraca
+   * ten hotel jako pierwszy wynik.
+   */
+  placeId?: string;
+  /** Druga linia podpowiedzi hotelu: adres albo „miasto, kraj". */
+  secondary?: string;
   /** Grupa listy popularnych („Na plażę" / „Miasto na weekend"). Tylko przy pustym q. */
   group?: "beach" | "city";
   /** Nazwa, której użytkownik szuka, gdy różni się od miasta („Kreta" dla Heraklionu). */

@@ -7,6 +7,7 @@
 // (query + potwierdzony wybór w stanie formularza), wzorem OriginCombobox.
 
 import { useId, useState, type KeyboardEvent } from "react";
+import { Plane, PlaneTakeoff } from "lucide-react";
 
 import { searchAirports, type AirportOption } from "@/lib/flights/airports";
 
@@ -155,14 +156,32 @@ export function AirportCombobox({
                     pick(o);
                   }}
                   onMouseEnter={() => setHighlight(idx)}
-                  className={`cursor-pointer px-3.5 py-2.5 transition ${
+                  // min-h + flex jak wiersz „Dokąd": ta sama lista w dwóch
+                  // polach jednego formularza nie może mieć dwóch układów.
+                  className={`flex min-h-[52px] cursor-pointer items-center gap-2.5 px-3.5 py-2 transition ${
                     active ? "bg-emerald-50" : "hover:bg-emerald-50/60"
                   }`}
                 >
-                  {/* Prosty, profesjonalny rząd jak na „Dokąd": nazwa + opis,
-                      bez skrótów lotnisk i bez ucinania (długie nazwy zawijają). */}
-                  <div className="text-sm font-semibold text-emerald-950">{title}</div>
-                  <div className="text-[11px] text-emerald-900/55">{sub}</div>
+                  {/* Ikona typu — ta sama gramatyka co lista „Dokąd" (2026-08-02):
+                      pojedyncze lotnisko = samolot, grupa („Warszawa — wszystkie
+                      lotniska", „Polska") = samolot startujący. `aria-hidden`,
+                      bo typ niesie już podpis pod nazwą. */}
+                  <span
+                    aria-hidden
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-muted"
+                  >
+                    {isGroup ? (
+                      <PlaneTakeoff className="h-4 w-4" strokeWidth={2} />
+                    ) : (
+                      <Plane className="h-4 w-4" strokeWidth={2} />
+                    )}
+                  </span>
+                  <span className="flex min-w-0 flex-col">
+                    {/* Prosty, profesjonalny rząd jak na „Dokąd": nazwa + opis,
+                        bez skrótów lotnisk i bez ucinania (długie nazwy zawijają). */}
+                    <span className="text-sm font-semibold text-emerald-950">{title}</span>
+                    <span className="text-[11px] text-emerald-900/55">{sub}</span>
+                  </span>
                 </li>
               );
             })
@@ -175,7 +194,9 @@ export function AirportCombobox({
       )}
 
       {error && (
-        <p className="mt-1 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">{error}</p>
+        // rounded-sm, nie -lg: w tokenach projektu `rounded-lg` to 20 px —
+        // WIĘCEJ niż 2xl — a komunikaty błędów formularza mają 8 px.
+        <p className="mt-1 rounded-sm bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">{error}</p>
       )}
     </div>
   );

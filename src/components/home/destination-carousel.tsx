@@ -24,14 +24,23 @@ import { cn } from "@/lib/ui/cn";
 export interface CarouselItem {
   /** Slug kierunku — trafia do eventu GA4. */
   slug: string;
-  /** Cena/os. jeśli znana (do eventu; sama karta renderuje ją sobie). */
+  /**
+   * Cena/os. jeśli znana (do eventu; sama karta renderuje ją sobie).
+   *
+   * Pas „Popularne kierunki" przestał ją podawać 2026-08-02, kiedy kafelki
+   * zrezygnowały z ceny pakietu. Alternatywą było wstawić tu cenę hotelu za
+   * dobę — ale to INNA wielkość pod tą samą nazwą metryki, więc historyczne
+   * raporty GA4 zaczęłyby porównywać dwie różne rzeczy bez ostrzeżenia.
+   * Brak liczby jest tu uczciwszy niż liczba o zmienionym znaczeniu.
+   */
   pricePerPerson?: number;
   /**
-   * Który event GA4 wysłać. Kafelek kierunku i karta pakietu to dwa różne
-   * produkty w lejku — wrzucenie ich pod jeden event skasowałoby możliwość
-   * porównania, który realnie sprzedaje.
+   * Który event GA4 wysłać. Kafelek kierunku i karta konkretnego hotelu to
+   * dwa różne produkty w lejku — wspólny event z `lp…` w polu `slug`
+   * zaśmiecałby raporty kierunków i nie dałby się odfiltrować. Ta sama
+   * zasada, dla której istniał wcześniej wariant „package".
    */
-  kind?: "destination" | "package";
+  kind?: "destination" | "hotel";
   /** Nazwa pozycji w GA4 (miasto po polsku). */
   name?: string;
   /** Kategoria pozycji w GA4 (kraj po polsku). */
@@ -178,7 +187,7 @@ export function DestinationCarousel({
               className={slideClassName}
               onClickCapture={() => {
                 track(
-                  item.kind === "package" ? "package_card_clicked" : "destination_card_clicked",
+                  item.kind === "hotel" ? "featured_hotel_card_clicked" : "destination_card_clicked",
                   {
                     slug: item.slug,
                     position: index + 1,

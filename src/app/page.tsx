@@ -5,20 +5,19 @@ import { TrustHowItWorks } from "@/components/home/trust-how-it-works";
 // 8 kafelków = HOME_TILE_DESTINATION_IDS z warm-config (JEDNO źródło prawdy:
 // dokładnie te kierunki grzeje cron, więc każdy kafelek ma szansę na cenę).
 import { HOME_TILE_DESTINATION_IDS } from "@/lib/hotels/warm-config";
-import { PackageDeals, type PackageDeal } from "@/components/home/package-deals";
+import { FeaturedHotels } from "@/components/home/featured-hotels";
+import { RecentSearches } from "@/components/home/recent-searches";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
+import { foldText } from "@/lib/flights/airports";
 import { HOME_COPY } from "@/lib/home/copy";
-import { nightsBetween, totalFor, type DealCard } from "@/lib/home/deal-card";
+import { pickFreshFeatured, readFeaturedHotels } from "@/lib/hotels/featured-hotels";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
-import { listAllDestinations } from "@/lib/mvp/destinations-seed";
 import {
   pickFreshFlightPrice,
   pickFreshPackage,
   pickFreshPrice,
   readPriceSnapshot,
-  type FreshPackage,
 } from "@/lib/prices/destination-price-snapshot";
-import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import { isFreshTrustpilot, readTrustpilotSnapshot } from "@/lib/trust/trustpilot-snapshot";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
@@ -101,6 +100,11 @@ export async function HomePageView() {
   // brak snapshotu/wpisu → kafelek bez linii ceny (uczciwość > kompletność).
   const priceSnapshot = await readPriceSnapshot();
 
+  // Polecane hotele (snapshot hotfeat:v1, cron co 6 h). `pickFreshFeatured`
+  // zwraca pustą tablicę przy braku Redisa, nieświeżym zestawie albo zbyt
+  // małej liczbie kart — sekcja po prostu się wtedy nie renderuje.
+  const featuredHotels = pickFreshFeatured(await readFeaturedHotels());
+
   // Kafle tematyczne „Nie wiesz, dokąd jechać?" — 4 moody z /wyjazdy.
   // Zdjęcie = media pierwszego picka moodu (ten sam resolver co kafelki;
   // pick bez profilu w seedzie → kafel pomijany, nie pusty obrazek).
@@ -155,6 +159,16 @@ export async function HomePageView() {
     ? { score: trustpilotEntry!.score, reviewCount: trustpilotEntry!.reviewCount }
     : null;
 
+  // Zdjęcia kierunków dla sekcji „Ostatnio wyszukiwane". Klucz musi być
+  // IDENTYCZNY z tym, który zapisuje formularz (foldowane „miasto|kraj" po
+  // angielsku) — inaczej mapa nigdy nie trafi i karty zostaną z ikoną.
+  const destinationImages: Record<string, string> = Object.fromEntries(
+    resolvedHeroDestinations.map((item) => [
+      foldText(`${item.destination.city}|${item.destination.country}`),
+      item.media.heroImage,
+    ]),
+  );
+
   const featuredTiles = resolvedHeroDestinations.map((item) => ({
     destination: item.destination,
     heroImage: item.media.heroImage,
@@ -162,120 +176,39 @@ export async function HomePageView() {
       pickFreshPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
     flightFromPln:
       pickFreshFlightPrice(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
-    // JEDNA cena całego wyjazdu (lot + noclegi) na osobę — ten sam odczyt,
-    // z którego korzysta sekcja pakietów. Gdy jest, kafelek pokazuje ją
-    // ZAMIAST rozbicia hotel/lot (koniec sumowania w głowie). Gdy jej nie ma
-    // (kierunek bez świeżego pakietu), kafelek zostaje przy tym, co realnie
-    // wiadomo — nic nie jest doliczane lokalnie.
-    packagePerPerson:
-      pickFreshPackage(priceSnapshot, item.destination.city, item.destination.country) ?? undefined,
+    // Cena PAKIETU (lot + noclegi) świadomie NIE trafia już na kafelek.
+    // Powód nie jest estetyczny: kafelek prowadzi na /hotele/szukaj, a ta
+    // strona nie miesza lotów do lejka hotelowego (patrz komentarz w
+    // hotele/szukaj/page.tsx). Napis „lot + 7 nocy · od X zł/os." obiecywał
+    // więc coś, czego następny ekran nie dostarczał — na osiemnastu kartach
+    // naraz. Zostaje rozbicie „Hotel od X zł/noc" + „Lot od Y zł": dwie
+    // liczby z tego samego snapshotu, z których żadna nie udaje pakietu.
   }));
 
-  // Pakiety „Cały wyjazd w jednej cenie" — pula = WSZYSTKIE grzane kierunki
-  // SPOZA kafelków (rozłączność sekcji z definicji), które mają świeży pakiet
-  // w snapshocie. To ODPORNE na zmienność dostępności lotów GDS: zamiast
-  // sztywnej listy 6-12 wysp (gdzie w danym przebiegu crona lot bywa tylko
-  // dla 1-2), pokazujemy NAJTAŃSZE realnie policzone pakiety z całego seeda.
-  // Klucz pakietu match po rekordzie seedu (city.en|country.en — jak w cronie);
-  // karta/CTA po PROFILU. Media (Pexels) tylko dla top-N (koszt ISR).
-  const tileIdSet = new Set<string>(HOME_TILE_DESTINATION_IDS);
-
-  // PEŁNA pula kierunków ze świeżym pakietem — bez odejmowania kafelków hero
-  // i bez obcinania do 10. Ta pula zasila licznik dobieracza („Mamy N wyjazdów
-  // od X zł"), więc MUSI odpowiadać temu, co użytkownik realnie może znaleźć.
-  // Licznik liczony z przyciętej listy pokazywałby mniej, niż serwis ma.
-  const allFreshDeals: DealCard[] = listAllDestinations()
-    .map((d) => {
-      const pkg = pickFreshPackage(priceSnapshot, d.city.en, d.country.en);
-      const profile = pkg ? getDestinationProfileBySlug(d.id) : undefined;
-      if (!pkg || !profile) return null;
-      const nights = nightsBetween(pkg.checkin, pkg.checkout);
-      const params = new URLSearchParams({
-        destination: profile.city,
-        country: profile.country,
-        adults: "2",
-        rooms: "1",
-      });
-      return {
-        // Klucz z PROFILU, nie z rekordu seeda. Seed potrafi mieć dwa wpisy
-        // wskazujące na ten sam profil kierunku (zmierzone: Malaga wychodziła
-        // dwa razy na liście wyników dobieracza), a przy `d.id` obie wersje
-        // przechodziły dalej jako osobne oferty i zawyżały licznik. Profilowy
-        // slug jest też kluczem, którego używa TRAVEL_MOODS, więc filtr typu
-        // wyjazdu trafia w te same kierunki, które liczy licznik.
-        id: profile.slug,
-        city: profile.city,
-        cityLabel: localizeCity(profile.city),
-        country: profile.country,
-        countryLabel: localizeCountry(profile.country),
-        // Zdjęcie dociągamy TYLKO dla kart, które realnie renderujemy (koszt
-        // ISR) — pula licznika go nie potrzebuje, bo nic nie wyświetla.
-        imageUrl: "",
-        imageAlt: `${localizeCity(profile.city)}, ${localizeCountry(profile.country)}`,
-        pricePerPersonPln: pkg.perPersonPln,
-        priceTotalPln: totalFor(pkg.perPersonPln),
-        nights,
-        dateFrom: pkg.checkin,
-        dateTo: pkg.checkout,
-        departureAirport: "WAW",
-        searchUrl: `/hotele/szukaj?${params.toString()}`,
-        // hotelName / hotelStars / hotelReviewScore / isDirect / competitorPricePln
-        // ŚWIADOMIE puste — snapshot dstprice:v1 ich nie zawiera, a wypełnienie
-        // przykładowymi byłoby zmyślaniem danych. Patrz lib/home/deal-card.ts.
-      } satisfies DealCard;
-    })
-    .filter((x): x is DealCard => x !== null)
-    // Deduplikacja po kierunku, z zachowaniem NAJTAŃSZEJ oferty. Bez tego ten
-    // sam kierunek pokazywał się dwa razy na liście wyników, a licznik nad nią
-    // liczył go podwójnie — czyli obiecywał więcej, niż serwis ma.
-    .reduce<DealCard[]>((acc, card) => {
-      const istniejacy = acc.findIndex((x) => x.id === card.id);
-      if (istniejacy === -1) return [...acc, card];
-      if (card.pricePerPersonPln < acc[istniejacy].pricePerPersonPln) acc[istniejacy] = card;
-      return acc;
-    }, []);
-
-  const packageCandidates = allFreshDeals
-    .filter((d) => !tileIdSet.has(d.id))
-    .map((d) => {
-      const profile = getDestinationProfileBySlug(d.id);
-      return profile
-        ? { profile, pkg: { perPersonPln: d.pricePerPersonPln, checkin: d.dateFrom, checkout: d.dateTo } }
-        : null;
-    })
-    .filter((x): x is { profile: DestinationProfile; pkg: FreshPackage } => x !== null)
-    .sort((a, b) => a.pkg.perPersonPln - b.pkg.perPersonPln)
-    .slice(0, 10);
-  const packageDeals: PackageDeal[] = await Promise.all(
-    packageCandidates.map(async ({ profile, pkg }): Promise<PackageDeal> => {
-      const media = await resolveDestinationMedia(profile);
-      // BEZ checkin/checkout w CTA (właściciel 2026-07-04) — termin ceny
-      // zostaje NA KARCIE, daty user wybiera sam w formularzu wyników.
-      const params = new URLSearchParams({
-        destination: profile.city,
-        country: profile.country,
-        adults: "2",
-        rooms: "1",
-      });
-      return {
-        slug: profile.slug,
-        cityLabel: localizeCity(profile.city),
-        countryLabel: localizeCountry(profile.country),
-        heroImage: media.heroImage,
-        perPersonPln: pkg.perPersonPln,
-        checkin: pkg.checkin,
-        checkout: pkg.checkout,
-        href: `/hotele/szukaj?${params.toString()}`,
-      };
-    }),
-  );
+  // ── SEKCJA „Cały wyjazd w jednej cenie" USUNIĘTA (2026-08-02, właściciel) ──
+  //
+  // Nie z powodu wyglądu. Karty deklarowały „Lot + hotel" i cenę pakietu, a
+  // link prowadził na /hotele/szukaj BEZ parametru wylotu — czyli na stronę,
+  // która lotów nie pokazuje w ogóle. Użytkownik klikał ofertę lot+hotel
+  // i dostawał listę samych hoteli; to jest dokładnie ten moment, w którym
+  // serwis rezerwacyjny traci zaufanie, a odzyskuje je najtrudniej.
+  //
+  // Snapshot dalej liczy pola pkg* (używa ich `ThemeTiles` i strony /wyjazdy),
+  // więc cron nie wymagał zmian — zniknęła TYLKO powierzchnia, która składała
+  // obietnicę bez pokrycia w następnym kroku.
 
   return (
     <main className="flex w-full flex-1 flex-col gap-8 pb-10 lg:gap-10">
-      <div className="w-full sm:px-6 sm:pt-2 xl:px-8">
-        <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} />
-      </div>
-      <PackageDeals deals={packageDeals} />
+      {/* Hero BEZ własnego marginesu bocznego — strona główna idzie od krawędzi
+          do krawędzi (właściciel 2026-08-02: „żeby nie było białych pasków po
+          bokach na mobile i na pc"). Padding należy do sekcji, nie do ramy. */}
+      <HomeHybridHero featured={featuredTiles} trustpilot={trustpilot} />
+      {/* Historia wyszukiwań jest wyłącznie w przeglądarce, więc ta sekcja
+          renderuje się dopiero po zamontowaniu (i znika, gdy historii nie ma).
+          Zdjęcia idą z serwera mapą — te same, które rozwiązano dla kafelków,
+          więc karta dostaje obrazek bez ani jednego dodatkowego zapytania. */}
+      <RecentSearches imageByKey={destinationImages} />
+      <FeaturedHotels hotels={featuredHotels} />
       {/* SEKCJA C — ścieżka dla niezdecydowanych: cztery kafle klimatów
           plus kafel asystenta.
           2026-07-27, decyzja właściciela: panel z pytaniami (budżet → typ →

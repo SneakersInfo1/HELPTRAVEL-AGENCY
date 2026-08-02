@@ -72,7 +72,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const region = sp.region ? getRegionById(sp.region) : null;
   if (region) {
     return {
-      title: `Hotele ${region.namePl}, ${region.countryPl} — ceny w PLN | HelpTravel`,
+      title: `Hotele ${region.namePl}, ${region.countryPl} — ceny w PLN`,
       description: `Znajdź hotel na wyspie ${region.namePl}. Prawdziwe ceny w PLN, bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`,
       alternates: {
         canonical: `/hotele/szukaj?${new URLSearchParams({ region: region.id }).toString()}`,
@@ -83,8 +83,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const dest = sp.destination ?? "";
   const ctry = sp.country ?? "";
   const title = dest
-    ? `Hotele ${dest}${ctry ? `, ${ctry}` : ""} — ceny w PLN | HelpTravel`
-    : "Wyszukiwarka hoteli | HelpTravel";
+    ? `Hotele ${dest}${ctry ? `, ${ctry}` : ""} — ceny w PLN`
+    : "Wyszukiwarka hoteli";
   const canonical = dest
     ? `/hotele/szukaj?${new URLSearchParams({ destination: dest, ...(ctry ? { country: ctry } : {}) }).toString()}`
     : "/hotele/szukaj";

@@ -53,6 +53,59 @@ export const HOME_TILE_DESTINATION_IDS = [
   "santa-cruz-de-tenerife-spain",
 ] as const;
 
+// ── Sekcja „Polecane hotele" (/api/cron/warm-featured-hotels, 2026-08-02) ────
+//
+// Zestaw KONKRETNYCH hoteli z realną ceną, rotowany co 6 h (prośba właściciela).
+// Pula jest szersza niż kafelki, bo pas ma pokazywać ofertę serwisu, a nie
+// powtarzać tę samą ósemkę miast, którą użytkownik widzi wyżej w karuzeli.
+
+/** Wyprzedzenie okna dat. ~4 tygodnie: pula ofert jest już pełna, a cena
+ *  wciąż odpowiada temu, co użytkownik zobaczy po kliknięciu. */
+export const FEATURED_LEAD_DAYS = 28;
+/** Długość pobytu, z której liczona jest cena za dobę. */
+export const FEATURED_NIGHTS = 2;
+/** Ile kierunków bierze jeden przebieg (= jedno okno rotacji). */
+export const FEATURED_DESTINATIONS_PER_RUN = 6;
+/** Ile hoteli maksymalnie z jednego kierunku (żeby jedno miasto nie zjadło pasa). */
+export const FEATURED_HOTELS_PER_DEST = 2;
+/** Ile hoteli kierunku skanujemy w poszukiwaniu ocenionych ze zdjęciem. */
+export const FEATURED_SCAN_HOTELS = 100;
+/** Minimum opinii, żeby hotel mógł być „polecany". Poniżej ocena nic nie znaczy:
+ *  pierwszy przebieg bez tego progu dał zestaw dwunastu hoteli z oceną 10,0. */
+export const FEATURED_MIN_REVIEWS = 30;
+
+/**
+ * Pula kierunków do rotacji. Świadomie SUMA obu list powyżej plus kilka miast
+ * spoza nich: przy 6 kierunkach na okno pełny obrót zajmuje ok. doby, więc
+ * użytkownik wracający wieczorem widzi inny zestaw niż rano.
+ */
+export const FEATURED_DESTINATION_POOL: readonly string[] = [
+  "barcelona-spain",
+  "rome-italy",
+  "lisbon-portugal",
+  "paris-france",
+  "athens-greece",
+  "istanbul-turkey",
+  "malaga-spain",
+  "valencia-spain",
+  "porto-portugal",
+  "naples-italy",
+  "palma-spain",
+  "funchal-portugal",
+  "heraklion-greece",
+  "alicante-spain",
+  "antalya-turkey",
+  "faro-portugal",
+  "corfu-greece",
+  "santa-cruz-de-tenerife-spain",
+  "rhodes-greece",
+  "larnaca-cyprus",
+  "valletta-malta",
+  "palermo-italy",
+  "catania-italy",
+  "chania-greece",
+];
+
 // Kierunki sekcji „Cały wyjazd w jednej cenie" (pakiety lot+hotel).
 // MUSZĄ być ROZŁĄCZNE z HOME_TILE_DESTINATION_IDS — właściciel 2026-07-03:
 // „w obu sekcjach mają być inne [kierunki]". Grzane w cronie jako grupa
