@@ -62,10 +62,16 @@ export const HOME_COPY: HomeCopy = {
   // wyszukania — i prowadzi dokładnie do niego, na te same daty.
   featuredHotels: {
     heading: "Polecane hotele",
-    // Zdanie mówi trzy rzeczy, których użytkownik nie ma skąd wiedzieć:
-    // czym jest ta cena, dla kogo jest policzona i jak stara jest liczba.
+    // Zdanie mówi cztery rzeczy, których użytkownik nie ma skąd wiedzieć:
+    // JAK dobieramy obiekty, czym jest ta cena, dla kogo jest policzona
+    // i jak często się zmienia.
+    //
+    // „Z tańszej części ofert" to opis TEGO, CO ROBI KOD (`pickValuePicks`:
+    // odcięcie po medianie cen kierunku, dopiero potem ranking jakości), a nie
+    // chwyt sprzedażowy. Gdyby dobór wrócił do samego rankingu jakości, to
+    // zdanie trzeba usunąć razem z nim.
     subheading:
-      "Ceny za dobę dla dwóch osób, sprawdzone w ostatnich godzinach. Zestaw zmienia się co sześć godzin.",
+      "Dobrze oceniane obiekty z tańszej części ofert na te daty. Ceny za dobę dla dwóch osób, zestaw zmienia się co sześć godzin.",
     cta: "Zobacz hotel",
   },
   picker: {

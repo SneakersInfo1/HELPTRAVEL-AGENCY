@@ -202,6 +202,54 @@ export function sortFeatured(hotels: FeaturedHotel[]): FeaturedHotel[] {
   });
 }
 
+/**
+ * Wybór kart kierunku: NAJLEPIEJ OCENIANE Z TAŃSZEJ CZĘŚCI OFERT.
+ *
+ * DLACZEGO NIE SAM RANKING JAKOŚCI (decyzja właściciela 2026-08-02).
+ * Pierwsza wersja brała po prostu dwa najlepiej oceniane obiekty kierunku —
+ * a najlepiej oceniane są zwykle najdroższe. Zmierzone na realnym przebiegu:
+ * cały pas mieścił się w 553–2123 zł za dobę. Dla adresata tej strony
+ * (polski turysta wypoczynkowy porównujący ceny na telefonie) sekcja
+ * „Polecane" złożona z hoteli po 2000 zł za noc nie jest ofertą, tylko
+ * informacją „to nie dla ciebie" — i zostaje przewinięta.
+ *
+ * DLACZEGO PRÓG LICZONY Z DANYCH, A NIE WPISANY Z RĘKI. Sztywne „do 600 zł"
+ * znaczyłoby co innego w Neapolu, co innego na Maderze i co innego w szczycie
+ * sezonu — a po kilku tygodniach po prostu przestałoby pasować. Mediana cen
+ * TEGO kierunku na TE daty kalibruje się sama i nie wprowadza do serwisu ani
+ * jednej liczby, której nikt nie policzył.
+ *
+ * Kolejność operacji jest istotna: najpierw odcinamy droższą część PO CENIE,
+ * dopiero potem sortujemy PO JAKOŚCI. Odwrotnie (najpierw jakość, potem
+ * przycięcie po cenie) dałoby znowu ranking luksusu, tylko krótszy.
+ *
+ * `Math.max(take, połowa)` to podłoga dla kierunków z ubogą pulą (zmierzone:
+ * Palma potrafi dać 2–5 wycenionych obiektów) — gwarantuje, że da się zapełnić
+ * `take` kart, gdy połowa jest mniejsza od tej liczby.
+ *
+ * Podłoga jest CELOWO równa `take`, nie `take * 2`. Pierwsza wersja miała
+ * `take * 2` „dla większego wyboru" i test to wyłapał: przy puli sześciu
+ * ofert odcięcie rosło do czterech, czyli wracał do niego hotel z drogiej
+ * połowy (1500 zł obok 300/350/400) i cała obietnica „tańszej części" padała
+ * dokładnie tam, gdzie oferta i tak jest uboga.
+ */
+export function pickValuePicks<T extends { perNightPln: number; rating?: number; reviewCount?: number }>(
+  priced: readonly T[],
+  take: number,
+): T[] {
+  if (take <= 0 || priced.length === 0) return [];
+  const cutoff = Math.max(take, Math.ceil(priced.length / 2));
+  const tansza = [...priced].sort((a, b) => a.perNightPln - b.perNightPln).slice(0, cutoff);
+  return tansza
+    .sort((a, b) => {
+      const sa = credibilityScore(a.rating, a.reviewCount);
+      const sb = credibilityScore(b.rating, b.reviewCount);
+      if (sb !== sa) return sb - sa;
+      return a.perNightPln - b.perNightPln;
+    })
+    .slice(0, take);
+}
+
 /** Świeży snapshot albo null. Nieświeży traktujemy jak brak — nigdy nie pokazujemy starej ceny. */
 export function pickFreshFeatured(
   snapshot: FeaturedHotelsSnapshot | null,

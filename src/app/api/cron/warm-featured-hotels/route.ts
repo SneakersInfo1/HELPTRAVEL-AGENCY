@@ -30,6 +30,7 @@ import type { RateCacheContext } from "@/lib/hotels/rate-cache";
 import {
   FEATURED_MIN,
   credibilityScore,
+  pickValuePicks,
   rotationBucket,
   rotateSlice,
   writeFeaturedHotels,
@@ -166,12 +167,11 @@ export async function GET(request: NextRequest) {
 
       // Limit na kierunek — inaczej jedno miasto z bogatą podażą zajęłoby cały
       // pas i sekcja przestałaby być przeglądem oferty.
-      const taken = priced
-        .sort(
-          (a, b) =>
-            credibilityScore(b.rating, b.reviewCount) - credibilityScore(a.rating, a.reviewCount),
-        )
-        .slice(0, FEATURED_HOTELS_PER_DEST);
+      //
+      // `pickValuePicks`, nie sam ranking jakości: bierze najlepiej oceniane
+      // Z TAŃSZEJ CZĘŚCI wycenionych ofert tego kierunku (próg = mediana cen
+      // tego przebiegu). Powód i pomiary — patrz lib/hotels/featured-hotels.ts.
+      const taken = pickValuePicks(priced, FEATURED_HOTELS_PER_DEST);
       collected.push(...taken);
       diag.push({ slug, scanned: candidates.length, priced: priced.length, taken: taken.length });
     } catch (err) {

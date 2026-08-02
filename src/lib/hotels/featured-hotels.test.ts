@@ -18,6 +18,7 @@ import {
   credibilityScore,
   isDisplayableHotel,
   pickFreshFeatured,
+  pickValuePicks,
   readFeaturedHotels,
   rotateSlice,
   rotationBucket,
@@ -128,6 +129,59 @@ test("dziesiątka z garstki opinii przegrywa z bardzo dobrą oceną z tysięcy",
     hotel({ id: "znany", rating: 9.5, reviewCount: 5000, perNightPln: 900 }),
   ]);
   assert.deepEqual(posortowane.map((h) => h.id), ["znany", "pensjonat"]);
+});
+
+// ── Dobór „najlepiej oceniane w rozsądnej cenie" (decyzja właściciela) ──────
+
+test("z drogiej połowy nie bierzemy nic, nawet jeśli ma najlepszą ocenę", () => {
+  // Realny kształt problemu: najlepiej oceniane obiekty kierunku to zwykle
+  // najdroższe, więc sam ranking jakości dawał pas po 2000 zł za dobę.
+  const pula = [
+    hotel({ id: "lux-1", perNightPln: 2100, rating: 9.9, reviewCount: 4000 }),
+    hotel({ id: "lux-2", perNightPln: 1800, rating: 9.8, reviewCount: 4000 }),
+    hotel({ id: "lux-3", perNightPln: 1500, rating: 9.7, reviewCount: 4000 }),
+    hotel({ id: "tani-dobry", perNightPln: 400, rating: 9.4, reviewCount: 4000 }),
+    hotel({ id: "tani-sredni", perNightPln: 350, rating: 8.2, reviewCount: 4000 }),
+    hotel({ id: "tani-slaby", perNightPln: 300, rating: 7.1, reviewCount: 4000 }),
+  ];
+  const wybor = pickValuePicks(pula, 2).map((h) => h.id);
+  // Z tańszej połowy (300/350/400) najlepiej oceniane to „tani-dobry".
+  assert.deepEqual(wybor, ["tani-dobry", "tani-sredni"]);
+  assert.ok(!wybor.some((id) => id.startsWith("lux")), "luksus nie ma prawa wejść");
+});
+
+test("w tańszej części dalej rządzi JAKOŚĆ, nie cena", () => {
+  // Sekcja nazywa się „Polecane": po odcięciu drogich nie wolno po prostu
+  // wziąć najtańszego, bo wtedy byłby to ranking cen pod inną nazwą.
+  const pula = [
+    hotel({ id: "najtanszy-slaby", perNightPln: 200, rating: 6.5, reviewCount: 900 }),
+    hotel({ id: "tanszy-dobry", perNightPln: 260, rating: 9.3, reviewCount: 900 }),
+    hotel({ id: "drogi", perNightPln: 900, rating: 9.9, reviewCount: 900 }),
+    hotel({ id: "drogi-2", perNightPln: 950, rating: 9.9, reviewCount: 900 }),
+  ];
+  assert.equal(pickValuePicks(pula, 1)[0].id, "tanszy-dobry");
+});
+
+test("uboga pula kierunku nie zostaje bez wyboru", () => {
+  // Zmierzone: Palma potrafi dać 2–5 wycenionych obiektów. Ścisła połowa
+  // zostawiłaby wtedy jeden i „wybór" byłby pozorny.
+  const male = [
+    hotel({ id: "a", perNightPln: 500, rating: 9.5, reviewCount: 500 }),
+    hotel({ id: "b", perNightPln: 700, rating: 9.0, reviewCount: 500 }),
+  ];
+  assert.equal(pickValuePicks(male, 2).length, 2);
+  assert.deepEqual(pickValuePicks([], 2), []);
+  assert.deepEqual(pickValuePicks(male, 0), []);
+});
+
+test("dobór nie mutuje wejścia — cron używa tej samej tablicy dalej", () => {
+  const pula = [
+    hotel({ id: "x", perNightPln: 900, rating: 9.9, reviewCount: 900 }),
+    hotel({ id: "y", perNightPln: 100, rating: 8.0, reviewCount: 900 }),
+  ];
+  const przed = pula.map((h) => h.id);
+  pickValuePicks(pula, 1);
+  assert.deepEqual(pula.map((h) => h.id), przed);
 });
 
 test("wiarygodność: ściąganie do średniej działa w obie strony", () => {
