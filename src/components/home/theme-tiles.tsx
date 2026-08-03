@@ -83,7 +83,7 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
               <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.9)_45%,rgba(5,18,11,0.94)_100%)] p-3 sm:p-4">
               {/* h3: kafle są bezpośrednio pod <h2> sekcji, bez nagłówka
                   pośredniego (ten zniknął razem z panelem dobieracza). */}
-              <h3 className="font-display text-lg leading-tight sm:text-xl">{tile.label}</h3>
+              <h3 className="text-lg font-semibold leading-tight tracking-[-0.01em] sm:text-xl">{tile.label}</h3>
               <p className="mt-0.5 hidden text-xs text-white/80 sm:block">{tile.tagline}</p>
               {tile.fromPerPersonPln ? (
                 // Cena zamiast „Zobacz kierunki": etykieta nawigacyjna nie

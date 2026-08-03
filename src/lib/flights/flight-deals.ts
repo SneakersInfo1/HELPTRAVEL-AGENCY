@@ -24,6 +24,7 @@
 
 import { Redis } from "@upstash/redis";
 
+import { DEAL_MAX_PRICE_PLN } from "@/lib/flights/deals-config";
 import { rotateSlice, rotationBucket } from "@/lib/home/rotation";
 
 export interface FlightDeal {
@@ -143,21 +144,41 @@ export function savingPercent(pricePln: number, typicalPln: number): number {
 }
 
 /**
- * Czy różnica zasługuje na słowo „okazja".
+ * Czy lot nadaje się na kartę.
  *
- * DWA PROGI, NIE JEDEN, i oba muszą być spełnione naraz:
- *   • względny (`DEAL_MAX_RATIO`) — cena musi być co najmniej o piątą część
- *     niższa od mediany; mniejsza różnica mieści się w zwykłym szumie cen
- *     biletów i nazwanie jej okazją byłoby naciąganiem,
- *   • bezwzględny (`DEAL_MIN_ABS_PLN`) — bo 25% z 300 zł to 75 zł, czyli
- *     kwota, dla której nikt nie przestawia terminu wyjazdu. Sam procent
- *     wypychałby na górę listy najtańsze i najkrótsze trasy z najbardziej
- *     efektownym, a najmniej użytecznym rabatem.
+ * ZMIANA REGUŁY (2026-08-02, po obejrzeniu sekcji przez właściciela).
+ * Wcześniej decydowała WIELKOŚĆ RÓŻNICY między najtańszym a typowym terminem.
+ * Efekt był poprawny formalnie i bezużyteczny w praktyce: karty pokazywały
+ * −34% na locie za 2 828 zł. Właściciel postawił sprawę wprost — „zależy mi na
+ * ofertach od 200 do 800, 900 zł maksymalnie".
+ *
+ * Więc kryterium jest teraz CENA, nie rabat: lot musi zmieścić się pod
+ * `DEAL_MAX_PRICE_PLN`. Różnica wobec pozostałych terminów nie znika — dalej
+ * ją liczymy i pokazujemy tam, gdzie jest realna (patrz `hasMeaningfulSpread`)
+ * — ale przestała być przepustką do sekcji.
+ *
+ * Wymóg `DEAL_MIN_SAMPLES` zostaje: bez kilku wycen nie wiemy, czy trafiliśmy
+ * na realną cenę, czy na jednorazowy artefakt wyszukiwarki.
  */
 export function qualifiesAsDeal(pricePln: number, typicalPln: number, sampleCount: number): boolean {
   if (!Number.isFinite(sampleCount) || sampleCount < DEAL_MIN_SAMPLES) return false;
   if (!Number.isFinite(pricePln) || pricePln <= 0) return false;
   if (!Number.isFinite(typicalPln) || typicalPln <= 0) return false;
+  return pricePln <= DEAL_MAX_PRICE_PLN;
+}
+
+/**
+ * Czy różnica wobec pozostałych terminów jest na tyle duża, żeby w ogóle
+ * o niej wspominać na karcie.
+ *
+ * Oba progi naraz, bo każdy sam kłamie inaczej: 8% mieści się w zwykłym szumie
+ * cen biletów, a 25% z 300 zł to 75 zł, czyli kwota, dla której nikt nie
+ * przestawia terminu wyjazdu. Poniżej progu karta pokazuje samą cenę —
+ * to uczciwsze niż dopisywanie odniesienia, które niczego nie zmienia.
+ */
+export function hasMeaningfulSpread(pricePln: number, typicalPln: number): boolean {
+  if (!Number.isFinite(pricePln) || !Number.isFinite(typicalPln)) return false;
+  if (pricePln <= 0 || typicalPln <= 0) return false;
   return pricePln <= typicalPln * DEAL_MAX_RATIO && typicalPln - pricePln >= DEAL_MIN_ABS_PLN;
 }
 
@@ -183,8 +204,16 @@ export function isDisplayableDeal(value: unknown): value is FlightDeal {
   if (typeof deal.depart !== "string" || !ISO_DATE.test(deal.depart)) return false;
   if (typeof deal.returnDate !== "string" || !ISO_DATE.test(deal.returnDate)) return false;
   if (!isFiniteNumber(deal.pricePln) || deal.pricePln <= 0) return false;
-  if (!isFiniteNumber(deal.typicalPln) || deal.typicalPln <= 0 || deal.pricePln >= deal.typicalPln) return false;
-  if (!isFiniteNumber(deal.savingPercent) || deal.savingPercent < 1) return false;
+  // `pricePln <= typicalPln`, a NIE `<`. To nie jest drobiazg: `pricePln` jest
+  // minimum z tych samych próbek, z których liczona jest mediana, więc gdy
+  // trasa ma wszędzie tę samą cenę (zmierzone: Oslo 627/627/781 → mediana 627,
+  // minimum 627), obie liczby są równe. Poprzedni warunek `>=` odrzucał wtedy
+  // wpis — czyli najtańszą trasę z całej sondy sekcja nigdy by nie pokazała.
+  if (!isFiniteNumber(deal.typicalPln) || deal.typicalPln <= 0) return false;
+  if (deal.pricePln > deal.typicalPln) return false;
+  // Zero jest poprawną wartością: brak różnicy między terminami nie unieważnia
+  // taniego lotu, tylko sprawia, że karta nie pokazuje wiersza odniesienia.
+  if (!isFiniteNumber(deal.savingPercent) || deal.savingPercent < 0) return false;
   if (!isFiniteNumber(deal.nights) || deal.nights <= 0) return false;
   if (!isFiniteNumber(deal.stops) || deal.stops < 0) return false;
   if (!isFiniteNumber(deal.durationMinutes) || deal.durationMinutes <= 0) return false;
@@ -194,10 +223,18 @@ export function isDisplayableDeal(value: unknown): value is FlightDeal {
   return true;
 }
 
+/**
+ * Kolejność w sekcji: NAJTANIEJ NA GÓRZE, przy remisie większa różnica wobec
+ * pozostałych terminów.
+ *
+ * Odwrotnie niż w pierwszej wersji, gdzie rządził procent — przez co pierwszą
+ * kartą bywał lot za 2 828 zł z efektownym „−34%". Sekcja nazywa się „tanie
+ * loty", więc pierwsze co widać, ma być najniższą kwotą.
+ */
 function sortDeals(deals: FlightDeal[]): FlightDeal[] {
   return [...deals].sort((a, b) => {
-    if (b.savingPercent !== a.savingPercent) return b.savingPercent - a.savingPercent;
-    return a.pricePln - b.pricePln;
+    if (a.pricePln !== b.pricePln) return a.pricePln - b.pricePln;
+    return b.savingPercent - a.savingPercent;
   });
 }
 
@@ -206,6 +243,14 @@ export function pickFreshDeals(snapshot: FlightDealsSnapshot | null, now: number
   const today = new Date(now).toISOString().slice(0, 10);
   const fresh = Object.values(snapshot)
     .filter(isDisplayableDeal)
+    // SUFIT CENY EGZEKWOWANY TAKŻE PRZY ODCZYCIE, nie tylko przy zapisie.
+    // Bez tego obietnica z podtytułu („wszystkie poniżej 900 zł") zależałaby
+    // od tego, która wersja crona zapisała wpis: klucz Redis przeżywa
+    // wdrożenie, więc karta za 2 828 zł zapisana przez poprzednią regułę
+    // renderowałaby się jeszcze kilkanaście godzin po zmianie. Warunek
+    // wyświetlania musi wynikać z tego, co strona OBIECUJE, a nie z tego,
+    // co akurat leży w bazie.
+    .filter((deal) => deal.pricePln <= DEAL_MAX_PRICE_PLN)
     .filter((deal) => now - deal.computedAt <= DEAL_FRESH_MS)
     .filter((deal) => deal.depart > today);
 

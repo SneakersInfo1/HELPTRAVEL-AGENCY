@@ -133,7 +133,7 @@ export function DestinationTile({
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
           {localizeCountry(destination.country)}
         </p>
-        <h3 className={`mt-1 font-display leading-tight ${isLarge ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"}`}>{cityLabel}</h3>
+        <h3 className={`mt-1 font-semibold leading-tight tracking-[-0.01em] ${isLarge ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"}`}>{cityLabel}</h3>
         {/* CENA — jedna, na osobę, za cały wyjazd (signature element).
             Jednostka jest JEDNYM niełamliwym tokenem: na 375px łamanie
             w środku ceny dawało sieroty „zł" w osobnej linii. */}

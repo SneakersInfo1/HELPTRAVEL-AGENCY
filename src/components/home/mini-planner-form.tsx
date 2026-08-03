@@ -724,7 +724,17 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       <div
         className={`grid gap-3 text-lg lg:items-end ${
           isFlights
-            ? "lg:grid-cols-[minmax(195px,1.45fr)_minmax(180px,1.35fr)_minmax(150px,1.05fr)_minmax(118px,0.85fr)_auto]"
+            // Kolumny przeliczone po powiększeniu pisma do 18 px. Zmierzone
+            // przed zmianą: „2 dorosłych" potrzebowało 114 px, a kolumna dawała
+            // 90; „Wylot – Powrót" 125 wobec 122 — stąd ucięte etykiety na
+            // zrzucie od właściciela. Pole „Skąd" miało za to 65 px zapasu,
+            // więc oddaje je sąsiadom, zamiast rosnąć bez potrzeby.
+            // Suma minimów + odstępy MUSI zmieścić się w kontenerze: max-w-4xl
+            // (896 px) minus padding i obramowanie zostawia ok. 856 px, a cztery
+            // przerwy `gap-3` zjadają 48. Stąd 800 px minimów, nie 818 —
+            // przy poprzednich wartościach CTA wchodziło w prawy padding
+            // dokładnie na progu `lg`.
+            ? "lg:grid-cols-[minmax(162px,1.15fr)_minmax(186px,1.4fr)_minmax(154px,1.1fr)_minmax(146px,1fr)_minmax(152px,auto)]"
             : "lg:grid-cols-[1.4fr_1.3fr_1fr_auto]"
         }`}
       >
@@ -809,7 +819,10 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               const next = event.relatedTarget as Node | null;
               if (next && !destWrapRef.current?.contains(next)) setDestOpen(false);
             }}
-            placeholder="Wpisz miasto lub kraj…"
+            // Krótsza podpowiedź: „Wpisz miasto lub kraj…" potrzebowało 184 px
+            // przy 152 dostępnych i urywało się w połowie słowa. Czasownik nic
+            // nie wnosił — etykieta nad polem mówi już „DOKĄD".
+            placeholder="Miasto lub kraj"
             autoComplete="off"
             className={fieldCls}
           />

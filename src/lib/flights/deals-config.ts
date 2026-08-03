@@ -8,18 +8,48 @@ export interface DealRoute {
  * Pula tras. Większa od jednego przebiegu, żeby co dwie godziny badać inne
  * trasy, a po pełnym obrocie wrócić do początku bez losowania i bez luk.
  *
- * DLACZEGO AŻ TRZYDZIEŚCI SZEŚĆ. Rozmiar puli wynika z POMIARU, nie z chęci
- * pokazania wielu kierunków. Pierwszy realny przebieg (2026-08-02, 8 tras
- * × 6 terminów, 48 wyszukań, zero błędów) pokazał, że rozrzut cen wewnątrz
- * jednej trasy jest zwykle mały: sześć z ośmiu tras zmieściło się w 2–8%
- * między najtańszym a typowym terminem, i tylko Ateny (−25%) oraz Lizbona
- * (−19%) miały różnicę, którą uczciwie można nazwać okazją.
+ * SKŁAD PULI WYNIKA Z POMIARU, nie z listy ładnych kierunków. Właściciel
+ * postawił warunek: „oferty od 200 do 800, 900 zł maksymalnie". Pierwsza
+ * wersja puli (basen Morza Śródziemnego + Wyspy Kanaryjskie) dawała
+ * 989–2828 zł i nie miała jak tego warunku spełnić — nie z powodu kodu,
+ * tylko dlatego, że tam po prostu nie ma takich cen u tego dostawcy.
  *
- * Były dwa wyjścia: poluzować próg albo poszerzyć pulę. Poluzowanie oznaczało
- * nazwanie „okazją" różnicy 8% — czyli dokładnie ten rodzaj naciągania, przed
- * którym PRODUCT.md ostrzega wprost. Więc pula, nie próg.
+ * Sonda po 30 kierunkach pokazała, gdzie one są: krótkie trasy miejskie na
+ * północ i zachód. Stąd przebudowa — najpierw one, kierunki plażowe jako
+ * tło. Sufit ceny (`DEAL_MAX_PRICE_PLN`) pilnuje reszty.
+ *
+ * Rozmiar 36 nie jest ozdobny: musi dzielić się bez reszty przez
+ * `DEAL_ROUTES_PER_RUN`, bo z tego wynika czas pełnego obrotu, a z niego
+ * próg świeżości kart (test pilnuje tej własności).
  */
 export const DEAL_ROUTES: readonly DealRoute[] = [
+  // ── KRÓTKIE TRASY MIEJSKIE — tu są ceny, o które prosił właściciel ──────
+  // Kolejność nieprzypadkowa: sonda z 2026-08-02 (30 kierunków × 3 okna,
+  // 90 realnych wycen, 1 dorosły, w obie strony) pokazała, że poniżej 900 zł
+  // schodzą WYŁĄCZNIE Oslo (627), Londyn (827), Bruksela (838) i Wiedeń (867),
+  // a tuż nad progiem są Budapeszt (918), Bukareszt (940), Praga (949),
+  // Sztokholm (973) i Sofia (979). Wszystkie bezpośrednie, 1–3 h.
+  { origin: "WAW", destinationIata: "OSL", destinationId: "oslo-norway" },
+  { origin: "WAW", destinationIata: "LON", destinationId: "london-united-kingdom" },
+  { origin: "WAW", destinationIata: "BRU", destinationId: "brussels-belgium" },
+  { origin: "WAW", destinationIata: "VIE", destinationId: "vienna-austria" },
+  { origin: "WAW", destinationIata: "BUD", destinationId: "budapest-hungary" },
+  { origin: "WAW", destinationIata: "OTP", destinationId: "bucharest-romania" },
+  { origin: "WAW", destinationIata: "PRG", destinationId: "prague-czechia" },
+  { origin: "WAW", destinationIata: "SOF", destinationId: "sofia-bulgaria" },
+  { origin: "WAW", destinationIata: "STO", destinationId: "stockholm-sweden" },
+  { origin: "WAW", destinationIata: "CPH", destinationId: "copenhagen-denmark" },
+  { origin: "WAW", destinationIata: "ZAG", destinationId: "zagreb-croatia" },
+  { origin: "WAW", destinationIata: "LJU", destinationId: "ljubljana-slovenia" },
+  { origin: "WAW", destinationIata: "TLL", destinationId: "tallinn-estonia" },
+  { origin: "WAW", destinationIata: "RIX", destinationId: "riga-latvia" },
+  { origin: "WAW", destinationIata: "VNO", destinationId: "vilnius-lithuania" },
+  { origin: "WAW", destinationIata: "BER", destinationId: "berlin-germany" },
+  // ── Kierunki wypoczynkowe ────────────────────────────────────────────────
+  // Zostają w puli, choć w tej samej sondzie zaczynały się od 989 zł i sięgały
+  // 2828 zł: ceny biletów zmieniają się w czasie, a sufit `DEAL_MAX_PRICE_PLN`
+  // i tak przepuści je tylko wtedy, gdy realnie zejdą do przedziału. Usunięcie
+  // ich odebrałoby sekcji szansę na jedyny kierunek plażowy w dobrej cenie.
   { origin: "WAW", destinationIata: "BCN", destinationId: "barcelona-spain" },
   { origin: "WAW", destinationIata: "AGP", destinationId: "malaga-spain" },
   { origin: "WAW", destinationIata: "PMI", destinationId: "palma-spain" },
@@ -37,29 +67,11 @@ export const DEAL_ROUTES: readonly DealRoute[] = [
   { origin: "WAW", destinationIata: "CTA", destinationId: "catania-italy" },
   { origin: "WAW", destinationIata: "LCA", destinationId: "larnaca-cyprus" },
   { origin: "WAW", destinationIata: "CFU", destinationId: "corfu-greece" },
-  { origin: "WAW", destinationIata: "TFS", destinationId: "santa-cruz-de-tenerife-spain" },
-  { origin: "KRK", destinationIata: "ZTH", destinationId: "zakynthos-greece" },
-  { origin: "KRK", destinationIata: "KGS", destinationId: "kos-greece" },
-  { origin: "KRK", destinationIata: "HRG", destinationId: "hurghada-egypt" },
-  { origin: "KRK", destinationIata: "DBV", destinationId: "dubrovnik-croatia" },
-  { origin: "KRK", destinationIata: "VLC", destinationId: "valencia-spain" },
-  { origin: "KRK", destinationIata: "NCE", destinationId: "nice-france" },
-  // Rozszerzenie po pierwszym realnym przebiegu (patrz komentarz wyżej).
-  // Dobór celowo sięga dalej niż basen Morza Śródziemnego: im większy rozrzut
-  // długości tras i sezonowości, tym większa szansa, że w danym momencie
-  // KTÓRAŚ trasa ma termin realnie tańszy od pozostałych.
-  { origin: "WAW", destinationIata: "PFO", destinationId: "paphos-cyprus" },
   { origin: "WAW", destinationIata: "SKG", destinationId: "thessaloniki-greece" },
-  { origin: "WAW", destinationIata: "CHQ", destinationId: "chania-greece" },
-  { origin: "WAW", destinationIata: "BRI", destinationId: "bari-italy" },
-  { origin: "WAW", destinationIata: "PMO", destinationId: "palermo-italy" },
-  { origin: "WAW", destinationIata: "MLA", destinationId: "valletta-malta" },
-  { origin: "WAW", destinationIata: "ACE", destinationId: "arrecife-spain" },
-  { origin: "WAW", destinationIata: "LPA", destinationId: "las-palmas-spain" },
-  { origin: "WAW", destinationIata: "FNC", destinationId: "funchal-portugal" },
-  { origin: "WAW", destinationIata: "SSH", destinationId: "sharm-el-sheikh-egypt" },
-  { origin: "WAW", destinationIata: "RAK", destinationId: "marrakesh-morocco" },
-  { origin: "WAW", destinationIata: "DXB", destinationId: "dubai-united-arab-emirates" },
+  // Dwa wyloty z Krakowa — drugie co do wielkości lotnisko w kraju i najtańsze
+  // trasy miejskie, więc mają realną szansę trafić pod sufit.
+  { origin: "KRK", destinationIata: "VIE", destinationId: "vienna-austria" },
+  { origin: "KRK", destinationIata: "PRG", destinationId: "prague-czechia" },
 ];
 
 /**
@@ -137,6 +149,21 @@ export const DEAL_MAX_DURATION_RATIO = 1.5;
  * albo obu Ameryk, tę liczbę trzeba podnieść razem z nią.
  */
 export const DEAL_MAX_DURATION_MINUTES = 720;
+/**
+ * SUFIT CENY karty, w złotych za osobę w obie strony.
+ *
+ * Wprost z wymagania właściciela: „zależy mi na ofertach od 200 do 800, 900 zł
+ * maksymalnie". To jest twarda granica sekcji, a nie preferencja sortowania —
+ * lot za 1 900 zł nie wejdzie tu nawet wtedy, gdy jest o połowę tańszy od
+ * pozostałych terminów, bo adresat tej strony i tak go nie kupi.
+ *
+ * UCZCIWA UWAGA DO DOLNEJ GRANICY: 200–400 zł jest u tego dostawcy
+ * NIEOSIĄGALNE. Zmierzone minimum globalne z 90 wycen to 627 zł (Oslo) —
+ * LiteAPI Flights sprzedaje przez GDS, więc nie ma tu Ryanaira ani Wizza,
+ * którzy takie ceny robią. Sufit da się obniżyć jedną liczbą; podłogi nie da
+ * się wyczarować bez drugiego źródła ofert.
+ */
+export const DEAL_MAX_PRICE_PLN = 900;
 export const DEAL_CONCURRENCY = 6;
 /**
  * Budżet czasu przebiegu. 185 s, a nie 250 s — poprawka po review.

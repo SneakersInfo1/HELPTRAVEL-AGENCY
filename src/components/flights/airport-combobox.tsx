@@ -146,10 +146,20 @@ export function AirportCombobox({
           id={listboxId}
           role="listbox"
           aria-label="Lotniska"
-          // Szerokość = szerokość pola (left-0 right-0), jak lista „Dokąd" —
-          // nie wystaje poza kartę na telefonie. Nazwy mieszczą się bo rząd jest
-          // teraz prosty (nazwa + miasto/kraj), bez szerokiego badge'a z kodami.
-          className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-80 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)]"
+          // SZERSZA NIŻ POLE, i to celowo. W trybie lotów kolumna „Skąd" ma
+          // ok. 170 px, z czego po ikonie i marginesach zostaje ~110 px na
+          // tekst — a „Warszawa — wszystkie lotniska" potrzebuje ~185 px, więc
+          // nazwa łamała się na TRZY linie i lista wyglądała na zepsutą
+          // (zgłoszenie właściciela ze zrzutu). Lista może wyjść poza pole: to
+          // warstwa NAD treścią, nie element siatki. `max-w` trzyma ją w oknie
+          // na telefonie, gdzie pole i tak zajmuje całą szerokość.
+          // `min-w` DOPIERO OD `sm`, i to nie kosmetyka: `min-width` wygrywa
+          // z `max-width` w CSS, więc bezwarunkowe 290 px rozpychało listę poza
+          // ekran na telefonie 320 px (zmierzone: prawa krawędź 327 przy oknie
+          // 320). Na mobile pole i tak zajmuje całą szerokość, więc minimum
+          // jest tam niepotrzebne — problem wąskiej kolumny dotyczy wyłącznie
+          // układu wielokolumnowego od `sm` w górę.
+          className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-80 w-full max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-emerald-900/10 bg-white py-1 shadow-[0_8px_24px_rgba(16,84,48,0.12)] sm:min-w-[290px] sm:max-w-[min(360px,calc(100vw-3rem))]"
         >
           {options.length > 0 ? (
             options.map((o, idx) => {
