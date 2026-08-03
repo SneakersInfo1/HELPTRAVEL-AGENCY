@@ -139,14 +139,51 @@ export async function GET(request: NextRequest) {
   }
 
   const startedAt = Date.now();
-  const routes = rotateSlice(
-    DEAL_ROUTES,
-    DEAL_ROUTES_PER_RUN,
-    rotationBucket(Date.now(), DEAL_ROTATION_MS),
-  );
+  // `?offset=N` — furtka OPERACYJNA, nie funkcja produktu. Normalnie o wyborze
+  // tras decyduje okno rotacji, więc pełna pula rozgrzewa się przez sześć
+  // godzin. Po zmianie składu puli (albo sufitu ceny) to za długo, żeby
+  // zobaczyć skutek: bez tego parametru trzeba czekać trzy przebiegi crona.
+  // Vercel wywołuje endpoint bez parametru, więc harmonogram działa jak dotąd.
+  //
+  // Walidacja jest ścisła, bo to jest wejście z zewnątrz (choć za sekretem):
+  // `0` musi być odróżnione od BRAKU parametru (inaczej nie da się rozgrzać
+  // pierwszej partii), a wartość spoza zakresu ma dać 400 zamiast po cichu
+  // uruchomić inną partię. Bez górnego ograniczenia bardzo duża liczba robi
+  // `bucket * take` = Infinity, `start` = NaN i `rotateSlice` zwraca tablicę
+  // undefined-ów — czyli 500 zamiast czytelnego błędu.
+  //
+  // UWAGA OPERACYJNA: wywołuj SEKWENCYJNIE. `mergeFlightDeals` czyta i zapisuje
+  // klucz w dwóch krokach, więc dwa przebiegi naraz mogą się nawzajem nadpisać
+  // i zostanie tylko ostatni. Harmonogram Vercela wywołuje endpoint pojedynczo,
+  // więc problem dotyczy wyłącznie ręcznego rozgrzewania.
+  const surowyOffset = request.nextUrl.searchParams.get("offset");
+  let bucket = rotationBucket(Date.now(), DEAL_ROTATION_MS);
+  if (surowyOffset !== null) {
+    const offset = Number(surowyOffset);
+    const poprawny =
+      /^\d+$/.test(surowyOffset.trim()) &&
+      Number.isSafeInteger(offset) &&
+      offset >= 0 &&
+      offset < DEAL_ROUTES.length;
+    if (!poprawny) {
+      return NextResponse.json(
+        { error: "bad_offset", hint: `offset musi być liczbą całkowitą z zakresu 0..${DEAL_ROUTES.length - 1}` },
+        { status: 400 },
+      );
+    }
+    bucket = Math.floor(offset / DEAL_ROUTES_PER_RUN);
+  }
+  const routes = rotateSlice(DEAL_ROUTES, DEAL_ROUTES_PER_RUN, bucket);
   const windows = computeDealDateWindows();
   const tasks: DealTask[] = routes.flatMap((route) => windows.map((window) => ({ route, window })));
   const samplesByRoute = new Map<string, PricedSample[]>(routes.map((route) => [routeKey(route), []]));
+  // UKOŃCZONE WYSZUKANIA to co innego niż WYCENIONE OKNA i mylenie tych dwóch
+  // liczb kosztuje kartę. Wyszukanie może zakończyć się poprawnie i nie zwrócić
+  // żadnej oferty mieszczącej się w progach — to jest wiedza („na tej trasie
+  // w tym terminie nic nie ma"), a nie awaria. Gdyby liczyć tylko wyceny, sześć
+  // udanych, pustych wyszukań wyglądałoby jak sześć błędów i stara, nieaktualna
+  // cena zostawałaby na stronie do wygaśnięcia świeżości.
+  const completedByRoute = new Map<string, number>(routes.map((route) => [routeKey(route), 0]));
 
   let priced = 0;
   let skipped = 0;
@@ -180,6 +217,8 @@ export async function GET(request: NextRequest) {
       // To dokładnie ten sam cache i klucz co wyszukiwanie użytkownika, więc
       // koszt pomiaru mediany jednocześnie ogrzewa właściwy wynik.
       await setCachedFlightOffers(flightRatesCacheKey(input), offers, "warm");
+      // Wyszukanie się udało — niezależnie od tego, czy coś z niego wyszło.
+      completedByRoute.set(routeKey(route), (completedByRoute.get(routeKey(route)) ?? 0) + 1);
       const cheapest = cheapestSaneOffer(offers);
       if (!cheapest) return;
       samplesByRoute.get(routeKey(route))?.push({ ...cheapest, window });
@@ -207,18 +246,20 @@ export async function GET(request: NextRequest) {
     const key = routeKey(route);
     try {
       const samples = samplesByRoute.get(key) ?? [];
-      // NIEPEŁNY POMIAR ≠ BRAK OKAZJI (poprawka po review, klasa błędu, która
-      // sama się nie zgłasza). Do próbek trafiają wyłącznie udane wyceny, więc
-      // gdy pięć z sześciu okien padło na timeoucie LiteAPI, zostaje jedna
-      // próbka — `qualifiesAsDeal` słusznie mówi „nie", ale to jest zdanie
-      // o NASZEJ awarii, nie o rynku. Bez tego warunku przejściowy błąd
-      // dostawcy kasował z klucza prawdziwą, wciąż aktualną okazję.
+      // KASOWANIE WPISU WYMAGA KOMPLETNEJ WIEDZY (dwie poprawki z review).
       //
-      // Wyrokujemy więc dopiero, gdy zebraliśmy tyle pomiarów, ile w ogóle
-      // wystarcza do policzenia „typowej ceny". Poniżej tego progu wpis
-      // zostaje nietknięty i decyduje o nim świeżość.
+      // Wyrok „ta trasa nie ma już taniego lotu" wolno wydać tylko wtedy, gdy
+      // WSZYSTKIE okna zostały sprawdzone do końca. Inaczej wystarczy, że
+      // padnie akurat to jedno okno, w którym była cena pod sufitem, a cron
+      // skasuje kartę, która nadal jest prawdziwa.
+      //
+      // Liczy się `completed`, a NIE liczba wycen: wyszukanie może zakończyć
+      // się poprawnie i nie zwrócić żadnej oferty w progach. To jest wiedza
+      // („nic tu nie ma"), a nie awaria — i taka trasa MA wypaść z klucza.
+      const pelnyPomiar = (completedByRoute.get(key) ?? 0) === windows.length;
       if (samples.length < DEAL_MIN_SAMPLES) {
-        undermeasured++;
+        if (pelnyPomiar) checkedWithoutDeal.push(key);
+        else undermeasured++;
         continue;
       }
       const typicalPln = median(samples.map((sample) => sample.total));
@@ -226,7 +267,8 @@ export async function GET(request: NextRequest) {
       const cheapest = samples.reduce((best, sample) => (sample.total < best.total ? sample : best));
       const pricePln = Math.round(cheapest.total);
       if (!qualifiesAsDeal(pricePln, typicalPln, samples.length)) {
-        checkedWithoutDeal.push(key);
+        if (pelnyPomiar) checkedWithoutDeal.push(key);
+        else undermeasured++;
         continue;
       }
 

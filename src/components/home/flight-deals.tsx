@@ -8,29 +8,30 @@ import { FlightDealsGrid, TrackedDeal, type FlightDealItem } from "./flight-deal
 import { HOME_COPY, type SectionCopy } from "@/lib/home/copy";
 import { formatDateRange, formatPricePln, nightsLabel } from "@/lib/home/deal-card";
 import { fmtDuration, stopsLabel } from "@/lib/flights/display";
-import { DEAL_MIN, type FlightDeal } from "@/lib/flights/flight-deals";
+import { DEAL_MIN, hasMeaningfulSpread, type FlightDeal } from "@/lib/flights/flight-deals";
 
-// Sekcja „Okazje lotnicze" (2026-08-02, prośba właściciela: „taka sama warstwa
-// jak polecane hotele, tylko z lotami, zmieniana co dwie godziny, i żeby to
-// były realne okazje").
+// Sekcja „Tanie loty z Polski" (2026-08-02).
 //
-// DLACZEGO TO NIE JEST CZWARTA KARUZELA ZE ZDJĘCIAMI
-// Nad tą sekcją stoją już trzy pasy kart z fotografiami (kierunki w hero,
-// ostatnio wyszukiwane, polecane hotele). Czwarty pas w tej samej skórce
-// przestaje być sekcją, a staje się teksturą — użytkownik przewija wszystkie
-// cztery jednym gestem. Ta sekcja jest więc SIATKĄ POZIOMYCH WIERSZY: zdjęcie
-// zostaje (sprzedaje kierunek), ale prowadzą dane rejsu, bo o locie decyduje
-// się liczbami, nie widokiem plaży. Efekt uboczny jest korzystny: osiem
-// wierszy skanuje się na telefonie szybciej niż osiem kafli do przewinięcia.
+// HISTORIA, KTÓRA TŁUMACZY KSZTAŁT — przerabiana trzy razy w jeden dzień:
+//   1. „Okazje lotnicze" z plakietką „−35%" i doborem po WIELKOŚCI różnicy
+//      między terminami. Formalnie poprawne, praktycznie bezużyteczne: karty
+//      pokazywały efektowne „−34%" na locie za 2 828 zł.
+//   2. Nazwa padła z powodu prawa. UOKiK wymienia słowo „okazja" dosłownie
+//      obok „obniżki" i „promocji" jako komunikat wymagający najniższej ceny
+//      z 30 dni przed obniżką — historii, której nie mamy. Zniknęły procenty.
+//   3. Dobór padł z powodu ceny. Właściciel: „zależy mi na ofertach od 200 do
+//      800, 900 zł maksymalnie". Sonda po 30 kierunkach (90 realnych wycen)
+//      pokazała, że takie ceny są na KRÓTKICH trasach miejskich, a nie nad
+//      Morzem Śródziemnym. Kryterium jest dziś sufit ceny, a sortowanie idzie
+//      od najtańszego.
+// Różnica wobec pozostałych terminów została jako informacja dodatkowa —
+// pokazywana tylko wtedy, gdy jest realna (patrz `hasMeaningfulSpread`).
 //
-// DLACZEGO NA KARCIE JEST DRUGA LICZBA
-// „Zwykle ok. X zł" to mediana cen, które cron faktycznie znalazł na tej
-// trasie w sześciu terminach (patrz lib/flights/flight-deals.ts). Bez tej
-// liczby „okazja" jest wyłącznie naszym słowem. Z nią użytkownik widzi, wobec
-// czego jest tania — i może to sprawdzić, zmieniając daty w wyszukiwarce.
-// Liczba NIE jest przekreślona i nie udaje ceny sprzed obniżki: to nie była
-// nigdy cena tej oferty, tylko poziom odniesienia. Przekreślenie zrobiłoby
-// z niej pozorny rabat (dyrektywa Omnibus, PRODUCT.md → anti-references).
+// DLACZEGO TO NIE JEST KOLEJNA KARUZELA ZE ZDJĘCIAMI
+// Nad tą sekcją stoją już trzy pasy kart z fotografiami. Czwarty w tej samej
+// skórce przestaje być sekcją, a staje się teksturą — użytkownik przewija
+// wszystkie jednym gestem. Stąd siatka poziomych wierszy: zdjęcie zostaje
+// (sprzedaje kierunek), ale prowadzą dane rejsu i cena.
 
 export interface FlightDealView extends FlightDeal {
   /** Zdjęcie kierunku (Pexels, rozwiązane na serwerze). Brak = kafel z ikoną. */
@@ -62,8 +63,10 @@ export function FlightDeals({
   deals: FlightDealView[];
   copy?: SectionCopy;
 }) {
-  // Mniej niż komplet = brak sekcji. Dwie karty pod nagłówkiem „Okazje
-  // lotnicze" czytają się jak awaria zbierania danych, a nie jak wybór.
+  // Mniej niż komplet = brak sekcji. Dwie karty pod nagłówkiem „Tanie loty"
+  // czytają się jak awaria zbierania danych, a nie jak wybór. Przy twardym
+  // sufcie 900 zł taki stan jest realny i to jest poprawne zachowanie: brak
+  // tanich lotów tego dnia lepiej przemilczeć niż uzupełnić drogimi.
   if (deals.length < DEAL_MIN) return null;
 
   const items: FlightDealItem[] = deals.map((d) => ({
@@ -86,12 +89,10 @@ export function FlightDeals({
       </div>
 
       {/* Najwyżej TRZY kolumny, i to nie ze względów estetycznych. Zmierzone na
-          1440 px: przy czterech kolumnach karta ma 328 px, kolumna tekstu 176 px,
-          a wiersz ceny („1 342 zł/os." obok „zwykle ok. 2 064 zł") potrzebuje
-          ok. 208 px — na czterech z sześciu kart ucinało się WŁAŚNIE odniesienie,
-          czyli jedyną liczbę, która czyni słowo „okazja" sprawdzalnym.
-          Sześć kart dzieli się bez reszty na 1, 2 i 3 kolumny, więc na żadnym
-          progu nie zostaje sierocy wiersz. */}
+          1440 px: przy czterech kolumnach karta ma 328 px, a kolumna tekstu
+          176 px — wiersz z ceną i odniesieniem potrzebował ok. 208 px i ucinał
+          się na czterech z sześciu kart. Sześć kart dzieli się bez reszty na
+          1, 2 i 3 kolumny, więc na żadnym progu nie zostaje sierocy wiersz. */}
       <FlightDealsGrid items={items} className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         {deals.map((deal, index) => (
           <TrackedDeal key={deal.routeKey} item={items[index]} position={index + 1}>
@@ -100,9 +101,6 @@ export function FlightDeals({
         ))}
       </FlightDealsGrid>
 
-      {/* Trzy warunki, bez których cena lotu jest nieporównywalna z żadną inną.
-          Raz pod siatką, a nie osiem razy na kartach: powtórzony na każdym
-          wierszu ten sam dopisek przestaje być czytany już przy drugim. */}
       {/* Trzy warunki, bez których cena lotu jest nieporównywalna z żadną inną,
           plus jedno zastrzeżenie, którego brak byłby cichą obietnicą. Ceny
           pochodzą ze sprawdzenia sprzed najwyżej kilkunastu godzin, a bilety
@@ -128,7 +126,10 @@ function FlightDealCard({ deal }: { deal: FlightDealView }) {
 
   return (
     <article className="group relative flex overflow-hidden rounded-md border border-line bg-surface-raised shadow-[var(--shadow-sm)] transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] active:scale-[0.995] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100">
-      <div className="relative w-28 shrink-0 self-stretch overflow-hidden bg-surface-sunken sm:w-32">
+      {/* 96 px na najwęższych telefonach: przy 112 px kolumna tekstu schodziła
+          do ~152 px i ucinała się data wyjazdu (zmierzone na 320 px). Zdjęcie
+          jest tu ilustracją, data — treścią. */}
+      <div className="relative w-24 shrink-0 self-stretch overflow-hidden bg-surface-sunken sm:w-32">
         {deal.imageUrl ? (
           <Image
             src={deal.imageUrl}
@@ -158,7 +159,7 @@ function FlightDealCard({ deal }: { deal: FlightDealView }) {
           {/* Nagłówek niesie JEDYNY link karty, rozciągnięty pseudo-elementem
               na cały wiersz — jeden przystanek tabulatora zamiast trzech
               prowadzących pod ten sam adres. */}
-          <h3 className="min-w-0 font-display text-lg leading-tight text-ink">
+          <h3 className="min-w-0 text-lg font-bold leading-tight tracking-[-0.01em] text-ink">
             <LocalizedLink href={href} className="before:absolute before:inset-0">
               <span className="block truncate">{deal.cityLabel}</span>
             </LocalizedLink>
@@ -207,13 +208,25 @@ function FlightDealCard({ deal }: { deal: FlightDealView }) {
             {formatPricePln(deal.pricePln)}
             <span className="text-[11px] font-medium text-ink-muted">/os.</span>
           </p>
-          {/* „Inne terminy", a nie „zwykle": nazywa wprost, co jest podstawą
-              porównania — inne DATY tej samej trasy, a nie wcześniejsza cena
-              tej samej oferty. Bez przekreślenia, bo to nigdy nie była cena,
-              którą ktoś obniżył. */}
-          <p className="truncate text-[11px] leading-tight text-ink-muted">
-            inne terminy <span className="sr-only">kosztują </span>ok. {formatPricePln(deal.typicalPln)}
-          </p>
+          {/* Wiersz odniesienia POJAWIA SIĘ WARUNKOWO. Gdy wszystkie sprawdzone
+              terminy kosztują mniej więcej tyle samo (a tak bywa na najtańszych
+              trasach), dopisek „inne terminy ok. tyle samo" nic nie wnosi
+              i tylko udaje porównanie. Wtedy zostaje sama cena.
+              „Inne terminy", a nie „zwykle": nazywa wprost, co jest podstawą —
+              inne DATY tej samej trasy, a nie wcześniejsza cena tej oferty.
+              Bez przekreślenia, bo nikt tej ceny nie obniżał. */}
+          {hasMeaningfulSpread(deal.pricePln, deal.typicalPln) ? (
+            <p className="truncate text-[11px] leading-tight text-ink-muted">
+              inne terminy <span className="sr-only">kosztują </span>ok. {formatPricePln(deal.typicalPln)}
+            </p>
+          ) : (
+            // Zamiennik NIE może powtarzać tego, co stoi wiersz wyżej („7 nocy"
+            // jest już przy datach). Ta linia dokłada jedyną informację, której
+            // nigdzie indziej nie ma: ile terminów za tą ceną stoi.
+            <p className="truncate text-[11px] leading-tight text-ink-muted">
+              najtańszy z {deal.sampleCount} terminów
+            </p>
+          )}
         </div>
       </div>
     </article>

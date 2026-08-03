@@ -29,8 +29,19 @@
 
 import type { ImageLoaderProps } from "next/image";
 
+// Domyślna jakość kompresji dla zdjęć przepuszczanych przez proxy.
+//
+// 82 zamiast next-owego 75 (2026-08-02, zgłoszenie właściciela „zdjęcia są
+// bardzo słabej jakości"). Sprawdzone przy tej okazji: pipeline NIE jest
+// wąskim gardłem rozdzielczości — oryginał hotelu z Cupida ma 3000×2250,
+// a wsrv oddaje dokładnie żądaną szerokość (w=768 → 768×576). Miękkość brała
+// się więc z samej kompresji, a nie z rozmiaru. 82 to próg, powyżej którego
+// WebP przestaje gubić detal w gradientach (niebo, woda) — a takie kadry
+// dominują w zdjęciach hoteli i kierunków.
+const DEFAULT_QUALITY = 82;
+
 export default function cdnLoader({ src, width, quality }: ImageLoaderProps): string {
-  const q = Math.min(100, Math.max(1, quality ?? 75));
+  const q = Math.min(100, Math.max(1, quality ?? DEFAULT_QUALITY));
 
   // Local files served from /public/ — no transformation, just shipped as-is.
   // Hits the Vercel static-asset CDN, which caches them aggressively for free.

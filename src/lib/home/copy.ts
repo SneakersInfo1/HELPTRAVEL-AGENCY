@@ -92,12 +92,20 @@ export const HOME_COPY: HomeCopy = {
   // czytelnik (i regulator) nie zobaczyli pozornego rabatu tam, gdzie go nie
   // ma. Stąd nagłówek o terminach, a nie o okazjach, i brak procentu na karcie.
   flightDeals: {
-    heading: "Tańsze terminy lotów",
+    // „Tanie loty", bo o to poprosił właściciel wprost („zależy mi na ofertach
+    // od 200 do 800, 900 zł maksymalnie") i bo tym sekcja teraz JEST: dobiera
+    // po CENIE, nie po wielkości różnicy między terminami. Dalej ani słowa
+    // „okazja", ani procentów — powód prawny opisany wyżej.
+    heading: "Tanie loty z Polski",
     subheading:
-      // Bez słowa „obniżka" nawet w przeczeniu: zdanie ma nie zawierać
-      // słownictwa, po którym w ogóle szuka się komunikatów o obniżkach.
-      // „Porównujemy terminy, a nie ceny w czasie" mówi to samo precyzyjniej.
-      "Na tych trasach wybrany termin jest wyraźnie tańszy od pozostałych, które sprawdziliśmy. Porównujemy terminy, a nie ceny w czasie.",
+      // Liczba 900 pada jawnie, bo to jest obietnica, którą użytkownik może
+      // sprawdzić jednym spojrzeniem na karty. Jeśli zmieni się
+      // `DEAL_MAX_PRICE_PLN`, to zdanie trzeba zmienić razem z nim.
+      // „do 900 zł", a nie „poniżej": warunek w kodzie to `<= 900`, więc lot
+      // dokładnie za 900 zł jest dopuszczony. Różnica jednego słowa, ale to
+      // dokładnie ta klasa drobiazgu, przez którą tekst przestaje się zgadzać
+      // z tym, co widać na kartach.
+      "Ceny w obie strony za osobę, wszystkie do 900 zł. To najtańsze terminy, jakie znaleźliśmy na tych trasach w najbliższych miesiącach.",
     // Bez `cta`: karta jest jednym wierszem, w którym etykieta przycisku byłaby
     // piątą linią tekstu. Cały wiersz i tak jest linkiem.
   },

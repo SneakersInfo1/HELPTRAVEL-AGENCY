@@ -118,7 +118,7 @@ export function InspireTile({
             de Mallorca" łamała się na dwie linie i scrim TEJ JEDNEJ karty rósł
             o ćwierć wysokości, więc pas wyglądał na zepsuty. Zmierzone na
             375 / 768 / 1280 px. */}
-        <h3 className="mt-0.5 font-display text-lg leading-tight">{cityLabel}</h3>
+        <h3 className="mt-0.5 text-lg font-semibold leading-tight tracking-[-0.01em]">{cityLabel}</h3>
 
         <div className="mt-1.5 flex items-end justify-between gap-2">
           <div className="min-w-0">

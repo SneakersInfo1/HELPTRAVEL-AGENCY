@@ -16,10 +16,22 @@ import { getSiteUrl } from "@/lib/mvp/site";
 const siteUrl = getSiteUrl();
 const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 
+// Krój displayowy — WYŁĄCZNIE nagłówki hero i sekcji (28 px w górę).
+//
+// Do 2026-08-02 stał też na nazwach miast w kartach, przy 18–22 px. Cormorant
+// jest krojem o bardzo wysokim kontraście kresek: w tych rozmiarach robi się
+// cienki, blady i „papierowy" — to była bezpośrednia przyczyna zgłoszenia
+// właściciela („czcionki wyglądają nieprzyjemnie"). Karty przeszły na Manrope
+// z mocną wagą; szeryf zostaje tam, gdzie ma dość miejsca, żeby wyglądać jak
+// decyzja, a nie jak awaria renderowania.
+//
+// `latin-ext` jest konieczne dla polskich znaków (ą, ę, ł, ń, ó, ś, ż, ź) —
+// bez niego przeglądarka podmienia je z KROJU ZASTĘPCZEGO i w jednym wyrazie
+// mieszają się dwa fonty.
 const displayFont = Cormorant_Garamond({
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  subsets: ["latin", "latin-ext"],
+  weight: ["600", "700"],
 });
 
 const uiFont = Manrope({

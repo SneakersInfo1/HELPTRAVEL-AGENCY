@@ -8,6 +8,7 @@ import {
   DEAL_ROTATION_MS,
   __resetFlightDealsRedisForTests,
   __setFlightDealsRedisForTests,
+  hasMeaningfulSpread,
   isDisplayableDeal,
   median,
   mergeFlightDeals,
@@ -17,6 +18,7 @@ import {
   savingPercent,
   type FlightDeal,
 } from "./flight-deals";
+import { DEAL_MAX_PRICE_PLN } from "./deals-config";
 
 const NOW = Date.parse("2026-08-02T10:00:00Z");
 
@@ -60,17 +62,36 @@ test("procent oszczędności jest zaokrąglony i nie schodzi poniżej zera", () 
   assert.equal(savingPercent(100, 0), 0);
 });
 
-test("okazja wymaga próbek, odpowiedniego procentu i co najmniej 120 zł różnicy", () => {
+// REGUŁA ZMIENIONA 2026-08-02: o wejściu do sekcji decyduje CENA, nie wielkość
+// różnicy między terminami. Powód w komentarzu przy `qualifiesAsDeal` — karty
+// pokazywały „−34%" na locie za 2 828 zł, a właściciel poprosił o oferty do
+// 900 zł. Różnica terminów żyje dalej, ale w `hasMeaningfulSpread`.
+test("na kartę wchodzi lot PONIŻEJ sufitu ceny, niezależnie od różnicy terminów", () => {
   assert.equal(qualifiesAsDeal(600, 900, DEAL_MIN_SAMPLES - 1), false, "za mało próbek");
-  assert.equal(qualifiesAsDeal(850, 1_000, DEAL_MIN_SAMPLES), false, "za mały procent");
-  assert.equal(qualifiesAsDeal(200, 300, DEAL_MIN_SAMPLES), false, "za mała kwota bezwzględna");
-  assert.equal(qualifiesAsDeal(700, 1_000, DEAL_MIN_SAMPLES), true);
+  assert.equal(qualifiesAsDeal(DEAL_MAX_PRICE_PLN + 1, 4_000, DEAL_MIN_SAMPLES), false, "nad sufitem");
+  assert.equal(qualifiesAsDeal(DEAL_MAX_PRICE_PLN, 4_000, DEAL_MIN_SAMPLES), true, "dokładnie na sufcie");
+  // Tania trasa BEZ rozrzutu cen musi przejść — inaczej najtańszy kierunek
+  // z całej sondy (Oslo, wszystkie terminy po 627 zł) nigdy by się nie pokazał.
+  assert.equal(qualifiesAsDeal(627, 627, DEAL_MIN_SAMPLES), true, "brak różnicy to nie dyskwalifikacja");
+  assert.equal(qualifiesAsDeal(2_828, 4_281, DEAL_MIN_SAMPLES), false, "drogi lot mimo dużej różnicy");
 });
 
-test("karta musi mieć komplet pól, prawdziwy spadek ceny i poprawne daty", () => {
+test("wiersz odniesienia pojawia się tylko przy realnej różnicy terminów", () => {
+  assert.equal(hasMeaningfulSpread(700, 1_000), true);
+  assert.equal(hasMeaningfulSpread(850, 1_000), false, "za mały procent");
+  assert.equal(hasMeaningfulSpread(200, 300), false, "za mała kwota bezwzględna");
+  assert.equal(hasMeaningfulSpread(627, 627), false, "brak różnicy");
+  assert.equal(hasMeaningfulSpread(0, 1_000), false);
+});
+
+test("karta musi mieć komplet pól i poprawne daty", () => {
   assert.equal(isDisplayableDeal(deal()), true);
   assert.equal(isDisplayableDeal({ ...deal(), airlineName: undefined }), false);
-  assert.equal(isDisplayableDeal(deal({ pricePln: 900, typicalPln: 900 })), false);
+  // Cena RÓWNA medianie jest poprawna: to trasa o jednolitym cenniku, a nie
+  // uszkodzony wpis. Odrzucenie takiego wpisu wycinało najtańsze kierunki.
+  assert.equal(isDisplayableDeal(deal({ pricePln: 900, typicalPln: 900, savingPercent: 0 })), true);
+  // Cena WYŻSZA od mediany to już sprzeczność — minimum nie może przekroczyć
+  // mediany tych samych próbek.
   assert.equal(isDisplayableDeal(deal({ pricePln: 950, typicalPln: 900 })), false);
   assert.equal(isDisplayableDeal(deal({ depart: "10.09.2026" })), false);
 });
@@ -82,6 +103,21 @@ test("pusty snapshot i mniej niż trzy poprawne karty nie renderują sekcji", ()
     pickFreshDeals({ a: deal({ routeKey: "a" }), b: deal({ routeKey: "b" }) }, NOW),
     [],
   );
+});
+
+// Klucz Redis przeżywa wdrożenie, więc po zmianie reguły w bazie leżą jeszcze
+// wpisy zapisane starą (droższą). Gdyby sufit obowiązywał tylko przy zapisie,
+// podtytuł „wszystkie poniżej 900 zł" byłby przez kilkanaście godzin nieprawdą.
+test("wpis nad sufitem ceny nie renderuje się, nawet gdy jest świeży", () => {
+  const snapshot = {
+    drogi: deal({ routeKey: "drogi", pricePln: DEAL_MAX_PRICE_PLN + 1, typicalPln: 4_000 }),
+    a: deal({ routeKey: "a", pricePln: 600 }),
+    b: deal({ routeKey: "b", pricePln: 700 }),
+    c: deal({ routeKey: "c", pricePln: 800 }),
+  };
+  const widoczne = pickFreshDeals(snapshot, NOW).map((d) => d.routeKey);
+  assert.ok(!widoczne.includes("drogi"), "wpis nad sufitem musi zniknąć przy odczycie");
+  assert.deepEqual(widoczne, ["a", "b", "c"]);
 });
 
 test("wpis przeterminowany oraz wylot dzisiaj lub w przeszłości odpadają osobno", () => {
@@ -99,15 +135,18 @@ test("wpis przeterminowany oraz wylot dzisiaj lub w przeszłości odpadają osob
   );
 });
 
-test("okazje sortują się po oszczędności, a przy remisie po cenie", () => {
+// Sekcja nazywa się „Tanie loty", więc pierwsza karta ma być NAJTAŃSZA.
+// Wcześniej rządził procent i na górze lądował lot za 2 828 zł z efektownym
+// „−34%" — dokładnie to, co właściciel zakwestionował.
+test("karty sortują się po cenie rosnąco, a przy remisie po różnicy terminów", () => {
   const snapshot = {
-    weaker: deal({ routeKey: "weaker", savingPercent: 25, pricePln: 500 }),
-    expensive: deal({ routeKey: "expensive", savingPercent: 40, pricePln: 700 }),
-    cheap: deal({ routeKey: "cheap", savingPercent: 40, pricePln: 450 }),
+    sredni: deal({ routeKey: "sredni", savingPercent: 25, pricePln: 500 }),
+    drogi: deal({ routeKey: "drogi", savingPercent: 40, pricePln: 700 }),
+    tani: deal({ routeKey: "tani", savingPercent: 40, pricePln: 450 }),
   };
   assert.deepEqual(
     pickFreshDeals(snapshot, NOW).map((item) => item.routeKey),
-    ["cheap", "expensive", "weaker"],
+    ["tani", "sredni", "drogi"],
   );
 });
 
