@@ -66,7 +66,7 @@ export function TrustHowItWorks({ trustpilot }: TrustHowItWorksProps = {}) {
         {/* Bez nadtytułu „Jak to działa": nagłówek już to mówi, a nadtytuł nad
             każdą sekcją to najbardziej rozpoznawalny szablon generowanych
             stron (PRODUCT.md → anti-references). */}
-        <h2 id="how-it-works" className="max-w-xl text-balance font-display text-2xl leading-tight text-ink sm:text-3xl">
+        <h2 id="how-it-works" className="max-w-xl text-balance text-2xl font-bold leading-tight tracking-[-0.02em] text-ink sm:text-3xl">
           Rezerwujesz w trzech krokach
         </h2>
 

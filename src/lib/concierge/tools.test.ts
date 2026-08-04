@@ -55,6 +55,7 @@ function makeDeps(overrides: Partial<ToolDeps> = {}): ToolDeps {
     listDestinationsInCountry: () => [],
     findCheapestHotel: async () => null,
     findCheapestFlight: async () => null,
+    fetchHotelPhotoUrls: async () => [],
     now: () => now,
     ...overrides,
   };
@@ -178,11 +179,25 @@ test("executeSearchTrips: pusty wynik → candidates:[] + niepusty reason", asyn
 // ── executeGetTripOffer ──────────────────────────────────────────────────────
 
 const HOTEL: CheapestHotel = {
-  hotelId: "lp19abc", name: "Hotel Testowy", totalPln: 2400, mainPhotoUrl: null, rating: 8.7,
+  hotelId: "lp19abc",
+  name: "Hotel Testowy",
+  totalPln: 2400,
+  mainPhotoUrl: "https://static.cupid.travel/main.jpg",
+  rating: 8.7,
+  stars: 4,
+  reviewCount: 321,
+  address: "Calle Test 1, Málaga",
+  roomName: "Double room",
+  boardName: "Breakfast included",
+  refundableTag: "RFN",
+  cancellationDeadline: "2026-08-08T23:59:00Z",
+  freeCancellationDeadline: "2026-08-08T23:59:00Z",
 };
 const FLIGHT: CheapestFlight = {
   totalPln: 1300, carrierName: "Ryanair", outboundDepartureTime: "2026-08-10T06:00:00",
-  inboundDepartureTime: "2026-08-17T21:00:00", stops: 0, destinationIata: "AGP",
+  inboundDepartureTime: "2026-08-17T21:00:00", stops: 0,
+  outboundDurationMinutes: 210, inboundDurationMinutes: 225,
+  hasCarryOnBag: true, hasCheckedBag: null, destinationIata: "AGP",
 };
 const offerArgs = {
   cityEn: "Malaga", countryEn: "Spain", checkin: "2026-08-10", checkout: "2026-08-17",
@@ -194,6 +209,10 @@ test("executeGetTripOffer: oba komponenty → realne kwoty z mocków, per-osobę
     resolveDest: () => ({ city: { en: "Malaga", pl: "Małaga" }, country: { en: "Spain" } }),
     findCheapestHotel: async () => HOTEL,
     findCheapestFlight: async () => FLIGHT,
+    fetchHotelPhotoUrls: async () => [
+      "https://static.cupid.travel/gallery-1.jpg",
+      "https://static.cupid.travel/gallery-2.jpg",
+    ],
   }));
   const offer = await exec.executeGetTripOffer(offerArgs);
 
@@ -207,6 +226,19 @@ test("executeGetTripOffer: oba komponenty → realne kwoty z mocków, per-osobę
   assert.equal(offer.hotel.name, "Hotel Testowy");
   assert.equal(offer.hotel.totalPln, 2400);
   assert.equal(offer.hotel.rating, 8.7);
+  assert.equal(offer.hotel.stars, 4);
+  assert.equal(offer.hotel.reviewCount, 321);
+  assert.equal(offer.hotel.address, "Calle Test 1, Málaga");
+  assert.equal(offer.hotel.roomName, "Double room");
+  assert.equal(offer.hotel.boardName, "Breakfast included");
+  assert.equal(offer.hotel.refundableTag, "RFN");
+  assert.equal(offer.hotel.freeCancellationDeadline, "2026-08-08T23:59:00Z");
+  assert.deepEqual(offer.hotel.photoUrls, [
+    "https://static.cupid.travel/gallery-1.jpg",
+    "https://static.cupid.travel/gallery-2.jpg",
+  ]);
+  assert.equal(offer.nights, 7);
+  assert.equal(offer.hotel.perNightPln, 2400 / 7);
   // Handoff hotelu: kontrakt /hotele/[hotelId] (checkin/checkout/adults/rooms);
   // dzieci liczone jak dorośli downstream (decyzja produktowa mini-plannera) → adults=3.
   assert.ok(offer.hotel.url.startsWith("/hotele/lp19abc?"));
@@ -219,6 +251,10 @@ test("executeGetTripOffer: oba komponenty → realne kwoty z mocków, per-osobę
   assert.equal(offer.flight.totalPln, 1300);
   assert.equal(offer.flight.carrierName, "Ryanair");
   assert.equal(offer.flight.stops, 0);
+  assert.equal(offer.flight.outboundDurationMinutes, 210);
+  assert.equal(offer.flight.inboundDurationMinutes, 225);
+  assert.equal(offer.flight.hasCarryOnBag, true);
+  assert.equal(offer.flight.hasCheckedBag, null);
   // Handoff lotów: format buildResultsUrl (/loty/wyniki + origin/destination/depart/return/adults/children).
   assert.ok(offer.flight.url.startsWith("/loty/wyniki?"));
   for (const frag of ["origin=WAW", "destination=AGP", "depart=2026-08-10", "return=2026-08-17", "adults=2", "children=1"]) {
@@ -228,6 +264,48 @@ test("executeGetTripOffer: oba komponenty → realne kwoty z mocków, per-osobę
   // Per-osobę: ceil((hotel_total + lot_total) / (adults+children)) — konwencja
   // computePackagePerPerson uogólniona na realną liczbę osób. ceil(3700/3)=1234.
   assert.equal(offer.totalPerPersonPln, 1234);
+  assert.equal(offer.totalPln, 3700);
+});
+
+test("executeGetTripOffer: galeria jest best-effort — błąd, pustka i timeout wracają do mainPhotoUrl", async () => {
+  const base = {
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+    galleryTimeoutMs: 5,
+  };
+
+  const empty = await createToolExecutors(makeDeps({
+    ...base,
+    fetchHotelPhotoUrls: async () => [],
+  })).executeGetTripOffer(offerArgs);
+  assert.deepEqual(empty.hotel?.photoUrls, [HOTEL.mainPhotoUrl]);
+
+  const failed = await createToolExecutors(makeDeps({
+    ...base,
+    fetchHotelPhotoUrls: async () => { throw new Error("detail down"); },
+  })).executeGetTripOffer(offerArgs);
+  assert.deepEqual(failed.hotel?.photoUrls, [HOTEL.mainPhotoUrl]);
+
+  const startedAt = Date.now();
+  const timedOut = await createToolExecutors(makeDeps({
+    ...base,
+    fetchHotelPhotoUrls: async () => new Promise<string[]>(() => {}),
+  })).executeGetTripOffer(offerArgs);
+  assert.ok(Date.now() - startedAt < 250, "galeria nie może zatrzymać odpowiedzi tury");
+  assert.deepEqual(timedOut.hotel?.photoUrls, [HOTEL.mainPhotoUrl]);
+});
+
+test("executeGetTripOffer: galeria przepuszcza tylko unikalne URL-e http(s)", async () => {
+  const offer = await createToolExecutors(makeDeps({
+    findCheapestHotel: async () => HOTEL,
+    findCheapestFlight: async () => FLIGHT,
+    fetchHotelPhotoUrls: async () => [
+      "javascript:alert(1)",
+      "https://static.cupid.travel/real.jpg",
+      "https://static.cupid.travel/real.jpg",
+    ],
+  })).executeGetTripOffer(offerArgs);
+  assert.deepEqual(offer.hotel?.photoUrls, ["https://static.cupid.travel/real.jpg"]);
 });
 
 test("executeGetTripOffer: awaria hotelu → hotel:null, lot zostaje, partial:true, per-osobę null", async () => {

@@ -17,9 +17,11 @@ import { Redis } from "@upstash/redis";
 export interface SlimRate {
   totalAmount: number;
   currency: string;
+  roomName?: string;
   boardName?: string;
   refundableTag?: string;
   cancellationDeadline?: string;
+  freeCancellationDeadline?: string;
   offerId: string;
   rateId: string;
 }
@@ -35,7 +37,7 @@ export interface RateCacheContext {
 
 // Bump KEY_VERSION whenever the cached shape changes (instant global
 // invalidation without touching Redis).
-const KEY_VERSION = "v1";
+const KEY_VERSION = "v2";
 // 60 min — cena DO WYŚWIETLENIA (re-weryfikowana przy prebooku). Podbite 30→60
 // min, bo cron prewarmingu (/api/cron/warm-rates) odświeża co 30 min: dłuższy
 // TTL daje margines (wpis przeżywa 2 cykle crona), więc popularne kierunki są

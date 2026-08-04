@@ -75,7 +75,7 @@ export function FeaturedHotels({
         slideClassName="min-w-0 shrink-0 basis-[78%] pl-3 sm:basis-[48%] sm:pl-4 lg:basis-[32%] xl:basis-[24%]"
         header={
           <div>
-            <h2 id="featured-hotels" className="font-display text-2xl leading-tight text-ink sm:text-3xl">
+            <h2 id="featured-hotels" className="text-2xl font-bold leading-tight tracking-[-0.02em] text-ink sm:text-3xl">
               {copy.heading}
             </h2>
             {copy.subheading ? (

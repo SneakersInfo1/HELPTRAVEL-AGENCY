@@ -74,7 +74,7 @@ export function RecentSearches({
   return (
     <section aria-labelledby="recent-searches" className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8">
       <div className="flex items-end justify-between gap-4">
-        <h2 id="recent-searches" className="font-display text-2xl leading-tight text-ink sm:text-3xl">
+        <h2 id="recent-searches" className="text-2xl font-bold leading-tight tracking-[-0.02em] text-ink sm:text-3xl">
           {heading}
         </h2>
         <button

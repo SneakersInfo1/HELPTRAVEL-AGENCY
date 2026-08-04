@@ -80,7 +80,7 @@ export function FlightDeals({
   return (
     <section aria-labelledby="flight-deals" className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8">
       <div className="mb-4">
-        <h2 id="flight-deals" className="font-display text-2xl leading-tight text-ink sm:text-3xl">
+        <h2 id="flight-deals" className="text-2xl font-bold leading-tight tracking-[-0.02em] text-ink sm:text-3xl">
           {copy.heading}
         </h2>
         {copy.subheading ? (

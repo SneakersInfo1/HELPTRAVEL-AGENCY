@@ -17,7 +17,7 @@ import { iataForCity } from "@/lib/flights/airports";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import type { RateCacheContext, SlimRate } from "@/lib/hotels/rate-cache";
-import { fetchHotelsForDestination } from "@/lib/liteapi";
+import { fetchHotelsForDestination, getHotelDetail } from "@/lib/liteapi";
 import { getDestinationByCityCountry, listAllDestinations } from "@/lib/mvp/destinations-seed";
 import { readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import type { CheapestFlight, CheapestFlightQuery, CheapestHotel, CheapestHotelQuery, ToolDeps } from "./tools";
@@ -73,13 +73,55 @@ async function findCheapestHotelLive(q: CheapestHotelQuery): Promise<CheapestHot
   const found = best; // stała kopia — narrowing nie przeżywa domknięcia na `let`
 
   const meta = hotels.find((h) => h.id === found.hotelId);
+  if (!meta) return null;
+  const hotelName = meta.name.trim();
+  if (!hotelName) return null;
+  const clean = (value: string | undefined): string | null => {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
+  };
   return {
     hotelId: found.hotelId,
-    name: meta?.name ?? found.hotelId,
+    name: hotelName,
     totalPln: found.rate.totalAmount,
-    mainPhotoUrl: meta?.main_photo ?? meta?.thumbnail ?? null,
-    rating: typeof meta?.rating === "number" ? meta.rating : null,
+    mainPhotoUrl: meta.main_photo ?? meta.thumbnail ?? null,
+    rating:
+      typeof meta.rating === "number" &&
+      Number.isFinite(meta.rating) &&
+      meta.rating > 0 &&
+      meta.rating <= 10
+        ? meta.rating
+        : null,
+    stars:
+      typeof meta.stars === "number" &&
+      Number.isFinite(meta.stars) &&
+      meta.stars > 0 &&
+      meta.stars <= 5
+        ? meta.stars
+        : null,
+    reviewCount:
+      typeof meta.reviewCount === "number" &&
+      Number.isInteger(meta.reviewCount) &&
+      meta.reviewCount > 0
+        ? meta.reviewCount
+        : null,
+    address: clean(meta.address),
+    roomName: clean(found.rate.roomName),
+    boardName: clean(found.rate.boardName),
+    refundableTag: clean(found.rate.refundableTag),
+    cancellationDeadline: clean(found.rate.cancellationDeadline),
+    freeCancellationDeadline: clean(found.rate.freeCancellationDeadline),
   };
+}
+
+/**
+ * Zdjęcia są dodatkiem do już wybranej oferty. Wersja EN robi pojedynczy call
+ * `getHotelDetail` (galeria nie zależy od języka); timeout pozostaje w czystym
+ * egzekutorze, więc ten adapter nie zna budżetu tury i łatwo go zamockować.
+ */
+async function fetchHotelPhotoUrlsLive(hotelId: string): Promise<string[]> {
+  const detail = await getHotelDetail(hotelId, { language: "en" });
+  return (detail.hotelImages ?? []).map((image) => image.urlHd ?? image.url);
 }
 
 /**
@@ -117,12 +159,21 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
 
   const outbound = best.legs.find((l) => l.direction === "OUTBOUND");
   const inbound = best.legs.find((l) => l.direction === "INBOUND");
+  const carrierName = outbound?.carriers.find(
+    (carrier) => carrier.trim().length > 0 && carrier !== "Przewoźnik",
+  ) ?? null;
   return {
     totalPln: best.total as number,
-    carrierName: outbound?.carriers[0] ?? null,
+    carrierName,
     outboundDepartureTime: outbound?.departureTime ?? "",
     inboundDepartureTime: inbound?.departureTime ?? null,
     stops: Math.max(...best.legs.map((l) => l.stops)),
+    outboundDurationMinutes:
+      outbound && outbound.durationMinutes > 0 ? outbound.durationMinutes : null,
+    inboundDurationMinutes:
+      inbound && inbound.durationMinutes > 0 ? inbound.durationMinutes : null,
+    hasCarryOnBag: best.hasCarryOnBag ? true : null,
+    hasCheckedBag: best.hasCheckedBag ? true : null,
     destinationIata: iata,
   };
 }
@@ -153,5 +204,6 @@ export function buildProductionToolDeps(): ToolDeps {
     listDestinationsInCountry: listDestinationsInCountryLive,
     findCheapestHotel: findCheapestHotelLive,
     findCheapestFlight: findCheapestFlightLive,
+    fetchHotelPhotoUrls: fetchHotelPhotoUrlsLive,
   };
 }

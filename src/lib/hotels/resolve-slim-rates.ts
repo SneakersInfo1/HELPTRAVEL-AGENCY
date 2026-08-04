@@ -73,9 +73,14 @@ export async function resolveSlimRates(
         slim = {
           totalAmount: fromMinor(minor),
           currency,
+          roomName: cheapest.rate.name,
           boardName: cheapest.rate.boardName,
-          refundableTag: cheapest.rate.refundableTag,
+          refundableTag:
+            cheapest.rate.refundableTag ?? cheapest.rate.cancellationPolicies?.refundableTag,
           cancellationDeadline: rateCancellationDeadline(cheapest.rate) ?? undefined,
+          freeCancellationDeadline: cheapest.rate.cancellationPolicies?.cancelPolicyInfos?.find(
+            (policy) => policy.amount === 0 && policy.cancelTime,
+          )?.cancelTime,
           offerId: cheapest.offerId,
           rateId: cheapest.rate.rateId,
         };

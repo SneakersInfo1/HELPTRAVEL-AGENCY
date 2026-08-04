@@ -16,7 +16,7 @@
 // useState — NIGDY w efekcie + setState (React Compiler constraint z zadania).
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ArrowRight, Building2, Sun, Umbrella } from "lucide-react";
+import { ArrowRight, Building2, RotateCcw, Send, Sun, Umbrella } from "lucide-react";
 
 import { TripOfferCard } from "./trip-offer-card";
 import { track } from "@/lib/analytics/track";
@@ -73,15 +73,38 @@ const STARTERS = [
 // Jakikolwiek zepsuty wpis → wyrzucamy CAŁĄ zapisaną rozmowę (prościej
 // i bezpieczniej niż częściowy ratunek).
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isOptionalNullableFiniteNumber(value: unknown): boolean {
+  return value === undefined || value === null || isFiniteNumber(value);
+}
+
+function isOptionalNullableString(value: unknown): boolean {
+  return value === undefined || value === null || typeof value === "string";
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function isValidOffer(value: unknown): value is TripOffer {
   if (typeof value !== "object" || value === null) return false;
   const o = value as Record<string, unknown>;
   if (typeof o.cityEn !== "string" || typeof o.countryEn !== "string" || typeof o.cityPl !== "string") return false;
   if (typeof o.checkin !== "string" || typeof o.checkout !== "string") return false;
-  if (typeof o.adults !== "number" || typeof o.children !== "number") return false;
+  if (!isFiniteNumber(o.adults) || !isFiniteNumber(o.children)) return false;
   if (typeof o.originIata !== "string") return false;
   if (typeof o.partial !== "boolean") return false;
-  if (o.totalPerPersonPln !== null && typeof o.totalPerPersonPln !== "number") return false;
+  if (!isOptionalNullableFiniteNumber(o.nights)) return false;
+  if (!isOptionalNullableFiniteNumber(o.totalPln)) return false;
+  if (o.totalPerPersonPln !== null && !isFiniteNumber(o.totalPerPersonPln)) return false;
   if (o.wantsFlight !== undefined && typeof o.wantsFlight !== "boolean") return false;
   if (o.wantsHotel !== undefined && typeof o.wantsHotel !== "boolean") return false;
 
@@ -89,18 +112,39 @@ function isValidOffer(value: unknown): value is TripOffer {
     if (typeof o.hotel !== "object" || o.hotel === undefined) return false;
     const h = o.hotel as Record<string, unknown>;
     if (typeof h.hotelId !== "string" || typeof h.name !== "string") return false;
-    if (typeof h.totalPln !== "number" || typeof h.url !== "string") return false;
-    if (h.mainPhotoUrl !== null && typeof h.mainPhotoUrl !== "string") return false;
-    if (h.rating !== null && typeof h.rating !== "number") return false;
+    if (!isFiniteNumber(h.totalPln) || typeof h.url !== "string") return false;
+    if (h.mainPhotoUrl !== null && (typeof h.mainPhotoUrl !== "string" || !isHttpUrl(h.mainPhotoUrl))) return false;
+    if (h.rating !== null && !isFiniteNumber(h.rating)) return false;
+    if (!isOptionalNullableFiniteNumber(h.perNightPln)) return false;
+    if (!isOptionalNullableFiniteNumber(h.stars)) return false;
+    if (!isOptionalNullableFiniteNumber(h.reviewCount)) return false;
+    for (const field of [
+      "address",
+      "roomName",
+      "boardName",
+      "refundableTag",
+      "cancellationDeadline",
+      "freeCancellationDeadline",
+    ] as const) {
+      if (!isOptionalNullableString(h[field])) return false;
+    }
+    if (h.photoUrls !== undefined) {
+      if (!Array.isArray(h.photoUrls) || h.photoUrls.length > 12) return false;
+      if (!h.photoUrls.every((url) => typeof url === "string" && isHttpUrl(url))) return false;
+    }
   }
 
   if (o.flight !== null) {
     if (typeof o.flight !== "object" || o.flight === undefined) return false;
     const f = o.flight as Record<string, unknown>;
-    if (typeof f.totalPln !== "number" || typeof f.url !== "string") return false;
-    if (typeof f.outboundDepartureTime !== "string" || typeof f.stops !== "number") return false;
+    if (!isFiniteNumber(f.totalPln) || typeof f.url !== "string") return false;
+    if (typeof f.outboundDepartureTime !== "string" || !isFiniteNumber(f.stops)) return false;
     if (f.carrierName !== null && typeof f.carrierName !== "string") return false;
     if (f.inboundDepartureTime !== null && typeof f.inboundDepartureTime !== "string") return false;
+    if (!isOptionalNullableFiniteNumber(f.outboundDurationMinutes)) return false;
+    if (!isOptionalNullableFiniteNumber(f.inboundDurationMinutes)) return false;
+    if (f.hasCarryOnBag !== undefined && f.hasCarryOnBag !== null && typeof f.hasCarryOnBag !== "boolean") return false;
+    if (f.hasCheckedBag !== undefined && f.hasCheckedBag !== null && typeof f.hasCheckedBag !== "boolean") return false;
   }
 
   return true;
@@ -189,7 +233,7 @@ export function ConciergeChat({
   onOfferNavigate,
 }: {
   /** Przekazywany do TripOfferCard — launcher minimalizuje panel na mobile po kliknięciu oferty. */
-  onOfferNavigate?: () => void;
+  onOfferNavigate?: (href: string) => boolean | void;
 }) {
   const [messages, setMessages] = useState<ConciergeMessage[]>(() => readStoredMessages());
   const [input, setInput] = useState("");
@@ -316,7 +360,7 @@ export function ConciergeChat({
               {message.content}
             </div>
             {message.role === "assistant" && message.offer && (
-              <div className="mt-2 w-full max-w-[92%]">
+              <div className="mt-2 w-full">
                 <TripOfferCard offer={message.offer} onNavigate={onOfferNavigate} />
               </div>
             )}
@@ -328,18 +372,10 @@ export function ConciergeChat({
             <button
               type="button"
               onClick={() => void retryLast()}
-              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-surface-raised px-4 text-sm font-semibold text-brand shadow-[var(--shadow-sm)] transition-colors hover:border-brand/40 hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-surface-raised px-4 font-semibold text-brand shadow-[var(--shadow-sm)] transition-colors duration-200 ease-out hover:border-brand/40 hover:bg-brand-soft active:bg-brand-soft motion-reduce:transition-none"
             >
-              <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                <path
-                  d="M16 10a6 6 0 1 1-1.76-4.24M16 3v3.5h-3.5"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Spróbuj ponownie
+              <RotateCcw aria-hidden className="h-4 w-4" strokeWidth={2} />
+              <span className="text-sm">Spróbuj ponownie</span>
             </button>
           </div>
         )}
@@ -351,7 +387,7 @@ export function ConciergeChat({
                 key={prompt}
                 type="button"
                 onClick={() => void sendMessage(prompt)}
-                className="group flex items-center gap-3 rounded-xl border border-line bg-surface-raised px-3 py-2.5 text-left transition-colors hover:border-brand/40 hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+                className="group flex min-h-11 items-center gap-3 rounded-xl border border-line bg-surface-raised px-3 py-2.5 text-left transition-colors duration-200 ease-out hover:border-brand/40 hover:bg-brand-soft active:bg-brand-soft motion-reduce:transition-none"
               >
                 <span
                   aria-hidden
@@ -387,7 +423,7 @@ export function ConciergeChat({
       </div>
 
       <div className="shrink-0 border-t border-line bg-surface-raised px-3 py-2.5">
-        <form onSubmit={onSubmit} className="flex items-center gap-2">
+        <form onSubmit={onSubmit} className="flex items-center gap-2 text-sm">
           <label htmlFor={inputId} className="sr-only">
             Napisz wiadomość do asystenta
           </label>
@@ -402,23 +438,15 @@ export function ConciergeChat({
             placeholder="Napisz, dokąd chcesz jechać…"
             // placeholder na ink-muted (6,5:1), nie na neutral-400 — domyślna
             // jasna szarość placeholdera nie przechodzi progu 4.5:1.
-            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-surface-sunken px-4 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus-visible:border-brand/50 focus-visible:bg-surface-raised focus-visible:ring-2 focus-visible:ring-brand/30 disabled:opacity-60"
+            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-surface-sunken px-4 text-ink outline-none transition-colors duration-200 ease-out placeholder:text-ink-muted focus-visible:border-brand/50 focus-visible:bg-surface-raised disabled:opacity-60 motion-reduce:transition-none"
           />
           <button
             type="submit"
             disabled={pending || input.trim().length === 0}
             aria-label="Wyślij wiadomość"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white [--focus-ring:#fff] transition-[filter,transform] duration-200 ease-out hover:brightness-95 active:scale-95 active:brightness-90 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transform-none motion-reduce:transition-none"
           >
-            <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-5 w-5">
-              <path
-                d="M17 3 2 9.5l6 2.5m9-9-3.5 14L8 12m9-9L8 12"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Send aria-hidden className="h-5 w-5" strokeWidth={1.8} />
           </button>
         </form>
         {/* Treść ujawnienia bez zmian (to obowiązek informacyjny, nie ozdoba),

@@ -36,7 +36,19 @@ const displayFont = Cormorant_Garamond({
 
 const uiFont = Manrope({
   variable: "--font-ui",
-  subsets: ["latin"],
+  // `latin-ext` DOPISANE 2026-08-04, kiedy Manrope przejął wszystkie nagłówki
+  // strony głównej (patrz komentarz w home-hybrid-hero.tsx).
+  //
+  // Sprawdzone pomiarem, żeby nie naprawiać nieistniejącego błędu: polskie znaki
+  // renderują się poprawnie także bez tego wpisu — Google oddaje reguły
+  // `@font-face` dla wszystkich podzbiorów, a `subsets` decyduje tylko o tym,
+  // które są PRZEŁADOWANE z wyprzedzeniem. Zmierzone na produkcji: żaden
+  // z ą/ę/ł/ń/ś/ż/ó nie schodził z kroju zastępczego.
+  //
+  // Wpis ma więc sens wydajnościowy, nie poprawnościowy: bez niego pierwszy
+  // nagłówek z polskim znakiem — czyli praktycznie każdy — czeka na DRUGIE
+  // pobranie pliku już po rozpoczęciu rysowania.
+  subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700", "800"],
 });
 

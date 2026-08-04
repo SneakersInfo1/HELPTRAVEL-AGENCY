@@ -253,7 +253,7 @@ export async function HomePageView() {
         aria-labelledby="trip-picker"
         className="mx-auto w-full max-w-[2160px] px-4 sm:px-6 xl:px-8"
       >
-        <h2 id="trip-picker" className="font-display text-2xl leading-tight text-ink sm:text-3xl">
+        <h2 id="trip-picker" className="text-2xl font-bold leading-tight tracking-[-0.02em] text-ink sm:text-3xl">
           {HOME_COPY.picker.heading}
         </h2>
         <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-muted">

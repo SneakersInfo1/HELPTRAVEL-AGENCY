@@ -17,14 +17,20 @@ export interface DealRoute {
  * trasy, a po pełnym obrocie wrócić do początku bez losowania i bez luk.
  *
  * SKŁAD PULI WYNIKA Z POMIARU, nie z listy ładnych kierunków. Właściciel
- * postawił warunek: „oferty od 200 do 800, 900 zł maksymalnie". Pierwsza
- * wersja puli (basen Morza Śródziemnego + Wyspy Kanaryjskie) dawała
- * 989–2828 zł i nie miała jak tego warunku spełnić — nie z powodu kodu,
- * tylko dlatego, że tam po prostu nie ma takich cen u tego dostawcy.
+ * postawił dwa warunki naraz: „oferty od 200 do 800, 900 zł maksymalnie"
+ * ORAZ „bardziej turystyczne kierunki… nie ma lotów np. do Alicante, Grecji,
+ * Hiszpanii, tylko nudny Wiedeń".
  *
- * Sonda po 30 kierunkach pokazała, gdzie one są: krótkie trasy miejskie na
- * północ i zachód. Stąd przebudowa — najpierw one, kierunki plażowe jako
- * tło. Sufit ceny (`DEAL_MAX_PRICE_PLN`) pilnuje reszty.
+ * Przez jeden dzień te warunki wykluczały się nawzajem: sonda z 2026-08-02
+ * dawała dla kierunków wypoczynkowych 989–2828 zł, więc pod sufitem mieściły
+ * się wyłącznie krótkie trasy miejskie. Sonda z 2026-08-04 pokazała już
+ * TRZYNAŚCIE kierunków wypoczynkowych pod 900 zł. Nic w kodzie się nie
+ * zmieniło — zmieniły się ceny biletów.
+ *
+ * Stąd dzisiejszy układ: trzon wypoczynkowy, miasta jako tańsze uzupełnienie,
+ * sufit ceny (`DEAL_MAX_PRICE_PLN`) pilnuje obietnicy, a kwota
+ * (`DEAL_LEISURE_QUOTA` w flight-deals.ts) pilnuje, żeby tanie miasta nie
+ * zajęły wszystkich kafli.
  *
  * Rozmiar 48 nie jest ozdobny: musi dzielić się bez reszty przez
  * `DEAL_ROUTES_PER_RUN`, bo z tego wynika czas pełnego obrotu, a z niego
@@ -43,7 +49,7 @@ export const DEAL_ROUTES: readonly DealRoute[] = [
   // i pula musiała opierać się na miastach. Ceny biletów po prostu spadły.
   // Wniosek na przyszłość: skład puli wynika z POMIARU, a stary pomiar traci
   // ważność — zanim ktoś znów przepisze tę listę, niech puści sondę
-  // (`tmp/sonda-plaze.ts`), a nie zaufa temu komentarzowi.
+  // (`pnpm probe:flights`), a nie zaufa temu komentarzowi.
   { origin: "WAW", destinationIata: "ATH", destinationId: "athens-greece", kind: "leisure" },
   { origin: "WAW", destinationIata: "CTA", destinationId: "catania-italy", kind: "leisure" },
   { origin: "WAW", destinationIata: "AGP", destinationId: "malaga-spain", kind: "leisure" },

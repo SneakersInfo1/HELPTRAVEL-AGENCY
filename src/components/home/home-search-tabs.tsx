@@ -2,13 +2,14 @@
 
 // Zakładki nad paskiem wyszukiwania: Hotele / Loty / Nie wiem dokąd.
 //
-// TRZECIA ZAKŁADKA to nie link do czatu — to CZAT osadzony w tej samej ramce.
+// TRZECIA ZAKŁADKA pokazuje kafelkowy podgląd i otwiera JEDEN globalny dialog
+// czatu. Na telefonie dialog zajmuje pełne 100dvh; na desktopie jest dokowany.
 // Powód (redesign 2026-07): konsjerż jest unikalnym produktem, a jako dymek
 // w rogu ekranu wpadał w banner blindness. Hero to miejsce o najwyższej
 // uwadze na stronie, a użytkownik, który nie wie dokąd jechać, nie ma czego
 // wpisać w pole „Dokąd" — więc dostaje ścieżkę, która nie wymaga decyzji.
 //
-// Aktywny stan to „pigułka" przesuwana transformem (czysty CSS, ~220 ms).
+// Aktywny stan to „pigułka" przesuwana transformem (czysty CSS, 200 ms).
 // Stan trzymany w URL (?tab=loty / ?tab=asystent), żeby dało się podlinkować.
 //
 // Przełączenie Hotele↔Loty zmienia pola paska W MIEJSCU (jedna instancja
@@ -20,11 +21,14 @@
 // roving tabindex + Strzałki/Home/End, zgodnie z wzorcem WAI-ARIA Tabs.
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Building2, Plane, Compass } from "lucide-react";
+import { Building2, Compass, Maximize2, Plane } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
+import {
+  CONCIERGE_STATE_EVENT,
+  requestConciergeOpen,
+} from "@/lib/concierge/open-event";
 import { cn } from "@/lib/ui/cn";
-import { ConciergeChat } from "@/components/concierge/concierge-chat";
 import { MiniPlannerForm } from "./mini-planner-form";
 
 type Tab = "hotels" | "flights" | "assistant";
@@ -78,11 +82,6 @@ export function HomeSearchTabs() {
     window.history.replaceState(null, "", url.toString());
 
     track("hero_tab_changed", { to: next });
-    // Otwarcie czatu z hero liczymy tym samym eventem co launcher, tylko z
-    // innym `source` — inaczej mielibyśmy dwa równoległe pomiary tego samego.
-    if (next === "assistant") {
-      track("concierge_open", { page_path: window.location.pathname, source: "hero_tab" });
-    }
   }, []);
 
   // Strzałki przesuwają fokus i aktywują zakładkę (wzorzec „automatic
@@ -116,12 +115,12 @@ export function HomeSearchTabs() {
         role="tablist"
         aria-label="Jak chcesz szukać wyjazdu"
         onKeyDown={onKeyDown}
-        className="relative mx-auto mb-3 flex w-full max-w-[420px] rounded-full border border-white/25 bg-white/15 p-1 backdrop-blur-md"
+        className="relative mx-auto mb-3 flex w-full max-w-[420px] rounded-full border border-white/25 bg-white/15 p-1 text-sm backdrop-blur-md"
       >
         {/* Pigułka tła — przesuwa się transformem między trzema pozycjami. */}
         <span
           aria-hidden
-          className="absolute inset-y-1 left-1 w-[calc(33.333%-0.25rem)] rounded-full bg-white shadow-sm transition-transform duration-[220ms] ease-out"
+          className="absolute inset-y-1 left-1 w-[calc(33.333%-0.25rem)] rounded-full bg-white shadow-[var(--shadow-sm)] transition-transform duration-200 ease-out motion-reduce:transition-none"
           style={{ transform: `translateX(${activeIndex * 100}%)` }}
         />
         {TABS.map(({ key, label, shortLabel, icon: Icon }) => {
@@ -141,7 +140,7 @@ export function HomeSearchTabs() {
                 // h-11 = 44 px. Zmierzone w przeglądarce przy 375 px: `h-9`
                 // dawało 36 px, czyli poniżej progu dotykowego — a to jest
                 // GŁÓWNY przełącznik całej strony na telefonie (90% ruchu).
-                "relative z-10 flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold transition-colors sm:px-4",
+                "relative z-10 flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold transition-[color,transform] duration-200 ease-out active:scale-[0.98] sm:px-4 motion-reduce:transform-none motion-reduce:transition-none",
                 active ? "text-brand-strong" : "text-white/90 hover:text-white",
               )}
             >
@@ -171,22 +170,63 @@ export function HomeSearchTabs() {
   );
 }
 
-/** Czat osadzony w ramce hero — ta sama rozmowa co w launcherze (historia
- *  żyje w sessionStorage wewnątrz ConciergeChat), więc użytkownik może zacząć
- *  tutaj i kontynuować w rogu ekranu po przejściu na inną stronę. */
+/**
+ * Kafelkowy podgląd zamiast drugiej instancji rozmowy. Wybraliśmy jawne wejście
+ * w pełny ekran (zamiast otwarcia natychmiast po zmianie zakładki), bo samo
+ * przełączanie zakładek nie powinno kraść fokusu ani przykrywać treści. Kliknięcie
+ * pola otwiera jedyny ConciergeChat w globalnym portalu launchera, więc historia,
+ * trwający request i szkic wiadomości nie rozjeżdżają się między dwoma drzewami.
+ */
 function AssistantPanel() {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const onState = (event: Event) => {
+      const detail = (event as CustomEvent<{ expanded?: boolean }>).detail;
+      setExpanded(detail?.expanded === true);
+    };
+    window.addEventListener(CONCIERGE_STATE_EVENT, onState);
+    return () => window.removeEventListener(CONCIERGE_STATE_EVENT, onState);
+  }, []);
+
   return (
-    <div className="overflow-hidden rounded-md border border-line bg-surface-raised text-left shadow-lg">
-      <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-        <Compass aria-hidden className="h-4 w-4 text-brand" strokeWidth={2} />
-        <p className="text-sm font-semibold text-ink">
-          Opisz wyjazd — dobiorę kierunek, lot i hotel
-        </p>
+    <div className="overflow-hidden rounded-md border border-line bg-surface-raised text-left shadow-[var(--shadow-lg)]">
+      <div className="flex items-center gap-2 border-b border-line bg-surface-sunken px-4 py-3">
+        <Compass aria-hidden className="h-5 w-5 text-brand" strokeWidth={2} />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink">Asystent wyjazdowy</p>
+          <p className="text-xs text-ink-muted">Kierunek, lot i hotel w jednej rozmowie</p>
+        </div>
       </div>
-      {/* Stała wysokość: czat sam się przewija (h-full min-h-0), a hero nie
-          może skakać przy każdej nowej wiadomości. */}
-      <div className="h-[380px] sm:h-[420px]">
-        <ConciergeChat />
+      <div className="space-y-3 p-4">
+        <p className="text-sm leading-6 text-ink-muted">
+          Podaj budżet, termin i liczbę osób. Asystent sprawdzi dostępne oferty i pokaże
+          konkretne ceny z wyszukiwarki HelpTravel.
+        </p>
+        <button
+          type="button"
+          onClick={() => requestConciergeOpen("hero")}
+          aria-haspopup="dialog"
+          aria-expanded={expanded}
+          className="group flex min-h-14 w-full items-center gap-3 rounded-md border border-line bg-surface px-3 text-left shadow-[var(--shadow-sm)] transition-[background-color,border-color,transform] duration-200 ease-out hover:border-brand/40 hover:bg-brand-soft active:scale-[0.99] active:bg-brand-soft motion-reduce:transform-none motion-reduce:transition-none"
+        >
+          <span
+            aria-hidden
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand text-white [--focus-ring:#fff]"
+          >
+            <Compass className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-ink">Opisz swój wyjazd…</span>
+            <span className="block text-xs text-ink-muted">Otwórz rozmowę z asystentem</span>
+          </span>
+          <span
+            aria-hidden
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-brand transition-transform duration-200 ease-out group-hover:scale-105 motion-reduce:transform-none motion-reduce:transition-none"
+          >
+            <Maximize2 className="h-5 w-5" strokeWidth={2} />
+          </span>
+        </button>
       </div>
     </div>
   );

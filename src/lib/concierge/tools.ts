@@ -270,6 +270,14 @@ export interface CheapestHotel {
   /** Cena za CAŁY pobyt (pokój dla wszystkich gości), PLN. */
   totalPln: number;
   mainPhotoUrl: string | null;
+  stars?: number | null;
+  reviewCount?: number | null;
+  address?: string | null;
+  roomName?: string | null;
+  boardName?: string | null;
+  refundableTag?: string | null;
+  cancellationDeadline?: string | null;
+  freeCancellationDeadline?: string | null;
   /** Ocena gości (0–10) z metadanych, albo null gdy brak. */
   rating: number | null;
 }
@@ -294,6 +302,10 @@ export interface CheapestFlight {
   inboundDepartureTime: string | null;
   /** Najgorsza (największa) liczba przesiadek spośród odcinków. */
   stops: number;
+  outboundDurationMinutes?: number | null;
+  inboundDurationMinutes?: number | null;
+  hasCarryOnBag?: boolean | null;
+  hasCheckedBag?: boolean | null;
   /** IATA celu ROZWIĄZANE z realnych danych (seed/słownik) — do URL wyników. */
   destinationIata: string;
 }
@@ -313,6 +325,10 @@ export interface ToolDeps {
   listDestinationsInCountry: (country: string) => TripSearchCity[];
   findCheapestHotel: (q: CheapestHotelQuery) => Promise<CheapestHotel | null>;
   findCheapestFlight: (q: CheapestFlightQuery) => Promise<CheapestFlight | null>;
+  /** Galeria szczegółów; błąd albo timeout nigdy nie blokuje oferty. */
+  fetchHotelPhotoUrls: (hotelId: string) => Promise<string[]>;
+  /** Wyłącznie do deterministycznego testowania krótkiego budżetu galerii. */
+  galleryTimeoutMs?: number;
   /** Zegar do liczenia świeżości snapshotu (testy podają stały). */
   now?: () => number;
 }
@@ -382,6 +398,45 @@ const CITY_ALIASES: Record<string, { cityEn: string; countryEn: string }> = {
 // ── Parsowanie argumentów z modelu (JSON z tool-calla = nie ufamy niczemu) ──
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DEFAULT_GALLERY_TIMEOUT_MS = 900;
+const MAX_OFFER_PHOTOS = 12;
+
+function exactNightsBetween(checkin: string, checkout: string): number | null {
+  const start = Date.parse(`${checkin}T00:00:00Z`);
+  const end = Date.parse(`${checkout}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  const nights = (end - start) / 86_400_000;
+  return Number.isInteger(nights) && nights > 0 ? nights : null;
+}
+
+function normalizePhotoUrls(urls: readonly string[]): string[] {
+  const unique = new Set<string>();
+  for (const raw of urls) {
+    if (typeof raw !== "string" || unique.size >= MAX_OFFER_PHOTOS) break;
+    const value = raw.trim();
+    try {
+      const url = new URL(value);
+      if (url.protocol === "http:" || url.protocol === "https:") unique.add(value);
+    } catch {
+      // Zły URL galerii wypada; nie może uszkodzić całej realnej oferty.
+    }
+  }
+  return [...unique];
+}
+
+function resolveBeforeTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: T) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(fallback), Math.max(1, timeoutMs));
+    promise.then((value) => finish(value), () => finish(fallback));
+  });
+}
 
 function asTrimmedString(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
@@ -758,21 +813,35 @@ export function createToolExecutors(deps: ToolDeps) {
     // Sam hotel / sam lot: niechcianego komponentu w ogóle NIE pobieramy —
     // szybciej, taniej (zero zbędnych wywołań LiteAPI) i uczciwie: karta oraz
     // cena/os. obejmują dokładnie to, o co prosił użytkownik.
-    const [hotelRes, flightRes] = await Promise.allSettled([
-      a.wantsHotel
-        ? deps.findCheapestHotel({
-            cityEn: a.cityEn, countryEn: a.countryEn,
-            checkin, checkout,
-            adults: a.adults, children: a.children,
-          })
-        : Promise.resolve(null),
-      a.wantsFlight
-        ? deps.findCheapestFlight({
-            originIata: a.originIata, cityEn: a.cityEn, countryEn: a.countryEn,
-            depart: checkin, returnDate: checkout,
-            adults: a.adults, children: a.children,
-          })
-        : Promise.resolve(null),
+    const hotelPromise = a.wantsHotel
+      ? deps.findCheapestHotel({
+          cityEn: a.cityEn, countryEn: a.countryEn,
+          checkin, checkout,
+          adults: a.adults, children: a.children,
+        })
+      : Promise.resolve(null);
+    const flightPromise = a.wantsFlight
+      ? deps.findCheapestFlight({
+          originIata: a.originIata, cityEn: a.cityEn, countryEn: a.countryEn,
+          depart: checkin, returnDate: checkout,
+          adults: a.adults, children: a.children,
+        })
+      : Promise.resolve(null);
+    // Galeria startuje natychmiast po wybraniu hotelu, równolegle z lotem. Ma
+    // własny krótki limit i nie zmienia globalnego budżetu tury orkiestratora.
+    const galleryPromise = hotelPromise.then((hotelData) =>
+      hotelData
+        ? resolveBeforeTimeout(
+            deps.fetchHotelPhotoUrls(hotelData.hotelId),
+            deps.galleryTimeoutMs ?? DEFAULT_GALLERY_TIMEOUT_MS,
+            [],
+          )
+        : [],
+    );
+    const [hotelRes, flightRes, galleryRes] = await Promise.allSettled([
+      hotelPromise,
+      flightPromise,
+      galleryPromise,
     ]);
     if (hotelRes.status === "rejected") {
       console.warn("[concierge] komponent hotelowy oferty nieudany:", hotelRes.reason instanceof Error ? hotelRes.reason.message : hotelRes.reason);
@@ -782,14 +851,32 @@ export function createToolExecutors(deps: ToolDeps) {
     }
     const hotelData = hotelRes.status === "fulfilled" ? hotelRes.value : null;
     const flightData = flightRes.status === "fulfilled" ? flightRes.value : null;
+    const galleryUrls = galleryRes.status === "fulfilled"
+      ? normalizePhotoUrls(galleryRes.value)
+      : [];
+    const fallbackPhotoUrls = hotelData?.mainPhotoUrl
+      ? normalizePhotoUrls([hotelData.mainPhotoUrl])
+      : [];
+    const photoUrls = galleryUrls.length > 0 ? galleryUrls : fallbackPhotoUrls;
+    const nights = exactNightsBetween(checkin, checkout);
 
     const hotel: TripOffer["hotel"] = hotelData
       ? {
           hotelId: hotelData.hotelId,
           name: hotelData.name,
           totalPln: hotelData.totalPln,
+          perNightPln: nights ? hotelData.totalPln / nights : null,
           mainPhotoUrl: hotelData.mainPhotoUrl,
+          photoUrls,
           rating: hotelData.rating,
+          stars: hotelData.stars ?? null,
+          reviewCount: hotelData.reviewCount ?? null,
+          address: hotelData.address ?? null,
+          roomName: hotelData.roomName ?? null,
+          boardName: hotelData.boardName ?? null,
+          refundableTag: hotelData.refundableTag ?? null,
+          cancellationDeadline: hotelData.cancellationDeadline ?? null,
+          freeCancellationDeadline: hotelData.freeCancellationDeadline ?? null,
           url: buildHotelHandoffUrl(hotelData.hotelId, {
             checkin, checkout,
             adults: a.adults, children: a.children,
@@ -804,6 +891,10 @@ export function createToolExecutors(deps: ToolDeps) {
           outboundDepartureTime: flightData.outboundDepartureTime,
           inboundDepartureTime: flightData.inboundDepartureTime,
           stops: flightData.stops,
+          outboundDurationMinutes: flightData.outboundDurationMinutes ?? null,
+          inboundDurationMinutes: flightData.inboundDurationMinutes ?? null,
+          hasCarryOnBag: flightData.hasCarryOnBag === true ? true : null,
+          hasCheckedBag: flightData.hasCheckedBag === true ? true : null,
           // Ten sam format co „Wróć do wyników" w lejku lotów i mini-planner:
           // /loty/wyniki?origin&destination&depart&return&adults&children.
           url: buildResultsUrl({
@@ -825,10 +916,12 @@ export function createToolExecutors(deps: ToolDeps) {
     const totalPax = a.adults + a.children;
     const allWantedPresent =
       (!a.wantsHotel || hotel !== null) && (!a.wantsFlight || flight !== null);
-    const totalPerPersonPln =
-      allWantedPresent && (hotel || flight)
-        ? Math.ceil(((hotel?.totalPln ?? 0) + (flight?.totalPln ?? 0)) / totalPax)
-        : null;
+    const totalPln = allWantedPresent && (hotel || flight)
+      ? (hotel?.totalPln ?? 0) + (flight?.totalPln ?? 0)
+      : null;
+    const totalPerPersonPln = totalPln !== null
+      ? Math.ceil(totalPln / totalPax)
+      : null;
 
     return {
       cityEn: a.cityEn,
@@ -836,11 +929,13 @@ export function createToolExecutors(deps: ToolDeps) {
       cityPl,
       checkin,
       checkout,
+      nights,
       adults: a.adults,
       children: a.children,
       originIata: a.originIata,
       hotel,
       flight,
+      totalPln,
       totalPerPersonPln,
       partial: !allWantedPresent,
       wantsFlight: a.wantsFlight,
