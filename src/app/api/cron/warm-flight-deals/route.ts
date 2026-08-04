@@ -5,6 +5,7 @@
 // karty jest uczciwszy niż liczba zastępcza.
 
 import { NextRequest, NextResponse } from "next/server";
+import { zajmijBlokade } from "@/lib/cron/lock";
 
 import seedJson from "../../../../../data/destinations.json";
 import {
@@ -138,6 +139,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // Blokada rozproszona — patrz src/lib/cron/lock.ts. Nakladajace sie
+  // przebiegi dublowaly koszt LiteAPI i gubily aktualizacje przy
+  // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
+  // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
+  const blokada = await zajmijBlokade("warm-flight-deals", 360);
+  if (!blokada.zdobyta) {
+    console.info("[cron/warm-flight-deals] poprzedni przebieg wciaz trwa — pomijam");
+    return NextResponse.json({ ok: true, status: "skipped_locked" });
+  }
+
   const startedAt = Date.now();
   // `?offset=N` — furtka OPERACYJNA, nie funkcja produktu. Normalnie o wyborze
   // tras decyduje okno rotacji, więc pełna pula rozgrzewa się przez sześć
@@ -166,6 +177,7 @@ export async function GET(request: NextRequest) {
       offset >= 0 &&
       offset < DEAL_ROUTES.length;
     if (!poprawny) {
+      await blokada.zwolnij();
       return NextResponse.json(
         { error: "bad_offset", hint: `offset musi być liczbą całkowitą z zakresu 0..${DEAL_ROUTES.length - 1}` },
         { status: 400 },
@@ -339,5 +351,6 @@ export async function GET(request: NextRequest) {
     durationMs: Date.now() - startedAt,
   };
   console.log("[cron/warm-flight-deals]", JSON.stringify(summary));
+  await blokada.zwolnij();
   return NextResponse.json(summary);
 }

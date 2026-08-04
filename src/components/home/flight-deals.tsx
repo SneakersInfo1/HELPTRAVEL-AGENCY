@@ -1,5 +1,4 @@
-import Image from "next/image";
-import { Plane } from "lucide-react";
+import { OfferImage } from "@/components/ui/offer-image";
 
 import { AirlineLogo } from "@/components/flights/airline-logo";
 import { airportCityGenitive } from "@/lib/flights/airports";
@@ -130,13 +129,13 @@ function FlightDealCard({ deal }: { deal: FlightDealView }) {
           do ~152 px i ucinała się data wyjazdu (zmierzone na 320 px). Zdjęcie
           jest tu ilustracją, data — treścią. */}
       <div className="relative w-24 shrink-0 self-stretch overflow-hidden bg-surface-sunken sm:w-32">
-        {deal.imageUrl ? (
-          <Image
-            src={deal.imageUrl}
-            // Nazwa kierunku jedzie w nagłówku obok — powtórzenie jej w opisie
-            // zdjęcia kazałoby czytnikowi ekranu przeczytać to samo dwa razy.
-            alt=""
-            fill
+        <OfferImage
+          src={deal.imageUrl}
+          // Nazwa kierunku jedzie w nagłówku obok — powtórzenie jej w opisie
+          // zdjęcia kazałoby czytnikowi ekranu przeczytać to samo dwa razy.
+          alt=""
+          kluczZastepnika={deal.destinationId || deal.destinationIata}
+          wariant="lot"
             // `sizes` jest CELOWO większe od szerokości boksu (112/128 px).
             // Kadr jest pionowy, a zdjęcia z Pexels są poziome 3:2, więc przy
             // `object-fit: cover` przeglądarka skaluje źródło do WYSOKOŚCI
@@ -144,14 +143,9 @@ function FlightDealCard({ deal }: { deal: FlightDealView }) {
             // szerokości źródła. Zmierzone przy `sizes="96px"`: pobierany plik
             // miał 96×64 i był rozciągany dwukrotnie w pionie — na telefonie
             // z gęstym ekranem (czyli u 90% ruchu) to widoczna papka.
-            sizes="(max-width: 640px) 200px, 240px"
-            className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-          />
-        ) : (
-          <span className="grid h-full w-full place-items-center bg-brand-soft">
-            <Plane aria-hidden className="h-5 w-5 text-brand" strokeWidth={1.75} />
-          </span>
-        )}
+          sizes="(max-width: 640px) 200px, 240px"
+          className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+        />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">

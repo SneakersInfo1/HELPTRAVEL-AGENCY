@@ -14,6 +14,7 @@
 // Vercel dołącza nagłówek automatycznie do wywołań crona.
 
 import { NextRequest, NextResponse } from "next/server";
+import { zajmijBlokade } from "@/lib/cron/lock";
 
 import { searchFlightOffers } from "@/lib/flights/search-offers";
 import { flightRatesCacheKey, setCachedFlightOffers } from "@/lib/flights/rates-cache";
@@ -60,6 +61,16 @@ export async function GET(request: NextRequest) {
   }
   if (request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // Blokada rozproszona — patrz src/lib/cron/lock.ts. Nakladajace sie
+  // przebiegi dublowaly koszt LiteAPI i gubily aktualizacje przy
+  // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
+  // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
+  const blokada = await zajmijBlokade("warm-flights", 360);
+  if (!blokada.zdobyta) {
+    console.info("[cron/warm-flights] poprzedni przebieg wciaz trwa — pomijam");
+    return NextResponse.json({ ok: true, status: "skipped_locked" });
   }
 
   const startedAt = Date.now();
@@ -129,5 +140,6 @@ export async function GET(request: NextRequest) {
     durationMs: Date.now() - startedAt,
   };
   console.log("[cron/warm-flights]", JSON.stringify(summary));
+  await blokada.zwolnij();
   return NextResponse.json(summary);
 }

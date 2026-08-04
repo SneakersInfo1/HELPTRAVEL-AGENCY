@@ -56,20 +56,25 @@ const KEY = "fltdeal:v1";
 /** TTL chroni przed wiecznym wpisem; osobny próg niżej pilnuje świeżości kart. */
 const TTL_SECONDS = 3 * 24 * 3600;
 /**
- * Świeżość do WYŚWIETLENIA: 13 h.
+ * Świeżość do WYŚWIETLENIA: 7 h.
  *
- * ARYTMETYKA POPRAWIONA PO REVIEW. Pierwotne 9 h opierało się na błędzie:
- * „pełny obrót 6 h plus jeden nieudany przebieg 2 h". Nieudany przebieg NIE
- * kosztuje dwóch godzin — konkretna trasa wraca dopiero po pełnym obrocie,
- * czyli po SZEŚCIU. Sukces o 00:35, awaria o 06:35, kolejna próba dopiero
- * o 12:35: przy progu 9 h karta znikała między 09:35 a 12:35 mimo JEDNEJ
- * awarii. 12 h pokrywa ten scenariusz, 13 h daje godzinę zapasu.
+ * ARYTMETYKA WYNIKA Z CZASU PEŁNEGO OBROTU PULI, a nie z odstępu między
+ * przebiegami — konkretna trasa wraca do zbadania dopiero po całym obrocie.
+ * Po skróceniu harmonogramu do 30 minut i zmniejszeniu partii do 8 tras obrót
+ * trwa 3 h (48 tras ÷ 8 × 30 min), więc: 3 h obrotu + 3 h na jeden nieudany
+ * obrót + 1 h zapasu = 7 h.
+ *
+ * Poprzednia wartość 13 h odpowiadała obrotowi sześciogodzinnemu. Zostawienie
+ * jej po przyspieszeniu crona nie byłoby błędem bezpieczeństwa, ale pozwalałoby
+ * pokazywać ceny starsze, niż to konieczne.
+ *
+ * To jest odporność OPERACYJNA, a nie deklaracja aktualności ceny.
  *
  * To jest odporność OPERACYJNA, a nie deklaracja aktualności ceny. Aktualność
  * jest z natury krótsza (bilety zmieniają się w godzinach) i sekcja mówi o tym
  * wprost pod siatką kart, zamiast udawać, że liczba jest wiążąca.
  */
-export const DEAL_FRESH_MS = 13 * 3600 * 1000;
+export const DEAL_FRESH_MS = 7 * 3600 * 1000;
 export const DEAL_ROTATION_MS = 2 * 3600 * 1000;
 /**
  * Ile kart pokazuje sekcja. Dwanaście — tyle samo co „Polecane hotele" i tyle,
@@ -271,7 +276,17 @@ export function pickFreshDeals(snapshot: FlightDealsSnapshot | null, now: number
     .filter((deal) => now - deal.computedAt <= DEAL_FRESH_MS)
     .filter((deal) => deal.depart > today);
 
-  const posortowane = sortDeals(fresh);
+  // DEDUPLIKACJA PO KIERUNKU — przed kwotą i rotacją.
+  //
+  // Zgłoszenie właściciela ze zrzutu: „Oslo" dwa razy w jednym zestawie, raz
+  // z Gdańska, raz z Warszawy. To skutek uboczny rozszerzenia puli o wyloty
+  // spoza Warszawy: dla tego samego miasta docelowego powstają wtedy dwa
+  // niezależne wpisy i oba przechodzą wszystkie filtry.
+  //
+  // Deduplikacja stoi TUTAJ, a nie po wybraniu dwunastu kart, właśnie po to,
+  // żeby liczba kafli nie spadła: z listy znika duplikat, a kwota i rotacja
+  // dobierają w jego miejsce kolejny unikalny kierunek.
+  const posortowane = dedupujPoKierunku(sortDeals(fresh));
   if (posortowane.length < DEAL_MIN) return [];
 
   const bucket = rotationBucket(now, DEAL_ROTATION_MS);
@@ -302,6 +317,37 @@ export function pickFreshDeals(snapshot: FlightDealsSnapshot | null, now: number
  * Pula kandydatów to dwukrotność miejsc, więc rotacja krąży po tańszej połowie
  * grupy i nigdy nie wypycha na stronę najdroższych pozycji.
  */
+/**
+ * Tożsamość kierunku na potrzeby deduplikacji.
+ *
+ * Pierwszeństwo ma `destinationId` (slug z seeda, np. `oslo-norway`), bo to
+ * jedyne pole opisujące MIASTO, a nie lotnisko. Kod IATA bywa kodem metra
+ * (LON, STO, ROM) i dla tego samego miasta potrafi się różnić między wpisami,
+ * więc sam w sobie nie rozstrzyga. `cityLabel` to ostatnia deska ratunku dla
+ * wpisów zapisanych przez starszą wersję crona, którym brakuje sluga.
+ */
+function kluczKierunku(deal: FlightDeal): string {
+  const surowy = deal.destinationId || deal.destinationIata || deal.cityLabel || "";
+  return surowy.trim().toLowerCase();
+}
+
+/**
+ * Jeden kierunek = jedna karta. Wejście MUSI być posortowane rosnąco po cenie,
+ * bo zostaje pierwsze trafienie — czyli najtańsza poprawna oferta dla miasta,
+ * niezależnie od tego, z którego lotniska wylatuje.
+ */
+function dedupujPoKierunku(posortowane: FlightDeal[]): FlightDeal[] {
+  const widziane = new Set<string>();
+  const wynik: FlightDeal[] = [];
+  for (const deal of posortowane) {
+    const klucz = kluczKierunku(deal);
+    if (!klucz || widziane.has(klucz)) continue;
+    widziane.add(klucz);
+    wynik.push(deal);
+  }
+  return wynik;
+}
+
 function rotujGrupe(grupa: FlightDeal[], slots: number, bucket: number): FlightDeal[] {
   if (slots <= 0) return [];
   if (grupa.length <= slots) return grupa.slice(0, slots);

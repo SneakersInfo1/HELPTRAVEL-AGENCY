@@ -97,7 +97,15 @@ export function HomeHybridHero({
                 stackingu) → popovery formularza (kalendarz/„Dokąd"/goście) z-50
                 były uwięzione, a późniejsze rodzeństwo malowało się na wierzchu
                 (białe napisy „prześwitywały"). z-30 podnosi całe poddrzewo. */}
-            <div className="relative z-30 mt-6 w-full max-w-4xl sm:mt-7">
+            {/* `lg:max-w-5xl` — zgłoszenie właściciela ze zrzutu: przycięty
+                napis „SZUKAJ LOTÓW". Przyczyna była arytmetyczna, nie stylowa:
+                tryb lotów ma PIĘĆ kolumn, ich minima zajmowały dokładnie całe
+                854 px wnętrza `max-w-4xl`, a etykieta CTA wersalikami z
+                trackingiem potrzebuje ~225 px wobec przyznanych 160. Nie było
+                skąd wziąć miejsca bez ucięcia sąsiada.
+                Poszerzenie tylko od `lg`: poniżej siatka i tak łamie się na
+                mniej kolumn, więc tam problem nie występuje. */}
+            <div className="relative z-30 mt-6 w-full max-w-4xl sm:mt-7 lg:max-w-5xl">
               <HomeSearchTabs />
             </div>
 

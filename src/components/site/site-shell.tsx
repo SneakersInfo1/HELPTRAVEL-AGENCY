@@ -186,10 +186,45 @@ export function SiteShell({ children }: { children: ReactNode }) {
           pastylka z marginesem i promieniem 1,2rem wyglądałaby jak wyspa nad
           treścią, która idzie od brzegu do brzegu. Poza home bez zmian. */}
       <header
+        // ODDZIELENIE OD TREŚCI — zgłoszenie właściciela ze zrzutu podstrony
+        // „City break": biały nagłówek na białej sekcji zlewał się w jedną
+        // płaszczyznę i wyglądał, jakby był przypadkowo nałożony na stronę.
+        //
+        // Przyczyna: obramowanie `emerald-900/10` i cień o alfa 0.055 są
+        // praktycznie niewidoczne na bieli. Na stronie głównej problem nie
+        // występował, bo pod nagłówkiem jest zdjęcie hero — stąd wrażenie, że
+        // „to tylko na niektórych stronach".
+        //
+        // Rozwiązanie działa na obu rodzajach tła:
+        //  - `bg-surface-raised/85` + `backdrop-blur-md` — treść przewijana pod
+        //    spodem prześwituje i rozmywa się, co samo w sobie komunikuje
+        //    warstwę, także gdy sekcja pod spodem jest ciemna;
+        //  - wyraźniejsza krawędź `emerald-900/15` zamiast ledwie widocznej /10;
+        //  - cień o wartości poziomu „md", podany przez `style`.
+        //
+        // DLACZEGO CIEŃ IDZIE PRZEZ `style`, A NIE PRZEZ KLASĘ: zmierzone
+        // w przeglądarce na tej właśnie podstronie — utility cienia z wartością
+        // arbitralną daje tu `box-shadow` złożony z samych przezroczystych
+        // warstw, i to zarówno przy odwołaniu do tokenu, jak i przy wartości
+        // wpisanej wprost. Reguła nie powstaje. Nie jest to skutek tej zmiany:
+        // problem dotyczy także istniejących kart. `style` renderuje się zawsze
+        // i daje się sprawdzić pomiarem, a nagłówek bez cienia to dokładnie to
+        // zgłoszenie, które ta zmiana ma zamknąć. Zasięg problemu dla reszty
+        // repo opisany w raporcie — do osobnego zadania.
+        //
+        // UWAGA NA KOMENTARZE W TYM PLIKU: Tailwind v4 skanuje także treść
+        // komentarzy. Wpisanie tu nazwy klasy z gwiazdką (wzorzec „shadow”
+        // plus nawias kwadratowy plus zmienna z gwiazdką) sprawia, że Tailwind
+        // uzna to za realną klasę i wygeneruje regułę z `var(--shadow-` i
+        // gwiazdką w środku. To niepoprawny CSS, przez który CAŁY globals.css
+        // przestaje się parsować — a wtedy znikają wszystkie style, nie tylko
+        // cień. Kosztowało to jedną pomyłkę: opisując tokeny, pisz je słownie,
+        // nigdy jako gotową nazwę klasy z symbolem wieloznacznym.
+        style={{ boxShadow: "0 2px 8px rgba(12, 58, 34, 0.10)" }}
         className={
           isHome
-            ? `sticky top-0 z-30 border-b border-emerald-900/10 bg-white py-2 shadow-[0_1px_0_rgba(12,58,34,0.06)] ${bleedPadCls}`
-            : "sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/10 bg-white px-3 py-2 shadow-[0_10px_30px_rgba(12,58,34,0.055)] sm:px-4"
+            ? `sticky top-0 z-30 border-b border-emerald-900/15 bg-surface-raised/85 py-2 backdrop-blur-md ${bleedPadCls}`
+            : "sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/15 bg-surface-raised/85 px-3 py-2 backdrop-blur-md sm:px-4"
         }
       >
         <div className="flex items-center justify-between gap-3">

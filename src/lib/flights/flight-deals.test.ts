@@ -24,12 +24,22 @@ import { DEAL_MAX_PRICE_PLN, LEISURE_DESTINATIONS } from "./deals-config";
 const NOW = Date.parse("2026-08-02T10:00:00Z");
 
 function deal(overrides: Partial<FlightDeal> = {}): FlightDeal {
+  // `destinationId` domyślnie WYPROWADZONY Z `routeKey`, a nie stały.
+  //
+  // W produkcji jedna trasa = jeden kierunek, więc dwa wpisy o różnych
+  // `routeKey` prawie zawsze mają różne `destinationId`. Stała wartość
+  // sprawiała, że każdy fixture udawał ten sam kierunek — deduplikacja
+  // słusznie zwijała je do jednego i cztery starsze testy przewracały się
+  // na danych, które nie mogłyby powstać na produkcji.
+  //
+  // Test duplikatów (Oslo z dwóch lotnisk) nadpisuje to pole jawnie.
+  const routeKey = overrides.routeKey ?? "WAW-BCN";
   return {
-    routeKey: "WAW-BCN",
+    routeKey,
     originIata: "WAW",
     originCityLabel: "Warszawa",
     destinationIata: "BCN",
-    destinationId: "barcelona-spain",
+    destinationId: `${routeKey.toLowerCase()}-kierunek`,
     cityLabel: "Barcelona",
     countryLabel: "Hiszpania",
     depart: "2026-09-10",
@@ -297,7 +307,15 @@ test("błąd Redisa jest cichym missem i nie odrzuca zapisu", async () => {
 // mialy jedna przyczyne w tym pliku, wiec oba maja tu swoj test.
 
 function trasa(iata: string, pricePln: number): FlightDeal {
-  return deal({ routeKey: "WAW-" + iata, destinationIata: iata, pricePln });
+  // destinationId MUSI byc rozny per kierunek, tak jak w produkcji (cron
+  // zapisuje slug z puli tras). Bez tego wszystkie fixture'y dziedziczyly
+  // domyslne "barcelona-spain" i deduplikacja slusznie zwijala je do jednego.
+  return deal({
+    routeKey: "WAW-" + iata,
+    destinationIata: iata,
+    destinationId: iata.toLowerCase() + "-test",
+    pricePln,
+  });
 }
 
 function snapshotZ(deals: FlightDeal[]): Record<string, FlightDeal> {
@@ -353,4 +371,72 @@ test("kafle zawsze ida od najtanszego, mimo kwoty i rotacji", () => {
   );
   const ceny = wynik.map((d) => d.pricePln);
   assert.deepEqual(ceny, [...ceny].sort((a, b) => a - b), "porzadek cen nie moze zalezec od kwoty");
+});
+
+
+// -- DEDUPLIKACJA KIERUNKOW --------------------------------------------------
+// Zgloszenie wlasciciela ze zrzutu 2026-08-04: "Oslo" dwa razy w jednym
+// zestawie - raz z Gdanska, raz z Warszawy. Skutek uboczny rozszerzenia puli
+// o wyloty spoza Warszawy.
+
+function trasaZ(origin: string, iata: string, destinationId: string, pricePln: number): FlightDeal {
+  return deal({
+    routeKey: origin + "-" + iata,
+    originIata: origin,
+    destinationIata: iata,
+    destinationId,
+    pricePln,
+  });
+}
+
+test("ten sam kierunek nie moze wystapic dwa razy, zostaje najtanszy", () => {
+  // Grupa miejska celowo MNIEJSZA niz liczba przyznanych jej miejsc, zeby
+  // rotacja nie miala czego przesuwac. Inaczej test badalby jednoczesnie
+  // deduplikacje i rotacje, a rotacja moze legalnie wysunac najtansza pozycje
+  // poza biezace okno - i wtedy czerwony wynik nie znaczylby nic o duplikatach.
+  const wynik = pickFreshDeals(
+    snapshotZ([
+      trasaZ("GDN", "OSL", "oslo-norway", 280),
+      trasaZ("WAW", "OSL", "oslo-norway", 641),
+      ...MIASTA.slice(0, 3).map((c, i) => trasa(c, 300 + i * 10)),
+      ...PLAZE.slice(0, 6).map((c, i) => trasa(c, 500 + i * 10)),
+    ]),
+    NOW,
+  );
+
+  const osla = wynik.filter((d) => d.destinationId === "oslo-norway");
+  assert.equal(osla.length, 1, "Oslo moze byc tylko raz");
+  assert.equal(osla[0].pricePln, 280, "zostaje najtansza oferta, czyli ta z Gdanska");
+  assert.equal(osla[0].originIata, "GDN");
+});
+
+test("deduplikacja NIE zmniejsza liczby kafli - miejsce przejmuje kolejny kierunek", () => {
+  // 2 x Oslo + 12 innych unikalnych = po deduplikacji 13 kandydatow na 12 kafli.
+  const wynik = pickFreshDeals(
+    snapshotZ([
+      trasaZ("GDN", "OSL", "oslo-norway", 280),
+      trasaZ("WAW", "OSL", "oslo-norway", 641),
+      ...MIASTA.slice(0, 6).map((c, i) => trasa(c, 300 + i * 10)),
+      ...PLAZE.map((c, i) => trasa(c, 500 + i * 10)),
+    ]),
+    NOW,
+  );
+  assert.equal(wynik.length, DEAL_MAX, "duplikat ma zostac zastapiony, a nie zostawic dziure");
+  const klucze = wynik.map((d) => d.destinationId);
+  assert.equal(new Set(klucze).size, klucze.length, "wszystkie kierunki unikalne");
+});
+
+test("rozne lotniska tego samego miasta to jeden kierunek", () => {
+  // Ten sam destinationId, rozne kody IATA (kod metra vs konkretne lotnisko).
+  const wynik = pickFreshDeals(
+    snapshotZ([
+      trasaZ("WAW", "LON", "london-united-kingdom", 306),
+      trasaZ("KRK", "LHR", "london-united-kingdom", 525),
+      ...MIASTA.slice(0, 4).map((c, i) => trasa(c, 700 + i * 10)),
+    ]),
+    NOW,
+  );
+  const londyny = wynik.filter((d) => d.destinationId === "london-united-kingdom");
+  assert.equal(londyny.length, 1, "Londyn raz, mimo dwoch roznych kodow lotnisk");
+  assert.equal(londyny[0].pricePln, 306);
 });

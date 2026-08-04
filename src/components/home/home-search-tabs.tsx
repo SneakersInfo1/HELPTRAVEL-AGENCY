@@ -72,7 +72,20 @@ export function HomeSearchTabs() {
     return () => window.clearTimeout(id);
   }, []);
 
-  const selectTab = useCallback((next: Tab) => {
+  /**
+   * @param otworzCzat Czy wybór zakładki „Doradź" ma OD RAZU otworzyć rozmowę.
+   *
+   * Zgłoszenie właściciela: „po kliknięciu Doradź chatbot ma od razu otwierać
+   * się na pełnym ekranie, bez dodatkowego przycisku Opisz swój wyjazd".
+   * Kliknięcie zakładki jest jednoznaczną deklaracją zamiaru, więc otwiera.
+   *
+   * `false` przy nawigacji strzałkami: zakładki działają we wzorcu „automatic
+   * activation", więc przejechanie strzałką przez trzecią zakładkę otwierałoby
+   * modal osobie, która chciała tylko dojść do następnej pozycji — a z modala
+   * musiałaby się potem wydostać. Klawiatura aktywuje czat Enterem/spacją,
+   * czyli przez zdarzenie kliknięcia.
+   */
+  const selectTab = useCallback((next: Tab, otworzCzat = false) => {
     setTab(next);
 
     const url = new URL(window.location.href);
@@ -82,6 +95,8 @@ export function HomeSearchTabs() {
     window.history.replaceState(null, "", url.toString());
 
     track("hero_tab_changed", { to: next });
+
+    if (next === "assistant" && otworzCzat) requestConciergeOpen("hero");
   }, []);
 
   // Strzałki przesuwają fokus i aktywują zakładkę (wzorzec „automatic
@@ -135,7 +150,7 @@ export function HomeSearchTabs() {
               aria-controls={`${baseId}-panel-${key}`}
               // Roving tabindex: tylko aktywna zakładka jest w kolejności Tab.
               tabIndex={active ? 0 : -1}
-              onClick={() => selectTab(key)}
+              onClick={() => selectTab(key, true)}
               className={cn(
                 // h-11 = 44 px. Zmierzone w przeglądarce przy 375 px: `h-9`
                 // dawało 36 px, czyli poniżej progu dotykowego — a to jest
@@ -198,6 +213,10 @@ function AssistantPanel() {
           <p className="text-xs text-ink-muted">Kierunek, lot i hotel w jednej rozmowie</p>
         </div>
       </div>
+      {/* To NIE jest ekran pośredni: kliknięcie zakładki „Doradź" otwiera
+          rozmowę od razu (patrz `selectTab`). Panel zostaje jako powrót do
+          rozmowy dla kogoś, kto ją zamknął, a nadal stoi na tej zakładce —
+          bez niego zakładka byłaby wtedy pusta i wyglądała na zepsutą. */}
       <div className="space-y-3 p-4">
         <p className="text-sm leading-6 text-ink-muted">
           Podaj budżet, termin i liczbę osób. Asystent sprawdzi dostępne oferty i pokaże
@@ -217,8 +236,8 @@ function AssistantPanel() {
             <Compass className="h-5 w-5" strokeWidth={2} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-ink">Opisz swój wyjazd…</span>
-            <span className="block text-xs text-ink-muted">Otwórz rozmowę z asystentem</span>
+            <span className="block text-sm font-semibold text-ink">Wróć do rozmowy</span>
+            <span className="block text-xs text-ink-muted">Asystent pamięta, co już ustaliliście</span>
           </span>
           <span
             aria-hidden

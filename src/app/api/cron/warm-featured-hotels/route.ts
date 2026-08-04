@@ -21,6 +21,7 @@
 // Bezpieczeństwo: `Authorization: Bearer ${CRON_SECRET}` — jak pozostałe crony.
 
 import { NextRequest, NextResponse } from "next/server";
+import { zajmijBlokade } from "@/lib/cron/lock";
 
 import { fetchHotelsForDestination } from "@/lib/liteapi";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
@@ -65,6 +66,16 @@ export async function GET(request: NextRequest) {
   }
   if (request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // Blokada rozproszona — patrz src/lib/cron/lock.ts. Nakladajace sie
+  // przebiegi dublowaly koszt LiteAPI i gubily aktualizacje przy
+  // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
+  // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
+  const blokada = await zajmijBlokade("warm-featured-hotels", 360);
+  if (!blokada.zdobyta) {
+    console.info("[cron/warm-featured-hotels] poprzedni przebieg wciaz trwa — pomijam");
+    return NextResponse.json({ ok: true, status: "skipped_locked" });
   }
 
   const startedAt = Date.now();
@@ -191,6 +202,7 @@ export async function GET(request: NextRequest) {
   if (wrote) await writeFeaturedHotels(collected, startedAt);
   else console.warn(`[cron/warm-featured] tylko ${collected.length} hoteli — zostawiam poprzedni snapshot`);
 
+  await blokada.zwolnij();
   return NextResponse.json({
     ok: true,
     bucket,

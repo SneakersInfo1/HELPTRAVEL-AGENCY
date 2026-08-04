@@ -116,15 +116,23 @@ export const LEISURE_DESTINATIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * Ile tras bada jeden przebieg. Szesnaście z czterdziestu ośmiu = pełny obrót
- * puli w trzy przebiegi, czyli SZEŚĆ GODZIN.
+ * Ile tras bada jeden przebieg. Osiem z czterdziestu ośmiu = pełny obrót puli
+ * w sześć przebiegów, a przy harmonogramie co 30 minut daje to TRZY GODZINY.
  *
- * Pula urosła z 36 do 48 (więcej kierunków wypoczynkowych — prośba właściciela),
- * więc liczba tras na przebieg musiała urosnąć razem z nią, inaczej pełny obrót
- * wydłużyłby się do ośmiu godzin i trzeba by było poluzować `DEAL_FRESH_MS`.
- * Zmierzony przebieg 12 tras zajmował ~110 s przy budżecie 185 s, więc 16 tras
- * (~147 s) mieści się z zapasem — ale to jest właśnie ta liczba, którą trzeba
- * sprawdzić w logach po zmianie puli, a nie założyć.
+ * Liczba spadła z 16 na 8 razem ze skróceniem harmonogramu z dwóch godzin do
+ * trzydziestu minut (prośba właściciela: „oferty lotnicze mają aktualizować
+ * się co 30 minut"). To świadomy kompromis kosztowy:
+ *
+ *   przed: 12 przebiegów/dobę × 16 tras × 6 okien = 1 152 wyszukania
+ *   po:    48 przebiegów/dobę ×  8 tras × 6 okien = 2 304 wyszukania
+ *
+ * Czyli dwukrotność, a nie czterokrotność, którą dałoby samo zagęszczenie
+ * harmonogramu przy 16 trasach. W zamian pełny obrót puli skrócił się z
+ * sześciu godzin do trzech, więc dane są ŚWIEŻSZE mimo mniejszej partii.
+ *
+ * Pojedynczy przebieg to teraz ok. 48 wyszukań (~55–75 s wobec budżetu 185 s),
+ * czyli z dużym zapasem — istotne, bo przy slotach co 30 minut przebieg ma
+ * mniej luzu niż przy dwóch godzinach.
  *
  * To nie jest dobór „na oko": karta z ceną lotu jest ważna tak długo, jak
  * długo ta cena jeszcze istnieje, a bilety zmieniają się szybciej niż stawki
@@ -136,7 +144,7 @@ export const LEISURE_DESTINATIONS: ReadonlySet<string> = new Set(
  * Dwanaście przebiegów na dobę daje 864 wyszukania — mniej niż połowa tego,
  * co robi istniejący prewarming lotów (~1900/dobę).
  */
-export const DEAL_ROUTES_PER_RUN = 16;
+export const DEAL_ROUTES_PER_RUN = 8;
 /**
  * Terminy próbek, liczone w dniach od dziś.
  *

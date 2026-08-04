@@ -10,6 +10,7 @@ import { Plane, PlaneTakeoff, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { zamknijKlawiature } from "@/lib/ui/keyboard";
 import { searchAirports, type AirportOption } from "@/lib/flights/airports";
 import { useDismissOnOutside } from "@/lib/ui/use-dismiss-on-outside";
 
@@ -36,6 +37,8 @@ interface AnchoredListPosition {
 
 const MOBILE_BREAKPOINT = "(min-width: 640px)";
 const AIRPORT_LIST_HEIGHT = 320;
+/** Patrz `DESTINATION_LIST_MIN_WIDTH` w mini-planner-form.tsx — ta sama reguła. */
+const AIRPORT_LIST_MIN_WIDTH = 360;
 const SHEET_HISTORY_KEY = "__helptravelAirportSheet";
 
 function getAnchoredListPosition(anchor: HTMLElement): AnchoredListPosition {
@@ -48,14 +51,24 @@ function getAnchoredListPosition(anchor: HTMLElement): AnchoredListPosition {
   const available = openAbove ? spaceAbove : spaceBelow;
   const maxHeight = Math.min(AIRPORT_LIST_HEIGHT, Math.max(200, available));
 
+  // Lista szersza niż pole — patrz bliźniacza uwaga w mini-planner-form.tsx.
+  // Kolumna „Skąd" ma ~172 px, a najdłuższe pozycje słownika to
+  // „Warszawa — wszystkie lotniska" i „Polska — dowolne lotnisko”.
+  const maxWidth = window.innerWidth - 2 * viewportPadding;
+  const width = Math.min(Math.max(rect.width, AIRPORT_LIST_MIN_WIDTH), maxWidth);
+  const left = Math.max(
+    viewportPadding,
+    Math.min(rect.left, window.innerWidth - viewportPadding - width),
+  );
+
   return openAbove
     ? {
-        left: rect.left,
+        left,
         bottom: window.innerHeight - rect.top + gap,
-        width: rect.width,
+        width,
         maxHeight,
       }
-    : { left: rect.left, top: rect.bottom + gap, width: rect.width, maxHeight };
+    : { left, top: rect.bottom + gap, width, maxHeight };
 }
 
 function optionKey(o: AirportOption): string {
@@ -180,7 +193,6 @@ export function AirportCombobox({
   // markera przed pushState czyni efekt bezpiecznym przy powtórzeniu w StrictMode.
   useEffect(() => {
     if (!open || isDesktop) return;
-    const triggerInput = inputRef.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     historyBackPendingRef.current = false;
@@ -202,7 +214,11 @@ export function AirportCombobox({
       window.removeEventListener("popstate", handlePopState);
       document.body.style.overflow = previousOverflow;
       suppressTriggerFocusRef.current = true;
-      triggerInput?.focus({ preventScroll: true });
+      // Patrz bliźniacza uwaga w mini-planner-form.tsx: oddanie fokusu polu
+      // tekstowemu trzymało otwartą klawiaturę telefonu po zamknięciu arkusza.
+      // Ten efekt to wyłącznie ścieżka mobilna, więc zwrot fokusu nic tu nie
+      // wnosi, a psuje najczęstszy scenariusz użycia.
+      zamknijKlawiature();
     };
   }, [open, isDesktop, listboxId]);
 
@@ -226,13 +242,13 @@ export function AirportCombobox({
             pick(o);
           }}
           onMouseEnter={() => setHighlight(idx)}
-          className={`flex cursor-pointer items-center gap-2.5 px-3.5 py-2 transition-colors duration-150 ease-out active:bg-emerald-100 motion-reduce:transition-none ${
-            isDesktop ? "min-h-[52px]" : "min-h-[56px]"
+          className={`flex cursor-pointer items-center gap-3 px-3.5 py-2.5 transition-colors duration-150 ease-out active:bg-emerald-100 motion-reduce:transition-none ${
+            isDesktop ? "min-h-[56px]" : "min-h-[60px]"
           } ${active ? "bg-emerald-50" : "hover:bg-emerald-50/60"}`}
         >
           <span
             aria-hidden
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-muted"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-muted"
           >
             {isGroup ? (
               <PlaneTakeoff className="h-4 w-4" strokeWidth={2} />
@@ -240,9 +256,14 @@ export function AirportCombobox({
               <Plane className="h-4 w-4" strokeWidth={2} />
             )}
           </span>
-          <span className="flex min-w-0 flex-col">
-            <span className="text-sm font-semibold text-emerald-950">{title}</span>
-            <span className="text-[11px] text-emerald-900/55">{sub}</span>
+          {/* `truncate` NA OBU wierszach — to była bezpośrednia przyczyna zrzutu
+              od właściciela: bez niego „Polska — dowolne lotnisko" łamało się
+              na cztery wiersze, bo tekst mógł zawijać do woli. */}
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-[15px] font-semibold leading-snug text-emerald-950">
+              {title}
+            </span>
+            <span className="truncate text-xs leading-snug text-emerald-900/55">{sub}</span>
           </span>
         </li>
       );

@@ -12,6 +12,7 @@ import { AirportCombobox } from "@/components/flights/airport-combobox";
 import { bestAirportOption, resolveOriginFromOption } from "@/lib/flights/airports";
 import { useLanguage } from "@/components/site/language-provider";
 import { track } from "@/lib/analytics/track";
+import { zamknijKlawiature } from "@/lib/ui/keyboard";
 import { useDismissOnOutside } from "@/lib/ui/use-dismiss-on-outside";
 import { localizeCity, localizeCountry, localizeRegion } from "@/lib/mvp/i18n-geo";
 import { sendClientEvent } from "@/lib/mvp/client-events";
@@ -149,6 +150,16 @@ interface AnchoredDestinationPosition {
 
 const MOBILE_DESTINATION_BREAKPOINT = "(min-width: 640px)";
 const DESTINATION_LIST_HEIGHT = 384;
+/**
+ * Minimalna szerokość rozwiniętej listy podpowiedzi na desktopie.
+ *
+ * 360 px, bo najdłuższa realna pozycja słownika to „Warszawa — wszystkie
+ * lotniska" z podpisem „Polska”: przy 15 px półgrubym to ~300 px samego
+ * tekstu, plus 32 px ikony, 10 px odstępu i 2 × 14 px paddingu.
+ * Poniżej tej wartości nazwy zaczynają się łamać — dokładnie tak, jak na
+ * zrzucie od właściciela.
+ */
+const DESTINATION_LIST_MIN_WIDTH = 360;
 const DESTINATION_SHEET_HISTORY_KEY = "__helptravelDestinationSheet";
 
 function getDestinationListPosition(anchor: HTMLElement): AnchoredDestinationPosition {
@@ -161,14 +172,33 @@ function getDestinationListPosition(anchor: HTMLElement): AnchoredDestinationPos
   const available = openAbove ? spaceAbove : spaceBelow;
   const maxHeight = Math.min(DESTINATION_LIST_HEIGHT, Math.max(200, available));
 
+  // SZEROKOŚĆ LISTY NIE JEST JUŻ SZEROKOŚCIĄ POLA.
+  //
+  // Zgłoszenie właściciela ze zrzutu: nazwy lotnisk łamały się po jednym-dwóch
+  // słowach („Polska — dowolne lotnisko" w czterech wierszach). Przyczyna:
+  // lista dziedziczyła `rect.width`, a kolumna „Skąd" ma ~172 px, z czego po
+  // odjęciu ikony i paddingu na tekst zostawało ~100 px.
+  //
+  // Lista wychodzi teraz poza obrys pola do `DESTINATION_LIST_MIN_WIDTH`,
+  // ale nie dalej niż pozwala okno — inaczej przy polu przy prawej krawędzi
+  // wystawałaby poza ekran.
+  const maxWidth = window.innerWidth - 2 * viewportPadding;
+  const width = Math.min(Math.max(rect.width, DESTINATION_LIST_MIN_WIDTH), maxWidth);
+  // Przy poszerzeniu w prawo lista mogłaby wyjść za krawędź — wtedy dosuwamy
+  // ją w lewo, zamiast pozwolić jej wystawać.
+  const left = Math.max(
+    viewportPadding,
+    Math.min(rect.left, window.innerWidth - viewportPadding - width),
+  );
+
   return openAbove
     ? {
-        left: rect.left,
+        left,
         bottom: window.innerHeight - rect.top + gap,
-        width: rect.width,
+        width,
         maxHeight,
       }
-    : { left: rect.left, top: rect.bottom + gap, width: rect.width, maxHeight };
+    : { left, top: rect.bottom + gap, width, maxHeight };
 }
 
 function diffNights(start: string, end: string): number {
@@ -318,7 +348,6 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
 
   useEffect(() => {
     if (!destOpen || isDestDesktop) return;
-    const triggerInput = destInputRef.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     destHistoryBackPendingRef.current = false;
@@ -340,7 +369,20 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       window.removeEventListener("popstate", handlePopState);
       document.body.style.overflow = previousOverflow;
       suppressDestTriggerFocusRef.current = true;
-      triggerInput?.focus({ preventScroll: true });
+      // NIE ODDAJEMY FOKUSU POLU TEKSTOWEMU — to była przyczyna zgłoszenia
+      // „klawiatura zostaje po kliknięciu ✕".
+      //
+      // Ten efekt to wyłącznie ścieżka mobilna (`!isDestDesktop`), a
+      // `triggerInput.focus()` w sprzątaniu ustawiał fokus z powrotem na
+      // <input>. Dla iOS i Androida sfokusowane pole tekstowe = otwarta
+      // klawiatura systemowa, więc warstwa znikała, a klawiatura zostawała
+      // — zasłaniając pół ekranu i psując układ strony pod spodem.
+      //
+      // Zwrot fokusu ma sens dla nawigacji klawiaturą, ale ta jest na
+      // desktopie, gdzie ten efekt w ogóle nie działa. Tutaj fokus po prostu
+      // schodzi z pola; `blur()` na aktywnym elemencie jest konieczny, bo w
+      // WebKicie samo odmontowanie pola arkusza potrafi zostawić klawiaturę.
+      zamknijKlawiature();
     };
   }, [destOpen, isDestDesktop, listboxId]);
 
@@ -918,21 +960,28 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
                         selectSuggestion(suggestion);
                       }}
                       onMouseEnter={() => setDestHighlight(index)}
-                      className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 transition-colors duration-150 ease-out active:bg-brand-soft motion-reduce:transition-none ${
-                        mobile ? "min-h-[56px]" : "min-h-[52px]"
+                      className={`flex cursor-pointer items-center gap-3 px-3.5 py-2.5 transition-colors duration-150 ease-out active:bg-brand-soft motion-reduce:transition-none ${
+                        mobile ? "min-h-[60px]" : "min-h-[56px]"
                       } ${index === destHighlight ? "bg-brand-soft" : "hover:bg-surface-sunken"}`}
                     >
+                      {/* Ikona 28 px zamiast 32: na zrzucie zabierała miejsce
+                          nazwie, a jest tylko sygnałem typu pozycji. */}
                       <span
                         aria-hidden
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-muted"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-muted"
                       >
                         <Icon className="h-4 w-4" strokeWidth={2} />
                       </span>
-                      <span className="flex min-w-0 flex-col">
-                        <span className="truncate text-sm font-semibold text-ink">
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        {/* `truncate` zamiast zawijania: nazwa ma się urwać
+                            wielokropkiem, a nie rozlewać na cztery wiersze —
+                            lista musi mieć przewidywalną wysokość wiersza. */}
+                        <span className="truncate text-[15px] font-semibold leading-snug text-ink">
                           {suggestion.cityPl ?? localizeCity(suggestion.city)}
                         </span>
-                        {meta && <span className="truncate text-xs text-ink-muted">{meta}</span>}
+                        {meta && (
+                          <span className="truncate text-xs leading-snug text-ink-muted">{meta}</span>
+                        )}
                       </span>
                     </li>
                   );
@@ -967,17 +1016,27 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       <div
         className={`grid gap-3 text-lg lg:items-end ${
           isFlights
-            // Kolumny przeliczone po powiększeniu pisma do 18 px. Zmierzone
-            // przed zmianą: „2 dorosłych" potrzebowało 114 px, a kolumna dawała
-            // 90; „Wylot – Powrót" 125 wobec 122 — stąd ucięte etykiety na
-            // zrzucie od właściciela. Pole „Skąd" miało za to 65 px zapasu,
-            // więc oddaje je sąsiadom, zamiast rosnąć bez potrzeby.
-            // Suma minimów + odstępy MUSI zmieścić się w kontenerze: max-w-4xl
-            // (896 px) minus 40 px paddingu i 2 px obramowania = 854 px, a
-            // cztery przerwy `gap-3` zjadają 48 px. Minima mają więc dokładnie
-            // 806 px; CTA dostało 160 px potrzebne etykiecie 18 px, a „Skąd"
-            // oddało 2 px niewykorzystywanego zapasu.
-            ? "lg:grid-cols-[minmax(160px,1.15fr)_minmax(186px,1.4fr)_minmax(154px,1.1fr)_minmax(146px,1fr)_minmax(160px,auto)]"
+            // Minima przeliczone po poszerzeniu kontenera do `lg:max-w-5xl`.
+            //
+            // Poprzedni komplet (160/186/154/146/160) sumował się do 806 px
+            // i wypełniał co do piksela wnętrze `max-w-4xl` — dlatego CTA
+            // dostawało 160 px, a potrzebuje ~232 px na „SZUKAJ LOTÓW →"
+            // (18 px, wersaliki, tracking 0.06em) i napis był ucinany.
+            //
+            // Nowy budżet: `max-w-5xl` (1024 px) minus 40 px paddingu i 2 px
+            // obramowania = 982 px wnętrza, minus cztery przerwy `gap-3`
+            // (48 px) = 934 px na kolumny. Minima sumują się do 932 px.
+            //
+            // Rozdział między kolumnami wynika z POMIARU, nie z proporcji:
+            // „Wylot – Powrót" potrzebuje 124 px samego tekstu, a kolumna
+            // zjada 52 px na ikonę, odstęp i padding — stąd 184 px dla
+            // „Terminu”. „Dokąd" oddało mu 16 px, bo jego placeholder
+            // („Miasto lub kraj", ~130 px) zostawiał 30 px niewykorzystane.
+            //
+            // ZASADA: zmieniasz którekolwiek minimum → przelicz sumę. Suma
+            // większa niż wnętrze kontenera nie daje przewijania, tylko po
+            // cichu ucina zawartość ostatnich kolumn.
+            ? "lg:grid-cols-[minmax(172px,1.1fr)_minmax(188px,1.35fr)_minmax(184px,1.05fr)_minmax(156px,1fr)_minmax(232px,auto)]"
             : "lg:grid-cols-[1.4fr_1.3fr_1fr_auto]"
         }`}
       >

@@ -15,7 +15,7 @@
     },
     {
       "path": "/api/cron/warm-flight-deals",
-      "schedule": "35 */2 * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }
