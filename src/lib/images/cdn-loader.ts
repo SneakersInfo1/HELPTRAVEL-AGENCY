@@ -40,6 +40,24 @@ import type { ImageLoaderProps } from "next/image";
 // dominują w zdjęciach hoteli i kierunków.
 const DEFAULT_QUALITY = 82;
 
+/**
+ * Przepuszczenie zdjęcia przez wsrv.nl z konwersją do WebP.
+ *
+ * `we` = bez powiększania mniejszych oryginałów. `default` = przy awarii proxy
+ * (upstream 404/timeout) przeglądarka dostaje przekierowanie na oryginalny URL
+ * zamiast zepsutego obrazka. CSP: wsrv.nl dodane w next.config.ts.
+ */
+function przezWsrv(zrodlo: string, width: number, quality: number): string {
+  const proxied = new URL("https://wsrv.nl/");
+  proxied.searchParams.set("url", zrodlo);
+  proxied.searchParams.set("w", String(width));
+  proxied.searchParams.set("q", String(quality));
+  proxied.searchParams.set("output", "webp");
+  proxied.searchParams.set("we", "");
+  proxied.searchParams.set("default", zrodlo);
+  return proxied.toString();
+}
+
 export default function cdnLoader({ src, width, quality }: ImageLoaderProps): string {
   const q = Math.min(100, Math.max(1, quality ?? DEFAULT_QUALITY));
 
@@ -79,7 +97,27 @@ export default function cdnLoader({ src, width, quality }: ImageLoaderProps): st
     url.searchParams.delete("h");
     url.searchParams.set("w", String(width));
     url.searchParams.set("dpr", "1");
-    return url.toString();
+    // PEXELS NIE ODDAJE WebP ANI AVIF — tylko to, czym jest plik źródłowy.
+    //
+    // Drugie zgłoszenie właściciela (2026-08-03: „popraw grafiki, raz ci o tym
+    // pisałem i nadal nie widzę poprawy") było słuszne, bo poprzednia poprawka
+    // podniosła tylko `DEFAULT_QUALITY` — a ta stała NIE DOTYKAŁA tej gałęzi:
+    // do Pexels nigdy nie szedł parametr `q`. Homepage jest niemal w całości
+    // na Pexels, więc zmiana nie mogła być widoczna.
+    //
+    // Zmierzone na żywo (zdjęcie hero, w=1920): plik źródłowy to PNG i Pexels
+    // oddaje go jako `image/png` o wadze **3175 kB**. Ta sama klatka przez
+    // wsrv.nl w WebP waży **254 kB** — 12,5× mniej. Przy w=2560 (ostro na
+    // ekranach DPR 2) wychodzi 393 kB, czyli wciąż 8× mniej niż dzisiejsze
+    // 1920 px. Trzy megabajty na najważniejszym zdjęciu strony ładują się na
+    // telefonie na tyle długo, że użytkownik ogląda pustkę albo klatkę malowaną
+    // progresywnie — i to właśnie widać jako „słabą jakość".
+    //
+    // Zwykłe JPEG-i zyskują mniej (520 → 451 kB), bo są już skompresowane;
+    // dokłada się tu jedno przekodowanie. Format wygrywa jednak w obie strony,
+    // a jednolita ścieżka znaczy, że kolejny plik PNG w seedzie nie wysadzi
+    // strony po cichu.
+    return przezWsrv(url.toString(), width, q);
   }
 
   // ── Unsplash ───────────────────────────────────────────────────────────
@@ -115,16 +153,7 @@ export default function cdnLoader({ src, width, quality }: ImageLoaderProps): st
     host.endsWith(".cupid.travel") ||
     host.endsWith(".liteapi.travel")
   ) {
-    const proxied = new URL("https://wsrv.nl/");
-    proxied.searchParams.set("url", src);
-    proxied.searchParams.set("w", String(width));
-    proxied.searchParams.set("q", String(q));
-    proxied.searchParams.set("output", "webp");
-    proxied.searchParams.set("we", "");
-    // Awaria po stronie proxy (np. upstream 404/timeout) → redirect na
-    // oryginalny URL zamiast zepsutego obrazka.
-    proxied.searchParams.set("default", src);
-    return proxied.toString();
+    return przezWsrv(src, width, q);
   }
 
   // ── Default: passthrough ───────────────────────────────────────────────

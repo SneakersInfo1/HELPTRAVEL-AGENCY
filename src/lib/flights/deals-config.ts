@@ -2,6 +2,14 @@ export interface DealRoute {
   origin: string;
   destinationIata: string;
   destinationId: string;
+  /**
+   * Charakter kierunku. Steruje kwotą w `pickFreshDeals`, a nie samym doborem
+   * cen: bez niego sortowanie po cenie wypycha na wierzch wyłącznie krótkie
+   * trasy miejskie (zmierzone na żywej sekcji: Sztokholm 164, Bruksela 204,
+   * Oslo 220 zł), a kierunki wypoczynkowe — te, po które ludzie przychodzą na
+   * stronę biura podróży — nie mieszczą się nigdy, bo zaczynają się od 466 zł.
+   */
+  kind: "leisure" | "city";
 }
 
 /**
@@ -18,65 +26,99 @@ export interface DealRoute {
  * północ i zachód. Stąd przebudowa — najpierw one, kierunki plażowe jako
  * tło. Sufit ceny (`DEAL_MAX_PRICE_PLN`) pilnuje reszty.
  *
- * Rozmiar 36 nie jest ozdobny: musi dzielić się bez reszty przez
+ * Rozmiar 48 nie jest ozdobny: musi dzielić się bez reszty przez
  * `DEAL_ROUTES_PER_RUN`, bo z tego wynika czas pełnego obrotu, a z niego
  * próg świeżości kart (test pilnuje tej własności).
  */
 export const DEAL_ROUTES: readonly DealRoute[] = [
-  // ── KRÓTKIE TRASY MIEJSKIE — tu są ceny, o które prosił właściciel ──────
-  // Kolejność nieprzypadkowa: sonda z 2026-08-02 (30 kierunków × 3 okna,
-  // 90 realnych wycen, 1 dorosły, w obie strony) pokazała, że poniżej 900 zł
-  // schodzą WYŁĄCZNIE Oslo (627), Londyn (827), Bruksela (838) i Wiedeń (867),
-  // a tuż nad progiem są Budapeszt (918), Bukareszt (940), Praga (949),
-  // Sztokholm (973) i Sofia (979). Wszystkie bezpośrednie, 1–3 h.
-  { origin: "WAW", destinationIata: "OSL", destinationId: "oslo-norway" },
-  { origin: "WAW", destinationIata: "LON", destinationId: "london-united-kingdom" },
-  { origin: "WAW", destinationIata: "BRU", destinationId: "brussels-belgium" },
-  { origin: "WAW", destinationIata: "VIE", destinationId: "vienna-austria" },
-  { origin: "WAW", destinationIata: "BUD", destinationId: "budapest-hungary" },
-  { origin: "WAW", destinationIata: "OTP", destinationId: "bucharest-romania" },
-  { origin: "WAW", destinationIata: "PRG", destinationId: "prague-czechia" },
-  { origin: "WAW", destinationIata: "SOF", destinationId: "sofia-bulgaria" },
-  { origin: "WAW", destinationIata: "STO", destinationId: "stockholm-sweden" },
-  { origin: "WAW", destinationIata: "CPH", destinationId: "copenhagen-denmark" },
-  { origin: "WAW", destinationIata: "ZAG", destinationId: "zagreb-croatia" },
-  { origin: "WAW", destinationIata: "LJU", destinationId: "ljubljana-slovenia" },
-  { origin: "WAW", destinationIata: "TLL", destinationId: "tallinn-estonia" },
-  { origin: "WAW", destinationIata: "RIX", destinationId: "riga-latvia" },
-  { origin: "WAW", destinationIata: "VNO", destinationId: "vilnius-lithuania" },
-  { origin: "WAW", destinationIata: "BER", destinationId: "berlin-germany" },
-  // ── Kierunki wypoczynkowe ────────────────────────────────────────────────
-  // Zostają w puli, choć w tej samej sondzie zaczynały się od 989 zł i sięgały
-  // 2828 zł: ceny biletów zmieniają się w czasie, a sufit `DEAL_MAX_PRICE_PLN`
-  // i tak przepuści je tylko wtedy, gdy realnie zejdą do przedziału. Usunięcie
-  // ich odebrałoby sekcji szansę na jedyny kierunek plażowy w dobrej cenie.
-  { origin: "WAW", destinationIata: "BCN", destinationId: "barcelona-spain" },
-  { origin: "WAW", destinationIata: "AGP", destinationId: "malaga-spain" },
-  { origin: "WAW", destinationIata: "PMI", destinationId: "palma-spain" },
-  { origin: "WAW", destinationIata: "ALC", destinationId: "alicante-spain" },
-  { origin: "WAW", destinationIata: "AYT", destinationId: "antalya-turkey" },
-  { origin: "WAW", destinationIata: "RHO", destinationId: "rhodes-greece" },
-  { origin: "WAW", destinationIata: "HER", destinationId: "heraklion-greece" },
-  { origin: "WAW", destinationIata: "FAO", destinationId: "faro-portugal" },
-  { origin: "WAW", destinationIata: "LIS", destinationId: "lisbon-portugal" },
-  { origin: "WAW", destinationIata: "ATH", destinationId: "athens-greece" },
-  { origin: "WAW", destinationIata: "IST", destinationId: "istanbul-turkey" },
-  { origin: "WAW", destinationIata: "SPU", destinationId: "split-croatia" },
-  { origin: "WAW", destinationIata: "OPO", destinationId: "porto-portugal" },
-  { origin: "WAW", destinationIata: "NAP", destinationId: "naples-italy" },
-  { origin: "WAW", destinationIata: "CTA", destinationId: "catania-italy" },
-  { origin: "WAW", destinationIata: "LCA", destinationId: "larnaca-cyprus" },
-  { origin: "WAW", destinationIata: "CFU", destinationId: "corfu-greece" },
-  { origin: "WAW", destinationIata: "SKG", destinationId: "thessaloniki-greece" },
-  // Dwa wyloty z Krakowa — drugie co do wielkości lotnisko w kraju i najtańsze
-  // trasy miejskie, więc mają realną szansę trafić pod sufit.
-  { origin: "KRK", destinationIata: "VIE", destinationId: "vienna-austria" },
-  { origin: "KRK", destinationIata: "PRG", destinationId: "prague-czechia" },
+  // ── KIERUNKI WYPOCZYNKOWE — trzon sekcji ────────────────────────────────
+  //
+  // Kolejność i skład z sondy 2026-08-04 (20 kierunków × 3 okna, WAW, 1 dorosły,
+  // w obie strony). Ceny minimalne, zmierzone: Ateny 466, Katania 506,
+  // Malaga 555, Split 575, Dubrownik 600, Larnaka 664, Korfu 689,
+  // Heraklion 757, Rodos 757, Walencja 778, Faro 867, Antalya 883, Palma 884.
+  // TRZYNAŚCIE z dwudziestu zeszło pod 900 zł.
+  //
+  // To ODWRACA wniosek z 2026-08-02, kiedy te same trasy kosztowały 989–2828 zł
+  // i pula musiała opierać się na miastach. Ceny biletów po prostu spadły.
+  // Wniosek na przyszłość: skład puli wynika z POMIARU, a stary pomiar traci
+  // ważność — zanim ktoś znów przepisze tę listę, niech puści sondę
+  // (`tmp/sonda-plaze.ts`), a nie zaufa temu komentarzowi.
+  { origin: "WAW", destinationIata: "ATH", destinationId: "athens-greece", kind: "leisure" },
+  { origin: "WAW", destinationIata: "CTA", destinationId: "catania-italy", kind: "leisure" },
+  { origin: "WAW", destinationIata: "AGP", destinationId: "malaga-spain", kind: "leisure" },
+  { origin: "WAW", destinationIata: "SPU", destinationId: "split-croatia", kind: "leisure" },
+  { origin: "WAW", destinationIata: "DBV", destinationId: "dubrovnik-croatia", kind: "leisure" },
+  { origin: "WAW", destinationIata: "LCA", destinationId: "larnaca-cyprus", kind: "leisure" },
+  { origin: "WAW", destinationIata: "CFU", destinationId: "corfu-greece", kind: "leisure" },
+  { origin: "WAW", destinationIata: "HER", destinationId: "heraklion-greece", kind: "leisure" },
+  { origin: "WAW", destinationIata: "RHO", destinationId: "rhodes-greece", kind: "leisure" },
+  { origin: "WAW", destinationIata: "VLC", destinationId: "valencia-spain", kind: "leisure" },
+  { origin: "WAW", destinationIata: "FAO", destinationId: "faro-portugal", kind: "leisure" },
+  { origin: "WAW", destinationIata: "AYT", destinationId: "antalya-turkey", kind: "leisure" },
+  { origin: "WAW", destinationIata: "PMI", destinationId: "palma-spain", kind: "leisure" },
+  // Powyżej progu w tej sondzie (980–1374 zł), ale zostają: ceny się ruszają,
+  // a sufit `DEAL_MAX_PRICE_PLN` i tak przepuści je dopiero, gdy realnie zejdą.
+  { origin: "WAW", destinationIata: "BCN", destinationId: "barcelona-spain", kind: "leisure" },
+  { origin: "WAW", destinationIata: "NAP", destinationId: "naples-italy", kind: "leisure" },
+  { origin: "WAW", destinationIata: "MLA", destinationId: "valletta-malta", kind: "leisure" },
+  { origin: "WAW", destinationIata: "LIS", destinationId: "lisbon-portugal", kind: "leisure" },
+  { origin: "WAW", destinationIata: "SKG", destinationId: "thessaloniki-greece", kind: "leisure" },
+  { origin: "WAW", destinationIata: "ALC", destinationId: "alicante-spain", kind: "leisure" },
+  // ── KRÓTKIE TRASY MIEJSKIE ──────────────────────────────────────────────
+  // Najtańsza część oferty (zmierzone na żywej sekcji: Sztokholm 164,
+  // Bruksela 204, Oslo 220, Budapeszt 222, Sofia 232, Londyn 306 zł). Zostają,
+  // bo to realnie najlepsze ceny — ale kwota w `pickFreshDeals` pilnuje, żeby
+  // nie zajęły wszystkich kafli, bo wtedy sekcja przestaje wyglądać jak oferta
+  // biura podróży.
+  { origin: "WAW", destinationIata: "STO", destinationId: "stockholm-sweden", kind: "city" },
+  { origin: "WAW", destinationIata: "BRU", destinationId: "brussels-belgium", kind: "city" },
+  { origin: "WAW", destinationIata: "OSL", destinationId: "oslo-norway", kind: "city" },
+  { origin: "WAW", destinationIata: "BUD", destinationId: "budapest-hungary", kind: "city" },
+  { origin: "WAW", destinationIata: "SOF", destinationId: "sofia-bulgaria", kind: "city" },
+  { origin: "WAW", destinationIata: "LON", destinationId: "london-united-kingdom", kind: "city" },
+  { origin: "WAW", destinationIata: "PRG", destinationId: "prague-czechia", kind: "city" },
+  { origin: "WAW", destinationIata: "OTP", destinationId: "bucharest-romania", kind: "city" },
+  { origin: "WAW", destinationIata: "CPH", destinationId: "copenhagen-denmark", kind: "city" },
+  { origin: "WAW", destinationIata: "ZAG", destinationId: "zagreb-croatia", kind: "city" },
+  { origin: "WAW", destinationIata: "LJU", destinationId: "ljubljana-slovenia", kind: "city" },
+  { origin: "WAW", destinationIata: "TLL", destinationId: "tallinn-estonia", kind: "city" },
+  { origin: "WAW", destinationIata: "RIX", destinationId: "riga-latvia", kind: "city" },
+  { origin: "WAW", destinationIata: "VNO", destinationId: "vilnius-lithuania", kind: "city" },
+  { origin: "WAW", destinationIata: "BER", destinationId: "berlin-germany", kind: "city" },
+  { origin: "WAW", destinationIata: "VIE", destinationId: "vienna-austria", kind: "city" },
+  // ── WYLOTY SPOZA WARSZAWY ───────────────────────────────────────────────
+  // Nie każdy mieszka na Mazowszu, a karta mówi wprost, skąd leci samolot.
+  { origin: "KRK", destinationIata: "ATH", destinationId: "athens-greece", kind: "leisure" },
+  { origin: "KRK", destinationIata: "CTA", destinationId: "catania-italy", kind: "leisure" },
+  { origin: "KRK", destinationIata: "SPU", destinationId: "split-croatia", kind: "leisure" },
+  { origin: "KRK", destinationIata: "BCN", destinationId: "barcelona-spain", kind: "leisure" },
+  { origin: "KRK", destinationIata: "AYT", destinationId: "antalya-turkey", kind: "leisure" },
+  { origin: "KRK", destinationIata: "VIE", destinationId: "vienna-austria", kind: "city" },
+  { origin: "KRK", destinationIata: "LON", destinationId: "london-united-kingdom", kind: "city" },
+  { origin: "KRK", destinationIata: "BUD", destinationId: "budapest-hungary", kind: "city" },
+  { origin: "GDN", destinationIata: "SPU", destinationId: "split-croatia", kind: "leisure" },
+  { origin: "GDN", destinationIata: "ATH", destinationId: "athens-greece", kind: "leisure" },
+  { origin: "GDN", destinationIata: "CPH", destinationId: "copenhagen-denmark", kind: "city" },
+  { origin: "GDN", destinationIata: "OSL", destinationId: "oslo-norway", kind: "city" },
+  { origin: "WRO", destinationIata: "VIE", destinationId: "vienna-austria", kind: "city" },
 ];
 
+/** Kierunki wypoczynkowe po kodzie IATA — wejście dla kwoty w `pickFreshDeals`. */
+export const LEISURE_DESTINATIONS: ReadonlySet<string> = new Set(
+  DEAL_ROUTES.filter((r) => r.kind === "leisure").map((r) => r.destinationIata),
+);
+
 /**
- * Ile tras bada jeden przebieg. Dwanaście z trzydziestu sześciu = pełny obrót
+ * Ile tras bada jeden przebieg. Szesnaście z czterdziestu ośmiu = pełny obrót
  * puli w trzy przebiegi, czyli SZEŚĆ GODZIN.
+ *
+ * Pula urosła z 36 do 48 (więcej kierunków wypoczynkowych — prośba właściciela),
+ * więc liczba tras na przebieg musiała urosnąć razem z nią, inaczej pełny obrót
+ * wydłużyłby się do ośmiu godzin i trzeba by było poluzować `DEAL_FRESH_MS`.
+ * Zmierzony przebieg 12 tras zajmował ~110 s przy budżecie 185 s, więc 16 tras
+ * (~147 s) mieści się z zapasem — ale to jest właśnie ta liczba, którą trzeba
+ * sprawdzić w logach po zmianie puli, a nie założyć.
  *
  * To nie jest dobór „na oko": karta z ceną lotu jest ważna tak długo, jak
  * długo ta cena jeszcze istnieje, a bilety zmieniają się szybciej niż stawki
@@ -88,7 +130,7 @@ export const DEAL_ROUTES: readonly DealRoute[] = [
  * Dwanaście przebiegów na dobę daje 864 wyszukania — mniej niż połowa tego,
  * co robi istniejący prewarming lotów (~1900/dobę).
  */
-export const DEAL_ROUTES_PER_RUN = 12;
+export const DEAL_ROUTES_PER_RUN = 16;
 /**
  * Terminy próbek, liczone w dniach od dziś.
  *
