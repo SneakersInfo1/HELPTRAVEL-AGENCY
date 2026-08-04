@@ -29,6 +29,7 @@ export function useDismissOnOutside(
   ref: RefObject<HTMLElement | null>,
   open: boolean,
   onDismiss: () => void,
+  extraRefs: ReadonlyArray<RefObject<HTMLElement | null>> = [],
 ): void {
   // Callback w refie: inaczej każda zmiana tożsamości funkcji (a przy zwykłej
   // strzałce w JSX to każdy render) odpinałaby i przypinała nasłuch, gubiąc
@@ -37,6 +38,14 @@ export function useDismissOnOutside(
   useEffect(() => {
     onDismissRef.current = onDismiss;
   }, [onDismiss]);
+
+  // Portale nie są potomkami `ref` w DOM-ie. Trzymamy dodatkowe granice w
+  // refie, żeby zmiana tablicy przekazanej inline nie przepinała nasłuchów w
+  // trakcie klikania pozycji listy.
+  const extraRefsRef = useRef(extraRefs);
+  useEffect(() => {
+    extraRefsRef.current = extraRefs;
+  }, [extraRefs]);
 
   useEffect(() => {
     if (!open) return;
@@ -47,6 +56,7 @@ export function useDismissOnOutside(
       // pierwszy piksel paska ma współrzędną równą szerokości treści.
       if (event.clientX >= root.clientWidth || event.clientY >= root.clientHeight) return;
       if (ref.current?.contains(event.target as Node)) return;
+      if (extraRefsRef.current.some((extraRef) => extraRef.current?.contains(event.target as Node))) return;
       onDismissRef.current();
     };
 

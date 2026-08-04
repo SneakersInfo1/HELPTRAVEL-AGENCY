@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { BedDouble, Building2, Globe, Palmtree, Plane } from "lucide-react";
+import { BedDouble, Building2, Globe, Palmtree, Plane, X } from "lucide-react";
+import { createPortal } from "react-dom";
 
 import { DateRangeField } from "@/components/search/date-range-field";
 import { GuestsField } from "@/components/search/guests-field";
@@ -138,6 +139,38 @@ interface ResolvedDestination {
   hotelName?: string;
 }
 
+interface AnchoredDestinationPosition {
+  left: number;
+  top?: number;
+  bottom?: number;
+  width: number;
+  maxHeight: number;
+}
+
+const MOBILE_DESTINATION_BREAKPOINT = "(min-width: 640px)";
+const DESTINATION_LIST_HEIGHT = 384;
+const DESTINATION_SHEET_HISTORY_KEY = "__helptravelDestinationSheet";
+
+function getDestinationListPosition(anchor: HTMLElement): AnchoredDestinationPosition {
+  const rect = anchor.getBoundingClientRect();
+  const gap = 6;
+  const viewportPadding = 16;
+  const spaceBelow = window.innerHeight - rect.bottom - gap - viewportPadding;
+  const spaceAbove = rect.top - gap - viewportPadding;
+  const openAbove = spaceBelow < DESTINATION_LIST_HEIGHT && spaceAbove > spaceBelow;
+  const available = openAbove ? spaceAbove : spaceBelow;
+  const maxHeight = Math.min(DESTINATION_LIST_HEIGHT, Math.max(200, available));
+
+  return openAbove
+    ? {
+        left: rect.left,
+        bottom: window.innerHeight - rect.top + gap,
+        width: rect.width,
+        maxHeight,
+      }
+    : { left: rect.left, top: rect.bottom + gap, width: rect.width, maxHeight };
+}
+
 function diffNights(start: string, end: string): number {
   if (!start || !end) return 4;
   const ms = new Date(end).getTime() - new Date(start).getTime();
@@ -151,9 +184,15 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   const isFlights = mode === "flights";
   const listboxId = useId();
   const destInputRef = useRef<HTMLInputElement>(null);
+  const destMobileInputRef = useRef<HTMLInputElement>(null);
   const destListRef = useRef<HTMLUListElement>(null);
   // Opakowanie pola i listy — granica „wewnątrz komponentu" dla zamykania.
   const destWrapRef = useRef<HTMLDivElement>(null);
+  // Lista/dialog żyje w portalu pod <body>, więc stanowi drugą granicę klików
+  // wewnętrznych dla useDismissOnOutside.
+  const destPortalRef = useRef<HTMLDivElement>(null);
+  const suppressDestTriggerFocusRef = useRef(false);
+  const destHistoryBackPendingRef = useRef(false);
   // "Skąd" is OPTIONAL now (zadanie 1): no default airport. `origin` holds a
   // CONFIRMED city from the list (or ""), `originQuery` the visible text —
   // same confirmed/query split the destination combobox uses.
@@ -188,10 +227,12 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   const [destQuery, setDestQuery] = useState(initial?.destination ? localizeCity(initial.destination) : "");
   const [destSuggestions, setDestSuggestions] = useState<SuggestionItem[]>([]);
   const [destOpen, setDestOpen] = useState(false);
+  const [isDestDesktop, setIsDestDesktop] = useState(true);
+  const [destListPosition, setDestListPosition] = useState<AnchoredDestinationPosition | null>(null);
   // Zamknięcie listy podpowiedzi decyduje się na `pointerdown` poza polem,
   // a nie na utracie fokusu — patrz nagłówek use-dismiss-on-outside.ts
   // (naciśnięcie paska przewijania na desktopie też zabiera fokus).
-  useDismissOnOutside(destWrapRef, destOpen, () => setDestOpen(false));
+  useDismissOnOutside(destWrapRef, destOpen, closeDestinationSuggestions, [destPortalRef]);
   const [destHighlight, setDestHighlight] = useState(-1);
   const [destFetching, setDestFetching] = useState(false);
   // Licznik fokusów pustego pola „Dokąd" — każdy fokus przy pustym polu
@@ -211,6 +252,97 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     Math.max(1, Math.min(9, (initial?.travelers ?? 2) - initialKids)),
   );
   const [dateError, setDateError] = useState("");
+
+  function closeDestinationSuggestions() {
+    if (
+      !isDestDesktop &&
+      !destHistoryBackPendingRef.current &&
+      (window.history.state as Record<string, unknown> | null)?.[
+        DESTINATION_SHEET_HISTORY_KEY
+      ] === listboxId
+    ) {
+      destHistoryBackPendingRef.current = true;
+      window.history.back();
+    }
+    setDestOpen(false);
+  }
+
+  function openDestinationSuggestions() {
+    const desktop = window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches;
+    setIsDestDesktop(desktop);
+    if (desktop && destInputRef.current) {
+      setDestListPosition(getDestinationListPosition(destInputRef.current));
+    }
+    if (!desktop || destSuggestions.length > 0 || !destConfirmed) setDestOpen(true);
+    if (destSuggestions.length === 0 && !destConfirmed && destQuery.trim().length < 2) {
+      setDestFocusTick((tick) => tick + 1);
+    }
+  }
+
+  function changeDestinationQuery(value: string) {
+    setDestQuery(value);
+    setDestination(value);
+    setDestRegionId(null);
+    // Zmiana tekstu unieważnia WYBRANY obiekt — bez tego dopisanie litery do
+    // nazwy hotelu dalej skakałoby do poprzedniego.
+    setDestPlaceId("");
+    setDestHotelName("");
+    setDestConfirmed(false);
+    setDestError("");
+  }
+
+  function changeMobileDestinationQuery(value: string) {
+    changeDestinationQuery(value);
+    // Po otwarciu arkusza z wcześniej potwierdzonym kierunkiem licznik może
+    // nadal wynosić 0. Wyczyszczenie pola musi wtedy pokazać popularne pozycje,
+    // a nie wejść w gałąź efektu, która zamyka listę przed pierwszym fokusem.
+    if (value.trim().length < 2) setDestFocusTick((tick) => tick + 1);
+  }
+
+  useEffect(() => {
+    if (!destOpen || !isDestDesktop) return;
+    const updatePosition = () => {
+      if (destInputRef.current) {
+        setDestListPosition(getDestinationListPosition(destInputRef.current));
+      }
+    };
+    const frame = window.requestAnimationFrame(updatePosition);
+    window.addEventListener("scroll", updatePosition, { capture: true, passive: true });
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [destOpen, isDestDesktop]);
+
+  useEffect(() => {
+    if (!destOpen || isDestDesktop) return;
+    const triggerInput = destInputRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    destHistoryBackPendingRef.current = false;
+    const currentState = window.history.state as Record<string, unknown> | null;
+    if (currentState?.[DESTINATION_SHEET_HISTORY_KEY] !== listboxId) {
+      window.history.pushState(
+        { ...(currentState ?? {}), [DESTINATION_SHEET_HISTORY_KEY]: listboxId },
+        "",
+      );
+    }
+    const handlePopState = () => setDestOpen(false);
+    window.addEventListener("popstate", handlePopState);
+    const frame = window.requestAnimationFrame(() => {
+      destMobileInputRef.current?.focus();
+      destMobileInputRef.current?.select();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("popstate", handlePopState);
+      document.body.style.overflow = previousOverflow;
+      suppressDestTriggerFocusRef.current = true;
+      triggerInput?.focus({ preventScroll: true });
+    };
+  }, [destOpen, isDestDesktop, listboxId]);
 
   useEffect(() => {
     // After user picks a suggestion (destConfirmed=true), don't refetch with
@@ -308,7 +440,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     setDestQuery(s.cityPl ?? localizeCity(s.city));
     setDestSuggestions([]);
     setDestFetching(false);
-    setDestOpen(false);
+    closeDestinationSuggestions();
     setDestHighlight(-1);
     setDestConfirmed(true);
     setDestError("");
@@ -350,7 +482,8 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       e.preventDefault();
       selectSuggestion(destSuggestions[destHighlight]);
     } else if (e.key === "Escape") {
-      setDestOpen(false);
+      e.stopPropagation();
+      closeDestinationSuggestions();
     }
   }
 
@@ -702,11 +835,119 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   // Dlatego rozmiar pisma pol ustawia KONTENER (`text-lg` na siatce nizej),
   // a tutaj zostaje tylko to, co na inpucie faktycznie dziala.
   //
-  // Wysokosc 56 px (bylo 48) na prosbe wlasciciela — pasek ma byc wiekszy.
+  // Mobile zostaje przy 56 px; desktop rośnie do 64 px zgodnie z briefem.
   const fieldCls =
-    "h-14 rounded-sm border border-white/60 bg-white/95 px-3.5 font-medium text-emerald-950 shadow-inner transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400";
+    "h-14 rounded-sm border border-white/60 bg-white/95 px-3.5 font-medium text-emerald-950 shadow-inner transition duration-150 ease-out focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/60 motion-reduce:transition-none lg:h-16";
   const labelCls =
-    "text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800/80";
+    "text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800/80 lg:text-xs";
+
+  function renderDestinationList(mobile: boolean) {
+    return (
+      <ul
+        id={listboxId}
+        ref={destListRef}
+        role="listbox"
+        aria-label="Kierunki"
+        className={
+          mobile
+            ? "min-h-0 flex-1 overflow-y-auto overscroll-contain py-1"
+            : "w-full overflow-y-auto overscroll-contain rounded-md border border-line bg-surface-raised py-1 shadow-[var(--shadow-lg)]"
+        }
+        style={mobile ? undefined : { maxHeight: destListPosition?.maxHeight }}
+      >
+        {destFetching ? (
+          <li role="presentation" className="space-y-1 px-3 py-2">
+            <div aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className={`flex flex-col justify-center gap-1.5 ${
+                    mobile ? "min-h-[56px]" : "min-h-[52px]"
+                  }`}
+                >
+                  <div
+                    className="h-3.5 animate-pulse rounded bg-surface-sunken motion-reduce:animate-none"
+                    style={{ width: `${58 - i * 9}%` }}
+                  />
+                  <div
+                    className="h-2.5 animate-pulse rounded bg-surface-sunken motion-reduce:animate-none"
+                    style={{ width: `${40 - i * 6}%` }}
+                  />
+                </div>
+              ))}
+            </div>
+            <span className="sr-only" role="status">
+              Szukamy kierunków
+            </span>
+          </li>
+        ) : destSuggestions.length > 0 ? (
+          buildSuggestionSections(destSuggestions).map((section) => (
+            <li
+              key={section.label ?? "_flat"}
+              role={section.label ? "group" : "presentation"}
+              aria-label={section.label ?? undefined}
+            >
+              {section.label && (
+                <p
+                  aria-hidden
+                  className="sticky top-0 z-10 bg-surface-raised px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted"
+                >
+                  {section.label}
+                </p>
+              )}
+              <ul role="presentation">
+                {section.rows.map(({ item: suggestion, index }) => {
+                  const isRegion = suggestion.kind === "region";
+                  const isHotel = suggestion.kind === "hotel";
+                  const country = localizeCountry(suggestion.country);
+                  const region = isRegion ? "wyspa" : localizeRegion(suggestion.region);
+                  const meta = isHotel
+                    ? (suggestion.secondary ?? country)
+                    : isRegion
+                      ? [region, country].filter(Boolean).join(" · ")
+                      : [suggestion.hint ?? region, country].filter(Boolean).join(" · ");
+                  const Icon = suggestionIcon(suggestion);
+                  return (
+                    <li
+                      key={suggestion.id}
+                      id={`${listboxId}-opt-${index}`}
+                      role="option"
+                      aria-selected={index === destHighlight}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        selectSuggestion(suggestion);
+                      }}
+                      onMouseEnter={() => setDestHighlight(index)}
+                      className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 transition-colors duration-150 ease-out active:bg-brand-soft motion-reduce:transition-none ${
+                        mobile ? "min-h-[56px]" : "min-h-[52px]"
+                      } ${index === destHighlight ? "bg-brand-soft" : "hover:bg-surface-sunken"}`}
+                    >
+                      <span
+                        aria-hidden
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-muted"
+                      >
+                        <Icon className="h-4 w-4" strokeWidth={2} />
+                      </span>
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm font-semibold text-ink">
+                          {suggestion.cityPl ?? localizeCity(suggestion.city)}
+                        </span>
+                        {meta && <span className="truncate text-xs text-ink-muted">{meta}</span>}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          ))
+        ) : (
+          <li className="px-3 py-3 text-sm text-ink-muted">
+            Brak wyników dla „{destQuery}”. Spróbuj innego miasta lub kraju.
+          </li>
+        )}
+      </ul>
+    );
+  }
 
   return (
     <form
@@ -718,9 +959,11 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
       // nie ma prawa dziedziczyc wyrownania naglowka.
       className="rounded-md border border-white/40 bg-white/80 p-4 text-left shadow-[0_24px_60px_rgba(16,84,48,0.24)] backdrop-blur-xl sm:p-5"
     >
-      {/* `text-lg` na SIATCE, nie na polach: patrz komentarz przy `fieldCls`
-          — pola dziedzicza rozmiar pisma z rodzica, bo wlasne `text-*` jest
-          na nich martwe. 18 px zamiast 16 px, na prosbe wlasciciela. */}
+      {/* `text-lg` na SIATCE, nie na polach: patrz komentarz przy `fieldCls`.
+          Próba 20 px nie mieści się w pięciu kolumnach trybu lotów bez ucięć:
+          po powiększeniu CTA do 18 px minima + 4×gap-3 wykorzystują całe 854 px
+          wnętrza formularza. Zgodnie ze specyfikacją pola zostają więc przy
+          bezpiecznych 18 px. */}
       <div
         className={`grid gap-3 text-lg lg:items-end ${
           isFlights
@@ -730,11 +973,11 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             // zrzucie od właściciela. Pole „Skąd" miało za to 65 px zapasu,
             // więc oddaje je sąsiadom, zamiast rosnąć bez potrzeby.
             // Suma minimów + odstępy MUSI zmieścić się w kontenerze: max-w-4xl
-            // (896 px) minus padding i obramowanie zostawia ok. 856 px, a cztery
-            // przerwy `gap-3` zjadają 48. Stąd 800 px minimów, nie 818 —
-            // przy poprzednich wartościach CTA wchodziło w prawy padding
-            // dokładnie na progu `lg`.
-            ? "lg:grid-cols-[minmax(162px,1.15fr)_minmax(186px,1.4fr)_minmax(154px,1.1fr)_minmax(146px,1fr)_minmax(152px,auto)]"
+            // (896 px) minus 40 px paddingu i 2 px obramowania = 854 px, a
+            // cztery przerwy `gap-3` zjadają 48 px. Minima mają więc dokładnie
+            // 806 px; CTA dostało 160 px potrzebne etykiecie 18 px, a „Skąd"
+            // oddało 2 px niewykorzystywanego zapasu.
+            ? "lg:grid-cols-[minmax(160px,1.15fr)_minmax(186px,1.4fr)_minmax(154px,1.1fr)_minmax(146px,1fr)_minmax(160px,auto)]"
             : "lg:grid-cols-[1.4fr_1.3fr_1fr_auto]"
         }`}
       >
@@ -789,27 +1032,26 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               destOpen && destHighlight >= 0 ? `${listboxId}-opt-${destHighlight}` : undefined
             }
             value={destQuery}
-            onChange={(e) => {
-              setDestQuery(e.target.value);
-              setDestination(e.target.value);
-              setDestRegionId(null);
-              // Zmiana tekstu unieważnia WYBRANY obiekt — bez tego dopisanie
-              // litery do nazwy hotelu dalej skakałoby do poprzedniego.
-              setDestPlaceId("");
-              setDestHotelName("");
-              setDestConfirmed(false);
-              setDestError("");
-            }}
+            onChange={(event) => changeDestinationQuery(event.target.value)}
             onKeyDown={handleDestKeyDown}
+            onClick={() => {
+              if (
+                window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches &&
+                !destOpen
+              ) openDestinationSuggestions();
+            }}
+            onPointerDown={(event) => {
+              if (!window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches) {
+                event.preventDefault();
+                openDestinationSuggestions();
+              }
+            }}
             onFocus={() => {
-              if (destSuggestions.length > 0) {
-                setDestOpen(true);
+              if (suppressDestTriggerFocusRef.current) {
+                suppressDestTriggerFocusRef.current = false;
                 return;
               }
-              // Puste pole → pokaż popularne + ostatnie (efekt wyżej).
-              if (!destConfirmed && destQuery.trim().length < 2) {
-                setDestFocusTick((t) => t + 1);
-              }
+              openDestinationSuggestions();
             }}
             onBlur={(event) => {
               // Zamykamy WYŁĄCZNIE wtedy, gdy fokus poszedł na konkretny element
@@ -817,7 +1059,11 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               // równy null to m.in. naciśnięcie paska przewijania — tam lista
               // ma zostać otwarta, a decyzję podejmuje `useDismissOnOutside`.
               const next = event.relatedTarget as Node | null;
-              if (next && !destWrapRef.current?.contains(next)) setDestOpen(false);
+              if (
+                next &&
+                !destWrapRef.current?.contains(next) &&
+                !destPortalRef.current?.contains(next)
+              ) closeDestinationSuggestions();
             }}
             // Krótsza podpowiedź: „Wpisz miasto lub kraj…" potrzebowało 184 px
             // przy 152 dostępnych i urywało się w połowie słowa. Czasownik nic
@@ -826,135 +1072,94 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             autoComplete="off"
             className={fieldCls}
           />
-          {destOpen && (
-            <ul
-              id={listboxId}
-              ref={destListRef}
-              role="listbox"
-              // Wysokość: na telefonie 60vh (lista 20 kierunków w oknie 256 px
-              // to było pięć widocznych wierszy i trzy ekrany przewijania),
-              // na desktopie sufit 24rem, żeby panel nie zjadał całej strony.
-              // overscroll-contain: przewijanie listy nie ciągnie za sobą tła.
-              className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain rounded-md border border-line bg-surface-raised py-1 shadow-[var(--shadow-lg)]"
-            >
-              {destFetching ? (
-                // Szkielet, nie napis „Szukamy kierunków…". Odkąd zapytania
-                // spoza seeda idą do LiteAPI (~250–340 ms), lista potrafi się
-                // przebudować w locie — sam tekst kazał czekać na PUSTYM polu
-                // i wyglądał jak brak wyników. Szkielet o wymiarach docelowych
-                // wierszy pokazuje, ILE zaraz przyjdzie, i nie przesuwa układu,
-                // gdy dane dojdą.
-                <li role="presentation" className="space-y-1 px-3 py-2">
-                  {/* aria-hidden TYLKO na kształtach — gdyby siedziało na <li>,
-                      ukryłoby też komunikat dla czytnika ekranu poniżej. */}
-                  <div aria-hidden>
-                    {[0, 1, 2].map((i) => (
-                      <div key={i} className="flex min-h-[52px] flex-col justify-center gap-1.5">
-                        <div
-                          className="h-3.5 animate-pulse rounded bg-surface-sunken motion-reduce:animate-none"
-                          style={{ width: `${58 - i * 9}%` }}
-                        />
-                        <div
-                          className="h-2.5 animate-pulse rounded bg-surface-sunken motion-reduce:animate-none"
-                          style={{ width: `${40 - i * 6}%` }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <span className="sr-only" role="status">
-                    Szukamy kierunków
-                  </span>
-                </li>
-              ) : destSuggestions.length > 0 ? (
-                buildSuggestionSections(destSuggestions).map((section) => (
-                  <li
-                    key={section.label ?? "_flat"}
-                    // `role="group"` z etykietą, nie „presentation": listbox
-                    // dopuszcza dzieci `option` ALBO `group`, a grupa niesie
-                    // czytnikowi ekranu nazwę sekcji („Na plażę"), której samo
-                    // `presentation` by nie przekazało. Sekcja bez nagłówka
-                    // (wyniki wpisanego tekstu) zostaje przezroczysta.
-                    role={section.label ? "group" : "presentation"}
-                    aria-label={section.label ?? undefined}
+          {destOpen && isDestDesktop && destListPosition && typeof document !== "undefined" &&
+            createPortal(
+              <div
+                ref={destPortalRef}
+                className="fixed z-[60]"
+                style={{
+                  left: destListPosition.left,
+                  top: destListPosition.top,
+                  bottom: destListPosition.bottom,
+                  width: destListPosition.width,
+                }}
+              >
+                {renderDestinationList(false)}
+              </div>,
+              document.body,
+            )}
+
+          {destOpen && !isDestDesktop && typeof document !== "undefined" &&
+            createPortal(
+              <div
+                ref={destPortalRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Wyszukiwanie kierunku"
+                className="fixed inset-0 z-[70] flex flex-col bg-white pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
+              >
+                <div className="flex min-h-14 items-center gap-2 border-b border-line px-2">
+                  <button
+                    type="button"
+                    onClick={closeDestinationSuggestions}
+                    aria-label="Zamknij"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-out hover:bg-surface-sunken active:bg-brand-soft motion-reduce:transition-none"
                   >
-                    {section.label && (
-                      // Sticky: przy 20 pozycjach nagłówek grupy wyjeżdża
-                      // z ekranu po dwóch wierszach i użytkownik przestaje
-                      // wiedzieć, na co patrzy. aria-hidden, bo tę samą nazwę
-                      // niesie już aria-label grupy — inaczej czytnik przeczyta ją dwa razy.
-                      <p
-                        aria-hidden
-                        className="sticky top-0 z-10 bg-surface-raised px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted"
+                    <X aria-hidden className="h-5 w-5" strokeWidth={2} />
+                  </button>
+                  <h2 className="text-lg font-bold text-ink">Dokąd?</h2>
+                </div>
+                <div className="border-b border-line p-3 text-lg">
+                  <div className="relative">
+                    <input
+                      ref={destMobileInputRef}
+                      // `autoFocus`, a NIE samo `focus()` w requestAnimationFrame:
+                      // zmierzone na 375 px — po otwarciu arkusza fokus zostawał
+                      // na polu hero POD nakładką. Na telefonie znaczy to, że
+                      // klawiatura podnosi się dla pola, którego nie widać: kursor
+                      // nie miga w widocznym polu, a `aria-modal` z fokusem na
+                      // zewnątrz to też błąd dostępności. React ustawia `autoFocus`
+                      // przy montowaniu węzła, więc działa też w portalu i nie
+                      // ściga się z cyklem klatek.
+                      autoFocus
+                      type="text"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded="true"
+                      aria-controls={listboxId}
+                      aria-activedescendant={
+                        destHighlight >= 0 ? `${listboxId}-opt-${destHighlight}` : undefined
+                      }
+                      aria-label="Dokąd"
+                      value={destQuery}
+                      onChange={(event) => changeMobileDestinationQuery(event.target.value)}
+                      onKeyDown={handleDestKeyDown}
+                      placeholder="Miasto lub kraj"
+                      autoComplete="off"
+                      className={`h-14 w-full rounded-sm border border-line bg-white px-4 font-medium text-ink shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 ${
+                        destQuery ? "pr-12" : ""
+                      }`}
+                    />
+                    {destQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          changeMobileDestinationQuery("");
+                          setDestHighlight(-1);
+                          destMobileInputRef.current?.focus();
+                        }}
+                        aria-label="Wyczyść kierunek"
+                        className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition-colors duration-150 ease-out hover:bg-surface-sunken active:bg-brand-soft motion-reduce:transition-none"
                       >
-                        {section.label}
-                      </p>
+                        <X aria-hidden className="h-5 w-5" strokeWidth={2} />
+                      </button>
                     )}
-                    <ul role="presentation">
-                      {section.rows.map(({ item: s, index: idx }) => {
-                        // Zadanie 2 — wyspy z oznaczeniem typu ("wyspa · Hiszpania").
-                        const isRegion = s.kind === "region";
-                        const isHotel = s.kind === "hotel";
-                        const ctry = localizeCountry(s.country);
-                        const reg = isRegion ? "wyspa" : localizeRegion(s.region);
-                        // Podpowiedź redakcyjna („Kreta" przy Heraklionie) bije
-                        // nazwę regionu z seeda: to jest słowo, którego
-                        // użytkownik realnie szuka.
-                        // Hotel pokazuje ADRES — dwa obiekty o tej samej nazwie
-                        // w jednym mieście to norma, a nazwa sama ich nie rozróżni.
-                        const meta = isHotel
-                          ? (s.secondary ?? ctry)
-                          : isRegion
-                            ? [reg, ctry].filter(Boolean).join(" · ")
-                            : [s.hint ?? reg, ctry].filter(Boolean).join(" · ");
-                        const Icon = suggestionIcon(s);
-                        return (
-                          <li
-                            key={s.id}
-                            // id zgodne z aria-activedescendant na inpucie —
-                            // indeks jest PŁASKI, ten sam, którym operują strzałki.
-                            id={`${listboxId}-opt-${idx}`}
-                            role="option"
-                            aria-selected={idx === destHighlight}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              selectSuggestion(s);
-                            }}
-                            onMouseEnter={() => setDestHighlight(idx)}
-                            // min-h-[52px]: wiersz listy to cel dotykowy, a
-                            // py-2 dawało ~40 px. 90% ruchu to telefon.
-                            className={`flex min-h-[52px] cursor-pointer items-center gap-2.5 px-3 py-2 transition-colors ${
-                              idx === destHighlight ? "bg-brand-soft" : "hover:bg-surface-sunken"
-                            }`}
-                          >
-                            {/* Ikona typu — jak na Bookingu. `aria-hidden`, bo
-                                informację o typie niesie już tekst pod nazwą
-                                („wyspa · Hiszpania", adres hotelu); dla czytnika
-                                ekranu byłaby drugą, gorszą kopią tej samej rzeczy. */}
-                            <span
-                              aria-hidden
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-muted"
-                            >
-                              <Icon className="h-4 w-4" strokeWidth={2} />
-                            </span>
-                            <span className="flex min-w-0 flex-col">
-                              <span className="truncate text-sm font-semibold text-ink">
-                                {s.cityPl ?? localizeCity(s.city)}
-                              </span>
-                              {meta && <span className="truncate text-xs text-ink-muted">{meta}</span>}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </li>
-                ))
-              ) : (
-                <li className="px-3 py-3 text-sm text-ink-muted">
-                  Brak wyników dla „{destQuery}&rdquo;. Spróbuj innego miasta lub kraju.
-                </li>
-              )}
-            </ul>
-          )}
+                  </div>
+                </div>
+                {renderDestinationList(true)}
+              </div>,
+              document.body,
+            )}
           {destError && (
             <p className="mt-1 rounded-sm bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
               {destError}
@@ -1003,14 +1208,12 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
           aria-busy={resolving}
           // Bez `text-*`: <button> ma nielayerowany `font-size: inherit`, wiec i tak
           // wziolby rozmiar z siatki (18 px). Klasa tutaj bylaby martwa i mylaca.
-          className="group relative h-14 overflow-hidden whitespace-nowrap rounded-sm bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-5 font-bold uppercase tracking-[0.06em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] focus:outline-none focus:ring-4 focus:ring-amber-300/60 disabled:cursor-progress disabled:opacity-80"
+          className="group relative h-14 overflow-hidden whitespace-nowrap rounded-sm bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-5 font-bold uppercase tracking-[0.06em] text-white shadow-[0_10px_30px_rgba(234,88,12,0.45)] transition duration-150 ease-out hover:shadow-[0_14px_40px_rgba(234,88,12,0.6)] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-amber-300/60 disabled:cursor-progress disabled:opacity-80 motion-reduce:transform-none motion-reduce:transition-none lg:h-16"
         >
           {/* Rozmiar pisma NA SPANIE, nie na <button>: reset poza warstwami CSS
-              wymusza na przyciskach `font-size: inherit`, wiec klasa na samym
-              przycisku jest martwa (patrz komentarz przy `fieldCls`). Etykieta
-              zostaje przy 16 px — przy 18 px „Szukaj lotow" nie miescilo sie
-              w kolumnie siatki w trybie lotow (zmierzone: brakowalo 7 px). */}
-          <span className="relative z-10 flex items-center justify-center gap-2 text-base">
+              wymusza na przyciskach `font-size: inherit`. Desktopowe 18 px
+              mieści się dzięki przeliczonej minimalnej szerokości CTA. */}
+          <span className="relative z-10 flex items-center justify-center gap-2 text-base lg:text-lg">
             {resolving ? "Szukam hotelu…" : isFlights ? "Szukaj lotów" : "Zaplanuj"}
             <span aria-hidden className="transition group-hover:translate-x-1">→</span>
           </span>

@@ -6,7 +6,10 @@ const csp = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com https://js.stripe.com https://payment-wrapper.liteapi.travel https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  // wsrv.nl — proxy zmniejszający zdjęcia hoteli Cupid/LiteAPI (cdn-loader.ts).
+  // wsrv.nl — proxy zmniejszające i przekodowujące zdjęcia do WebP
+  // (cdn-loader.ts): hotele z Cupid/LiteAPI ORAZ, od 2026-08-04, zdjęcia
+  // kierunków z Pexels, który sam nie oddaje WebP ani AVIF (zdjęcie hero było
+  // plikiem PNG o wadze 3175 kB; przez proxy 254 kB).
   // production.nuitee.flights — logo linii lotniczych i providerów LiteAPI Flights
   // (carrier.marketingLogo, np. .../static/images/airlines/BA.png). Bez tego CSP
   // blokuje wszystkie loga linii → broken image w wynikach lotów.

@@ -4,8 +4,8 @@
 // na KAŻDEJ stronie (homepage, /hotele/*, /loty/* włącznie — inaczej niż
 // QuickSearchLauncher, który na tych trasach jest chowany). Mechanika portalu/
 // Esc/focus-trap skopiowana z quick-search-launcher.tsx (te same sprawdzone
-// wzorce), ale to NIE jest modal-overlay wyszukiwarki: to trwały widget czatu
-// z trzema stanami: "bubble" (zwinięty) i "expanded" (panel/pełny ekran).
+// wzorce). Na desktopie pozostaje dokowanym widgetem; poniżej `sm` stan
+// "expanded" jest pełnoekranowym dialogiem. Stany są dwa: "bubble" i "expanded".
 // "Zminimalizowany" to POWRÓT do stanu "bubble" — historia czatu nie ginie,
 // bo żyje w sessionStorage wewnątrz ConciergeChat (patrz ten plik), więc
 // odmontowanie ConciergeChat przy zwinięciu jest poprawne i najprostsze:
@@ -32,13 +32,17 @@
 // launcher się NIE renderuje. Statyczna analiza tego nie widzi — baner renderuje
 // się warunkowo (`needsDecision`), więc defekt wychodzi dopiero z pomiaru.
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Compass } from "lucide-react";
+import { Compass, X } from "lucide-react";
 
 import { ConciergeChat } from "./concierge-chat";
-import { CONCIERGE_OPEN_EVENT } from "@/lib/concierge/open-event";
+import {
+  announceConciergeState,
+  CONCIERGE_OPEN_EVENT,
+  type ConciergeOpenSource,
+} from "@/lib/concierge/open-event";
 import { track } from "@/lib/analytics/track";
 import { useConsent } from "@/lib/consent/context";
 
@@ -52,6 +56,7 @@ const TEASER_SHOWN_SESSION_KEY = "helptravel-concierge-teaser-shown-session";
 /** Bezczynność, po której teaser ma sens (ms). */
 const TEASER_IDLE_MS = 30_000;
 const MOTION_MS = 200;
+const HISTORY_MARKER = "__helptravelConcierge";
 
 // Teaser jako mini-„external store" (localStorage) czytany przez
 // useSyncExternalStore — jedyny wzorzec, który NARAZ: (a) nie daje
@@ -86,9 +91,18 @@ function markTeaserDismissed(): void {
 
 type PanelState = "bubble" | "expanded";
 
+function hasConciergeHistoryMarker(state: unknown): boolean {
+  return (
+    typeof state === "object" &&
+    state !== null &&
+    (state as Record<string, unknown>)[HISTORY_MARKER] === true
+  );
+}
+
 export function ConciergeLauncher() {
   const [panel, setPanel] = useState<PanelState>("bubble");
   const [entered, setEntered] = useState(false);
+  const router = useRouter();
   // Na trasach wyników i lejków (/hotele/*, /loty/*) dymek zwija się do samej
   // ikony: pełna pigułka „Dobierz wyjazd" nachodziła na „Filtry i sortowanie"
   // (wyniki hoteli) i pasek ceny (karta hotelu) — zgłoszenie właściciela
@@ -155,18 +169,82 @@ export function ConciergeLauncher() {
   const bubbleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const historyPushedRef = useRef(false);
+  const historyClosingRef = useRef(false);
+  const pendingNavigationRef = useRef<string | null>(null);
 
   const prefersReduced =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  const openPanel = useCallback(
-    (source: "launcher" | "category_tile" | "proactive" = "launcher") => {
-      if (closeTimer.current) window.clearTimeout(closeTimer.current);
-      setPanel("expanded");
-      track("concierge_open", { page_path: window.location.pathname, source });
+  const finishClose = useCallback(
+    (immediate = false) => {
+      setEntered(false);
+      const done = () => {
+        closeTimer.current = null;
+        setPanel("bubble");
+        const destination = pendingNavigationRef.current;
+        pendingNavigationRef.current = null;
+        if (destination) {
+          router.push(destination);
+          return;
+        }
+        const returnTarget = returnFocusRef.current;
+        requestAnimationFrame(() => {
+          if (returnTarget?.isConnected) returnTarget.focus();
+          else bubbleRef.current?.focus();
+        });
+      };
+      if (immediate || prefersReduced) done();
+      else closeTimer.current = window.setTimeout(done, MOTION_MS);
     },
-    [],
+    [prefersReduced, router],
+  );
+
+  const requestClose = useCallback(() => {
+    if (
+      historyPushedRef.current &&
+      hasConciergeHistoryMarker(window.history.state) &&
+      !historyClosingRef.current
+    ) {
+      historyClosingRef.current = true;
+      window.history.back();
+      return;
+    }
+    historyPushedRef.current = false;
+    historyClosingRef.current = false;
+    finishClose();
+  }, [finishClose]);
+
+  const openPanel = useCallback(
+    (source: ConciergeOpenSource = "launcher") => {
+      if (consentBlocking || panel === "expanded") return;
+      if (closeTimer.current) window.clearTimeout(closeTimer.current);
+      returnFocusRef.current = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : bubbleRef.current;
+      if (window.matchMedia("(max-width: 639px)").matches) {
+        if (!hasConciergeHistoryMarker(window.history.state)) {
+          const currentState =
+            typeof window.history.state === "object" && window.history.state !== null
+              ? (window.history.state as Record<string, unknown>)
+              : {};
+          window.history.pushState(
+            { ...currentState, [HISTORY_MARKER]: true },
+            "",
+            window.location.href,
+          );
+        }
+        historyPushedRef.current = true;
+      }
+      setPanel("expanded");
+      track("concierge_open", {
+        page_path: window.location.pathname,
+        source: source === "hero" ? "hero_tab" : source,
+      });
+    },
+    [consentBlocking, panel],
   );
 
   // Kontrakt dla wejść SPOZA tego drzewa (redesign 2026-07: czat ma trzy
@@ -176,21 +254,43 @@ export function ConciergeLauncher() {
   useEffect(() => {
     const onExternalOpen = (event: Event) => {
       const source = (event as CustomEvent<{ source?: string }>).detail?.source;
-      openPanel(source === "category_tile" ? "category_tile" : "launcher");
+      openPanel(source === "category_tile" || source === "hero" ? source : "launcher");
     };
     window.addEventListener(CONCIERGE_OPEN_EVENT, onExternalOpen);
     return () => window.removeEventListener(CONCIERGE_OPEN_EVENT, onExternalOpen);
   }, [openPanel]);
 
-  const closePanel = useCallback(() => {
-    setEntered(false);
-    const done = () => {
-      setPanel("bubble");
-      bubbleRef.current?.focus();
+  useEffect(() => {
+    announceConciergeState(panel === "expanded" && !consentBlocking);
+  }, [panel, consentBlocking]);
+
+  // Mobilny wpis historii sprawia, że systemowy gest/przycisk Wstecz najpierw
+  // zamyka dialog, zamiast od razu opuszczać stronę.
+  useEffect(() => {
+    if (panel !== "expanded" || !historyPushedRef.current) return;
+    const onPopState = () => {
+      if (!historyPushedRef.current) return;
+      historyPushedRef.current = false;
+      historyClosingRef.current = false;
+      finishClose();
     };
-    if (prefersReduced) done();
-    else closeTimer.current = window.setTimeout(done, MOTION_MS);
-  }, [prefersReduced]);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [panel, finishClose]);
+
+  // Portal nie może przykryć banera ani modalu zgód. Samo `z-[70]` jest celowe
+  // po podjęciu decyzji, ale przy ponownym otwarciu ustawień dialog znika od razu.
+  useEffect(() => {
+    if (!consentBlocking || panel !== "expanded") return;
+    if (historyPushedRef.current && hasConciergeHistoryMarker(window.history.state)) {
+      window.history.back();
+    }
+    historyPushedRef.current = false;
+    historyClosingRef.current = false;
+    pendingNavigationRef.current = null;
+    const id = window.setTimeout(() => finishClose(true), 0);
+    return () => window.clearTimeout(id);
+  }, [consentBlocking, panel, finishClose]);
 
   const dismissTeaser = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -202,9 +302,15 @@ export function ConciergeLauncher() {
   // nawiguje (feedback właściciela z testu na telefonie). Na desktopie panel
   // jest dokowany i nie przeszkadza — zostaje otwarty. Ten sam breakpoint
   // (sm = 640px) co blokada scrolla tła niżej.
-  const onOfferNavigate = useCallback(() => {
-    if (window.matchMedia("(max-width: 639px)").matches) closePanel();
-  }, [closePanel]);
+  const onOfferNavigate = useCallback(
+    (href: string): boolean => {
+      if (!window.matchMedia("(max-width: 639px)").matches) return false;
+      pendingNavigationRef.current = href;
+      requestClose();
+      return true;
+    },
+    [requestClose],
+  );
 
   // Wejście: po zamontowaniu panelu włącz "entered" w kolejnej klatce, żeby
   // CSS-transition (opacity, nie transform w stanie spoczynku) ruszyła; fokus
@@ -244,7 +350,7 @@ export function ConciergeLauncher() {
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.stopPropagation();
-      closePanel();
+      requestClose();
       return;
     }
     if (e.key !== "Tab" || !panelRef.current) return;
@@ -283,7 +389,7 @@ export function ConciergeLauncher() {
               przeczytał. Każda interakcja (scroll, klik, klawisz) resetuje
               odliczanie: kto korzysta ze strony, nie jest zaczepiany. */}
           {!teaserDismissed && teaserReady && !compact && (
-            <div className="animate-fade-in-up relative max-w-[240px] rounded-2xl rounded-br-md border border-emerald-900/10 bg-white px-4 py-3 text-sm font-medium text-neutral-800 shadow-[0_12px_32px_rgba(16,84,48,0.16)]">
+            <div className="relative max-w-[240px] rounded-2xl rounded-br-md border border-line bg-surface-raised px-4 py-3 text-sm font-medium text-ink shadow-[var(--shadow-md)]">
               <button
                 type="button"
                 onClick={dismissTeaser}
@@ -291,11 +397,9 @@ export function ConciergeLauncher() {
                 // Kółko zostaje wizualnie 24 px (większe wyglądałoby jak drugi
                 // przycisk obok dymka), ale `before:-inset-[10px]` rozszerza
                 // OBSZAR KLIKU do 44×44 — próg dotykowy bez zmiany wyglądu.
-                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-900/10 bg-white text-neutral-500 shadow-sm transition-colors before:absolute before:-inset-[10px] before:content-[''] hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface-raised text-ink-muted shadow-[var(--shadow-sm)] transition-colors duration-200 ease-out before:absolute before:-inset-[10px] before:content-[''] hover:text-ink active:bg-surface-sunken motion-reduce:transition-none"
               >
-                <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-3 w-3">
-                  <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
+                <X aria-hidden className="h-3 w-3" strokeWidth={2} />
               </button>
               Nie wiesz, dokąd polecieć? Podaj budżet — znajdę Ci konkretny lot i hotel.
             </div>
@@ -315,7 +419,7 @@ export function ConciergeLauncher() {
             // Bez `animate-bubble-pulse`: stała pulsacja niczego nie
             // komunikowała (dekoracyjny ruch jest zakazany w registerze
             // `product`) i upodabniała launcher do widgetu supportu.
-            className={`group inline-flex items-center rounded-full bg-brand text-sm font-bold text-white shadow-lg outline-none transition hover:opacity-90 focus-visible:ring-4 focus-visible:ring-brand/40 ${
+            className={`group inline-flex items-center rounded-full bg-brand text-sm font-bold text-white shadow-[var(--shadow-lg)] [--focus-ring:#fff] transition-[filter,transform] duration-200 ease-out hover:brightness-95 active:scale-[0.98] active:brightness-90 motion-reduce:transform-none motion-reduce:transition-none ${
               compact ? "h-13 w-13 justify-center p-3.5" : "gap-2 py-3.5 pl-4 pr-5"
             }`}
           >
@@ -323,58 +427,46 @@ export function ConciergeLauncher() {
                 w kategoriach — trzy wejścia do JEDNEGO produktu mają wyglądać
                 jak jeden produkt, a nie jak generyczny czat supportu. */}
             <Compass aria-hidden strokeWidth={2} className="h-5 w-5 shrink-0" />
-            {!compact && "Dobierz wyjazd"}
+            {!compact ? <span className="text-sm">Dobierz wyjazd</span> : null}
           </button>
         </div>
       )}
 
       {panel === "expanded" &&
+        !consentBlocking &&
         typeof document !== "undefined" &&
         createPortal(
           <div
             ref={panelRef}
             role="dialog"
             aria-modal="true"
+            aria-label="Asystent wyjazdowy HelpTravel"
             aria-labelledby="concierge-title"
             onKeyDown={onKeyDown}
-            className="fixed inset-0 z-[60] flex sm:inset-auto sm:bottom-6 sm:right-6 sm:block"
+            className="fixed inset-0 z-[70] flex h-[100dvh] w-screen sm:inset-auto sm:bottom-6 sm:right-6 sm:block sm:h-auto sm:w-auto"
           >
             {/* Panel — mobile: pełny ekran; desktop: karta dokowana w rogu. */}
             <div
-              className={`flex h-full w-full min-h-0 flex-col overflow-hidden bg-white shadow-2xl transition-opacity duration-200 ease-out sm:h-[70vh] sm:max-h-[640px] sm:w-[400px] sm:rounded-2xl sm:border sm:border-emerald-900/10 motion-reduce:transition-none ${
+              className={`flex h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-surface-raised pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-lg)] transition-opacity duration-200 ease-out sm:h-[70dvh] sm:max-h-[640px] sm:w-[400px] sm:rounded-lg sm:border sm:border-line sm:pb-0 motion-reduce:transition-none ${
                 entered ? "opacity-100" : "opacity-0"
               }`}
             >
-              <header className="flex shrink-0 items-center justify-between gap-3 border-b border-emerald-900/10 bg-emerald-50/60 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-3">
+              <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-surface-sunken px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-3">
                 <div className="min-w-0">
-                  <h2 id="concierge-title" className="truncate text-sm font-bold text-neutral-900">
+                  <h2 id="concierge-title" className="truncate text-sm font-bold text-ink">
                     Asystent wyjazdowy
                   </h2>
-                  <p className="truncate text-xs font-medium text-emerald-700">HelpTravel</p>
+                  <p className="truncate text-xs font-medium text-brand">HelpTravel</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={closePanel}
-                    aria-label="Zminimalizuj"
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-800/70 outline-none transition-colors hover:bg-emerald-900/10 hover:text-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-500"
-                  >
-                    <span aria-hidden className="text-base font-bold leading-none">
-                      —
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    data-concierge-close
-                    onClick={closePanel}
-                    aria-label="Zamknij"
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-800/70 outline-none transition-colors hover:bg-emerald-900/10 hover:text-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-500"
-                  >
-                    <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                      <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  data-concierge-close
+                  onClick={requestClose}
+                  aria-label="Zamknij asystenta"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-brand-strong transition-colors duration-200 ease-out hover:bg-brand-soft active:bg-line motion-reduce:transition-none"
+                >
+                  <X aria-hidden className="h-5 w-5" strokeWidth={2} />
+                </button>
               </header>
 
               <div className="min-h-0 flex-1">

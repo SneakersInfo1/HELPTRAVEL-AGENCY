@@ -30,6 +30,8 @@ export interface TripCandidate {
 export interface TripOffer {
   cityEn: string; countryEn: string; cityPl: string;
   checkin: string; checkout: string;
+  /** Dokładna liczba nocy dla dat, dla których LiteAPI zwróciło stawkę. */
+  nights?: number | null;
   adults: number; children: number;
   originIata: string;
   hotel: {
@@ -37,9 +39,22 @@ export interface TripOffer {
     name: string;
     /** Cena za CAŁY pobyt (pokój dla wszystkich gości), PLN — najtańsza realna taryfa. */
     totalPln: number;
+    /** Średnia z realnego totalu i dokładnej liczby nocy. */
+    perNightPln?: number | null;
     mainPhotoUrl: string | null;
+    /** Realne URL-e z `hotelImages`; pierwszy element jest kadrem startowym. */
+    photoUrls?: string[];
     /** Ocena gości z metadanych LiteAPI (skala 0–10) albo null, gdy brak. */
     rating: number | null;
+    stars?: number | null;
+    reviewCount?: number | null;
+    address?: string | null;
+    /** Pola najtańszej realnej taryfy LiteAPI; brak = brak wiersza na karcie. */
+    roomName?: string | null;
+    boardName?: string | null;
+    refundableTag?: string | null;
+    cancellationDeadline?: string | null;
+    freeCancellationDeadline?: string | null;
     /** Link handoff do naszej strony hotelu (z datami/gośćmi). */
     url: string;
   } | null;
@@ -54,6 +69,11 @@ export interface TripOffer {
     inboundDepartureTime: string | null;
     /** Liczba przesiadek — najgorszy (największy) z odcinków tam/powrót. */
     stops: number;
+    outboundDurationMinutes?: number | null;
+    inboundDurationMinutes?: number | null;
+    /** `true` tylko wtedy, gdy odpowiedź LiteAPI jawnie potwierdziła bagaż. */
+    hasCarryOnBag?: boolean | null;
+    hasCheckedBag?: boolean | null;
     /** Link handoff do naszych wyników lotów. */
     url: string;
   } | null;
@@ -63,6 +83,8 @@ export interface TripOffer {
    *  zaniżamy. TYLKO gdy wszystkie CHCIANE komponenty realne, inaczej null
    *  (przy wantsFlight=false to uczciwa cena SAMEGO hotelu na osobę). */
   totalPerPersonPln: number | null;
+  /** Łączny realny koszt wszystkich chcianych i dostępnych komponentów. */
+  totalPln?: number | null;
   /** true gdy CHCIANY komponent się nie udał (bot mówi o tym wprost). */
   partial: boolean;
   /** false = użytkownik jawnie NIE chce lotu (sam hotel) — karta nie renderuje

@@ -72,7 +72,18 @@ export function HomeHybridHero({
             {/* Headline — jasna obietnica „co to za serwis" (wybór właściciela).
                 Bez gradientu na tekście: jednolita biel czyta się lepiej na
                 zdjęciu i nie jest najbardziej rozpoznawalnym znakiem AI-slopu. */}
-            <h1 className="max-w-3xl text-balance font-display text-hero font-semibold text-white drop-shadow-[0_2px_28px_rgba(0,0,0,0.55)]">
+            {/* GROTESK, NIE SZERYF — drugie zgłoszenie właściciela o „nieprzyjemny
+                AI slop" w typografii. Cormorant to krój displayowy o bardzo
+                wysokim kontraście kresek i w zestawieniu „duży szeryf + zdjęcie
+                na całą szerokość + mocny cień" daje najbardziej rozpoznawalny
+                wygląd wygenerowanej strony lądowania. Serwisy, z którymi ta
+                strona realnie konkuruje (Booking, Kayak, eSky), prowadzą nagłówki
+                groteskiem o dużej wadze — i tak też czyta się „prawdziwy produkt".
+                Szeryf ZOSTAJE na stronach treściowych (/kierunki, /porownanie,
+                /inspiracje): tam niesie głos redakcyjny i nie konkuruje z ceną.
+                Podział jest więc świadomy: powierzchnia produktowa = grotesk,
+                powierzchnia redakcyjna = szeryf. */}
+            <h1 className="max-w-3xl text-balance text-hero font-extrabold tracking-[-0.03em] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)]">
               Lot i hotel w jednym miejscu
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.45)] sm:text-base sm:leading-8">

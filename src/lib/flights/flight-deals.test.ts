@@ -18,7 +18,8 @@ import {
   savingPercent,
   type FlightDeal,
 } from "./flight-deals";
-import { DEAL_MAX_PRICE_PLN } from "./deals-config";
+import { DEAL_LEISURE_QUOTA } from "./flight-deals";
+import { DEAL_MAX_PRICE_PLN, LEISURE_DESTINATIONS } from "./deals-config";
 
 const NOW = Date.parse("2026-08-02T10:00:00Z");
 
@@ -198,10 +199,14 @@ test("odczyt i merge działają na wstrzykniętym Redisie oraz zachowują inne t
   __setFlightDealsRedisForTests(fake);
   try {
     assert.deepEqual(await readFlightDeals(), stored);
-    await mergeFlightDeals({
-      "WAW-BCN": deal(),
-      invalid: deal({ routeKey: "invalid", pricePln: 0 }),
-    });
+    await mergeFlightDeals(
+      {
+        "WAW-BCN": deal(),
+        invalid: deal({ routeKey: "invalid", pricePln: 0 }),
+      },
+      [],
+      NOW,
+    );
     const snapshot = stored as Record<string, FlightDeal>;
     assert.ok(snapshot["WAW-AGP"], "merge nie może skasować trasy z poprzedniego przebiegu");
     assert.ok(snapshot["WAW-BCN"]);
@@ -233,7 +238,7 @@ test("trasa sprawdzona bez okazji ZNIKA, ale nietknięte trasy zostają", async 
   };
   __setFlightDealsRedisForTests(fake);
   try {
-    await mergeFlightDeals({}, ["WAW-BCN"]);
+    await mergeFlightDeals({}, ["WAW-BCN"], NOW);
     const snapshot = stored as Record<string, FlightDeal>;
     assert.equal(snapshot["WAW-BCN"], undefined, "trasa bez okazji musi zniknąć z klucza");
     assert.ok(snapshot["WAW-AGP"], "trasa niesprawdzana w tym przebiegu zostaje");
@@ -260,7 +265,7 @@ test("świeży wpis wygrywa z listą usunięć dla tej samej trasy", async () =>
   };
   __setFlightDealsRedisForTests(fake);
   try {
-    await mergeFlightDeals({ "WAW-BCN": deal({ routeKey: "WAW-BCN" }) }, ["WAW-BCN"]);
+    await mergeFlightDeals({ "WAW-BCN": deal({ routeKey: "WAW-BCN" }) }, ["WAW-BCN"], NOW);
     assert.ok((stored as Record<string, FlightDeal>)["WAW-BCN"]);
   } finally {
     __resetFlightDealsRedisForTests();
@@ -283,4 +288,69 @@ test("błąd Redisa jest cichym missem i nie odrzuca zapisu", async () => {
   } finally {
     __resetFlightDealsRedisForTests();
   }
+});
+
+
+// -- KWOTA WYPOCZYNKOWA I ROTACJA -------------------------------------------
+// Zgloszenie wlasciciela 2026-08-04: „oferty sie nie zmieniaja" oraz „nie ma
+// lotow np. do Alicante, Grecji, Hiszpanii, tylko nudny Wieden". Oba defekty
+// mialy jedna przyczyne w tym pliku, wiec oba maja tu swoj test.
+
+function trasa(iata: string, pricePln: number): FlightDeal {
+  return deal({ routeKey: "WAW-" + iata, destinationIata: iata, pricePln });
+}
+
+function snapshotZ(deals: FlightDeal[]): Record<string, FlightDeal> {
+  return Object.fromEntries(deals.map((d) => [d.routeKey, d]));
+}
+
+const MIASTA = ["STO", "BRU", "OSL", "BUD", "SOF", "LON", "PRG", "OTP", "CPH", "ZAG", "LJU", "TLL", "RIX", "VNO", "BER", "VIE"];
+const PLAZE = ["ATH", "CTA", "AGP", "SPU", "DBV", "LCA", "CFU", "HER"];
+
+test("kierunki wypoczynkowe dostaja kafle, mimo ze miasta sa tansze", () => {
+  // 16 tanich miast (160-310 zl) i 6 drozszych kierunkow wypoczynkowych.
+  // Samo sortowanie po cenie oddaloby miastom KOMPLET dwunastu kafli.
+  const wynik = pickFreshDeals(
+    snapshotZ([
+      ...MIASTA.map((c, i) => trasa(c, 160 + i * 10)),
+      ...PLAZE.slice(0, 6).map((c, i) => trasa(c, 460 + i * 40)),
+    ]),
+    NOW,
+  );
+
+  assert.equal(wynik.length, DEAL_MAX, "sekcja ma wypelnic wszystkie kafle");
+  const ilePlaz = wynik.filter((d) => LEISURE_DESTINATIONS.has(d.destinationIata)).length;
+  assert.equal(ilePlaz, DEAL_LEISURE_QUOTA, "kwota wypoczynkowa musi byc dotrzymana");
+});
+
+test("rotacja dziala przy DOKLADNIE tylu okazjach, ile jest kafli", () => {
+  // Dokladnie ten przypadek stal na produkcji: szesc okazji przy szesciu
+  // kaflach. Poprzedni warunek `length > DEAL_MAX` byl wtedy falszem, wiec
+  // rotacja nie odpalala sie NIGDY.
+  const snapshot = snapshotZ([
+    ...PLAZE.map((c, i) => trasa(c, 460 + i * 20)),
+    ...MIASTA.slice(0, 8).map((c, i) => trasa(c, 160 + i * 20)),
+  ]);
+  assert.equal(Object.keys(snapshot).length, DEAL_MAX + 4, "warunek testu: nadmiar jest niewielki");
+
+  const teraz = pickFreshDeals(snapshot, NOW).map((d) => d.routeKey);
+  const potem = pickFreshDeals(snapshot, NOW + DEAL_ROTATION_MS).map((d) => d.routeKey);
+  assert.notDeepEqual(teraz, potem, "zestaw kafli musi sie zmienic po oknie rotacji");
+});
+
+test("kwota jest miekka - brak kierunkow wypoczynkowych oddaje kafle miastom", () => {
+  const wynik = pickFreshDeals(snapshotZ(MIASTA.slice(0, 12).map((c, i) => trasa(c, 160 + i * 10))), NOW);
+  assert.equal(wynik.length, DEAL_MAX, "puste miejsca po plazach maja przejac miasta, a nie zostac puste");
+});
+
+test("kafle zawsze ida od najtanszego, mimo kwoty i rotacji", () => {
+  const wynik = pickFreshDeals(
+    snapshotZ([
+      ...PLAZE.slice(0, 6).map((c, i) => trasa(c, 460 + i * 40)),
+      ...MIASTA.slice(0, 6).map((c, i) => trasa(c, 160 + i * 10)),
+    ]),
+    NOW,
+  );
+  const ceny = wynik.map((d) => d.pricePln);
+  assert.deepEqual(ceny, [...ceny].sort((a, b) => a - b), "porzadek cen nie moze zalezec od kwoty");
 });

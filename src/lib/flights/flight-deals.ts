@@ -24,7 +24,7 @@
 
 import { Redis } from "@upstash/redis";
 
-import { DEAL_MAX_PRICE_PLN } from "@/lib/flights/deals-config";
+import { DEAL_MAX_PRICE_PLN, LEISURE_DESTINATIONS } from "@/lib/flights/deals-config";
 import { rotateSlice, rotationBucket } from "@/lib/home/rotation";
 
 export interface FlightDeal {
@@ -72,13 +72,30 @@ const TTL_SECONDS = 3 * 24 * 3600;
 export const DEAL_FRESH_MS = 13 * 3600 * 1000;
 export const DEAL_ROTATION_MS = 2 * 3600 * 1000;
 /**
- * Ile kart pokazuje sekcja. Sześć, bo tyle dzieli się bez reszty przez każdą
- * liczbę kolumn siatki (1 na telefonie, 2 od `sm`, 3 od `xl`) — przy ośmiu
- * ostatni wiersz na desktopie zostawał z dwiema kartami i wyglądał jak
- * urwane dane. Zmierzony realny urobek to ok. 6 okazji na 12 zbadanych tras,
- * więc przy puli 36 ten limit jest realnie osiągalny.
+ * Ile kart pokazuje sekcja. Dwanaście — tyle samo co „Polecane hotele" i tyle,
+ * ile dzieli się bez reszty przez każdą liczbę kolumn siatki (1 na telefonie,
+ * 2 od `sm`, 3 od `xl`), więc ostatni wiersz nigdy nie zostaje z sierotą.
+ *
+ * Było sześć. Właściciel: „pokazuje ciut za mało ofert lotów… daj ich więcej".
+ * Sześć miało jeszcze jeden, gorszy skutek uboczny — patrz `pickFreshDeals`:
+ * rotacja włączała się dopiero POWYŻEJ tego limitu, a przy dokładnie sześciu
+ * świeżych okazjach nie właczała się nigdy i sekcja stała w miejscu tygodniami.
  */
-export const DEAL_MAX = 6;
+export const DEAL_MAX = 12;
+/**
+ * Ile kafli sekcja rezerwuje dla kierunków WYPOCZYNKOWYCH.
+ *
+ * Bez tej kwoty sortowanie po cenie oddaje całą sekcję krótkim trasom miejskim,
+ * bo one po prostu są najtańsze (zmierzone: Sztokholm 164 zł wobec Aten 466 zł).
+ * Efekt: strona biura podróży pokazywała sześć miast i ani jednej plaży —
+ * dokładnie to zgłosił właściciel („nie ma lotów np. do Alicante, Grecji,
+ * Hiszpanii, tylko nudny Wiedeń").
+ *
+ * To NIE JEST manipulacja ceną: każda pokazana kwota to nadal realna, najtańsza
+ * znaleziona cena tej trasy, a kafle są posortowane od najtańszego. Kwota
+ * decyduje wyłącznie o TYM, KTÓRE trasy w ogóle trafiają na listę.
+ */
+export const DEAL_LEISURE_QUOTA = 6;
 /** Poniżej tylu kart sekcja się nie renderuje — dwa wiersze pod nagłówkiem
  *  „Okazje lotnicze" czytają się jak awaria zbierania danych, nie jak wybór. */
 export const DEAL_MIN = 3;
@@ -254,14 +271,42 @@ export function pickFreshDeals(snapshot: FlightDealsSnapshot | null, now: number
     .filter((deal) => now - deal.computedAt <= DEAL_FRESH_MS)
     .filter((deal) => deal.depart > today);
 
-  let selected = sortDeals(fresh);
-  if (selected.length > DEAL_MAX) {
-    const candidates = selected.slice(0, DEAL_MAX * 2);
-    selected = sortDeals(
-      rotateSlice(candidates, DEAL_MAX, rotationBucket(now, DEAL_ROTATION_MS)),
-    );
-  }
-  return selected.length < DEAL_MIN ? [] : selected.slice(0, DEAL_MAX);
+  const posortowane = sortDeals(fresh);
+  if (posortowane.length < DEAL_MIN) return [];
+
+  const bucket = rotationBucket(now, DEAL_ROTATION_MS);
+  const wypoczynkowe = posortowane.filter((d) => LEISURE_DESTINATIONS.has(d.destinationIata));
+  const miejskie = posortowane.filter((d) => !LEISURE_DESTINATIONS.has(d.destinationIata));
+
+  // Kwota jest MIĘKKA w obie strony: gdy jednej grupy brakuje, jej miejsca
+  // przejmuje druga. Inaczej awaria kilku tras wypoczynkowych zostawiałaby
+  // puste kafle zamiast pokazać tańsze miasta, które akurat mamy.
+  const miejskieMiejsca = Math.min(miejskie.length, DEAL_MAX - Math.min(DEAL_LEISURE_QUOTA, wypoczynkowe.length));
+  const wypoczynkoweMiejsca = Math.min(wypoczynkowe.length, DEAL_MAX - miejskieMiejsca);
+
+  return sortDeals([
+    ...rotujGrupe(wypoczynkowe, wypoczynkoweMiejsca, bucket),
+    ...rotujGrupe(miejskie, miejskieMiejsca, bucket),
+  ]).slice(0, DEAL_MAX);
+}
+
+/**
+ * Wybór `slots` pozycji z grupy, przesuwany co okno rotacji.
+ *
+ * Rotacja liczy się WEWNĄTRZ grupy, nie na całej liście. Powód jest praktyczny:
+ * przy rotacji globalnej wystarczyło, że wszystkich okazji było tyle samo co
+ * kafli, żeby nic się nigdy nie zmieniło (`length > DEAL_MAX` było fałszem) —
+ * i dokładnie to zgłosił właściciel. Podzielone na dwie grupy wystarczy, że
+ * JEDNA z nich ma nadmiar, i sekcja realnie się przewija co dwie godziny.
+ *
+ * Pula kandydatów to dwukrotność miejsc, więc rotacja krąży po tańszej połowie
+ * grupy i nigdy nie wypycha na stronę najdroższych pozycji.
+ */
+function rotujGrupe(grupa: FlightDeal[], slots: number, bucket: number): FlightDeal[] {
+  if (slots <= 0) return [];
+  if (grupa.length <= slots) return grupa.slice(0, slots);
+  const kandydaci = grupa.slice(0, Math.min(grupa.length, slots * 2));
+  return rotateSlice(kandydaci, slots, bucket);
 }
 
 /** Odczyt best-effort: awaria sekcji marketingowej nie może wywrócić strony. */
@@ -298,6 +343,11 @@ export async function readFlightDeals(): Promise<FlightDealsSnapshot | null> {
 export async function mergeFlightDeals(
   entries: FlightDealsSnapshot,
   checkedWithoutDeal: readonly string[] = [],
+  // Szew czasu — ten sam, który ma `pickFreshDeals`. Bez niego test musiał
+  // opierać wiek wpisów na prawdziwym zegarze, więc ustawiona na sztywno data
+  // z fixture'a po prostu się starzała: zestaw przechodził w dniu napisania
+  // i zaczął przewracać się dwa dni później, bez żadnej zmiany w kodzie.
+  now: number = Date.now(),
 ): Promise<void> {
   const client = getRedis();
   if (!client) return;
@@ -312,7 +362,7 @@ export async function mergeFlightDeals(
     // odnawia im TTL — np. trasa kiedyś wykreślona z puli, do której cron już
     // nigdy nie zajrzy. Zapas dwukrotny wobec progu świeżości, żeby nie
     // skasować niczego, co jeszcze może wrócić do gry.
-    const nieodwracalnieStare = Date.now() - DEAL_FRESH_MS * 2;
+    const nieodwracalnieStare = now - DEAL_FRESH_MS * 2;
     for (const [key, deal] of Object.entries(merged)) {
       if (!Number.isFinite(deal?.computedAt) || deal.computedAt < nieodwracalnieStare) {
         delete merged[key];
