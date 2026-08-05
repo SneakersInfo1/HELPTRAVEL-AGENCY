@@ -200,17 +200,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
         //    spodem prześwituje i rozmywa się, co samo w sobie komunikuje
         //    warstwę, także gdy sekcja pod spodem jest ciemna;
         //  - wyraźniejsza krawędź `emerald-900/15` zamiast ledwie widocznej /10;
-        //  - cień o wartości poziomu „md", podany przez `style`.
-        //
-        // DLACZEGO CIEŃ IDZIE PRZEZ `style`, A NIE PRZEZ KLASĘ: zmierzone
-        // w przeglądarce na tej właśnie podstronie — utility cienia z wartością
-        // arbitralną daje tu `box-shadow` złożony z samych przezroczystych
-        // warstw, i to zarówno przy odwołaniu do tokenu, jak i przy wartości
-        // wpisanej wprost. Reguła nie powstaje. Nie jest to skutek tej zmiany:
-        // problem dotyczy także istniejących kart. `style` renderuje się zawsze
-        // i daje się sprawdzić pomiarem, a nagłówek bez cienia to dokładnie to
-        // zgłoszenie, które ta zmiana ma zamknąć. Zasięg problemu dla reszty
-        // repo opisany w raporcie — do osobnego zadania.
+        //  - najmocniejszy z trzech tokenów cienia, bo nagłówek unosi się nad
+        //    CAŁĄ stroną, a nie nad sąsiednią kartą.
         //
         // UWAGA NA KOMENTARZE W TYM PLIKU: Tailwind v4 skanuje także treść
         // komentarzy. Wpisanie tu nazwy klasy z gwiazdką (wzorzec „shadow”
@@ -220,11 +211,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
         // przestaje się parsować — a wtedy znikają wszystkie style, nie tylko
         // cień. Kosztowało to jedną pomyłkę: opisując tokeny, pisz je słownie,
         // nigdy jako gotową nazwę klasy z symbolem wieloznacznym.
-        style={{ boxShadow: "0 2px 8px rgba(12, 58, 34, 0.10)" }}
         className={
           isHome
-            ? `sticky top-0 z-30 border-b border-emerald-900/15 bg-surface-raised/85 py-2 backdrop-blur-md ${bleedPadCls}`
-            : "sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/15 bg-surface-raised/85 px-3 py-2 backdrop-blur-md sm:px-4"
+            ? `sticky top-0 z-30 border-b border-emerald-900/15 bg-surface-raised/85 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md ${bleedPadCls}`
+            : "sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/15 bg-surface-raised/85 px-3 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md sm:px-4"
         }
       >
         <div className="flex items-center justify-between gap-3">
@@ -239,9 +229,21 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   stronie serwisu. Custom loader (`cdn-loader.ts`) przepuszcza
                   pliki z /public bez zmian, więc Vercel tego nie skalował i do
                   przeglądarki szedł pełny megabajt. Wariant 384 px pokrywa
-                  56 px CSS przy DPR 3 z zapasem i waży 52 KB. */}
+                  56 px CSS przy DPR 3 z zapasem i waży 52 KB.
+
+                  WYGLĄD: wariant `-alpha`, bo zgłoszenie właściciela brzmiało
+                  „logo wygląda jak wklejone" i miało konkretną, zmierzalną
+                  przyczynę — plik miał NIEPRZEZROCZYSTE, prawie białe tło
+                  (piksel narożny 254,254,254 przy alfie 255). Na
+                  półprzezroczystym nagłówku i nad zdjęciami ten biały kwadrat
+                  czytał się dokładnie jak naklejka.
+
+                  Tło usunięte wypełnieniem od krawędzi, a nie progiem jasności:
+                  próg zjadłby także jasne fragmenty WEWNĄTRZ znaku (biały
+                  samolot w niebieskim kole). Zeszło 74,9% powierzchni pliku,
+                  sam znak został nietknięty. */}
               <Image
-                src="/branding/helptravel-logo-384.png"
+                src="/branding/helptravel-logo-384-alpha.png"
                 alt="HelpTravel"
                 width={384}
                 height={384}
@@ -369,7 +371,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 miejsce rezerwowane pod obraz nie zgadzało się z tym, co się
                 wyrenderowało — czyli przeskok układu przy ładowaniu. */}
             <Image
-              src="/branding/helptravel-logo-384.png"
+              src="/branding/helptravel-logo-384-alpha.png"
               alt="HelpTravel"
               width={384}
               height={384}
@@ -427,7 +429,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 nie ma (źródło jest kwadratowe) — czyli rezerwowane miejsce nie
                 zgadzało się z tym, co się wyrenderowało. */}
             <Image
-              src="/branding/helptravel-logo-384.png"
+              src="/branding/helptravel-logo-384-alpha.png"
               alt="HelpTravel"
               width={384}
               height={384}

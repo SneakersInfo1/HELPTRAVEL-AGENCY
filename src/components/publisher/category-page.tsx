@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FinalCtaBanner } from "@/components/site/final-cta-banner";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
@@ -173,6 +174,26 @@ export async function CategoryPage({ slug }: { slug: string }) {
           ))}
         </div>
       </section>
+
+      {/* KROK DO PRODUKTU NA KOŃCU STRONY.
+          Audyt tras (2026-08-04) wykazał, że sześć landingów opartych na tym
+          komponencie kończyło się listą odnośników do innych stron treściowych
+          — czyli krążeniem po serwisie zamiast przejścia do wyszukiwarki.
+          Użytkownik, który doczytał do końca, jest najbliżej decyzji ze
+          wszystkich odwiedzających tę stronę, a nie dostawał żadnej.
+
+          Treść jest ZWIĄZANA Z KATEGORIĄ (`category.title`), a nie ogólna, i nie
+          dokłada ani jednego zdania „na zapełnienie" — to jedna sekcja z dwiema
+          realnymi ścieżkami: wyszukiwarka hoteli i katalog kierunków. Obie
+          istnieją i działają, więc nie obiecujemy niczego, czego nie ma. */}
+      <FinalCtaBanner
+        title={`Masz kierunek z listy „${category.title}"? Sprawdź ceny na swój termin.`}
+        body="Wpisz miasto i daty — pokażemy dostępne hotele z cenami w złotówkach, bez zakładania konta."
+        primaryHref="/hotele/szukaj"
+        primaryLabel="Szukaj hoteli"
+        secondaryHref="/kierunki"
+        secondaryLabel="Przeglądaj kierunki"
+      />
     </main>
   );
 }

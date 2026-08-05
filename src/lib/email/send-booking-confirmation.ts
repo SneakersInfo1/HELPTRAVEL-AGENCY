@@ -17,10 +17,7 @@
 
 import { notifyWarning } from "@/lib/alerting/notify";
 import { getBcc, getDefaultFrom, getReplyTo, getResendClient } from "./client";
-import {
-  renderBookingConfirmation,
-  type BookingConfirmationData,
-} from "./templates/booking-confirmation";
+import { renderBookingConfirmation } from "./templates/booking-confirmation";
 
 export interface SendBookingConfirmationInput {
   bookingId: string;

@@ -241,6 +241,14 @@ export function ResultsList(props: ResultsListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctxSig, poolIdSig]);
 
+  // Wyrażenia wyciągnięte z tablicy zależności do zmiennych: ESLint nie potrafi
+  // statycznie sprawdzić wywołań i operatorów wewnątrz tablicy, więc zgłaszał
+  // trzy ostrzeżenia. Wartości liczą się identycznie jak wcześniej — przy każdym
+  // renderze — więc zachowanie się nie zmienia, a zależności są weryfikowalne.
+  const propertyTypeSig = propertyType?.join(",") ?? "";
+  const boardSig = board?.join(",") ?? "";
+  const wersjaCen = getVersion();
+
   const view = useMemo(() => {
     type Row = { offer: MetaOffer; entry: PriceEntry | undefined };
     const rows: Row[] = fullPool.map((o) => ({
@@ -406,9 +414,9 @@ export function ResultsList(props: ResultsListProps) {
     minRating,
     cancel,
     q,
-    propertyType?.join(",") ?? "",
-    board?.join(",") ?? "",
-    getVersion(),
+    propertyTypeSig,
+    boardSig,
+    wersjaCen,
   ]);
 
   // Skan „gotowy" dopiero gdy: wszystkie znane hotele wycenione ORAZ nie ma

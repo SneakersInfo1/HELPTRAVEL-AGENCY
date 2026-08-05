@@ -34,10 +34,10 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Compass, X } from "lucide-react";
 
-import { ConciergeChat } from "./concierge-chat";
 import {
   announceConciergeState,
   CONCIERGE_OPEN_EVENT,
@@ -45,6 +45,44 @@ import {
 } from "@/lib/concierge/open-event";
 import { track } from "@/lib/analytics/track";
 import { useConsent } from "@/lib/consent/context";
+
+// CZAT ŁADOWANY DOPIERO PO OTWARCIU PANELU.
+//
+// Zmierzone na buildzie produkcyjnym przed tą zmianą: chunk zawierający
+// `concierge-chat` i `trip-offer-card` (85 kB na dysku) był pobierany przy
+// KAŻDYM wejściu na stronę główną, mimo że panel powstaje dopiero po
+// kliknięciu. Płacił za to każdy odwiedzający, także ten, który nigdy nie
+// otworzy rozmowy — a przy 90% ruchu mobilnego to realny koszt.
+//
+// `ssr: false`, bo czat i tak jest wyłącznie klientowy: trzyma historię
+// w `sessionStorage` i nie ma czego renderować na serwerze.
+//
+// Historia rozmowy NIE ginie: mieszka w `sessionStorage` wewnątrz
+// `ConciergeChat`, a nie w tym module. Dynamiczny import zmienia tylko MOMENT
+// pobrania kodu, nie miejsce przechowywania stanu. Podwójne montowanie też nie
+// grozi — `next/dynamic` zapamiętuje raz pobrany moduł, więc kolejne otwarcia
+// panelu nie wywołują następnego żądania sieciowego.
+const ConciergeChat = dynamic(
+  () => import("./concierge-chat").then((m) => m.ConciergeChat),
+  {
+    ssr: false,
+    // Stan ładowania musi pojawić się NATYCHMIAST i mieć tę samą geometrię co
+    // czat, inaczej panel „podskakuje" po dociągnięciu modułu.
+    loading: () => (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center"
+      >
+        <span
+          aria-hidden
+          className="h-6 w-6 animate-spin rounded-full border-2 border-brand/25 border-t-brand motion-reduce:animate-none"
+        />
+        <span className="text-sm text-ink-muted">Otwieram rozmowę…</span>
+      </div>
+    ),
+  },
+);
 
 // Kill-switch (domyślnie WŁĄCZONE) — ta sama konwencja co
 // NEXT_PUBLIC_SHOW_QUICK_SEARCH i /api/concierge/chat route.ts.
