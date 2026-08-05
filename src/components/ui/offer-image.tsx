@@ -50,13 +50,20 @@ export function OfferImage({
   className,
   priority,
 }: Props) {
-  const [bladLadowania, setBladLadowania] = useState(false);
+  // Zapamiętujemy KTÓRY adres padł, a nie samo „padło".
+  //
+  // Znalezione w review: zwykły boolean przywiera do instancji komponentu, a nie
+  // do zdjęcia. Karty ofert rotują co pół godziny i React chętnie użyje tego
+  // samego węzła dla nowej oferty — wtedy poprawne zdjęcie nowego kierunku
+  // nadal pokazywałoby zastępnik po nieudanym zdjęciu poprzedniego. Porównanie
+  // z bieżącym `src` sprawia, że nieudany adres blokuje wyłącznie sam siebie.
+  const [adresKtoryPadl, setAdresKtoryPadl] = useState<string | null>(null);
   const Ikona = IKONY[wariant];
 
   // Brak URL i nieudane pobranie prowadzą do TEGO SAMEGO widoku — dla
   // użytkownika to ta sama sytuacja („nie ma zdjęcia"), więc nie ma powodu,
   // żeby wyglądały inaczej.
-  if (!src || bladLadowania) {
+  if (!src || adresKtoryPadl === src) {
     return (
       <span
         aria-hidden
@@ -76,7 +83,7 @@ export function OfferImage({
       priority={priority}
       // Bez `unoptimized`: loader projektu i tak omija /_next/image, a błąd
       // sieciowy złapiemy niżej.
-      onError={() => setBladLadowania(true)}
+      onError={() => setAdresKtoryPadl(src)}
       className={className}
     />
   );

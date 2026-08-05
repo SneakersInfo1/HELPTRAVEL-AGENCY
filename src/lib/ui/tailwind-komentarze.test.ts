@@ -27,11 +27,16 @@ const ROZSZERZENIA = [".ts", ".tsx", ".css"];
  * Budowany z kawałków CELOWO — gdyby stał w pliku jako jeden ciąg, sam byłby
  * tym, czego zabrania, i wysadziłby build dokładnie tak jak pierwowzór.
  */
+// ZAWĘŻONE PO REVIEW: wcześniejsza wersja zakazywała gwiazdki w KAŻDEJ wartości
+// arbitralnej, więc wywróciłaby się na poprawnej klasie w rodzaju treści
+// generowanej z pojedynczym znakiem gwiazdki. Realnie niebezpieczna jest tylko
+// gwiazdka WEWNĄTRZ odwołania do zmiennej CSS — bo to z niej powstaje
+// `var(--coś-*)`, czyli niepoprawna wartość, na której przewraca się parser.
 const NAWIAS_OTW = "\\[";
 const NAWIAS_ZAM = "\\]";
 const WZORZEC_RYZYKOWNY = new RegExp(
-  `[a-z-]+-${NAWIAS_OTW}[^${NAWIAS_ZAM}]*\\*[^${NAWIAS_ZAM}]*${NAWIAS_ZAM}`,
-  "g",
+  `[a-z-]+-${NAWIAS_OTW}[^${NAWIAS_ZAM}]*var\\(\\s*--[a-z0-9-]*\\*[^${NAWIAS_ZAM}]*${NAWIAS_ZAM}`,
+  "gi",
 );
 
 function zbierzPliki(katalog: string): string[] {

@@ -187,7 +187,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
           realnymi ścieżkami: wyszukiwarka hoteli i katalog kierunków. Obie
           istnieją i działają, więc nie obiecujemy niczego, czego nie ma. */}
       <FinalCtaBanner
-        title={`Masz kierunek z listy „${category.title}"? Sprawdź ceny na swój termin.`}
+        title="Wiesz już, dokąd chcesz jechać? Sprawdź ceny na swój termin."
         body="Wpisz miasto i daty — pokażemy dostępne hotele z cenami w złotówkach, bez zakładania konta."
         primaryHref="/hotele/szukaj"
         primaryLabel="Szukaj hoteli"
