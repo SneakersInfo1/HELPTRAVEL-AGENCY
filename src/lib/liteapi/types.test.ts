@@ -134,6 +134,54 @@ test("szczegóły: brak hotelImages parsuje się (pole opcjonalne)", () => {
   assert.equal(parsed.success, true);
 });
 
+// PROD 2026-07 (LITEAPI_VALIDATION at /data/hotel — 117× 500 + 35× unhandled):
+// sparse hotele (The Senses Tsilivi lp655ab8cb, Azrac Surf lp656b7245, Gdańsk
+// lp6560dcb5) zwracają `data.policies:null` (i amenities/hotelImages:null,
+// rooms:null) zamiast pomijać puste pola. `z.array().optional()` ODRZUCA null
+// → `expected array, received null` → cała walidacja detalu pada. Sparse ≠ błąd:
+// każde opcjonalne pole detalu MUSI tolerować null (nullish).
+test("szczegóły: policies:null parsuje się (sparse hotel, nie błąd)", () => {
+  const parsed = LiteApiHotelDetailSchema.safeParse({ ...DETAIL_BASE, policies: null });
+  assert.equal(parsed.success, true);
+  // Konsument strony robi `detail.policies ?? []` — null musi się tak degradować.
+  assert.deepEqual(parsed.success ? parsed.data.policies ?? [] : "unparsed", []);
+});
+
+test("szczegóły: pełny sparse payload (amenities/facilities/hotelImages/policies/… = null) parsuje się", () => {
+  const parsed = LiteApiHotelDetailSchema.safeParse({
+    ...DETAIL_BASE,
+    description: null,
+    hotelDescription: null,
+    amenities: null,
+    hotelFacilities: null,
+    facilities: null,
+    hotelImages: null,
+    policies: null,
+    checkinCheckoutTimes: null,
+    currency: null,
+  });
+  assert.equal(parsed.success, true);
+  // Reszta danych hotelu nietknięta — hotel ZOSTAJE, strona się renderuje.
+  assert.equal(parsed.success && parsed.data.name, "Test Hotel");
+});
+
+test("szczegóły: hotelImages:null → undefined (coerce w preprocess, nie throw)", () => {
+  const parsed = LiteApiHotelDetailSchema.safeParse({ ...DETAIL_BASE, hotelImages: null });
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.success && parsed.data.hotelImages, undefined);
+});
+
+// Odpowiedź na „sprawdź czy rooms:null też wywala": NIE. `rooms` nie jest w
+// schemacie detalu (ani bazowym, ani extend) i nigdzie nie ma `.strict()`, więc
+// Zod domyślnie STRIPUJE nieznany klucz — `rooms:null` przechodzi nietknięte.
+// W logach prod pojawia się tylko jako pole zredukowanego `body` przy błędzie
+// policies, NIE jako ścieżka ZodError. Ten test to utrwala.
+test("szczegóły: rooms:null (klucz spoza schematu) jest stripowany, nie wywala", () => {
+  const parsed = LiteApiHotelDetailSchema.safeParse({ ...DETAIL_BASE, rooms: null });
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.success && "rooms" in parsed.data, false);
+});
+
 // 2026-07-11 (pełna pula kierunku) — batch stawek, w którym żaden hotel nie ma
 // ofert, wraca BEZ pola `data`. Sztywne z.array() wywalało cały batch → 50
 // realnie niedostępnych hoteli jako „error" zamiast „brak miejsc".
