@@ -269,6 +269,25 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   // odpala pobranie popularnych kierunków (+ ostatnich z localStorage), jak
   // na Booking. 0 = jeszcze nie było fokusa → efekt niżej nic nie robi.
   const [destFocusTick, setDestFocusTick] = useState(0);
+  /**
+   * Czy listę podpowiedzi otworzył UŻYTKOWNIK (dotknięcie pola albo pisanie).
+   *
+   * Zgłoszenie właściciela: „gdy przełączam na homepage między lotami
+   * i hotelami, od razu wyświetla mi się wybór kierunku". Przyczyna była
+   * w efekcie pobierającym podpowiedzi: ma on `isFlights` w zależnościach
+   * (i słusznie — w trybie lotów trzeba odfiltrować hotele, bo hotel nie ma
+   * kodu IATA), a na końcu wołał bezwarunkowo `setDestOpen(true)`.
+   *
+   * Dopóki `destFocusTick` wynosił 0, strażnik na górze efektu zamykał listę
+   * i wychodził. Ale wystarczyło raz dotknąć pola „Dokąd", żeby licznik urósł —
+   * i od tej chwili KAŻDE przełączenie zakładki przeładowywało podpowiedzi
+   * i otwierało panel bez żadnego kliknięcia.
+   *
+   * Ten ref rozdziela dwie różne rzeczy, które wcześniej były zlepione:
+   * „odśwież dane" (ma się dziać przy zmianie trybu) od „pokaż panel"
+   * (ma się dziać wyłącznie na życzenie użytkownika).
+   */
+  const listaNaZyczenieRef = useRef(false);
   const [destConfirmed, setDestConfirmed] = useState(Boolean(initial?.destination));
   const [destError, setDestError] = useState("");
   // No default dates — the user must pick them (homepage + results bar).
@@ -284,6 +303,9 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   const [dateError, setDateError] = useState("");
 
   function closeDestinationSuggestions() {
+    // Zamkniecie kasuje zyczenie: kolejne przeladowanie danych (np. po zmianie
+    // zakladki) nie ma prawa samo otworzyc panelu.
+    listaNaZyczenieRef.current = false;
     if (
       !isDestDesktop &&
       !destHistoryBackPendingRef.current &&
@@ -298,6 +320,9 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
   }
 
   function openDestinationSuggestions() {
+    // Otwarcie na ZYCZENIE: dotkniecie pola albo pisanie. Tylko po tym efekt
+    // pobierajacy podpowiedzi ma prawo pokazac panel — patrz listaNaZyczenieRef.
+    listaNaZyczenieRef.current = true;
     const desktop = window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches;
     setIsDestDesktop(desktop);
     if (desktop && destInputRef.current) {
@@ -446,7 +471,10 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
         if (isFlights) items = items.filter((i) => i.kind !== "hotel");
         if (cancelled) return;
         setDestSuggestions(items);
-        setDestOpen(true);
+        // Panel otwieramy WYLACZNIE wtedy, gdy poprosil o to uzytkownik.
+        // Ten efekt biegnie takze przy zmianie trybu (hotele<->loty), a wtedy ma
+        // tylko odswiezyc dane — nie wyskakiwac na ekran.
+        if (listaNaZyczenieRef.current) setDestOpen(true);
         setDestHighlight(-1);
       } catch {
         // aborted or network error
