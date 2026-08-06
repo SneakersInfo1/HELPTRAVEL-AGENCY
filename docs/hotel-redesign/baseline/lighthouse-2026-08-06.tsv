@@ -1,0 +1,6 @@
+route	perf	a11y	bp	seo	fcp_ms	lcp_ms	cls	tbt_ms
+/	43	100	100	100	1936	7816	0	1644
+/hotele/szukaj?destination=Madrid&country=Spain	83	96	100	69	1202	4348	0	162
+/hotele/szukaj?destination=Lisbon&country=Portugal	79	96	100	69	1219	4476	0	273
+/hotele/szukaj?destination=Bilbao&country=Spain	85	96	100	69	1085	4189	0	104
+/hotele/lp6558036a?destination=M%C3%A1laga&country=Hiszpania&checkin=2026-09-15&checkout=2026-09-18&adults=2&rooms=1	82	100	0	92	1082	4101	0	115

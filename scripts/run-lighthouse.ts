@@ -12,6 +12,11 @@ const ROUTES = [
   "/hotele/szukaj?destination=Madrid&country=Spain",
   "/hotele/szukaj?destination=Lisbon&country=Portugal",
   "/hotele/szukaj?destination=Bilbao&country=Spain",
+  // Strona konkretnego hotelu — do 2026-08 nie była mierzona w ogóle, mimo że
+  // to końcówka lejka (tu użytkownik wybiera pokój i klika w checkout).
+  // Dodana jako punkt odniesienia dla przebudowy sekcji hotelowej —
+  // patrz docs/hotel-redesign/04-implementation-plan.md, Etap 0.
+  "/hotele/lp6558036a?destination=M%C3%A1laga&country=Hiszpania&checkin=2026-09-15&checkout=2026-09-18&adults=2&rooms=1",
 ] as const;
 
 interface Row {

@@ -5,9 +5,66 @@ Format: decyzje podjęte samodzielnie (brief §28 na to pozwala) + bramy, które
 
 ---
 
-## Bramy wymagające decyzji właściciela
+## Bramy — ROZSTRZYGNIĘTE 2026-08-06
 
-### D1 — Dostawca mapy · **BLOKUJE ETAP 7**
+| # | Decyzja właściciela | Skutek |
+|---|---|---|
+| **D1** | **MapLibre GL + MapTiler** | Etap 7 odblokowany po dostarczeniu klucza API MapTiler (`MAPTILER_API_KEY` w env Vercela + `.env.local`). Do czasu klucza można zbudować komponent i pracować na lokalnym kluczu deweloperskim. |
+| **D2** | **Nie pokazywać ceny Booking.com w ogóle** | Etap 3 bez ceny odniesienia. Żadnego `line-through`, żadnego „-X%". `suggestedSellingPrice` zostaje w modelu domenowym jako dana, ale **nie trafia do UI**. |
+| **D3** | **Playwright — tak, w Etapie 13** | UI stabilizujemy najpierw; testy E2E pisane raz, do gotowego interfejsu. |
+
+> Jedyna rzecz, której nadal potrzebuję od właściciela: **klucz API MapTiler**
+> (darmowe konto, ~100 tys. ładowań/mies.). Bez niego Etap 7 nie wejdzie na
+> preview, choć kod można napisać wcześniej.
+
+### D1a — Rozważony i odrzucony wariant: gotowy widget mapy LiteAPI
+
+Właściciel podesłał `docs.liteapi.travel/docs/integrate-a-map-widget` (2026-08-06).
+Sprawdzone — **nie zastępuje własnej mapy**, mimo jednej realnej zalety.
+
+Zaleta: nie wymaga własnego klucza dostawcy kafelków (LiteAPI obsługuje to
+u siebie), embed to jeden `<script src="https://components.liteapi.travel/v1.0/sdk.umd.js">`
++ `LiteAPI.Map.create()`.
+
+Dlaczego mimo to odpada:
+
+1. **To ich UI, nie nasze.** Konfiguracja ogranicza się do `primaryColor`,
+   kolorów dymka i `labelsOverride`. Brief §7 wymaga spójności z HelpTravel,
+   a nie kolorowania cudzego komponentu.
+2. **Brak udokumentowanego języka polskiego.** Dokumentacja wymienia `currency`,
+   ale nie ustawienie locale. To dokładnie ta sama ściana, o którą rozbił się
+   gotowy chatbot LiteAPI (porzucony: brak PL UI, ceny w USD).
+3. **Nie da się zsynchronizować z naszą listą i filtrami.** Widget ma własne
+   wyszukiwanie i własną pulę hoteli. Brief §10 wymaga wspólnego stanu:
+   zaznaczony marker ↔ podświetlona karta, zachowanie filtrów, „przeszukaj ten
+   obszar" na NASZYCH wynikach. Hostowany komponent tego nie odda.
+4. Kliknięcie prowadzi na stronę WhiteLabel (`*.nuitee.link`), czyli **poza
+   helptravel.pl** — chyba że przechwycimy `onHotelClick`, co i tak sprowadza
+   się do pisania własnej integracji.
+
+To samo rozumowanie dotyczy widgetów listy hoteli i paska wyszukiwania:
+są komplementarne dla stron treściowych bez własnego backendu, a my mamy
+własny lejek, ceny w PLN i polski interfejs.
+
+**Wniosek: D1 bez zmian — MapLibre GL + MapTiler.** Widgety zostają odnotowane
+jako awaryjny plan B, gdyby MapTiler okazał się problemem.
+
+### D1b — Co z linków RZECZYWIŚCIE zmieniło projekt
+
+Dokumentacja `POST /hotels/rates` ujawniła parametr **`roomMapping: true`**,
+który rozwiązuje największy nierozwiązany problem audytu (powiązanie taryfy ze
+zdjęciem pokoju) — szczegóły i pomiar w `02-data-contracts.md` §5.
+Ujawniła też **filtry po stronie serwera** (`starRating`, `facilities`,
+`chainIds`, `boardType`, `refundableRatesOnly`, `sort`, `limit`), co jest
+istotne dla Etapu 6.
+
+Uzasadnienia wariantów zostają niżej — przydają się przy powrocie do tematu.
+
+---
+
+## Bramy wymagające decyzji właściciela (kontekst źródłowy)
+
+### D1 — Dostawca mapy · ~~BLOKUJE ETAP 7~~ → **rozstrzygnięte: MapLibre + MapTiler**
 
 W projekcie **nie ma żadnej biblioteki map**. Mapa z briefu §10 to nie jest
 przestawienie komponentu, tylko nowa zależność + dostawca kafelków.
@@ -25,7 +82,7 @@ przepisywania komponentu.
 
 **Potrzebne od właściciela:** zgoda na założenie konta i klucz API.
 
-### D2 — Czy pokazywać cenę Booking.com jako odniesienie · **BLOKUJE ETAP 4**
+### D2 — Czy pokazywać cenę Booking.com jako odniesienie · ~~BLOKUJE ETAP 4~~ → **rozstrzygnięte: nie pokazujemy**
 
 Pomiar (400 taryf, `02-data-contracts.md` §4.3):
 

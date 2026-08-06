@@ -266,27 +266,68 @@ brak terminów nie znaczy „brak polityki", znaczy „bezzwrotna".
 
 ---
 
-## 5. Powiązanie taryfa ↔ pokój — **problem nierozwiązany**
+## 5. Powiązanie taryfa ↔ pokój — **ROZWIĄZANE: `roomMapping: true`**
+
+> Zaktualizowane 2026-08-06 po podpowiedzi właściciela (linki do dokumentacji
+> LiteAPI). Pierwotna diagnoza brzmiała „problem nierozwiązany, trzeba dopasowywać
+> po nazwach przez barierę językową" — **była błędna**. Istnieje klucz obcy.
+
+Domyślnie identyfikatory faktycznie do siebie nie pasują:
 
 ```
-/hotels/rates  → roomTypeId = "GUZTKLJRG4YDAMRWGY4DKOD4JZJEMTT4GIYDENRQ…"  (base32, ~90 zn.)
-/data/hotel    → rooms[].id = 5677262                                       (number)
+/hotels/rates  → roomTypeId = "GUZTKLJRG4YDAMRWGY4DKOD4JZJEMTT4…"  (base32, ~90 zn.)
+/data/hotel    → rooms[].id = 5677262                              (number)
 ```
 
-**Identyfikatory nie pasują do siebie.** Nie ma klucza obcego. Żeby pokazać
-zdjęcie konkretnego pokoju przy taryfie, trzeba dopasować **po nazwie**:
+Ale `POST /hotels/rates` przyjmuje parametr **`roomMapping: true`**, który
+dokłada do odpowiedzi `mappedRoomId` — i to **wskazuje wprost na `rooms[].id`**
+z `/data/hotel`.
+
+### 5.1 Pułapka: `mappedRoomId` jest na poziomie TARYFY, nie `roomType`
 
 ```
-rate.name          = "Standard Room"          ← angielska (z taryfy)
-rooms[].roomName   = "Pokój dwuosobowy"       ← polska (z language=pl)
+roomTypes[].rates[].mappedRoomId = 1459368038      ← TUTAJ
+roomTypes[].mappedRoomId                            ← NIE ISTNIEJE
 ```
 
-To dopasowanie **przez barierę językową**. Możliwe podejścia (do rozstrzygnięcia
-w Etapie 2): pobranie `rooms[]` również w `language=en` i dopasowanie EN↔EN
-(kosztem drugiego, cache'owanego na 24 h wywołania — dokładnie ten sam wzorzec,
-którego `hotel.ts` już używa dla nazwy hotelu), z `fuse.js` jako progiem
-podobieństwa. **Bez dopasowania nie wolno podstawiać zdjęcia hotelu jako
-zdjęcia pokoju** (brief §12.1).
+Pierwsza sonda szukała go o poziom za wysoko i wyszło „0/9". Porównanie
+odpowiedzi z `roomMapping: false` i `true` pokazuje jedyną różnicę:
+w `rates[]` przybywa `mappedRoomId` (i znika `rateCode`).
+
+### 5.2 Pokrycie — pomiar na 4 hotelach
+
+```
+hotel        taryf   mappedRoomId   trafia w rooms[]   ma zdjęcie
+lp6558036a       8              8                  8            8
+lp6556ead9      14             14                 14           14
+lp1ff62          3              3                  3            3
+lp27a0d8         6              6                  6            6
+                                                       ────────────
+                                            RAZEM     31/31 = 100%
+```
+
+Przykład powiązania:
+
+```
+taryfa "Deluxe Double Room (SOHO)(1 Queen Bed)"
+  → pokój "Deluxe Double Room Single Use (SOHO)"
+    8 zdjęć · 28 m² · łóżko queen size
+```
+
+**Skutki:**
+
+- **Nie potrzeba dopasowywania po nazwach ani `fuse.js`.** Klucz obcy istnieje.
+- Znika największe ryzyko projektu (podstawienie zdjęcia nie tego pokoju).
+- Trzeba dodać `roomMapping: true` do zapytań w `src/lib/liteapi/rates.ts`
+  — **uwaga: to zmienia treść zapytania, więc unieważnia klucz cache stawek**
+  (`rate-cache.ts` → podbić `KEY_VERSION`).
+- Nadal obowiązuje R10: gdy `mappedRoomId` nie trafi (hotele „sparse"),
+  placeholder, **nigdy zdjęcie hotelu**.
+
+### 5.3 Pomiar do wykonania
+
+100% na 4 hotelach to za mała próbka, żeby zakładać 100% wszędzie —
+zmierzyć na kilkudziesięciu hotelach z różnych krajów przy wdrażaniu Etapu 9.
 
 ---
 
@@ -330,7 +371,8 @@ lista 34 pozycji** w dwóch reprezentacjach → kanoniczne źródło to
 
 | Funkcja z briefu | Dane są? | Uwaga |
 |---|---|---|
-| Zdjęcia konkretnego pokoju | ✅ | wymaga dopasowania nazw (§5) |
+| Zdjęcia konkretnego pokoju | ✅ | przez `roomMapping: true` → `mappedRoomId`; 31/31 taryf w pomiarze (§5) |
+| Filtry po stronie serwera | ✅ | `/hotels/rates` przyjmuje `starRating`, `facilities`, `chainIds`, `boardType`, `refundableRatesOnly`, `sort`, `limit` |
 | Powierzchnia, łóżka, maks. gości | ✅ | `roomSizeSquare`, `bedTypes`, `maxOccupancy` |
 | Udogodnienia pokoju | ✅ | `roomAmenities[31]` |
 | Kategorie ocen (paski) | ✅ | `sentiment_analysis.categories`, nazwy EN → słownik |

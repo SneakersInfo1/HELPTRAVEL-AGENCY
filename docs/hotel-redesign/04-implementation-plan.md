@@ -55,7 +55,7 @@ Nowe: `src/lib/hotels/domain/` — `hotel-details.ts`, `room.ts`, `rate.ts`,
 `price.ts`, `review.ts`, `amenity.ts`, `location.ts` + mappery + testy.
 
 - Typy z briefu §18 (`HotelDetails`, `RoomType`, `RoomRate`, `PriceBreakdown`, `TaxesAndFees`, `BoardType`, `CancellationPolicy`, `HotelAmenity`, `MapMarker`)
-- **Dopasowanie taryfa↔pokój** (`02-data-contracts.md` §5): pobranie `rooms[]` też w `language=en`, dopasowanie EN↔EN, `fuse.js` jako próg podobieństwa. Brak dopasowania → placeholder (R10)
+- **Powiązanie taryfa↔pokój** (`02-data-contracts.md` §5): dodać `roomMapping: true` do zapytań w `lib/liteapi/rates.ts` i czytać `rates[].mappedRoomId` → `rooms[].id`. **Klucz obcy istnieje — żadnego dopasowywania po nazwach.** W tym samym commicie podbić `KEY_VERSION` w `lib/hotels/rate-cache.ts` (zmiana treści zapytania unieważnia cache). Nietrafienie → placeholder (R10)
 - Normalizacja udogodnień po `facilityId` + kategorie z briefu §14.2
 - Mapowanie `boardType` → polskie nazwy; polityki anulacji z **zagnieżdżonego** `refundableTag`
 - **Weryfikacja 2.10 z audytu:** z którego poziomu `group-rates.ts` czyta `refundableTag`
