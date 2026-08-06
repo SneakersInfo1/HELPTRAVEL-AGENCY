@@ -502,7 +502,9 @@ export function ResultsList(props: ResultsListProps) {
               type="button"
               onClick={() => setViewMode(mode)}
               aria-pressed={viewMode === mode}
-              className={`h-9 rounded-full px-4 text-sm font-medium transition ${
+              // min-h-11 = 44 px — minimalny cel dotyku (WCAG 2.2 AA).
+              // Wcześniejsze h-9 (36 px) było poniżej progu; zmierzone na 375 px.
+              className={`min-h-11 rounded-full px-5 text-sm font-medium transition ${
                 viewMode === mode ? "bg-emerald-700 text-white" : "text-neutral-700 hover:text-neutral-900"
               }`}
             >
