@@ -25,6 +25,20 @@ export interface MetaOffer {
   rating?: number;
   reviewCount?: number;
   thumbnailUrl?: string;
+  /** Marka/sieć hotelowa — filtr marki (brief §9). */
+  chain?: string;
+  /**
+   * Identyfikatory udogodnień. To JEDYNE źródło udogodnień na LIŚCIE —
+   * `/data/hotels` nie zwraca nazw, tylko ID. Bez tego filtr „z basenem"
+   * na wynikach jest niewykonalny.
+   */
+  facilityIds?: number[];
+  /**
+   * Typ obiektu wprost od dostawcy. Zastępuje ZGADYWANIE z nazwy hotelu
+   * (`inferPropertyType`), które trafiało tylko wtedy, gdy właściciel wpisał
+   * „Hostel"/„Apartament" w nazwę.
+   */
+  hotelTypeId?: number;
 }
 
 /** Rozmiar strony puli metadanych (serwer = strona 0, klient = kolejne). */
@@ -51,5 +65,8 @@ export function toMetaOffer(h: LiteApiHotel): MetaOffer {
     rating: h.rating ?? undefined,
     reviewCount: h.reviewCount ?? undefined,
     thumbnailUrl: h.main_photo ?? h.thumbnail,
+    chain: h.chain ?? undefined,
+    facilityIds: h.facilityIds ?? undefined,
+    hotelTypeId: h.hotelTypeId ?? undefined,
   };
 }

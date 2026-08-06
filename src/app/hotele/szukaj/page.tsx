@@ -63,6 +63,10 @@ interface SP {
   strona?: string;
   propertyType?: string;
   board?: string;
+  /** Klucze filtrów udogodnień (FACILITY_FILTERS), rozdzielone przecinkami. */
+  facilities?: string;
+  /** Nazwy sieci hotelowych rozdzielone „|" — nazwy zawierają przecinki. */
+  chains?: string;
   flightSort?: string;
   directOnly?: string;
 }
@@ -296,6 +300,13 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
   const boardList = sp.board
     ? sp.board.split(",").map((s) => s.trim()).filter(Boolean)
     : undefined;
+  const facilitiesList = sp.facilities
+    ? sp.facilities.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+  // Separator „|", nie przecinek — nazwy sieci potrafią zawierać przecinki.
+  const chainsList = sp.chains
+    ? sp.chains.split("|").map((s) => s.trim()).filter(Boolean)
+    : undefined;
 
   return (
     <div className="space-y-4">
@@ -333,6 +344,8 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
         q={sp.q}
         propertyType={propertyTypeList}
         board={boardList}
+        facilities={facilitiesList}
+        chains={chainsList}
       />
     </div>
   );

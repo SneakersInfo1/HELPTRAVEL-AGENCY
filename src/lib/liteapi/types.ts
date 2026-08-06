@@ -79,6 +79,11 @@ export const LiteApiHotelSchema = z.object({
   // udogodnień na LIŚCIE — /data/hotels nie zwraca nazw, tylko ID. Bez tego
   // filtrowanie po udogodnieniach na liście jest niewykonalne.
   facilityIds: z.array(z.number()).nullish().catch(undefined),
+  // Typ obiektu wprost od dostawcy (204 = Hotels, 201 = Apartments…).
+  // Słownik 52 typów: `data/liteapi-reference.json` → `hotelTypes`.
+  // Zwracane ZARÓWNO na liście, jak i na szczegółach — dlatego siedzi
+  // w bazowym schemacie, a nie w rozszerzeniu.
+  hotelTypeId: z.number().nullish(),
 });
 export type LiteApiHotel = z.infer<typeof LiteApiHotelSchema>;
 

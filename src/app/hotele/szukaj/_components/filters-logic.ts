@@ -8,9 +8,44 @@
 // Pure functions only. No React, no hooks, no DOM. Both the server page
 // and the client FiltersSidebar consume from here.
 
-// Heuristic match — LiteAPI's list endpoint doesn't return propertyType, so
-// we infer it from the hotel name. Apartments/hostels/aparthotels routinely
-// say so in the name. Falls back to "hotel" when nothing matches.
+// Mapa `hotelTypeId` (LiteAPI) → nasze kategorie filtra.
+//
+// Etap 6 przebudowy (2026-08-06): dostawca ZWRACA `hotelTypeId` na liście —
+// komentarz „LiteAPI's list endpoint doesn't return propertyType" przy
+// `inferPropertyType` był nieaktualny. Zgadywanie z nazwy trafiało tylko
+// wtedy, gdy właściciel wpisał „Hostel"/„Apartament" w nazwę obiektu; hotel
+// nazwany „Villa Rosa" lądował jako „hotel", a apartament „Sunrise 21"
+// też jako „hotel". Teraz decyduje dana, a nazwa jest awaryjna.
+//
+// Pełny słownik 52 typów: `data/liteapi-reference.json` → `hotelTypes`.
+const TYPE_ID_TO_CATEGORY: Record<number, string> = {
+  201: "apartment",
+  203: "hostel",
+  204: "hotel",
+  205: "hotel", // Motels — dla polskiego gościa to wciąż „hotel przy drodze"
+  206: "hotel", // Resorts
+  207: "apartment", // Aparthotels bywają pod tym id
+  208: "guesthouse",
+  216: "guesthouse", // Bed and breakfasts
+};
+
+/**
+ * Typ obiektu do filtra: NAJPIERW dana od dostawcy, dopiero potem heurystyka.
+ *
+ * `hotelTypeId: 0` znaczy u dostawcy „Not Available" — wtedy heurystyka
+ * z nazwy jest lepsza niż nic.
+ */
+export function propertyTypeOf(offer: { name: string; hotelTypeId?: number }): string {
+  if (typeof offer.hotelTypeId === "number" && offer.hotelTypeId !== 0) {
+    const mapped = TYPE_ID_TO_CATEGORY[offer.hotelTypeId];
+    if (mapped) return mapped;
+  }
+  return inferPropertyType(offer.name);
+}
+
+// Heurystyka AWARYJNA — używana tylko, gdy dostawca nie poda `hotelTypeId`
+// (albo poda 0 = „Not Available"). Apartamenty/hostele często mówią o sobie
+// w nazwie. Domyślnie „hotel".
 export function inferPropertyType(name: string): string {
   const n = name.toLowerCase();
   if (n.includes("aparthotel") || n.includes("apart-hotel")) return "aparthotel";
@@ -43,6 +78,12 @@ export interface FilterableOffer {
   };
   stars?: number;
   rating?: number;
+  /** Marka/sieć — filtr marki. */
+  chain?: string;
+  /** ID udogodnień z `/data/hotels` — jedyne źródło udogodnień na liście. */
+  facilityIds?: number[];
+  /** Typ obiektu od dostawcy; brak → heurystyka z nazwy. */
+  hotelTypeId?: number;
 }
 
 export interface ApplyFiltersParams {
@@ -55,6 +96,14 @@ export interface ApplyFiltersParams {
   q?: string;
   propertyType?: string[];
   board?: string[];
+  /** Nazwy sieci hotelowych (dokładne, jak zwraca dostawca). */
+  chains?: string[];
+  /**
+   * Wymagane udogodnienia jako grupy `facilityId`. Koniunkcja MIĘDZY grupami,
+   * alternatywa WEWNĄTRZ grupy: „basen" to kilka różnych ID u dostawcy
+   * (kryty/odkryty/podgrzewany), a gość chce po prostu basen.
+   */
+  facilityGroups?: number[][];
 }
 
 export function applyFiltersAndSort<T extends FilterableOffer>(
@@ -70,7 +119,21 @@ export function applyFiltersAndSort<T extends FilterableOffer>(
   }
   if (params.propertyType && params.propertyType.length > 0) {
     const allowed = new Set(params.propertyType);
-    filtered = filtered.filter((o) => allowed.has(inferPropertyType(o.name)));
+    filtered = filtered.filter((o) => allowed.has(propertyTypeOf(o)));
+  }
+  if (params.chains && params.chains.length > 0) {
+    const allowed = new Set(params.chains.map((c) => c.toLowerCase()));
+    filtered = filtered.filter((o) => Boolean(o.chain) && allowed.has(o.chain!.toLowerCase()));
+  }
+  if (params.facilityGroups && params.facilityGroups.length > 0) {
+    filtered = filtered.filter((o) => {
+      // Hotel BEZ listy udogodnień nie może spełnić wymagania. Przepuszczanie
+      // go „na wszelki wypadek" dałoby w wynikach obiekty bez basenu przy
+      // aktywnym filtrze „basen" — czyli filtr, któremu nie można ufać.
+      const has = new Set(o.facilityIds ?? []);
+      if (has.size === 0) return false;
+      return params.facilityGroups!.every((group) => group.some((id) => has.has(id)));
+    });
   }
   if (params.board && params.board.length > 0) {
     const allowed = new Set(params.board);

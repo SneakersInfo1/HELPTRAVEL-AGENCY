@@ -9,6 +9,8 @@ import { ensurePrice, getPrice, getVersion, subscribe, type PriceEntry } from "@
 import { ResultCard } from "./result-card";
 import { PriceView } from "./card-price";
 import { HotelPagination } from "./hotel-pagination";
+import { facilityGroupsFor } from "@/lib/hotels/facility-filters";
+import { publishFilterOptions } from "@/lib/hotels/filter-options-store";
 import { applyFiltersAndSort, type FilterableOffer } from "./filters-logic";
 
 export type { MetaOffer } from "@/lib/hotels/meta-pool";
@@ -62,6 +64,10 @@ interface ResultsListProps {
   q?: string;
   propertyType?: string[];
   board?: string[];
+  /** Klucze z FACILITY_FILTERS — mapowane na grupy facilityId. */
+  facilities?: string[];
+  /** Nazwy sieci hotelowych (dokładnie jak u dostawcy). */
+  chains?: string[];
 }
 
 interface PricedFilterable extends FilterableOffer {
@@ -127,6 +133,8 @@ export function ResultsList(props: ResultsListProps) {
     q,
     propertyType,
     board,
+    facilities,
+    chains,
   } = props;
 
   // Stable identity for the price context so the effect doesn't refire on
@@ -204,6 +212,13 @@ export function ResultsList(props: ResultsListProps) {
     return merged;
   }, [pool, expansion, sourceSig]);
 
+  // Panel filtrów renderuje się PRZED tą sekcją (siatka strony), więc nie zna
+  // puli. Publikujemy więc opcje, które pula faktycznie obsługuje — dzięki
+  // temu „Basen" pojawia się tylko tam, gdzie jakiś hotel go ma (brief §9).
+  useEffect(() => {
+    publishFilterOptions(fullPool);
+  }, [fullPool]);
+
   // Stable identity for the pool — id list is the natural key, much cheaper
   // than deep-comparing records on every render.
   const poolIdSig = fullPool.map((o) => o.hotelId).join(",");
@@ -246,6 +261,8 @@ export function ResultsList(props: ResultsListProps) {
   // trzy ostrzeżenia. Wartości liczą się identycznie jak wcześniej — przy każdym
   // renderze — więc zachowanie się nie zmienia, a zależności są weryfikowalne.
   const propertyTypeSig = propertyType?.join(",") ?? "";
+  const facilitiesSig = facilities?.join(",") ?? "";
+  const chainsSig = chains?.join("|") ?? "";
   const boardSig = board?.join(",") ?? "";
   const wersjaCen = getVersion();
 
@@ -287,6 +304,10 @@ export function ResultsList(props: ResultsListProps) {
         city: r.offer.city,
         stars: r.offer.stars,
         rating: r.offer.rating,
+        // Pola z `/data/hotels` używane przez filtry marki, udogodnień i typu.
+        chain: r.offer.chain,
+        facilityIds: r.offer.facilityIds,
+        hotelTypeId: r.offer.hotelTypeId,
         cheapestRate: {
           totalAmount: rate.totalAmount,
           refundableTag: rate.refundableTag,
@@ -306,6 +327,8 @@ export function ResultsList(props: ResultsListProps) {
       q,
       propertyType,
       board,
+      chains,
+      facilityGroups: facilities?.length ? facilityGroupsFor(facilities) : undefined,
     });
 
     const byId = new Map(priced.map((r) => [r.offer.hotelId, r]));
@@ -415,6 +438,8 @@ export function ResultsList(props: ResultsListProps) {
     cancel,
     q,
     propertyTypeSig,
+    facilitiesSig,
+    chainsSig,
     boardSig,
     wersjaCen,
   ]);

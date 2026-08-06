@@ -13,7 +13,13 @@
 // changes are pending.
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+
+import {
+  getFilterOptions,
+  getServerFilterOptions,
+  subscribeFilterOptions,
+} from "@/lib/hotels/filter-options-store";
 
 const STARS = [5, 4, 3, 2, 1];
 const CANCEL = [
@@ -51,6 +57,10 @@ interface Draft {
   q: string;
   propertyType: string[];
   board: string[];
+  /** Klucze filtrów udogodnień (FACILITY_FILTERS) — pula ma tylko facilityId. */
+  facilities: string[];
+  /** Nazwy sieci hotelowych, dokładnie jak zwraca dostawca. */
+  chains: string[];
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -63,6 +73,8 @@ const EMPTY_DRAFT: Draft = {
   q: "",
   propertyType: [],
   board: [],
+  facilities: [],
+  chains: [],
 };
 
 function readDraftFromUrl(sp: URLSearchParams): Draft {
@@ -76,6 +88,9 @@ function readDraftFromUrl(sp: URLSearchParams): Draft {
     q: sp.get("q") ?? "",
     propertyType: (sp.get("propertyType") ?? "").split(",").filter(Boolean),
     board: (sp.get("board") ?? "").split(",").filter(Boolean),
+    facilities: (sp.get("facilities") ?? "").split(",").filter(Boolean),
+    // Separator „|", bo nazwy sieci potrafią zawierać przecinki.
+    chains: (sp.get("chains") ?? "").split("|").filter(Boolean),
   };
 }
 
@@ -91,6 +106,8 @@ function countActive(d: Draft): number {
   if (d.q) n++;
   n += d.propertyType.length;
   n += d.board.length;
+  n += d.facilities.length;
+  n += d.chains.length;
   return n;
 }
 
@@ -104,7 +121,9 @@ function draftsEqual(a: Draft, b: Draft): boolean {
     a.sort === b.sort &&
     a.q === b.q &&
     a.propertyType.join(",") === b.propertyType.join(",") &&
-    a.board.join(",") === b.board.join(",")
+    a.board.join(",") === b.board.join(",") &&
+    a.facilities.join(",") === b.facilities.join(",") &&
+    a.chains.join("|") === b.chains.join("|")
   );
 }
 
@@ -114,6 +133,10 @@ export function FiltersSidebar() {
   const urlDraft = useMemo(() => readDraftFromUrl(sp), [sp]);
   const [draft, setDraft] = useState<Draft>(urlDraft);
   const [openOnMobile, setOpenOnMobile] = useState(false);
+  // Opcje zależne od puli wyników — publikuje je lista (patrz
+  // lib/hotels/filter-options-store.ts). Snapshot serwerowy jest pusty, więc
+  // SSR renderuje panel bez tych sekcji i hydracja jest spójna.
+  const options = useSyncExternalStore(subscribeFilterOptions, getFilterOptions, getServerFilterOptions);
 
   // Reseed local draft when URL changes (e.g. when other parts of the page
   // navigate, like the search-bar resubmit).
@@ -139,6 +162,8 @@ export function FiltersSidebar() {
     set("q", draft.q || null);
     set("propertyType", draft.propertyType.length ? draft.propertyType.join(",") : null);
     set("board", draft.board.length ? draft.board.join(",") : null);
+    set("facilities", draft.facilities.length ? draft.facilities.join(",") : null);
+    set("chains", draft.chains.length ? draft.chains.join("|") : null);
     router.replace(`/hotele/szukaj?${next.toString()}`, { scroll: false });
     setOpenOnMobile(false);
   };
@@ -149,14 +174,14 @@ export function FiltersSidebar() {
     const next = new URLSearchParams(sp.toString());
     for (const k of [
       "minPrice", "maxPrice", "minStars", "minRating",
-      "cancel", "sort", "q", "propertyType", "board",
+      "cancel", "sort", "q", "propertyType", "board", "facilities", "chains",
     ]) {
       next.delete(k);
     }
     router.replace(`/hotele/szukaj?${next.toString()}`, { scroll: false });
   };
 
-  const toggle = (key: "propertyType" | "board", value: string) => {
+  const toggle = (key: "propertyType" | "board" | "facilities" | "chains", value: string) => {
     setDraft((d) => {
       const current = d[key];
       const has = current.includes(value);
@@ -355,6 +380,50 @@ export function FiltersSidebar() {
               ))}
             </div>
           </FilterBlock>
+
+          {/* Udogodnienia i marki pojawiają się TYLKO wtedy, gdy bieżąca pula
+              je zawiera (brief §9). Liczba przy etykiecie to realna liczba
+              obiektów — filtr, który po kliknięciu daje zero wyników, psuje
+              zaufanie do wszystkich pozostałych. */}
+          {options.facilities.length > 0 && (
+            <FilterBlock title="Udogodnienia">
+              <div className="space-y-1 text-sm">
+                {options.facilities.map(({ filter, count }) => (
+                  <label key={filter.key} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={draft.facilities.includes(filter.key)}
+                      onChange={() => toggle("facilities", filter.key)}
+                      className="h-4 w-4 accent-emerald-600"
+                    />
+                    <span className="flex-1">{filter.label}</span>
+                    <span className="text-xs tabular-nums text-neutral-500">{count}</span>
+                  </label>
+                ))}
+              </div>
+            </FilterBlock>
+          )}
+
+          {options.chains.length > 0 && (
+            <FilterBlock title="Marka hotelowa">
+              <div className="space-y-1 text-sm">
+                {options.chains.map(({ name, count }) => (
+                  <label key={name} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={draft.chains.includes(name)}
+                      onChange={() => toggle("chains", name)}
+                      className="h-4 w-4 accent-emerald-600"
+                    />
+                    <span className="flex-1 truncate" title={name}>
+                      {name}
+                    </span>
+                    <span className="text-xs tabular-nums text-neutral-500">{count}</span>
+                  </label>
+                ))}
+              </div>
+            </FilterBlock>
+          )}
 
           <FilterBlock title="Wyżywienie">
             <div className="space-y-1 text-sm">
