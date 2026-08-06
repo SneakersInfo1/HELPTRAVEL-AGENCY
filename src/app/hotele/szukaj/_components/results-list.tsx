@@ -9,6 +9,7 @@ import { ensurePrice, getPrice, getVersion, subscribe, type PriceEntry } from "@
 import { ResultCard } from "./result-card";
 import { PriceView } from "./card-price";
 import { HotelPagination } from "./hotel-pagination";
+import { HotelMap } from "./hotel-map";
 import { facilityGroupsFor } from "@/lib/hotels/facility-filters";
 import { publishFilterOptions } from "@/lib/hotels/filter-options-store";
 import { applyFiltersAndSort, type FilterableOffer } from "./filters-logic";
@@ -68,6 +69,15 @@ interface ResultsListProps {
   facilities?: string[];
   /** Nazwy sieci hotelowych (dokładnie jak u dostawcy). */
   chains?: string[];
+  /**
+   * Google Place ID kierunku dla widgetu mapy LiteAPI.
+   * `null` = nie udało się go rozwiązać → przełącznika mapy NIE pokazujemy.
+   * Widget centruje się wyłącznie po `placeId`, więc bez niego mapa
+   * pokazałaby przypadkowe miejsce.
+   */
+  mapPlaceId?: string | null;
+  /** Domena white-labelu LiteAPI. Brak = mapa wyłączona. */
+  mapDomain?: string | null;
 }
 
 interface PricedFilterable extends FilterableOffer {
@@ -135,7 +145,16 @@ export function ResultsList(props: ResultsListProps) {
     board,
     facilities,
     chains,
+    mapPlaceId,
+    mapDomain,
   } = props;
+
+  // Widok listy vs mapy. Stan lokalny, nie URL: przełączenie widoku nie jest
+  // nowym wyszukiwaniem i nie powinno zaśmiecać historii przeglądarki ani
+  // linku, którym gość się dzieli. Filtry i strona zostają nietknięte.
+  // UWAGA: `view` jest już zajęte przez memo z wynikami — stąd `viewMode`.
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const mapAvailable = Boolean(mapPlaceId && mapDomain);
 
   // Stable identity for the price context so the effect doesn't refire on
   // every render.
@@ -468,6 +487,42 @@ export function ResultsList(props: ResultsListProps) {
         filteredCount={view.total}
       />
 
+      {/* Przełącznik Lista / Mapa. Pokazujemy go TYLKO gdy mapa naprawdę
+          zadziała (jest placeId kierunku i domena white-labelu) — martwy
+          przycisk jest gorszy niż jego brak. */}
+      {mapAvailable && (
+        <div
+          role="group"
+          aria-label="Widok wyników"
+          className="inline-flex rounded-full border border-neutral-300 bg-white p-0.5"
+        >
+          {(["list", "map"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setViewMode(mode)}
+              aria-pressed={viewMode === mode}
+              className={`h-9 rounded-full px-4 text-sm font-medium transition ${
+                viewMode === mode ? "bg-emerald-700 text-white" : "text-neutral-700 hover:text-neutral-900"
+              }`}
+            >
+              {mode === "list" ? "Lista" : "Mapa"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {viewMode === "map" && mapAvailable && (
+        <HotelMap
+          placeId={mapPlaceId!}
+          domain={mapDomain!}
+          checkin={ctx.checkin}
+          checkout={ctx.checkout}
+          searchQuery={baseQuery}
+        />
+      )}
+
+      {viewMode === "map" ? null : (<>
       {/* With loading-row padding above, displayed.length is 0 only AFTER
           the scan completes AND nothing matched (either no available hotels
           at all, or filters wiped everything). */}
@@ -511,6 +566,8 @@ export function ResultsList(props: ResultsListProps) {
       )}
 
       <HotelPagination page={view.safePage} totalPages={view.totalPages} baseQuery={baseQuery} />
+      </>
+      )}
     </div>
   );
 }

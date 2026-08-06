@@ -12,6 +12,7 @@ import { fetchHotelsByPlaceId, fetchHotelsForDestination, LiteApiError } from "@
 import { POOL_PAGE_SIZE, toMetaOffer, type MetaOffer } from "@/lib/hotels/meta-pool";
 import { nightsBetween } from "@/lib/hotels/normalize";
 import { getRegionById, isInRegion, type RegionRecord } from "@/lib/hotels/regions";
+import { suggestPlaces } from "@/lib/liteapi/places-suggest";
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
 
@@ -201,6 +202,8 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
   // Czy istnieją kolejne strony puli (RAW count == limit strony). Liczone
   // PRZED filtrem wyspy — offset kolejnych stron liczy się po surowej liście.
   let poolHasMore = false;
+  // placeId kierunku dla widgetu mapy (null = mapy nie pokazujemy).
+  let mapPlaceId: string | null = null;
   let errorMessage: string | null = null;
 
   try {
@@ -232,6 +235,21 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
     poolHasMore = raw.length >= HOTEL_POOL_SIZE;
     if (region) raw = raw.filter((h) => isInRegion(region, h));
     metaPool = raw.map(toMetaOffer);
+
+    // Widget mapy LiteAPI centruje się WYŁĄCZNIE po `placeId` (nie przyjmuje
+    // współrzędnych). Region ma go w słowniku; dla miasta rozwiązujemy nazwę
+    // przez /data/places. Gdy się nie uda — mapy po prostu nie pokazujemy,
+    // zamiast renderować pustą albo wycentrowaną gdzie indziej.
+    if (region) {
+      mapPlaceId = region.placeId;
+    } else {
+      try {
+        const suggestions = await suggestPlaces(`${canonicalCity}${country ? `, ${country}` : ""}`, 1);
+        mapPlaceId = suggestions[0]?.placeId ?? null;
+      } catch {
+        mapPlaceId = null; // mapa to dodatek — nigdy nie wywala wyników
+      }
+    }
   } catch (err) {
     errorMessage = err instanceof LiteApiError ? err.userMessagePl : "Coś poszło nie tak. Spróbuj ponownie.";
   }
@@ -346,6 +364,8 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
         board={boardList}
         facilities={facilitiesList}
         chains={chainsList}
+        mapPlaceId={mapPlaceId}
+        mapDomain={process.env.NEXT_PUBLIC_LITEAPI_WIDGET_DOMAIN ?? null}
       />
     </div>
   );
