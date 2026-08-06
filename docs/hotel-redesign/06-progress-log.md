@@ -289,15 +289,83 @@ Wszystko przywrócone; duplikaty usunięte. **Wniosek na przyszłość:** przy
 `ask-codex` z `workspace-write` timeout MCP ≠ koniec pracy Codeksa —
 sprawdzić `Get-Process codex` przed dalszą edycją tych samych plików.
 
+---
+
+## Sesja 3 — 2026-08-06 · **ETAP 2 ZROBIONY** (warstwa domenowa)
+
+### Pozycja 2.10 audytu — ROZSTRZYGNIĘTA, moja obawa była nietrafiona
+
+`isFreeCancellation` (`lib/hotels/normalize.ts:55`) czyta **oba poziomy**
+poprawnie (`rate.refundableTag` ORAZ `cancellationPolicies.refundableTag`
+ORAZ `cancelPolicyInfos`). Wykrywanie bezpłatnej anulacji **działa**.
+
+Ale przy okazji znalazł się **realny błąd tej samej klasy**: `normalize.ts:88`
+przepisywał do `NormalizedHotelOffer` wyłącznie top-level `rate.refundableTag`,
+który na drucie jest zwykle `undefined`. `resolve-slim-rates.ts:79` robi to
+poprawnie od dawna — była to niespójność między dwiema ścieżkami tych samych
+danych. **Naprawione.**
+
+Ten sam błąd żyje w AI konsjerżu (`lib/concierge/tool-deps.ts:111`) i powoduje,
+że karta oferty **nigdy** nie pokazuje informacji o zwrotności
+(`trip-offer-card.tsx:82-83` sprawdza `=== "NRFN"` / `!== "RFN"` na undefined).
+Zgłoszone jako osobne zadanie — inny podsystem, poza zakresem przebudowy.
+
+### Nowa warstwa: `src/lib/hotels/domain/`
+
+| Plik | Rola |
+|---|---|
+| `types.ts` | typy domenowe z briefu §18 (`PriceBreakdown`, `RateOffer`, `RoomProfile`, `TaxNotice`, `Amenity`…) |
+| `price.ts` | ceny, podatki, `hasHonestDiscount` |
+| `room.ts` | mapowanie pokoi + **powiązanie taryfa↔pokój przez `mappedRoomId`** |
+| `board.ts` | typowana kategoria wyżywienia (etykiety zostają w `translations.ts`) |
+| `amenity.ts` | **deduplikacja POJĘCIOWA** + kategorie + nazwy ikon lucide |
+| `domain.test.ts` | 30 testów, **dopisany do listy w `package.json`** |
+
+Kluczowe decyzje projektowe:
+
+- **`TaxNotice` ma trzy rozłączne stany** (`all-included` / `extra-at-property` /
+  `unknown`). Brak danych **nie** oznacza „w cenie" — wtedy UI ma milczeć.
+  To jest mechanizm, który zlikwiduje bezwarunkowe „wł. podatków" w Etapie 3.
+- **`boardCategoryOf` przy braku danych zwraca `unknown`**, a nie `room-only`.
+  Różnica wobec `localizeBoard()`, które przy pustym wejściu twierdzi
+  „Bez wyżywienia" — to zapewnienie, którego dane nie potwierdzają.
+- **Metraż w stopach kwadratowych jest odrzucany** zamiast pokazany jako liczba
+  bez kontekstu (dostawca podaje `roomSizeUnit`, bywa `sq ft`).
+- **`competitorReference`** świadomie NIE nazywa się `discount`/`oldPrice` —
+  `source` to zwykle „booking.com". Nazwa ma zapobiec temu, że ktoś kiedyś
+  weźmie to za bazę do przeceny.
+- **Deduplikacja udogodnień po POJĘCIU**, nie po tekście. `facilities.ts`
+  deduplikuje po zlokalizowanej etykiecie, co nie łapie duplikatów ze źródła
+  (`facilityId 47` „WiFi dostępne" + `107` „Darmowe WiFi").
+- Wpisy nierozpoznane **nie giną** — trafiają do „Pozostałe" z oryginalną treścią.
+
+### Uzupełnienie audytu: emoji są też poza sekcją hotelową
+
+Audyt (§2.6) stwierdzał, że emoji jest jedno (`🍽` w `result-card.tsx:193`).
+**To było niepełne.** `GROUPS` w `lib/liteapi/facilities.ts:328` używa emoji jako
+ikon kategorii (`📶`, `🚗`, `✓`). Nowa warstwa `amenity.ts` podaje zamiast tego
+nazwy ikon z `lucide-react`; stary moduł zostaje nietknięty, bo używa go
+dzisiejsza strona hotelu.
+
+### Testy — wykonane, z wynikami
+
+| Komenda | Wynik |
+|---|---|
+| `node --import tsx --test src/lib/hotels/domain/domain.test.ts` | ✅ **30/30** |
+| `pnpm test` | ✅ **570/570** (wzrost 540 → 570 potwierdza, że nowy plik JEST na liście) |
+| `npx tsc --noEmit` | ✅ czysto |
+| `npx eslint` (nowe pliki) | ✅ czysto |
+| `pnpm build` | ✅ `BUILD_EXIT=0` |
+
+Pułapka złapana po drodze: literały BigInt (`0n`) **nie kompilują się** przy
+`target: ES2017` w tym repo. Konwencja projektu to `BigInt(0)` — testy przeszły
+mimo błędu tsc, więc sam `pnpm test` by tego nie wykrył.
+
 ### Od czego zacząć następną sesję
 
-1. **Etap 2** — model domenowy w `src/lib/hotels/domain/` (typy z briefu §18,
-   mappery, normalizacja udogodnień po `facilityId`). Pamiętać o wzorcu
-   wstrzykiwania zależności (`import "server-only"` psuje `node:test`).
-2. **Dopisać nowe pliki testów do jawnej listy w `package.json`** — inaczej
-   nigdy się nie uruchomią.
-3. Zweryfikować, z którego poziomu `lib/hotels/group-rates.ts` czyta
-   `refundableTag` (pozycja 2.10 audytu — na drucie top-level jest `undefined`,
-   prawda siedzi w `cancellationPolicies.refundableTag`). **Nadal nie sprawdzone.**
-4. Domknąć Etap 0 — zrzuty ekranu, gdy panel przeglądarki będzie widoczny.
-5. Klucz `MAPTILER_API_KEY` od właściciela odblokowuje Etap 7.
+1. **Etap 3** — podpiąć `price.ts` pod UI i usunąć bezwarunkowe „wł. podatków"
+   z `result-card.tsx:213` i `rooms-section.tsx:276`. Warstwa domenowa jest
+   gotowa i przetestowana; zostaje sama prezentacja.
+2. Ujednolicić hierarchię ceny (dziś lista i strona hotelu mają **odwrotne**).
+3. Domknąć Etap 0 — zrzuty ekranu, gdy panel przeglądarki będzie widoczny.
+4. Klucz `MAPTILER_API_KEY` odblokowuje Etap 7.

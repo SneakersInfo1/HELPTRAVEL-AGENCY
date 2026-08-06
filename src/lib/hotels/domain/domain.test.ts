@@ -1,0 +1,317 @@
+// Etap 2 przebudowy sekcji hotelowej — warstwa domenowa.
+//
+// Testy są tu SPECYFIKACJĄ zachowań, które w produkcji już raz zawiodły albo
+// zawodzą dziś:
+//   • bezwarunkowe „wł. podatków" przy taryfach z `included: false` (209/400),
+//   • zdjęcie hotelu podstawiane pod pokój, gdy brak powiązania,
+//   • duplikaty udogodnień pochodzące ze ŹRÓDŁA (dwa facilityId, jedno pojęcie),
+//   • przecena liczona z ceny konkurenta.
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import type { LiteApiRate } from "@/lib/liteapi";
+
+import { boardCategoryOf, includesMeals } from "./board";
+import { buildPriceBreakdown, hasHonestDiscount, mapTaxes, taxNoticeFrom } from "./price";
+import { buildRateOffers, indexRoomsById, roomForRate, toRoomProfile } from "./room";
+import { groupAmenities, normalizeAmenities, topAmenities } from "./amenity";
+
+const PLN = "PLN";
+
+function rate(overrides: Partial<LiteApiRate> = {}): LiteApiRate {
+  return {
+    rateId: "r1",
+    retailRate: { total: [{ amount: 300, currency: PLN }] },
+    ...overrides,
+  } as LiteApiRate;
+}
+
+// ── Podatki i opłaty ────────────────────────────────────────────────────────
+
+test("podatki: wszystkie pozycje w cenie → 'all-included'", () => {
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 300, currency: PLN }],
+      taxesAndFees: [{ included: true, description: "Taxes and Fees", amount: 30, currency: PLN }],
+    },
+  } as Partial<LiteApiRate>);
+  assert.equal(taxNoticeFrom(mapTaxes(r)).kind, "all-included");
+});
+
+test("podatki: included:false → 'extra-at-property' z kwotą (dziś UI kłamie 'wł. podatków')", () => {
+  // Dokładny kształt z drutu, 209 z 400 zmierzonych taryf.
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 3219.28, currency: PLN }],
+      taxesAndFees: [{ included: false, description: "VAT", amount: 298.08, currency: PLN }],
+    },
+  } as Partial<LiteApiRate>);
+  const notice = taxNoticeFrom(mapTaxes(r));
+  assert.equal(notice.kind, "extra-at-property");
+  assert.equal(notice.kind === "extra-at-property" && notice.amountMinor, BigInt(29808));
+  assert.equal(notice.kind === "extra-at-property" && notice.currency, PLN);
+});
+
+test("podatki: MIESZANKA included true+false → dopłata liczy tylko pozycje spoza ceny", () => {
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 1000, currency: PLN }],
+      taxesAndFees: [
+        { included: true, description: "Service", amount: 50, currency: PLN },
+        { included: false, description: "VAT", amount: 80, currency: PLN },
+        { included: false, description: "City tax", amount: 20, currency: PLN },
+      ],
+    },
+  } as Partial<LiteApiRate>);
+  const notice = taxNoticeFrom(mapTaxes(r));
+  assert.equal(notice.kind === "extra-at-property" && notice.amountMinor, BigInt(10000)); // 80 + 20
+});
+
+test("podatki: brak taxesAndFees → 'unknown' (NIE twierdzimy nic o podatkach)", () => {
+  assert.equal(taxNoticeFrom(mapTaxes(rate())).kind, "unknown");
+});
+
+test("podatki: opłata opisana TEKSTEM w obcej walucie nie jest sumowana", () => {
+  // Zmierzone: dostawca wpisuje całą informację w `description`, bez `amount`.
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 500, currency: PLN }],
+      taxesAndFees: [{ included: false, description: "$163.02 USD per room per stay" }],
+    },
+  } as Partial<LiteApiRate>);
+  const notice = taxNoticeFrom(mapTaxes(r));
+  // Wiemy, że coś dopłacimy, ale NIE zmyślamy kwoty.
+  assert.equal(notice.kind, "extra-at-property");
+  assert.equal(notice.kind === "extra-at-property" && notice.amountMinor, null);
+});
+
+test("podatki: dopłaty w RÓŻNYCH walutach nie są sumowane", () => {
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 500, currency: PLN }],
+      taxesAndFees: [
+        { included: false, description: "VAT", amount: 50, currency: PLN },
+        { included: false, description: "Resort fee", amount: 10, currency: "EUR" },
+      ],
+    },
+  } as Partial<LiteApiRate>);
+  const notice = taxNoticeFrom(mapTaxes(r));
+  assert.equal(notice.kind === "extra-at-property" && notice.amountMinor, null);
+});
+
+test("podatki: brak flagi `included` traktujemy jak 'w cenie' (nie straszymy dopłatą)", () => {
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 300, currency: PLN }],
+      taxesAndFees: [{ description: "Tax", amount: 10, currency: PLN }],
+    },
+  } as Partial<LiteApiRate>);
+  assert.equal(taxNoticeFrom(mapTaxes(r)).kind, "all-included");
+});
+
+// ── Cena ────────────────────────────────────────────────────────────────────
+
+test("cena: total od dostawcy, za noc TYLKO jako pochodna", () => {
+  const b = buildPriceBreakdown(rate({ retailRate: { total: [{ amount: 900, currency: PLN }] } } as Partial<LiteApiRate>), 3);
+  assert.equal(b?.totalMinor, BigInt(90000));
+  assert.equal(b?.perNightMinor, BigInt(30000));
+  assert.equal(b?.nights, 3);
+});
+
+test("cena: 0 nocy → brak ceny za noc zamiast dzielenia przez zero", () => {
+  assert.equal(buildPriceBreakdown(rate(), 0)?.perNightMinor, null);
+});
+
+test("cena: brak ceny → null (wyprzedane to legalny stan, nie błąd)", () => {
+  assert.equal(buildPriceBreakdown(rate({ retailRate: undefined }), 2), null);
+});
+
+test("cena odniesienia zachowuje ŹRÓDŁO i nie udaje przeceny", () => {
+  const b = buildPriceBreakdown(
+    rate({
+      retailRate: {
+        total: [{ amount: 3219.28, currency: PLN }],
+        suggestedSellingPrice: [{ amount: 3771.71, currency: PLN, source: "booking.com" }],
+      },
+    } as Partial<LiteApiRate>),
+    3,
+  );
+  assert.equal(b?.competitorReference?.source, "booking.com");
+  assert.equal(b?.competitorReference?.amountMinor, BigInt(377171));
+});
+
+test("przecena: initialPrice === total → BRAK uczciwej podstawy (400/400 taryf)", () => {
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 3219.28, currency: PLN }],
+      initialPrice: [{ amount: 3219.28, currency: PLN }],
+      suggestedSellingPrice: [{ amount: 3771.71, currency: PLN, source: "booking.com" }],
+    },
+  } as Partial<LiteApiRate>);
+  // Cena konkurenta jest wyższa, ale to NIE jest przecena.
+  assert.equal(hasHonestDiscount(r), false);
+});
+
+test("przecena: własna cena bazowa wyższa od total → podstawa ISTNIEJE", () => {
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 800, currency: PLN }],
+      initialPrice: [{ amount: 1000, currency: PLN }],
+    },
+  } as Partial<LiteApiRate>);
+  assert.equal(hasHonestDiscount(r), true);
+});
+
+// ── Wyżywienie ──────────────────────────────────────────────────────────────
+
+test("wyżywienie: kody i nazwy mapują się na kategorie", () => {
+  assert.equal(boardCategoryOf("RO", "Room Only"), "room-only");
+  assert.equal(boardCategoryOf("BB", "Bed and Breakfast"), "breakfast");
+  assert.equal(boardCategoryOf("HB", "Half Board"), "half-board");
+  assert.equal(boardCategoryOf("FB", "Full Board"), "full-board");
+  assert.equal(boardCategoryOf("AI", "All Inclusive"), "all-inclusive");
+});
+
+test("wyżywienie: BRAK danych to 'unknown', nie 'bez wyżywienia'", () => {
+  // Różnica wobec localizeBoard(), które przy pustym wejściu twierdzi
+  // „Bez wyżywienia" — to jest zapewnienie, którego dane nie potwierdzają.
+  assert.equal(boardCategoryOf(null, null), "unknown");
+  assert.equal(boardCategoryOf("", ""), "unknown");
+});
+
+test("wyżywienie: 'all inclusive' nie jest mylone z 'half board'", () => {
+  assert.equal(boardCategoryOf(undefined, "All-Inclusive"), "all-inclusive");
+  assert.equal(includesMeals("all-inclusive"), true);
+  assert.equal(includesMeals("room-only"), false);
+  assert.equal(includesMeals("unknown"), false);
+});
+
+// ── Pokoje i powiązanie z taryfą ────────────────────────────────────────────
+
+const DETAIL = {
+  id: "lp1",
+  name: "Hotel",
+  city: "Málaga",
+  rooms: [
+    {
+      id: 5677262,
+      roomName: "Pokój dwuosobowy",
+      roomSizeSquare: 22,
+      roomSizeUnit: "sqm",
+      maxOccupancy: 2,
+      bedTypes: [{ quantity: 1, bedType: "Łóżko podwójne", bedSize: "131-150 cm" }],
+      roomAmenities: [{ amenitiesId: 1, name: "Klimatyzacja", sort: 1 }],
+      photos: [{ url: "https://x.test/a.jpg", hd_url: "https://x.test/a-hd.jpg", mainPhoto: true }],
+    },
+  ],
+} as never;
+
+test("pokój: mapowanie zachowuje metraż, łóżka, udogodnienia i zdjęcia", () => {
+  const p = toRoomProfile((DETAIL as { rooms: never[] }).rooms[0]);
+  assert.equal(p.id, "5677262");
+  assert.equal(p.sizeSquareMeters, 22);
+  assert.equal(p.beds[0].type, "Łóżko podwójne");
+  assert.deepEqual(p.amenities, ["Klimatyzacja"]);
+  assert.equal(p.photos[0].isMain, true);
+  assert.equal(p.photos[0].hdUrl, "https://x.test/a-hd.jpg");
+});
+
+test("pokój: metraż w stopach kwadratowych jest ODRZUCANY (nie pokazujemy mylącej liczby)", () => {
+  const p = toRoomProfile({ id: 1, roomSizeSquare: 301, roomSizeUnit: "sq ft" } as never);
+  assert.equal(p.sizeSquareMeters, null);
+});
+
+test("powiązanie: mappedRoomId (number lub string) trafia w rooms[].id", () => {
+  const idx = indexRoomsById(DETAIL);
+  assert.equal(roomForRate(rate({ mappedRoomId: 5677262 }), idx)?.name, "Pokój dwuosobowy");
+  assert.equal(roomForRate(rate({ mappedRoomId: "5677262" }), idx)?.name, "Pokój dwuosobowy");
+});
+
+test("powiązanie: BRAK mappedRoomId → null (nigdy zdjęcie hotelu jako zdjęcie pokoju)", () => {
+  const idx = indexRoomsById(DETAIL);
+  assert.equal(roomForRate(rate(), idx), null);
+  assert.equal(roomForRate(rate({ mappedRoomId: 999999 }), idx), null);
+});
+
+test("powiązanie: żadnego dopasowywania po NAZWIE (nazwy są w różnych językach)", () => {
+  // Taryfa nazywa się po angielsku, pokój po polsku — gdyby kod próbował
+  // dopasować po tekście, podstawiłby gościowi zdjęcia innego pokoju.
+  const idx = indexRoomsById(DETAIL);
+  const r = rate({ name: "Double Room", mappedRoomId: undefined });
+  assert.equal(roomForRate(r, idx), null);
+});
+
+test("oferty: taryfa bez ceny nie trafia na listę ofert", () => {
+  const offers = buildRateOffers(
+    [{ offerId: "o1", rates: [rate({ retailRate: undefined }), rate({ rateId: "r2", mappedRoomId: 5677262 })] }] as never,
+    DETAIL,
+    2,
+  );
+  assert.equal(offers.length, 1);
+  assert.equal(offers[0].rateId, "r2");
+  assert.equal(offers[0].room?.name, "Pokój dwuosobowy");
+});
+
+test("oferty: brak szczegółów hotelu → oferty powstają, tylko bez pokoi", () => {
+  const offers = buildRateOffers([{ offerId: "o1", rates: [rate({ mappedRoomId: 5677262 })] }] as never, null, 2);
+  assert.equal(offers.length, 1);
+  assert.equal(offers[0].room, null);
+});
+
+// ── Udogodnienia ────────────────────────────────────────────────────────────
+
+test("udogodnienia: DWA facilityId o tym samym znaczeniu dają JEDEN wpis", () => {
+  // Dokładny kształt ze źródła — to jest przyczyna duplikatów „Wi-Fi" w UI.
+  const out = normalizeAmenities([
+    { facilityId: 47, name: "WiFi dostępne" },
+    { facilityId: 107, name: "Darmowe WiFi" },
+  ]);
+  const wifi = out.filter((a) => a.label === "Bezpłatne Wi-Fi");
+  assert.equal(wifi.length, 1);
+});
+
+test("udogodnienia: wejście angielskie i polskie daje ten sam wynik", () => {
+  const en = normalizeAmenities(["Free WiFi", "Parking", "Air conditioning"]);
+  const pl = normalizeAmenities(["Darmowe WiFi", "Parkowanie", "Klimatyzacja"]);
+  assert.deepEqual(
+    en.map((a) => a.label).sort(),
+    pl.map((a) => a.label).sort(),
+  );
+});
+
+test("udogodnienia: nierozpoznany wpis NIE ginie — trafia do 'Pozostałe'", () => {
+  const out = normalizeAmenities(["Prywatne molo dla łodzi"]);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].category, "other");
+  assert.equal(out[0].label, "Prywatne molo dla łodzi");
+});
+
+test("udogodnienia: obie reprezentacje (string + obiekt) scalają się bez duplikatu", () => {
+  // hotelFacilities[] to stringi po angielsku, facilities[] to obiekty po polsku
+  // — ta sama lista w dwóch postaciach.
+  const out = normalizeAmenities(["Free WiFi", "Restaurant"], [
+    { facilityId: 107, name: "Darmowe WiFi" },
+    { facilityId: 5, name: "Restauracja" },
+  ]);
+  assert.equal(out.length, 2);
+});
+
+test("udogodnienia: grupowanie zachowuje ustaloną kolejność kategorii", () => {
+  const groups = groupAmenities(normalizeAmenities(["Pets allowed", "Free WiFi", "Restaurant"]));
+  assert.deepEqual(
+    groups.map((g) => g.category),
+    ["internet", "food-drink", "pets"],
+  );
+});
+
+test("udogodnienia: widok skrócony bierze najważniejsze i respektuje limit", () => {
+  const all = normalizeAmenities(["Pets allowed", "Free WiFi", "Parking", "Restaurant", "Pool"]);
+  const top = topAmenities(all, 2);
+  assert.equal(top.length, 2);
+  assert.equal(top[0].category, "internet");
+});
+
+test("udogodnienia: puste i uszkodzone wejście nie wywraca normalizacji", () => {
+  assert.deepEqual(normalizeAmenities(null, undefined, [], [null, 42, {}] as unknown[]), []);
+});

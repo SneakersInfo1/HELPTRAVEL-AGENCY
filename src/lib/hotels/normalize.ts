@@ -85,7 +85,13 @@ export function normalizeOffer(
       rateId: cheapest.rate.rateId,
       offerId: cheapest.offerId,
       boardName: cheapest.rate.boardName,
-      refundableTag: cheapest.rate.refundableTag,
+      // Oba poziomy — na drucie `rate.refundableTag` jest ZWYKLE undefined,
+      // a prawda siedzi w `cancellationPolicies.refundableTag` ("NRFN"/"RFN").
+      // Czytanie samego top-levelu dawało tu zawsze undefined, przez co
+      // konsument tego pola nie wiedział nic o zwrotności oferty.
+      // `resolve-slim-rates.ts` robi to poprawnie od dawna — to była
+      // niespójność między dwiema ścieżkami tych samych danych.
+      refundableTag: cheapest.rate.refundableTag ?? cheapest.rate.cancellationPolicies?.refundableTag,
       totalAmountMinor: total,
       currency,
       cancellationDeadline: rateCancellationDeadline(cheapest.rate) ?? undefined,
