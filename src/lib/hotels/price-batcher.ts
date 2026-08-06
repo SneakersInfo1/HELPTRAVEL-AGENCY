@@ -14,6 +14,9 @@ export interface SlimRate {
   cancellationDeadline?: string;
   offerId: string;
   rateId: string;
+  /** Patrz komentarz przy SlimRate w rate-cache.ts — `undefined` = brak danych. */
+  taxesIncluded?: boolean;
+  taxExtraAmount?: number;
 }
 
 export interface PriceQuery {

@@ -16,6 +16,16 @@ import { boardCategoryOf, includesMeals } from "./board";
 import { buildPriceBreakdown, hasHonestDiscount, mapTaxes, taxNoticeFrom } from "./price";
 import { buildRateOffers, indexRoomsById, roomForRate, toRoomProfile } from "./room";
 import { groupAmenities, normalizeAmenities, topAmenities } from "./amenity";
+import {
+  guestsLabel,
+  nightsLabel,
+  optionsLabel,
+  reviewsLabel,
+  roomsLabel,
+  taxNoticeFromSlim,
+  taxNoticeShort,
+  taxNoticeText,
+} from "./format";
 
 const PLN = "PLN";
 
@@ -314,4 +324,60 @@ test("udogodnienia: widok skrócony bierze najważniejsze i respektuje limit", (
 
 test("udogodnienia: puste i uszkodzone wejście nie wywraca normalizacji", () => {
   assert.deepEqual(normalizeAmenities(null, undefined, [], [null, 42, {}] as unknown[]), []);
+});
+
+// ── Formatowanie i odmiana ──────────────────────────────────────────────────
+
+test("odmiana: nastolatki biorą formę mnogą (naiwne n<5 myli się na 12-14)", () => {
+  assert.equal(nightsLabel(1), "1 noc");
+  assert.equal(nightsLabel(3), "3 noce");
+  assert.equal(nightsLabel(5), "5 nocy");
+  // Tu wykładało się poprzednie `n < 5 ? "noce" : "nocy"` w komponentach:
+  assert.equal(nightsLabel(12), "12 nocy");
+  assert.equal(nightsLabel(13), "13 nocy");
+  assert.equal(nightsLabel(14), "14 nocy");
+  assert.equal(nightsLabel(22), "22 noce");
+  assert.equal(nightsLabel(23), "23 noce");
+});
+
+test("odmiana: pokoje, goście i opinie", () => {
+  assert.equal(roomsLabel(1), "1 pokój");
+  assert.equal(roomsLabel(2), "2 pokoje");
+  assert.equal(roomsLabel(5), "5 pokoi");
+  assert.equal(guestsLabel(1), "1 gość");
+  assert.equal(guestsLabel(2), "2 gości");
+  assert.equal(optionsLabel(1), "1 opcja");
+  assert.equal(optionsLabel(3), "3 opcje");
+  assert.equal(optionsLabel(7), "7 opcji");
+  assert.ok(reviewsLabel(1).endsWith("opinia"));
+  assert.ok(reviewsLabel(4450).endsWith("opinii"));
+});
+
+test("etykieta podatkowa: 'unknown' daje NULL — nie wolno nic twierdzić", () => {
+  // To jest cała istota Etapu 3: brak danych → cisza, nie zapewnienie.
+  assert.equal(taxNoticeText({ kind: "unknown" }), null);
+  assert.equal(taxNoticeShort({ kind: "unknown" }), null);
+});
+
+test("etykieta podatkowa: wszystko w cenie vs dopłata na miejscu", () => {
+  assert.equal(taxNoticeText({ kind: "all-included" }), "w tym podatki i opłaty");
+  const extra = taxNoticeText({ kind: "extra-at-property", amountMinor: BigInt(29808), currency: "PLN" });
+  assert.ok(extra?.includes("na miejscu"));
+  assert.ok(extra?.includes("298"));
+});
+
+test("etykieta podatkowa: dopłata bez policzalnej kwoty nie zmyśla liczby", () => {
+  const t = taxNoticeText({ kind: "extra-at-property", amountMinor: null, currency: null });
+  assert.equal(t, "dodatkowe podatki i opłaty płatne na miejscu");
+  assert.ok(!/\d/.test(t ?? ""));
+});
+
+test("SlimRate → TaxNotice: undefined znaczy 'nie wiemy', nie 'w cenie'", () => {
+  // Wpisy cache sprzed v3 nie mają tych pól. Muszą dać 'unknown', nie fałszywe
+  // zapewnienie — dlatego KEY_VERSION poszedł v2 → v3.
+  assert.equal(taxNoticeFromSlim(undefined, undefined, "PLN").kind, "unknown");
+  assert.equal(taxNoticeFromSlim(true, undefined, "PLN").kind, "all-included");
+  const extra = taxNoticeFromSlim(false, 298.08, "PLN");
+  assert.equal(extra.kind, "extra-at-property");
+  assert.equal(extra.kind === "extra-at-property" && extra.amountMinor, BigInt(29808));
 });

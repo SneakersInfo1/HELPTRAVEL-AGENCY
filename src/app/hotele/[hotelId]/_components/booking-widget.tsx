@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { nightsWord } from "@/lib/hotels/domain/format";
 import { formatPLN } from "@/lib/money";
 
 interface Props {
@@ -21,12 +22,15 @@ interface Props {
   cheapestTotal?: number;
   nights: number;
   currency: string;
+  /**
+   * Zdanie o podatkach dla NAJTAŃSZEJ taryfy — wyliczone na serwerze z jej
+   * `taxesAndFees`. `null` = dostawca nie podał rozbicia, więc milczymy.
+   * Widget nie wylicza tego sam, bo nie ma tu surowej taryfy.
+   */
+  taxText?: string | null;
 }
 
-
-const nightsCopy = (n: number) => (n === 1 ? "noc" : n < 5 ? "noce" : "nocy");
-
-export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currency }: Props) {
+export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currency, taxText }: Props) {
   const perNight = cheapestTotal !== undefined && nights > 0 ? Math.round(cheapestTotal / nights) : null;
   const router = useRouter();
   const [checkin, setCheckin] = useState(initial.checkin);
@@ -57,22 +61,14 @@ export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currenc
           {cheapestTotal !== undefined && (
             <div className="mb-3 border-b border-neutral-100 pb-3">
               <div className="text-xs text-neutral-500">Od</div>
-              {perNight !== null ? (
-                <>
-                  <div className="text-2xl font-bold text-emerald-700">
-                    {formatPLN(perNight, currency)}
-                    <span className="ml-0.5 text-sm font-semibold text-emerald-700/80">/ noc</span>
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-neutral-500">
-                    {formatPLN(cheapestTotal, currency)} za {nights} {nightsCopy(nights)} · wł. podatków i opłat
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-2xl font-bold text-emerald-700">{formatPLN(cheapestTotal, currency)}</div>
-                  <div className="text-[11px] text-neutral-500">wł. podatków i opłat</div>
-                </>
+              {/* Hierarchia §8.5 — dominuje cena całego pobytu, spójnie z listą. */}
+              <div className="text-2xl font-bold text-emerald-700">{formatPLN(cheapestTotal, currency)}</div>
+              {perNight !== null && (
+                <div className="mt-0.5 text-xs text-neutral-600">
+                  za {nights} {nightsWord(nights)} · {formatPLN(perNight, currency)} / noc
+                </div>
               )}
+              {taxText && <div className="text-[11px] text-neutral-500">{taxText}</div>}
             </div>
           )}
           <div className="grid grid-cols-2 gap-2">

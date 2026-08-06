@@ -18,6 +18,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import type { LiteApiRoomType } from "@/lib/liteapi";
+import { optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
+import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { groupRates, mergeGroupsByDisplayName, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
 import { formatPLN, fromMinor } from "@/lib/money";
@@ -44,8 +46,6 @@ const formatDate = (iso: string | null | undefined): string | null => {
     : new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit" }).format(d);
 };
 
-const optionsNoun = (n: number): string =>
-  n === 1 ? "opcja" : n < 5 ? "opcje" : "opcji";
 
 export function RoomsSection({
   hotelId,
@@ -146,9 +146,7 @@ function RoomGroupCard({
           )}
         </div>
         <p className="shrink-0 text-xs font-medium text-neutral-600">
-          {[fromLabel, `${group.options.length} ${optionsNoun(group.options.length)}`]
-            .filter(Boolean)
-            .join(" · ")}
+          {[fromLabel, optionsLabel(group.options.length)].filter(Boolean).join(" · ")}
         </p>
       </header>
       <ul className="divide-y divide-neutral-100">
@@ -218,6 +216,9 @@ function OptionRow({
   const perNight = total !== null && nights > 0 ? Math.round(total / nights) : null;
   const cancelDate = formatDate(option.cancellationDeadline);
   const rateCurrency = rate.retailRate?.total?.[0]?.currency ?? currency;
+  // Pełne rozbicie jest tu dostępne (strona hotelu ma surowe taryfy), więc
+  // korzystamy z niego wprost — bez uproszczenia stosowanego na liście.
+  const taxText = taxNoticeText(taxNoticeFrom(mapTaxes(rate)));
 
   // Checkout link — identical contract as before grouping: the option's OWN
   // offerId + display params (price/cur/board/cancel) on top of searchQuery.
@@ -272,10 +273,12 @@ function OptionRow({
           <>
             <div className="text-lg font-bold text-neutral-900">{formatPLN(total, rateCurrency)}</div>
             {perNight !== null && (
-              <div className="text-[11px] text-neutral-500">
-                {formatPLN(perNight, rateCurrency)} / noc · wł. podatków
-              </div>
+              <div className="text-[11px] text-neutral-500">{formatPLN(perNight, rateCurrency)} / noc</div>
             )}
+            {/* Etykieta podatkowa wynika z `taxesAndFees` tej konkretnej taryfy.
+                Dawne bezwarunkowe „wł. podatków" było nieprawdą dla ~52% ofert
+                (209/400 pozycji ma `included: false` — gość dopłaca w hotelu). */}
+            {taxText && <div className="text-[11px] text-neutral-500">{taxText}</div>}
           </>
         ) : (
           <div className="text-sm text-neutral-500">Cena u dostawcy</div>

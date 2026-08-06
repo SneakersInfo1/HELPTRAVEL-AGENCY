@@ -17,7 +17,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { UtensilsCrossed } from "lucide-react";
+
 import { hotelDistanceLabels } from "@/lib/geo/distance-label";
+import { nightsWord, reviewsLabel, taxNoticeFromSlim, taxNoticeText } from "@/lib/hotels/domain/format";
 import { ratingLabel } from "@/lib/hotels/rating";
 import { localizeBoard } from "@/lib/liteapi/translations";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
@@ -47,6 +50,9 @@ interface OfferCard {
     totalAmount: number;
     currency: string;
     cancellationDeadline?: string;
+    /** Patrz SlimRate w rate-cache.ts — `undefined` = brak danych, milczymy. */
+    taxesIncluded?: boolean;
+    taxExtraAmount?: number;
   };
 }
 
@@ -57,17 +63,6 @@ const formatDate = (iso: string | undefined): string | null => {
   return new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit" }).format(d);
 };
 
-function nightsLabel(n: number): string {
-  if (n === 1) return "1 noc";
-  if (n < 5) return `${n} noce`;
-  return `${n} nocy`;
-}
-
-function nightsForTotal(n: number): string {
-  if (n === 1) return "noc";
-  if (n < 5) return "noce";
-  return "nocy";
-}
 
 interface BadgeKind {
   cheapest?: boolean;
@@ -97,6 +92,10 @@ export function ResultCard({
     : null;
   const freeCancelDate = rate ? formatDate(rate.cancellationDeadline) : null;
   const isFreeCancel = (rate?.refundableTag === "RFN" || badges?.freeCancel) ?? false;
+  // `null` gdy dostawca nie podał rozbicia — wtedy o podatkach MILCZYMY.
+  const taxText = rate
+    ? taxNoticeText(taxNoticeFromSlim(rate.taxesIncluded, rate.taxExtraAmount, rate.currency))
+    : null;
   // FAZA 8 — odległość od centrum/plaży (te same guardraile co na szczegółach).
   const distances = hotelDistanceLabels(
     { lat: offer.latitude, lng: offer.longitude },
@@ -180,9 +179,7 @@ export function ResultCard({
                 <span className="text-xs font-semibold">{ratingLabel(offer.rating)}</span>
               </div>
               {offer.reviewCount !== undefined && offer.reviewCount > 0 && (
-                <span className="mt-0.5 text-[10px] text-neutral-500">
-                  {offer.reviewCount.toLocaleString("pl-PL")} {offer.reviewCount === 1 ? "opinia" : offer.reviewCount < 5 ? "opinie" : "opinii"}
-                </span>
+                <span className="mt-0.5 text-[10px] text-neutral-500">{reviewsLabel(offer.reviewCount)}</span>
               )}
             </div>
           )}
@@ -190,7 +187,7 @@ export function ResultCard({
 
         {rate && rate.boardName && (
           <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-900">
-            <span aria-hidden>🍽</span>
+            <UtensilsCrossed aria-hidden className="h-3 w-3" />
             {localizeBoard(rate.boardName)}
           </div>
         )}
@@ -204,14 +201,12 @@ export function ResultCard({
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-2">
           {rate ? (
             <div>
-              <div className="text-xs text-neutral-500">{nightsLabel(nights)}</div>
-              <div className="text-xl font-bold text-emerald-700">
-                {perNight}
-                <span className="ml-0.5 text-xs font-semibold text-emerald-700/80">/ noc</span>
+              {/* Hierarchia §8.5: cena CAŁEGO pobytu dominuje, „za noc" pomocnicza. */}
+              <div className="text-xl font-bold text-emerald-700">{total}</div>
+              <div className="text-xs text-neutral-600">
+                za {nights} {nightsWord(nights)} · {perNight} / noc
               </div>
-              <div className="text-[11px] text-neutral-500">
-                {total} za {nights} {nightsForTotal(nights)} · wł. podatków i opłat
-              </div>
+              {taxText && <div className="text-[11px] text-neutral-500">{taxText}</div>}
             </div>
           ) : (
             <div className="min-w-[10rem]">{priceSlot}</div>

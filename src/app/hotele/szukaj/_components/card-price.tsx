@@ -1,6 +1,10 @@
 "use client";
 
+import { UtensilsCrossed } from "lucide-react";
+
+import { nightsWord, taxNoticeFromSlim, taxNoticeText } from "@/lib/hotels/domain/format";
 import type { PriceEntry } from "@/lib/hotels/price-store";
+import { localizeBoard } from "@/lib/liteapi/translations";
 import { formatPLN } from "@/lib/money";
 
 const formatDate = (iso: string | undefined): string | null => {
@@ -9,29 +13,6 @@ const formatDate = (iso: string | undefined): string | null => {
   if (Number.isNaN(d.getTime())) return null;
   return new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit" }).format(d);
 };
-
-function polishBoard(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const r = raw.toLowerCase();
-  if (r.includes("all inclusive") || r.includes("all-inclusive") || r === "ai") return "All Inclusive";
-  if (r.includes("full board") || r === "fb") return "Pełne wyżywienie";
-  if (r.includes("half board") || r === "hb") return "HB · śniadanie + obiadokolacja";
-  if (r.includes("breakfast")) return "Ze śniadaniem w cenie";
-  if (r.includes("room only") || r === "ro") return "Bez wyżywienia";
-  return raw;
-}
-
-function nightsForTotal(n: number): string {
-  if (n === 1) return "noc";
-  if (n < 5) return "noce";
-  return "nocy";
-}
-
-function nightsLabel(n: number): string {
-  if (n === 1) return "1 noc";
-  if (n < 5) return `${n} noce`;
-  return `${n} nocy`;
-}
 
 // Presentational price slot — pure function of the store entry. Fetching
 // is owned by ResultsList via the price-store so prices survive
@@ -67,17 +48,21 @@ export function PriceView({ entry, nights }: { entry: PriceEntry | undefined; ni
     );
   }
 
-  const board = polishBoard(entry.boardName);
+  const board = entry.boardName ? localizeBoard(entry.boardName) : null;
   const isFreeCancel = entry.refundableTag === "RFN" || Boolean(entry.cancellationDeadline);
   const freeCancelDate = formatDate(entry.cancellationDeadline);
   const perNight = formatPLN(Math.round(entry.totalAmount / Math.max(1, nights)), entry.currency);
   const total = formatPLN(entry.totalAmount, entry.currency);
+  // Etykieta podatkowa WYNIKA z danych. `null` = dostawca nie podał rozbicia,
+  // więc nie piszemy nic (zamiast dawnego bezwarunkowego „wł. podatków i opłat",
+  // które było nieprawdą dla ~52% taryf).
+  const taxText = taxNoticeText(taxNoticeFromSlim(entry.taxesIncluded, entry.taxExtraAmount, entry.currency));
 
   return (
     <div>
       {board && (
         <div className="mb-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-900">
-          <span aria-hidden>🍽</span>
+          <UtensilsCrossed aria-hidden className="h-3 w-3" />
           {board}
         </div>
       )}
@@ -86,14 +71,14 @@ export function PriceView({ entry, nights }: { entry: PriceEntry | undefined; ni
           Bezpłatna anulacja do {freeCancelDate}
         </div>
       )}
-      <div className="text-xs text-neutral-500">{nightsLabel(nights)}</div>
-      <div className="text-xl font-bold text-emerald-700">
-        {perNight}
-        <span className="ml-0.5 text-xs font-semibold text-emerald-700/80">/ noc</span>
+      {/* Hierarchia z briefu §8.5: dominuje cena CAŁEGO pobytu, „za noc" jest
+          informacją pomocniczą. Wcześniej było odwrotnie na liście, a na stronie
+          hotelu odwrotnie do listy — dwie sprzeczne hierarchie w jednym lejku. */}
+      <div className="text-xl font-bold text-emerald-700">{total}</div>
+      <div className="text-xs text-neutral-600">
+        za {nights} {nightsWord(nights)} · {perNight} / noc
       </div>
-      <div className="text-[11px] text-neutral-500">
-        {total} za {nights} {nightsForTotal(nights)} · wł. podatków i opłat
-      </div>
+      {taxText && <div className="text-[11px] text-neutral-500">{taxText}</div>}
     </div>
   );
 }

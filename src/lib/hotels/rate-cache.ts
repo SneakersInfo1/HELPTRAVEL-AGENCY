@@ -24,6 +24,18 @@ export interface SlimRate {
   freeCancellationDeadline?: string;
   offerId: string;
   rateId: string;
+  // Podatki — DWA pola zamiast pełnego rozbicia. Wożenie całej tablicy
+  // `taxesAndFees` przez Redis dla ~2000 hoteli byłoby marnotrawstwem, a karta
+  // wyniku potrzebuje tylko odpowiedzi „czy coś dopłacę i ile".
+  //
+  // `undefined` znaczy NIE WIEMY (dostawca nie podał rozbicia) — i to jest
+  // istotne: karta ma wtedy MILCZEĆ o podatkach, zamiast twierdzić, że są
+  // w cenie. Bezwarunkowe „wł. podatków i opłat" było nieprawdą dla ~52%
+  // taryf (209/400 pozycji ma `included: false`).
+  /** true = wszystko w cenie · false = coś dopłacisz na miejscu · undefined = brak danych */
+  taxesIncluded?: boolean;
+  /** Suma dopłat spoza ceny, w jednostkach głównych. Tylko gdy dało się policzyć. */
+  taxExtraAmount?: number;
 }
 
 export interface RateCacheContext {
@@ -37,7 +49,11 @@ export interface RateCacheContext {
 
 // Bump KEY_VERSION whenever the cached shape changes (instant global
 // invalidation without touching Redis).
-const KEY_VERSION = "v2";
+// v3 (2026-08-06): SlimRate dostał `taxesIncluded` / `taxExtraAmount`. Wpisy v2
+// nie mają tych pól, a `undefined` znaczy „nie wiemy" — bez podbicia wersji
+// karty przez godzinę pokazywałyby „brak danych o podatkach" dla hoteli, dla
+// których dane są. Podbicie unieważnia globalnie, bez ruszania Redisa.
+const KEY_VERSION = "v3";
 // 60 min — cena DO WYŚWIETLENIA (re-weryfikowana przy prebooku). Podbite 30→60
 // min, bo cron prewarmingu (/api/cron/warm-rates) odświeża co 30 min: dłuższy
 // TTL daje margines (wpis przeżywa 2 cykle crona), więc popularne kierunki są

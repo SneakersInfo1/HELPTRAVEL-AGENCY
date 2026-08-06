@@ -14,6 +14,8 @@ import { fromMinor } from "@/lib/money";
 import { getHotelDetail, getRates, isHotelNotFoundError, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
 import { isBookingLive, showReviews } from "@/lib/config/featureFlags";
 import { getHotelReviews, selectReviews, type DisplayReview } from "@/lib/liteapi/reviews";
+import { taxNoticeText } from "@/lib/hotels/domain/format";
+import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { ratingLabel } from "@/lib/hotels/rating";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
@@ -210,6 +212,9 @@ export default async function HotelDetailPage({
   const cheapestMinor = cheapest ? rateTotalMinor(cheapest.rate) : null;
   const cheapestTotal = cheapestMinor !== null ? fromMinor(cheapestMinor) : undefined;
   const currency = cheapest?.rate.retailRate?.total?.[0]?.currency ?? "PLN";
+  // Zdanie o podatkach dla najtańszej taryfy — liczone TU, bo tylko tutaj mamy
+  // surową taryfę z `taxesAndFees`. `null` = brak rozbicia → widget milczy.
+  const cheapestTaxText = cheapest ? taxNoticeText(taxNoticeFrom(mapTaxes(cheapest.rate))) : null;
 
   // Build search-query string for child links (rooms CTA).
   const searchQuery = (() => {
@@ -660,6 +665,7 @@ export default async function HotelDetailPage({
             cheapestTotal={cheapestTotal}
             nights={nights}
             currency={currency}
+            taxText={cheapestTaxText}
           />
         </div>
       </section>

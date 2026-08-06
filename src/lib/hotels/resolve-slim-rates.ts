@@ -8,9 +8,28 @@
 // w rate-cache.ts) i identyczny kształt SlimRate. Rozjazd = grzanie do kosza.
 
 import { fromMinor } from "@/lib/money";
-import { getRates } from "@/lib/liteapi";
+import { getRates, type LiteApiRate } from "@/lib/liteapi";
 import { pickCheapestRate, rateCancellationDeadline, rateCurrency, rateTotalMinor } from "@/lib/hotels/normalize";
 import { getCachedRates, setCachedRates, type RateCacheContext, type SlimRate } from "@/lib/hotels/rate-cache";
+import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
+
+/**
+ * Sprowadza rozbicie podatków do dwóch pól, które opłaca się trzymać w cache.
+ *
+ * Zwraca PUSTY obiekt, gdy dostawca nie podał rozbicia — dzięki temu
+ * `taxesIncluded` zostaje `undefined`, a karta wyniku milczy o podatkach
+ * zamiast twierdzić, że są w cenie (bezwarunkowe „wł. podatków" było
+ * nieprawdą dla ~52% taryf).
+ */
+function slimTaxes(rate: LiteApiRate): Pick<SlimRate, "taxesIncluded" | "taxExtraAmount"> {
+  const notice = taxNoticeFrom(mapTaxes(rate));
+  if (notice.kind === "unknown") return {};
+  if (notice.kind === "all-included") return { taxesIncluded: true };
+  return {
+    taxesIncluded: false,
+    ...(notice.amountMinor !== null ? { taxExtraAmount: fromMinor(notice.amountMinor) } : {}),
+  };
+}
 
 export interface ResolveSlimRatesResult {
   rates: Record<string, SlimRate | null>;
@@ -83,6 +102,7 @@ export async function resolveSlimRates(
           )?.cancelTime,
           offerId: cheapest.offerId,
           rateId: cheapest.rate.rateId,
+          ...slimTaxes(cheapest.rate),
         };
       }
     }
