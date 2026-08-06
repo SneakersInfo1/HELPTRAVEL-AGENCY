@@ -24,6 +24,7 @@ import {
   scoreToPercent,
 } from "./review";
 import {
+  formatHotelTime,
   guestsLabel,
   nightsLabel,
   optionsLabel,
@@ -446,4 +447,19 @@ test("SlimRate → TaxNotice: undefined znaczy 'nie wiemy', nie 'w cenie'", () =
   const extra = taxNoticeFromSlim(false, 298.08, "PLN");
   assert.equal(extra.kind, "extra-at-property");
   assert.equal(extra.kind === "extra-at-property" && extra.amountMinor, BigInt(29808));
+});
+
+test("godziny: zapis 12h dostawcy → 24h; północ nie staje się południem", () => {
+  assert.equal(formatHotelTime("03:00 PM"), "15:00");
+  assert.equal(formatHotelTime("11:30 AM"), "11:30");
+  // „12:00 AM" to PÓŁNOC — naiwne dodanie 12 dałoby „12:00" (południe).
+  assert.equal(formatHotelTime("12:00 AM"), "00:00");
+  assert.equal(formatHotelTime("12:00 PM"), "12:00");
+});
+
+test("godziny: nieznanego formatu NIE psujemy (lepiej oryginał niż zgadywanie)", () => {
+  assert.equal(formatHotelTime("15:00"), "15:00");
+  assert.equal(formatHotelTime("po uzgodnieniu"), "po uzgodnieniu");
+  assert.equal(formatHotelTime(null), null);
+  assert.equal(formatHotelTime("   "), null);
 });

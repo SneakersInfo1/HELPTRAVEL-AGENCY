@@ -14,7 +14,7 @@ import { fromMinor } from "@/lib/money";
 import { getHotelDetail, getRates, isHotelNotFoundError, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
 import { isBookingLive, showReviews } from "@/lib/config/featureFlags";
 import { getHotelReviews, selectReviews, type DisplayReview } from "@/lib/liteapi/reviews";
-import { taxNoticeText } from "@/lib/hotels/domain/format";
+import { formatHotelTime, taxNoticeText } from "@/lib/hotels/domain/format";
 import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { reviewCategories, reviewHighlights, sentimentUpdatedAt } from "@/lib/hotels/domain/review";
 import { indexRoomsById } from "@/lib/hotels/domain/room";
@@ -332,8 +332,33 @@ export default async function HotelDetailPage({
   );
   const facilityCount = facilityGroups.reduce((sum, g) => sum + g.items.length, 0);
   const importantInfo = coerceImportantInfo(detail.hotelImportantInformation);
-  const checkinTime = detail.checkinCheckoutTimes?.checkin ?? detail.checkinCheckoutTimes?.checkinStart;
-  const checkoutTime = detail.checkinCheckoutTimes?.checkout;
+  // Dostawca używa snake_case (`checkin_start`, `checkin_end`) — warianty
+  // camelCase czytane wcześniej NIGDY nie istniały na drucie, więc kafelek
+  // „Zameldowanie" był martwym kodem. Ta sama klasa błędu co `stars`
+  // vs `starRating`. Kolejność: snake_case (realne) → camelCase (na zapas).
+  // Atrakcje w okolicy — sortujemy rosnąco po odległości i bierzemy 6.
+  // Odrzucamy pozycje bez nazwy albo bez liczby: wiersz „? km" nie informuje.
+  const nearby = (detail.poi ?? [])
+    .filter((p): p is typeof p & { name: string; distanceKm: number } =>
+      typeof p?.name === "string" && p.name.trim().length > 0 && typeof p?.distanceKm === "number",
+    )
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(0, 6);
+
+  // Zasady pobytu. `null`/`undefined` = dostawca nie podał → NIE pokazujemy nic
+  // (brak informacji to nie to samo co zakaz).
+  const stayRules = [
+    detail.petsAllowed === true ? "Zwierzęta dozwolone" : detail.petsAllowed === false ? "Bez zwierząt" : null,
+    detail.childAllowed === true ? "Dzieci mile widziane" : detail.childAllowed === false ? "Tylko dla dorosłych" : null,
+    detail.parking?.trim() ? `Parking: ${detail.parking.trim().toLowerCase()}` : null,
+  ].filter((x): x is string => Boolean(x));
+
+  // Dostawca podaje zapis 12-godzinny („03:00 PM") — na polskiej stronie
+  // konwertujemy na 24 h. Patrz formatHotelTime.
+  const cct = detail.checkinCheckoutTimes;
+  const checkinTime = formatHotelTime(cct?.checkin_start ?? cct?.checkin ?? cct?.checkinStart);
+  const checkinUntil = formatHotelTime(cct?.checkin_end ?? cct?.checkinEnd);
+  const checkoutTime = formatHotelTime(cct?.checkout);
 
   // At-a-glance facts — every value is real structured data; tiles with no
   // backing data are simply omitted (never faked).
@@ -606,6 +631,28 @@ export default async function HotelDetailPage({
                   Zobacz na mapie →
                 </a>
               )}
+
+              {/* Punkty zainteresowania z PRAWDZIWYMI odległościami od dostawcy
+                  (`poi[].distanceKm`). Wcześniej odległości brały się wyłącznie
+                  z naszej heurystyki geo; te są danymi, nie szacunkiem.
+                  Sekcja znika, gdy dostawca ich nie ma — bez pustej ramki. */}
+              {nearby.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-semibold text-neutral-800">W okolicy</h3>
+                  <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+                    {nearby.map((p) => (
+                      <li key={p.name} className="flex items-baseline justify-between gap-3">
+                        <span className="min-w-0 truncate text-neutral-700">{p.name}</span>
+                        <span className="shrink-0 tabular-nums text-neutral-500">
+                          {p.distanceKm < 1
+                            ? `${Math.round(p.distanceKm * 1000)} m`
+                            : `${p.distanceKm.toFixed(1)} km`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </section>
 
             {/* Policies — check-in/out window, all property policies (no longer
@@ -619,7 +666,7 @@ export default async function HotelDetailPage({
                       <div className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Zameldowanie</div>
                       <div className="mt-0.5 text-sm font-semibold text-neutral-900">
                         od {checkinTime}
-                        {detail.checkinCheckoutTimes?.checkinEnd ? ` do ${detail.checkinCheckoutTimes.checkinEnd}` : ""}
+                        {checkinUntil ? ` do ${checkinUntil}` : ""}
                       </div>
                     </div>
                   )}
@@ -630,6 +677,25 @@ export default async function HotelDetailPage({
                     </div>
                   )}
                 </div>
+              )}
+              {/* „Dobrze wiedzieć" — twarde zasady pobytu, które dostawca podaje
+                  jako osobne pola (`petsAllowed`, `childAllowed`, `parking`).
+                  Do tej pory były wyrzucane przez Zod, a gość dowiadywał się
+                  o zakazie zwierząt dopiero w hotelu. Brief §15: ważne warunki
+                  NIE mogą siedzieć w długim bloku tekstu.
+                  Pokazujemy WYŁĄCZNIE pola, które dostawca faktycznie podał —
+                  `null` znaczy „nie wiemy", a nie „niedozwolone". */}
+              {stayRules.length > 0 && (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {stayRules.map((rule) => (
+                    <li
+                      key={rule}
+                      className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700"
+                    >
+                      {rule}
+                    </li>
+                  ))}
+                </ul>
               )}
               {(detail.policies ?? []).map((p, i) => (
                 <div key={i} className="mt-3">

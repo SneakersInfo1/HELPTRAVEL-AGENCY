@@ -56,6 +56,32 @@ export function optionsLabel(n: number): string {
   return `${n} ${pluralize(n, "opcja", "opcje", "opcji")}`;
 }
 
+// ── Godziny ─────────────────────────────────────────────────────────────────
+
+/**
+ * Godzina zameldowania/wymeldowania w formacie 24-godzinnym.
+ *
+ * Dostawca zwraca zapis 12-godzinny („03:00 PM", „12:00 AM"), który na polskiej
+ * stronie czyta się źle — a „12:00 AM" bywa wręcz mylące (to północ, nie
+ * południe). Konwertujemy na 24 h; wejścia, którego nie rozumiemy, NIE psujemy
+ * — zwracamy je bez zmian, zamiast zgadywać.
+ */
+export function formatHotelTime(raw: string | null | undefined): string | null {
+  const s = (raw ?? "").trim();
+  if (!s) return null;
+
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(s);
+  if (!m) return s; // np. „15:00" albo format, którego nie znamy — bez zmian
+
+  let hour = Number(m[1]);
+  const minutes = m[2];
+  const isPm = m[3].toUpperCase() === "PM";
+  if (hour === 12) hour = 0; // 12 AM = 00, 12 PM = 12 (po dodaniu 12 niżej)
+  if (isPm) hour += 12;
+
+  return `${String(hour).padStart(2, "0")}:${minutes}`;
+}
+
 // ── Podatki ─────────────────────────────────────────────────────────────────
 
 /**
