@@ -3,12 +3,19 @@
 // Auto-rotating hotel gallery (replaces the static 6-photo grid). Shows ALL
 // available hotel photos, cross-fading every 5s, with a Booking-style
 // thumbnail strip, prev/next arrows and a counter. Pauses on hover, when the
-// tab is hidden, and for users who prefer reduced motion. LiteAPI does not
-// expose per-room photos on the rates payload, so this maximises the hotel-
-// level imagery instead.
+// tab is hidden, and for users who prefer reduced motion.
+//
+// SPROSTOWANIE (2026-08-06): poprzednia wersja tego komentarza twierdziła, że
+// „LiteAPI does not expose per-room photos on the rates payload". Zwraca je —
+// przez `roomMapping: true` w /hotels/rates (docs/hotel-redesign/
+// 02-data-contracts.md §5). Zdjęcia POKOI są już używane w rooms-section.tsx;
+// ta galeria pokazuje zdjęcia OBIEKTU i to jest jej właściwa rola.
 
 import Image from "next/image";
+import { Expand } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+import { GalleryLightbox } from "./gallery-lightbox";
 
 // 5s per slide — slow enough to actually look at each photo (the previous
 // 2.2s felt like a flicker). User-requested 2026-06.
@@ -17,6 +24,7 @@ const ROTATE_MS = 5000;
 export function HotelGallery({ photos, alt }: { photos: string[]; alt: string }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const stripRef = useRef<HTMLDivElement | null>(null);
   const n = photos.length;
 
@@ -95,8 +103,26 @@ export function HotelGallery({ photos, alt }: { photos: string[]; alt: string })
           />
         ))}
 
+        {/* Pełnoekranowy podgląd (brief §11.2). Klik w scenę otwiera lightbox
+            na AKTUALNIE oglądanym zdjęciu — to naturalne oczekiwanie i unika
+            sytuacji „kliknąłem basen, otworzył się hol". */}
+        <button
+          type="button"
+          onClick={() => setLightboxOpen(true)}
+          aria-label={`Powiększ zdjęcie ${active + 1} z ${n}`}
+          className="absolute inset-0 z-10 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+        />
+        <button
+          type="button"
+          onClick={() => setLightboxOpen(true)}
+          className="absolute bottom-3 right-3 z-10 inline-flex h-10 items-center gap-1.5 rounded-full bg-white/95 px-4 text-sm font-semibold text-neutral-900 shadow-sm transition hover:bg-white"
+        >
+          <Expand aria-hidden className="h-4 w-4" />
+          Pokaż wszystkie zdjęcia ({n})
+        </button>
+
         {/* Counter */}
-        <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm tabular-nums">
+        <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm tabular-nums">
           {active + 1} / {n}
         </div>
 
@@ -167,6 +193,18 @@ export function HotelGallery({ photos, alt }: { photos: string[]; alt: string })
           ))}
         </div>
       )}
+
+      {/* `key` wymusza REMONT przy każdym otwarciu — dzięki temu lightbox
+          startuje od zdjęcia, które użytkownik właśnie oglądał, bez
+          synchronizacji stanu efektem. */}
+      <GalleryLightbox
+        key={lightboxOpen ? `lb-${active}` : "lb-closed"}
+        photos={photos}
+        alt={alt}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+        startIndex={active}
+      />
     </div>
   );
 }

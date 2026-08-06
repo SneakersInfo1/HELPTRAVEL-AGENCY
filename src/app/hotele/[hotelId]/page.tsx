@@ -51,6 +51,7 @@ import { BookingWidget } from "./_components/booking-widget";
 import { HotelGallery } from "./_components/hotel-gallery";
 import { HotelReviews } from "./_components/hotel-reviews";
 import { RoomsSection } from "./_components/rooms-section";
+import { SectionTabs } from "./_components/section-tabs";
 import { SaveHotelButton } from "./_components/save-hotel-button";
 
 // Polish plural for "opinia": 1 → opinia; 2-4 (except 12-14) → opinie;
@@ -584,6 +585,22 @@ export default async function HotelDetailPage({
                 );
               })()}
             </section>
+
+            {/* Nawigacja po sekcjach (brief §11.3). Renderuje się dopiero nad
+                treścią, żeby opis obiektu został pierwszym, co widzi gość —
+                zakładki są skrótem, nie spisem treści na wejściu. */}
+            <SectionTabs
+              sectionIds={[
+                "rooms",
+                "amenities",
+                // Sekcja opinii renderuje się tylko wtedy, gdy jest co pokazać
+                // (cytaty ALBO kategorie ocen) — zakładka prowadząca donikąd
+                // byłaby gorsza niż jej brak.
+                reviews.length > 0 || reviewCategories(detail).length > 0 ? "reviews" : null,
+                "location",
+                "policies",
+              ].filter((id): id is string => id !== null)}
+            />
 
             {/* Rooms */}
             <RoomsSection
