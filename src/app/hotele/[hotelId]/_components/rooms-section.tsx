@@ -14,9 +14,13 @@
 // "Pokaż wszystkie opcje (N)". Exactly one option in the whole hotel wears
 // the "Najtańsza opcja" badge.
 
+import Image from "next/image";
 import Link from "next/link";
+import { BedDouble, ImageOff, Ruler, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { guestsLabel } from "@/lib/hotels/domain/format";
+import type { RoomProfile } from "@/lib/hotels/domain/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
 import { optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
 import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
@@ -29,6 +33,13 @@ const VISIBLE_OPTIONS_DEFAULT = 3;
 interface Props {
   hotelId: string;
   roomTypes: LiteApiRoomType[];
+  /**
+   * Profile pokoi z /data/hotel, zaindeksowane po `rooms[].id`.
+   * Taryfa trafia w swój pokój przez `rate.mappedRoomId` — bez zgadywania po
+   * nazwie (nazwy taryf są angielskie, nazwy pokoi bywają polskie).
+   * Pusta mapa = brak powiązań → karty bez zdjęć, ale nigdy ze zdjęciem hotelu.
+   */
+  roomsById?: Record<string, RoomProfile>;
   searchQuery: string;
   nights: number;
   currency: string;
@@ -50,6 +61,7 @@ const formatDate = (iso: string | null | undefined): string | null => {
 export function RoomsSection({
   hotelId,
   roomTypes,
+  roomsById,
   searchQuery,
   nights,
   currency,
@@ -82,6 +94,7 @@ export function RoomsSection({
           key={group.key}
           hotelId={hotelId}
           group={group}
+          room={roomProfileForGroup(group, roomsById)}
           searchQuery={searchQuery}
           nights={nights}
           currency={currency}
@@ -92,9 +105,57 @@ export function RoomsSection({
   );
 }
 
+/**
+ * Wybiera profil pokoju dla grupy taryf.
+ *
+ * Grupa powstaje z kilku taryf tego samego pokoju, więc bierzemy `mappedRoomId`
+ * z PIERWSZEJ opcji, która je ma (opcje są posortowane od najtańszej).
+ * Gdy żadna nie ma powiązania → `null` → karta bez zdjęcia. Nigdy nie
+ * podstawiamy zdjęcia hotelu (brief §12.1).
+ */
+function roomProfileForGroup(
+  group: RoomGroup,
+  roomsById: Record<string, RoomProfile> | undefined,
+): RoomProfile | null {
+  if (!roomsById) return null;
+  for (const option of group.options) {
+    const id = option.rate.mappedRoomId;
+    if (id === null || id === undefined) continue;
+    const room = roomsById[String(id)];
+    if (room) return room;
+  }
+  return null;
+}
+
+/** Metryki pokoju w jednym wierszu — pomijamy te, których dostawca nie podał. */
+function RoomSpecs({ room }: { room: RoomProfile }) {
+  const beds = room.beds
+    .map((b) => [b.quantity && b.quantity > 1 ? `${b.quantity}×` : null, b.type].filter(Boolean).join(" "))
+    .filter(Boolean)
+    .join(", ");
+
+  const specs: { icon: typeof Ruler; text: string }[] = [];
+  if (room.sizeSquareMeters) specs.push({ icon: Ruler, text: `${room.sizeSquareMeters} m²` });
+  if (room.maxOccupancy) specs.push({ icon: Users, text: `do ${guestsLabel(room.maxOccupancy)}` });
+  if (beds) specs.push({ icon: BedDouble, text: beds });
+  if (!specs.length) return null;
+
+  return (
+    <ul className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
+      {specs.map(({ icon: Icon, text }) => (
+        <li key={text} className="inline-flex items-center gap-1">
+          <Icon aria-hidden className="h-3.5 w-3.5 text-neutral-400" />
+          {text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function RoomGroupCard({
   hotelId,
   group,
+  room,
   searchQuery,
   nights,
   currency,
@@ -102,6 +163,7 @@ function RoomGroupCard({
 }: {
   hotelId: string;
   group: RoomGroup;
+  room: RoomProfile | null;
   searchQuery: string;
   nights: number;
   currency: string;
@@ -138,16 +200,67 @@ function RoomGroupCard({
 
   return (
     <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-      <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-neutral-100 bg-neutral-50 px-5 py-3">
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold text-neutral-900">{localizeRoomName(group.name)}</h3>
-          {typeof group.maxOccupancy === "number" && group.maxOccupancy > 0 && (
-            <p className="mt-0.5 text-xs text-neutral-500">Maks. gości: {group.maxOccupancy}</p>
+      <header className="flex items-start gap-4 border-b border-neutral-100 bg-neutral-50 p-4 sm:px-5">
+        {/* Zdjęcie TEGO pokoju (przez rate.mappedRoomId → rooms[].id).
+            Brak powiązania → neutralny zastępnik, NIGDY zdjęcie hotelu. */}
+        <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-neutral-200 sm:h-24 sm:w-32">
+          {room?.photos.length ? (
+            // JAWNE width/height zamiast `fill`. Przy `fill` loader dostawał
+            // największą szerokość z deviceSizes i żądał obrazu 3840 px pod
+            // miniaturę ~96 px (~250 kB zamiast ~10 kB, razy każdy pokój na
+            // stronie). Podanie realnego rozmiaru sprowadza żądanie do 256 px
+            // (2× DPR), a `object-cover` nadal przycina kadr do ramki.
+            <Image
+              src={room.photos[0].url}
+              // `??` nie wystarczy: dostawca zwraca PUSTY STRING, a nie null,
+              // więc zdjęcie wychodziło z `alt=""` (czyli oznaczone jako
+              // dekoracyjne) mimo że niesie treść. Stąd jawne sprawdzenie treści.
+              alt={
+                room.photos[0].description?.trim() ||
+                `Zdjęcie pokoju: ${localizeRoomName(group.name)}`
+              }
+              width={256}
+              height={192}
+              sizes="128px"
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div
+              className="flex h-full w-full items-center justify-center text-neutral-400"
+              aria-label="Brak zdjęcia tego pokoju"
+            >
+              <ImageOff aria-hidden className="h-6 w-6" />
+            </div>
+          )}
+          {room && room.photos.length > 1 && (
+            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+              {room.photos.length}
+            </span>
           )}
         </div>
-        <p className="shrink-0 text-xs font-medium text-neutral-600">
-          {[fromLabel, optionsLabel(group.options.length)].filter(Boolean).join(" · ")}
-        </p>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h3 className="text-base font-semibold text-neutral-900">{localizeRoomName(group.name)}</h3>
+            <p className="shrink-0 text-xs font-medium text-neutral-600">
+              {[fromLabel, optionsLabel(group.options.length)].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          {room ? (
+            <RoomSpecs room={room} />
+          ) : (
+            typeof group.maxOccupancy === "number" &&
+            group.maxOccupancy > 0 && (
+              <p className="mt-1 text-xs text-neutral-500">do {guestsLabel(group.maxOccupancy)}</p>
+            )
+          )}
+          {room?.amenities.length ? (
+            <p className="mt-1 line-clamp-1 text-xs text-neutral-500">
+              {room.amenities.slice(0, 4).join(" · ")}
+            </p>
+          ) : null}
+        </div>
       </header>
       <ul className="divide-y divide-neutral-100">
         {visible.map((option) => (

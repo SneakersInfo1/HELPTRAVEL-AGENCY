@@ -16,6 +16,7 @@ import { isBookingLive, showReviews } from "@/lib/config/featureFlags";
 import { getHotelReviews, selectReviews, type DisplayReview } from "@/lib/liteapi/reviews";
 import { taxNoticeText } from "@/lib/hotels/domain/format";
 import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
+import { indexRoomsById } from "@/lib/hotels/domain/room";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { ratingLabel } from "@/lib/hotels/rating";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
@@ -215,6 +216,12 @@ export default async function HotelDetailPage({
   // Zdanie o podatkach dla najtańszej taryfy — liczone TU, bo tylko tutaj mamy
   // surową taryfę z `taxesAndFees`. `null` = brak rozbicia → widget milczy.
   const cheapestTaxText = cheapest ? taxNoticeText(taxNoticeFrom(mapTaxes(cheapest.rate))) : null;
+
+  // Profile pokoi (zdjęcia, metraż, łóżka) z /data/hotel, zaindeksowane po id.
+  // Taryfa trafia w swój pokój przez `mappedRoomId` — dlatego zapytanie
+  // o stawki na tej stronie ustawia `roomMapping: true`. Serializujemy do
+  // zwykłego obiektu, bo Map nie przechodzi przez granicę RSC → client.
+  const roomsById = Object.fromEntries(indexRoomsById(detail));
 
   // Build search-query string for child links (rooms CTA).
   const searchQuery = (() => {
@@ -555,6 +562,7 @@ export default async function HotelDetailPage({
             <RoomsSection
               hotelId={hotelId}
               roomTypes={roomTypes}
+              roomsById={roomsById}
               searchQuery={searchQuery}
               nights={nights}
               currency={currency}

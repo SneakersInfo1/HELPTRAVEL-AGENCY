@@ -124,7 +124,31 @@ dostępna bez nowej biblioteki.
 Szerszy grep po emoji w `src/app/hotele` **nie znalazł innych** — problem jest
 węższy, niż sugeruje brief.
 
-### 2.7 [ŚREDNI · mobile] Kolizja sticky CTA z czatem — potwierdzona liczbowo
+### 2.7 [~~ŚREDNI~~ → NIEAKTUALNE] Kolizja sticky CTA z czatem
+
+> **Korekta 2026-08-06 (Etap 4).** Ten punkt powstał z samego grepa po
+> `z-index` i **był błędny w części praktycznej**. Po przeczytaniu logiki
+> pozycjonowania w `concierge-launcher.tsx:149-160`:
+>
+> - na stronach `/hotele/*` (poza wynikami) launcher **podnosi się nad pasek**:
+>   `bottom-[max(5.25rem, calc(env(safe-area-inset-bottom)+5.25rem))]`,
+>   z powrotem do `lg:bottom-6`, gdy pasek znika na dużych ekranach,
+> - respektuje `env(safe-area-inset-bottom)` (wymóg briefu §16),
+> - chowa się całkowicie, gdy baner zgód czeka na decyzję (`consentBlocking`) —
+>   to reakcja na incydent, w którym dymek zasłaniał zgody i zabijał GA4,
+> - na `/hotele/szukaj` zostaje przy dole, bo pasek filtrów jest wyśrodkowany
+>   (zweryfikowane na 375 px w sesji 2026-07-11).
+>
+> Różnica z-index (czat `z-40`, sticky CTA `z-30`) **istnieje**, ale nie
+> powoduje zasłaniania, bo elementy nie zajmują tego samego miejsca.
+> Przebudowa **nie powinna tego ruszać** — to działające rozwiązanie oparte
+> na pomiarze, a nie na teorii.
+>
+> Co zostaje prawdziwe z tego punktu: brak **nazwanej skali warstw** (wartości
+> `z-10`…`z-[80]` rozsypane po 20+ plikach). To jednak dług czytelności,
+> nie defekt użytkowy — obniżony do priorytetu „porządkowego".
+
+Pierwotna treść punktu (zachowana dla kontekstu):
 
 | Element | z-index | Plik |
 |---|---|---|
