@@ -16,6 +16,7 @@ import { isBookingLive, showReviews } from "@/lib/config/featureFlags";
 import { getHotelReviews, selectReviews, type DisplayReview } from "@/lib/liteapi/reviews";
 import { taxNoticeText } from "@/lib/hotels/domain/format";
 import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
+import { reviewCategories, reviewHighlights, sentimentUpdatedAt } from "@/lib/hotels/domain/review";
 import { indexRoomsById } from "@/lib/hotels/domain/room";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { ratingLabel } from "@/lib/hotels/rating";
@@ -571,7 +572,14 @@ export default async function HotelDetailPage({
             />
 
             {/* Opinie gości (FAZA 9) — renderuje się tylko gdy są czytelne. */}
-            <HotelReviews reviews={reviews} />
+            <HotelReviews
+              reviews={reviews}
+              categories={reviewCategories(detail)}
+              highlights={reviewHighlights(detail)}
+              sentimentUpdated={sentimentUpdatedAt(detail)}
+              overallScore={detail.rating ?? null}
+              reviewCount={detail.reviewCount ?? null}
+            />
 
             {/* Amenities — merged from amenities + hotelFacilities + facilities,
                 localised to Polish and grouped. Shows ALL real facilities

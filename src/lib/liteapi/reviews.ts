@@ -48,10 +48,20 @@ export interface DisplayReview {
   score: number | null;
   name: string;
   dateIso: string | null;
+  /** Treść pozytywna (`pros`). Nazwa `text` zostaje — czyta ją istniejący UI. */
   text: string;
+  /**
+   * Treść krytyczna (`cons`). Dostawca rozdziela opinię na dwa pola, a my do
+   * tej pory pokazywaliśmy TYLKO plusy — czyli selektywnie korzystniejszy
+   * obraz obiektu, niż napisał gość. `null`, gdy gość nic nie wpisał
+   * (pusty `cons` NIE może renderować pustej karty — brief §13).
+   */
+  cons: string | null;
   /** false → oznaczamy „opinia w języku angielskim". */
   isPolish: boolean;
   typePl: string | null;
+  /** Serwis, z którego pochodzi opinia (np. „tripadvisor") — do atrybucji. */
+  source: string | null;
 }
 
 const TYPE_PL: Record<string, string> = {
@@ -96,14 +106,23 @@ export function selectReviews(reviews: LiteApiReview[], max = 3): DisplayReview[
     return (b.r.date ?? "").localeCompare(a.r.date ?? ""); // potem najnowsze
   });
 
-  return candidates.slice(0, max).map(({ r, text }) => ({
-    score: typeof r.averageScore === "number" ? r.averageScore : null,
-    name: (r.name ?? "").trim() || "Gość",
-    dateIso: r.date ?? null,
-    text: text.length > 280 ? `${text.slice(0, 277).trimEnd()}…` : text,
-    isPolish: (r.language ?? "").toLowerCase().startsWith("pl"),
-    typePl: reviewerTypePl(r.type),
-  }));
+  const trim = (s: string) => (s.length > 280 ? `${s.slice(0, 277).trimEnd()}…` : s);
+
+  return candidates.slice(0, max).map(({ r, text }) => {
+    // Krótkie „cons" typu „-" albo „brak" to wypełniacze formularza, nie treść.
+    // Próg 3 znaków odsiewa je, żeby nie renderować pustej krytyki.
+    const cons = (r.cons ?? "").trim();
+    return {
+      score: typeof r.averageScore === "number" ? r.averageScore : null,
+      name: (r.name ?? "").trim() || "Gość",
+      dateIso: r.date ?? null,
+      text: trim(text),
+      cons: cons.length >= 3 ? trim(cons) : null,
+      isPolish: (r.language ?? "").toLowerCase().startsWith("pl"),
+      typePl: reviewerTypePl(r.type),
+      source: (r.source ?? "").trim() || null,
+    };
+  });
 }
 
 export function formatReviewDate(iso: string | null): string | null {

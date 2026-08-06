@@ -17,6 +17,13 @@ import { buildPriceBreakdown, hasHonestDiscount, mapTaxes, taxNoticeFrom } from 
 import { buildRateOffers, indexRoomsById, roomForRate, toRoomProfile } from "./room";
 import { groupAmenities, normalizeAmenities, topAmenities } from "./amenity";
 import {
+  localizeReviewCategory,
+  reviewCategories,
+  reviewHighlights,
+  reviewSourceLabel,
+  scoreToPercent,
+} from "./review";
+import {
   guestsLabel,
   nightsLabel,
   optionsLabel,
@@ -324,6 +331,65 @@ test("udogodnienia: widok skrócony bierze najważniejsze i respektuje limit", (
 
 test("udogodnienia: puste i uszkodzone wejście nie wywraca normalizacji", () => {
   assert.deepEqual(normalizeAmenities(null, undefined, [], [null, 42, {}] as unknown[]), []);
+});
+
+// ── Opinie i kategorie ocen ─────────────────────────────────────────────────
+
+test("opinie: nazwy kategorii tłumaczone słownikiem, nieznane zostają oryginałem", () => {
+  assert.equal(localizeReviewCategory("Cleanliness"), "Czystość");
+  assert.equal(localizeReviewCategory("Value for Money"), "Stosunek jakości do ceny");
+  assert.equal(localizeReviewCategory("Room Quality"), "Jakość pokoju");
+  // Nieznana kategoria NIE ginie i nie zostaje pusta — pokazujemy oryginał.
+  assert.equal(localizeReviewCategory("Nightlife"), "Nightlife");
+});
+
+test("opinie: kategorie bez sensownej oceny są odrzucane (pasek bez liczby nic nie znaczy)", () => {
+  const detail = {
+    sentiment_analysis: {
+      categories: [
+        { name: "Cleanliness", rating: 9.3, description: "Very clean." },
+        { name: "Service", rating: 0 },
+        { name: "", rating: 8 },
+        { name: "Location", rating: null },
+      ],
+    },
+  } as never;
+  const cats = reviewCategories(detail);
+  assert.equal(cats.length, 1);
+  assert.equal(cats[0].label, "Czystość");
+  assert.equal(cats[0].score, 9.3);
+});
+
+test("opinie: brak sentiment_analysis nie wywraca — pusta lista", () => {
+  assert.deepEqual(reviewCategories(null), []);
+  assert.deepEqual(reviewCategories({ sentiment_analysis: null } as never), []);
+  assert.deepEqual(reviewHighlights(undefined), []);
+});
+
+test("opinie: zalety deduplikowane i przycięte do limitu", () => {
+  const detail = {
+    sentiment_analysis: {
+      pros: ["Great location", "great location", "Friendly staff", "Clean rooms"],
+    },
+  } as never;
+  const h = reviewHighlights(detail, 2);
+  assert.equal(h.length, 2);
+  assert.deepEqual(h, ["Great location", "Friendly staff"]);
+});
+
+test("opinie: skala 0-10 → procent; wartość poza skalą daje null zamiast kłamliwego paska", () => {
+  assert.equal(scoreToPercent(10), 100);
+  assert.equal(scoreToPercent(9.3), 93);
+  assert.equal(scoreToPercent(0), 0);
+  // Gdyby dostawca zmienił skalę na 0-5, obcięcie dałoby pasek 2× za długi.
+  assert.equal(scoreToPercent(11), null);
+  assert.equal(scoreToPercent(-1), null);
+  assert.equal(scoreToPercent(Number.NaN), null);
+});
+
+test("opinie: atrybucja źródła — nazwy własne z wielkiej litery, bez duplikatów", () => {
+  assert.equal(reviewSourceLabel(["tripadvisor", "tripadvisor", null]), "Tripadvisor");
+  assert.equal(reviewSourceLabel([null, undefined, ""]), null);
 });
 
 // ── Formatowanie i odmiana ──────────────────────────────────────────────────

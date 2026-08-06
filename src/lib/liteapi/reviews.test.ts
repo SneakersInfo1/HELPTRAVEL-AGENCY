@@ -56,3 +56,52 @@ test("reviewerTypePl mapuje znane typy, inaczej null", () => {
   assert.equal(reviewerTypePl("unknown_type"), null);
   assert.equal(reviewerTypePl(undefined), null);
 });
+
+// Etap 10 przebudowy sekcji hotelowej (2026-08-06) — `cons` i `source`.
+// Do tej pory pokazywaliśmy WYŁĄCZNIE `pros`, czyli obraz obiektu
+// korzystniejszy niż napisał gość.
+
+test("cons: krytyka gościa jest zachowywana obok pochwały", () => {
+  const out = selectReviews([
+    r({
+      averageScore: 8,
+      language: "en",
+      pros: "Great location and very clean rooms.",
+      cons: "Breakfast was repetitive after three days.",
+    }),
+  ]);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].cons, "Breakfast was repetitive after three days.");
+});
+
+test("cons: pusty albo wypełniaczowy („-”, „brak”) → null, nie pusta karta", () => {
+  const cases = ["", "  ", "-", "b"];
+  for (const c of cases) {
+    const out = selectReviews([
+      r({ averageScore: 8, language: "en", pros: "Great location and very clean rooms.", cons: c }),
+    ]);
+    assert.equal(out[0].cons, null, `cons=${JSON.stringify(c)} powinno dać null`);
+  }
+});
+
+test("cons: długa krytyka jest przycinana tak samo jak pochwała", () => {
+  const long = "a".repeat(400);
+  const out = selectReviews([
+    r({ averageScore: 8, language: "en", pros: "Great location and very clean rooms.", cons: long }),
+  ]);
+  assert.ok((out[0].cons ?? "").length <= 280);
+  assert.ok((out[0].cons ?? "").endsWith("…"));
+});
+
+test("source: serwis źródłowy trafia do modelu (do atrybucji w UI)", () => {
+  const out = selectReviews([
+    r({ averageScore: 9, language: "en", pros: "Great location and very clean rooms.", source: "tripadvisor" }),
+  ]);
+  assert.equal(out[0].source, "tripadvisor");
+  // Helper `r()` domyślnie ustawia source: "Nuitee" (kształt z realnej sondy),
+  // więc brak źródła trzeba wymusić jawnie.
+  const noSource = selectReviews([
+    r({ averageScore: 9, language: "en", pros: "Great location and very clean rooms.", source: null }),
+  ]);
+  assert.equal(noSource[0].source, null);
+});
