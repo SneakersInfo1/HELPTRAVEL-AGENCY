@@ -124,7 +124,7 @@ export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currenc
           <button
             type="button"
             onClick={scrollToRooms}
-            className="mt-2 w-full rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="mt-2 w-full rounded-lg bg-emerald-700 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
           >
             Wybierz pokój
           </button>
@@ -136,13 +136,18 @@ export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currenc
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             {cheapestTotal !== undefined && perNight !== null ? (
+              // Hierarchia §8.5 — dominuje cena CAŁEGO pobytu. Wcześniej ten
+              // pasek krzyczał ceną za noc (text-base bold), a całość szeptał
+              // na 10 px — czyli dokładnie odwrotnie niż lista i panel obok.
+              // Trzy różne hierarchie w jednym lejku uczą gościa nieufności.
               <>
                 <div className="text-[11px] text-neutral-500">Od</div>
                 <div className="text-base font-bold text-emerald-700">
-                  {formatPLN(perNight, currency)}
-                  <span className="ml-0.5 text-[11px] font-semibold text-emerald-700/80">/ noc</span>
+                  {formatPLN(cheapestTotal, currency)}
                 </div>
-                <div className="text-[10px] text-neutral-500">{formatPLN(cheapestTotal, currency)} łącznie</div>
+                <div className="text-[11px] text-neutral-600">
+                  za {nights} {nightsWord(nights)} · {formatPLN(perNight, currency)} / noc
+                </div>
               </>
             ) : cheapestTotal !== undefined ? (
               <>
@@ -156,7 +161,7 @@ export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currenc
           <button
             type="button"
             onClick={scrollToRooms}
-            className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
           >
             Wybierz pokój
           </button>
