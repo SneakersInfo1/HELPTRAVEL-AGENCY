@@ -45,6 +45,7 @@ function descriptionIsLikelyNotPolish(html: string | undefined | null): boolean 
 
 import { TrackView } from "@/components/analytics/track-view";
 
+import { AmenitiesSection } from "./_components/amenities-section";
 import { BookingWidget } from "./_components/booking-widget";
 import { HotelGallery } from "./_components/hotel-gallery";
 import { HotelReviews } from "./_components/hotel-reviews";
@@ -576,34 +577,10 @@ export default async function HotelDetailPage({
                 localised to Polish and grouped. Shows ALL real facilities
                 (previously capped at 30 and sourced only from the sparse
                 `amenities` field). */}
-            {facilityGroups.length > 0 && (
-              <section id="amenities" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="text-lg font-bold text-neutral-900">Udogodnienia</h2>
-                  <span className="shrink-0 text-xs text-neutral-500">
-                    {facilityCount} {facilityCount === 1 ? "udogodnienie" : "udogodnień"}
-                  </span>
-                </div>
-                <div className="mt-4 space-y-5">
-                  {facilityGroups.map((g) => (
-                    <div key={g.key}>
-                      <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-800">
-                        <span aria-hidden className="text-base">{g.icon}</span>
-                        {g.label}
-                      </h3>
-                      <ul className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm text-neutral-700 sm:grid-cols-2 lg:grid-cols-3">
-                        {g.items.map((item, i) => (
-                          <li key={i} className="flex items-start gap-2">
-                            <span className="mt-0.5 text-emerald-600">✓</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+            {/* Udogodnienia — deduplikacja POJĘCIOWA (facilityId 47 „WiFi dostępne"
+                i 107 „Darmowe WiFi" to jedno pojęcie) + ikony SVG zamiast emoji.
+                Szczegóły w _components/amenities-section.tsx. */}
+            <AmenitiesSection sources={[detail.amenities, detail.hotelFacilities, detail.facilities]} />
 
             {/* Location */}
             <section id="location" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">
