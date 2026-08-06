@@ -35,6 +35,17 @@ const COVID_BLACKLIST = [
   "coronavirus", "koronawirus", // „…effective against Coronavirus"
   "thermometer", "termometr", // „Thermometers for guests provided by property"
   "securely covered", "bezpiecznie przykryt", // „Delivered food - securely covered"
+  // Etap 11 przebudowy hoteli (2026-08-06) — luki ujawnione po przejściu na
+  // URZĘDOWE polskie nazwy z `/data/facilities`. Wcześniej te pozycje wpadały
+  // do listy po ANGIELSKU i łapały je wzorce EN powyżej; teraz przychodzą po
+  // polsku, więc angielskie substringi już ich nie widzą. Zmierzone na żywo
+  // (lp27a0d8, lp6558036a).
+  "sanityz", // „Sanityzowana zastawa stołowa i sztućce"
+  "wytycznymi lokalnych władz", // „Pranie zgodnie z wytycznymi lokalnych władz"
+  "wytycznych lokalnych władz",
+  "bezkontaktow", // „Bezkontaktowe zameldowanie/wymeldowanie"
+  "opieki zdrowotnej", // „Dostęp do profesjonalistów opieki zdrowotnej"
+  "higieny rąk", "płyn do dezynfekcji",
 ];
 
 /** Czy facility to boilerplate COVID/higiena (do ukrycia). */

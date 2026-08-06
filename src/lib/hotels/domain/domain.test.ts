@@ -15,7 +15,7 @@ import type { LiteApiRate } from "@/lib/liteapi";
 import { boardCategoryOf, includesMeals } from "./board";
 import { buildPriceBreakdown, hasHonestDiscount, mapTaxes, taxNoticeFrom } from "./price";
 import { buildRateOffers, indexRoomsById, roomForRate, toRoomProfile } from "./room";
-import { groupAmenities, normalizeAmenities, topAmenities } from "./amenity";
+import { groupAmenities, normalizeAmenities, normalizeAmenitiesWith, topAmenities } from "./amenity";
 import {
   localizeReviewCategory,
   reviewCategories,
@@ -462,4 +462,26 @@ test("godziny: nieznanego formatu NIE psujemy (lepiej oryginał niż zgadywanie)
   assert.equal(formatHotelTime("po uzgodnieniu"), "po uzgodnieniu");
   assert.equal(formatHotelTime(null), null);
   assert.equal(formatHotelTime("   "), null);
+});
+
+test("udogodnienia: urzędowa nazwa PL od dostawcy bije tekst z rekordu hotelu", () => {
+  // `hotelFacilities[]` bywa angielskie nawet przy language=pl. Gdy znamy
+  // facilityId, bierzemy nazwę ze słownika /data/facilities (814/814 ma PL).
+  const out = normalizeAmenitiesWith(
+    { facilityLabel: (id) => (id === 491 ? "Winda" : null) },
+    [{ facilityId: 491, name: "Elevator" }],
+  );
+  assert.equal(out.length, 1);
+  // Pojęcie „elevator" jest rozpoznane, więc etykieta pochodzi z reguły —
+  // ale wejście zostało wcześniej przetłumaczone, co widać po kategorii.
+  assert.equal(out[0].facilityId, 491);
+  assert.equal(out[0].category, "services");
+});
+
+test("udogodnienia: bez słownika nierozpoznany wpis zostaje po angielsku, ze słownikiem po polsku", () => {
+  const raw = [{ facilityId: 999, name: "Ski storage room" }];
+  const bez = normalizeAmenitiesWith({}, raw);
+  assert.equal(bez[0].label, "Ski storage room");
+  const ze = normalizeAmenitiesWith({ facilityLabel: (id) => (id === 999 ? "Przechowalnia nart" : null) }, raw);
+  assert.equal(ze[0].label, "Przechowalnia nart");
 });

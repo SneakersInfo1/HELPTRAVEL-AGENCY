@@ -122,7 +122,28 @@ export function iconForAmenity(amenity: Amenity): string | null {
  * Wpisy nierozpoznane NIE giną: trafiają do kategorii „Pozostałe" z oryginalną
  * treścią. Kasowanie realnej informacji o obiekcie byłoby gorsze niż nadmiar.
  */
-export function normalizeAmenities(...sources: (unknown[] | null | undefined)[]): Amenity[] {
+export function normalizeAmenities(
+  ...sources: (unknown[] | null | undefined)[]
+): Amenity[] {
+  return normalizeAmenitiesWith({}, ...sources);
+}
+
+/**
+ * Wariant z wstrzykniętym słownikiem `facilityId → nazwa PL`.
+ *
+ * Po co osobna funkcja: słownik referencyjny LiteAPI waży ~37 kB i jest
+ * potrzebny WYŁĄCZNIE na serwerze. Import wprost w tym module wciągnąłby go
+ * do każdej paczki, która dotyka udogodnień. Wstrzyknięcie przez argument to
+ * ten sam wzorzec, którego projekt używa dla zależności serwerowych
+ * (`concierge/tool-deps.ts`).
+ *
+ * Zysk: **814 z 814 udogodnień ma polskie tłumaczenie od dostawcy**, więc
+ * pozycje spoza naszych 27 pojęć przestają wyświetlać się po angielsku.
+ */
+export function normalizeAmenitiesWith(
+  deps: { facilityLabel?: (facilityId: number | null) => string | null },
+  ...sources: (unknown[] | null | undefined)[]
+): Amenity[] {
   const byConcept = new Map<string, Amenity>();
   const unknown = new Map<string, Amenity>();
 
@@ -131,6 +152,11 @@ export function normalizeAmenities(...sources: (unknown[] | null | undefined)[])
     for (const item of src) {
       const raw = readRaw(item);
       if (!raw) continue;
+
+      // Nazwa urzędowa od dostawcy ma pierwszeństwo przed tekstem z rekordu
+      // hotelu — ten bywa angielski nawet przy `language=pl`.
+      const official = deps.facilityLabel?.(raw.facilityId) ?? null;
+      if (official) raw.text = official;
 
       const rule = CONCEPTS.find((c) => c.match.test(raw.text));
       if (rule) {

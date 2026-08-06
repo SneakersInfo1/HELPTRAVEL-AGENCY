@@ -613,7 +613,11 @@ export default async function HotelDetailPage({
             {/* Udogodnienia — deduplikacja POJĘCIOWA (facilityId 47 „WiFi dostępne"
                 i 107 „Darmowe WiFi" to jedno pojęcie) + ikony SVG zamiast emoji.
                 Szczegóły w _components/amenities-section.tsx. */}
-            <AmenitiesSection sources={[detail.amenities, detail.hotelFacilities, detail.facilities]} />
+            <AmenitiesSection
+              facilities={detail.facilities}
+              hotelFacilities={detail.hotelFacilities}
+              amenities={detail.amenities}
+            />
 
             {/* Location */}
             <section id="location" className="rounded-2xl bg-white p-6 ring-1 ring-neutral-200">

@@ -66,3 +66,25 @@ test("stripCovidFacilities (disabled) zwraca listę bez zmian", () => {
   const input = ["Maseczki dla gości", "Parking"];
   assert.deepEqual(stripCovidFacilities(input, false), input);
 });
+
+// Etap 11 przebudowy hoteli (2026-08-06). Po przejściu na URZĘDOWE polskie
+// nazwy z `/data/facilities` te pozycje przestały przychodzić po angielsku,
+// więc wzorce EN już ich nie łapały. Zmierzone na żywych hotelach.
+test("boilerplate COVID w POLSKIEJ wersji też jest łapany", () => {
+  const polskie = [
+    "Sanityzowana zastawa stołowa i sztućce",
+    "Pranie zgodnie z wytycznymi lokalnych władz",
+    "Bezkontaktowe zameldowanie/wymeldowanie",
+    "Dostęp do profesjonalistów opieki zdrowotnej",
+  ];
+  for (const s of polskie) {
+    assert.equal(isCovidBoilerplate(s), true, `powinno być ukryte: ${s}`);
+  }
+});
+
+test("realne udogodnienia bezpieczeństwa NADAL zostają (nie przesadzamy z filtrem)", () => {
+  const zostaja = ["Gaśnice", "Czujniki dymu", "Zestaw pierwszej pomocy dostępny", "Monitoring CCTV", "Sejf"];
+  for (const s of zostaja) {
+    assert.equal(isCovidBoilerplate(s), false, `NIE powinno być ukryte: ${s}`);
+  }
+});

@@ -43,8 +43,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { CATEGORY_LABELS, groupAmenities, iconForAmenity, normalizeAmenities } from "@/lib/hotels/domain/amenity";
+import { CATEGORY_LABELS, groupAmenities, iconForAmenity, normalizeAmenitiesWith } from "@/lib/hotels/domain/amenity";
 import type { Amenity } from "@/lib/hotels/domain/types";
+import { facilityLabelPl } from "@/lib/hotels/liteapi-reference";
+import { stripCovidFacilities } from "@/lib/liteapi/covid-facilities";
+import { sanitizeFacilities } from "@/lib/liteapi/sanitize-facilities";
 
 // Import SELEKTYWNY (07-decisions.md R1) — nigdy `import * as icons`, bo to
 // wciągnęłoby całą bibliotekę do paczki klienta.
@@ -94,8 +97,42 @@ function AmenityIcon({ amenity }: { amenity: Amenity }) {
   });
 }
 
-export function AmenitiesSection({ sources }: { sources: (unknown[] | null | undefined)[] }) {
-  const amenities = normalizeAmenities(...sources);
+export function AmenitiesSection({
+  facilities,
+  hotelFacilities,
+  amenities: rawAmenities,
+}: {
+  /** `facilities[{facilityId,name}]` — kanoniczne, ma stabilne ID. */
+  facilities?: unknown[] | null;
+  /** Ta sama lista po angielsku, BEZ ID — tylko awaryjnie. */
+  hotelFacilities?: unknown[] | null;
+  /** Rzadko wypełniane pole `amenities` — też awaryjnie. */
+  amenities?: unknown[] | null;
+}) {
+  // Kolejność źródeł ma znaczenie. `facilities[]` i `hotelFacilities[]` to TA
+  // SAMA lista w dwóch reprezentacjach (zmierzone: po 34 pozycje na hotel),
+  // ale tylko pierwsza ma `facilityId` → tylko dla niej znamy urzędową nazwę
+  // polską. Łączenie obu dawało ogon nieprzetłumaczonych angielskich wpisów
+  // („Public Bath", „Wine/champagne"), bo dedup po tekście nie zrówna
+  // „Public Bath" z „Łaźnia publiczna".
+  //
+  // Dlatego: gdy `facilities[]` jest niepuste, używamy WYŁĄCZNIE jego.
+  const withIds = Array.isArray(facilities) && facilities.length > 0;
+  const sources: (unknown[] | null | undefined)[] = withIds
+    ? [facilities]
+    : [rawAmenities, hotelFacilities];
+
+  // Ten komponent jest serwerowy (RSC), więc słownik referencyjny (~37 kB)
+  // NIE trafia do paczki przeglądarki.
+  const all = normalizeAmenitiesWith({ facilityLabel: facilityLabelPl }, ...sources);
+
+  // Odsiew, który miała stara ścieżka i który trzeba zachować:
+  //  • `sanitizeFacilities` — puste i przeczące wpisy („No pets"),
+  //  • `stripCovidFacilities` — boilerplate pandemiczny („Hand sanitizer…"),
+  //    który w 2026 roku jest szumem, a nie udogodnieniem.
+  const allowed = new Set(stripCovidFacilities(sanitizeFacilities(all.map((a) => a.label))));
+  const amenities = all.filter((a) => allowed.has(a.label));
+
   if (!amenities.length) return null;
   const groups = groupAmenities(amenities);
 
