@@ -21,6 +21,19 @@ export interface GetRatesInput {
   // → spam ostrzeżeń „items over 2MB can not be cached" w logach prod).
   // Strona SZCZEGÓŁÓW hotelu NIE ustawia tego — tam pokazujemy wszystkie pokoje.
   maxRatesPerHotel?: number;
+  // Dokłada do KAŻDEJ taryfy `mappedRoomId` — klucz obcy do `rooms[].id`
+  // z /data/hotel, czyli zdjęcia, metraż i łóżka KONKRETNEGO pokoju bez
+  // zgadywania po nazwach (zmierzone pokrycie: 31/31 taryf na 4 hotelach).
+  //
+  // OPT-IN, nie domyślne — świadomie. Włącza to wyłącznie strona szczegółów
+  // hotelu. Tor listy wyników (resolve-slim-rates.ts → maxRatesPerHotel:1)
+  // ma zostać BEZ ZMIAN, bo:
+  //   • body wchodzi w klucz Next Data Cache — zmiana = globalny cache-miss
+  //     na najgorętszej ścieżce serwisu,
+  //   • liście i tak wystarcza najtańsza cena, zdjęcia pokoi są jej zbędne.
+  // Dzięki temu `KEY_VERSION` w lib/hotels/rate-cache.ts NIE wymaga podbicia:
+  // kształt tego, co tam trafia (SlimRate), się nie zmienia.
+  roomMapping?: boolean;
 }
 
 export async function getRates(input: GetRatesInput): Promise<LiteApiRatesResponse> {
@@ -36,6 +49,7 @@ export async function getRates(input: GetRatesInput): Promise<LiteApiRatesRespon
     guestNationality: input.guestNationality ?? "PL",
     limit: input.limit ?? input.hotelIds.length,
     ...(input.maxRatesPerHotel ? { maxRatesPerHotel: input.maxRatesPerHotel } : {}),
+    ...(input.roomMapping ? { roomMapping: true } : {}),
   };
   return liteApiRequest({
     path: "/hotels/rates",

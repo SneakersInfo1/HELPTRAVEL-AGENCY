@@ -127,6 +127,11 @@ async function fetchRates(args: {
       checkout: args.checkout,
       currency: "PLN",
       occupancies: Array.from({ length: args.rooms }, () => ({ adults: args.adults, children: args.children })),
+      // Każda taryfa dostaje `mappedRoomId` → pozwala pokazać zdjęcia, metraż
+      // i łóżka JEJ pokoju (rooms[] z /data/hotel) zamiast karty bez zdjęcia.
+      // Włączone tylko tutaj — lista wyników go nie potrzebuje i nie chcemy
+      // ruszać jej cache (patrz komentarz przy GetRatesInput.roomMapping).
+      roomMapping: true,
     });
     return res.data.find((r) => r.hotelId === args.hotelId)?.roomTypes ?? [];
   } catch (err) {

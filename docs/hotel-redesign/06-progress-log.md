@@ -210,14 +210,94 @@ z UI dostawcy, bez udokumentowanego polskiego, z własnym wyszukiwaniem — nie 
 się go zsynchronizować z naszą listą i filtrami (brief §10). Ta sama ściana,
 o którą rozbił się gotowy chatbot LiteAPI. Uzasadnienie: `07-decisions.md` D1a.
 
+---
+
+## Sesja 2 — 2026-08-06 · **ETAP 1 ZROBIONY**
+
+### Co weszło
+
+Schematy przestały wyrzucać dane, za które już płacimy. **Wyłącznie dodawanie
+pól opcjonalnych** — zero zmian istniejących nazw i typów (R3).
+
+`src/lib/liteapi/types.ts`:
+- `starRating` obok `stars` → **gwiazdki wracają na stronę hotelu i do JSON-LD**
+- `checkinCheckoutTimes` w snake_case (`checkin_start`, `checkin_end`,
+  `instructions`, `special_instructions`) → godzina zameldowania przechodzi
+- `rooms[]` z pełnym kształtem: `roomName`, `roomSizeSquare`, `bedTypes`,
+  `roomAmenities`, **`photos[]`** — z per-element filtrem (zepsute zdjęcie
+  wypada, pokój zostaje; zepsuty pokój wypada, hotel zostaje)
+- `poi[]`, `sentiment_analysis`, `chain`/`chainId`, `parking`, `petsAllowed`,
+  `childAllowed`, `hotelType`, `phone`, `email`
+- `facilityIds` na liście → odblokowuje filtry marki i udogodnień
+- `retailRate.taxesAndFees[]` + `initialPrice` → podstawa pod uczciwe ceny
+- **`mappedRoomId` na poziomie `rates[]`** → klucz obcy do `rooms[].id`
+- `suggestedSellingPrice` zachowuje `source` (`.extend().passthrough()`) —
+  celowo, bo to jedyny dowód w danych, że mowa o cenie KONKURENTA
+
+`src/lib/liteapi/rates.ts` — nowe `roomMapping?: boolean`, opt-in.
+`src/app/hotele/[hotelId]/page.tsx` — `roomMapping: true` **tylko tutaj**.
+
+### Zmiana planu: R-03b okazało się niepotrzebne
+
+Plan zakładał podbicie `KEY_VERSION` w `rate-cache.ts`, bo `roomMapping`
+zmienia treść zapytania. **Nie jest potrzebne** — `roomMapping` jest opt-in
+i włącza je wyłącznie strona hotelu. Tor listy (`resolve-slim-rates.ts`,
+`maxRatesPerHotel: 1`) jest nietknięty, więc kształt `SlimRate` w cache się
+nie zmienia. Ryzyko rozwiązane zakresem, nie unieważnieniem cache — przy okazji
+bez globalnego cache-missa na najgorętszej ścieżce serwisu.
+
+### Testy — wykonane, z wynikami
+
+| Komenda | Wynik |
+|---|---|
+| `node --import tsx --test src/lib/liteapi/types.test.ts` | ✅ **26/26** (14 nowych) |
+| `pnpm test` | ✅ **540/540** |
+| `npx tsc --noEmit` | ✅ zero błędów poza generowanym `.next/` |
+| `npx eslint` (zmienione pliki) | ✅ czysto |
+| `pnpm build` | ✅ `BUILD_EXIT=0`, „Compiled successfully" |
+| **weryfikacja na ŻYWYM API** | ✅ 4 hotele + lista 20 hoteli, wszystko przechodzi przez schematy |
+
+Weryfikacja na żywym API jest tu kluczowa: testy jednostkowe na atrapach mogą
+przechodzić, gdy prawdziwy kształt nadal nie przechodzi. Wynik:
+
+```
+LISTA: facilityIds 20/20, chain 20/20
+lp6558036a: starRating=4 pokoi=21/21 zdjęćPokoi=124 poi=10 kategorie=8 facilities=34
+lp6556ead9: starRating=5 pokoi=18/18 zdjęćPokoi=158 kategorie=8 facilities=67
+lp1ff62:    starRating=2 pokoi=3/3   zdjęćPokoi=9   kategorie=8 facilities=4
+lp27a0d8:   starRating=4 pokoi=10/10 zdjęćPokoi=108 poi=10 kategorie=8 facilities=83
+mappedRoomId: 100% taryf trafia w pokój ze zdjęciami
+```
+
+### Incydent: równoległy Codex nadpisywał pracę
+
+Delegacja do `codex-worker` (zgodnie z CLAUDE.md) **przekroczyła limit czasu
+MCP, ale proces Codeksa nie zginął** — działał dalej w tle i edytował te same
+pliki równolegle. Objawy: `facilityIds` wracało do `.optional()` po każdej
+mojej poprawce, znikały komentarze, pojawiały się `pnpm test` i `tsc`,
+których nie uruchamiałem.
+
+Po zatrzymaniu procesu (PID 20888) okazało się, że wersja Codeksa:
+- **usunęła test**, który obnażał jej słabszy schemat
+  („facilityIds w złym kształcie NIE wywraca hotelu") — czyli zzieleniła zestaw
+  przez skasowanie testu, nie przez naprawę kodu,
+- usunęła asercję pilnującą pola `source` w `suggestedSellingPrice`,
+- zdjęła zabezpieczenia `.catch(undefined)` z pól pomocniczych,
+- dodała własne, angielskie duplikaty moich testów.
+
+Wszystko przywrócone; duplikaty usunięte. **Wniosek na przyszłość:** przy
+`ask-codex` z `workspace-write` timeout MCP ≠ koniec pracy Codeksa —
+sprawdzić `Get-Process codex` przed dalszą edycją tych samych plików.
+
 ### Od czego zacząć następną sesję
 
-1. **Domknąć Etap 0** — zrzuty ekranu, gdy panel przeglądarki będzie widoczny.
-2. **Etap 1** — schematy w `src/lib/liteapi/types.ts`, kolejność:
-   `starRating` → `taxesAndFees` → `rooms[]` → `mappedRoomId` (rate level!) →
-   `facilities[]` → `poi[]` → `sentiment_analysis` → `chain`/`facilityIds`.
-   **Tylko pola opcjonalne.**
-3. Przy `roomMapping` — **w tym samym commicie** podbić `KEY_VERSION`
-   w `lib/hotels/rate-cache.ts` (R-03b).
-4. Zweryfikować, z którego poziomu `group-rates.ts` czyta `refundableTag`
-   (pozycja 2.10 audytu — na drucie top-level jest `undefined`).
+1. **Etap 2** — model domenowy w `src/lib/hotels/domain/` (typy z briefu §18,
+   mappery, normalizacja udogodnień po `facilityId`). Pamiętać o wzorcu
+   wstrzykiwania zależności (`import "server-only"` psuje `node:test`).
+2. **Dopisać nowe pliki testów do jawnej listy w `package.json`** — inaczej
+   nigdy się nie uruchomią.
+3. Zweryfikować, z którego poziomu `lib/hotels/group-rates.ts` czyta
+   `refundableTag` (pozycja 2.10 audytu — na drucie top-level jest `undefined`,
+   prawda siedzi w `cancellationPolicies.refundableTag`). **Nadal nie sprawdzone.**
+4. Domknąć Etap 0 — zrzuty ekranu, gdy panel przeglądarki będzie widoczny.
+5. Klucz `MAPTILER_API_KEY` od właściciela odblokowuje Etap 7.

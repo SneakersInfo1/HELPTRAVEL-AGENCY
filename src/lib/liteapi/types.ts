@@ -71,6 +71,14 @@ export const LiteApiHotelSchema = z.object({
   reviewCount: z.number().nullish(),
   main_photo: OptionalPhotoUrl,
   thumbnail: OptionalPhotoUrl,
+  // Marka hotelowa. Zwracane przez /data/hotels ORAZ /data/hotel ("Vincci
+  // Hoteles" / 1114). Do filtra marki na liście wyników.
+  chain: z.string().nullish(),
+  chainId: z.number().nullish(),
+  // Identyfikatory udogodnień (34 szt. na typowy hotel). To JEDYNE źródło
+  // udogodnień na LIŚCIE — /data/hotels nie zwraca nazw, tylko ID. Bez tego
+  // filtrowanie po udogodnieniach na liście jest niewykonalne.
+  facilityIds: z.array(z.number()).nullish().catch(undefined),
 });
 export type LiteApiHotel = z.infer<typeof LiteApiHotelSchema>;
 
@@ -108,6 +116,78 @@ const HotelImageSchema = z
   })
   .passthrough();
 
+// Zdjęcie POKOJU (rooms[].photos[]). Ta sama zasada co przy HotelImageSchema:
+// `url` musi być poprawnym http(s) (inaczej pozycja wypada w preprocess niżej),
+// `hd_url` tolerancyjny. Uwaga na nazewnictwo: tu dostawca używa snake_case
+// `hd_url`, podczas gdy galeria hotelu ma camelCase `urlHd` — to NIE jest
+// literówka, tak jest na drucie.
+const RoomPhotoSchema = z
+  .object({
+    url: z.preprocess(toHttpUrlOrUndefined, z.string()),
+    hd_url: OptionalPhotoUrl,
+    imageDescription: z.string().nullish(),
+    mainPhoto: z.boolean().nullish(),
+    score: z.number().nullish(),
+    imageClass1: z.string().nullish(),
+    imageClass2: z.string().nullish(),
+    classId: z.number().nullish(),
+    classOrder: z.number().nullish(),
+    failoverPhoto: z.string().nullish(),
+  })
+  .passthrough();
+
+// Pojedynczy pokój z /data/hotel. To pole było przez Zod WYRZUCANE w całości
+// (schemat go nie deklarował), przez co strona hotelu renderowała pokoje bez
+// jednego zdjęcia, bez metrażu i bez łóżek — nie z braku danych u dostawcy,
+// tylko dlatego, że nigdy nie przeszły przez walidację. Zmierzone: 21/21 pokoi
+// ma po ~5 zdjęć (docs/hotel-redesign/02-data-contracts.md §2.2).
+//
+// `id` bywa liczbą (5677262) — trzymamy union, bo to klucz obcy dla
+// `rate.mappedRoomId`, które również potrafi przyjść jako string.
+const LiteApiRoomSchema = z
+  .object({
+    id: z.union([z.number(), z.string()]),
+    roomName: z.string().nullish(),
+    description: z.string().nullish(),
+    roomSizeSquare: z.number().nullish(),
+    roomSizeUnit: z.string().nullish(),
+    maxAdults: z.number().nullish(),
+    maxChildren: z.number().nullish(),
+    maxOccupancy: z.number().nullish(),
+    bedTypes: z
+      .array(
+        z
+          .object({
+            quantity: z.number().nullish(),
+            bedType: z.string().nullish(),
+            bedSize: z.string().nullish(),
+          })
+          .passthrough(),
+      )
+      .nullish(),
+    roomAmenities: z
+      .array(
+        z
+          .object({
+            amenitiesId: z.number().nullish(),
+            name: z.string().nullish(),
+            sort: z.number().nullish(),
+          })
+          .passthrough(),
+      )
+      .nullish(),
+    // Per-element filtr jak w hotelImages — jedno zepsute zdjęcie wypada,
+    // pokój ZOSTAJE (z resztą zdjęć).
+    photos: z.preprocess(
+      (val) => (Array.isArray(val) ? val.filter((item) => RoomPhotoSchema.safeParse(item).success) : val),
+      z.array(RoomPhotoSchema).nullish(),
+    ),
+    views: z.array(z.unknown()).nullish(),
+    bedRelation: z.string().nullish(),
+  })
+  .passthrough();
+export type LiteApiRoom = z.infer<typeof LiteApiRoomSchema>;
+
 export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   description: z.string().optional(),
   hotelDescription: z.string().optional(),
@@ -120,6 +200,15 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   // detail pages looked sparse: the richest, 100%-true data never reached the
   // page. (2026-06)
   hotelFacilities: z.array(z.unknown()).optional(),
+  // KANONICZNE źródło udogodnień. Zmierzone: `facilities` to obiekty
+  // `{ facilityId, name }` z nazwami PO POLSKU, a `hotelFacilities` to ta sama
+  // lista po ANGIELSKU i BEZ ID. Deduplikacja musi iść po `facilityId`, bo
+  // duplikaty pojęciowe pochodzą ze ŹRÓDŁA (47 „WiFi dostępne" + 107 „Darmowe
+  // WiFi" to dwa różne rekordy), a tekst zmienia się z językiem.
+  //
+  // Zostaje `z.unknown()` CELOWO: kształty dostawców bywają różne (raz string,
+  // raz obiekt), a typowane odczytanie należy do warstwy domenowej
+  // (docs/hotel-redesign/07-decisions.md R5), nie do walidacji brzegowej.
   facilities: z.array(z.unknown()).optional(),
   // TA SAMA klasa błędu co Sharm na liście, ale na STRONIE HOTELU. Sztywne
   // `z.string().url()` na `url`/`urlHd` rzucało invalid_format gdy POJEDYNCZE
@@ -138,15 +227,90 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
   // array/object variant can never break the parse — coerced in the UI.
   hotelImportantInformation: z.unknown().optional(),
   // `location` (zagnieżdżone współrzędne) jest już w bazowym LiteApiHotelSchema.
+  //
+  // UWAGA — dostawca używa tu snake_case. Zmierzone na drucie:
+  //   { checkin_start, checkin_end, checkout, instructions, special_instructions }
+  // Zadeklarowane wcześniej `checkinStart`/`checkinEnd` NIGDY nie przechodziły
+  // (przechodziło wyłącznie `checkout`), więc godzina zameldowania i instrukcje
+  // zameldowania były wyrzucane. Warianty camelCase zostają — nic nie kosztują,
+  // a gdyby dostawca kiedyś je odesłał, nadal je złapiemy.
   checkinCheckoutTimes: z
     .object({
       checkin: z.string().optional(),
       checkout: z.string().optional(),
       checkinStart: z.string().optional(),
       checkinEnd: z.string().optional(),
+      checkin_start: z.string().nullish(),
+      checkin_end: z.string().nullish(),
+      instructions: z.array(z.string()).nullish(),
+      special_instructions: z.string().nullish(),
     })
     .optional(),
   currency: z.string().optional(),
+
+  // ── Pola, które dostawca zwraca, a które Zod dotąd wyrzucał ──────────────
+  // (audyt 2026-08-06, docs/hotel-redesign/02-data-contracts.md §2.1)
+
+  // Standard hotelu. /data/hotels zwraca `stars`, ale /data/hotel zwraca
+  // WYŁĄCZNIE `starRating` — dlatego `detail.stars` był zawsze undefined
+  // i gwiazdki znikały po wejściu na stronę hotelu (razem z JSON-LD dla Google).
+  // `stars` zostaje odziedziczone z bazowego schematu; konsumenci czytają
+  // `starRating ?? stars`.
+  starRating: z.number().nullish(),
+
+  // Pokoje ze zdjęciami — patrz LiteApiRoomSchema. Per-element filtr: jeden
+  // zepsuty pokój wypada, hotel zostaje (ta sama zasada co przy hotelImages).
+  rooms: z.preprocess(
+    (val) => (Array.isArray(val) ? val.filter((item) => LiteApiRoomSchema.safeParse(item).success) : val),
+    z.array(LiteApiRoomSchema).nullish(),
+  ),
+
+  // Punkty zainteresowania z PRAWDZIWYMI odległościami (distanceKm). Dziś
+  // odległości liczymy własną heurystyką geo; to jest dana od dostawcy.
+  poi: z
+    .array(
+      z
+        .object({
+          name: z.string().nullish(),
+          category: z.string().nullish(),
+          distanceKm: z.number().nullish(),
+          importance: z.string().nullish(),
+        })
+        .passthrough(),
+    )
+    .nullish(),
+
+  // Analiza sentymentu recenzji wykonana przez AI DOSTAWCY (jest nawet
+  // `sentiment_updated_at`). Źródło kategorii ocen („Cleanliness 10, Service 10")
+  // i wyróżnień. Nazwy kategorii są ANGIELSKIE i ze skończonego zbioru →
+  // tłumaczyć słownikiem po naszej stronie. Treści są generowane — w UI muszą
+  // być oznaczone jako pochodzące od AI (patrz 07-decisions.md R11).
+  sentiment_analysis: z
+    .object({
+      pros: z.array(z.string()).nullish(),
+      cons: z.array(z.string()).nullish(),
+      categories: z
+        .array(
+          z
+            .object({
+              name: z.string().nullish(),
+              rating: z.number().nullish(),
+              description: z.string().nullish(),
+            })
+            .passthrough(),
+        )
+        .nullish(),
+    })
+    .nullish(),
+  sentiment_updated_at: z.string().nullish(),
+
+  // Fakty do sekcji „Dobrze wiedzieć" / polityki obiektu.
+  parking: z.string().nullish(),
+  childAllowed: z.boolean().nullish(),
+  petsAllowed: z.boolean().nullish(),
+  hotelType: z.string().nullish(),
+  phone: z.string().nullish(),
+  email: z.string().nullish(),
 });
 export type LiteApiHotelDetail = z.infer<typeof LiteApiHotelDetailSchema>;
 
@@ -181,10 +345,58 @@ export const LiteApiRateSchema = z.object({
   retailRate: z
     .object({
       total: z.array(PriceAmountSchema),
-      suggestedSellingPrice: z.array(PriceAmountSchema).optional(),
+      // UWAGA: to NIE jest nasza cena historyczna, tylko cena KONKURENTA —
+      // na drucie ma pole `source` ("booking.com") i jest wyższa od `total`
+      // na 100% zmierzonych taryf (400/400). NIE nadaje się na przekreśloną
+      // cenę ani na „-X%" (decyzja D2 w docs/hotel-redesign/07-decisions.md:
+      // nie pokazujemy jej w UI w ogóle).
+      // `.extend({source}) + .passthrough()` jest CELOWE: bez tego Zod zjada
+      // pole `source` ("booking.com"), a to ono jest dowodem, że mówimy o cenie
+      // KONKURENTA, a nie o naszej cenie historycznej. Zachowanie go chroni
+      // przed tym, że ktoś kiedyś weźmie to za bazę do przeceny.
+      suggestedSellingPrice: z
+        .array(PriceAmountSchema.extend({ source: z.string().nullish() }).passthrough())
+        .nullish()
+        .catch(undefined),
+      // Zmierzone: initialPrice === total na 400/400 taryf. Dostawca NIE daje
+      // własnej ceny bazowej, więc uczciwej przeceny nie da się z tego policzyć.
+      // Trzymamy pole, żeby dało się to zweryfikować w kodzie, a nie zakładać.
+      initialPrice: z.array(PriceAmountSchema).optional(),
+      // Rozbicie podatków i opłat. `included: false` znaczy, że pozycja NIE
+      // jest w `total` — gość dopłaci ją w hotelu. Zmierzone: 209 z 400 taryf
+      // ma taką pozycję (najczęściej VAT), podczas gdy UI bezwarunkowo pisze
+      // „wł. podatków". To jest dana potrzebna, żeby przestać kłamać.
+      //
+      // `description` bywa TEKSTEM z kwotą w obcej walucie
+      // ("$163.02 USD per room per stay") — nie próbować tego sumować.
+      // `.nullish()` na polach i `.catch(undefined)` na tablicy są CELOWE:
+      // dostawca potrafi przysłać `null` zamiast pominąć pole, a rozbicie
+      // podatków jest daną POMOCNICZĄ — jej zły kształt nie może wywrócić
+      // parsowania taryfy (bez taryfy nie ma czego sprzedać).
+      taxesAndFees: z
+        .array(
+          z
+            .object({
+              included: z.boolean().nullish(),
+              description: z.string().nullish(),
+              amount: z.number().nullish(),
+              currency: CurrencyCodeSchema.nullish(),
+            })
+            .passthrough(),
+        )
+        .nullish()
+        .catch(undefined),
     })
     .optional(),
   cancellationPolicies: LiteApiCancellationPolicySchema.optional(),
+  // Klucz obcy do `rooms[].id` z /data/hotel — pojawia się TYLKO gdy zapytanie
+  // /hotels/rates ustawi `roomMapping: true` (patrz rates.ts). Dzięki niemu
+  // taryfa dostaje zdjęcia, metraż i łóżka SWOJEGO pokoju, bez zgadywania po
+  // nazwach. Zmierzone pokrycie: 31/31 taryf na 4 hotelach.
+  //
+  // PUŁAPKA: pole jest na poziomie TARYFY (rates[]), nie roomType — szukanie
+  // go o poziom wyżej daje 0 trafień.
+  mappedRoomId: z.union([z.number(), z.string()]).nullish(),
 });
 export type LiteApiRate = z.infer<typeof LiteApiRateSchema>;
 
