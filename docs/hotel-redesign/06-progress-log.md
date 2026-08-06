@@ -413,3 +413,64 @@ maszyny, nie kod. Powtórzyć na spokojnej maszynie, kilkukrotnie, mediana.
    odblokowane Etapem 1, ale niezaimplementowane w UI.
 4. **Etap 7** — czeka na `MAPTILER_API_KEY` od właściciela.
 5. Zrzuty ekranu, gdy panel przeglądarki zacznie kompletować klatki.
+
+---
+
+## Sesja 5 — 2026-08-06 · Etapy 10, 11 (dokończone) + słowniki referencyjne
+
+### Zrobione
+
+- **Etap 10** (`e819a3d`) — pełna sekcja opinii: 8 kategorii ocen z paskami,
+  zalety, **`cons`** (dotąd pokazywaliśmy same plusy!), atrybucja źródła,
+  oznaczenie treści AI dostawcy.
+- **Etap 11 c.d.** (`42274b8`) — „W okolicy" z prawdziwymi odległościami
+  (`poi[].distanceKm`), „Dobrze wiedzieć" z zasad pobytu, format godzin 24 h.
+- **Słowniki referencyjne** (`192c13f`) — `pnpm build:liteapi-reference`.
+
+### Trzeci martwy kod tej samej klasy
+
+`checkinTime` czytał `checkinCheckoutTimes.checkin`/`.checkinStart` (camelCase),
+a dostawca zwraca `checkin_start`. Kafelek „Zameldowanie" **nigdy się nie
+renderował**. Etap 1 dodał pola do schematu, ale nikt ich nie czytał.
+
+Wzorzec do zapamiętania: **dodanie pola do schematu ≠ użycie go**. Po każdym
+rozszerzeniu schematu warto zgrepować, czy stary kod nie czyta wariantu,
+który nigdy nie istniał.
+
+### Odkrycie: LiteAPI ma słowniki referencyjne
+
+| Endpoint | Zawartość |
+|---|---|
+| `/data/facilities` | **814 udogodnień, 814/814 z polskim tłumaczeniem** |
+| `/data/hotelTypes` | 52 typy obiektów |
+| `/data/chains` | 4821 sieci hotelowych (pominięte — `chain` przychodzi przy hotelu) |
+
+Ręcznie utrzymywany słownik w `facilities.ts` z natury pokrywał tylko część
+zbioru. Teraz nazwy pochodzą od dostawcy, a `data/liteapi-reference.json` jest
+commitowany (jak seed kierunków).
+
+### Dwie regresje, które sam wprowadziłem i naprawiłem
+
+1. Nowa sekcja udogodnień **zgubiła `sanitizeFacilities` i `stripCovidFacilities`**,
+   które miała stara ścieżka. Przywrócone.
+2. Po przejściu na polskie nazwy **angielski filtr COVID przestał trafiać**
+   („Sanityzowana zastawa", „Bezkontaktowe zameldowanie"). Dodane polskie
+   wzorce + testy pilnujące, że realne udogodnienia bezpieczeństwa (gaśnice,
+   czujniki dymu, apteczka) NIE są przy okazji ukrywane.
+
+### Znalezione, NIEnaprawione
+
+`filters-logic.ts → inferPropertyType()` **zgaduje typ obiektu z nazwy hotelu**
+(„zawiera 'hostel' → hostel"), z komentarzem „LiteAPI's list endpoint doesn't
+return propertyType". Zwraca — `hotelTypeId`. `hotelTypeLabelPl()` jest gotowe;
+podmiana czeka na przepchnięcie pola przez `MetaOffer` → `/api/hotels/meta`.
+
+### Od czego zacząć następną sesję
+
+1. **Etap 6 — filtry**: przepchnąć `chain`, `facilityIds`, `hotelTypeId` przez
+   `MetaOffer` (`meta-pool.ts:41`) i dodać filtry marki / udogodnień / typu.
+   To domyka brief §9 i przy okazji kasuje zgadywanie typu z nazwy.
+2. **Etap 8** — zakładki nawigacyjne i lightbox galerii.
+3. **Etap 7** — czeka na `MAPTILER_API_KEY`.
+4. Powtórzyć pomiar wydajności na spokojnej maszynie (mediana z kilku
+   przebiegów) — dotychczasowe porównanie jest nierozstrzygnięte.
