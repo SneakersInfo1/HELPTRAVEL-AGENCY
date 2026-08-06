@@ -369,3 +369,47 @@ mimo błędu tsc, więc sam `pnpm test` by tego nie wykrył.
 2. Ujednolicić hierarchię ceny (dziś lista i strona hotelu mają **odwrotne**).
 3. Domknąć Etap 0 — zrzuty ekranu, gdy panel przeglądarki będzie widoczny.
 4. Klucz `MAPTILER_API_KEY` odblokowuje Etap 7.
+
+---
+
+## Sesja 4 — 2026-08-06 · Etapy 3, 9, 11 + dostępność + raport
+
+Właściciel: „jedź do końca, nie pytaj o zgodę". Utrzymane wyłącznie dwa
+ograniczenia z briefu: **żadnego wdrożenia na produkcję i żadnego merge do `main`**.
+
+### Zrobione
+
+- **Etap 3** (`7a861c5`) — koniec z fałszywym „wł. podatków"; `SlimRate` niesie
+  `taxesIncluded`/`taxExtraAmount`, `KEY_VERSION` v2→v3; ujednolicona hierarchia
+  ceny; wspólne formattery z poprawną polską odmianą (12–14!).
+- **Etap 9** (`0cd99c5`) — karty pokoi ze zdjęciami TEGO pokoju przez `mappedRoomId`.
+- **Etap 11** (`f653c92`) — udogodnienia bez duplikatów i bez emoji.
+- Dostępność: `color-contrast` 16→0 usterek, `target-size` 15→3.
+- **Raport końcowy** — `09-final-report.md`.
+
+### Dwie korekty moich wcześniejszych ustaleń
+
+1. **Audyt 2.7 (kolizja czatu ze sticky CTA) był błędny.** Powstał z samego
+   grepa po `z-index`. `concierge-launcher.tsx:149-160` już podnosi launcher
+   nad pasek na stronach hoteli i chowa go przy banerze zgód. Etap 12
+   okazał się **niepotrzebny**.
+2. **„37/37 obrazów bez `srcSet`" było błędem mojego wyrażenia regularnego** —
+   React renderuje `srcSet` wielbłądzio, szukałem małymi literami. `srcSet` jest.
+
+### Czego NIE udało się zmierzyć
+
+**Porównanie wydajności przed/po jest nierozstrzygnięte.** Trzy przebiegi
+Lighthouse dały dla homepage (nietykanej) 43 → 65 → 19 i TBT 1644 → 371 →
+4933 ms. Taki rozrzut na niezmienionej stronie znaczy, że mierzę obciążenie
+maszyny, nie kod. Powtórzyć na spokojnej maszynie, kilkukrotnie, mediana.
+
+### Od czego zacząć następną sesję
+
+1. **Etap 10 (opinie)** — dane gotowe: `/data/reviews` (autor, data, język,
+   `pros`/`cons`, `source`) + `sentiment_analysis.categories` (paski ocen).
+   To największa pozostała luka względem briefu §13.
+2. **Etap 8** — zakładki nawigacyjne i lightbox galerii.
+3. **Etap 5/6** — filtry marki (`chain`) i udogodnień (`facilityIds`) —
+   odblokowane Etapem 1, ale niezaimplementowane w UI.
+4. **Etap 7** — czeka na `MAPTILER_API_KEY` od właściciela.
+5. Zrzuty ekranu, gdy panel przeglądarki zacznie kompletować klatki.

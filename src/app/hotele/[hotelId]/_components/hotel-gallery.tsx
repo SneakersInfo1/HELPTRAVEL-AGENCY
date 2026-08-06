@@ -127,8 +127,13 @@ export function HotelGallery({ photos, alt }: { photos: string[]; alt: string })
                   onClick={() => setActive(i)}
                   aria-label={`Zdjęcie ${i + 1}`}
                   aria-current={i === active}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === active ? "w-5 bg-white" : "w-1.5 bg-white/55 hover:bg-white/80"
+                  // Kropka ma 6 px, ale CEL DOTYKU musi mieć 24 px (WCAG 2.2
+                  // Target Size, poziom AA). Zamiast powiększać kropkę —
+                  // co zepsułoby wygląd — powiększamy sam przycisk i rysujemy
+                  // kropkę jako `::before`. Lighthouse zgłaszał tu 15 celów
+                  // za małych.
+                  className={`relative flex h-6 w-6 items-center justify-center rounded-full transition-all before:block before:h-1.5 before:rounded-full before:transition-all before:content-[''] ${
+                    i === active ? "before:w-5 before:bg-white" : "before:w-1.5 before:bg-white/55 hover:before:bg-white/80"
                   }`}
                 />
               ))}

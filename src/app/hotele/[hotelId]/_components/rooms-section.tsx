@@ -19,10 +19,9 @@ import Link from "next/link";
 import { BedDouble, ImageOff, Ruler, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { guestsLabel } from "@/lib/hotels/domain/format";
 import type { RoomProfile } from "@/lib/hotels/domain/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
-import { optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
+import { guestsLabel, optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
 import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { groupRates, mergeGroupsByDisplayName, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
@@ -375,7 +374,7 @@ function OptionRow({
             </span>
           )}
           {cancelPremiumMinor !== null && (
-            <span className="text-[11px] text-neutral-400">
+            <span className="text-[11px] text-neutral-600">
               +{formatPLN(fromMinor(cancelPremiumMinor), rateCurrency)} za możliwość anulowania
             </span>
           )}
@@ -404,7 +403,7 @@ function OptionRow({
             // (26,7k renderów w 2 dni = top ścieżka serwisu) + wywołania
             // LiteAPI. Checkout ładuje się dopiero po realnym kliknięciu.
             prefetch={false}
-            className="mt-2 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="mt-2 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
           >
             Wybierz
           </Link>
