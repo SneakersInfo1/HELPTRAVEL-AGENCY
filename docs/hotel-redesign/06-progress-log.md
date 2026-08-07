@@ -474,3 +474,71 @@ podmiana czeka na przepchnięcie pola przez `MetaOffer` → `/api/hotels/meta`.
 3. **Etap 7** — czeka na `MAPTILER_API_KEY`.
 4. Powtórzyć pomiar wydajności na spokojnej maszynie (mediana z kilku
    przebiegów) — dotychczasowe porównanie jest nierozstrzygnięte.
+
+---
+
+## Sesja 6 — 2026-08-06/07 · Etapy 6, 8, 7 + audyt + PREVIEW
+
+### Zrobione
+
+- **Etap 6** (`d19dd9e`) — filtry marki i udogodnień z danych, nie ze zgadywania
+- **Etap 8** (`69cdbea`) — zakładki sekcji + pełnoekranowa galeria (lightbox)
+- **Etap 7** (`545586e`) — **mapa wyników** (widget LiteAPI) po polsku i w PLN
+- Bramka konwersyjna + Lighthouse + poprawki (`2a19014`, `ac7c445`)
+- **Wypchnięte na preview**: `feat/hotel-experience-redesign` → Vercel READY
+
+### Mapa: decyzja właściciela odwróciła D1
+
+Właściciel wybrał gotowy widget LiteAPI zamiast własnej mapy na MapLibre.
+Zaleta: zero kosztu kafelków, zero dodatkowego klucza. Trzy rzeczy, których
+dokumentacja NIE mówi, a które wyszły dopiero z pomiaru w przeglądarce:
+
+1. **CSP** — dokumentacja nie wymienia ani jednego hosta, który widget realnie
+   woła. Zmierzone: `components.liteapi.travel`, `*.nuitee.link` +
+   `wss://*.nuitee.link`, `api.mapbox.com`, `events.mapbox.com`,
+   `*.tiles.mapbox.com`, `pro.fontawesome.com`, `worker-src blob:`.
+2. **Waluta** — widget rysował `$`. Sprawdzone pomiarem, czy to tylko symbol:
+   dla Madrytu pokazał 2125–6206, a LiteAPI dla tych dat zwraca w PLN
+   1153–11861 i w USD 310–3186. Zakres pasuje do PLN, górna wartość przekracza
+   maksimum USD → **złotówki z błędnym symbolem**.
+3. **Język** — `language` / `locale` / `lang` **nie robią nic**,
+   `labelsOverride` nie pokrywa napisów interfejsu.
+
+Rozwiązanie 2 i 3: podmiana tekstu w DOM widgetu (MutationObserver, wyłącznie
+wewnątrz kontenera mapy). **To jest kruche** — opisane w kodzie. Docelowo
+poprosić LiteAPI o obsługę waluty i języka.
+
+### Pułapka pomiarowa, która o mało nie zmyliła
+
+Pomiar pokazał a11y 96 i CLS 0,249 na stronie hotelu — wyglądało na regresję.
+Rozpoznane po tym, że zgłoszony kontrast wskazywał na `src/app/error.tsx`,
+którego sekcja hotelowa **w ogóle nie używa**: `pnpm build` podmienił `.next`
+POD działającym `pnpm start`, więc Lighthouse mierzył stronę błędu.
+
+**Regułą: mierzyć zawsze na świeżo wystartowanym serwerze, przy wolnym porcie.**
+
+### Wynik końcowy (czysty pomiar)
+
+| trasa | perf | a11y | bp | seo | CLS |
+|---|---|---|---|---|---|
+| strona hotelu | 83 | **100** | 100 | **100** | 0 |
+| wyniki ×3 | 86 | 96 | 100 | 69 | 0 |
+
+Baza dla strony hotelu: perf 82 / a11y 100 / seo 92 — przy **znacznie uboższej
+treści** (bez zdjęć pokoi, kategorii ocen, POI i zakładek).
+
+### Co WYMAGA działania właściciela
+
+1. **`NEXT_PUBLIC_LITEAPI_WIDGET_DOMAIN` na Vercelu** (wartość:
+   domena white-labelu). Bez niej przełącznik mapy **nie pojawi się na
+   preview** — degradacja jest cicha i bezpieczna, ale mapy nie zobaczysz.
+2. **`seo 69` na wynikach** — `robots.txt` ma `Disallow: /hotele/szukaj`,
+   a strona wysyła `index, follow`. Decyzja SEO, nie techniczna.
+3. **`SHOW_REVIEWS=true`**, jeśli cytaty opinii mają być widoczne (kategorie
+   ocen działają niezależnie).
+
+### Od czego zacząć następną sesję
+
+1. Obejrzeć preview na 375 px i zebrać uwagi.
+2. Etap 13 (Playwright) — jedyny etap całkowicie niezrobiony.
+3. Powtórzyć Lighthouse kilka razy i wziąć medianę.
