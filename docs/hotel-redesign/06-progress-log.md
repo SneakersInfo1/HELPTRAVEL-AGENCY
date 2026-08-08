@@ -672,3 +672,63 @@ Pomiar szerokości (Playwright, 1920×1080):
 3. **`SHOW_REVIEWS=true`**, jeśli cytaty opinii mają być widoczne.
 4. **`NEXT_PUBLIC_LITEAPI_WIDGET_DOMAIN` przestała być potrzebna** — mapa nie
    korzysta już z white-labelu. Można ją zdjąć z Vercela.
+
+---
+
+# SESJA 8 — V3, dopracowanie produktu (2026-08-08)
+
+Pelny opis: `docs/hotel-redesign/v3-final-polish.md`.
+
+## Przyczyny zrodlowe ustalone pomiarem
+
+| objaw | przyczyna |
+|---|---|
+| „Wczytuje mape..." przez kilka sekund | `ready` czekalo na `load` MapLibre, ktore odpala sie PO pierwszych kafelkach. Canvas istnial po 921 ms, znaczniki po 3035 ms |
+| trzy kolumny w trybie mapy | mapa renderowala sie WEWNATRZ prawej kolumny siatki `[300px_1fr]`, wiec dziedziczyla sidebar. Zmierzone: sidebar 320 + lista 762 + mapa 626 |
+| surowy HTML w opisie pokoju | `rooms[].description` to HTML (100% sprawdzonych), a szedl do widoku jako tekst |
+| agresywne kadrowanie zdjecia | `object-cover` na sztywnej wysokosci; zdjecia pokoi bywaja pionowe |
+| brak przecen jak u Nuitee | Nuitee przekresla cene Booking.com (`suggestedSellingPrice` > total w 99,4% taryf). Nasze `initialPrice` > total: 4,9% |
+| polubione bez powrotu | zapis do localStorage istnial, ale nic go nie czytalo |
+
+## Wyniki
+
+```
+pnpm test  627/627  (+18)
+pnpm e2e    25/25   (+8)
+tsc        czysto
+build      BUILD_EXIT=0
+lint       3 bledy — wszystkie sprzed sesji (o jeden mniej niz w V2)
+```
+
+| pomiar (1920 px, tryb mapy) | V2 | V3 |
+|---|---|---|
+| sidebar filtrow | widoczny | ukryty |
+| karta hotelu | 762 px | **955 px** |
+| mapa | 626 px (33%) | **785 px (43%)** |
+| odstep powloka mapy → znaczniki | 2155 ms | **123 ms** |
+| zdjecie pokoju na karcie | 128×96 px | **~415×245 px** |
+
+## Pulapki dla nastepnej sesji
+
+1. **Przegladarka Playwrighta ma angielska lokalizacje** — nawigacja renderuje
+   sie jako „Saved", nie „Polubione". Testy nawigacji celuj w ADRES, nie
+   w etykiete. `LocalizedLink` dokleja `?lang=en`, wiec `href$=` nie zadziala.
+2. **Kolejnosc kart po odswiezeniu bywa inna** (ceny dojezdzaja strumieniem),
+   wiec „pierwsza karta ma pelne serce" to test migoczacy. Trwalosci dowodzi
+   licznik w nawigacji i strona /polubione.
+3. **`getByText(/\d+\/\d+/)` trafia w ladunek RSC w `<script>`** — do sprawdzania
+   widocznego tekstu uzywaj `document.body.innerText`.
+4. **Historia cen narasta od wdrozenia.** Przez pierwsze dni zdanie „Najnizsza
+   cena z 30 dni" nie pojawi sie prawie nigdzie i tak ma byc — pokazanie go bez
+   danych byloby dokladnie tym, czego zabrania przepis.
+5. Reguly `react-hooks/set-state-in-effect` nie da sie obejsc wzorcem
+   `useState(false)` + `useEffect(setTrue)`. Do wykrycia hydratacji sluzy
+   `lib/ui/use-hydrated.ts`.
+
+## Otwarte
+
+- Opis POKOJU bywa po angielsku (dostawca nie ma polskiej wersji). Strona
+  hotelu wykrywa to dla opisu OBIEKTU; pokoje jeszcze nie.
+- Dostawca zwraca obok siebie „Klimatyzacja" i „Klimatyzacja w pokoju
+  jednoosobowym dla gosci". Deduplikacja pojeciowa dziala dla udogodnien
+  OBIEKTU (po `facilityId`); pokoje maja tylko nazwy.
