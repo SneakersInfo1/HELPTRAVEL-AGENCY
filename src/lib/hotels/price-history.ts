@@ -69,12 +69,19 @@ export async function recordPrice(
   now = new Date(),
 ): Promise<void> {
   if (!Number.isFinite(amount) || amount <= 0) return;
-  const r = getRedis();
-  if (!r) return;
 
   const key = keyFor(hotelId, ctx);
   const field = dayKey(now);
   try {
+    // `getRedis()` MUSI być wewnątrz `try`. Stało wyżej, poza nim — a
+    // `new Redis({ url })` rzuca przy adresie niepustym, ale nieprawidłowym
+    // (literówka w zmiennej na Vercelu wystarczy). Wywołanie jest tu
+    // puszczone przez `void`, więc taki wyjątek stawał się nieobsłużonym
+    // odrzuceniem Promise, a w `lowestPrice30d` — którego strona OCZEKUJE —
+    // wywracał cały render obiektu. Deklarowana zasada „warstwa cache nigdy
+    // nie może przerwać żądania" nie obejmowała samej konstrukcji klienta.
+    const r = getRedis();
+    if (!r) return;
     const obecne = await r.hget<number>(key, field);
     // Zapisujemy tylko, gdy to nowa doba albo cena spadła — inaczej każde
     // wejście na stronę generowałoby zbędny zapis.
@@ -102,10 +109,12 @@ export async function lowestPrice30d(
   ctx: RateCacheContext,
   now = new Date(),
 ): Promise<number | null> {
-  const r = getRedis();
-  if (!r) return null;
-
   try {
+    // Wewnątrz `try` z tego samego powodu co w `recordPrice` — konstrukcja
+    // klienta Redisa też potrafi rzucić, a ta funkcja jest oczekiwana przez
+    // render strony hotelu.
+    const r = getRedis();
+    if (!r) return null;
     const wpisy = await r.hgetall<Record<string, number | string>>(keyFor(hotelId, ctx));
     if (!wpisy) return null;
 

@@ -280,7 +280,7 @@ export default async function ReturnPage({
     if (rate.boardName) rows.push({ label: "Pakiet", value: rate.boardName });
 
     return (
-      <Shell tone="ok" title="Rezerwacja potwierdzona 🎉">
+      <Shell tone="ok" title="Rezerwacja potwierdzona">
         <ConfettiBurst />
         {/* GA4 conversion — fires ONCE, ONLY in the confirmed-success branch
             (status 200). This is the key event to mark as a conversion in

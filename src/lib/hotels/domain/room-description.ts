@@ -16,9 +16,9 @@
 //   <p><b>ETYKIETA</b> - treść</p>
 //
 // Rozbicie tego na pary etykieta/treść daje czytelną sekcję („Internet:
-// Bezpłatne Wi-Fi") zamiast ściany akapitów, a przy okazji **całkowicie**
-// usuwa powierzchnię ataku: do widoku idzie wyłącznie zwykły tekst, nigdy
-// znaczniki. Sanitizer jest tu drugą warstwą, nie jedyną.
+// Bezpłatne Wi-Fi") zamiast ściany akapitów. Do widoku trafiają wyłącznie pola
+// tekstowe; zachowanie dla złośliwego i uszkodzonego HTML potwierdzają testy
+// w `room-description.test.ts`.
 
 /** Fragment opisu: nagłówek + treść, albo sam akapit (label === null). */
 export interface RoomDescriptionPart {
@@ -59,17 +59,22 @@ const POMIJANE = /^(room size|size|occupancy|max occupancy|bed|beds|bedding)$/i;
 export function parseRoomDescription(raw: string | null | undefined): RoomDescriptionPart[] {
   if (!raw) return [];
 
+  // Dekodujemy przed usuwaniem znaczników, żeby encje `&lt;` / `&gt;` nie
+  // mogły odtworzyć HTML-u już po zakończeniu parsowania.
+  const decoded = decode(String(raw));
+
   // Blokowe znaczniki → separator akapitu. Reszta znaczników znika.
-  const zTekstem = decode(
-    String(raw)
-      .replace(/<\s*(br|\/p|\/div|\/li|\/h[1-6])\s*\/?>/gi, "\n")
-      .replace(/<\s*(li)\b[^>]*>/gi, "\n• ")
-      // Pogrubienie zamieniamy na jawny znacznik etykiety, żeby nie zgubić
-      // podziału na „nazwa działu" i „treść" po usunięciu znaczników.
-      .replace(/<\s*(strong|b)\b[^>]*>/gi, "")
-      .replace(/<\s*\/\s*(strong|b)\s*>/gi, "")
-      .replace(/<[^>]*>/g, ""),
-  );
+  const zTekstem = decoded
+    .replace(/<\s*(br|\/p|\/div|\/li|\/h[1-6])\s*\/?>/gi, "\n")
+    .replace(/<\s*(li)\b[^>]*>/gi, "\n• ")
+    // Pogrubienie zamieniamy na jawny znacznik etykiety, żeby nie zgubić
+    // podziału na „nazwa działu" i „treść" po usunięciu znaczników.
+    .replace(/<\s*(strong|b)\b[^>]*>/gi, "")
+    .replace(/<\s*\/\s*(strong|b)\s*>/gi, "")
+    .replace(/<[^>]*>/g, "")
+    // Niedomknięte lub zagnieżdżone fragmenty, np. `<<>>`, mogą zostawić
+    // pojedynczy nawias po prostym usunięciu znacznika.
+    .replace(/[<>]/g, "");
 
   const parts: RoomDescriptionPart[] = [];
   for (const linia of zTekstem.split("\n")) {

@@ -77,12 +77,21 @@ export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currenc
                 </div>
               )}
               {taxText && <div className="text-[11px] text-neutral-500">{taxText}</div>}
-              {/* Wymóg dyrektywy Omnibus: przy obniżce podajemy najniższą cenę
-                  z 30 dni. Liczba pochodzi z NASZEJ historii (Upstash), nie od
-                  dostawcy — brak historii znaczy ciszę, nigdy zero. */}
+              {/* Liczba pochodzi z NASZEJ historii (Upstash), nie od dostawcy —
+                  brak historii znaczy ciszę, nigdy zero.
+
+                  SFORMUŁOWANIE JEST CELOWE (poprawione 2026-08-08). Wcześniej
+                  stało „Najniższa cena z 30 dni" — to brzmi jak cena odniesienia
+                  w rozumieniu dyrektywy Omnibus, a nią NIE JEST: historia
+                  zapisuje najtańszą ofertę obiektu dla tych dat i tego
+                  obłożenia, więc porównywany wariant mógł mieć inny pokój, inne
+                  wyżywienie i inne zasady anulacji. Zdanie mówi teraz dokładnie
+                  to, co jest zmierzone — nic ponad to. Ceny nie przekreślamy
+                  i nie liczymy z niej procentu obniżki. */}
               {lowest30d != null && (
                 <div className="mt-1 text-[11px] text-neutral-500">
-                  Najniższa cena z 30 dni: {formatPLN(lowest30d, currency)}
+                  Najtańsza oferta tego obiektu w ostatnich 30 dniach:{" "}
+                  {formatPLN(lowest30d, currency)}
                 </div>
               )}
             </div>

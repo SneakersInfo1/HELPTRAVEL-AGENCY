@@ -18,6 +18,7 @@
 //     submitButton.text.
 
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { track } from "@/lib/analytics/track";
@@ -406,7 +407,7 @@ export function ReservationForm({
                   explainer lives in the <details> below. */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-neutral-600">
                 <span className="inline-flex items-center gap-1.5 font-medium text-neutral-800">
-                  <span aria-hidden>🔒</span>
+                  <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-700" strokeWidth={2.2} />
                   Bezpieczna płatność Stripe · 3D Secure
                 </span>
                 <PaymentBrandsInline />
@@ -612,7 +613,8 @@ export function ReservationForm({
                     )}
                   </button>
                   <p className="mt-2 text-center text-xs text-neutral-500">
-                    <span aria-hidden>🔒</span> Za chwilę przejdziesz do bezpiecznej
+                    <Lock aria-hidden className="mr-1 inline-block h-3.5 w-3.5 shrink-0 align-[-2px] text-emerald-700" strokeWidth={2.2} />
+                    Za chwilę przejdziesz do bezpiecznej
                     płatności. Nic jeszcze nie pobieramy.
                   </p>
                   <p className="mt-2 text-center text-[11px] text-neutral-400">

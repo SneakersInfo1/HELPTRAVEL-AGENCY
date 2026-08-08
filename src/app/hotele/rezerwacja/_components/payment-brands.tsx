@@ -4,6 +4,8 @@
 // CSP-safe. Shown to reassure the buyer which cards are accepted and that the
 // processor is Stripe. Nominative use (truthfully indicating accepted methods).
 
+import { Lock } from "lucide-react";
+
 // Compact variant for the one-line trust row on the payment step — just the
 // card marks, no border/"Powered by" (Stripe is already named in the text).
 export function PaymentBrandsInline() {
@@ -45,7 +47,7 @@ export function PaymentBrands() {
 
       {/* Powered by Stripe */}
       <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-emerald-900/60">
-        <span aria-hidden>🔒</span>
+        <Lock aria-hidden className="h-3 w-3 shrink-0" strokeWidth={2.4} />
         Powered by <span className="font-bold text-[#635BFF]">stripe</span>
       </span>
     </div>

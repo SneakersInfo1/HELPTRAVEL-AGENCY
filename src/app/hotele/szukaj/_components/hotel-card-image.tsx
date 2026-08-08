@@ -8,6 +8,7 @@
 // image. Client component because onError state needs a hook.
 
 import Image from "next/image";
+import { Hotel } from "lucide-react";
 import { useState } from "react";
 
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
@@ -47,7 +48,7 @@ export function HotelCardImage({
   // Branded fallback — never a broken-image icon.
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 p-4 text-center text-white">
-      <span aria-hidden className="text-2xl opacity-90">🏨</span>
+      <Hotel aria-hidden className="h-7 w-7 opacity-90" strokeWidth={1.6} />
       <span className="line-clamp-2 text-sm font-semibold leading-tight">{name}</span>
       <span className="text-[11px] font-medium text-emerald-100/80">
         {city}
