@@ -219,6 +219,49 @@ test.describe("Smoke preview — mapa przy realnym zoomie przeglądarki", () => 
   }
 });
 
+test.describe("Smoke preview — mapa otwierana wielokrotnie", () => {
+  test.use({ viewport: EKRAN });
+
+  // 37 — dziesięć przełączeń Lista↔Mapa z rzędu.
+  //
+  // Jednorazowe otwarcie nie dowodzi niczego o cyklu życia MapLibre: wyciek
+  // pokazuje się dopiero przy powtórzeniach. Sprawdzamy DWIE rzeczy naraz —
+  // czy po każdym otwarciu canvas nadal wypełnia kontener (czyli czy `resize()`
+  // wciąż działa po przemontowaniu) oraz czy w DOM nie zostaje drugi canvas
+  // po poprzedniej instancji. `hotel-map.tsx` sprząta znaczniki i mapę
+  // w `sprzataj()`; ten test pilnuje, że to sprzątanie faktycznie działa.
+  test("37 — dziesięć otwarć mapy: canvas zawsze jeden i zawsze wypełnia kontener", async ({ page }) => {
+    await wejdz(page, 1);
+
+    for (let i = 1; i <= 10; i++) {
+      await wejdzWMape(page);
+
+      const ile = await page.locator("canvas.maplibregl-canvas").count();
+      expect(ile, `37: po ${i}. otwarciu w DOM jest ${ile} canvasów mapy zamiast jednego`).toBe(1);
+
+      const m = await stanMapy(page);
+      expect(m, `37: przy ${i}. otwarciu mapa się nie zbudowała`).not.toBeNull();
+      expect(
+        Math.abs(m!.canvasW - m!.kontenerW),
+        `37: przy ${i}. otwarciu szerokość canvasa (${m!.canvasW}) odbiega od kontenera (${m!.kontenerW})`,
+      ).toBeLessThanOrEqual(2);
+      expect(
+        Math.abs(m!.canvasH - m!.kontenerH),
+        `37: przy ${i}. otwarciu wysokość canvasa (${m!.canvasH}) odbiega od kontenera (${m!.kontenerH})`,
+      ).toBeLessThanOrEqual(2);
+      expect(m!.znaczniki, `37: przy ${i}. otwarciu mapa nie postawiła znaczników`).toBeGreaterThan(0);
+
+      await page.getByRole("button", { name: "Lista", exact: true }).click();
+      await page.waitForTimeout(600);
+      const poZamknieciu = await page.locator("canvas.maplibregl-canvas").count();
+      expect(
+        poZamknieciu,
+        `37: po ${i}. zamknięciu został osierocony canvas mapy (${poZamknieciu})`,
+      ).toBe(0);
+    }
+  });
+});
+
 test.describe("Smoke preview — telefon", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
