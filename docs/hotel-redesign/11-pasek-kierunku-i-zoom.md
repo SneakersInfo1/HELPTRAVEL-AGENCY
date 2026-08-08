@@ -98,16 +98,22 @@ zmianę `devicePixelRatio` (`matchMedia("(resolution: …dppx)")`), bo sam
 |---|---|
 | `e2e/_zoom.ts` | prawdziwy zoom przeglądarki przez CDP `Emulation.setDeviceMetricsOverride` (rozmiar okna **i** DPR naraz) |
 | `e2e/destination-bar-scroll-regression.spec.ts` | 5 testów: pozycjonowanie, prostokąt po każdym przewinięciu, brak nakładania z kartami i mapą, tożsamość paska przy Lista↔Mapa, telefon |
-| `e2e/preview-smoke.spec.ts` | ponumerowane punkty 22–36: pasek, wymiary canvasa vs kontener, bufor vs DPR, macierz zoomu 100/110/90/125/80 |
+| `e2e/preview-smoke.spec.ts` | ponumerowane punkty 22–37: pasek, wymiary canvasa vs kontener, bufor vs DPR, macierz zoomu 100/110/90/125/80, dziesięć otwarć mapy z rzędu |
 | `e2e/shots-100.ts` | zrzuty przy realnym 100% (narzędzie, nie test) |
 
 **Dowód, że testy reprodukują błąd:** po tymczasowym przywróceniu `sticky`
 w `page.tsx` regresja pada 4/5, po cofnięciu przechodzi 5/5.
 
+**Pułapka w samym teście (znaleziona pełnym przebiegiem):** porównanie
+położenia paska w drzewie szło aż do `<body>`, a `next dev` dokłada tam własną
+nakładkę o zmiennej liczbie węzłów — indeks rodzeństwa najwyższej ramki skakał
+z 3 na 23 i test wywracał się, choć w DOM aplikacji nic się nie ruszyło.
+Ścieżka liczy się teraz do `<main>`.
+
 ## 4. Wynik
 
-- E2E: **49/49**
-- smoke preview (punkty 22–36): **11/11**
+- E2E: **50/50**
+- smoke preview (punkty 22–37): **12/12**
 - jednostkowe: **640/640**
 - `pnpm lint`, `tsc --noEmit`, `pnpm build`: bez błędów
 
