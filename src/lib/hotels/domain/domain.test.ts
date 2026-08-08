@@ -22,6 +22,7 @@ import {
   taxNoticeFrom,
 } from "./price";
 import { buildRateOffers, indexRoomsById, roomForRate, toRoomProfile } from "./room";
+import { parseRoomDescription, topRoomAmenities } from "./room-description";
 import { groupAmenities, normalizeAmenities, normalizeAmenitiesWith, topAmenities } from "./amenity";
 import {
   localizeReviewCategory,
@@ -580,4 +581,76 @@ test("udogodnienia: bez słownika nierozpoznany wpis zostaje po angielsku, ze s�
   assert.equal(bez[0].label, "Ski storage room");
   const ze = normalizeAmenitiesWith({ facilityLabel: (id) => (id === 999 ? "Przechowalnia nart" : null) }, raw);
   assert.equal(ze[0].label, "Przechowalnia nart");
+});
+
+// ── Opis pokoju: HTML dostawcy → czytelna treść (brief §32) ────────────────
+
+test("opis pokoju: znaczniki HTML NIGDY nie wychodzą do widoku", () => {
+  const raw =
+    "<p><strong>4 Twin Beds</strong></p><p>430-sq-foot room with sea views</p><br/>" +
+    "<p><b>Internet</b> - Free WiFi</p><p><b>Entertainment</b> - Flat-screen TV</p>";
+  const parts = parseRoomDescription(raw);
+  const caly = parts.map((p) => `${p.label ?? ""}${p.text}`).join(" ");
+  assert.ok(!/[<>]/.test(caly), `w treści został znacznik: ${caly}`);
+});
+
+test("opis pokoju: etykieta i treść rozdzielone", () => {
+  const parts = parseRoomDescription("<p><b>Internet</b> - Bezpłatne Wi-Fi</p>");
+  assert.deepEqual(parts, [{ label: "Internet", text: "Bezpłatne Wi-Fi" }]);
+});
+
+test("opis pokoju: zdanie bez etykiety zostaje akapitem", () => {
+  const parts = parseRoomDescription("<p><strong>Łóżko podwójne lub 2 łóżka pojedyncze</strong></p>");
+  assert.deepEqual(parts, [{ label: null, text: "Łóżko podwójne lub 2 łóżka pojedyncze" }]);
+});
+
+test("opis pokoju: encje HTML są rozkodowane", () => {
+  const parts = parseRoomDescription("<p><b>Food &amp; Drink</b> - minibar</p>");
+  assert.equal(parts[0].label, "Food & Drink");
+});
+
+test("opis pokoju: pusty i brakujący daje pustą listę, nie wyjątek", () => {
+  assert.deepEqual(parseRoomDescription(null), []);
+  assert.deepEqual(parseRoomDescription(""), []);
+  assert.deepEqual(parseRoomDescription("<p></p>"), []);
+});
+
+test("opis pokoju: powtórzony akapit pokazujemy raz", () => {
+  const parts = parseRoomDescription("<p>Klimatyzacja</p><p>Klimatyzacja</p>");
+  assert.equal(parts.length, 1);
+});
+
+// ── Priorytet udogodnień pokoju (brief §24) ───────────────────────────────
+
+test("udogodnienia pokoju: klimatyzacja bije papier toaletowy", () => {
+  // Dokładnie ten przypadek z briefu: dostawca zwraca listę, w której rzeczy
+  // istotne dla decyzji leżą za drobiazgami.
+  const wejscie = [
+    "Papier toaletowy",
+    "Mydło",
+    "Ręczniki",
+    "Klimatyzacja",
+    "Prywatna łazienka",
+    "Minibar",
+  ];
+  assert.deepEqual(topRoomAmenities(wejscie, 3), ["Klimatyzacja", "Prywatna łazienka", "Minibar"]);
+});
+
+test("udogodnienia pokoju: Tier 1 przed Tier 2", () => {
+  assert.deepEqual(topRoomAmenities(["Minibar", "Telewizor", "Balkon", "Wi-Fi"], 4), [
+    "Balkon",
+    "Wi-Fi",
+    "Minibar",
+    "Telewizor",
+  ]);
+});
+
+test("udogodnienia pokoju: gdy zostaje sam szum, pokazujemy go zamiast pustki", () => {
+  // Lepiej „Ręczniki" niż nic — pusty wiersz wygląda jak błąd renderowania.
+  assert.equal(topRoomAmenities(["Papier toaletowy", "Ręczniki"], 4).length, 2);
+});
+
+test("udogodnienia pokoju: kolejność jest deterministyczna", () => {
+  const wejscie = ["Sejf", "Klimatyzacja", "Widok na morze", "Czajnik"];
+  assert.deepEqual(topRoomAmenities(wejscie, 4), topRoomAmenities([...wejscie], 4));
 });

@@ -10,6 +10,7 @@ import { ensurePrice, getPrice, getVersion, subscribe, type PriceEntry } from "@
 import { ResultCard } from "./result-card";
 import { PriceView } from "./card-price";
 import { HotelPagination } from "./hotel-pagination";
+import { QuickFilters } from "./quick-filters";
 import type { MapBounds, MapPoint } from "./hotel-map";
 
 // Mapa wchodzi LENIWIE i to jest wymóg, nie optymalizacja kosmetyczna
@@ -24,13 +25,32 @@ import type { MapBounds, MapPoint } from "./hotel-map";
 const HotelMap = dynamic(() => import("./hotel-map").then((m) => m.HotelMap), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center rounded-2xl bg-neutral-100">
-      <span className="text-sm text-neutral-500">Wczytuję mapę…</span>
-    </div>
+    // Szkielet o TAKIEJ SAMEJ geometrii co gotowa mapa — bez skoku układu
+    // w chwili podmiany (brief V3 §9 i §10).
+    <div className="h-full w-full animate-pulse rounded-2xl bg-neutral-100 motion-reduce:animate-none" />
   ),
 });
+
+/**
+ * Wstępne pobranie paczki mapy, gdy przeglądarka nie ma nic do roboty.
+ *
+ * Mapa MUSI zostać poza pierwszym pakietem (brief §29) — ale to nie znaczy,
+ * że gość ma czekać na pobranie 944 kB dopiero po kliknięciu. Zmierzone:
+ * sam import zajmował ~880 ms z 3 s całego oczekiwania.
+ *
+ * Wywołujemy to w bezczynności ORAZ przy najechaniu na przełącznik, więc
+ * w praktyce paczka jest już w pamięci, zanim klik nastąpi. `import()`
+ * dedupe'uje się sam, więc wielokrotne wywołanie nic nie kosztuje.
+ */
+let mapaZaladowana = false;
+function preloadMapa(): void {
+  if (mapaZaladowana) return;
+  mapaZaladowana = true;
+  void import("./hotel-map");
+}
 import { facilityGroupsFor } from "@/lib/hotels/facility-filters";
 import { publishFilterOptions } from "@/lib/hotels/filter-options-store";
+import { resetViewMode, setViewMode, useViewMode } from "@/lib/hotels/view-mode-store";
 import { useMediaQuery } from "@/lib/ui/use-media-query";
 import { applyFiltersAndSort, type FilterableOffer } from "./filters-logic";
 
@@ -162,7 +182,10 @@ export function ResultsList(props: ResultsListProps) {
   // nowym wyszukiwaniem i nie powinno zaśmiecać historii przeglądarki ani
   // linku, którym gość się dzieli. Filtry i strona zostają nietknięte.
   // UWAGA: `view` jest już zajęte przez memo z wynikami — stąd `viewMode`.
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  // Tryb widoku żyje w store, nie w `useState` — sidebar filtrów renderuje
+  // się w INNEJ gałęzi drzewa (siatka strony) i też musi go znać, żeby zniknąć
+  // w widoku mapy. Szczegóły: `lib/hotels/view-mode-store.ts`.
+  const viewMode = useViewMode();
 
   // Stan wspólny listy i mapy (brief §13C). `selected` = klik w znacznik,
   // `hovered` = najechanie na kartę albo na znacznik. Trzymamy je tutaj, a nie
@@ -191,6 +214,10 @@ export function ResultsList(props: ResultsListProps) {
     areaSigRef.current = ctxSig;
     if (areaBounds !== null) setAreaBounds(null);
     if (selectedId !== null) setSelectedId(null);
+    // Store trybu widoku żyje poza Reactem, więc przetrwałby nawigację między
+    // wyszukiwaniami — gość wracałby do wyszukiwarki i lądował od razu
+    // w mapie nowego kierunku, nie wiedząc dlaczego.
+    resetViewMode();
   }
 
   // ── Dociąganie PEŁNEJ puli kierunku (2026-07-11) ──────────────────────────
@@ -270,6 +297,19 @@ export function ResultsList(props: ResultsListProps) {
   useEffect(() => {
     publishFilterOptions(fullPool);
   }, [fullPool]);
+
+  // Paczkę mapy pobieramy w bezczynności, PO wyrenderowaniu wyników — nigdy
+  // przed. `requestIdleCallback` nie istnieje w Safari, stąd zapasowy timeout.
+  useEffect(() => {
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
+      .requestIdleCallback;
+    if (typeof idle === "function") {
+      idle(preloadMapa);
+      return;
+    }
+    const t = window.setTimeout(preloadMapa, 2500);
+    return () => window.clearTimeout(t);
+  }, []);
 
   // Stable identity for the pool — id list is the natural key, much cheaper
   // than deep-comparing records on every render.
@@ -605,6 +645,11 @@ export function ResultsList(props: ResultsListProps) {
                 key={mode}
                 type="button"
                 onClick={() => setViewMode(mode)}
+                // Najechanie i dotknięcie ściągają paczkę mapy, zanim padnie
+                // klik — razem z pobraniem w bezczynności daje to praktycznie
+                // natychmiastowe otwarcie.
+                onPointerEnter={preloadMapa}
+                onFocus={preloadMapa}
                 aria-pressed={viewMode === mode}
                 // min-h-11 = 44 px — minimalny cel dotyku (WCAG 2.2 AA).
                 className={`min-h-11 rounded-full px-5 text-sm font-medium transition ${
@@ -617,6 +662,11 @@ export function ResultsList(props: ResultsListProps) {
           </div>
         )}
       </div>
+
+      {/* Szybkie filtry — WIDOCZNE TYLKO NA MAPIE (brief V3 §6).
+          W trybie mapy nie ma sidebaru, więc najczęstsze filtry muszą być
+          w zasięgu ręki. W trybie listy byłyby zdublowaniem panelu obok. */}
+      {viewMode === "map" && isDesktop && <QuickFilters />}
 
       {/* ── WIDOK MAPY ────────────────────────────────────────────────────
           Desktop: podział 55/45, mapa przyklejona do okna i wysoka na cały

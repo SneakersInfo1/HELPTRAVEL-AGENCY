@@ -28,9 +28,17 @@ interface Props {
    * Widget nie wylicza tego sam, bo nie ma tu surowej taryfy.
    */
   taxText?: string | null;
+  /**
+   * Najniższa cena z 30 dni dla TEGO pobytu — z naszej historii w Upstashu.
+   *
+   * `null` = nie wiemy (brak historii, świeży produkt, Redis niedostępny)
+   * i wtedy MILCZYMY. Wymóg dyrektywy Omnibus dotyczy ogłoszenia obniżki;
+   * nie wolno go „domykać" zmyśloną liczbą.
+   */
+  lowest30d?: number | null;
 }
 
-export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currency, taxText }: Props) {
+export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currency, taxText, lowest30d }: Props) {
   const perNight = cheapestTotal !== undefined && nights > 0 ? Math.round(cheapestTotal / nights) : null;
   const router = useRouter();
   const [checkin, setCheckin] = useState(initial.checkin);
@@ -69,6 +77,14 @@ export function BookingWidget({ hotelId, initial, cheapestTotal, nights, currenc
                 </div>
               )}
               {taxText && <div className="text-[11px] text-neutral-500">{taxText}</div>}
+              {/* Wymóg dyrektywy Omnibus: przy obniżce podajemy najniższą cenę
+                  z 30 dni. Liczba pochodzi z NASZEJ historii (Upstash), nie od
+                  dostawcy — brak historii znaczy ciszę, nigdy zero. */}
+              {lowest30d != null && (
+                <div className="mt-1 text-[11px] text-neutral-500">
+                  Najniższa cena z 30 dni: {formatPLN(lowest30d, currency)}
+                </div>
+              )}
             </div>
           )}
           <div className="grid grid-cols-2 gap-2">

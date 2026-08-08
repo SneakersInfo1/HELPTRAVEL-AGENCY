@@ -193,7 +193,19 @@ export function HotelMap({
 
         map.addControl(new NavigationControl({ showCompass: false }), "top-right");
         map.addControl(new AttributionControl({ compact: true }), "bottom-right");
-        map.on("load", () => {
+
+        // `ready` na `styledata`, NIE na `load`.
+        //
+        // `load` odpala się dopiero, gdy dojdą PIERWSZE KAFELKI. Zmierzone:
+        // canvas istniał po 921 ms, a znaczniki pojawiały się po 3035 ms —
+        // przez te dwie sekundy nakładka „Wczytuję mapę…" przykrywała
+        // działającą już mapę. Gość widział wielki pusty panel i miał prawo
+        // uznać, że funkcja jest zepsuta.
+        //
+        // `styledata` odpala się po sparsowaniu stylu, czyli wtedy, gdy
+        // `project()` i `getBounds()` już działają — a to wszystko, czego
+        // potrzebują znaczniki. Kafelki dociągają się w tle, pod nimi.
+        map.once("styledata", () => {
           if (!cancelled) setReady(true);
         });
         map.on("moveend", () => {
@@ -532,11 +544,23 @@ export function HotelMap({
         </div>
       )}
 
-      {!ready && (
-        <div className="absolute inset-0 flex items-center justify-center bg-neutral-100">
-          <span className="text-sm text-neutral-500">Wczytuję mapę…</span>
-        </div>
-      )}
+      {/* Szkielet, nie komunikat. Wielki pusty panel z napisem „Wczytuję
+          mapę…" czytał się jak awaria; zarys kontrolek i delikatny puls
+          mówią „to się właśnie buduje". Znika płynnie, gdy styl jest gotowy —
+          czyli po ~0,9 s zamiast po 3 s (patrz komentarz przy `styledata`). */}
+      <div
+        aria-hidden={ready}
+        className={`pointer-events-none absolute inset-0 bg-neutral-100 transition-opacity duration-500 motion-reduce:transition-none ${
+          ready ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-100 via-neutral-200/60 to-neutral-100 motion-reduce:animate-none" />
+        <div className="absolute right-3 top-3 h-16 w-8 rounded-md bg-white/70 shadow-sm" />
+        <div className="absolute bottom-3 right-3 h-4 w-40 rounded bg-white/60" />
+        <span className="sr-only" role="status">
+          Wczytuję mapę
+        </span>
+      </div>
     </div>
   );
 }

@@ -10,7 +10,7 @@ import { Suspense } from "react";
 
 import { fetchHotelsByPlaceId, fetchHotelsForDestination, LiteApiError } from "@/lib/liteapi";
 import { POOL_PAGE_SIZE, toMetaOffer, type MetaOffer } from "@/lib/hotels/meta-pool";
-import { HOTEL_RESULTS_GRID, HOTEL_SHELL_WIDE } from "@/lib/hotels/layout";
+
 import { nightsBetween } from "@/lib/hotels/normalize";
 import { getRegionById, isInRegion, type RegionRecord } from "@/lib/hotels/regions";
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
@@ -18,6 +18,7 @@ import { localizeCity } from "@/lib/mvp/i18n-geo";
 
 import { CollapsibleSearchBar } from "./_components/collapsible-search-bar";
 import { FiltersSidebar } from "./_components/filters-sidebar";
+import { ResultsLayout } from "./_components/results-layout";
 import { ResultsList } from "./_components/results-list";
 import { ResultsError } from "./_components/results-error";
 import { ResultsSkeleton } from "./_components/results-skeleton";
@@ -156,23 +157,21 @@ export default async function HotelResultsPage({
         />
       </div>
 
-      <div className={`${HOTEL_SHELL_WIDE} ${HOTEL_RESULTS_GRID} py-6`}>
-        <FiltersSidebar />
-
-        <section className="space-y-6">
-          {/* Loty wyszukuje się osobnym torem (toggle Hotele/Loty na stronie
-              głównej → /loty/wyniki). Strona hoteli nie miesza już lotów do
-              lejka hotelowego. */}
-
-          {!valid ? (
-            <EmptyPrompt hasDestination={Boolean(sp.destination)} />
-          ) : (
-            <Suspense fallback={<ResultsSkeleton count={6} title={skeletonTitle} />}>
-              <Results sp={sp} region={region} />
-            </Suspense>
-          )}
-        </section>
-      </div>
+      {/* Sidebar wchodzi jako `prop`, a nie jako dziecko: w trybie mapy
+          powłoka go NIE renderuje (brief V3 §5). Filtry zostają dostępne
+          z paska szybkich filtrów nad wynikami. */}
+      <ResultsLayout sidebar={<FiltersSidebar />}>
+        {/* Loty wyszukuje się osobnym torem (toggle Hotele/Loty na stronie
+            głównej → /loty/wyniki). Strona hoteli nie miesza już lotów do
+            lejka hotelowego. */}
+        {!valid ? (
+          <EmptyPrompt hasDestination={Boolean(sp.destination)} />
+        ) : (
+          <Suspense fallback={<ResultsSkeleton count={6} title={skeletonTitle} />}>
+            <Results sp={sp} region={region} />
+          </Suspense>
+        )}
+      </ResultsLayout>
     </main>
   );
 }

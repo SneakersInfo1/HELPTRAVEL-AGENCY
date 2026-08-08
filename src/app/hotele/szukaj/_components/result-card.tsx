@@ -30,6 +30,7 @@ import { ratingLabel } from "@/lib/hotels/rating";
 import { localizeBoard } from "@/lib/liteapi/translations";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { formatPLN } from "@/lib/money";
+import { FavoriteButton } from "@/components/hotels/favorite-button";
 import { HotelCardImage } from "./hotel-card-image";
 
 interface OfferCard {
@@ -132,6 +133,22 @@ export function ResultCard({
           priority={imagePriority}
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/30 to-transparent" />
+        {/* Serce w rogu zdjęcia — wzorzec, którego gość szuka odruchowo.
+            Wewnątrz linku karty, więc przycisk zatrzymuje zdarzenie sam. */}
+        <div className="absolute right-2 top-2">
+          <FavoriteButton
+            hotel={{
+              id: offer.hotelId,
+              name: offer.name,
+              city: offer.city,
+              country: offer.country,
+              image: offer.thumbnailUrl,
+              rating: offer.rating,
+              stars: offer.stars,
+              href: `/hotele/${encodeURIComponent(offer.hotelId)}?${searchQuery}`,
+            }}
+          />
+        </div>
         <div className="absolute left-2 top-2 flex flex-col gap-1">
           {badges?.cheapest && (
             <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">

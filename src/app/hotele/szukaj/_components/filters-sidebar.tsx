@@ -21,6 +21,8 @@ import {
   subscribeFilterOptions,
 } from "@/lib/hotels/filter-options-store";
 
+import { MiniMapPreview } from "./mini-map-preview";
+
 const STARS = [5, 4, 3, 2, 1];
 const CANCEL = [
   { value: "free", label: "Bezpłatna anulacja" },
@@ -245,6 +247,15 @@ export function FiltersSidebar() {
             collapsed). 84 + 56 = 140 — tight but stops the sidebar from
             slipping under the search bar on scroll. */}
         <div className={`space-y-6 lg:sticky lg:top-[148px] ${openOnMobile ? "flex-1 overflow-auto p-5" : ""}`}>
+          {/* Podgląd mapy NAD filtrami (brief V3 §4) — jak w interfejsie
+              referencyjnym. Statyczny obraz, zero JavaScriptu mapy; pełny
+              widok otwiera się jednym kliknięciem. Na telefonie pomijamy:
+              tam mapa ma własny przycisk, a panel filtrów jest pełnoekranowy
+              i podgląd tylko odsuwałby filtry poza ekran. */}
+          <div className="hidden lg:block">
+            <MiniMapPreview onOpen={() => setOpenOnMobile(false)} />
+          </div>
+
           {/* Apply / reset row at top — Booking-style. The whole sidebar is
               sticky on desktop, so the action stays in view as the user
               scrolls through filter content. */}

@@ -23,6 +23,7 @@ import type { RoomProfile } from "@/lib/hotels/domain/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
 import { guestsLabel, optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
 import { honestDiscountFrom, mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
+import { topRoomAmenities } from "@/lib/hotels/domain/room-description";
 import { groupRates, mergeGroupsByDisplayName, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
 import { formatPLN, fromMinor } from "@/lib/money";
@@ -220,58 +221,62 @@ function RoomGroupCard({
       />
     ));
 
-  return (
-    <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-      <header className="flex items-start gap-4 border-b border-neutral-100 bg-neutral-50 p-4 sm:px-5">
-        {/* Zdjęcie TEGO pokoju (przez rate.mappedRoomId → rooms[].id).
-            Brak powiązania → neutralny zastępnik, NIGDY zdjęcie hotelu.
-            Klikalne — zdjęcie jest najbardziej naturalnym celem. */}
-        <button
-          type="button"
-          onClick={() => setDetailOpen(true)}
-          aria-label={`Zobacz szczegóły pokoju: ${displayName}`}
-          className="group relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 sm:h-24 sm:w-32"
-        >
-          {room?.photos.length ? (
-            // JAWNE width/height zamiast `fill`. Przy `fill` loader dostawał
-            // największą szerokość z deviceSizes i żądał obrazu 3840 px pod
-            // miniaturę ~96 px (~250 kB zamiast ~10 kB, razy każdy pokój na
-            // stronie). Podanie realnego rozmiaru sprowadza żądanie do 256 px
-            // (2× DPR), a `object-cover` nadal przycina kadr do ramki.
-            <Image
-              src={room.photos[0].url}
-              // `??` nie wystarczy: dostawca zwraca PUSTY STRING, a nie null,
-              // więc zdjęcie wychodziło z `alt=""` (czyli oznaczone jako
-              // dekoracyjne) mimo że niesie treść. Stąd jawne sprawdzenie treści.
-              alt={
-                room.photos[0].description?.trim() ||
-                `Zdjęcie pokoju: ${localizeRoomName(group.name)}`
-              }
-              width={256}
-              height={192}
-              sizes="128px"
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <span
-              className="flex h-full w-full items-center justify-center text-neutral-400"
-              aria-label="Brak zdjęcia tego pokoju"
-            >
-              <ImageOff aria-hidden className="h-6 w-6" />
-            </span>
-          )}
-          {room && room.photos.length > 1 && (
-            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-              {room.photos.length}
-            </span>
-          )}
-        </button>
+  const wazneUdogodnienia = topRoomAmenities(room?.amenities ?? [], 6);
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+  return (
+    // UKŁAD V3 (brief §22). Wcześniej pokój był wąskim paskiem nagłówka nad
+    // listą taryf: miniatura 96×80 px i cztery pierwsze udogodnienia z API.
+    // Na stronie o szerokości 1760 px wyglądało to jak notatka, a nie jak
+    // opis produktu za kilka tysięcy złotych. Teraz od `lg` pokój ma dwie
+    // kolumny: po lewej DUŻE zdjęcie i to, czym pokój jest, po prawej —
+    // warianty cenowe, które zajmują resztę szerokości.
+    <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+      <div className="lg:grid lg:grid-cols-[minmax(0,34%)_minmax(0,1fr)]">
+        <div className="border-b border-neutral-100 bg-neutral-50 p-4 sm:p-5 lg:border-b-0 lg:border-r">
+          {/* Zdjęcie TEGO pokoju (przez rate.mappedRoomId → rooms[].id).
+              Brak powiązania → neutralny zastępnik, NIGDY zdjęcie hotelu. */}
+          <button
+            type="button"
+            onClick={() => setDetailOpen(true)}
+            aria-label={`Zobacz szczegóły pokoju: ${displayName}`}
+            className="group relative block aspect-[16/10] w-full overflow-hidden rounded-xl bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+          >
+            {room?.photos.length ? (
+              // `sizes` policzone z realnej geometrii: kolumna to 34% powłoki
+              // 1760 px, czyli ~540 px. Wcześniej stało tu `128px` pod
+              // miniaturę — po powiększeniu kafla zdjęcie byłoby rozmyte.
+              <Image
+                src={room.photos[0].url}
+                // `??` nie wystarczy: dostawca zwraca PUSTY STRING, a nie null,
+                // więc zdjęcie wychodziło z `alt=""` (czyli oznaczone jako
+                // dekoracyjne) mimo że niesie treść.
+                alt={
+                  room.photos[0].description?.trim() ||
+                  `Zdjęcie pokoju: ${localizeRoomName(group.name)}`
+                }
+                fill
+                sizes="(max-width: 1023px) 92vw, (max-width: 1759px) 32vw, 560px"
+                className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                loading="lazy"
+              />
+            ) : (
+              <span
+                className="flex h-full w-full items-center justify-center text-neutral-400"
+                aria-label="Brak zdjęcia tego pokoju"
+              >
+                <ImageOff aria-hidden className="h-8 w-8" />
+              </span>
+            )}
+            {room && room.photos.length > 1 && (
+              <span className="absolute bottom-2 right-2 rounded-md bg-black/65 px-2 py-0.5 text-[11px] font-semibold text-white">
+                {room.photos.length} zdjęć
+              </span>
+            )}
+          </button>
+
+          <div className="mt-3 min-w-0">
             {/* Nazwa też otwiera szczegóły — drugi naturalny cel kliknięcia. */}
-            <h3 className="text-base font-semibold text-neutral-900">
+            <h3 className="text-base font-semibold text-neutral-900 sm:text-lg">
               <button
                 type="button"
                 onClick={() => setDetailOpen(true)}
@@ -280,45 +285,62 @@ function RoomGroupCard({
                 {displayName}
               </button>
             </h3>
+            {room ? (
+              <RoomSpecs room={room} />
+            ) : (
+              typeof group.maxOccupancy === "number" &&
+              group.maxOccupancy > 0 && (
+                <p className="mt-1 text-xs text-neutral-500">do {guestsLabel(group.maxOccupancy)}</p>
+              )
+            )}
+
+            {/* Udogodnienia wybrane po WAŻNOŚCI, nie po kolejności z API.
+                Cztery pierwsze pozycje dostawcy potrafiły dać „papier
+                toaletowy" zamiast „klimatyzacji" (brief §24). */}
+            {wazneUdogodnienia.length > 0 && (
+              <ul className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-neutral-600 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {wazneUdogodnienia.map((a) => (
+                  <li key={a} className="flex items-start gap-1.5">
+                    <span aria-hidden className="mt-[2px] text-emerald-600">
+                      ✓
+                    </span>
+                    <span className="min-w-0 truncate">{a}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Trzeci, jawny cel — dla gościa, który nie zgaduje, że zdjęcie
+                jest klikalne (brief §11). */}
+            <button
+              type="button"
+              onClick={() => setDetailOpen(true)}
+              className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-emerald-700 underline-offset-2 transition hover:text-emerald-800 hover:underline"
+            >
+              Zobacz szczegóły pokoju
+            </button>
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex items-baseline justify-between gap-3 border-b border-neutral-100 px-4 py-2.5 sm:px-5">
+            <p className="text-sm font-semibold text-neutral-900">Warianty cenowe</p>
             <p className="shrink-0 text-xs font-medium text-neutral-600">
               {[fromLabel, optionsLabel(group.options.length)].filter(Boolean).join(" · ")}
             </p>
           </div>
-          {room ? (
-            <RoomSpecs room={room} />
-          ) : (
-            typeof group.maxOccupancy === "number" &&
-            group.maxOccupancy > 0 && (
-              <p className="mt-1 text-xs text-neutral-500">do {guestsLabel(group.maxOccupancy)}</p>
-            )
+          <ul className="divide-y divide-neutral-100">{optionRows(visible)}</ul>
+          {hidden > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="w-full border-t border-neutral-100 bg-neutral-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 hover:text-emerald-800"
+            >
+              Pokaż wszystkie opcje ({group.options.length}) ↓
+            </button>
           )}
-          {room?.amenities.length ? (
-            <p className="mt-1 line-clamp-1 text-xs text-neutral-500">
-              {room.amenities.slice(0, 4).join(" · ")}
-            </p>
-          ) : null}
-          {/* Trzeci, jawny cel — dla gościa, który nie zgaduje, że zdjęcie
-              jest klikalne. Brief §11: „klikalne powinny być przynajmniej
-              zdjęcie, nazwa pokoju i «Zobacz szczegóły»". */}
-          <button
-            type="button"
-            onClick={() => setDetailOpen(true)}
-            className="mt-1.5 inline-flex min-h-11 items-center text-sm font-semibold text-emerald-700 underline-offset-2 transition hover:text-emerald-800 hover:underline sm:min-h-0"
-          >
-            Zobacz szczegóły pokoju
-          </button>
         </div>
-      </header>
-      <ul className="divide-y divide-neutral-100">{optionRows(visible)}</ul>
-      {hidden > 0 && (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="w-full border-t border-neutral-100 bg-neutral-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 hover:text-emerald-800"
-        >
-          Pokaż wszystkie opcje ({group.options.length}) ↓
-        </button>
-      )}
+      </div>
       {expanded && group.options.length > VISIBLE_OPTIONS_DEFAULT && (
         <button
           type="button"
@@ -395,13 +417,14 @@ function OptionRow({
   const reservationHref = `/hotele/rezerwacja?${params.toString()}`;
 
   return (
-    // `max-w-2xl` na kolumnie opisu nie jest ozdobą: po poszerzeniu strony
-    // hotelu do 1760 px wiersz taryfy miał ~1300 px, a `justify-between`
-    // rozpychało „Bez wyżywienia" i cenę na przeciwległe krawędzie, zostawiając
-    // między nimi metr pustki. Dwie informacje, które czyta się razem, mają
-    // zostać w zasięgu jednego spojrzenia.
-    <li className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
-      <div className="min-w-0 flex-1 sm:max-w-2xl">
+    // TRZY SEKCJE (brief §25): oferta | cena | akcja.
+    //
+    // `justify-between` na całej szerokości rozpychało „Bez wyżywienia" i cenę
+    // na przeciwległe krawędzie, zostawiając między nimi metr pustki. Siatka
+    // o stałych kolumnach po prawej trzyma cenę i przycisk zawsze w tym samym
+    // miejscu — wzrok nie musi ich szukać przy każdym wierszu.
+    <li className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6 sm:p-5 lg:grid-cols-[minmax(0,1fr)_11rem_10rem]">
+      <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-neutral-900">
             {localizeBoard(rate.boardName ?? rate.boardType)}
@@ -432,7 +455,7 @@ function OptionRow({
           )}
         </div>
       </div>
-      <div className="flex flex-col items-end">
+      <div className="flex flex-col items-start sm:items-end lg:text-right">
         {total !== null ? (
           <>
             {/* Przecena (brief §15C) — wyłącznie z `initialPrice` TEJ taryfy.
@@ -459,6 +482,11 @@ function OptionRow({
         ) : (
           <div className="text-sm text-neutral-500">Cena u dostawcy</div>
         )}
+      </div>
+
+      {/* Akcja w OSOBNEJ kolumnie — przycisk stoi w tej samej pionowej linii
+          we wszystkich wierszach, niezależnie od długości opisu taryfy. */}
+      <div className="sm:col-span-2 lg:col-span-1">
         {bookingLive ? (
           <Link
             href={reservationHref}
@@ -467,7 +495,7 @@ function OptionRow({
             // (26,7k renderów w 2 dni = top ścieżka serwisu) + wywołania
             // LiteAPI. Checkout ładuje się dopiero po realnym kliknięciu.
             prefetch={false}
-            className="mt-2 inline-flex h-10 items-center justify-center rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
           >
             Wybierz
           </Link>
@@ -475,7 +503,7 @@ function OptionRow({
           <span
             aria-disabled="true"
             title="Rezerwacja online będzie dostępna wkrótce"
-            className="mt-2 inline-flex h-10 cursor-not-allowed items-center justify-center rounded-lg bg-neutral-200 px-5 text-sm font-semibold text-neutral-500"
+            className="inline-flex h-11 w-full cursor-not-allowed items-center justify-center rounded-lg bg-neutral-200 px-5 text-sm font-semibold text-neutral-500"
           >
             Wkrótce dostępne
           </span>

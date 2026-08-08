@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 import { Mail, Menu, X } from "lucide-react";
 
+import { FavoritesNavLink } from "@/components/site/favorites-nav-link";
 import { HeaderSearchTrigger } from "@/components/site/header-search-trigger";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
@@ -28,6 +29,7 @@ const copy = {
     ],
     // „Zacznij planować" nie mówiło, co się stanie po kliknięciu. Nazwa akcji
     // = to, co użytkownik dostaje (i ta sama fraza co w pasku sticky).
+    favorites: "Polubione",
     plannerCta: "Znajdź wyjazd",
     stickySearch: "Szukaj wyjazdu",
     menuOpen: "Menu",
@@ -90,6 +92,7 @@ const copy = {
       { href: "/regulamin", label: "Terms" },
       { href: "/polityka-prywatnosci", label: "Privacy policy" },
     ],
+    favorites: "Saved",
     plannerCta: "Find a trip",
     stickySearch: "Search trips",
     menuOpen: "Menu",
@@ -311,6 +314,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
               );
             })}
 
+            {/* Polubione — przed CTA, bo to powrót do własnych rzeczy, a nie
+                nowa akcja. Licznik dochodzi po odczycie z przeglądarki. */}
+            <FavoritesNavLink
+              label={text.favorites}
+              active={isActivePath(pathname, "/polubione")}
+            />
+
             {/* Kompaktowe wyszukiwanie — pojawia się dopiero po zjechaniu poza
                 hero (wzorzec Booking.com: szukaj z każdego miejsca strony). */}
             <HeaderSearchTrigger label={text.stickySearch} isHome={isHome} />
@@ -369,6 +379,11 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   </LocalizedLink>
                 );
               })}
+              <FavoritesNavLink
+                label={text.favorites}
+                active={isActivePath(pathname, "/polubione")}
+                variant="mobile"
+              />
               {text.mobileLinks.map((item) => (
                 <LocalizedLink
                   key={item.href}

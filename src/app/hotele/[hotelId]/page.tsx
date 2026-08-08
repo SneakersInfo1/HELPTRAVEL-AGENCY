@@ -20,6 +20,7 @@ import { reviewCategories, reviewHighlights, sentimentUpdatedAt } from "@/lib/ho
 import { indexRoomsById } from "@/lib/hotels/domain/room";
 import { HOTEL_SHELL } from "@/lib/hotels/layout";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
+import { lowest30dNotice, lowestPrice30d, recordPrice } from "@/lib/hotels/price-history";
 import { ratingLabel } from "@/lib/hotels/rating";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { normalizeFacilities, groupFacilities, coerceImportantInfo } from "@/lib/liteapi/facilities";
@@ -53,7 +54,7 @@ import { HotelGallery } from "./_components/hotel-gallery";
 import { HotelReviews } from "./_components/hotel-reviews";
 import { RoomsSection } from "./_components/rooms-section";
 import { SectionTabs } from "./_components/section-tabs";
-import { SaveHotelButton } from "./_components/save-hotel-button";
+import { FavoriteButton } from "@/components/hotels/favorite-button";
 
 // Polish plural for "opinia": 1 → opinia; 2-4 (except 12-14) → opinie;
 // otherwise → opinii.
@@ -220,6 +221,22 @@ export default async function HotelDetailPage({
   // Zdanie o podatkach dla najtańszej taryfy — liczone TU, bo tylko tutaj mamy
   // surową taryfę z `taxesAndFees`. `null` = brak rozbicia → widget milczy.
   const cheapestTaxText = cheapest ? taxNoticeText(taxNoticeFrom(mapTaxes(cheapest.rate))) : null;
+
+  // ── Historia cen 30 dni (Omnibus / UOKiK) ────────────────────────────────
+  //
+  // Przy ogłoszeniu obniżki przepis wymaga podania NAJNIŻSZEJ ceny z 30 dni
+  // przed obniżką. `initialPrice` od dostawcy tego nie spełnia — mówi tylko,
+  // że dostawca obniżył taryfę. Dlatego prowadzimy własną historię.
+  //
+  // Zapis i odczyt są best-effort i NIGDY nie blokują renderu: `catch` w środku
+  // modułu zamienia każdy błąd Redisa w „nie wiemy", a `void` przy zapisie
+  // znaczy, że strona nie czeka na jego zakończenie.
+  const historyCtx = { checkin, checkout, adults, children, rooms, currency };
+  let lowest30d: number | null = null;
+  if (cheapestTotal !== undefined) {
+    void recordPrice(hotelId, historyCtx, cheapestTotal);
+    lowest30d = lowest30dNotice(await lowestPrice30d(hotelId, historyCtx), cheapestTotal);
+  }
 
   // Profile pokoi (zdjęcia, metraż, łóżka) z /data/hotel, zaindeksowane po id.
   // Taryfa trafia w swój pokój przez `mappedRoomId` — dlatego zapytanie
@@ -440,11 +457,20 @@ export default async function HotelDetailPage({
         <header>
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{detail.name}</h1>
-            <SaveHotelButton
-              hotelId={hotelId}
-              name={detail.name}
-              city={detail.city ?? undefined}
-              href={`/hotele/${hotelId}?${searchQuery}`}
+            {/* Ten sam komponent, co serce na karcie wyniku — jeden stan,
+                jedne etykiety, jedno miejsce do poprawiania. */}
+            <FavoriteButton
+              variant="inline"
+              hotel={{
+                id: hotelId,
+                name: detail.name,
+                city: detail.city ?? undefined,
+                country: detail.country ?? undefined,
+                image: photos[0],
+                rating: detail.rating ?? undefined,
+                stars: detail.stars ?? undefined,
+                href: `/hotele/${hotelId}?${searchQuery}`,
+              }}
             />
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-neutral-600">
@@ -744,6 +770,7 @@ export default async function HotelDetailPage({
             hotelId={hotelId}
             initial={{ checkin, checkout, adults, rooms, children }}
             cheapestTotal={cheapestTotal}
+            lowest30d={lowest30d}
             nights={nights}
             currency={currency}
             taxText={cheapestTaxText}
