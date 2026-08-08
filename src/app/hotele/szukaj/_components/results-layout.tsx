@@ -34,7 +34,12 @@ export function ResultsLayout({
       }`}
     >
       {mode === "list" ? sidebar : null}
-      <section className="min-w-0 space-y-6">{children}</section>
+      {/* `pb-28` na telefonie: pływający przycisk „Filtry i sortowanie" stoi
+          na stałe u dołu ekranu, więc bez tego zapasu ostatnia karta wyników
+          była pod nim NIEUSUWALNIE — nie dało się jej odsłonić przewijaniem
+          (wymóg właściciela: „sticky CTA nie może wchodzić na treści").
+          Od `lg` przycisku nie ma, bo filtry są w panelu bocznym. */}
+      <section className="min-w-0 space-y-6 pb-28 lg:pb-0">{children}</section>
     </div>
   );
 }

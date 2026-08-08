@@ -13,6 +13,22 @@
 // changes are pending.
 
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  ArrowUpDown,
+  BadgeCheck,
+  Building2,
+  CalendarCheck,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Smile,
+  Sparkles,
+  Star,
+  UtensilsCrossed,
+  Wallet,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import {
@@ -22,6 +38,12 @@ import {
 } from "@/lib/hotels/filter-options-store";
 
 import { MiniMapPreview } from "./mini-map-preview";
+
+/** Jedna klasa pola formularza — wcześniej co drugi input miał inny promień
+ *  i inną wysokość (`rounded-lg px-3 py-2` obok `rounded px-2 py-1`), przez co
+ *  panel wyglądał na złożony z części różnych stron. */
+const POLE =
+  "min-h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-neutral-900 transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20";
 
 const STARS = [5, 4, 3, 2, 1];
 const CANCEL = [
@@ -204,19 +226,13 @@ export function FiltersSidebar() {
         onClick={() => setOpenOnMobile(true)}
         className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-30 inline-flex h-12 -translate-x-1/2 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-emerald-700 px-6 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(6,78,59,0.35)] transition hover:bg-emerald-800 lg:hidden"
       >
-        <svg
-          aria-hidden
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        >
-          <path d="M4 6h16M7 12h10M10 18h4" />
-        </svg>
-        Filtry i sortowanie {stagedCount > 0 ? `(${stagedCount})` : ""}
+        <SlidersHorizontal aria-hidden className="h-4 w-4" />
+        Filtry i sortowanie
+        {stagedCount > 0 && (
+          <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-emerald-800">
+            {stagedCount}
+          </span>
+        )}
       </button>
 
       {/* z-50 (nie z-40): otwarty panel musi przykrywać dymek konsierża
@@ -231,22 +247,29 @@ export function FiltersSidebar() {
         }
       >
         {openOnMobile && (
-          <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3 lg:hidden">
-            <h2 className="text-lg font-semibold">Filtry</h2>
+          <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 lg:hidden">
+            <h2 className="inline-flex items-center gap-2 text-lg font-bold text-neutral-900">
+              <SlidersHorizontal aria-hidden className="h-5 w-5 text-emerald-700" />
+              Filtry i sortowanie
+            </h2>
             <button
               type="button"
               onClick={() => setOpenOnMobile(false)}
-              className="rounded-md px-3 py-1 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+              aria-label="Zamknij filtry"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition hover:bg-neutral-100"
             >
-              Zamknij
+              <X aria-hidden className="h-5 w-5" />
             </button>
           </div>
         )}
-        {/* lg:top must clear both the site-shell header (sticky top-0 z-30,
-            ~84px tall on sm+) AND the search-bar (sticky top-[84px], ~56px
-            collapsed). 84 + 56 = 140 — tight but stops the sidebar from
-            slipping under the search bar on scroll. */}
-        <div className={`space-y-6 lg:sticky lg:top-[148px] ${openOnMobile ? "flex-1 overflow-auto p-5" : ""}`}>
+        {/* Offset = zmierzona wysokość nagłówka + wysokość paska wyszukiwania.
+            Wcześniej stało tu wpisane ręcznie 148 px, które nie miało związku
+            z realną geometrią (patrz HeaderOffsetProbe) — panel podłaził pod
+            pasek albo zostawiał pod nim szparę, zależnie od breakpointu. */}
+        <div
+          className={`space-y-5 lg:sticky ${openOnMobile ? "flex-1 overflow-y-auto overscroll-contain p-5" : ""}`}
+          style={{ top: "calc(var(--ht-header-h, 84px) + 4.75rem)" }}
+        >
           {/* Podgląd mapy NAD filtrami (brief V3 §4) — jak w interfejsie
               referencyjnym. Statyczny obraz, zero JavaScriptu mapy; pełny
               widok otwiera się jednym kliknięciem. Na telefonie pomijamy:
@@ -263,25 +286,43 @@ export function FiltersSidebar() {
             <button
               type="button"
               onClick={reset}
-              className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+              disabled={stagedCount === 0}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-default disabled:opacity-45"
             >
+              <RotateCcw aria-hidden className="h-4 w-4" />
               Wyczyść
             </button>
             <button
               type="button"
               onClick={apply}
               disabled={!dirty}
-              className="flex-1 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-default disabled:bg-emerald-700/40"
+              // Stan „nic do zastosowania" był wyblakłym zielonym prostokątem,
+              // który czytał się jak zepsuty przycisk. Teraz to neutralny,
+              // spokojny komunikat — przycisk nabiera koloru marki dopiero
+              // wtedy, gdy naprawdę jest co kliknąć.
+              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-5 text-sm font-semibold transition ${
+                dirty
+                  ? "bg-emerald-700 text-white shadow-sm hover:bg-emerald-800"
+                  : "cursor-default border border-neutral-200 bg-neutral-50 text-neutral-500"
+              }`}
             >
-              {dirty ? `Zastosuj filtry${stagedCount > 0 ? ` (${stagedCount})` : ""}` : "Filtry zastosowane"}
+              {dirty ? (
+                <>
+                  <SlidersHorizontal aria-hidden className="h-4 w-4" />
+                  {`Zastosuj filtry${stagedCount > 0 ? ` (${stagedCount})` : ""}`}
+                </>
+              ) : (
+                "Filtry zastosowane"
+              )}
             </button>
           </div>
 
-          <FilterBlock title="Sortuj">
+          <FilterBlock title="Sortuj" icon={ArrowUpDown}>
             <select
               value={draft.sort}
               onChange={(e) => setDraft((d) => ({ ...d, sort: e.target.value }))}
-              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"
+              className={POLE}
+              aria-label="Sortowanie wyników"
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
@@ -289,32 +330,34 @@ export function FiltersSidebar() {
             </select>
           </FilterBlock>
 
-          <FilterBlock title="Cena za pobyt (PLN)">
+          <FilterBlock title="Cena za pobyt (PLN)" icon={Wallet}>
             <div className="flex items-center gap-2">
               <input
                 type="number"
                 inputMode="numeric"
                 placeholder="od"
+                aria-label="Cena od"
                 value={draft.minPrice}
                 onChange={(e) => setDraft((d) => ({ ...d, minPrice: e.target.value }))}
-                className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+                className={POLE}
               />
-              <span className="text-neutral-400">—</span>
+              <span aria-hidden className="text-neutral-400">—</span>
               <input
                 type="number"
                 inputMode="numeric"
                 placeholder="do"
+                aria-label="Cena do"
                 value={draft.maxPrice}
                 onChange={(e) => setDraft((d) => ({ ...d, maxPrice: e.target.value }))}
-                className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+                className={POLE}
               />
             </div>
           </FilterBlock>
 
-          <FilterBlock title="Standard hotelu">
-            <div className="space-y-1">
+          <FilterBlock title="Standard hotelu" icon={Star}>
+            <div className="space-y-0.5">
               {STARS.map((s) => (
-                <label key={s} className="flex cursor-pointer items-center gap-2 text-sm">
+                <ChoiceRow key={s} checked={String(s) === draft.minStars}>
                   <input
                     type="radio"
                     name="minStars"
@@ -324,23 +367,26 @@ export function FiltersSidebar() {
                   />
                   <span className="text-amber-500">{"★".repeat(s)}</span>
                   <span className="text-neutral-600">i więcej</span>
-                </label>
+                </ChoiceRow>
               ))}
-              <button
-                type="button"
-                onClick={() => setDraft((d) => ({ ...d, minStars: "" }))}
-                className="mt-1 text-xs font-medium text-emerald-700 hover:text-emerald-800"
-              >
-                Wyczyść standard
-              </button>
+              {draft.minStars && (
+                <button
+                  type="button"
+                  onClick={() => setDraft((d) => ({ ...d, minStars: "" }))}
+                  className="mt-1 inline-flex min-h-11 items-center px-2 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                >
+                  Wyczyść standard
+                </button>
+              )}
             </div>
           </FilterBlock>
 
-          <FilterBlock title="Ocena gości">
+          <FilterBlock title="Ocena gości" icon={Smile}>
             <select
               value={draft.minRating}
               onChange={(e) => setDraft((d) => ({ ...d, minRating: e.target.value }))}
-              className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+              className={POLE}
+              aria-label="Minimalna ocena gości"
             >
               <option value="">Wszystkie</option>
               <option value="9">Wspaniały (9+)</option>
@@ -349,10 +395,10 @@ export function FiltersSidebar() {
             </select>
           </FilterBlock>
 
-          <FilterBlock title="Anulacja">
-            <div className="space-y-1">
+          <FilterBlock title="Anulacja" icon={CalendarCheck}>
+            <div className="space-y-0.5">
               {CANCEL.map((c) => (
-                <label key={c.value} className="flex cursor-pointer items-center gap-2 text-sm">
+                <ChoiceRow key={c.value} checked={draft.cancel === c.value}>
                   <input
                     type="radio"
                     name="cancel"
@@ -361,25 +407,26 @@ export function FiltersSidebar() {
                     className="h-4 w-4 accent-emerald-600"
                   />
                   <span>{c.label}</span>
-                </label>
+                </ChoiceRow>
               ))}
             </div>
           </FilterBlock>
 
-          <FilterBlock title="Słowa kluczowe">
+          <FilterBlock title="Słowa kluczowe" icon={Search}>
             <input
               type="text"
               placeholder="np. spa, basen, centrum"
+              aria-label="Szukaj w nazwach obiektów"
               value={draft.q}
               onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
-              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"
+              className={POLE}
             />
           </FilterBlock>
 
-          <FilterBlock title="Typ obiektu">
-            <div className="space-y-1 text-sm">
+          <FilterBlock title="Typ obiektu" icon={Building2}>
+            <div className="space-y-0.5 text-sm">
               {PROPERTY_TYPES.map((p) => (
-                <label key={p.value} className="flex cursor-pointer items-center gap-2">
+                <ChoiceRow key={p.value} checked={draft.propertyType.includes(p.value)}>
                   <input
                     type="checkbox"
                     checked={draft.propertyType.includes(p.value)}
@@ -387,7 +434,7 @@ export function FiltersSidebar() {
                     className="h-4 w-4 accent-emerald-600"
                   />
                   <span>{p.label}</span>
-                </label>
+                </ChoiceRow>
               ))}
             </div>
           </FilterBlock>
@@ -397,10 +444,10 @@ export function FiltersSidebar() {
               obiektów — filtr, który po kliknięciu daje zero wyników, psuje
               zaufanie do wszystkich pozostałych. */}
           {options.facilities.length > 0 && (
-            <FilterBlock title="Udogodnienia">
-              <div className="space-y-1 text-sm">
+            <FilterBlock title="Udogodnienia" icon={Sparkles}>
+              <div className="space-y-0.5 text-sm">
                 {options.facilities.map(({ filter, count }) => (
-                  <label key={filter.key} className="flex cursor-pointer items-center gap-2">
+                  <ChoiceRow key={filter.key} checked={draft.facilities.includes(filter.key)}>
                     <input
                       type="checkbox"
                       checked={draft.facilities.includes(filter.key)}
@@ -409,17 +456,17 @@ export function FiltersSidebar() {
                     />
                     <span className="flex-1">{filter.label}</span>
                     <span className="text-xs tabular-nums text-neutral-500">{count}</span>
-                  </label>
+                  </ChoiceRow>
                 ))}
               </div>
             </FilterBlock>
           )}
 
           {options.chains.length > 0 && (
-            <FilterBlock title="Marka hotelowa">
-              <div className="space-y-1 text-sm">
+            <FilterBlock title="Marka hotelowa" icon={BadgeCheck}>
+              <div className="space-y-0.5 text-sm">
                 {options.chains.map(({ name, count }) => (
-                  <label key={name} className="flex cursor-pointer items-center gap-2">
+                  <ChoiceRow key={name} checked={draft.chains.includes(name)}>
                     <input
                       type="checkbox"
                       checked={draft.chains.includes(name)}
@@ -430,16 +477,16 @@ export function FiltersSidebar() {
                       {name}
                     </span>
                     <span className="text-xs tabular-nums text-neutral-500">{count}</span>
-                  </label>
+                  </ChoiceRow>
                 ))}
               </div>
             </FilterBlock>
           )}
 
-          <FilterBlock title="Wyżywienie">
-            <div className="space-y-1 text-sm">
+          <FilterBlock title="Wyżywienie" icon={UtensilsCrossed}>
+            <div className="space-y-0.5 text-sm">
               {BOARD_TYPES.map((b) => (
-                <label key={b.value} className="flex cursor-pointer items-center gap-2">
+                <ChoiceRow key={b.value} checked={draft.board.includes(b.value)}>
                   <input
                     type="checkbox"
                     checked={draft.board.includes(b.value)}
@@ -447,7 +494,7 @@ export function FiltersSidebar() {
                     className="h-4 w-4 accent-emerald-600"
                   />
                   <span>{b.label}</span>
-                </label>
+                </ChoiceRow>
               ))}
             </div>
           </FilterBlock>
@@ -455,21 +502,38 @@ export function FiltersSidebar() {
 
         {/* Mobile-only sticky-bottom apply (desktop has it at top). */}
         {openOnMobile && (
-          <div className="sticky bottom-0 mt-auto flex gap-2 border-t border-neutral-200 bg-white p-4 lg:hidden">
+          <div className="sticky bottom-0 mt-auto flex gap-2 border-t border-neutral-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden">
             <button
               type="button"
               onClick={reset}
-              className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+              disabled={stagedCount === 0}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-default disabled:opacity-45"
             >
+              <RotateCcw aria-hidden className="h-4 w-4" />
               Wyczyść
             </button>
             <button
               type="button"
               onClick={apply}
               disabled={!dirty}
-              className="flex-1 rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-default disabled:bg-emerald-700/40"
+              // Stan „nic do zastosowania" był wyblakłym zielonym prostokątem,
+              // który czytał się jak zepsuty przycisk. Teraz to neutralny,
+              // spokojny komunikat — przycisk nabiera koloru marki dopiero
+              // wtedy, gdy naprawdę jest co kliknąć.
+              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-5 text-sm font-semibold transition ${
+                dirty
+                  ? "bg-emerald-700 text-white shadow-sm hover:bg-emerald-800"
+                  : "cursor-default border border-neutral-200 bg-neutral-50 text-neutral-500"
+              }`}
             >
-              {dirty ? `Zastosuj filtry${stagedCount > 0 ? ` (${stagedCount})` : ""}` : "Filtry zastosowane"}
+              {dirty ? (
+                <>
+                  <SlidersHorizontal aria-hidden className="h-4 w-4" />
+                  {`Zastosuj filtry${stagedCount > 0 ? ` (${stagedCount})` : ""}`}
+                </>
+              ) : (
+                "Filtry zastosowane"
+              )}
             </button>
           </div>
         )}
@@ -478,12 +542,54 @@ export function FiltersSidebar() {
   );
 }
 
-function FilterBlock({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * Blok filtra jako KARTA z ikoną.
+ *
+ * Wcześniej blokiem był goły nagłówek `h3` nad kontrolkami, bez żadnego
+ * obramowania i bez ikony — dziewięć takich bloków jeden pod drugim czytało się
+ * jak surowy formularz z lat 2000, a nie jak panel produktu (zgłoszenie
+ * 2026-08-08: „filtry nie mają ikon", „wygląda cienko"). Ikona daje każdemu
+ * blokowi punkt zaczepienia dla wzroku przy przewijaniu, a wspólna ramka
+ * grupuje kontrolki, które do siebie należą.
+ */
+function FilterBlock({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <h3 className="mb-2 text-sm font-semibold text-neutral-900">{title}</h3>
+    <section className="rounded-2xl border border-neutral-200 bg-white p-4">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-neutral-900">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+          <Icon aria-hidden className="h-4 w-4" />
+        </span>
+        {title}
+      </h3>
       {children}
-    </div>
+    </section>
+  );
+}
+
+/** Wiersz wyboru o wysokości celu dotykowego — wspólny dla radio i checkbox. */
+function ChoiceRow({
+  children,
+  checked,
+}: {
+  children: React.ReactNode;
+  checked: boolean;
+}) {
+  return (
+    <label
+      className={`flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 text-sm transition ${
+        checked ? "bg-emerald-50/70 font-medium text-emerald-900" : "hover:bg-neutral-50"
+      }`}
+    >
+      {children}
+    </label>
   );
 }
 

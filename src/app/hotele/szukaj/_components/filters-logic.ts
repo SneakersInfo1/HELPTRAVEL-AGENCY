@@ -106,6 +106,70 @@ export interface ApplyFiltersParams {
   facilityGroups?: number[][];
 }
 
+/** Metadane hotelu bez taryfy — wszystko, co wiadomo PRZED pobraniem ceny. */
+export interface MetadataOnlyOffer {
+  name: string;
+  city: string;
+  stars?: number;
+  rating?: number;
+  chain?: string;
+  facilityIds?: number[];
+  hotelTypeId?: number;
+}
+
+/**
+ * Czy któryś z aktywnych filtrów wymaga ZNAJOMOŚCI TARYFY.
+ *
+ * Potrzebne mapie: znaczniki mają się pojawić od razu, także dla hoteli, których
+ * cena jeszcze nie doszła (na dużym kierunku skan trwa kilkanaście sekund, a do
+ * tej pory mapa stała pusta — to jest zgłoszone „mapa nie działa"). Ale
+ * pokazanie takiego hotelu przy aktywnym filtrze ceny albo wyżywienia byłoby
+ * kłamstwem: nie wiemy, czy go spełnia. Wtedy czekamy na cenę.
+ */
+export function rateDependentFiltersActive(params: ApplyFiltersParams): boolean {
+  return (
+    params.minPrice !== undefined ||
+    params.maxPrice !== undefined ||
+    params.cancel === "free" ||
+    (params.board?.length ?? 0) > 0
+  );
+}
+
+/**
+ * Filtry, które da się rozstrzygnąć z samych metadanych obiektu.
+ *
+ * Świadomie NIE sortuje: hotele bez ceny nie mają czym konkurować w drabince
+ * cenowej, a wpychanie ich do posortowanej listy przestawiałoby wyniki.
+ */
+export function applyMetadataFilters<T extends MetadataOnlyOffer>(
+  offers: T[],
+  params: ApplyFiltersParams,
+): T[] {
+  let filtered = offers;
+  if (params.q) {
+    const q = params.q.toLowerCase();
+    filtered = filtered.filter((o) => `${o.name} ${o.city}`.toLowerCase().includes(q));
+  }
+  if (params.propertyType && params.propertyType.length > 0) {
+    const allowed = new Set(params.propertyType);
+    filtered = filtered.filter((o) => allowed.has(propertyTypeOf(o)));
+  }
+  if (params.chains && params.chains.length > 0) {
+    const allowed = new Set(params.chains.map((c) => c.toLowerCase()));
+    filtered = filtered.filter((o) => Boolean(o.chain) && allowed.has(o.chain!.toLowerCase()));
+  }
+  if (params.facilityGroups && params.facilityGroups.length > 0) {
+    filtered = filtered.filter((o) => {
+      const has = new Set(o.facilityIds ?? []);
+      if (has.size === 0) return false;
+      return params.facilityGroups!.every((group) => group.some((id) => has.has(id)));
+    });
+  }
+  if (params.minStars !== undefined) filtered = filtered.filter((o) => (o.stars ?? 0) >= params.minStars!);
+  if (params.minRating !== undefined) filtered = filtered.filter((o) => (o.rating ?? 0) >= params.minRating!);
+  return filtered;
+}
+
 export function applyFiltersAndSort<T extends FilterableOffer>(
   offers: T[],
   params: ApplyFiltersParams,

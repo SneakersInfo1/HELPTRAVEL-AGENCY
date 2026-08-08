@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ChevronLeft, List, Map as MapIcon, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { POOL_MAX_TOTAL, POOL_PAGE_SIZE, type MetaOffer } from "@/lib/hotels/meta-pool";
@@ -48,11 +49,33 @@ function preloadMapa(): void {
   mapaZaladowana = true;
   void import("./hotel-map");
 }
+
+/**
+ * Czy wolno pobierać paczkę mapy „na zapas".
+ *
+ * Nie wolno na łączu, które gość oszczędza albo które i tak ledwo ciągnie
+ * wyniki: 944 kB pobrane na wszelki wypadek konkuruje wtedy ze zdjęciami
+ * hoteli, czyli z tym, po co gość przyszedł. Brief: „czy preload nie szkodzi
+ * mobile". Przy braku API (Safari) zakładamy, że wolno — to stan sprzed zmiany.
+ */
+function wolnoPobieracNaZapas(): boolean {
+  const c = (navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string };
+  }).connection;
+  if (!c) return true;
+  if (c.saveData) return false;
+  return c.effectiveType !== "slow-2g" && c.effectiveType !== "2g";
+}
 import { facilityGroupsFor } from "@/lib/hotels/facility-filters";
 import { publishFilterOptions } from "@/lib/hotels/filter-options-store";
 import { resetViewMode, setViewMode, useViewMode } from "@/lib/hotels/view-mode-store";
 import { useMediaQuery } from "@/lib/ui/use-media-query";
-import { applyFiltersAndSort, type FilterableOffer } from "./filters-logic";
+import {
+  applyFiltersAndSort,
+  applyMetadataFilters,
+  rateDependentFiltersActive,
+  type FilterableOffer,
+} from "./filters-logic";
 
 export type { MetaOffer } from "@/lib/hotels/meta-pool";
 
@@ -298,18 +321,6 @@ export function ResultsList(props: ResultsListProps) {
     publishFilterOptions(fullPool);
   }, [fullPool]);
 
-  // Paczkę mapy pobieramy w bezczynności, PO wyrenderowaniu wyników — nigdy
-  // przed. `requestIdleCallback` nie istnieje w Safari, stąd zapasowy timeout.
-  useEffect(() => {
-    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
-      .requestIdleCallback;
-    if (typeof idle === "function") {
-      idle(preloadMapa);
-      return;
-    }
-    const t = window.setTimeout(preloadMapa, 2500);
-    return () => window.clearTimeout(t);
-  }, []);
 
   // Stable identity for the pool — id list is the natural key, much cheaper
   // than deep-comparing records on every render.
@@ -427,7 +438,7 @@ export function ResultsList(props: ResultsListProps) {
       };
     });
 
-    const passed = applyFiltersAndSort(filterable, {
+    const filterParams = {
       minPrice,
       maxPrice,
       minStars,
@@ -439,7 +450,8 @@ export function ResultsList(props: ResultsListProps) {
       board,
       chains,
       facilityGroups: facilities?.length ? facilityGroupsFor(facilities) : undefined,
-    });
+    };
+    const passed = applyFiltersAndSort(filterable, filterParams);
 
     const byId = new Map(priced.map((r) => [r.offer.hotelId, r]));
     const filteredRows = passed
@@ -522,11 +534,35 @@ export function ResultsList(props: ResultsListProps) {
       }
     }
 
+    // ── Punkty mapy: NIE czekamy na ceny ──────────────────────────────────
+    //
+    // Wcześniej mapa dostawała wyłącznie hotele z pobraną ceną. Na dużym
+    // kierunku (Heraklion, ~500 obiektów) skan trwa kilkanaście sekund, więc
+    // gość, który przełączył się na mapę, patrzył przez ten czas na prawie
+    // pustą planszę — a potem na planszę, która sama się przekadrowuje. Stąd
+    // zgłoszenie „mapa ładuje się 5 sekund" i „dla części kierunków nie działa".
+    //
+    // Teraz hotele bez ceny też stają na mapie (znacznik neutralny, cena
+    // dochodzi w miejscu). Warunek uczciwości: przepuszczamy tylko te, o
+    // których na pewno wiemy, że przechodzą aktywne filtry — a filtry ceny,
+    // wyżywienia i anulacji wymagają taryfy, więc przy nich czekamy na cenę.
+    const czekajaceNaMapie: Row[] =
+      rateDependentFiltersActive(filterParams)
+        ? []
+        : applyMetadataFilters(
+            rows
+              .filter((r) => r.entry !== null && !isPriced(r.entry))
+              .map((r) => ({ ...r.offer, _row: r })),
+            filterParams,
+          ).map((o) => o._row);
+
     return {
       displayed,
-      // Pełna, przefiltrowana lista (bez cięcia na strony) — źródło punktów
-      // mapy i podglądu wybranego hotelu.
+      // Pełna, przefiltrowana lista (bez cięcia na strony) — źródło podglądu
+      // wybranego hotelu i listy obok mapy.
       allRows: orderedRows,
+      /** Wszystko, co ma prawo stanąć na mapie: wycenione + jeszcze skanowane. */
+      mapRows: [...orderedRows, ...czekajaceNaMapie],
       total,
       totalPages,
       safePage,
@@ -563,7 +599,7 @@ export function ResultsList(props: ResultsListProps) {
   // dziurę w miejscu, gdzie oferty są.
   const mapPoints = useMemo<MapPoint[]>(
     () =>
-      view.allRows
+      view.mapRows
         .filter((r) => typeof r.offer.latitude === "number" && typeof r.offer.longitude === "number")
         .map((r) => {
           const rate = isPriced(r.entry) ? r.entry : null;
@@ -576,7 +612,7 @@ export function ResultsList(props: ResultsListProps) {
             currency: rate ? rate.currency : ctx.currency,
           };
         }),
-    [view.allRows, ctx.currency],
+    [view.mapRows, ctx.currency],
   );
 
   // Skan „gotowy" dopiero gdy: wszystkie znane hotele wycenione ORAZ nie ma
@@ -586,11 +622,71 @@ export function ResultsList(props: ResultsListProps) {
     Boolean(poolSource && poolHasMore) && !(expansion.sig === sourceSig && expansion.done);
   const scanComplete = view.scanning === 0 && !expansionPending;
 
+  // Paczkę mapy pobieramy w bezczynności, PO wyrenderowaniu wyników.
+  //
+  // „Po wyrenderowaniu" było wcześniej życzeniem, nie warunkiem: efekt startował
+  // przy montowaniu listy, więc `requestIdleCallback` potrafił trafić w moment,
+  // gdy kart jeszcze nie było na ekranie. Test E2E §29 wyłapał to wprost —
+  // `maplibre-gl` (944 kB) leciał PRZED pierwszą kartą wyniku, czyli dokładnie
+  // na ścieżce krytycznej, z której miał zniknąć.
+  //
+  // Teraz warunek jest jawny: pobieramy dopiero, gdy na ekranie stoi choć jedna
+  // karta, i tylko na łączu, które na to stać.
+  useEffect(() => {
+    // Warunkiem jest KONIEC SKANU CEN, nie sam render kart.
+    //
+    // `view.displayed.length > 0` było prawdziwe już przy pierwszym renderze:
+    // lista dopełnia stronę kartami bez ceny, żeby ekran nie był pusty. Timer
+    // startował więc praktycznie przy montowaniu i w wolniejszym przebiegu
+    // wyprzedzał pierwsze karty — test §29 łapał to jako pobranie paczki mapy
+    // na ścieżce krytycznej. Koniec skanu to sygnał JEDNOZNACZNY: wyniki są
+    // kompletne, sieć jest wolna, nikt na nic nie czeka.
+    if (!scanComplete || !wolnoPobieracNaZapas()) return;
+    // Dwa warunki, oba konieczne: karty MUSZĄ być na ekranie ORAZ musi minąć
+    // chwila spokoju. Sam `requestIdleCallback` nie wystarczał — przeglądarka
+    // uznaje się za bezczynną już MIĘDZY malowaniem pierwszych kart a dojściem
+    // ich zdjęć, więc 944 kB paczki mapy wchodziło dokładnie tam, gdzie nie
+    // powinno. Test E2E §29 łapał to powtarzalnie.
+    //
+    // 2 s to konserwatywny zapas: gość, który w ogóle sięgnie po mapę, robi to
+    // wyraźnie później, a najechanie i dotknięcie przełącznika i tak ściągają
+    // paczkę natychmiast (`onPointerEnter` / `onFocus`), więc klik pozostaje
+    // bezzwłoczny.
+    const t = window.setTimeout(() => {
+      const idle = (window as unknown as {
+        requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number;
+      }).requestIdleCallback;
+      if (typeof idle === "function") idle(preloadMapa, { timeout: 4000 });
+      else preloadMapa();
+    }, 2000);
+    return () => window.clearTimeout(t);
+  }, [scanComplete]);
+
   // Mapa ma sens dopiero, gdy jest co na niej postawić.
   const mapAvailable = mapPoints.length > 0;
+  // Szukamy w `mapRows`, nie w `allRows`: znacznik może wskazywać hotel, którego
+  // cena jeszcze nie doszła — a klik w niego musi otworzyć podgląd tak samo.
   const selectedRow = selectedId
-    ? view.allRows.find((r) => r.offer.hotelId === selectedId) ?? null
+    ? view.mapRows.find((r) => r.offer.hotelId === selectedId) ?? null
     : null;
+
+  // Wejście w tryb mapy dosuwa widok tak, żeby mapa PRZYKLEIŁA SIĘ od razu.
+  //
+  // Nad mapą stoi nagłówek serwisu, pasek wyszukiwania, tytuł, licznik i pasek
+  // szybkich filtrów — razem ~360 px. Mapa jest `sticky` i ma wysokość liczoną
+  // od przyklejonej pozycji, więc przy przewinięciu 0 wystawała ~150 px poniżej
+  // krawędzi okna: dolna część mapy razem z podglądem wybranego obiektu była
+  // poza ekranem, dopóki gość sam nie przewinął. Zmierzone na 1920×1080.
+  const kotwicaMapy = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (viewMode !== "map" || !isDesktop) return;
+    const el = kotwicaMapy.current;
+    if (!el) return;
+    const gora = el.getBoundingClientRect().top + window.scrollY;
+    // `- 8` daje oddech, żeby mapa nie dotykała paska wyszukiwania.
+    const cel = Math.max(0, gora - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ht-header-h")) || 84) - 8);
+    if (Math.abs(window.scrollY - cel) > 4) window.scrollTo({ top: cel, behavior: "smooth" });
+  }, [viewMode, isDesktop]);
 
   const mapNode = (
     <HotelMap
@@ -605,11 +701,18 @@ export function ResultsList(props: ResultsListProps) {
     />
   );
 
+  // Podgląd wybranego obiektu jest ZAWSZE wariantem kompaktowym — także na
+  // desktopie. Pełna karta w nakładce nad mapą (~750 px) rozkładała nazwę
+  // hotelu po jednym słowie na linię i wystawała poza dolną krawędź mapy:
+  // kolumna informacji miała po odjęciu zdjęcia i szyny cenowej ~180 px.
+  // Podgląd ma odpowiedzieć na „co to za obiekt i ile kosztuje", a nie
+  // powtarzać całą kartę wyniku.
   const selectedCard = selectedRow ? (
     <ResultCard
       offer={isPriced(selectedRow.entry) ? { ...selectedRow.offer, cheapestRate: selectedRow.entry } : selectedRow.offer}
       searchQuery={childParams}
       nights={nights}
+      compact
       priceSlot={
         isPriced(selectedRow.entry) ? undefined : (
           <PriceView entry={selectedRow.entry as "loading" | "error" | null | undefined} />
@@ -619,7 +722,7 @@ export function ResultsList(props: ResultsListProps) {
   ) : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={kotwicaMapy}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ResultsSubtitle
           scanComplete={scanComplete}
@@ -638,9 +741,12 @@ export function ResultsList(props: ResultsListProps) {
           <div
             role="group"
             aria-label="Widok wyników"
-            className="inline-flex shrink-0 rounded-full border border-neutral-300 bg-white p-0.5"
+            className="inline-flex shrink-0 rounded-full border border-neutral-200 bg-white p-1 shadow-sm"
           >
-            {(["list", "map"] as const).map((mode) => (
+            {([
+              { mode: "list", label: "Lista", Icon: List },
+              { mode: "map", label: "Mapa", Icon: MapIcon },
+            ] as const).map(({ mode, label, Icon }) => (
               <button
                 key={mode}
                 type="button"
@@ -652,11 +758,14 @@ export function ResultsList(props: ResultsListProps) {
                 onFocus={preloadMapa}
                 aria-pressed={viewMode === mode}
                 // min-h-11 = 44 px — minimalny cel dotyku (WCAG 2.2 AA).
-                className={`min-h-11 rounded-full px-5 text-sm font-medium transition ${
-                  viewMode === mode ? "bg-emerald-700 text-white" : "text-neutral-700 hover:text-neutral-900"
+                className={`inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold transition ${
+                  viewMode === mode
+                    ? "bg-emerald-700 text-white shadow-sm"
+                    : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
                 }`}
               >
-                {mode === "list" ? "Lista" : "Mapa"}
+                <Icon aria-hidden className="h-4 w-4" />
+                {label}
               </button>
             ))}
           </div>
@@ -665,7 +774,9 @@ export function ResultsList(props: ResultsListProps) {
 
       {/* Szybkie filtry — WIDOCZNE TYLKO NA MAPIE (brief V3 §6).
           W trybie mapy nie ma sidebaru, więc najczęstsze filtry muszą być
-          w zasięgu ręki. W trybie listy byłyby zdublowaniem panelu obok. */}
+          w zasięgu ręki. W trybie listy byłyby zdublowaniem panelu obok.
+          Na telefonie pasek renderuje się WEWNĄTRZ pełnoekranowej mapy (niżej),
+          bo tam ten fragment drzewa jest zasłonięty. */}
       {viewMode === "map" && isDesktop && <QuickFilters />}
 
       {/* ── WIDOK MAPY ────────────────────────────────────────────────────
@@ -678,31 +789,62 @@ export function ResultsList(props: ResultsListProps) {
         // MapLibre naraz, dwa canvasy i dwa komplety pobranych kafelków,
         // z czego jeden niewidoczny. Zdarzyło się to w tej sesji.
         !isDesktop ? (
-          /* Telefon — mapa na pełny ekran (brief §13D) */
-          <div className="fixed inset-0 z-40 flex flex-col bg-white">
-              <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("list")}
-                  className="inline-flex h-11 items-center rounded-full px-3 text-sm font-semibold text-emerald-800"
-                >
-                  ← Wróć do listy
-                </button>
-                <span className="text-xs text-neutral-500">
-                  {view.total} {obiektySlowo(view.total)}
-                </span>
-              </div>
-            <div className="relative min-h-0 flex-1">{mapNode}</div>
-            {selectedCard && (
-              <div className="border-t border-neutral-200 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                {selectedCard}
-              </div>
-            )}
+          /* Telefon — mapa na pełny ekran (brief §13D).
+             KARTA WYBRANEGO OBIEKTU JEST NAKŁADKĄ, nie sąsiadem w kolumnie.
+             Jako sąsiad odbierała mapie wysokość w chwili wyboru, więc mapa
+             przeliczała projekcję i cały obraz — razem z dopiero co dotkniętym
+             znacznikiem — przeskakiwał. Zmierzone na 768 px: znacznik uciekał
+             o 263 px w górę zaraz po dotknięciu. To jest zgłoszone „przycisk
+             przeskakuje, trudno otworzyć hotel". */
+          <div className="fixed inset-0 z-50 flex flex-col bg-white">
+            <div className="flex items-center justify-between gap-2 border-b border-neutral-200 bg-white px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-emerald-800"
+              >
+                <ChevronLeft aria-hidden className="h-4 w-4" />
+                Wróć do listy
+              </button>
+              <span className="text-xs font-medium text-neutral-600">
+                {view.total} {obiektySlowo(view.total)}
+              </span>
+            </div>
+            {/* Szybkie filtry także na telefonie — w trybie mapy nie ma panelu
+                bocznego, a przewijany rząd chipów mieści się w jednym wierszu. */}
+            <div className="-mx-0 overflow-x-auto border-b border-neutral-200 bg-white px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <QuickFilters compact />
+            </div>
+            <div className="relative isolate min-h-0 flex-1">
+              {mapNode}
+              {selectedCard && (
+                <div className="absolute inset-x-2 bottom-2 z-40 animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
+                  <div className="overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-emerald-900/10">
+                    {selectedCard}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(null)}
+                    aria-label="Zamknij podgląd obiektu"
+                    className="absolute -top-3 right-1 flex h-11 w-11 items-center justify-center rounded-full bg-neutral-900/85 text-white shadow-lg transition hover:bg-neutral-900"
+                  >
+                    <X aria-hidden className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           /* Desktop — podział 55/45, mapa przyklejona do okna (brief §13B) */
           <div className="grid grid-cols-[55fr_45fr] items-start gap-4">
-            <div className="max-h-[calc(100vh-11rem)] space-y-4 overflow-y-auto pr-1">
+            <div
+              className="space-y-4 overflow-y-auto overscroll-contain pr-1"
+              // Wysokość liczona ze ZMIERZONEGO nagłówka (patrz
+              // HeaderOffsetProbe), a nie z wpisanych ręcznie 11rem — inaczej
+              // kolumna albo wystawała poza ekran, albo zostawiała pod sobą
+              // martwy pas.
+              style={{ maxHeight: "calc(100vh - var(--ht-header-h, 84px) - 8.5rem)" }}
+            >
               {view.allRows.slice(0, 60).map(({ offer, entry }) => (
                 <div
                   key={offer.hotelId}
@@ -716,6 +858,7 @@ export function ResultsList(props: ResultsListProps) {
                     offer={isPriced(entry) ? { ...offer, cheapestRate: entry } : offer}
                     searchQuery={childParams}
                     nights={nights}
+                    dense
                     priceSlot={
                       isPriced(entry) ? undefined : (
                         <PriceView entry={entry as "loading" | "error" | null | undefined} />
@@ -731,15 +874,21 @@ export function ResultsList(props: ResultsListProps) {
                 </p>
               )}
             </div>
-            <div className="sticky top-[9rem] h-[calc(100vh-11rem)]">
-              <div className="relative h-full">
+            <div
+              className="sticky"
+              style={{
+                top: "calc(var(--ht-header-h, 84px) + 5.5rem)",
+                height: "calc(100vh - var(--ht-header-h, 84px) - 8.5rem)",
+              }}
+            >
+              <div className="relative isolate h-full">
                 {mapNode}
                 {/* Podgląd wybranego obiektu NA mapie (brief §13C).
                     Konieczny, bo kliknięty znacznik często wskazuje hotel,
                     którego karty nie ma w widocznym fragmencie listy — bez
                     tego klik w znacznik nie dawał żadnej odpowiedzi. */}
                 {selectedCard && (
-                  <div className="absolute inset-x-3 bottom-3 z-10 animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
+                  <div className="absolute inset-x-3 bottom-3 z-40 animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
                     <div className="rounded-2xl bg-white shadow-2xl ring-1 ring-emerald-900/10">
                       {selectedCard}
                     </div>
@@ -747,9 +896,9 @@ export function ResultsList(props: ResultsListProps) {
                       type="button"
                       onClick={() => setSelectedId(null)}
                       aria-label="Zamknij podgląd obiektu"
-                      className="absolute -top-3 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900/80 text-white shadow-lg transition hover:bg-neutral-900"
+                      className="absolute -top-4 right-1 flex h-11 w-11 items-center justify-center rounded-full bg-neutral-900/85 text-white shadow-lg transition hover:bg-neutral-900"
                     >
-                      ×
+                      <X aria-hidden className="h-5 w-5" />
                     </button>
                   </div>
                 )}

@@ -11,28 +11,45 @@
 // i zobaczyć ten sam filtr zaznaczony w panelu. Żadnego drugiego źródła prawdy.
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { SlidersHorizontal } from "lucide-react";
+import {
+  Building2,
+  CalendarCheck,
+  CircleParking,
+  Coffee,
+  Dumbbell,
+  Home,
+  SlidersHorizontal,
+  Star,
+  Waves,
+  type LucideIcon,
+} from "lucide-react";
 import { useCallback } from "react";
 
 import { setViewMode } from "@/lib/hotels/view-mode-store";
 
-/** Chip = para (parametr URL, wartość). Nic więcej — filtry już istnieją. */
-type Chip =
+/** Chip = para (parametr URL, wartość) + ikona. Filtry już istnieją. */
+type Chip = { icon: LucideIcon } & (
   | { kind: "facility"; key: string; label: string }
-  | { kind: "param"; param: string; value: string; label: string };
+  | { kind: "param"; param: string; value: string; label: string }
+);
 
+// PUŁAPKA NAPRAWIONA 2026-08-08: wartość „apartament" (po polsku) nie istnieje
+// w `PROPERTY_TYPES` ani w `TYPE_ID_TO_CATEGORY` — chip „Apartamenty" ustawiał
+// `propertyType=apartament`, a filtr porównywał to z kategorią `apartment`,
+// więc ZAWSZE dawał zero wyników. Panel boczny używa „apartment" i to on ma
+// rację; oba muszą mówić tym samym słownikiem, bo dzielą parametr URL.
 const CHIPS: Chip[] = [
-  { kind: "param", param: "minStars", value: "4", label: "4 gwiazdki i więcej" },
-  { kind: "param", param: "cancel", value: "free", label: "Bezpłatne anulowanie" },
-  { kind: "facility", key: "parking", label: "Parking" },
-  { kind: "facility", key: "breakfast", label: "Śniadanie" },
-  { kind: "facility", key: "pool", label: "Basen" },
-  { kind: "facility", key: "gym", label: "Centrum fitness" },
-  { kind: "param", param: "propertyType", value: "hotel", label: "Hotele" },
-  { kind: "param", param: "propertyType", value: "apartament", label: "Apartamenty" },
+  { kind: "param", param: "minStars", value: "4", label: "4 gwiazdki i więcej", icon: Star },
+  { kind: "param", param: "cancel", value: "free", label: "Bezpłatne anulowanie", icon: CalendarCheck },
+  { kind: "facility", key: "parking", label: "Parking", icon: CircleParking },
+  { kind: "facility", key: "breakfast", label: "Śniadanie", icon: Coffee },
+  { kind: "facility", key: "pool", label: "Basen", icon: Waves },
+  { kind: "facility", key: "gym", label: "Centrum fitness", icon: Dumbbell },
+  { kind: "param", param: "propertyType", value: "hotel", label: "Hotele", icon: Building2 },
+  { kind: "param", param: "propertyType", value: "apartment", label: "Apartamenty", icon: Home },
 ];
 
-export function QuickFilters() {
+export function QuickFilters({ compact = false }: { compact?: boolean } = {}) {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -82,13 +99,13 @@ export function QuickFilters() {
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={compact ? "flex w-max items-center gap-2" : "flex flex-wrap items-center gap-2"}>
       <button
         type="button"
         // Powrót do listy odsłania pełny panel filtrów — to jedyne miejsce,
         // w którym mieszczą się wszystkie kryteria (cena, ocena, sieć, typ).
         onClick={() => setViewMode("list")}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 transition hover:border-emerald-400 hover:text-emerald-800"
+        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-emerald-700/30 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
       >
         <SlidersHorizontal aria-hidden className="h-4 w-4" />
         Wszystkie filtry
@@ -96,18 +113,20 @@ export function QuickFilters() {
 
       {CHIPS.map((chip) => {
         const aktywny = czyAktywny(chip);
+        const Icon = chip.icon;
         return (
           <button
             key={chip.kind === "facility" ? chip.key : `${chip.param}:${chip.value}`}
             type="button"
             onClick={() => przelacz(chip)}
             aria-pressed={aktywny}
-            className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium transition ${
+            className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium transition ${
               aktywny
-                ? "border-emerald-700 bg-emerald-700 text-white"
-                : "border-neutral-300 bg-white text-neutral-700 hover:border-emerald-400 hover:text-emerald-800"
+                ? "border-emerald-700 bg-emerald-700 text-white shadow-sm [&>svg]:text-white"
+                : "border-neutral-300 bg-white text-neutral-700 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800 [&>svg]:text-emerald-700/70"
             }`}
           >
+            <Icon aria-hidden className="h-4 w-4" />
             {chip.label}
           </button>
         );

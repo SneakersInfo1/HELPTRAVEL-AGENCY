@@ -17,6 +17,7 @@ import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
 
 import { CollapsibleSearchBar } from "./_components/collapsible-search-bar";
+import { HeaderOffsetProbe } from "./_components/header-offset";
 import { FiltersSidebar } from "./_components/filters-sidebar";
 import { ResultsLayout } from "./_components/results-layout";
 import { ResultsList } from "./_components/results-list";
@@ -127,12 +128,14 @@ export default async function HotelResultsPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      {/* Sticky search bar — sits BELOW the site-shell header (which is
-          itself sticky top-0 z-30). Without this offset the bar slides
-          underneath the header on scroll and only its bottom edge is
-          visible. Header logo h-12 (48px) + py-2 (16px) + mt-2 (8px) ≈ 72px
-          on mobile; sm: bumps to ≈ 84px because logo is sm:h-14. */}
-      <div className="sticky top-[72px] z-20 shadow-sm sm:top-[84px]">
+      <HeaderOffsetProbe />
+
+      {/* Pasek wyszukiwania przykleja się DOKŁADNIE pod nagłówkiem serwisu.
+          Offset idzie ze zmierzonej zmiennej `--ht-header-h` (patrz
+          HeaderOffsetProbe) — wcześniej były tu wpisane ręcznie 72/84 px, przez
+          co między nagłówkiem a paskiem prześwitywała treść. Zapasowa wartość
+          w `var()` obsługuje pierwszą klatkę przed pomiarem. */}
+      <div className="sticky z-20 pt-2" style={{ top: "var(--ht-header-h, 84px)" }}>
         <CollapsibleSearchBar
           // Re-key per search so the bar REMOUNTS on every submit and
           // re-derives `expanded` from the new `valid`. Without this, the

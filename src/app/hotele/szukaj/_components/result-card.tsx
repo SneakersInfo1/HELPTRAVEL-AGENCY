@@ -20,7 +20,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { UtensilsCrossed } from "lucide-react";
+import { ArrowRight, CalendarCheck, Landmark, MapPin, UtensilsCrossed, Waves } from "lucide-react";
 
 import { hotelDistanceLabels } from "@/lib/geo/distance-label";
 import { nightsWord, reviewsLabel, taxNoticeFromSlim, taxNoticeText } from "@/lib/hotels/domain/format";
@@ -66,6 +66,54 @@ interface OfferCard {
   };
 }
 
+/**
+ * Chipy z tego, co gość faktycznie dostaje.
+ *
+ * Wydzielone, bo renderują się w DWÓCH miejscach: do xl w kolumnie z nazwą,
+ * od xl w osobnej strefie karty. Jedna definicja, żeby dwa warianty nie
+ * rozjechały się przy pierwszej zmianie.
+ *
+ * Każdy chip pochodzi z danych dostawcy — wyżywienie i anulacja z taryfy,
+ * reszta z `facilityIds`. Nic nie jest dopisane „dla wyglądu": pusta karta
+ * jest lepsza niż karta z wymyśloną obietnicą.
+ */
+function Chipy({
+  boardName,
+  isFreeCancel,
+  freeCancelDate,
+  highlights,
+}: {
+  boardName?: string;
+  isFreeCancel: boolean;
+  freeCancelDate: string | null;
+  highlights: string[];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {boardName && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-600/15">
+          <UtensilsCrossed aria-hidden className="h-3 w-3" />
+          {localizeBoard(boardName)}
+        </span>
+      )}
+      {isFreeCancel && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-600/15">
+          <CalendarCheck aria-hidden className="h-3 w-3" />
+          {freeCancelDate ? `Bezpłatna anulacja do ${freeCancelDate}` : "Bezpłatna anulacja"}
+        </span>
+      )}
+      {highlights.map((h) => (
+        <span
+          key={h}
+          className="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-700"
+        >
+          {h}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 const formatDate = (iso: string | undefined): string | null => {
   if (!iso) return null;
   const d = new Date(iso);
@@ -86,6 +134,8 @@ export function ResultCard({
   badges,
   imagePriority = false,
   priceSlot,
+  dense = false,
+  compact = false,
 }: {
   offer: OfferCard;
   searchQuery: string;
@@ -93,6 +143,29 @@ export function ResultCard({
   badges?: BadgeKind;
   imagePriority?: boolean;
   priceSlot?: ReactNode;
+  /**
+   * Karta stoi w WĄSKIEJ kolumnie (widok mapy, podgląd wybranego obiektu),
+   * mimo że okno jest szerokie.
+   *
+   * Punkty przełamania Tailwinda mierzą OKNO, nie kontener. W trybie mapy
+   * karta ma ~955 px przy oknie 1920 px, więc bez tej flagi włączał się układ
+   * trzystrefowy zaprojektowany na 1400 px: nazwa hotelu łamała się na trzy
+   * linie, a chipy schodziły do pionowej kolumny. Flaga jest jawna i czytelna
+   * w miejscu użycia — zapytania kontenerowe rozwiązałyby to elegancko, ale
+   * ukryłyby zależność w CSS.
+   */
+  dense?: boolean;
+  /**
+   * Wariant PODGLĄDU na mapie mobilnej — karta ma zajmować pas u dołu, nie pół
+   * telefonu.
+   *
+   * Pełna karta ma na 390 px zdjęcie 4:3, komplet chipów i odległości; jako
+   * podgląd wybranego znacznika zasłaniała mapę prawie w całości, więc gość
+   * tracił z oczu to, na co właśnie patrzył. Tu zdjęcie jest miniaturą obok
+   * treści, a odległości i nadmiar chipów schodzą — wszystko to jest na stronie
+   * obiektu, jedno dotknięcie dalej.
+   */
+  compact?: boolean;
 }) {
   const rate = offer.cheapestRate;
   const total = rate ? formatPLN(rate.totalAmount, rate.currency) : null;
@@ -114,17 +187,32 @@ export function ResultCard({
     offer.city,
     offer.countryCode ?? offer.country,
   );
-  const highlights = offerHighlights(offer.facilityIds);
+  // 6 zamiast domyślnych 4: od xl chipy mają własną strefę karty i przy
+  // czterech pozycjach ta strefa świeciła pustką. Źródło danych bez zmian —
+  // pokazujemy więcej TEGO, co dostawca faktycznie podał, nie więcej ozdób.
+  const highlights = offerHighlights(offer.facilityIds, 6);
 
   return (
     <Link
       href={`/hotele/${encodeURIComponent(offer.hotelId)}?${searchQuery}`}
       aria-label={`Zobacz ofertę: ${offer.name}, ${offer.city}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.06)] transition-colors transition-shadow duration-200 hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(16,84,48,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:flex-row"
+      // `sm:min-h-*` — karta ma WYSOKOŚĆ, nie tylko treść. Bez tego wysokość
+      // dyktowała najkrótsza możliwa kolumna tekstu (~130 px na 1920 px) i rząd
+      // kart czytał się jak tabela, a nie jak oferty (zgłoszenie 2026-08-08:
+      // „oferty zrobiły się ściśnięte", „pole oferty ma wyglądać pełniej").
+      className={`group flex overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-[0_4px_16px_rgba(16,84,48,0.06)] transition-colors transition-shadow duration-200 hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(16,84,48,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
+        compact ? "flex-row" : "flex-col sm:min-h-[12.5rem] sm:flex-row xl:min-h-[14rem]"
+      }`}
     >
       {/* Zdjęcie. Szersze od `lg`, bo karta ma teraz ~1300 px i kwadrat 256 px
           wyglądał jak znaczek doklejony do ściany tekstu. */}
-      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-neutral-100 sm:aspect-auto sm:w-56 lg:w-72 xl:w-80">
+      <div
+        className={`relative shrink-0 overflow-hidden bg-neutral-100 ${
+          compact
+            ? "aspect-square w-24 self-stretch sm:w-28"
+            : "aspect-[4/3] w-full sm:aspect-auto sm:w-60 lg:w-80 xl:w-[22rem]"
+        }`}
+      >
         <HotelCardImage
           thumbnailUrl={offer.thumbnailUrl}
           name={offer.name}
@@ -135,7 +223,7 @@ export function ResultCard({
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/30 to-transparent" />
         {/* Serce w rogu zdjęcia — wzorzec, którego gość szuka odruchowo.
             Wewnątrz linku karty, więc przycisk zatrzymuje zdarzenie sam. */}
-        <div className="absolute right-2 top-2">
+        <div className={compact ? "hidden" : "absolute right-2 top-2"}>
           <FavoriteButton
             hotel={{
               id: offer.hotelId,
@@ -163,90 +251,118 @@ export function ResultCard({
         </div>
       </div>
 
-      {/* Treść: informacje | szyna cenowa (od lg) */}
-      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,1fr)_248px] lg:items-stretch lg:gap-6">
-        {/* ── Kolumna informacji ───────────────────────────────────────── */}
+      {/* UKŁAD TREŚCI (przebudowa 2026-08-08).
+          Wcześniej: `[1fr | 248px]`, czyli na 1920 px kolumna informacji miała
+          ~1090 px, a mieściła nazwę i jeden rządek chipów — środek karty był
+          pustym polem. Zmierzone: karta 1408 px, treść kończyła się w połowie.
+          Teraz od xl wchodzi TRZECIA strefa: nazwa i lokalizacja | udogodnienia
+          | szyna cenowa. Ta sama treść, ta sama prawda o danych — tylko
+          rozłożona tak, że szerokość na coś idzie. */}
+      <div
+        className={`flex min-w-0 flex-1 flex-col ${compact ? "gap-1.5 p-3" : "gap-3 p-4 sm:p-5 lg:grid lg:items-stretch lg:gap-6"} ${
+          compact
+            ? ""
+            : dense
+              ? "lg:grid-cols-[minmax(0,1fr)_15rem]"
+              : "lg:grid-cols-[minmax(0,1fr)_17rem] xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_18rem]"
+        }`}
+      >
+        {/* ── Strefa 1: tożsamość obiektu ──────────────────────────────── */}
         <div className="flex min-w-0 flex-col gap-2">
-          {/* Ograniczenie szerokości TEGO wiersza jest celowe. Karta ma na
-              1920 px około 1400 px, a `justify-between` bez limitu odpychało
-              ocenę o ~600 px od nazwy hotelu — dwie informacje, które czyta
-              się razem, przestawały tworzyć parę. Chipy poniżej korzystają
-              z pełnej szerokości kolumny. */}
-          <div className="flex flex-wrap items-start justify-between gap-2 xl:max-w-[46rem]">
+          {/* `flex-nowrap`, nie `flex-wrap`. Przy zawijaniu ocena raz stała
+              obok nazwy, a raz zeskakiwała pod nią — zależnie od DŁUGOŚCI
+              NAZWY HOTELU. Rząd kart wyglądał wtedy jak zbiór różnych
+              szablonów zamiast jednego. Nazwa dostaje `min-w-0` i zawija się
+              sama, ocena `shrink-0` i zostaje na miejscu. */}
+          <div className="flex flex-nowrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="truncate text-base font-semibold text-neutral-900 sm:text-lg">
+              <h3
+                className={`font-bold leading-snug text-neutral-900 ${
+                  // W podglądzie na mapie nazwa musi zająć najwyżej dwie linie —
+                  // „All Senses Nautica Blue Exclusive Resort & Spa - All
+                  // Inclusive" rozłożyło się na cztery i zepchnęło cenę poza pas.
+                  compact ? "line-clamp-2 text-sm" : "text-base sm:text-lg xl:text-xl"
+                }`}
+              >
                 {offer.name}
               </h3>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-neutral-500">
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-600">
                 {offer.stars !== undefined && offer.stars > 0 && (
                   <span className="text-amber-500" aria-label={`${offer.stars} gwiazdek`}>
                     {"★".repeat(Math.round(offer.stars))}
                   </span>
                 )}
-                <span>
+                <span className="inline-flex items-center gap-1">
+                  <MapPin aria-hidden className="h-3.5 w-3.5 text-emerald-600" />
                   {offer.city}
                   {offer.country ? `, ${localizeCountry(offer.country)}` : ""}
                 </span>
               </div>
-              {(distances.center || distances.beach) && (
-                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-neutral-600">
-                  <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-600">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 2a5 5 0 0 0-5 5c0 3.36 3.69 7.39 4.65 8.39a.48.48 0 0 0 .7 0C11.31 14.39 15 10.36 15 7a5 5 0 0 0-5-5zm0 6.8A1.8 1.8 0 1 1 10 5.2a1.8 1.8 0 0 1 0 3.6z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  {[distances.center, distances.beach].filter(Boolean).join(" · ")}
+              {!compact && (distances.center || distances.beach) && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-neutral-700">
+                  {distances.center && (
+                    <span className="inline-flex items-center gap-1">
+                      <Landmark aria-hidden className="h-3.5 w-3.5 text-emerald-600" />
+                      {distances.center}
+                    </span>
+                  )}
+                  {distances.beach && (
+                    <span className="inline-flex items-center gap-1">
+                      <Waves aria-hidden className="h-3.5 w-3.5 text-emerald-600" />
+                      {distances.beach}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
-            {/* Ocena zostaje przy nazwie — to para, którą wzrok czyta razem.
-                Na lg szyna cenowa jest osobno po prawej, więc nie kolidują. */}
+            {/* Ocena — WIĘKSZA i zwarta. Wcześniej mała pigułka z liczbą
+                w jeszcze mniejszym prostokącie ginęła na tle nazwy hotelu,
+                choć to drugi po cenie powód, dla którego ktoś klika. */}
             {offer.rating !== undefined && offer.rating > 0 && (
-              <div className="flex shrink-0 flex-col items-end">
-                <div className="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-emerald-800">
-                  <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-xs font-bold text-white">
-                    {offer.rating.toFixed(1)}
-                  </span>
-                  <span className="text-xs font-semibold">{ratingLabel(offer.rating)}</span>
-                </div>
-                {offer.reviewCount !== undefined && offer.reviewCount > 0 && (
-                  <span className="mt-0.5 text-[10px] text-neutral-500">{reviewsLabel(offer.reviewCount)}</span>
-                )}
+              <div className="flex shrink-0 items-center gap-2 rounded-xl bg-emerald-50 px-2.5 py-1.5 ring-1 ring-emerald-600/15">
+                <span className="rounded-lg bg-emerald-700 px-2 py-1 text-sm font-bold tabular-nums text-white">
+                  {offer.rating.toFixed(1)}
+                </span>
+                <span className="leading-tight">
+                  <span className="block text-xs font-bold text-emerald-900">{ratingLabel(offer.rating)}</span>
+                  {offer.reviewCount !== undefined && offer.reviewCount > 0 && (
+                    <span className="block text-[10px] text-emerald-800/70">{reviewsLabel(offer.reviewCount)}</span>
+                  )}
+                </span>
               </div>
             )}
           </div>
 
-          {/* Chipy: wyżywienie i anulacja z taryfy, udogodnienia z facilityIds.
-              Wszystko z danych dostawcy — nic nie jest dopisane „dla wyglądu". */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {rate?.boardName && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-900">
-                <UtensilsCrossed aria-hidden className="h-3 w-3" />
-                {localizeBoard(rate.boardName)}
-              </span>
-            )}
-            {isFreeCancel && (
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800">
-                {freeCancelDate ? `Bezpłatna anulacja do ${freeCancelDate}` : "Bezpłatna anulacja"}
-              </span>
-            )}
-            {highlights.map((h) => (
-              <span
-                key={h}
-                className="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-medium text-neutral-700"
-              >
-                {h}
-              </span>
-            ))}
+          {/* Na małych i średnich ekranach chipy zostają tutaj — trzecia
+              strefa istnieje dopiero od xl, gdzie jest na nią miejsce. */}
+          <div className={compact ? "hidden" : dense ? "" : "xl:hidden"}>
+            <Chipy
+              boardName={rate?.boardName}
+              isFreeCancel={isFreeCancel}
+              freeCancelDate={freeCancelDate}
+              highlights={highlights}
+            />
           </div>
         </div>
 
-        {/* ── Szyna cenowa ─────────────────────────────────────────────────
+        {/* ── Strefa 2: co gość dostaje (tylko xl) ─────────────────────── */}
+        <div className={dense ? "hidden" : "hidden min-w-0 xl:block"}>
+          <Chipy
+            boardName={rate?.boardName}
+            isFreeCancel={isFreeCancel}
+            freeCancelDate={freeCancelDate}
+            highlights={highlights}
+          />
+        </div>
+
+        {/* ── Strefa 3: szyna cenowa ───────────────────────────────────────
             Od lg wydzielona pionową linią i wyrównana do dołu: cena i CTA
             zawsze w tym samym miejscu, niezależnie od długości nazwy hotelu. */}
-        <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-2 lg:mt-0 lg:flex-col lg:items-end lg:justify-end lg:gap-2 lg:border-l lg:border-neutral-100 lg:pl-6 lg:pt-0">
+        <div className={`mt-auto flex flex-wrap items-end justify-between gap-3 ${
+            compact
+              ? "gap-2 pt-1"
+              : "pt-2 lg:mt-0 lg:flex-col lg:items-stretch lg:justify-end lg:gap-3 lg:border-l lg:border-neutral-100 lg:pl-6 lg:pt-0"
+          }`}>
           {rate ? (
             <div className="lg:text-right">
               {/* Przecena — tylko przy REALNEJ obniżce tej samej taryfy.
@@ -262,11 +378,11 @@ export function ResultCard({
                 </div>
               )}
               {/* Hierarchia §8.5: cena CAŁEGO pobytu dominuje, „za noc" pomocnicza. */}
-              <div className="text-xl font-bold text-emerald-700 xl:text-2xl">{total}</div>
-              <div className="text-xs text-neutral-600">
-                za {nights} {nightsWord(nights)} · {perNight} / noc
+              <div className={`font-bold leading-none text-emerald-700 ${compact ? "text-xl" : "text-2xl xl:text-[1.75rem]"}`}>{total}</div>
+              <div className="mt-1.5 text-xs text-neutral-600">
+                za {nights} {nightsWord(nights)} · <span className="font-semibold">{perNight}</span> / noc
               </div>
-              {taxText && <div className="text-[11px] text-neutral-500">{taxText}</div>}
+              {taxText && <div className="mt-0.5 text-[11px] text-neutral-500">{taxText}</div>}
             </div>
           ) : (
             <div className="min-w-[10rem] lg:w-full">{priceSlot}</div>
@@ -275,9 +391,10 @@ export function ResultCard({
               cała karta. Przycisk zostaje, bo kotwiczy wzrok. */}
           <span
             aria-hidden
-            className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors group-hover:bg-emerald-700 lg:w-full"
+            className={`inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-sm transition-colors group-hover:bg-emerald-700 ${compact ? "px-4" : "px-5 lg:w-full"}`}
           >
             Zobacz pokoje
+            <ArrowRight aria-hidden className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </span>
         </div>
       </div>
