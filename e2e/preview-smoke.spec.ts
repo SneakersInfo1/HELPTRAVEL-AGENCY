@@ -72,13 +72,21 @@ async function stanPaska(page: Page) {
   }, PASEK);
 }
 
-/** Tożsamość paska w drzewie — do porównania Lista vs Mapa. */
+/**
+ * Tożsamość paska w drzewie — do porównania Lista vs Mapa.
+ *
+ * Ścieżka liczona TYLKO do `<main>`. Wersja sięgająca `<body>` była chwiejna:
+ * `next dev` dokłada do body własną nakładkę (przycisk narzędzi, overlay
+ * błędów), a liczba tych węzłów zmienia się w trakcie sesji — indeks
+ * rodzeństwa najwyższej ramki skakał z 3 na 23 i test wywracał się, choć
+ * w DOM aplikacji nic się nie ruszyło.
+ */
 async function tozsamoscPaska(page: Page) {
   return page.evaluate((sel) => {
     const el = document.querySelector(sel) as HTMLElement;
     const kroki: string[] = [];
     let n: HTMLElement | null = el;
-    while (n && n.tagName !== "BODY") {
+    while (n && n.tagName !== "MAIN" && n.tagName !== "BODY") {
       kroki.push(`${n.tagName}:${[...(n.parentElement?.children ?? [])].indexOf(n)}`);
       n = n.parentElement;
     }

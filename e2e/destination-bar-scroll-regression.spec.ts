@@ -188,10 +188,19 @@ test.describe("Pasek kierunku — regresja przewijania (desktop 1920×1080 @ 100
           y: Math.round(el.getBoundingClientRect().top + window.scrollY),
           position: getComputedStyle(el).position,
           // Ścieżka w drzewie — łapie przeniesienie paska w inne miejsce DOM.
+          //
+          // Liczona TYLKO do `<main>`, nie do `<body>`. Wersja sięgająca body
+          // była chwiejna: `next dev` dokłada do body własną nakładkę
+          // („Open Next.js Dev Tools", overlay błędów), a liczba tych węzłów
+          // zmienia się w trakcie sesji — indeks rodzeństwa najwyższej ramki
+          // skakał wtedy z 3 na 23 i test wywracał się, choć w DOM aplikacji
+          // nic się nie ruszyło. Zakres do `<main>` opisuje dokładnie to,
+          // czego test pilnuje: czy pasek stoi w tym samym miejscu NASZEGO
+          // drzewa.
           sciezka: (() => {
             const kroki: string[] = [];
             let n: HTMLElement | null = el;
-            while (n && n.tagName !== "BODY") {
+            while (n && n.tagName !== "MAIN" && n.tagName !== "BODY") {
               kroki.push(`${n.tagName}:${[...(n.parentElement?.children ?? [])].indexOf(n)}`);
               n = n.parentElement;
             }
