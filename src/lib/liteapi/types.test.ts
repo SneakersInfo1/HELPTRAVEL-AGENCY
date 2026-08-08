@@ -190,6 +190,27 @@ test("szczegóły: checkinCheckoutTimes w snake_case przechodzi (godzina zameldo
   assert.equal(parsed.success && parsed.data.checkinCheckoutTimes?.checkout, "12:00 PM");
 });
 
+test("szczegóły: instructions jako OBIEKTY nie wywracają strony hotelu", () => {
+  // INCYDENT 2026-08-08 (Trianta Hotel Apartments, lp80e50). Schemat deklarował
+  // `instructions: z.array(z.string())`, a dostawca zwrócił listę obiektów.
+  // Zod odrzucał wtedy CAŁĄ odpowiedź `/data/hotel`, więc gość, który kliknął
+  // ofertę z ceną na liście, dostawał ekran „Mamy chwilowy problem".
+  // Pola nigdzie nie renderujemy — nie ma prawa blokować strony.
+  const parsed = LiteApiHotelDetailSchema.safeParse({
+    ...DETAIL_BASE,
+    checkinCheckoutTimes: {
+      checkin_start: "03:00 PM",
+      checkout: "11:00 AM",
+      instructions: [{ text: "Zameldowanie w recepcji", type: "checkin" }],
+      special_instructions: { note: "Kontakt telefoniczny przed przyjazdem" },
+    },
+  });
+  assert.equal(parsed.success, true);
+  // Godziny, które NAPRAWDĘ pokazujemy, mają przejść nietknięte.
+  assert.equal(parsed.success && parsed.data.checkinCheckoutTimes?.checkin_start, "03:00 PM");
+  assert.equal(parsed.success && parsed.data.checkinCheckoutTimes?.checkout, "11:00 AM");
+});
+
 test("szczegóły: rooms z pełnym kształtem — zdjęcia, metraż, łóżka", () => {
   const parsed = LiteApiHotelDetailSchema.safeParse({
     ...DETAIL_BASE,

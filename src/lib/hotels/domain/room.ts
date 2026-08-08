@@ -102,6 +102,55 @@ export function roomForRate(
 }
 
 /**
+ * Indeks „nazwa taryfy → id pokoju" z OSOBNEGO, wzbogacającego zapytania.
+ *
+ * POWÓD ISTNIENIA (zmierzone 2026-08-08 na żywym API, Rodos, 2 przebiegi
+ * z identycznym wynikiem co do jednej taryfy):
+ *
+ * | zapytanie                 | hotele z dostępnością | taryfy |
+ * |---------------------------|----------------------|--------|
+ * | bez `roomMapping`         | 40 / 50              | 5031   |
+ * | z `roomMapping: true`     | 37 / 50              |  355   |
+ *
+ * `roomMapping: true` zwraca WYŁĄCZNIE te taryfy, które dostawca potrafił
+ * przypiąć do wpisu w `rooms[]`. Dla części obiektów tego przypięcia nie ma
+ * wcale — Trinity Boutique Hotel miał 12 taryf bez mapowania i **0** z nim,
+ * Moschos Hotel 2 → 0. Strona hotelu pisała wtedy „Brak dostępności dla
+ * wybranych dat", choć lista wyników pokazywała cenę: dokładnie to zgłoszenie
+ * o „ofertach widmo". Hotel Mediterranean tracił 200 taryf i 41 nazw pokoi
+ * na rzecz JEDNEJ — gość widział jedną opcję zamiast czterdziestu.
+ *
+ * Dlatego mapowanie przestaje decydować o dostępności i staje się wyłącznie
+ * OZDOBĄ: dostępność bierzemy z zapytania bez `roomMapping`, a stąd dokładamy
+ * zdjęcia pokoju tam, gdzie dostawca powiązanie zna.
+ *
+ * KLUCZ ZŁĄCZENIA to nazwa taryfy, nie `roomTypeId`. Zmierzone: `roomTypeId`
+ * bywa NIESTABILNY między dwoma wywołaniami (lp6558036a: 0/5 trafień), a nazwa
+ * taryfy trafia 4/5 i 2/2. To ta sama wielkość, po której `group-rates.ts`
+ * i tak już grupuje pokoje, więc nie wprowadzamy drugiego pojęcia tożsamości.
+ */
+export function buildRoomIdByRateName(mappedRoomTypes: LiteApiRoomType[]): Map<string, string> {
+  const byName = new Map<string, string>();
+  for (const rt of mappedRoomTypes ?? []) {
+    for (const rate of rt.rates ?? []) {
+      const id = rate.mappedRoomId;
+      if (id === null || id === undefined) continue;
+      const key = normalizeRateName(rate.name);
+      // Pierwsze powiązanie wygrywa: dostawca powtarza tę samą nazwę przy
+      // wielu wariantach cenowych tego samego pokoju i wszystkie wskazują ten
+      // sam `mappedRoomId` (sprawdzone), więc nadpisywanie nic nie wnosi.
+      if (key && !byName.has(key)) byName.set(key, String(id));
+    }
+  }
+  return byName;
+}
+
+/** Wspólna normalizacja nazwy taryfy — jedno miejsce dla obu stron złączenia. */
+export function normalizeRateName(name: string | null | undefined): string {
+  return (name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
  * Buduje listę ofert dla strony hotelu: taryfy + dopięte profile pokoi.
  *
  * Nie grupuje i nie deduplikuje — to robi `lib/hotels/group-rates.ts`, które

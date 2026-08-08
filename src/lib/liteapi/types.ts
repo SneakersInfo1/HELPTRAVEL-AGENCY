@@ -247,8 +247,22 @@ export const LiteApiHotelDetailSchema = LiteApiHotelSchema.extend({
       checkinEnd: z.string().optional(),
       checkin_start: z.string().nullish(),
       checkin_end: z.string().nullish(),
-      instructions: z.array(z.string()).nullish(),
-      special_instructions: z.string().nullish(),
+      // `z.unknown()`, NIE `z.string()`. Ta jedna linijka wywracała CAŁĄ stronę
+      // hotelu (incydent 2026-08-08, Trianta Hotel Apartments `lp80e50`):
+      // dostawca zwraca dla części obiektów listę OBIEKTÓW, a nie napisów.
+      // Zod odrzucał wtedy całą odpowiedź `/data/hotel` → LITEAPI_VALIDATION →
+      // `fetchDetailForPage` traktował to jako błąd przejściowy i rzucał dalej
+      // → gość klikał ofertę z ceną i dostawał „Mamy chwilowy problem".
+      //
+      // Z punktu widzenia gościa to była druga odmiana „oferty widmo": lista
+      // obiecuje hotel, a strona obiektu się nie otwiera.
+      //
+      // Tego pola NIGDZIE nie renderujemy — jego kształt to sprawa dostawcy.
+      // Ta sama lekcja co przy `rooms: null` (patrz nota o polach `.nullish()`
+      // wyżej): pole, którego nie pokazujemy, nie ma prawa zablokować strony.
+      instructions: z.array(z.unknown()).nullish(),
+      // To samo zabezpieczenie z tego samego powodu — pole nieużywane w UI.
+      special_instructions: z.unknown().nullish(),
     })
     .optional(),
   currency: z.string().optional(),

@@ -16,13 +16,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { BedDouble, ImageOff, Ruler, Users } from "lucide-react";
+import { BedDouble, CalendarX2, ImageOff, Ruler, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { RoomProfile } from "@/lib/hotels/domain/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
 import { guestsLabel, optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
 import { honestDiscountFrom, mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
+import { normalizeRateName } from "@/lib/hotels/domain/room";
 import { topRoomAmenities } from "@/lib/hotels/domain/room-description";
 import { groupRates, mergeGroupsByDisplayName, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
@@ -37,12 +38,22 @@ interface Props {
   roomTypes: LiteApiRoomType[];
   /**
    * Profile pokoi z /data/hotel, zaindeksowane po `rooms[].id`.
-   * Taryfa trafia w swój pokój przez `rate.mappedRoomId` — bez zgadywania po
-   * nazwie (nazwy taryf są angielskie, nazwy pokoi bywają polskie).
    * Pusta mapa = brak powiązań → karty bez zdjęć, ale nigdy ze zdjęciem hotelu.
    */
   roomsById?: Record<string, RoomProfile>;
+  /**
+   * „nazwa taryfy → rooms[].id" z RÓWNOLEGŁEGO zapytania z `roomMapping: true`.
+   *
+   * Powiązanie przyszło osobnym torem, bo `roomMapping` na głównym zapytaniu
+   * wycinał dostępność (patrz komentarz przy `fetchRoomsAndMapping`). To nadal
+   * NIE jest zgadywanie po nazwie: id pochodzi od dostawcy, nazwa służy tylko
+   * do zszycia dwóch jego odpowiedzi.
+   */
+  roomIdByRateName?: Record<string, string>;
   searchQuery: string;
+  /** Do linku „zmień termin", gdy dostawca nie ma nic na te daty. */
+  checkin: string;
+  checkout: string;
   nights: number;
   currency: string;
   // BOOKING_FLOW_MODE, resolved server-side on the hotel page. When false the
@@ -64,7 +75,10 @@ export function RoomsSection({
   hotelId,
   roomTypes,
   roomsById,
+  roomIdByRateName,
   searchQuery,
+  checkin,
+  checkout,
   nights,
   currency,
   bookingLive,
@@ -79,12 +93,12 @@ export function RoomsSection({
 
   if (!groups.length) {
     return (
-      <section id="rooms" className="rounded-2xl border border-neutral-200 bg-white p-6">
-        <h2 className="text-xl font-bold text-neutral-900">Pokoje</h2>
-        <p className="mt-2 text-sm text-neutral-600">
-          Brak dostępności dla wybranych dat. Spróbuj innego terminu lub mniejszej liczby gości.
-        </p>
-      </section>
+      <NoRooms
+        hotelId={hotelId}
+        checkin={checkin}
+        checkout={checkout}
+        searchQuery={searchQuery}
+      />
     );
   }
 
@@ -96,7 +110,7 @@ export function RoomsSection({
           key={group.key}
           hotelId={hotelId}
           group={group}
-          room={roomProfileForGroup(group, roomsById)}
+          room={roomProfileForGroup(group, roomsById, roomIdByRateName)}
           searchQuery={searchQuery}
           nights={nights}
           currency={currency}
@@ -110,23 +124,100 @@ export function RoomsSection({
 /**
  * Wybiera profil pokoju dla grupy taryf.
  *
- * Grupa powstaje z kilku taryf tego samego pokoju, więc bierzemy `mappedRoomId`
- * z PIERWSZEJ opcji, która je ma (opcje są posortowane od najtańszej).
- * Gdy żadna nie ma powiązania → `null` → karta bez zdjęcia. Nigdy nie
- * podstawiamy zdjęcia hotelu (brief §12.1).
+ * Dwa źródła powiązania, w tej kolejności:
+ *  1. `rate.mappedRoomId` — gdy taryfa niesie je wprost (zapytanie ze stawkami
+ *     tego nie ustawia, ale kontrakt na to pozwala i nic nie kosztuje),
+ *  2. indeks „nazwa taryfy → id pokoju" z RÓWNOLEGŁEGO zapytania mapującego.
+ *
+ * Gdy żadne nie trafi → `null` → karta bez zdjęcia. Nigdy nie podstawiamy
+ * zdjęcia hotelu (brief §12.1): gość ma zobaczyć pokój, który kupuje, albo nic.
  */
 function roomProfileForGroup(
   group: RoomGroup,
   roomsById: Record<string, RoomProfile> | undefined,
+  roomIdByRateName: Record<string, string> | undefined,
 ): RoomProfile | null {
   if (!roomsById) return null;
   for (const option of group.options) {
-    const id = option.rate.mappedRoomId;
-    if (id === null || id === undefined) continue;
-    const room = roomsById[String(id)];
-    if (room) return room;
+    const direct = option.rate.mappedRoomId;
+    if (direct !== null && direct !== undefined) {
+      const room = roomsById[String(direct)];
+      if (room) return room;
+    }
+    const byName = roomIdByRateName?.[normalizeRateName(option.rate.name)];
+    if (byName) {
+      const room = roomsById[byName];
+      if (room) return room;
+    }
   }
   return null;
+}
+
+/**
+ * Dostawca nie ma ANI JEDNEJ taryfy na te daty.
+ *
+ * Do 2026-08-08 ten stan pojawiał się także wtedy, gdy pokoje BYŁY wolne —
+ * wycinał je parametr `roomMapping` (patrz `fetchRoomsAndMapping`). Po tamtej
+ * naprawie komunikat znaczy dokładnie to, co mówi, więc może zaproponować
+ * konkretne wyjście zamiast zostawiać gościa na ślepej uliczce.
+ */
+function NoRooms({
+  hotelId,
+  checkin,
+  checkout,
+  searchQuery,
+}: {
+  hotelId: string;
+  checkin: string;
+  checkout: string;
+  searchQuery: string;
+}) {
+  const przesun = (dni: number): string => {
+    const d = new Date(`${checkin}T00:00:00Z`);
+    const o = new Date(`${checkout}T00:00:00Z`);
+    if (Number.isNaN(d.getTime()) || Number.isNaN(o.getTime())) return "";
+    d.setUTCDate(d.getUTCDate() + dni);
+    o.setUTCDate(o.getUTCDate() + dni);
+    const p = new URLSearchParams(searchQuery);
+    p.set("checkin", d.toISOString().slice(0, 10));
+    p.set("checkout", o.toISOString().slice(0, 10));
+    return `/hotele/${encodeURIComponent(hotelId)}?${p.toString()}`;
+  };
+  const tydzienPozniej = przesun(7);
+
+  return (
+    <section id="rooms" className="rounded-2xl border border-neutral-200 bg-white p-6 sm:p-8">
+      <h2 className="text-xl font-bold text-neutral-900">Pokoje i ceny</h2>
+      <div className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200/70">
+        <CalendarX2 aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+        <div>
+          <p className="text-sm font-semibold text-amber-950">
+            Ten obiekt nie ma wolnych pokoi w wybranym terminie
+          </p>
+          <p className="mt-1 text-sm text-amber-900/80">
+            Dostępność potrafi się zmienić w ciągu doby — sprawdź inny termin albo wróć do listy
+            hoteli w tej okolicy.
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {tydzienPozniej && (
+          <Link
+            href={tydzienPozniej}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
+          >
+            Sprawdź tydzień później
+          </Link>
+        )}
+        <Link
+          href="/hotele/szukaj"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-800 transition hover:border-emerald-400 hover:text-emerald-800"
+        >
+          Wróć do wyników
+        </Link>
+      </div>
+    </section>
+  );
 }
 
 /** Metryki pokoju w jednym wierszu — pomijamy te, których dostawca nie podał. */
@@ -239,7 +330,17 @@ function RoomGroupCard({
             type="button"
             onClick={() => setDetailOpen(true)}
             aria-label={`Zobacz szczegóły pokoju: ${displayName}`}
-            className="group relative block aspect-[16/10] w-full overflow-hidden rounded-xl bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+            // Kafel BEZ zdjęcia jest niski, ze zdjęciem — proporcji 16:10.
+            //
+            // Po naprawie dostępności (patrz `fetchRoomsAndMapping`) na stronie
+            // pojawiają się WSZYSTKIE taryfy dostawcy, także te, których nie ma
+            // jak powiązać z wpisem w `rooms[]` — czyli bez zdjęcia. Pusty
+            // prostokąt 16:10 na telefonie zjadał wtedy pół ekranu i wyglądał
+            // jak zepsuty obrazek. Brak zdjęcia ma być cichym stwierdzeniem
+            // faktu, nie dziurą w układzie.
+            className={`group relative block w-full overflow-hidden rounded-xl bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
+              room?.photos.length ? "aspect-[16/10]" : "h-20"
+            }`}
           >
             {room?.photos.length ? (
               // `sizes` policzone z realnej geometrii: kolumna to 34% powłoki
@@ -261,10 +362,11 @@ function RoomGroupCard({
               />
             ) : (
               <span
-                className="flex h-full w-full items-center justify-center text-neutral-400"
+                className="flex h-full w-full items-center justify-center gap-2 text-xs font-medium text-neutral-500"
                 aria-label="Brak zdjęcia tego pokoju"
               >
-                <ImageOff aria-hidden className="h-8 w-8" />
+                <ImageOff aria-hidden className="h-4 w-4" />
+                Hotel nie udostępnił zdjęcia tego pokoju
               </span>
             )}
             {room && room.photos.length > 1 && (

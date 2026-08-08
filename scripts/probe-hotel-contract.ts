@@ -12,6 +12,13 @@
 // Skrypt jest READ-ONLY (tylko GET /data/* i POST /hotels/rates — rates nie
 // tworzy rezerwacji ani nie blokuje inwentarza). Nie wywołuje prebook/book.
 
+// `export {}` robi z pliku MODUŁ. Bez tego TypeScript widzi wszystkie skrypty
+// w `scripts/` w jednym zakresie globalnym i `API_BASE` koliduje z tym samym
+// stałym w `build-liteapi-reference.ts` — `tsc --noEmit` zgłaszał
+// „Cannot redeclare block-scoped variable" mimo że `tsx` uruchamiał skrypt bez
+// problemu (każdy plik jest tam osobnym modułem CommonJS).
+export {};
+
 const API_BASE = (process.env.LITEAPI_BASE_URL?.trim() || "https://api.liteapi.travel/v3.0").replace(/\/+$/, "");
 const KEY = process.env.LITEAPI_PROD_PRIVATE_KEY?.trim() || process.env.LITEAPI_API_KEY?.trim();
 

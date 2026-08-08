@@ -17,7 +17,7 @@ import { getHotelReviews, selectReviews, type DisplayReview } from "@/lib/liteap
 import { formatHotelTime, taxNoticeText } from "@/lib/hotels/domain/format";
 import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { reviewCategories, reviewHighlights, sentimentUpdatedAt } from "@/lib/hotels/domain/review";
-import { indexRoomsById } from "@/lib/hotels/domain/room";
+import { buildRoomIdByRateName, indexRoomsById } from "@/lib/hotels/domain/room";
 import { HOTEL_SHELL } from "@/lib/hotels/layout";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { lowest30dNotice, lowestPrice30d, recordPrice } from "@/lib/hotels/price-history";
@@ -120,14 +120,16 @@ async function fetchDetailForPage(hotelId: string) {
   }
 }
 
-async function fetchRates(args: {
+interface RatesArgs {
   hotelId: string;
   checkin: string;
   checkout: string;
   adults: number;
   rooms: number;
   children: number[];
-}): Promise<LiteApiRoomType[]> {
+}
+
+async function fetchRates(args: RatesArgs, roomMapping: boolean): Promise<LiteApiRoomType[]> {
   try {
     const res = await getRates({
       hotelIds: [args.hotelId],
@@ -135,17 +137,49 @@ async function fetchRates(args: {
       checkout: args.checkout,
       currency: "PLN",
       occupancies: Array.from({ length: args.rooms }, () => ({ adults: args.adults, children: args.children })),
-      // Każda taryfa dostaje `mappedRoomId` → pozwala pokazać zdjęcia, metraż
-      // i łóżka JEJ pokoju (rooms[] z /data/hotel) zamiast karty bez zdjęcia.
-      // Włączone tylko tutaj — lista wyników go nie potrzebuje i nie chcemy
-      // ruszać jej cache (patrz komentarz przy GetRatesInput.roomMapping).
-      roomMapping: true,
+      ...(roomMapping ? { roomMapping: true } : {}),
     });
     return res.data.find((r) => r.hotelId === args.hotelId)?.roomTypes ?? [];
   } catch (err) {
-    if (err instanceof LiteApiError) console.warn("[hotele/detail] rates", err.internalCode, err.message);
+    if (err instanceof LiteApiError)
+      console.warn("[hotele/detail] rates", roomMapping ? "(mapowanie)" : "(dostępność)", err.internalCode, err.message);
     return [];
   }
+}
+
+/**
+ * Dostępność i zdjęcia pokoi — DWA zapytania, dwie różne role.
+ *
+ * INCYDENT „OFERTY WIDMO" (zgłoszenie właściciela 2026-08-08, przyczyna
+ * potwierdzona sondą `pnpm probe:availability-drift`, dwa przebiegi
+ * z identycznym wynikiem):
+ *
+ * Ta strona pytała o stawki WYŁĄCZNIE z `roomMapping: true`, żeby dostać
+ * `mappedRoomId` i pokazać zdjęcia konkretnego pokoju. Okazało się, że ten
+ * parametr nie jest wzbogaceniem odpowiedzi, tylko FILTREM: dostawca zwraca
+ * jedynie taryfy, które umiał przypiąć do wpisu w `rooms[]`.
+ *
+ *   Rodos, 50 hoteli:  bez mapowania 40 hoteli / 5031 taryf
+ *                      z mapowaniem  37 hoteli /  355 taryf
+ *
+ * Trzy hotele traciły CAŁĄ dostępność (Trinity Boutique 12 → 0 taryf), więc
+ * lista wyników pokazywała cenę, a strona hotelu — „Brak dostępności".
+ * Hotel Mediterranean tracił 200 taryf i 41 nazw pokoi na rzecz jednej.
+ *
+ * Teraz: dostępność bierze się z zapytania BEZ mapowania (pełna prawda
+ * o tym, co da się kupić), a mapowanie leci RÓWNOLEGLE i służy wyłącznie do
+ * dopięcia zdjęć. Równolegle, bo sekwencyjnie dołożyłoby ~3 s do renderu;
+ * `Promise.all` kosztuje tyle, co wolniejsze z dwóch. Awaria wzbogacenia
+ * oznacza karty pokoi bez zdjęć — nigdy pustą sekcję.
+ */
+async function fetchRoomsAndMapping(
+  args: RatesArgs,
+): Promise<{ roomTypes: LiteApiRoomType[]; roomIdByRateName: Record<string, string> }> {
+  const [roomTypes, mapped] = await Promise.all([fetchRates(args, false), fetchRates(args, true)]);
+  return {
+    roomTypes,
+    roomIdByRateName: Object.fromEntries(buildRoomIdByRateName(mapped)),
+  };
 }
 
 // Opinie to DODATEK do strony — gdy LiteAPI zawiedzie (sieć/4xx/5xx/walidacja),
@@ -213,7 +247,14 @@ export default async function HotelDetailPage({
     : [];
   const nights = nightsBetween(checkin, checkout);
 
-  const roomTypes = await fetchRates({ hotelId, checkin, checkout, adults, rooms, children });
+  const { roomTypes, roomIdByRateName } = await fetchRoomsAndMapping({
+    hotelId,
+    checkin,
+    checkout,
+    adults,
+    rooms,
+    children,
+  });
   const cheapest = pickCheapestRate(roomTypes);
   const cheapestMinor = cheapest ? rateTotalMinor(cheapest.rate) : null;
   const cheapestTotal = cheapestMinor !== null ? fromMinor(cheapestMinor) : undefined;
@@ -634,6 +675,9 @@ export default async function HotelDetailPage({
               hotelId={hotelId}
               roomTypes={roomTypes}
               roomsById={roomsById}
+              roomIdByRateName={roomIdByRateName}
+              checkin={checkin}
+              checkout={checkout}
               searchQuery={searchQuery}
               nights={nights}
               currency={currency}
