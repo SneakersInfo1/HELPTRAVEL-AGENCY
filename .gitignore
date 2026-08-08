@@ -63,3 +63,8 @@ next-env.d.ts
 /PURGE_REPORT.md
 /CONTEXT.md
 /PLANS/
+
+# Playwright — artefakty przebiegow (slady, zrzuty bledow)
+/test-results/
+/playwright-report/
+/blob-report/

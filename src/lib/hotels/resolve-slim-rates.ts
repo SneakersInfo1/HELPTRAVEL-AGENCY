@@ -11,7 +11,7 @@ import { fromMinor } from "@/lib/money";
 import { getRates, type LiteApiRate } from "@/lib/liteapi";
 import { pickCheapestRate, rateCancellationDeadline, rateCurrency, rateTotalMinor } from "@/lib/hotels/normalize";
 import { getCachedRates, setCachedRates, type RateCacheContext, type SlimRate } from "@/lib/hotels/rate-cache";
-import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
+import { honestDiscountFrom, mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 
 /**
  * Sprowadza rozbicie podatków do dwóch pól, które opłaca się trzymać w cache.
@@ -29,6 +29,18 @@ function slimTaxes(rate: LiteApiRate): Pick<SlimRate, "taxesIncluded" | "taxExtr
     taxesIncluded: false,
     ...(notice.amountMinor !== null ? { taxExtraAmount: fromMinor(notice.amountMinor) } : {}),
   };
+}
+
+/**
+ * Cena wyjściowa taryfy — tylko gdy istnieje UCZCIWA obniżka.
+ *
+ * Zwraca pusty obiekt, gdy `initialPrice` równa się cenie (tak jest w ~97,5%
+ * taryf) albo gdy różnica nie przekracza progu. Dzięki temu `originalAmount`
+ * zostaje `undefined` i karta nie rysuje przekreślenia.
+ */
+function slimDiscount(rate: LiteApiRate): Pick<SlimRate, "originalAmount"> {
+  const d = honestDiscountFrom(rate);
+  return d ? { originalAmount: fromMinor(d.originalMinor) } : {};
 }
 
 export interface ResolveSlimRatesResult {
@@ -103,6 +115,7 @@ export async function resolveSlimRates(
           offerId: cheapest.offerId,
           rateId: cheapest.rate.rateId,
           ...slimTaxes(cheapest.rate),
+          ...slimDiscount(cheapest.rate),
         };
       }
     }

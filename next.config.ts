@@ -3,10 +3,13 @@ import bundleAnalyzer from "@next/bundle-analyzer";
 
 const csp = [
   "default-src 'self'",
-  // components.liteapi.travel — SDK widgetu mapy hoteli (sdk.umd.js).
-  // Ładowany LENIWIE, dopiero po przełączeniu na widok mapy w wynikach.
-  // Bez tego wpisu przeglądarka blokuje skrypt i mapa nigdy się nie pojawia.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com https://js.stripe.com https://payment-wrapper.liteapi.travel https://components.liteapi.travel https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms",
+  // ZAWĘŻONE 2026-08-07. Poprzednia wersja wpuszczała siedem hostów wyłącznie
+  // po to, żeby zadziałał osadzony widget mapy LiteAPI: SDK
+  // (components.liteapi.travel), trzy hosty Mapboxa, FontAwesome oraz
+  // WebSocket wss://*.nuitee.link. Widget został zastąpiony własną mapą
+  // (MapLibre + kafelki przez /api/map/tiles, czyli 'self'), więc te
+  // uprawnienia nie mają już czego obsługiwać i zniknęły.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel-scripts.com https://js.stripe.com https://payment-wrapper.liteapi.travel https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   // wsrv.nl — proxy zmniejszające i przekodowujące zdjęcia do WebP
@@ -16,15 +19,14 @@ const csp = [
   // production.nuitee.flights — logo linii lotniczych i providerów LiteAPI Flights
   // (carrier.marketingLogo, np. .../static/images/airlines/BA.png). Bez tego CSP
   // blokuje wszystkie loga linii → broken image w wynikach lotów.
-  "img-src 'self' data: blob: https://*.nuitee.link https://pro.fontawesome.com https://api.mapbox.com https://*.tiles.mapbox.com https://components.liteapi.travel https://wsrv.nl https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.cupid.travel https://*.liteapi.travel https://*.nuitee.flights https://*.geoapify.com https://maps.geoapify.com https://www.google-analytics.com https://www.googletagmanager.com",
+  "img-src 'self' data: blob: https://*.nuitee.link https://wsrv.nl https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.cupid.travel https://*.liteapi.travel https://*.nuitee.flights https://*.geoapify.com https://maps.geoapify.com https://www.google-analytics.com https://www.googletagmanager.com",
   "media-src 'self' https://videos.pexels.com",
-  // mapbox-gl (pod widgetem mapy LiteAPI) tworzy Web Workera z blob-a.
+  // maplibre-gl renderuje kafelki w Web Workerze tworzonym z blob-a.
+  // To zostaje — zmienił się dostawca mapy, nie sposób jej rysowania.
   "worker-src 'self' blob:",
-  // Widget mapy LiteAPI odpytuje własne API i pobiera kafelki Mapbox
-  // (mapbox-gl działa pod spodem — widać to w białym labelu dostawcy).
-  // `worker-src blob:` niżej jest z tego samego powodu: mapbox-gl renderuje
-  // kafelki w Web Workerze tworzonym z blob-a.
-  "connect-src 'self' https://components.liteapi.travel https://*.nuitee.link wss://*.nuitee.link https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://*.upstash.io https://api.liteapi.travel https://api.sandbox.liteapi.travel https://book.liteapi.travel https://payment-wrapper.liteapi.travel https://api.stripe.com https://api.geoapify.com https://api.anthropic.com https://vitals.vercel-insights.com https://vercel.live https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com",
+  // Kafelki mapy idą przez /api/map/tiles, czyli 'self' — klucz Geoapify
+  // zostaje na serwerze, bo repozytorium jest publiczne.
+  "connect-src 'self' https://*.upstash.io https://api.liteapi.travel https://api.sandbox.liteapi.travel https://book.liteapi.travel https://payment-wrapper.liteapi.travel https://api.stripe.com https://api.geoapify.com https://api.anthropic.com https://vitals.vercel-insights.com https://vercel.live https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com",
   // `vercel.live` covers the Vercel preview toolbar feedback iframe — without
   // it the browser logs `Framing 'https://vercel.live/' violates CSP` on every
   // preview deployment view. Vercel does not inject the toolbar on production

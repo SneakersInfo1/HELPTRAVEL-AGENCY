@@ -36,6 +36,15 @@ export interface SlimRate {
   taxesIncluded?: boolean;
   /** Suma dopłat spoza ceny, w jednostkach głównych. Tylko gdy dało się policzyć. */
   taxExtraAmount?: number;
+  /**
+   * Cena WYJŚCIOWA tej samej taryfy (`retailRate.initialPrice`), gdy dostawca
+   * ją obniżył. `undefined` = brak obniżki i wtedy karta nie pokazuje nic.
+   *
+   * Świadomie NIE trzymamy tu `suggestedSellingPrice`: to cena konkurenta,
+   * wyższa od naszej w 100% taryf, więc przekreślenie jej dałoby stałą
+   * „promocję" na każdej ofercie.
+   */
+  originalAmount?: number;
 }
 
 export interface RateCacheContext {
@@ -53,7 +62,10 @@ export interface RateCacheContext {
 // nie mają tych pól, a `undefined` znaczy „nie wiemy" — bez podbicia wersji
 // karty przez godzinę pokazywałyby „brak danych o podatkach" dla hoteli, dla
 // których dane są. Podbicie unieważnia globalnie, bez ruszania Redisa.
-const KEY_VERSION = "v3";
+// v4 (2026-08-07): doszło `originalAmount` (uczciwa cena wyjściowa taryfy).
+// Wpisy v3 go nie mają, więc bez podbicia wersji przeceny pojawiałyby się
+// dopiero po wygaśnięciu TTL — czyli losowo, hotel po hotelu.
+const KEY_VERSION = "v4";
 // 60 min — cena DO WYŚWIETLENIA (re-weryfikowana przy prebooku). Podbite 30→60
 // min, bo cron prewarmingu (/api/cron/warm-rates) odświeża co 30 min: dłuższy
 // TTL daje margines (wpis przeżywa 2 cykle crona), więc popularne kierunki są

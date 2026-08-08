@@ -64,6 +64,15 @@ export interface PriceBreakdown {
    * w UI. Pole istnieje, żeby nikt nie musiał zgadywać, czym ono jest.
    */
   competitorReference: { amountMinor: bigint; currency: string; source: string | null } | null;
+  /**
+   * UCZCIWA przecena tej taryfy albo `null`.
+   *
+   * `originalMinor` pochodzi z `retailRate.initialPrice` — ceny TEJ SAMEJ
+   * taryfy, nie konkurenta. Rozróżnienie względem `competitorReference` jest
+   * celowe i nie wolno go zacierać: jedno to obniżka, drugie to porównanie
+   * z cudzym cennikiem, i te dwie rzeczy podlegają innym regułom.
+   */
+  discount: { originalMinor: bigint; percent: number } | null;
 }
 
 export interface CancellationInfo {

@@ -10,9 +10,9 @@ import { Suspense } from "react";
 
 import { fetchHotelsByPlaceId, fetchHotelsForDestination, LiteApiError } from "@/lib/liteapi";
 import { POOL_PAGE_SIZE, toMetaOffer, type MetaOffer } from "@/lib/hotels/meta-pool";
+import { HOTEL_RESULTS_GRID, HOTEL_SHELL_WIDE } from "@/lib/hotels/layout";
 import { nightsBetween } from "@/lib/hotels/normalize";
 import { getRegionById, isInRegion, type RegionRecord } from "@/lib/hotels/regions";
-import { suggestPlaces } from "@/lib/liteapi/places-suggest";
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
 
@@ -156,7 +156,7 @@ export default async function HotelResultsPage({
         />
       </div>
 
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[280px_1fr]">
+      <div className={`${HOTEL_SHELL_WIDE} ${HOTEL_RESULTS_GRID} py-6`}>
         <FiltersSidebar />
 
         <section className="space-y-6">
@@ -202,8 +202,6 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
   // Czy istnieją kolejne strony puli (RAW count == limit strony). Liczone
   // PRZED filtrem wyspy — offset kolejnych stron liczy się po surowej liście.
   let poolHasMore = false;
-  // placeId kierunku dla widgetu mapy (null = mapy nie pokazujemy).
-  let mapPlaceId: string | null = null;
   let errorMessage: string | null = null;
 
   try {
@@ -236,20 +234,12 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
     if (region) raw = raw.filter((h) => isInRegion(region, h));
     metaPool = raw.map(toMetaOffer);
 
-    // Widget mapy LiteAPI centruje się WYŁĄCZNIE po `placeId` (nie przyjmuje
-    // współrzędnych). Region ma go w słowniku; dla miasta rozwiązujemy nazwę
-    // przez /data/places. Gdy się nie uda — mapy po prostu nie pokazujemy,
-    // zamiast renderować pustą albo wycentrowaną gdzie indziej.
-    if (region) {
-      mapPlaceId = region.placeId;
-    } else {
-      try {
-        const suggestions = await suggestPlaces(`${canonicalCity}${country ? `, ${country}` : ""}`, 1);
-        mapPlaceId = suggestions[0]?.placeId ?? null;
-      } catch {
-        mapPlaceId = null; // mapa to dodatek — nigdy nie wywala wyników
-      }
-    }
+    // USUNIĘTE 2026-08-07: rozwiązywanie `placeId` kierunku przez
+    // `suggestPlaces`. Było potrzebne wyłącznie widgetowi mapy LiteAPI, który
+    // centrował się TYLKO po placeId. Własna mapa centruje się po
+    // współrzędnych hoteli, które i tak są w puli — a ten `await` siedział
+    // SEKWENCYJNIE na ścieżce krytycznej KAŻDEGO wyszukiwania, po pobraniu
+    // listy hoteli, opóźniając pierwszy render o pełny round-trip do LiteAPI.
   } catch (err) {
     errorMessage = err instanceof LiteApiError ? err.userMessagePl : "Coś poszło nie tak. Spróbuj ponownie.";
   }
@@ -364,8 +354,6 @@ async function Results({ sp, region }: { sp: SP; region: RegionRecord | null }) 
         board={boardList}
         facilities={facilitiesList}
         chains={chainsList}
-        mapPlaceId={mapPlaceId}
-        mapDomain={process.env.NEXT_PUBLIC_LITEAPI_WIDGET_DOMAIN ?? null}
       />
     </div>
   );

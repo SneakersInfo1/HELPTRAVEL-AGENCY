@@ -41,6 +41,27 @@ export const FACILITY_FILTERS: FacilityFilter[] = [
 
 const BY_KEY = new Map(FACILITY_FILTERS.map((f) => [f.key, f]));
 
+/**
+ * Które z tych udogodnień ma KONKRETNY obiekt — do chipów na karcie wyniku.
+ *
+ * Kolejność wynika z kolejności `FACILITY_FILTERS`, więc jest deterministyczna
+ * (żadnego losowania między renderami, żadnej hydration mismatch). `max`
+ * ogranicza chipy do tylu, ile mieści się w jednym wierszu karty.
+ *
+ * Brief §17: „wyłącznie z prawdziwych danych". Źródłem jest `facilityIds`
+ * z `/data/hotels` — jeśli obiekt nie ma pola, nie pokazujemy NIC.
+ */
+export function offerHighlights(facilityIds: number[] | undefined, max = 4): string[] {
+  if (!Array.isArray(facilityIds) || facilityIds.length === 0) return [];
+  const owned = new Set(facilityIds);
+  const out: string[] = [];
+  for (const f of FACILITY_FILTERS) {
+    if (out.length >= max) break;
+    if (f.ids.some((id) => owned.has(id))) out.push(f.label);
+  }
+  return out;
+}
+
 /** Klucze filtrów → grupy ID do `applyFiltersAndSort`. Nieznane klucze pomijamy. */
 export function facilityGroupsFor(keys: string[]): number[][] {
   return keys.map((k) => BY_KEY.get(k)?.ids).filter((ids): ids is number[] => Array.isArray(ids));

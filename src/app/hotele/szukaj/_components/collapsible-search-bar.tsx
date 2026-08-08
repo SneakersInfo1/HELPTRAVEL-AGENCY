@@ -8,6 +8,7 @@
 import { useState } from "react";
 
 import { MiniPlannerForm } from "@/components/home/mini-planner-form";
+import { HOTEL_SHELL_BAR } from "@/lib/hotels/layout";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
 
 interface Props {
@@ -62,7 +63,7 @@ export function CollapsibleSearchBar({ initial, valid }: Props) {
   if (expanded) {
     return (
       <div className="border-b border-emerald-900/10 bg-emerald-700/5 backdrop-blur-md">
-        <div className="mx-auto max-w-7xl px-4 py-3">
+        <div className={`${HOTEL_SHELL_BAR} py-3`}>
           <MiniPlannerForm compact initial={initial} />
           {valid && (
             <div className="mt-2 flex justify-end">
@@ -82,7 +83,7 @@ export function CollapsibleSearchBar({ initial, valid }: Props) {
 
   return (
     <div className="border-b border-emerald-900/10 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
+      <div className={`${HOTEL_SHELL_BAR} flex items-center gap-3 py-3`}>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-emerald-950 sm:text-base">
             {summary || "Wybierz kierunek i daty"}

@@ -23,7 +23,10 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "build:liteapi-reference": "tsx --env-file=.env.local scripts/build-liteapi-reference.ts"
+    "build:liteapi-reference": "tsx --env-file=.env.local scripts/build-liteapi-reference.ts",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "shots": "tsx e2e/capture.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
@@ -40,6 +43,7 @@
     "embla-carousel-react": "^8.6.0",
     "fuse.js": "^7.3.0",
     "lucide-react": "^1.26.0",
+    "maplibre-gl": "^6.2.0",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-day-picker": "^9.14.0",
@@ -50,6 +54,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.4",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

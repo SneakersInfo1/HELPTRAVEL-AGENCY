@@ -43,6 +43,90 @@ export function localizeReviewCategory(name: string): string {
 }
 
 /**
+ * Słownik krótkich etykiet z `sentiment_analysis.pros` (brief §20).
+ *
+ * Te frazy NIE są cytatami gości — generuje je AI dostawcy jako podsumowanie,
+ * dokładnie tak jak nazwy kategorii ocen. Etykieta systemowa po angielsku
+ * w polskim interfejsie („Great location" pod nagłówkiem „Co goście chwalą
+ * najczęściej") wygląda na niedokończone tłumaczenie, a nie na cytat.
+ *
+ * Zawartość słownika jest ZMIERZONA, nie wymyślona: sonda po 90 hotelach
+ * (Hurghada, Málaga, Rzym) dała 292 wystąpienia i 127 różnych fraz. Poniżej
+ * są te, które faktycznie wystąpiły — pokrywają ~4/5 wolumenu.
+ *
+ * Fraza spoza słownika zostaje PO ANGIELSKU. To świadome: zmyślone
+ * tłumaczenie maszynowe zmieniałoby wymowę opinii, czego zakazuje decyzja R11.
+ * Pełne treści opinii gości nie przechodzą przez tę funkcję w ogóle.
+ */
+const HIGHLIGHT_PL: Record<string, string> = {
+  // personel
+  "friendly staff": "Życzliwa obsługa",
+  "helpful staff": "Pomocna obsługa",
+  "friendly and helpful staff": "Życzliwa i pomocna obsługa",
+  "friendly and attentive staff": "Życzliwa i uważna obsługa",
+  "excellent staff": "Świetna obsługa",
+  staff: "Obsługa",
+  "great service": "Świetna obsługa",
+  "friendly service": "Życzliwa obsługa",
+  "exceptional service": "Wyjątkowa obsługa",
+  "excellent service": "Świetna obsługa",
+  service: "Obsługa",
+  // lokalizacja
+  "great location": "Świetna lokalizacja",
+  "excellent location": "Doskonała lokalizacja",
+  "good location": "Dobra lokalizacja",
+  "beautiful location": "Piękna lokalizacja",
+  "convenient location": "Dogodna lokalizacja",
+  "perfect location": "Idealna lokalizacja",
+  location: "Lokalizacja",
+  // pokoje
+  "comfortable rooms": "Wygodne pokoje",
+  "clean rooms": "Czyste pokoje",
+  "spacious rooms": "Przestronne pokoje",
+  "clean and spacious rooms": "Czyste i przestronne pokoje",
+  "clean and comfortable rooms": "Czyste i wygodne pokoje",
+  // czystość
+  cleanliness: "Czystość",
+  "impeccable cleanliness": "Nienaganna czystość",
+  "clean facilities": "Czyste obiekty wspólne",
+  // wyżywienie
+  "good breakfast": "Dobre śniadanie",
+  "excellent breakfast": "Świetne śniadanie",
+  "delicious breakfast": "Pyszne śniadanie",
+  "good food": "Dobre jedzenie",
+  "great food": "Świetne jedzenie",
+  "great food quality": "Wysoka jakość jedzenia",
+  "high-quality food": "Wysoka jakość jedzenia",
+  "excellent food variety": "Duży wybór dań",
+  "wide food selection": "Szeroki wybór dań",
+  // udogodnienia i rozrywka
+  "excellent amenities": "Świetne udogodnienia",
+  "great amenities": "Świetne udogodnienia",
+  "nice amenities": "Dobre udogodnienia",
+  "variety of amenities": "Bogate udogodnienia",
+  amenities: "Udogodnienia",
+  "great entertainment": "Świetne animacje",
+  "great activities": "Świetne atrakcje",
+  "fun activities": "Ciekawe atrakcje",
+  "variety of activities": "Bogaty wybór atrakcji",
+  "heated pools": "Podgrzewane baseny",
+  // pozostałe
+  "family-friendly": "Przyjazny rodzinom",
+  "luxurious stay": "Luksusowy pobyt",
+  "value for money": "Dobry stosunek ceny do jakości",
+};
+
+/**
+ * Etykieta „za co chwalą" po polsku, gdy ją znamy — w oryginale, gdy nie.
+ * Znormalizowane: wielkość liter i kropka na końcu (AI dostawcy bywa
+ * niekonsekwentne: „Friendly staff" obok „Friendly Staff").
+ */
+export function localizeReviewHighlight(text: string): string {
+  const key = text.trim().replace(/[.\s]+$/, "").toLowerCase();
+  return HIGHLIGHT_PL[key] ?? text.trim();
+}
+
+/**
  * Kategorie ocen do pasków. Odrzucamy pozycje bez sensownej oceny — pasek bez
  * liczby nic nie znaczy, a pusty wiersz wygląda jak błąd.
  */
@@ -74,10 +158,14 @@ export function reviewHighlights(detail: LiteApiHotelDetail | null | undefined, 
   for (const item of raw) {
     const s = typeof item === "string" ? item.trim() : "";
     if (!s) continue;
-    const key = s.toLowerCase();
+    const pl = localizeReviewHighlight(s);
+    // Deduplikacja po WYNIKU tłumaczenia: dostawca zwraca „Great service"
+    // i „Excellent service" jako osobne pozycje, a po polsku obie brzmią
+    // „Świetna obsługa" — dwa identyczne chipy obok siebie wyglądają na błąd.
+    const key = pl.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(s);
+    out.push(pl);
     if (out.length >= max) break;
   }
   return out;

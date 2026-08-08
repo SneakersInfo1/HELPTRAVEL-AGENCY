@@ -18,6 +18,7 @@ import { formatHotelTime, taxNoticeText } from "@/lib/hotels/domain/format";
 import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { reviewCategories, reviewHighlights, sentimentUpdatedAt } from "@/lib/hotels/domain/review";
 import { indexRoomsById } from "@/lib/hotels/domain/room";
+import { HOTEL_SHELL } from "@/lib/hotels/layout";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { ratingLabel } from "@/lib/hotels/rating";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
@@ -406,7 +407,7 @@ export default async function HotelDetailPage({
 
       {/* Breadcrumb visible */}
       <nav className="border-b border-neutral-200 bg-white">
-        <ol className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2 text-xs text-neutral-500">
+        <ol className={`${HOTEL_SHELL} flex items-center gap-2 py-2 text-xs text-neutral-500`}>
           <li><Link href="/" className="hover:text-emerald-700">Strona główna</Link></li>
           <li>›</li>
           <li><Link href="/kierunki" className="hover:text-emerald-700">Kierunki</Link></li>
@@ -431,11 +432,11 @@ export default async function HotelDetailPage({
       </nav>
 
       {/* Photo gallery — auto-rotating carousel + thumbnail strip */}
-      <section className="mx-auto max-w-7xl px-4 pt-4">
+      <section className={`${HOTEL_SHELL} pt-4`}>
         <HotelGallery photos={photos} alt={detail.name} />
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-6">
+      <section className={`${HOTEL_SHELL} py-6`}>
         <header>
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{detail.name}</h1>

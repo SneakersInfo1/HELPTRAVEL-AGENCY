@@ -13,11 +13,19 @@ import { test } from "node:test";
 import type { LiteApiRate } from "@/lib/liteapi";
 
 import { boardCategoryOf, includesMeals } from "./board";
-import { buildPriceBreakdown, hasHonestDiscount, mapTaxes, taxNoticeFrom } from "./price";
+import {
+  buildPriceBreakdown,
+  discountPercent,
+  hasHonestDiscount,
+  honestDiscountFrom,
+  mapTaxes,
+  taxNoticeFrom,
+} from "./price";
 import { buildRateOffers, indexRoomsById, roomForRate, toRoomProfile } from "./room";
 import { groupAmenities, normalizeAmenities, normalizeAmenitiesWith, topAmenities } from "./amenity";
 import {
   localizeReviewCategory,
+  localizeReviewHighlight,
   reviewCategories,
   reviewHighlights,
   reviewSourceLabel,
@@ -179,6 +187,75 @@ test("przecena: własna cena bazowa wyższa od total → podstawa ISTNIEJE", () 
     },
   } as Partial<LiteApiRate>);
   assert.equal(hasHonestDiscount(r), true);
+});
+
+// ── Przeceny: dokładne wartości (brief §28) ─────────────────────────────────
+//
+// Liczby wzięte z ŻYWEGO pomiaru API (docs/hotel-redesign/
+// discount-investigation.md), nie wymyślone: hotel lp657cb01d w Maladze miał
+// taryfę 860 → 829 PLN, a najgłębsze zmierzone obniżki sięgały 26%.
+
+test("przecena: 1787 → 1387 daje −22% (odtworzenie przykładu z briefu)", () => {
+  assert.equal(discountPercent(1787, 1387), 22);
+});
+
+test("przecena: zmierzona taryfa 860 → 829 daje −4%", () => {
+  assert.equal(discountPercent(860, 829), 4);
+});
+
+test("przecena: 2% jest poniżej progu → NIE pokazujemy nic", () => {
+  assert.equal(discountPercent(1000, 980), null);
+});
+
+test("przecena: dokładnie 3% przechodzi próg", () => {
+  assert.equal(discountPercent(1000, 970), 3);
+});
+
+test("przecena: cena wyższa lub równa nigdy nie jest przeceną", () => {
+  assert.equal(discountPercent(800, 800), null);
+  assert.equal(discountPercent(800, 900), null);
+  assert.equal(discountPercent(0, 0), null);
+});
+
+test("przecena: honestDiscountFrom zwraca cenę bazową w groszach", () => {
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 1387, currency: PLN }],
+      initialPrice: [{ amount: 1787, currency: PLN }],
+    },
+  } as Partial<LiteApiRate>);
+  assert.deepEqual(honestDiscountFrom(r), { originalMinor: BigInt(178700), percent: 22 });
+});
+
+test("przecena: suggestedSellingPrice (cena konkurenta) NIGDY nie tworzy przeceny", () => {
+  // To jest zabezpieczenie przed regresją, nie ozdoba. `suggestedSellingPrice`
+  // jest wyższe od naszej ceny w 100% taryf (źródło: booking.com), więc gdyby
+  // kiedykolwiek trafiło do przekreślenia, serwis miałby wieczną „promocję"
+  // na każdej ofercie.
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 730.83, currency: PLN }],
+      initialPrice: [{ amount: 730.83, currency: PLN }],
+      suggestedSellingPrice: [{ amount: 749.78, currency: PLN, source: "booking.com" }],
+    },
+  } as Partial<LiteApiRate>);
+  assert.equal(honestDiscountFrom(r), null);
+  assert.equal(buildPriceBreakdown(r, 1)?.discount, null);
+  // …ale sama dana zostaje w modelu, z zachowanym źródłem.
+  assert.equal(buildPriceBreakdown(r, 1)?.competitorReference?.source, "booking.com");
+});
+
+test("przecena: trafia do PriceBreakdown razem z ceną", () => {
+  const r = rate({
+    retailRate: {
+      total: [{ amount: 829, currency: PLN }],
+      initialPrice: [{ amount: 860, currency: PLN }],
+    },
+  } as Partial<LiteApiRate>);
+  const b = buildPriceBreakdown(r, 2);
+  assert.equal(b?.discount?.percent, 4);
+  assert.equal(b?.discount?.originalMinor, BigInt(86000));
+  assert.equal(b?.totalMinor, BigInt(82900));
 });
 
 // ── Wyżywienie ──────────────────────────────────────────────────────────────
@@ -367,7 +444,7 @@ test("opinie: brak sentiment_analysis nie wywraca — pusta lista", () => {
   assert.deepEqual(reviewHighlights(undefined), []);
 });
 
-test("opinie: zalety deduplikowane i przycięte do limitu", () => {
+test("opinie: zalety deduplikowane, przetłumaczone i przycięte do limitu", () => {
   const detail = {
     sentiment_analysis: {
       pros: ["Great location", "great location", "Friendly staff", "Clean rooms"],
@@ -375,7 +452,26 @@ test("opinie: zalety deduplikowane i przycięte do limitu", () => {
   } as never;
   const h = reviewHighlights(detail, 2);
   assert.equal(h.length, 2);
-  assert.deepEqual(h, ["Great location", "Friendly staff"]);
+  assert.deepEqual(h, ["Świetna lokalizacja", "Życzliwa obsługa"]);
+});
+
+test("opinie: dwie różne frazy o tym samym znaczeniu dają JEDEN chip", () => {
+  // „Great service" i „Excellent service" to u dostawcy osobne pozycje,
+  // ale po polsku obie brzmią tak samo — dwa identyczne chipy obok siebie
+  // wyglądałyby jak błąd renderowania.
+  const detail = {
+    sentiment_analysis: { pros: ["Great service", "Excellent service", "Clean rooms"] },
+  } as never;
+  assert.deepEqual(reviewHighlights(detail), ["Świetna obsługa", "Czyste pokoje"]);
+});
+
+test("opinie: nieznana fraza ZOSTAJE po angielsku, nie jest zmyślana", () => {
+  // Brief §20 każe tłumaczyć etykiety systemowe, ale R11 zakazuje tłumaczenia
+  // maszynowego treści opinii. Fraza spoza zmierzonego słownika przechodzi
+  // bez zmian — lepiej angielski oryginał niż wymyślony polski.
+  assert.equal(localizeReviewHighlight("No so much rules"), "No so much rules");
+  assert.equal(localizeReviewHighlight("Friendly Staff."), "Życzliwa obsługa");
+  assert.equal(localizeReviewHighlight("  GREAT LOCATION  "), "Świetna lokalizacja");
 });
 
 test("opinie: skala 0-10 → procent; wartość poza skalą daje null zamiast kłamliwego paska", () => {

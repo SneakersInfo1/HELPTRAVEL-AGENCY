@@ -157,6 +157,31 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // treść tekstowa nie może się rozjeżdżać na całą szerokość monitora.
   const isHome = stripLocalePrefix(pathname) === "/";
 
+  // SZEROKA SEKCJA HOTELOWA (przebudowa 2026-08-07, brief §4).
+  //
+  // To była PRAWDZIWA przyczyna „ogromnych białych marginesów" na 1920 px.
+  // Sekcja hotelowa mogła mieć u siebie dowolne `max-w-*` i nic by to nie
+  // dało: ta rama nakłada `max-w-7xl` (1280 px) na wszystko, co nie jest
+  // stroną główną. Zmierzone przed poprawką — treść 1216 px, po 352 px
+  // pustki z każdej strony, czyli 37% monitora.
+  //
+  // Zakres jest CELOWO wąski (brief §25: „nie psuj homepage i lotów").
+  // Wchodzą dokładnie dwie trasy:
+  //   • /hotele/szukaj      — lista + filtry + mapa, każdy piksel pracuje
+  //   • /hotele/<id>        — strona obiektu z kolażem zdjęć
+  // Poza nimi NIC się nie zmienia: /hotele/rezerwacja (checkout ma zostać
+  // wąski i skupiony), /hotele/w/<miasto> (strona treściowa), /loty/*,
+  // artykuły i homepage działają dokładnie jak dotąd.
+  //
+  // Szerokością steruje potem `lib/hotels/layout.ts` — rama tylko przestaje
+  // ją ograniczać i oddaje odstępy poziome do środka.
+  const sciezka = stripLocalePrefix(pathname);
+  const isHotelWide =
+    sciezka === "/hotele/szukaj" ||
+    // Jeden segment po /hotele/ i nie jest to checkout: strona obiektu.
+    // `/hotele/w/<miasto>` ma dwa segmenty, więc tu nie wpada.
+    (/^\/hotele\/[^/]+$/.test(sciezka) && sciezka !== "/hotele/rezerwacja");
+
   // PEŁNA SZEROKOŚĆ NA STRONIE GŁÓWNEJ (właściciel 2026-08-02: „żeby nie było
   // białych pasków po bokach na mobile i na pc").
   //
@@ -170,10 +195,19 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // Pozostałe strony (artykuły, wyniki, checkout) zostają w `max-w-7xl`
   // z paddingiem: treść tekstowa rozjechana na całą szerokość monitora jest
   // nieczytelna, a tego zadanie nie dotyczyło.
-  const ramaCls = isHome ? "max-w-none" : "max-w-7xl px-4 pb-4 sm:px-6 lg:px-8";
+  const ramaCls = isHome
+    ? "max-w-none"
+    : isHotelWide
+      ? "max-w-none pb-4"
+      : "max-w-7xl px-4 pb-4 sm:px-6 lg:px-8";
   // Sekcje pełnoszerokościowe biorą padding same — ten sam zestaw wartości,
   // żeby nagłówek, stopka i sekcje strony miały wspólną linię lewego marginesu.
   const bleedPadCls = "px-4 sm:px-6 xl:px-8";
+  // Na szerokich trasach hotelowych nagłówek i stopka zostają PASTYLKAMI (tak
+  // jak na reszcie serwisu), ale marginesy muszą przejść z ramy na nie same —
+  // inaczej dotykałyby krawędzi ekranu. Wartości zgrane z `HOTEL_SHELL*`,
+  // żeby logo, treść i stopka stały w jednej linii.
+  const hotelEdgeCls = isHotelWide ? "mx-4 sm:mx-6 xl:mx-10" : "";
 
   return (
     <div className={`mx-auto flex min-h-screen w-full flex-col ${ramaCls}`}>
@@ -214,7 +248,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         className={
           isHome
             ? `sticky top-0 z-30 border-b border-emerald-900/15 bg-surface-raised/85 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md ${bleedPadCls}`
-            : "sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/15 bg-surface-raised/85 px-3 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md sm:px-4"
+            : `sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/15 bg-surface-raised/85 px-3 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md sm:px-4 ${hotelEdgeCls}`
         }
       >
         <div className="flex items-center justify-between gap-3">
@@ -414,7 +448,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         className={
           isHome
             ? `mt-8 border-t border-emerald-900/10 bg-white/95 py-8 ${bleedPadCls}`
-            : "mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]"
+            : `mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)] ${hotelEdgeCls}`
         }
       >
         {/* Gęściej: 5 kolumn zamiast 4 na desktopie, 2 na tablecie. Trzy

@@ -22,10 +22,12 @@ import { useMemo, useState } from "react";
 import type { RoomProfile } from "@/lib/hotels/domain/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
 import { guestsLabel, optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
-import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
+import { honestDiscountFrom, mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { groupRates, mergeGroupsByDisplayName, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
 import { formatPLN, fromMinor } from "@/lib/money";
+
+import { RoomDetailDialog } from "./room-detail-dialog";
 
 const VISIBLE_OPTIONS_DEFAULT = 3;
 
@@ -196,13 +198,40 @@ function RoomGroupCard({
   };
   const cheapestOfferId = group.options[0]?.offerId; // opcje są posortowane rosnąco
   const groupHasMultiple = group.options.length > 1;
+  const [detailOpen, setDetailOpen] = useState(false);
+  const displayName = localizeRoomName(group.name);
+
+  // Ten sam zestaw wierszy trafia na kartę i do modalu — jedno źródło prawdy
+  // dla ceny, anulacji i linku do checkoutu. Rozjazd między kartą a modalem
+  // byłby dokładnie tym rodzajem błędu, którego gość nie wybaczy.
+  const optionRows = (options: RoomOption[]) =>
+    options.map((option) => (
+      <OptionRow
+        key={option.offerId}
+        hotelId={hotelId}
+        option={option}
+        searchQuery={searchQuery}
+        nights={nights}
+        currency={currency}
+        bookingLive={bookingLive}
+        cancelPremiumMinor={premiumFor(option)}
+        isGroupCheapest={option.offerId === cheapestOfferId}
+        groupHasMultiple={groupHasMultiple}
+      />
+    ));
 
   return (
     <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <header className="flex items-start gap-4 border-b border-neutral-100 bg-neutral-50 p-4 sm:px-5">
         {/* Zdjęcie TEGO pokoju (przez rate.mappedRoomId → rooms[].id).
-            Brak powiązania → neutralny zastępnik, NIGDY zdjęcie hotelu. */}
-        <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-neutral-200 sm:h-24 sm:w-32">
+            Brak powiązania → neutralny zastępnik, NIGDY zdjęcie hotelu.
+            Klikalne — zdjęcie jest najbardziej naturalnym celem. */}
+        <button
+          type="button"
+          onClick={() => setDetailOpen(true)}
+          aria-label={`Zobacz szczegóły pokoju: ${displayName}`}
+          className="group relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 sm:h-24 sm:w-32"
+        >
           {room?.photos.length ? (
             // JAWNE width/height zamiast `fill`. Przy `fill` loader dostawał
             // największą szerokość z deviceSizes i żądał obrazu 3840 px pod
@@ -221,27 +250,36 @@ function RoomGroupCard({
               width={256}
               height={192}
               sizes="128px"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
             />
           ) : (
-            <div
+            <span
               className="flex h-full w-full items-center justify-center text-neutral-400"
               aria-label="Brak zdjęcia tego pokoju"
             >
               <ImageOff aria-hidden className="h-6 w-6" />
-            </div>
+            </span>
           )}
           {room && room.photos.length > 1 && (
             <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
               {room.photos.length}
             </span>
           )}
-        </div>
+        </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <h3 className="text-base font-semibold text-neutral-900">{localizeRoomName(group.name)}</h3>
+            {/* Nazwa też otwiera szczegóły — drugi naturalny cel kliknięcia. */}
+            <h3 className="text-base font-semibold text-neutral-900">
+              <button
+                type="button"
+                onClick={() => setDetailOpen(true)}
+                className="rounded text-left transition hover:text-emerald-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+              >
+                {displayName}
+              </button>
+            </h3>
             <p className="shrink-0 text-xs font-medium text-neutral-600">
               {[fromLabel, optionsLabel(group.options.length)].filter(Boolean).join(" · ")}
             </p>
@@ -259,24 +297,19 @@ function RoomGroupCard({
               {room.amenities.slice(0, 4).join(" · ")}
             </p>
           ) : null}
+          {/* Trzeci, jawny cel — dla gościa, który nie zgaduje, że zdjęcie
+              jest klikalne. Brief §11: „klikalne powinny być przynajmniej
+              zdjęcie, nazwa pokoju i «Zobacz szczegóły»". */}
+          <button
+            type="button"
+            onClick={() => setDetailOpen(true)}
+            className="mt-1.5 inline-flex min-h-11 items-center text-sm font-semibold text-emerald-700 underline-offset-2 transition hover:text-emerald-800 hover:underline sm:min-h-0"
+          >
+            Zobacz szczegóły pokoju
+          </button>
         </div>
       </header>
-      <ul className="divide-y divide-neutral-100">
-        {visible.map((option) => (
-          <OptionRow
-            key={option.offerId}
-            hotelId={hotelId}
-            option={option}
-            searchQuery={searchQuery}
-            nights={nights}
-            currency={currency}
-            bookingLive={bookingLive}
-            cancelPremiumMinor={premiumFor(option)}
-            isGroupCheapest={option.offerId === cheapestOfferId}
-            groupHasMultiple={groupHasMultiple}
-          />
-        ))}
-      </ul>
+      <ul className="divide-y divide-neutral-100">{optionRows(visible)}</ul>
       {hidden > 0 && (
         <button
           type="button"
@@ -294,6 +327,19 @@ function RoomGroupCard({
         >
           Zwiń ↑
         </button>
+      )}
+
+      {/* Modal montujemy dopiero po pierwszym otwarciu — dla hotelu z 25
+          pokojami trzymanie 25 uśpionych dialogów w drzewie to czysty koszt. */}
+      {detailOpen && (
+        <RoomDetailDialog
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          title={displayName}
+          room={room}
+          fallbackMaxOccupancy={group.maxOccupancy ?? undefined}
+          options={optionRows(group.options)}
+        />
       )}
     </article>
   );
@@ -331,6 +377,7 @@ function OptionRow({
   // Pełne rozbicie jest tu dostępne (strona hotelu ma surowe taryfy), więc
   // korzystamy z niego wprost — bez uproszczenia stosowanego na liście.
   const taxText = taxNoticeText(taxNoticeFrom(mapTaxes(rate)));
+  const discount = honestDiscountFrom(rate);
 
   // Checkout link — identical contract as before grouping: the option's OWN
   // offerId + display params (price/cur/board/cancel) on top of searchQuery.
@@ -348,8 +395,13 @@ function OptionRow({
   const reservationHref = `/hotele/rezerwacja?${params.toString()}`;
 
   return (
-    <li className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0 flex-1">
+    // `max-w-2xl` na kolumnie opisu nie jest ozdobą: po poszerzeniu strony
+    // hotelu do 1760 px wiersz taryfy miał ~1300 px, a `justify-between`
+    // rozpychało „Bez wyżywienia" i cenę na przeciwległe krawędzie, zostawiając
+    // między nimi metr pustki. Dwie informacje, które czyta się razem, mają
+    // zostać w zasięgu jednego spojrzenia.
+    <li className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+      <div className="min-w-0 flex-1 sm:max-w-2xl">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-neutral-900">
             {localizeBoard(rate.boardName ?? rate.boardType)}
@@ -383,6 +435,18 @@ function OptionRow({
       <div className="flex flex-col items-end">
         {total !== null ? (
           <>
+            {/* Przecena (brief §15C) — wyłącznie z `initialPrice` TEJ taryfy.
+                Cena konkurenta (`suggestedSellingPrice`) nigdy tu nie trafia. */}
+            {discount && (
+              <div className="mb-0.5 flex items-center gap-2">
+                <span className="rounded-md bg-rose-600 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  −{discount.percent}%
+                </span>
+                <span className="text-xs text-neutral-500 line-through">
+                  {formatPLN(fromMinor(discount.originalMinor), rateCurrency)}
+                </span>
+              </div>
+            )}
             <div className="text-lg font-bold text-neutral-900">{formatPLN(total, rateCurrency)}</div>
             {perNight !== null && (
               <div className="text-[11px] text-neutral-500">{formatPLN(perNight, rateCurrency)} / noc</div>

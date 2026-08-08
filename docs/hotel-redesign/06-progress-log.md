@@ -542,3 +542,133 @@ treści** (bez zdjęć pokoi, kategorii ocen, POI i zakładek).
 1. Obejrzeć preview na 375 px i zebrać uwagi.
 2. Etap 13 (Playwright) — jedyny etap całkowicie niezrobiony.
 3. Powtórzyć Lighthouse kilka razy i wziąć medianę.
+
+---
+
+# SESJA 7 — druga iteracja (2026-08-08)
+
+Właściciel uznał wynik sesji 6 za niekońcowy: funkcjonalnie lepiej, wizualnie
+i UX-owo nadal daleko do LiteAPI/Nuitee. Brief V2 (38 sekcji) żądał drugiego,
+krytycznego audytu i naprawy architektury, nie kolejnej rundy kosmetyki.
+
+## Osiem przyczyn źródłowych — ustalonych POMIAREM
+
+| # | Objaw | Przyczyna |
+|---|---|---|
+| 1 | boczna pustka na 1920 | **`max-w-7xl` w `site-shell.tsx`** — wspólna rama CAŁEGO serwisu. Poprawki w sekcji hotelowej nic nie dawały. Zmierzone: treść 1216 px, po 352 px pustki, czyli 37% ekranu |
+| 2 | „1714 bez miejsc" | `ResultsSubtitle` w `results-list.tsx` |
+| 3 | „Sprawdzam dostępność… 1500/2099" | ta sama funkcja |
+| 4 | brak kolażu | `hotel-gallery.tsx` — jedna scena + pasek miniatur; do tego WSZYSTKIE zdjęcia w DOM (29, a dla `lp1897` — 140) |
+| 5 | gorsza jakość zdjęć | scena 1184×560 przy pliku 1280×960 → przy DPR 2 **1,85× powiększenia**. `urlHd === url` w 100% wpisów — dostawca NIE MA lepszego pliku |
+| 6 | brak podglądu pokoju | `rooms-section.tsx` — klikalne było wyłącznie „Wybierz" przy taryfie |
+| 7 | brak mapy klasy Nuitee | hostowany widget LiteAPI z własną pulą — synchronizacja i „szukaj w obszarze" **fizycznie niewykonalne** |
+| 8 | brak przecen | **poprzedni audyt był błędny** — patrz niżej |
+
+## Korekta poprzedniego raportu — przeceny ISTNIEJĄ
+
+`09-final-report.md` twierdził: „Przecen nie ma i nie może być
+(`initialPrice === total` na 400/400)". Pomyłka wynikała z rozmiaru próby.
+
+Pomiar na **33 421 taryfach w 5 miastach**: `initialPrice > total` w **852
+taryfach, 70 z 191 hoteli, wszystkie 5 miast**. Rozkład 3–6% ze skupiskiem
+na 24% i 26%.
+
+Wdrożone **wyłącznie** z `initialPrice`. `suggestedSellingPrice` (booking.com,
+wyższe od naszej ceny w **100%** taryf) świadomie poza UI — dałoby wieczną
+promocję na każdej ofercie. Pełne śledztwo: `discount-investigation.md`,
+w tym otwarta kwestia Omnibus/UOKiK do decyzji właściciela.
+
+## Co powstało
+
+- `lib/hotels/layout.ts` — szerokości sekcji hotelowej, jedno źródło prawdy
+- `site-shell.tsx` — wyjątek szerokości na **dokładnie dwie trasy**
+- `hotel-gallery.tsx` — kolaż 5 kafli na desktopie, karuzela na telefonie; **10 zdjęć w DOM zamiast 29**
+- `room-detail-dialog.tsx` — pełny podgląd pokoju (zdjęcia, wyposażenie, warianty)
+- `hotel-map.tsx` — **własna** mapa: MapLibre GL + Geoapify przez `/api/map/tiles`
+- `api/map/tiles/[z]/[x]/[y]` — proxy kafelków; klucz zostaje na serwerze (repo jest publiczne)
+- `lib/ui/use-media-query.ts` — wybór wariantu mapy po realnym breakpoincie
+- `domain/price.ts` — `honestDiscountFrom()`, próg 3%
+- `domain/review.ts` — słownik etykiet opinii (zmierzony: 90 hoteli, 127 fraz)
+- `e2e/` — Playwright: 13 testów sekcji + 4 testy regresji reszty serwisu
+
+## Klucz do mapy BYŁ na miejscu
+
+`GEOAPIFY_API_KEY` jest w projekcie od dawna (Geoapify figuruje w polityce
+prywatności jako podmiot przetwarzający). Sprawdzone: oddaje i kafelki
+rastrowe, i style MapLibre. **`MAPTILER_API_KEY` z decyzji D1 nie jest
+potrzebny** — mapa działa dziś, bez proszenia właściciela o cokolwiek.
+
+CSP **zawężone**: usunięte siedem hostów istniejących wyłącznie pod widget
+(SDK LiteAPI, trzy Mapbox, FontAwesome, WebSocket white-labelu).
+
+## Cztery błędy, które znalazły dopiero testy E2E
+
+Żadnego nie było widać w kodzie ani na zrzucie ekranu:
+
+1. **Przestarzały obsługiwacz kliknięcia znacznika.** Marker, który zmienił się
+   z grupy w pojedynczy obiekt, wyglądał jak hotel z ceną, ale dalej tylko
+   przybliżał mapę. Naprawione przez `cellsRef` czytany w obsługiwaczu.
+2. **Mapa kadrowała się RAZ**, na hotelach wycenionych do tej chwili.
+   Zmierzone: **4 znaczniki przy 44 obiektach**. Teraz kadruje ponownie,
+   dopóki gość sam nie ruszy mapą.
+3. **Grupy przykrywały pojedyncze hotele** — części obiektów nie dało się
+   kliknąć. Teraz jedna warstwa, wskazanie kursorem wynosi na wierzch.
+4. **Lista pobierała `maplibre-gl`** (~944 kB) mimo zamkniętej mapy —
+   bundler dokładał chunk, widząc dynamiczny import w statycznie
+   zaimportowanym pliku. Naprawione `next/dynamic`; pilnuje tego osobny test.
+
+## Wyniki
+
+```
+pnpm test          609/609
+pnpm e2e            17/17   (13 sekcji + 4 regresji)
+npx tsc --noEmit   czysto
+pnpm build         BUILD_EXIT=0
+npx eslint src e2e 4 błędy — WSZYSTKIE sprzed sesji
+```
+
+Pomiar szerokości (Playwright, 1920×1080):
+
+| | przed | po |
+|---|---|---|
+| treść wyników | 1216 px | **1840 px** |
+| pustka boczna | 352 px | **40 px** |
+| karta hotelu | 880 px | **1408 px** |
+| treść strony hotelu | 1216 px | **1760 px** |
+| zdjęć w DOM (hotel) | 29 | **10** |
+
+## Pułapki dla następnej sesji
+
+1. **Uszkodzony `.next` zwraca 404 na WSZYSTKICH trasach API** i wygląda jak
+   błąd produktu. Pierwsze zrzuty „before" pokazywały „0 dostępnych obiektów"
+   i „Nie udało się pobrać ceny" — to był artefakt. `rm -rf .next` i restart.
+2. **Klasy widoczności Tailwinda renderują OBA drzewa.** Dla treści to nic nie
+   kosztuje, ale dla mapy znaczyło DWIE instancje MapLibre naraz. Wybór
+   wariantu musi iść przez realny breakpoint (`useMediaQuery`).
+3. **Playwright `click({force})` leci na WSPÓŁRZĘDNE**, więc przy nakładających
+   się znacznikach trafia w element na wierzchu — czyli w inny hotel.
+   Do testowania logiki wyboru: `dispatchEvent("click")`.
+4. **Baner cookie ma `role="dialog"`** — `getByRole("dialog")` łapie go razem
+   z galerią.
+5. Przy zjawiskach rzędu pojedynczych procent **próba 400 rekordów nie
+   wystarcza**, żeby orzec „nie istnieje". Tak powstał błąd o przecenach.
+
+## Czego NIE zrobiono
+
+- **Lighthouse przed/po** — na tej maszynie rozrzut sięga 43 → 65 → 19 dla
+  NIEZMIENIONEJ strony. Bez spokojnej maszyny i mediany taki pomiar wprowadza
+  w błąd. Reguła z sesji 6 nadal obowiązuje.
+- **Czas do pierwszego wyniku w sekundach** — z tego samego powodu. Wiadomo
+  natomiast, co ubyło z drogi krytycznej: sekwencyjny `suggestPlaces` na
+  serwerze (pełny round-trip do LiteAPI przy KAŻDYM wyszukiwaniu, potrzebny
+  wyłącznie widgetowi) i chunk `maplibre-gl` w widoku listy.
+
+## Wymaga decyzji właściciela
+
+1. **Omnibus/UOKiK a przekreślona cena** — trzy warianty w
+   `discount-investigation.md` §4. Domyślnie działa wariant z briefu.
+2. **`seo 69` na wynikach** — `robots.txt` blokuje `/hotele/szukaj`, a strona
+   wysyła `index, follow`. Sprzeczność sprzed tej sesji.
+3. **`SHOW_REVIEWS=true`**, jeśli cytaty opinii mają być widoczne.
+4. **`NEXT_PUBLIC_LITEAPI_WIDGET_DOMAIN` przestała być potrzebna** — mapa nie
+   korzysta już z white-labelu. Można ją zdjąć z Vercela.

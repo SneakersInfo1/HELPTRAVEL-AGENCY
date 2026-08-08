@@ -99,25 +99,67 @@ export function buildPriceBreakdown(rate: LiteApiRate, nights: number): PriceBre
     taxes,
     taxNotice: taxNoticeFrom(taxes),
     competitorReference: competitorReferenceFrom(rate),
+    discount: honestDiscountFrom(rate),
   };
 }
 
 /**
- * Czy istnieje UCZCIWA podstawa do pokazania przeceny.
+ * Najniższy procent, który wolno pokazać.
  *
- * Zawsze `false` przy obecnym dostawcy i to jest udokumentowany fakt, nie
- * pesymizm: `initialPrice === total` na 400/400 zmierzonych taryf, a jedyna
- * wyższa kwota (`suggestedSellingPrice`) to cena konkurenta.
- *
- * Funkcja istnieje po to, żeby warunek był NAZWANY i przetestowany —
- * gdyby dostawca kiedyś zaczął podawać własną cenę bazową, wystarczy zmienić
- * to jedno miejsce zamiast szukać przekreśleń po komponentach.
+ * Poniżej trzech procent przekreślenie przestaje nieść informację, a zaczyna
+ * być ozdobą — a ozdoba w miejscu ceny to dokładnie ten sygnał, którego
+ * brief §15A zakazuje. Zmierzony rozkład (852 przeceny) i tak zaczyna się
+ * na 2,6%, więc próg odcina wyłącznie przypadki zaokrąglane do „-3%"
+ * z wartości bliskich zera.
  */
-export function hasHonestDiscount(rate: LiteApiRate): boolean {
+const MIN_DISCOUNT_PERCENT = 3;
+
+/**
+ * Uczciwa przecena taryfy albo `null`.
+ *
+ * ŹRÓDŁO: wyłącznie `retailRate.initialPrice` — cena TEJ SAMEJ taryfy, tego
+ * samego dostawcy, w tej samej walucie, dla tego samego pobytu, pokoju,
+ * obłożenia, wyżywienia i zasad anulacji. Wszystkie warunki z briefu §15A są
+ * spełnione z definicji, bo porównujemy dwa pola JEDNEGO obiektu taryfy.
+ *
+ * NIE UŻYWAMY `suggestedSellingPrice`. To cena konkurenta (`source` =
+ * "booking.com" w 5926/6210 przypadków) i jest wyższa od naszej w **100%**
+ * taryf. Przekreślenie jej znaczyłoby wieczną, nigdy nieznikającą „promocję"
+ * na każdej ofercie w serwisie — czyli fałszywy sygnał, nie informację.
+ *
+ * KOREKTA POPRZEDNIEGO AUDYTU (2026-08-07). Sesja z 2026-08-06 zbadała 400
+ * taryf, trafiła same zera i zapisała w `09-final-report.md`, że przecen
+ * „nie ma i nie może być". To była pomyłka wynikająca z rozmiaru próby.
+ * Pomiar na **33 421 taryfach w 5 miastach** (Malaga, Hurghada, Rzym, Paryż,
+ * Warszawa): `initialPrice > total` w **852 taryfach, 70 hoteli, wszystkie
+ * 5 miast**. Rozkład: 3%×175, 4%×457, 5%×112, 6%×76, 24%×24, 26%×8.
+ * Szczegóły i metoda: `docs/hotel-redesign/discount-investigation.md`.
+ */
+export function honestDiscountFrom(
+  rate: LiteApiRate,
+): { originalMinor: bigint; percent: number } | null {
   const total = rate.retailRate?.total?.[0]?.amount;
   const initial = rate.retailRate?.initialPrice?.[0]?.amount;
-  if (typeof total !== "number" || typeof initial !== "number") return false;
-  // Cena bazowa musi być REALNIE wyższa i pochodzić od nas (initialPrice),
-  // nie od konkurencji (suggestedSellingPrice).
-  return initial > total;
+  if (typeof total !== "number" || typeof initial !== "number") return null;
+  if (!(initial > total) || initial <= 0) return null;
+
+  const percent = Math.round(((initial - total) / initial) * 100);
+  if (percent < MIN_DISCOUNT_PERCENT) return null;
+
+  return { originalMinor: toMinor(initial), percent };
+}
+
+/**
+ * Ta sama reguła, ale na dwóch gołych liczbach — dla warstwy cache, która
+ * wozi `SlimRate`, a nie surową taryfę. Jedno miejsce z progiem i wzorem.
+ */
+export function discountPercent(originalAmount: number, finalAmount: number): number | null {
+  if (!(originalAmount > finalAmount) || originalAmount <= 0) return null;
+  const percent = Math.round(((originalAmount - finalAmount) / originalAmount) * 100);
+  return percent >= MIN_DISCOUNT_PERCENT ? percent : null;
+}
+
+/** Zachowane dla czytelności warunków w testach i komponentach. */
+export function hasHonestDiscount(rate: LiteApiRate): boolean {
+  return honestDiscountFrom(rate) !== null;
 }

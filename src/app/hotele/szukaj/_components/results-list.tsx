@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { POOL_MAX_TOTAL, POOL_PAGE_SIZE, type MetaOffer } from "@/lib/hotels/meta-pool";
@@ -9,9 +10,28 @@ import { ensurePrice, getPrice, getVersion, subscribe, type PriceEntry } from "@
 import { ResultCard } from "./result-card";
 import { PriceView } from "./card-price";
 import { HotelPagination } from "./hotel-pagination";
-import { HotelMap } from "./hotel-map";
+import type { MapBounds, MapPoint } from "./hotel-map";
+
+// Mapa wchodzi LENIWIE i to jest wymóg, nie optymalizacja kosmetyczna
+// (brief §29). Statyczny `import { HotelMap }` wciągał `hotel-map.tsx` do
+// paczki wyników, a bundler — widząc w środku `import("maplibre-gl")` —
+// dokładał do widoku LISTY także chunk samego silnika mapy. Zmierzone testem
+// E2E: `0rrh_maplibre-gl_dist_*.js` (~944 kB nieskompresowane) leciał na
+// każdym wyszukiwaniu, również do gościa, który mapy nigdy nie otworzy.
+//
+// `ssr: false`, bo MapLibre dotyka `window` przy pierwszym renderze i nie ma
+// czego prerenderować — mapa i tak powstaje dopiero w przeglądarce.
+const HotelMap = dynamic(() => import("./hotel-map").then((m) => m.HotelMap), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center rounded-2xl bg-neutral-100">
+      <span className="text-sm text-neutral-500">Wczytuję mapę…</span>
+    </div>
+  ),
+});
 import { facilityGroupsFor } from "@/lib/hotels/facility-filters";
 import { publishFilterOptions } from "@/lib/hotels/filter-options-store";
+import { useMediaQuery } from "@/lib/ui/use-media-query";
 import { applyFiltersAndSort, type FilterableOffer } from "./filters-logic";
 
 export type { MetaOffer } from "@/lib/hotels/meta-pool";
@@ -69,15 +89,6 @@ interface ResultsListProps {
   facilities?: string[];
   /** Nazwy sieci hotelowych (dokładnie jak u dostawcy). */
   chains?: string[];
-  /**
-   * Google Place ID kierunku dla widgetu mapy LiteAPI.
-   * `null` = nie udało się go rozwiązać → przełącznika mapy NIE pokazujemy.
-   * Widget centruje się wyłącznie po `placeId`, więc bez niego mapa
-   * pokazałaby przypadkowe miejsce.
-   */
-  mapPlaceId?: string | null;
-  /** Domena white-labelu LiteAPI. Brak = mapa wyłączona. */
-  mapDomain?: string | null;
 }
 
 interface PricedFilterable extends FilterableOffer {
@@ -145,8 +156,6 @@ export function ResultsList(props: ResultsListProps) {
     board,
     facilities,
     chains,
-    mapPlaceId,
-    mapDomain,
   } = props;
 
   // Widok listy vs mapy. Stan lokalny, nie URL: przełączenie widoku nie jest
@@ -154,11 +163,35 @@ export function ResultsList(props: ResultsListProps) {
   // linku, którym gość się dzieli. Filtry i strona zostają nietknięte.
   // UWAGA: `view` jest już zajęte przez memo z wynikami — stąd `viewMode`.
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
-  const mapAvailable = Boolean(mapPlaceId && mapDomain);
+
+  // Stan wspólny listy i mapy (brief §13C). `selected` = klik w znacznik,
+  // `hovered` = najechanie na kartę albo na znacznik. Trzymamy je tutaj, a nie
+  // w mapie, bo obie strony muszą je czytać.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [areaBounds, setAreaBounds] = useState<MapBounds | null>(null);
+  // `lg` w Tailwindzie. Wybór wariantu mapy MUSI iść przez realny breakpoint,
+  // nie przez klasy widoczności — patrz komentarz przy renderze mapy niżej.
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+
+  // Zmiana wyszukiwania kasuje ograniczenie do obszaru — inaczej gość wraca
+  // z nowymi datami i widzi „0 wyników", bo mapa pamięta poprzedni kadr.
+  const areaSigRef = useRef<string>("");
 
   // Stable identity for the price context so the effect doesn't refire on
   // every render.
   const ctxSig = `${ctx.checkin}|${ctx.checkout}|${ctx.adults}|${ctx.children.join(".")}|${ctx.rooms}|${ctx.currency}`;
+
+  // Nowe wyszukiwanie kasuje ograniczenie do obszaru. Aktualizacja W TRAKCIE
+  // RENDERU, nie w efekcie: React przerywa ten render i liczy go ponownie ze
+  // świeżym stanem, więc nie ma migotnięcia ani dodatkowego przebiegu — a
+  // `react-hooks/set-state-in-effect` (włączony w tym repo) nie ma tu nic
+  // do zgłoszenia.
+  if (areaSigRef.current !== ctxSig) {
+    areaSigRef.current = ctxSig;
+    if (areaBounds !== null) setAreaBounds(null);
+    if (selectedId !== null) setSelectedId(null);
+  }
 
   // ── Dociąganie PEŁNEJ puli kierunku (2026-07-11) ──────────────────────────
   // Serwer wysyła pierwszą stronę (300); tu w tle dociągamy kolejne strony
@@ -297,6 +330,24 @@ export function ResultsList(props: ResultsListProps) {
     let failed = 0;
     const priced: Row[] = [];
     for (const r of rows) {
+      // „Szukaj w tym obszarze" (brief §13E). Ograniczenie działa LOKALNIE:
+      // pula kierunku jest już w pamięci przeglądarki razem ze współrzędnymi,
+      // więc przeliczenie kadru nie kosztuje ani jednego zapytania do
+      // dostawcy. Obiekty bez współrzędnych wypadają — nie umiemy powiedzieć,
+      // czy są w kadrze, a zgadywanie byłoby gorsze niż pominięcie.
+      if (areaBounds) {
+        const { latitude: la, longitude: lo } = r.offer;
+        if (
+          typeof la !== "number" ||
+          typeof lo !== "number" ||
+          la < areaBounds.south ||
+          la > areaBounds.north ||
+          lo < areaBounds.west ||
+          lo > areaBounds.east
+        ) {
+          continue;
+        }
+      }
       if (r.entry === null) {
         unavailable++;
       } else if (r.entry === "error") {
@@ -433,6 +484,9 @@ export function ResultsList(props: ResultsListProps) {
 
     return {
       displayed,
+      // Pełna, przefiltrowana lista (bez cięcia na strony) — źródło punktów
+      // mapy i podglądu wybranego hotelu.
+      allRows: orderedRows,
       total,
       totalPages,
       safePage,
@@ -461,7 +515,29 @@ export function ResultsList(props: ResultsListProps) {
     chainsSig,
     boardSig,
     wersjaCen,
+    areaBounds,
   ]);
+
+  // Punkty dla mapy — WSZYSTKIE przefiltrowane wyniki, nie tylko bieżąca
+  // strona. Mapa pokazująca 20 z 386 hoteli byłaby myląca: gość widziałby
+  // dziurę w miejscu, gdzie oferty są.
+  const mapPoints = useMemo<MapPoint[]>(
+    () =>
+      view.allRows
+        .filter((r) => typeof r.offer.latitude === "number" && typeof r.offer.longitude === "number")
+        .map((r) => {
+          const rate = isPriced(r.entry) ? r.entry : null;
+          return {
+            hotelId: r.offer.hotelId,
+            name: r.offer.name,
+            lat: r.offer.latitude!,
+            lng: r.offer.longitude!,
+            totalAmount: rate ? rate.totalAmount : null,
+            currency: rate ? rate.currency : ctx.currency,
+          };
+        }),
+    [view.allRows, ctx.currency],
+  );
 
   // Skan „gotowy" dopiero gdy: wszystkie znane hotele wycenione ORAZ nie ma
   // już stron puli do dociągnięcia (inaczej licznik zamarłby na 300/300 tuż
@@ -469,60 +545,169 @@ export function ResultsList(props: ResultsListProps) {
   const expansionPending =
     Boolean(poolSource && poolHasMore) && !(expansion.sig === sourceSig && expansion.done);
   const scanComplete = view.scanning === 0 && !expansionPending;
-  const totalChecked = fullPool.length - view.scanning;
+
+  // Mapa ma sens dopiero, gdy jest co na niej postawić.
+  const mapAvailable = mapPoints.length > 0;
+  const selectedRow = selectedId
+    ? view.allRows.find((r) => r.offer.hotelId === selectedId) ?? null
+    : null;
+
+  const mapNode = (
+    <HotelMap
+      points={mapPoints}
+      selectedId={selectedId}
+      hoveredId={hoveredId}
+      onSelect={setSelectedId}
+      onHoverMarker={setHoveredId}
+      onSearchArea={setAreaBounds}
+      areaActive={areaBounds !== null}
+      className="h-full w-full"
+    />
+  );
+
+  const selectedCard = selectedRow ? (
+    <ResultCard
+      offer={isPriced(selectedRow.entry) ? { ...selectedRow.offer, cheapestRate: selectedRow.entry } : selectedRow.offer}
+      searchQuery={childParams}
+      nights={nights}
+      priceSlot={
+        isPriced(selectedRow.entry) ? undefined : (
+          <PriceView entry={selectedRow.entry as "loading" | "error" | null | undefined} />
+        )
+      }
+    />
+  ) : null;
 
   return (
     <div className="space-y-4">
-      <ResultsSubtitle
-        scanComplete={scanComplete}
-        availableCount={view.availableCount}
-        totalChecked={totalChecked}
-        totalPool={fullPool.length}
-        unavailableCount={view.unavailable}
-        failedCount={view.failed}
-        nights={nights}
-        adults={ctx.adults}
-        page={view.safePage}
-        totalPages={view.totalPages}
-        filteredCount={view.total}
-      />
-
-      {/* Przełącznik Lista / Mapa. Pokazujemy go TYLKO gdy mapa naprawdę
-          zadziała (jest placeId kierunku i domena white-labelu) — martwy
-          przycisk jest gorszy niż jego brak. */}
-      {mapAvailable && (
-        <div
-          role="group"
-          aria-label="Widok wyników"
-          className="inline-flex rounded-full border border-neutral-300 bg-white p-0.5"
-        >
-          {(["list", "map"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setViewMode(mode)}
-              aria-pressed={viewMode === mode}
-              // min-h-11 = 44 px — minimalny cel dotyku (WCAG 2.2 AA).
-              // Wcześniejsze h-9 (36 px) było poniżej progu; zmierzone na 375 px.
-              className={`min-h-11 rounded-full px-5 text-sm font-medium transition ${
-                viewMode === mode ? "bg-emerald-700 text-white" : "text-neutral-700 hover:text-neutral-900"
-              }`}
-            >
-              {mode === "list" ? "Lista" : "Mapa"}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {viewMode === "map" && mapAvailable && (
-        <HotelMap
-          placeId={mapPlaceId!}
-          domain={mapDomain!}
-          checkin={ctx.checkin}
-          checkout={ctx.checkout}
-          searchQuery={baseQuery}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ResultsSubtitle
+          scanComplete={scanComplete}
+          availableCount={view.availableCount}
+          failedCount={view.failed}
+          nights={nights}
+          adults={ctx.adults}
+          page={view.safePage}
+          totalPages={view.totalPages}
+          filteredCount={view.total}
         />
-      )}
+
+        {/* Przełącznik Lista / Mapa — tylko gdy mapa naprawdę coś pokaże.
+            Martwy przycisk jest gorszy niż jego brak. */}
+        {mapAvailable && (
+          <div
+            role="group"
+            aria-label="Widok wyników"
+            className="inline-flex shrink-0 rounded-full border border-neutral-300 bg-white p-0.5"
+          >
+            {(["list", "map"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                aria-pressed={viewMode === mode}
+                // min-h-11 = 44 px — minimalny cel dotyku (WCAG 2.2 AA).
+                className={`min-h-11 rounded-full px-5 text-sm font-medium transition ${
+                  viewMode === mode ? "bg-emerald-700 text-white" : "text-neutral-700 hover:text-neutral-900"
+                }`}
+              >
+                {mode === "list" ? "Lista" : "Mapa"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── WIDOK MAPY ────────────────────────────────────────────────────
+          Desktop: podział 55/45, mapa przyklejona do okna i wysoka na cały
+          ekran pomniejszony o paski (brief §13B). Telefon: mapa na pełny
+          ekran, a wybrany hotel wjeżdża kartą od dołu (brief §13D). */}
+      {viewMode === "map" && mapAvailable ? (
+        // JEDNA instancja mapy. Wariantów NIE przełączamy klasami `lg:hidden`,
+        // bo Tailwind renderuje wtedy oba drzewa — a to znaczyłoby dwie mapy
+        // MapLibre naraz, dwa canvasy i dwa komplety pobranych kafelków,
+        // z czego jeden niewidoczny. Zdarzyło się to w tej sesji.
+        !isDesktop ? (
+          /* Telefon — mapa na pełny ekran (brief §13D) */
+          <div className="fixed inset-0 z-40 flex flex-col bg-white">
+              <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className="inline-flex h-11 items-center rounded-full px-3 text-sm font-semibold text-emerald-800"
+                >
+                  ← Wróć do listy
+                </button>
+                <span className="text-xs text-neutral-500">
+                  {view.total} {obiektySlowo(view.total)}
+                </span>
+              </div>
+            <div className="relative min-h-0 flex-1">{mapNode}</div>
+            {selectedCard && (
+              <div className="border-t border-neutral-200 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                {selectedCard}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Desktop — podział 55/45, mapa przyklejona do okna (brief §13B) */
+          <div className="grid grid-cols-[55fr_45fr] items-start gap-4">
+            <div className="max-h-[calc(100vh-11rem)] space-y-4 overflow-y-auto pr-1">
+              {view.allRows.slice(0, 60).map(({ offer, entry }) => (
+                <div
+                  key={offer.hotelId}
+                  onMouseEnter={() => setHoveredId(offer.hotelId)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  className={`rounded-2xl transition ${
+                    selectedId === offer.hotelId ? "ring-2 ring-emerald-600 ring-offset-2" : ""
+                  }`}
+                >
+                  <ResultCard
+                    offer={isPriced(entry) ? { ...offer, cheapestRate: entry } : offer}
+                    searchQuery={childParams}
+                    nights={nights}
+                    priceSlot={
+                      isPriced(entry) ? undefined : (
+                        <PriceView entry={entry as "loading" | "error" | null | undefined} />
+                      )
+                    }
+                  />
+                </div>
+              ))}
+              {view.allRows.length > 60 && (
+                <p className="px-1 pb-2 text-xs text-neutral-500">
+                  Widok mapy pokazuje 60 pierwszych wyników z {view.total}. Zawęź obszar albo
+                  filtry, żeby zobaczyć resztę.
+                </p>
+              )}
+            </div>
+            <div className="sticky top-[9rem] h-[calc(100vh-11rem)]">
+              <div className="relative h-full">
+                {mapNode}
+                {/* Podgląd wybranego obiektu NA mapie (brief §13C).
+                    Konieczny, bo kliknięty znacznik często wskazuje hotel,
+                    którego karty nie ma w widocznym fragmencie listy — bez
+                    tego klik w znacznik nie dawał żadnej odpowiedzi. */}
+                {selectedCard && (
+                  <div className="absolute inset-x-3 bottom-3 z-10 animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
+                    <div className="rounded-2xl bg-white shadow-2xl ring-1 ring-emerald-900/10">
+                      {selectedCard}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(null)}
+                      aria-label="Zamknij podgląd obiektu"
+                      className="absolute -top-3 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900/80 text-white shadow-lg transition hover:bg-neutral-900"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      ) : null}
 
       {viewMode === "map" ? null : (<>
       {/* With loading-row padding above, displayed.length is 0 only AFTER
@@ -558,11 +743,20 @@ export function ResultsList(props: ResultsListProps) {
         view.displayed.map(({ offer, entry }, index) => (
           <ResultCard
             key={offer.hotelId}
-            offer={offer}
+            offer={
+              // Gdy cena już dojechała, WKŁADAMY ją do karty zamiast do
+              // osobnego slotu. Dzięki temu chipy „śniadanie" i „bezpłatna
+              // anulacja" stoją przy nazwie hotelu (tam ich szuka wzrok),
+              // a szyna cenowa po prawej zostaje samą ceną. Wcześniej cała
+              // ta treść siedziała w slocie i karta miała pusty środek.
+              isPriced(entry) ? { ...offer, cheapestRate: entry } : offer
+            }
             searchQuery={childParams}
             nights={nights}
             imagePriority={index < 6}
-            priceSlot={<PriceView entry={entry} nights={nights} />}
+            priceSlot={
+              isPriced(entry) ? undefined : <PriceView entry={entry as "loading" | "error" | null | undefined} />
+            }
           />
         ))
       )}
@@ -574,17 +768,19 @@ export function ResultsList(props: ResultsListProps) {
   );
 }
 
-// Subtitle for the results list — replaces the old server-rendered count.
-// Renders three states:
-//   1. Scanning: "Sprawdzam dostępność w X obiektach… (Y/Z)"
-//   2. Scan complete + filters narrowed it: "12 z 511 dostępnych · …"
-//   3. Scan complete + no filters: "511 dostępnych obiektów · …"
+/** „1 obiekt", „3 obiekty", „5 obiektów" — polska odmiana (12–14 to wyjątek). */
+function obiektySlowo(n: number): string {
+  if (n === 1) return "obiekt";
+  const last = n % 10;
+  const twoLast = n % 100;
+  if (last >= 2 && last <= 4 && !(twoLast >= 12 && twoLast <= 14)) return "obiekty";
+  return "obiektów";
+}
+
+// Podtytuł listy wyników — patrz komentarz przy `countLine` niżej.
 function ResultsSubtitle({
   scanComplete,
   availableCount,
-  totalChecked,
-  totalPool,
-  unavailableCount,
   failedCount,
   nights,
   adults,
@@ -594,9 +790,6 @@ function ResultsSubtitle({
 }: {
   scanComplete: boolean;
   availableCount: number;
-  totalChecked: number;
-  totalPool: number;
-  unavailableCount: number;
   failedCount: number;
   nights: number;
   adults: number;
@@ -610,38 +803,46 @@ function ResultsSubtitle({
     nights === 1 ? "noc" : nights >= 2 && nights <= 4 ? "noce" : "nocy";
   const adultsLabel = adults === 1 ? "dorosły" : "dorosłych";
 
+  // ── Trzy stany podtytułu (brief §5 i §6) ────────────────────────────────
+  //
+  // 1. TRWA SKAN — „Szukamy najlepszych ofert…" i ANI JEDNEJ liczby.
+  //    Wcześniej stało tu „Sprawdzam dostępność… 1500/2099". Postęp techniczny
+  //    zamienia gościa w obserwatora backendu: zamiast oglądać hotele, patrzy,
+  //    jak wolno rośnie licznik. Liczba dostępnych też znikła — skakała
+  //    0 → 53 → 172 → 386, a każda z tych wartości była nieprawdziwa
+  //    w chwili wyświetlenia.
+  //
+  // 2. PO SKANIE — jedna, ostateczna liczba, wchodząca miękkim fade-in.
+  //
+  // 3. PO SKANIE + FILTRY — ile z ilu przeszło.
+  //
+  // „X bez miejsc" usunięte całkowicie. Backend nadal to liczy (`unavailable`
+  // steruje ukrywaniem kart), ale gość nie ma z tej liczby żadnego pożytku,
+  // a „1714 bez miejsc" czyta się jak ostrzeżenie o pustym magazynie.
   let countLine: React.ReactNode;
   if (!scanComplete) {
     countLine = (
       <>
         <span
-          className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+          className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500 motion-reduce:animate-none"
           aria-hidden
         />
-        Sprawdzam dostępność… {totalChecked}/{totalPool}
-        {availableCount > 0 ? (
-          <>
-            {" "}· dotąd <strong className="font-semibold text-emerald-700">{availableCount}</strong>{" "}
-            dostępnych
-          </>
-        ) : null}
+        Szukamy najlepszych ofert…
       </>
     );
   } else if (filteredOut > 0) {
     countLine = (
-      <>
+      <span className="animate-in fade-in duration-500 motion-reduce:animate-none">
         <strong className="font-semibold text-neutral-800">{filteredCount}</strong> z{" "}
-        {availableCount} dostępnych po filtrach{" "}
-        {unavailableCount > 0 ? `· ${unavailableCount} bez miejsc` : ""}
-      </>
+        {availableCount} {availableCount === 1 ? "obiektu" : "obiektów"} po filtrach
+      </span>
     );
   } else {
     countLine = (
-      <>
+      <span className="animate-in fade-in duration-500 motion-reduce:animate-none">
         <strong className="font-semibold text-neutral-800">{availableCount}</strong>{" "}
-        {availableCount === 1 ? "dostępny obiekt" : "dostępnych obiektów"}
-        {unavailableCount > 0 ? ` · ${unavailableCount} bez miejsc` : ""}
-      </>
+        {obiektySlowo(availableCount)}
+      </span>
     );
   }
 
@@ -656,11 +857,14 @@ function ResultsSubtitle({
       <span>
         {adults} {adultsLabel}
       </span>
+      {/* Awaria pobierania cen zostaje zgłoszona — to uczciwe — ale bez liczby.
+          „300 obiektów bez sprawdzonej ceny" brzmiało jak raport z serwerowni;
+          gościa interesuje tylko to, że warto odświeżyć. */}
       {scanComplete && failedCount > 0 && (
         <>
           <span aria-hidden>·</span>
           <span className="text-amber-700">
-            {failedCount} obiektów bez sprawdzonej ceny — odśwież stronę
+            części cen nie udało się sprawdzić — odśwież stronę
           </span>
         </>
       )}

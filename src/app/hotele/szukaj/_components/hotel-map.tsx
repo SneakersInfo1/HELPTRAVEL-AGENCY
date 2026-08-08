@@ -1,277 +1,497 @@
 "use client";
 
-// Mapa wyników — widget mapy LiteAPI, dopasowany do HelpTravel.
+// Mapa wyników — WŁASNA (MapLibre GL + kafelki Geoapify przez nasze proxy).
 //
-// Decyzja właściciela (2026-08-06): korzystamy z gotowego widgetu dostawcy
-// zamiast budować własną mapę na MapLibre. Zaleta: zero kosztu kafelków
-// i zero dodatkowego klucza API. Cena: to jest komponent DOSTAWCY, więc
-// dopasowujemy go tym, na co pozwala jego konfiguracja.
+// DLACZEGO NIE WIDGET LITEAPI. Poprzednia sesja osadziła tu gotowy widget
+// `components.liteapi.travel`. Wyglądał znośnie, ale ma własną pulę hoteli
+// i własną wyszukiwarkę, więc trzy rzeczy z briefu §13 były na nim FIZYCZNIE
+// niewykonalne: synchronizacja marker↔karta, zachowanie naszych filtrów
+// i „przeszukaj ten obszar" na NASZYCH wynikach. Do tego walutę i język
+// trzeba było podmieniać w cudzym DOM-ie przez MutationObserver — rozwiązanie,
+// które każda ich aktualizacja mogła wywrócić bez ostrzeżenia.
 //
-// Co robimy, żeby to była mapa HelpTravel, a nie obce okno:
-//   • `currency: "PLN"` — wymóg wprost od właściciela; bez tego widget
-//     pokazuje ceny w USD (na tym poległ wcześniej gotowy chatbot LiteAPI),
-//   • `primaryColor` z palety marki (emerald-700) + kolory dymka,
-//   • `labelsOverride` — widget NIE MA parametru języka, więc polskie napisy
-//     wchodzą przez podmianę etykiet,
-//   • `onHotelClick` — klik prowadzi na NASZĄ stronę hotelu z zachowaniem
-//     dat i liczby gości. Bez tego gość wychodzi na domenę *.nuitee.link
-//     i wypada z naszego lejka,
-//   • `hideLogo` — to ma być sekcja HelpTravel.
+// KLUCZ. Mapa nie potrzebuje nowego konta: `GEOAPIFY_API_KEY` jest w projekcie
+// od dawna (Geoapify figuruje też w polityce prywatności jako podmiot
+// przetwarzający). Klucz zostaje po stronie serwera — kafelki idą przez
+// /api/map/tiles, bo repozytorium jest publiczne.
 //
-// Skrypt ładujemy DOPIERO po otwarciu mapy (lazy), żeby nie obciążał
-// pierwszego renderu listy (brief §10: „nie blokuj pierwszego renderu").
+// WYDAJNOŚĆ (brief §29 i §33). `maplibre-gl` waży ~200 kB gzip i NIE MOŻE
+// obciążać widoku listy. Import jest dynamiczny i dzieje się dopiero przy
+// pierwszym otwarciu mapy; CSS biblioteki też (`import("maplibre-gl/dist/…")`).
+//
+// SKALA. Kierunek potrafi mieć 2000 hoteli. Nie wstawiamy 2000 znaczników:
+// widoczne punkty są przycinane do kadru i grupowane w siatce pikselowej,
+// więc w DOM jest ~150 elementów niezależnie od wielkości puli.
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 
-const SDK_SRC = "https://components.liteapi.travel/v1.0/sdk.umd.js";
+import { formatPLN } from "@/lib/money";
 
-// Kolory marki (te same tokeny co reszta sekcji hotelowej).
-const BRAND = "#047857"; // emerald-700 — kontrast 4,83:1 na bieli (WCAG AA)
-
-interface LiteApiSdk {
-  init?: (config: { domain: string }) => void;
-  Map?: {
-    create: (config: Record<string, unknown>) => void;
-  };
+export interface MapPoint {
+  hotelId: string;
+  name: string;
+  lat: number;
+  lng: number;
+  /** Cena całego pobytu. `null` = jeszcze nie znamy → znacznik neutralny. */
+  totalAmount: number | null;
+  currency: string;
 }
 
-declare global {
-  interface Window {
-    LiteAPI?: LiteApiSdk;
-  }
-}
-
-/**
- * Podmiana symbolu waluty i angielskich napisów w DOM widgetu.
- *
- * DLACZEGO TO W OGÓLE ISTNIEJE — zmierzone 2026-08-06 na żywym widgecie:
- *
- *   • `currency: "PLN"` DZIAŁA na poziomie kwot. Dowód: widget pokazał dla
- *     Madrytu 2125–6206, a LiteAPI dla tych samych dat zwraca w PLN 1153–11861
- *     i w USD 310–3186. Zakres pasuje do PLN, a górna wartość przekracza
- *     maksimum USD — więc to złotówki.
- *   • ALE widget rysuje przy nich symbol **`$`**, a interfejs zostaje po
- *     angielsku („Sep 15", „2 adults, 1 room", „Search"). Parametry
- *     `language` / `locale` / `lang` sprawdzone — nie robią nic.
- *     `labelsOverride` nie pokrywa tych napisów.
- *
- * „$ 2125" przy kwocie 2125 zł to nie kosmetyka: polski gość odczyta to jako
- * ~8500 zł. Zostawienie tego byłoby wprowadzaniem w błąd co do ceny — czyli
- * dokładnie tym, co ta przebudowa likwiduje w całym serwisie.
- *
- * Świadomy kompromis: poprawiamy DOM dostawcy z zewnątrz. Jest to KRUCHE —
- * zmiana struktury widgetu może to unieważnić. Dlatego działa wyłącznie
- * wewnątrz kontenera mapy, nie rusza niczego innego, a gdy przestanie
- * trafiać, najgorszym skutkiem jest powrót do stanu sprzed poprawki.
- * Docelowo: poprosić LiteAPI o obsługę waluty i języka w widgecie.
- */
-// Skróty miesięcy — widget renderuje daty jako „Sep 15".
-const MONTHS_PL: Record<string, string> = {
-  jan: "sty", feb: "lut", mar: "mar", apr: "kwi", may: "maj", jun: "cze",
-  jul: "lip", aug: "sie", sep: "wrz", oct: "paź", nov: "lis", dec: "gru",
-};
-
-// UWAGA na odstępy: widget wstawia PODWÓJNĄ spację („2 adults,  1 room"),
-// dlatego wszędzie `\s+`, nigdy pojedyncza spacja. Zmierzone na żywym DOM.
-const UI_PL: Array<[RegExp, string]> = [
-  [/^Search$/i, "Szukaj"],
-  [/^Search\s+this\s+area$/i, "Przeszukaj ten obszar"],
-  [/^(\d+)\s+adults?,\s+(\d+)\s+rooms?$/i, "$1 os., $2 pok."],
-  [/^(\d+)\s+adults?$/i, "$1 os."],
-  [/^(\d+)\s+rooms?$/i, "$1 pok."],
-  [/^View\s+hotel$/i, "Zobacz hotel"],
-  [/^per\s+night$/i, "za noc"],
-  [/^reviews?$/i, "opinii"],
-  [/^Loading\.{0,3}$/i, "Wczytywanie…"],
-  [/^No\s+results?$/i, "Brak wyników"],
-  // „Sep 15" → „15 wrz" (polski szyk: dzień przed miesiącem).
-  [/^([A-Z][a-z]{2})\s+(\d{1,2})$/, "__DATE__"],
-];
-
-function patchWidgetText(root: HTMLElement): void {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const edits: Array<[Text, string]> = [];
-
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const text = node as Text;
-    const raw = text.nodeValue ?? "";
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-
-    // Sam symbol w osobnym węźle (tak renderuje go widget) → „zł".
-    // Polska konwencja stawia walutę PO kwocie, ale symbol siedzi w oddzielnym
-    // elemencie przed liczbą, więc przestawienie wymagałoby przebudowy węzłów
-    // dostawcy. „zł 2125" jest jednoznaczne i nie kłamie — a to jest tu cel.
-    if (trimmed === "$") {
-      edits.push([text, raw.replace("$", "zł")]);
-      continue;
-    }
-    // Symbol sklejony z kwotą („$2125").
-    if (/^\$\s?[\d.,\s]+$/.test(trimmed)) {
-      edits.push([text, raw.replace(/^\s*\$\s?/, "").trimEnd() + " zł"]);
-      continue;
-    }
-    for (const [pattern, replacement] of UI_PL) {
-      const m = pattern.exec(trimmed);
-      if (!m) continue;
-      if (replacement === "__DATE__") {
-        const monthPl = MONTHS_PL[m[1].toLowerCase()];
-        // Nieznany skrót miesiąca zostawiamy w spokoju — lepiej angielski
-        // niż zniekształcona data.
-        if (monthPl) edits.push([text, `${m[2]} ${monthPl}`]);
-      } else {
-        edits.push([text, trimmed.replace(pattern, replacement)]);
-      }
-      break;
-    }
-  }
-
-  for (const [node, value] of edits) node.nodeValue = value;
-}
-
-let sdkPromise: Promise<void> | null = null;
-
-/** Ładuje SDK raz na kartę. Kolejne otwarcia mapy korzystają z tej samej obietnicy. */
-function loadSdk(): Promise<void> {
-  if (typeof window === "undefined") return Promise.reject(new Error("brak window"));
-  if (window.LiteAPI?.Map) return Promise.resolve();
-  if (sdkPromise) return sdkPromise;
-
-  sdkPromise = new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${SDK_SRC}"]`);
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("SDK się nie załadowało")));
-      return;
-    }
-    const el = document.createElement("script");
-    el.src = SDK_SRC;
-    el.async = true;
-    el.addEventListener("load", () => resolve());
-    el.addEventListener("error", () => reject(new Error("SDK się nie załadowało")));
-    document.head.appendChild(el);
-  });
-  return sdkPromise;
+export interface MapBounds {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
 }
 
 interface Props {
-  /** Google Place ID kierunku — widget centruje mapę wyłącznie po nim. */
-  placeId: string;
-  checkin: string;
-  checkout: string;
-  /** Parametry wyszukiwania do przeniesienia na stronę hotelu. */
-  searchQuery: string;
-  /** Domena white-labelu LiteAPI (NEXT_PUBLIC_LITEAPI_WIDGET_DOMAIN). */
-  domain: string;
+  points: MapPoint[];
+  selectedId: string | null;
+  hoveredId: string | null;
+  onSelect: (hotelId: string | null) => void;
+  onHoverMarker: (hotelId: string | null) => void;
+  /** `null` = użytkownik czyści ograniczenie do obszaru. */
+  onSearchArea: (bounds: MapBounds | null) => void;
+  /** Czy lista jest AKTUALNIE ograniczona do obszaru (steruje treścią CTA). */
+  areaActive: boolean;
+  className?: string;
 }
 
-export function HotelMap({ placeId, checkin, checkout, searchQuery, domain }: Props) {
-  const router = useRouter();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const observerRef = useRef<MutationObserver | null>(null);
-  // Router i parametry wyszukiwania trzymamy w referencjach, żeby efekt
-  // inicjalizujący mapę nie przepinał się przy każdej nawigacji — widget
-  // montuje się RAZ i nie chcemy go przeładowywać.
-  //
-  // Aktualizacja idzie przez efekt, nie przez przypisanie w renderze:
-  // zapis do refa w trakcie renderu jest w tym projekcie błędem lintu
-  // (React Compiler: „Cannot access refs during render") i faktycznie
-  // psułby renderowanie współbieżne.
-  const routerRef = useRef(router);
-  const queryRef = useRef(searchQuery);
-  useEffect(() => {
-    routerRef.current = router;
-    queryRef.current = searchQuery;
-  }, [router, searchQuery]);
+// Komórka siatki grupującej — PROSTOKĄTNA, nie kwadratowa.
+//
+// Pierwsza wersja używała kwadratu 56 px i wyglądała dobrze na zrzucie, ale
+// test E2E wyłapał, że pigułka „1 234 zł" ma realnie ~90-110 px szerokości:
+// znaczniki z sąsiednich komórek nachodziły na siebie i jeden PRZECHWYTYWAŁ
+// kliknięcie w drugi. Playwright zgłosił to wprost („intercepts pointer
+// events"), a dla gościa wyglądałoby to jak mapa, która otwiera nie ten hotel,
+// w który celował. Wymiary komórki muszą odpowiadać wymiarom pigułki.
+const CLUSTER_X = 104;
+const CLUSTER_Y = 44;
+/** Sufit znaczników w DOM. Powyżej i tak nie da się w nic trafić palcem. */
+const MAX_MARKERS = 150;
 
+type Cell = { key: string; lat: number; lng: number; items: MapPoint[] };
+
+export function HotelMap({
+  points,
+  selectedId,
+  hoveredId,
+  onSelect,
+  onHoverMarker,
+  onSearchArea,
+  areaActive,
+  className = "",
+}: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const markersRef = useRef<Map<string, MapLibreMarker>>(new Map());
+  /** Aktualna zawartość komórek — czytana przez obsługiwacze zdarzeń. */
+  const cellsRef = useRef<Map<string, Cell>>(new Map());
+  /** Czy gość sam ruszył mapą. Od tego momentu kadr jest jego. */
+  const userMovedRef = useRef(false);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [moved, setMoved] = useState(false);
+  /** Rośnie przy każdym końcu ruchu mapy — wymusza przeliczenie znaczników. */
+  const [viewTick, setViewTick] = useState(0);
+
+  // Callbacki w ref: efekt tworzący mapę ma pustą listę zależności (mapa
+  // powstaje RAZ), a bez tego trzymałby pierwsze wersje funkcji na zawsze.
+  const cb = useRef({ onSelect, onHoverMarker });
+  cb.current = { onSelect, onHoverMarker };
+
+  // Środek startowy liczony ze średniej punktów — bez tego mapa startuje
+  // nad Atlantykiem i gość widzi wodę zamiast hoteli.
+  const initialCenter = useMemo<[number, number]>(() => {
+    const withCoords = points.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    if (!withCoords.length) return [0, 0];
+    const lat = withCoords.reduce((s, p) => s + p.lat, 0) / withCoords.length;
+    const lng = withCoords.reduce((s, p) => s + p.lng, 0) / withCoords.length;
+    return [lng, lat];
+  }, [points]);
+
+  // ── Utworzenie mapy (raz) ────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
+    let map: MapLibreMap | null = null;
+    let odepnijGesty: (() => void) | null = null;
+    // Kopia referencji do sprzątania: `markersRef.current` może wskazywać
+    // inną mapę w chwili odmontowania, a wtedy cleanup zostawiłby znaczniki
+    // (wyciek + „duchy" po przełączeniu widoku).
+    const liveMarkers = markersRef.current;
 
-    loadSdk()
-      .then(() => {
+    void (async () => {
+      try {
+        const [{ Map: GlMap, NavigationControl, AttributionControl }] = await Promise.all([
+          import("maplibre-gl"),
+          // CSS biblioteki — bez niego kontrolki i canvas mają zerowe wymiary.
+          import("maplibre-gl/dist/maplibre-gl.css"),
+        ]);
         if (cancelled || !containerRef.current) return;
-        const sdk = window.LiteAPI;
-        if (!sdk?.Map) throw new Error("SDK bez modułu Map");
 
-        sdk.init?.({ domain });
-        sdk.Map.create({
-          selector: "#helptravel-hotel-map",
-          placeId,
-          checkin,
-          checkout,
-          // Wymóg wprost: ceny w PLN. Bez tego widget pokazuje USD.
-          currency: "PLN",
-          primaryColor: BRAND,
-          hideLogo: true,
-          popup: {
-            titleColor: "#171717",
-            textColor: "#525252",
-            backgroundColor: "#ffffff",
+        map = new GlMap({
+          container: containerRef.current,
+          style: {
+            version: 8,
+            sources: {
+              geoapify: {
+                type: "raster",
+                tiles: [`${window.location.origin}/api/map/tiles/{z}/{x}/{y}.png`],
+                tileSize: 256,
+                maxzoom: 19,
+                // Atrybucja jest warunkiem licencji OSM/Geoapify. Nie usuwać.
+                attribution:
+                  '© <a href="https://www.geoapify.com/">Geoapify</a> · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+              },
+            },
+            layers: [{ id: "geoapify", type: "raster", source: "geoapify" }],
           },
-          // Widget nie ma parametru języka — polskie napisy wchodzą tędy.
-          labelsOverride: {
-            searchButton: "Szukaj",
-            searchThisArea: "Przeszukaj ten obszar",
-            viewHotel: "Zobacz hotel",
-            perNight: "za noc",
-            reviews: "opinii",
-            loading: "Wczytywanie…",
-            noResults: "Brak obiektów w tym obszarze",
-          },
-          // Klik zostaje w HelpTravel: przechodzimy na naszą stronę hotelu
-          // z zachowaniem dat i liczby gości. Bez tego gość ląduje na
-          // *.nuitee.link i wypada z naszego lejka.
-          onHotelClick: (hotel: { hotelId?: string; id?: string }) => {
-            const id = hotel?.hotelId ?? hotel?.id;
-            if (!id) return;
-            routerRef.current.push(`/hotele/${encodeURIComponent(id)}?${queryRef.current}`);
-          },
+          center: initialCenter,
+          zoom: 11,
+          // Obrót i pochylenie tylko mylą przy wyborze hotelu.
+          dragRotate: false,
+          pitchWithRotate: false,
+          attributionControl: false,
         });
-        if (!cancelled) setStatus("ready");
 
-        // Widget dorysowuje markery asynchronicznie i przy każdym ruchu mapy,
-        // więc jednorazowa podmiana nie wystarczy — obserwujemy zmiany.
-        const root = containerRef.current;
-        if (root) {
-          patchWidgetText(root);
-          const observer = new MutationObserver(() => patchWidgetText(root));
-          observer.observe(root, { childList: true, subtree: true, characterData: true });
-          observerRef.current = observer;
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setStatus("error");
-      });
+        map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+        map.addControl(new AttributionControl({ compact: true }), "bottom-right");
+        map.on("load", () => {
+          if (!cancelled) setReady(true);
+        });
+        map.on("moveend", () => {
+          if (cancelled) return;
+          // „Szukaj w tym obszarze" ma się pokazać tylko wtedy, gdy to GOŚĆ
+          // przesunął mapę. Nasze własne dopasowanie kadru też kończy się
+          // `moveend`, a przycisk po nim byłby myląco bezcelowy.
+          if (userMovedRef.current) setMoved(true);
+          setViewTick((t) => t + 1);
+        });
+
+        // Pierwszy gest gościa oddaje mu kadr na stałe. Nasłuch na kontenerze,
+        // a nie na zdarzeniach mapy: `movestart` odpala się także przy naszym
+        // `fitBounds`/`easeTo`, więc nie da się z niego odróżnić, kto ruszył.
+        const przejmij = () => {
+          userMovedRef.current = true;
+        };
+        const el = containerRef.current;
+        el?.addEventListener("pointerdown", przejmij, { passive: true });
+        el?.addEventListener("wheel", przejmij, { passive: true });
+        odepnijGesty = () => {
+          el?.removeEventListener("pointerdown", przejmij);
+          el?.removeEventListener("wheel", przejmij);
+        };
+        // Klik w tło = odznaczenie. Bez tego dymek zostaje na ekranie
+        // i zasłania mapę, dopóki gość nie trafi w inny znacznik.
+        map.on("click", () => cb.current.onSelect(null));
+
+        mapRef.current = map;
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
 
     return () => {
       cancelled = true;
-      observerRef.current?.disconnect();
-      observerRef.current = null;
+      odepnijGesty?.();
+      // Kolejność ma znaczenie: znaczniki trzymają referencje do mapy.
+      for (const m of liveMarkers.values()) m.remove();
+      liveMarkers.clear();
+      map?.remove();
+      mapRef.current = null;
     };
-  }, [placeId, checkin, checkout, domain]);
+    // Celowo raz: `initialCenter` przy pustej puli byłby [0,0], a po dojściu
+    // cen zmiana środka wyrwałaby mapę spod palca. Dopasowanie kadru do
+    // punktów robi osobny efekt niżej.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Dopasowanie kadru do puli ────────────────────────────────────────────
+  //
+  // Kadrujemy PONOWNIE przy każdej zmianie zbioru punktów — dopóki gość sam
+  // nie ruszy mapy. Wersja „dopasuj raz" była błędem: ceny dojeżdżają
+  // strumieniem, więc pierwsze dopasowanie łapało kilkanaście hoteli, które
+  // akurat zdążyły się wycenić, i mapa zostawała na tym wycinku. Zmierzone:
+  // 4 znaczniki przy 44 obiektach w wynikach — reszta leżała poza kadrem,
+  // a gość nie miał jak się dowiedzieć, że w ogóle istnieją.
+  //
+  // Od pierwszego gestu (przeciągnięcie, kółko, klik w kontrolki) kadr należy
+  // do gościa i nie wolno mu go wyrywać spod palca.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || userMovedRef.current) return;
+    const withCoords = points.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    if (withCoords.length < 2) return;
+
+    const lats = withCoords.map((p) => p.lat);
+    const lngs = withCoords.map((p) => p.lng);
+    map.fitBounds(
+      [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ],
+      { padding: 56, maxZoom: 14, animate: false },
+    );
+    // Dopasowanie samo w sobie nie jest „ruchem użytkownika", więc nie
+    // pokazujemy po nim przycisku „Szukaj w tym obszarze".
+    setMoved(false);
+  }, [ready, points]);
+
+  // ── Grupowanie w siatce pikselowej ───────────────────────────────────────
+  // Liczone w układzie EKRANU, nie geograficznym: dwa hotele odległe o 20 m
+  // mają się złączyć przy dalekim zoomie i rozjechać przy bliskim, a tylko
+  // rzut na piksele daje to naturalnie.
+  const cells = useMemo<Cell[]>(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return [];
+    void viewTick; // przelicz po każdym ruchu mapy
+
+    const bounds = map.getBounds();
+    const buckets = new Map<string, Cell>();
+    for (const p of points) {
+      if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
+      if (!bounds.contains([p.lng, p.lat])) continue;
+      const pt = map.project([p.lng, p.lat]);
+      const key = `${Math.round(pt.x / CLUSTER_X)}:${Math.round(pt.y / CLUSTER_Y)}`;
+      const cell = buckets.get(key);
+      if (cell) cell.items.push(p);
+      else buckets.set(key, { key, lat: p.lat, lng: p.lng, items: [p] });
+    }
+
+    // Przy nadmiarze pokazujemy komórki NAJGĘSTSZE — tam faktycznie coś jest.
+    const all = [...buckets.values()];
+    if (all.length <= MAX_MARKERS) return all;
+    return all.sort((a, b) => b.items.length - a.items.length).slice(0, MAX_MARKERS);
+  }, [points, ready, viewTick]);
+
+  // ── Synchronizacja znaczników z komórkami ────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    let cancelled = false;
+
+    void (async () => {
+      const { Marker } = await import("maplibre-gl");
+      if (cancelled || !mapRef.current) return;
+
+      const live = markersRef.current;
+      const wanted = new Set(cells.map((c) => c.key));
+      for (const [key, marker] of live) {
+        if (!wanted.has(key)) {
+          marker.remove();
+          live.delete(key);
+        }
+      }
+
+      // Aktualny stan komórek POD KLUCZEM. Obsługiwacze zdarzeń czytają stąd,
+      // a nie z domknięcia.
+      //
+      // BŁĄD, KTÓRY TO NAPRAWIA (wyłapany testem E2E 2026-08-07): istniejącym
+      // znacznikom podmienialiśmy tylko treść i klasy, więc zostawały przy
+      // obsługiwaczu z chwili UTWORZENIA. Gdy komórka zmieniła się z grupy
+      // w pojedynczy obiekt — a dzieje się to za każdym przybliżeniem i przy
+      // każdej zmianie filtrów — znacznik wyglądał jak pojedynczy hotel
+      // z ceną, ale po kliknięciu dalej PRZYBLIŻAŁ mapę. Dla gościa: „klikam
+      // hotel, a strona tylko się przybliża i nic nie wybiera".
+      for (const c of cells) cellsRef.current.set(c.key, c);
+      for (const key of [...cellsRef.current.keys()]) {
+        if (!wanted.has(key)) cellsRef.current.delete(key);
+      }
+
+      for (const cell of cells) {
+        const el = buildMarkerEl(cell, selectedId, hoveredId);
+        const key = cell.key;
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const current = cellsRef.current.get(key);
+          if (!current) return;
+          // Grupa: przybliż zamiast wybierać przypadkowy hotel z paczki.
+          if (current.items.length > 1) {
+            map.easeTo({
+              center: [current.lng, current.lat],
+              zoom: Math.min(18, map.getZoom() + 2),
+            });
+            return;
+          }
+          cb.current.onSelect(current.items[0].hotelId);
+        });
+        el.addEventListener("mouseenter", () => {
+          const current = cellsRef.current.get(key);
+          cb.current.onHoverMarker(
+            current && current.items.length === 1 ? current.items[0].hotelId : null,
+          );
+        });
+        el.addEventListener("mouseleave", () => cb.current.onHoverMarker(null));
+
+        const existing = live.get(cell.key);
+        if (existing) {
+          // Podmiana samej zawartości — tworzenie Markera od nowa przy każdym
+          // najechaniu myszą powodowało miganie całej warstwy.
+          //
+          // UWAGA: `className = …` skasowałoby klasę `maplibregl-marker`,
+          // którą biblioteka dokłada przy tworzeniu znacznika. Pozycja
+          // przetrwałaby (siedzi w stylu inline), ale reguły biblioteki na
+          // zdarzenia wskaźnika i warstwy — już nie. Stąd `setAttribute`
+          // z jawnie zachowaną klasą biblioteki.
+          const node = existing.getElement();
+          node.replaceChildren(...el.childNodes);
+          node.setAttribute("class", `maplibregl-marker ${el.className}`);
+          node.setAttribute("aria-label", el.getAttribute("aria-label") ?? "");
+          node.dataset.kind = el.dataset.kind ?? "";
+          if (el.dataset.hotelId) node.dataset.hotelId = el.dataset.hotelId;
+          else delete node.dataset.hotelId;
+          // Reprezentant komórki mógł się zmienić (inny hotel wypadł pierwszy
+          // po zmianie sortowania albo filtrów) — bez tego znacznik zostawał
+          // w starym punkcie i wskazywał nie ten obiekt, co pokazuje.
+          existing.setLngLat([cell.lng, cell.lat]);
+        } else {
+          live.set(cell.key, new Marker({ element: el }).setLngLat([cell.lng, cell.lat]).addTo(map));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cells, ready, selectedId, hoveredId]);
+
+  // Wybrany hotel spoza kadru — dosuwamy mapę, ale bez skoków zoomu.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !selectedId) return;
+    const p = points.find((x) => x.hotelId === selectedId);
+    if (!p || !Number.isFinite(p.lat)) return;
+    if (map.getBounds().contains([p.lng, p.lat])) return;
+    map.easeTo({ center: [p.lng, p.lat], duration: 400 });
+  }, [selectedId, points, ready]);
+
+  const searchHere = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const b = map.getBounds();
+    onSearchArea({ west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() });
+    setMoved(false);
+  }, [onSearchArea]);
+
+  if (failed) {
+    return (
+      <div className={`flex items-center justify-center rounded-2xl bg-neutral-100 p-6 text-center ${className}`}>
+        <p className="text-sm text-neutral-600">
+          Nie udało się wczytać mapy. Lista wyników działa normalnie.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100">
-      <div id="helptravel-hotel-map" ref={containerRef} className="h-[70vh] min-h-[420px] w-full" />
+    <div className={`relative overflow-hidden rounded-2xl bg-neutral-100 ${className}`}>
+      <div ref={containerRef} className="h-full w-full" />
 
-      {status === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-neutral-100 text-sm text-neutral-600">
-          Wczytywanie mapy…
+      {/* „Przeszukaj ten obszar" — pojawia się DOPIERO po ruchu mapy (brief
+          §13E: nie odpytujemy przy każdym pikselu przesunięcia). Filtrowanie
+          jest lokalne: pula kierunku jest już w pamięci przeglądarki razem
+          ze współrzędnymi, więc nie ma tu żadnego zapytania do dostawcy. */}
+      {ready && (moved || areaActive) && (
+        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center gap-2 px-3">
+          {moved && (
+            <button
+              type="button"
+              onClick={searchHere}
+              className="pointer-events-auto inline-flex h-10 items-center rounded-full bg-white px-4 text-sm font-semibold text-emerald-800 shadow-lg ring-1 ring-emerald-900/10 transition hover:bg-emerald-50"
+            >
+              Szukaj w tym obszarze
+            </button>
+          )}
+          {areaActive && (
+            <button
+              type="button"
+              onClick={() => {
+                onSearchArea(null);
+                setMoved(false);
+              }}
+              className="pointer-events-auto inline-flex h-10 items-center rounded-full bg-neutral-900/85 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-neutral-900"
+            >
+              Pokaż cały kierunek
+            </button>
+          )}
         </div>
       )}
 
-      {/* Awaria dostawcy NIE może zabrać wyników — lista jest obok, na tej
-          samej stronie, a tu mówimy wprost, co się stało (brief §10). */}
-      {status === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-neutral-100 px-6 text-center">
-          <p className="text-sm font-medium text-neutral-800">Nie udało się wczytać mapy</p>
-          <p className="text-sm text-neutral-600">
-            Wszystkie obiekty znajdziesz na liście — przełącz widok powyżej.
-          </p>
+      {!ready && (
+        <div className="absolute inset-0 flex items-center justify-center bg-neutral-100">
+          <span className="text-sm text-neutral-500">Wczytuję mapę…</span>
         </div>
       )}
     </div>
   );
+}
+
+/**
+ * Znacznik jako zwykły element DOM — pełna kontrola nad wyglądem marki
+ * i darmowe stany `hover`/`selected` bez ikon SDF.
+ */
+function buildMarkerEl(cell: Cell, selectedId: string | null, hoveredId: string | null): HTMLElement {
+  const el = document.createElement("button");
+  el.type = "button";
+
+  const isGroup = cell.items.length > 1;
+  const item = cell.items[0];
+  const active = !isGroup && (item.hotelId === selectedId || item.hotelId === hoveredId);
+  // Rozróżnienie „pojedynczy obiekt" vs „grupa" jest potrzebne testom E2E
+  // (kliknięcie w grupę przybliża, w pojedynczy — wybiera hotel) i bywa
+  // pomocne przy diagnozie na produkcji.
+  el.dataset.kind = isGroup ? "group" : "single";
+  if (!isGroup) el.dataset.hotelId = item.hotelId;
+
+  // WARSTWY. Pigułka z ceną ma ~90-110 px szerokości, więc w gęstym centrum
+  // sąsiednie znaczniki NIEUCHRONNIE się stykają — tak działa każda mapa
+  // hotelowa i nie da się tego usunąć bez przesuwania obiektów z ich
+  // prawdziwych współrzędnych, na co na mapie nie ma zgody.
+  //
+  // Kluczowa zasada: znacznik pod kursorem ZAWSZE wychodzi na wierzch.
+  // Pierwsza wersja stawiała grupy nad pojedynczymi obiektami (dla czytelności
+  // licznika) i to był błąd — grupa systematycznie przykrywała hotel obok,
+  // więc części obiektów nie dało się kliknąć. Teraz wszystkie znaczniki są
+  // w jednej warstwie, a `hover` i zaznaczenie wynoszą je nad resztę: gość
+  // widzi, w co trafi, ZANIM kliknie.
+  el.className = [
+    "cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold shadow-md ring-1 transition-transform hover:z-20",
+    active
+      ? "z-20 scale-110 bg-emerald-700 text-white ring-emerald-800"
+      : "bg-white text-emerald-900 ring-emerald-900/15 hover:bg-emerald-50",
+  ].join(" ");
+
+  if (isGroup) {
+    const cheapest = cell.items.reduce<number | null>(
+      (min, p) => (p.totalAmount !== null && (min === null || p.totalAmount < min) ? p.totalAmount : min),
+      null,
+    );
+    // Licznik dostaje własne, ciemniejsze tło. Wariant tekstowy
+    // („82 · od 82 zł") czytał się jak jedna liczba powtórzona dwa razy —
+    // zwłaszcza gdy liczba obiektów i cena wypadły podobne.
+    const count = document.createElement("span");
+    count.className = "mr-1 rounded-full bg-emerald-700 px-1.5 text-white";
+    count.textContent = String(cell.items.length);
+    el.append(count);
+    el.append(
+      document.createTextNode(
+        cheapest !== null ? `od ${formatPLN(cheapest, cell.items[0].currency)}` : "obiektów",
+      ),
+    );
+    el.setAttribute(
+      "aria-label",
+      `${cell.items.length} obiektów w tym miejscu${
+        cheapest !== null ? `, od ${formatPLN(cheapest, cell.items[0].currency)}` : ""
+      } — powiększ, aby zobaczyć`,
+    );
+  } else {
+    el.textContent = item.totalAmount !== null ? formatPLN(item.totalAmount, item.currency) : "—";
+    el.setAttribute(
+      "aria-label",
+      `${item.name}${item.totalAmount !== null ? `, ${formatPLN(item.totalAmount, item.currency)}` : ""}`,
+    );
+  }
+
+  return el;
 }
