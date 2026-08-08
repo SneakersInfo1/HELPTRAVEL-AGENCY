@@ -12,6 +12,8 @@
 
 import { NextResponse } from "next/server";
 
+import { buildStaticMapUrl } from "@/lib/hotels/static-map-url";
+
 export const runtime = "nodejs";
 
 /** Podgląd jest funkcją (lat, lng, zoom, rozmiar) — można go trzymać długo. */
@@ -34,14 +36,7 @@ export async function GET(request: Request) {
   // Brak klucza nie może wywalić strony — podgląd po prostu się nie pokaże.
   if (!key) return new NextResponse("Map disabled", { status: 503 });
 
-  const upstream = new URL("https://maps.geoapify.com/v1/staticmap");
-  upstream.searchParams.set("style", "osm-bright-smooth");
-  upstream.searchParams.set("width", String(w));
-  upstream.searchParams.set("height", String(h));
-  upstream.searchParams.set("center", `lonlat:${lng},${lat}`);
-  upstream.searchParams.set("zoom", String(zoom));
-  // Znacznik w kolorze marki — podgląd ma wyglądać jak część HelpTravel.
-  upstream.searchParams.set("marker", `lonlat:${lng},${lat};type:material;color:%23047857;size:medium`);
+  const upstream = new URL(buildStaticMapUrl({ lat, lng, w, h, zoom }));
   upstream.searchParams.set("apiKey", key);
 
   try {

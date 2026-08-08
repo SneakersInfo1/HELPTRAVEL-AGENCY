@@ -34,8 +34,18 @@ export async function GET(
   // Walidacja: bez niej ścieżka staje się otwartym proxy na cudzy serwer.
   const zNum = Number(z);
   const xNum = Number(x);
-  // `y` niesie rozszerzenie (`403.png`) — Next nie ma osobnego segmentu na nie.
-  const yNum = Number(String(y).replace(/\.png$/i, ""));
+  // `y` niesie rozszerzenie (`403.png`) i opcjonalny sufiks gęstości
+  // (`403@2x.png`) — Next nie ma osobnego segmentu na żadne z nich.
+  //
+  // PO CO `@2x` (2026-08-08). Kafelek 256 px na pełnoekranowej mapie 1920×900
+  // to ~35 żądań; kafelek 512 px to ~9. Przy zmierzonych 0,39–0,69 s na
+  // kafelek przez to proxy różnica jest widoczna gołym okiem: mapa przestaje
+  // mieć BIAŁE DZIURY w miejscach, gdzie kafelki jeszcze nie doszły (zrzut
+  // właściciela: prostokąt bez mapy w prawym górnym rogu). Przy okazji rysunek
+  // jest ostry na ekranach o wysokiej gęstości pikseli.
+  const yRaw = String(y).replace(/\.png$/i, "");
+  const retina = /@2x$/i.test(yRaw);
+  const yNum = Number(yRaw.replace(/@2x$/i, ""));
   const limit = 2 ** Math.max(0, zNum);
   const valid =
     Number.isInteger(zNum) &&
@@ -56,7 +66,7 @@ export async function GET(
 
   try {
     const upstream = await fetch(
-      `https://maps.geoapify.com/v1/tile/${STYLE}/${zNum}/${xNum}/${yNum}.png?apiKey=${encodeURIComponent(key)}`,
+      `https://maps.geoapify.com/v1/tile/${STYLE}/${zNum}/${xNum}/${yNum}${retina ? "@2x" : ""}.png?apiKey=${encodeURIComponent(key)}`,
       { cache: "force-cache" },
     );
     if (!upstream.ok) return new NextResponse("Tile unavailable", { status: 502 });

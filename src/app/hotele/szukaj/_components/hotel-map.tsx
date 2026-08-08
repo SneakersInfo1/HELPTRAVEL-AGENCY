@@ -66,8 +66,15 @@ interface Props {
 // kliknięcie w drugi. Playwright zgłosił to wprost („intercepts pointer
 // events"), a dla gościa wyglądałoby to jak mapa, która otwiera nie ten hotel,
 // w który celował. Wymiary komórki muszą odpowiadać wymiarom pigułki.
-const CLUSTER_X = 104;
-const CLUSTER_Y = 44;
+//
+// PODNIESIONE 2026-08-08. Na zrzutach właściciela znaczniki nadal na siebie
+// nachodziły („16 od 576 zł" pod „od 428 zł"). Przyczyna: komórka miała
+// DOKŁADNIE wymiar pigułki, więc dwie sąsiednie stykały się krawędziami —
+// a znacznik jest wyśrodkowany na punkcie, czyli wystaje o pół szerokości
+// poza swoją komórkę. Komórka musi być szersza od pigułki o zapas na tę
+// połówkę, inaczej stykanie się jest matematycznie nieuniknione.
+const CLUSTER_X = 132;
+const CLUSTER_Y = 56;
 /** Sufit znaczników w DOM. Powyżej i tak nie da się w nic trafić palcem. */
 const MAX_MARKERS = 150;
 
@@ -173,9 +180,26 @@ export function HotelMap({
             sources: {
               geoapify: {
                 type: "raster",
-                tiles: [`${window.location.origin}/api/map/tiles/{z}/{x}/{y}.png`],
-                tileSize: 256,
-                maxzoom: 19,
+                // Kafelki 512 px (`@2x`) zamiast 256 px. Ta sama powierzchnia
+                // mapy to wtedy CZTERY RAZY mniej żądań (9 zamiast ~35 na
+                // ekran 1920×1080) — a przy zmierzonych 0,39–0,69 s na kafelek
+                // przez to proxy właśnie liczba żądań, nie ich waga, decydowała
+                // o tym, jak długo w mapie widać białe dziury. Przeglądarka i
+                // tak zwalnia po ~6 równoległych połączeniach na host.
+                //
+                // ZMIERZONE A/B (2026-08-08, ten sam kierunek, ten sam serwer,
+                // czas od kliknięcia „Mapa" do ostatniego kafelka):
+                //   256 px → 5943 ms
+                //   512 px → 2761–2955 ms
+                // To jest te „około 5 sekund" ze zgłoszenia właściciela.
+                //
+                // `tileSize: 512` jest tu OBOWIĄZKOWE, nie kosmetyczne: mówi
+                // MapLibre, że kafelek zajmuje 512 px ekranu, więc biblioteka
+                // pobiera o jeden poziom przybliżenia mniej. Bez tego mapa
+                // byłaby przybliżona o jeden poziom za mocno.
+                tiles: [`${window.location.origin}/api/map/tiles/{z}/{x}/{y}@2x.png`],
+                tileSize: 512,
+                maxzoom: 18,
                 // Atrybucja jest warunkiem licencji OSM/Geoapify. Nie usuwać.
                 attribution:
                   '© <a href="https://www.geoapify.com/">Geoapify</a> · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -270,20 +294,32 @@ export function HotelMap({
 
   // ── Dopasowanie kadru do puli ────────────────────────────────────────────
   //
-  // Kadrujemy PONOWNIE przy każdej zmianie zbioru punktów — dopóki gość sam
-  // nie ruszy mapy. Wersja „dopasuj raz" była błędem: ceny dojeżdżają
-  // strumieniem, więc pierwsze dopasowanie łapało kilkanaście hoteli, które
-  // akurat zdążyły się wycenić, i mapa zostawała na tym wycinku. Zmierzone:
-  // 4 znaczniki przy 44 obiektach w wynikach — reszta leżała poza kadrem,
-  // a gość nie miał jak się dowiedzieć, że w ogóle istnieją.
+  // Historia tego miejsca to dwa przeciwne błędy i jedna reguła pośrodku.
   //
-  // Od pierwszego gestu (przeciągnięcie, kółko, klik w kontrolki) kadr należy
-  // do gościa i nie wolno mu go wyrywać spod palca.
+  // 1. „Dopasuj raz" — mapa łapała kilkanaście hoteli, które akurat zdążyły
+  //    się wycenić, i zostawała na tym wycinku (4 znaczniki przy 44 wynikach).
+  // 2. „Dopasuj przy każdej zmianie punktów" — ceny dojeżdżają strumieniem
+  //    przez kilkanaście sekund, więc mapa PRZEKADROWYWAŁA SIĘ kilkadziesiąt
+  //    razy z rzędu. To jest zgłoszone „mapa ładuje się 5 sekund" dla
+  //    Heraklionu: mapa była gotowa od początku, tylko wciąż uciekała.
+  //
+  // Reguła: kadrujemy, gdy gość NIE MIAŁBY NA CO PATRZEĆ — czyli przy
+  // pierwszym dopasowaniu oraz wtedy, gdy w bieżącym kadrze nie został ani
+  // jeden punkt (np. po zmianie filtrów). W każdej innej sytuacji kadr
+  // zostaje tam, gdzie jest. Po pierwszym geście gościa nie ruszamy go nigdy.
+  const dopasowanoRef = useRef(false);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || userMovedRef.current) return;
     const withCoords = points.filter(prawidloweWspolrzedne);
     if (withCoords.length === 0) return;
+
+    if (dopasowanoRef.current) {
+      const b = map.getBounds();
+      const widoczne = withCoords.some((p) => b.contains([p.lng, p.lat]));
+      if (widoczne) return; // jest na co patrzeć — nie wyrywamy kadru
+    }
+    dopasowanoRef.current = true;
 
     // Jeden punkt: `fitBounds` na zerowym prostokącie daje maksymalne
     // przybliżenie, więc ustawiamy środek wprost. Bez tego przypadku
@@ -309,6 +345,32 @@ export function HotelMap({
     setMoved(false);
   }, [ready, points]);
 
+  // ── Reakcja na zmianę rozmiaru kontenera ─────────────────────────────────
+  //
+  // MapLibre mierzy kontener przy tworzeniu i potem NIE pilnuje go sam; nasłuch
+  // na `window.resize` nie wystarcza, bo kontener mapy zmienia rozmiar także
+  // wtedy, gdy okno stoi w miejscu: znika sidebar filtrów, dochodzi pasek
+  // szybkich filtrów, wjeżdża podgląd wybranego obiektu, zmienia się liczba
+  // linii nagłówka. Bez `resize()` canvas zostaje w starym rozmiarze, a mapa
+  // ma wtedy niepokryty pas — dokładnie ten biały prostokąt w prawym górnym
+  // rogu ze zrzutu właściciela („niedoładowana / źle wykadrowana mapa").
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !ready || typeof ResizeObserver === "undefined") return;
+    let klatka = 0;
+    const ro = new ResizeObserver(() => {
+      // Jedna aktualizacja na klatkę: obserwator potrafi odpalić kilka razy
+      // w trakcie jednej animacji układu, a `resize()` przelicza projekcję.
+      cancelAnimationFrame(klatka);
+      klatka = requestAnimationFrame(() => mapRef.current?.resize());
+    });
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(klatka);
+      ro.disconnect();
+    };
+  }, [ready]);
+
   // ── Grupowanie w siatce pikselowej ───────────────────────────────────────
   // Liczone w układzie EKRANU, nie geograficznym: dwa hotele odległe o 20 m
   // mają się złączyć przy dalekim zoomie i rozjechać przy bliskim, a tylko
@@ -331,6 +393,23 @@ export function HotelMap({
         const cell = buckets.get(key);
         if (cell) cell.items.push(p);
         else buckets.set(key, { key, lat: p.lat, lng: p.lng, items: [p] });
+      }
+
+      // Reprezentant komórki liczony DETERMINISTYCZNIE, a nie „pierwszy, który
+      // wpadł". To była realna przyczyna zgłoszenia „znacznik ucieka spod
+      // kursora": kolejność `points` zmienia się przy KAŻDEJ dochodzącej
+      // cenie (lista przelicza sortowanie), więc pierwszy element komórki
+      // bywał raz jednym, raz drugim hotelem — i znacznik przeskakiwał
+      // o kilkadziesiąt pikseli, choć na mapie nic się nie wydarzyło.
+      // Zmierzone przed poprawką: przesunięcie 46×43 px po kliknięciu.
+      //
+      // Klucz porządku: hotelId. Nie cena — ta dochodzi strumieniem, więc
+      // sortowanie po niej miałoby dokładnie tę samą wadę.
+      for (const cell of buckets.values()) {
+        if (cell.items.length === 1) continue;
+        const reprezentant = cell.items.reduce((a, b) => (a.hotelId <= b.hotelId ? a : b));
+        cell.lat = reprezentant.lat;
+        cell.lng = reprezentant.lng;
       }
       return [...buckets.values()];
     };
@@ -583,9 +662,19 @@ function markerClass(cell: Cell, selectedId: string | null, hoveredId: string | 
     cell.items.length === 1 &&
     (cell.items[0].hotelId === selectedId || cell.items[0].hotelId === hoveredId);
   return [
-    "cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold shadow-md ring-1 transition-transform hover:z-20",
+    // `min-h-9` (36 px) + większy padding: cel dotykowy zamiast pigułki 24 px.
+    // WCAG 2.2 AA chce 44 px, ale na mapie to nierealne — 44-pikselowe pigułki
+    // zlewałyby się w gęstym centrum w jedną plamę i gość nie trafiłby w NIC.
+    // 36 px to najwyższa wartość, przy której siatka grupująca (CLUSTER_Y 56)
+    // wciąż utrzymuje odstęp między sąsiadami.
+    "inline-flex min-h-9 cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold shadow-md ring-1 transition-[background-color,color] hover:z-30",
     active
-      ? "z-20 scale-110 bg-emerald-700 text-white ring-emerald-800"
+      ? // BEZ `scale-110`. Powiększanie zaznaczonego znacznika zmieniało jego
+        // pole trafienia W CHWILI KLIKNIĘCIA — kursor lądował poza elementem,
+        // który właśnie urósł, i kolejny klik trafiał w mapę zamiast w hotel.
+        // Wyróżnienie robi teraz sam kolor i pierścień, które nie ruszają
+        // geometrii.
+        "z-30 bg-emerald-700 text-white ring-2 ring-emerald-900/25"
       : "bg-white text-emerald-900 ring-emerald-900/15 hover:bg-emerald-50",
   ].join(" ");
 }
