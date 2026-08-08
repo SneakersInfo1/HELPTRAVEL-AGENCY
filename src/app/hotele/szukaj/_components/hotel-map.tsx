@@ -23,7 +23,7 @@
 // widoczne punkty są przycinane do kadru i grupowane w siatce pikselowej,
 // więc w DOM jest ~150 elementów niezależnie od wielkości puli.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 
 import { formatPLN } from "@/lib/money";
@@ -73,6 +73,29 @@ const MAX_MARKERS = 150;
 
 type Cell = { key: string; lat: number; lng: number; items: MapPoint[] };
 
+/**
+ * Czy punkt nadaje się na mapę.
+ *
+ * `Number.isFinite` nie wystarcza: dostawca potrafi zwrócić szerokość spoza
+ * zakresu (widziane w danych „sparse"), a `LngLatBounds.contains` rzuca wtedy
+ * wyjątkiem — w środku `useMemo`, czyli podczas renderu, co kończy się białym
+ * ekranem zamiast brakującym znacznikiem. Sprawdzamy OBA pola i oba zakresy.
+ *
+ * `0,0` odrzucamy świadomie: to Zatoka Gwinejska i w praktyce zawsze znaczy
+ * „dostawca nie podał współrzędnych", a nie hotel na środku oceanu.
+ */
+function prawidloweWspolrzedne(p: { lat: number; lng: number }): boolean {
+  return (
+    Number.isFinite(p.lat) &&
+    Number.isFinite(p.lng) &&
+    p.lat >= -90 &&
+    p.lat <= 90 &&
+    p.lng >= -180 &&
+    p.lng <= 180 &&
+    !(p.lat === 0 && p.lng === 0)
+  );
+}
+
 export function HotelMap({
   points,
   selectedId,
@@ -90,6 +113,11 @@ export function HotelMap({
   const cellsRef = useRef<Map<string, Cell>>(new Map());
   /** Czy gość sam ruszył mapą. Od tego momentu kadr jest jego. */
   const userMovedRef = useRef(false);
+  /** Zaznaczenie czytane poza cyklem renderu — patrz memo `cells`. */
+  const wyborRef = useRef({ selectedId, hoveredId });
+  useLayoutEffect(() => {
+    wyborRef.current = { selectedId, hoveredId };
+  }, [selectedId, hoveredId]);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [moved, setMoved] = useState(false);
@@ -98,13 +126,21 @@ export function HotelMap({
 
   // Callbacki w ref: efekt tworzący mapę ma pustą listę zależności (mapa
   // powstaje RAZ), a bez tego trzymałby pierwsze wersje funkcji na zawsze.
+  //
+  // Aktualizacja w `useLayoutEffect`, NIE w ciele renderu. Zapis do refa
+  // podczas renderu jest w tym repo błędem lintu (`react-hooks/refs`) i ma
+  // konkretny powód: przy renderze współbieżnym React może przerwać i odrzucić
+  // render, a zapis do refa już się wykonał — obsługiwacz zobaczyłby wtedy
+  // callback z przebiegu, który nigdy nie trafił na ekran.
   const cb = useRef({ onSelect, onHoverMarker });
-  cb.current = { onSelect, onHoverMarker };
+  useLayoutEffect(() => {
+    cb.current = { onSelect, onHoverMarker };
+  }, [onSelect, onHoverMarker]);
 
   // Środek startowy liczony ze średniej punktów — bez tego mapa startuje
   // nad Atlantykiem i gość widzi wodę zamiast hoteli.
   const initialCenter = useMemo<[number, number]>(() => {
-    const withCoords = points.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    const withCoords = points.filter(prawidloweWspolrzedne);
     if (!withCoords.length) return [0, 0];
     const lat = withCoords.reduce((s, p) => s + p.lat, 0) / withCoords.length;
     const lng = withCoords.reduce((s, p) => s + p.lng, 0) / withCoords.length;
@@ -188,18 +224,31 @@ export function HotelMap({
 
         mapRef.current = map;
       } catch {
+        // Sprzątamy TU, a nie licząc na cleanup efektu. Gdy wyjątek poleci po
+        // `new GlMap`, komponent zostaje zamontowany (pokazuje komunikat
+        // awaryjny), więc cleanup się NIE uruchomi — a kontekst WebGL, worker
+        // kafelków i nasłuchy zostałyby żywe do odmontowania całej strony.
+        sprzataj();
         if (!cancelled) setFailed(true);
       }
     })();
 
-    return () => {
-      cancelled = true;
+    /** Idempotentne zwolnienie zasobów mapy. Wołane z `catch` i z cleanupu. */
+    function sprzataj() {
       odepnijGesty?.();
+      odepnijGesty = null;
       // Kolejność ma znaczenie: znaczniki trzymają referencje do mapy.
       for (const m of liveMarkers.values()) m.remove();
       liveMarkers.clear();
+      cellsRef.current.clear();
       map?.remove();
+      map = null;
       mapRef.current = null;
+    }
+
+    return () => {
+      cancelled = true;
+      sprzataj();
     };
     // Celowo raz: `initialCenter` przy pustej puli byłby [0,0], a po dojściu
     // cen zmiana środka wyrwałaby mapę spod palca. Dopasowanie kadru do
@@ -221,8 +270,18 @@ export function HotelMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || userMovedRef.current) return;
-    const withCoords = points.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-    if (withCoords.length < 2) return;
+    const withCoords = points.filter(prawidloweWspolrzedne);
+    if (withCoords.length === 0) return;
+
+    // Jeden punkt: `fitBounds` na zerowym prostokącie daje maksymalne
+    // przybliżenie, więc ustawiamy środek wprost. Bez tego przypadku
+    // wyszukiwanie zawężone do jednego hotelu zostawiało mapę tam, gdzie
+    // otworzyła się przy starcie — czyli nad zupełnie innym miejscem.
+    if (withCoords.length === 1) {
+      map.jumpTo({ center: [withCoords[0].lng, withCoords[0].lat], zoom: 14 });
+      setMoved(false);
+      return;
+    }
 
     const lats = withCoords.map((p) => p.lat);
     const lngs = withCoords.map((p) => p.lng);
@@ -248,21 +307,57 @@ export function HotelMap({
     void viewTick; // przelicz po każdym ruchu mapy
 
     const bounds = map.getBounds();
-    const buckets = new Map<string, Cell>();
-    for (const p of points) {
-      if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
-      if (!bounds.contains([p.lng, p.lat])) continue;
-      const pt = map.project([p.lng, p.lat]);
-      const key = `${Math.round(pt.x / CLUSTER_X)}:${Math.round(pt.y / CLUSTER_Y)}`;
-      const cell = buckets.get(key);
-      if (cell) cell.items.push(p);
-      else buckets.set(key, { key, lat: p.lat, lng: p.lng, items: [p] });
+
+    /** Jedno przejście grupujące przy zadanym rozmiarze komórki. */
+    const pogrupuj = (skala: number): Cell[] => {
+      const buckets = new Map<string, Cell>();
+      for (const p of points) {
+        if (!prawidloweWspolrzedne(p)) continue;
+        if (!bounds.contains([p.lng, p.lat])) continue;
+        const pt = map.project([p.lng, p.lat]);
+        const key = `${Math.round(pt.x / (CLUSTER_X * skala))}:${Math.round(pt.y / (CLUSTER_Y * skala))}`;
+        const cell = buckets.get(key);
+        if (cell) cell.items.push(p);
+        else buckets.set(key, { key, lat: p.lat, lng: p.lng, items: [p] });
+      }
+      return [...buckets.values()];
+    };
+
+    // Przy nadmiarze POWIĘKSZAMY komórkę i grupujemy ponownie, zamiast ucinać
+    // listę.
+    //
+    // Wersja z `slice(0, MAX_MARKERS)` po posortowaniu wg gęstości miała realną
+    // wadę (znalezione w niezależnym review): przy 2000 rozproszonych hoteli
+    // większość komórek ma dokładnie jeden obiekt, więc sortowanie nie miało
+    // czego rozstrzygać i zostawało arbitralne 150 pierwszych — razem z
+    // ryzykiem, że wypadnie z nich WŁAŚNIE ten hotel, który gość zaznaczył.
+    // Powiększanie siatki zachowuje wszystkie obiekty, tylko w większych
+    // paczkach — a paczkę można rozwinąć kliknięciem.
+    let cells = pogrupuj(1);
+    for (let skala = 1.6; cells.length > MAX_MARKERS && skala <= 8; skala *= 1.6) {
+      cells = pogrupuj(skala);
     }
 
-    // Przy nadmiarze pokazujemy komórki NAJGĘSTSZE — tam faktycznie coś jest.
-    const all = [...buckets.values()];
-    if (all.length <= MAX_MARKERS) return all;
-    return all.sort((a, b) => b.items.length - a.items.length).slice(0, MAX_MARKERS);
+    // Ostatnia deska ratunku: gdyby nawet przy ośmiokrotnej komórce było za
+    // gęsto, tniemy — ale NIGDY nie usuwamy komórki z zaznaczonym ani
+    // wskazanym obiektem, bo zniknąłby dymek podglądu.
+    if (cells.length > MAX_MARKERS) {
+      // Zaznaczenie czytamy z REFA, nie z propsa. Gdyby `selectedId`
+      // i `hoveredId` weszły do zależności tego memo, każde najechanie myszą
+      // na kartę przeliczałoby rzut wszystkich 2000 punktów — lekarstwo
+      // gorsze od choroby.
+      const chronione = new Set(
+        [wyborRef.current.selectedId, wyborRef.current.hoveredId].filter(Boolean) as string[],
+      );
+      const trzymaj = (c: Cell) => c.items.some((i) => chronione.has(i.hotelId));
+      const musi = cells.filter(trzymaj);
+      const reszta = cells
+        .filter((c) => !trzymaj(c))
+        .sort((a, b) => b.items.length - a.items.length)
+        .slice(0, Math.max(0, MAX_MARKERS - musi.length));
+      cells = [...musi, ...reszta];
+    }
+    return cells;
   }, [points, ready, viewTick]);
 
   // ── Synchronizacja znaczników z komórkami ────────────────────────────────
@@ -300,7 +395,7 @@ export function HotelMap({
       }
 
       for (const cell of cells) {
-        const el = buildMarkerEl(cell, selectedId, hoveredId);
+        const el = buildMarkerEl(cell, wyborRef.current.selectedId, wyborRef.current.hoveredId);
         const key = cell.key;
         el.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -354,14 +449,33 @@ export function HotelMap({
     return () => {
       cancelled = true;
     };
-  }, [cells, ready, selectedId, hoveredId]);
+    // Zaznaczenie ŚWIADOMIE poza zależnościami — zmienia tylko kolor, a tym
+    // zajmuje się osobny, tani efekt niżej. Czytamy je z `wyborRef`, więc
+    // reguła zależności nie ma tu nic do zgłoszenia.
+  }, [cells, ready]);
+
+  // ── Podświetlenie: sam kolor, bez przebudowy warstwy ─────────────────────
+  //
+  // Wcześniej zaznaczenie i najechanie były w zależnościach efektu wyżej,
+  // więc KAŻDY ruch myszy po liście budował od nowa do 150 przycisków i trzy
+  // razy tyle obsługiwaczy zdarzeń — tylko po to, żeby jeden znacznik zmienił
+  // kolor. Tutaj zmieniamy wyłącznie atrybut `class` istniejących węzłów.
+  useEffect(() => {
+    if (!ready) return;
+    for (const [key, marker] of markersRef.current) {
+      const cell = cellsRef.current.get(key);
+      if (!cell) continue;
+      const node = marker.getElement();
+      node.setAttribute("class", `maplibregl-marker ${markerClass(cell, selectedId, hoveredId)}`);
+    }
+  }, [selectedId, hoveredId, ready, cells]);
 
   // Wybrany hotel spoza kadru — dosuwamy mapę, ale bez skoków zoomu.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !selectedId) return;
     const p = points.find((x) => x.hotelId === selectedId);
-    if (!p || !Number.isFinite(p.lat)) return;
+    if (!p || !prawidloweWspolrzedne(p)) return;
     if (map.getBounds().contains([p.lng, p.lat])) return;
     map.easeTo({ center: [p.lng, p.lat], duration: 400 });
   }, [selectedId, points, ready]);
@@ -428,6 +542,31 @@ export function HotelMap({
 }
 
 /**
+ * Klasy znacznika — jedyne, co zmienia się przy zaznaczeniu i najechaniu.
+ *
+ * WARSTWY. Pigułka z ceną ma ~90-110 px szerokości, więc w gęstym centrum
+ * sąsiednie znaczniki NIEUCHRONNIE się stykają — tak działa każda mapa
+ * hotelowa i nie da się tego usunąć bez przesuwania obiektów z ich
+ * prawdziwych współrzędnych, na co na mapie nie ma zgody.
+ *
+ * Kluczowa zasada: znacznik pod kursorem ZAWSZE wychodzi na wierzch.
+ * Pierwsza wersja stawiała grupy nad pojedynczymi obiektami (dla czytelności
+ * licznika) i to był błąd — grupa systematycznie przykrywała hotel obok,
+ * więc części obiektów nie dało się kliknąć.
+ */
+function markerClass(cell: Cell, selectedId: string | null, hoveredId: string | null): string {
+  const active =
+    cell.items.length === 1 &&
+    (cell.items[0].hotelId === selectedId || cell.items[0].hotelId === hoveredId);
+  return [
+    "cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold shadow-md ring-1 transition-transform hover:z-20",
+    active
+      ? "z-20 scale-110 bg-emerald-700 text-white ring-emerald-800"
+      : "bg-white text-emerald-900 ring-emerald-900/15 hover:bg-emerald-50",
+  ].join(" ");
+}
+
+/**
  * Znacznik jako zwykły element DOM — pełna kontrola nad wyglądem marki
  * i darmowe stany `hover`/`selected` bez ikon SDF.
  */
@@ -437,30 +576,13 @@ function buildMarkerEl(cell: Cell, selectedId: string | null, hoveredId: string 
 
   const isGroup = cell.items.length > 1;
   const item = cell.items[0];
-  const active = !isGroup && (item.hotelId === selectedId || item.hotelId === hoveredId);
   // Rozróżnienie „pojedynczy obiekt" vs „grupa" jest potrzebne testom E2E
   // (kliknięcie w grupę przybliża, w pojedynczy — wybiera hotel) i bywa
   // pomocne przy diagnozie na produkcji.
   el.dataset.kind = isGroup ? "group" : "single";
   if (!isGroup) el.dataset.hotelId = item.hotelId;
 
-  // WARSTWY. Pigułka z ceną ma ~90-110 px szerokości, więc w gęstym centrum
-  // sąsiednie znaczniki NIEUCHRONNIE się stykają — tak działa każda mapa
-  // hotelowa i nie da się tego usunąć bez przesuwania obiektów z ich
-  // prawdziwych współrzędnych, na co na mapie nie ma zgody.
-  //
-  // Kluczowa zasada: znacznik pod kursorem ZAWSZE wychodzi na wierzch.
-  // Pierwsza wersja stawiała grupy nad pojedynczymi obiektami (dla czytelności
-  // licznika) i to był błąd — grupa systematycznie przykrywała hotel obok,
-  // więc części obiektów nie dało się kliknąć. Teraz wszystkie znaczniki są
-  // w jednej warstwie, a `hover` i zaznaczenie wynoszą je nad resztę: gość
-  // widzi, w co trafi, ZANIM kliknie.
-  el.className = [
-    "cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold shadow-md ring-1 transition-transform hover:z-20",
-    active
-      ? "z-20 scale-110 bg-emerald-700 text-white ring-emerald-800"
-      : "bg-white text-emerald-900 ring-emerald-900/15 hover:bg-emerald-50",
-  ].join(" ");
+  el.className = markerClass(cell, selectedId, hoveredId);
 
   if (isGroup) {
     const cheapest = cell.items.reduce<number | null>(
