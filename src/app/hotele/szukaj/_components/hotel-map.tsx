@@ -354,20 +354,52 @@ export function HotelMap({
   // linii nagłówka. Bez `resize()` canvas zostaje w starym rozmiarze, a mapa
   // ma wtedy niepokryty pas — dokładnie ten biały prostokąt w prawym górnym
   // rogu ze zrzutu właściciela („niedoładowana / źle wykadrowana mapa").
+  // Obserwujemy TEN SAM element, który dostał MapLibre jako `container`
+  // (`containerRef`), a nie zewnętrzną ramkę — inaczej mierzylibyśmy pudełko,
+  // które nie musi zmieniać się razem z canvasem.
+  //
+  // ZOOM PRZEGLĄDARKI to drugi, osobny tor. Zmiana zoomu zmienia
+  // `devicePixelRatio`, czyli rozdzielczość BUFORA canvasa, nawet gdy jego
+  // rozmiar w pikselach CSS zostaje ten sam. Sam `ResizeObserver` tego nie
+  // widzi, bo obserwuje wymiary CSS. Bez reakcji na tę zmianę mapa zostawała
+  // z buforem policzonym dla starego DPR i robiła się rozmyta albo — przy
+  // zmniejszeniu — rysowała się na części kontenera.
+  //
+  // `matchMedia("(resolution: …dppx)")` to jedyny sposób, żeby dostać
+  // ZDARZENIE przy zmianie DPR; nasłuch trzeba zakładać od nowa po każdej
+  // zmianie, bo zapytanie jest przypięte do konkretnej wartości.
   useEffect(() => {
     const el = containerRef.current;
     if (!el || !ready || typeof ResizeObserver === "undefined") return;
     let klatka = 0;
-    const ro = new ResizeObserver(() => {
+    const przelicz = () => {
       // Jedna aktualizacja na klatkę: obserwator potrafi odpalić kilka razy
       // w trakcie jednej animacji układu, a `resize()` przelicza projekcję.
       cancelAnimationFrame(klatka);
       klatka = requestAnimationFrame(() => mapRef.current?.resize());
-    });
+    };
+
+    const ro = new ResizeObserver(przelicz);
     ro.observe(el);
+
+    let mq: MediaQueryList | null = null;
+    const odepnijDpr = () => mq?.removeEventListener("change", naZmianeDpr);
+    function naZmianeDpr() {
+      odepnijDpr();
+      przelicz();
+      podepnijDpr();
+    }
+    function podepnijDpr() {
+      if (typeof window.matchMedia !== "function") return;
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      mq.addEventListener("change", naZmianeDpr);
+    }
+    podepnijDpr();
+
     return () => {
       cancelAnimationFrame(klatka);
       ro.disconnect();
+      odepnijDpr();
     };
   }, [ready]);
 

@@ -130,12 +130,25 @@ export default async function HotelResultsPage({
     <main className="min-h-screen bg-neutral-50">
       <HeaderOffsetProbe />
 
-      {/* Pasek wyszukiwania przykleja się DOKŁADNIE pod nagłówkiem serwisu.
-          Offset idzie ze zmierzonej zmiennej `--ht-header-h` (patrz
-          HeaderOffsetProbe) — wcześniej były tu wpisane ręcznie 72/84 px, przez
-          co między nagłówkiem a paskiem prześwitywała treść. Zapasowa wartość
-          w `var()` obsługuje pierwszą klatkę przed pomiarem. */}
-      <div className="sticky z-20 pt-2" style={{ top: "var(--ht-header-h, 84px)" }}>
+      {/* PASEK KIERUNKU NIE JEST PRZYKLEJONY — i nie wolno go takim zrobić.
+
+          Zgłoszenie właściciela (2026-08-08, weryfikacja ręczna preview): pasek
+          „Heraklion · Grecja | 11 sierpnia – 18 sierpnia | 2 os. | Edytuj"
+          pojawiał się W ŚRODKU EKRANU podczas przewijania i wchodził na karty
+          hoteli. Zmierzone przed poprawką (Chrome 1920×1080, zoom 100%):
+          `position: sticky`, `top: 82px`, a górna krawędź paska stała na 82 px
+          przy KAŻDEJ głębokości przewinięcia (0, 250, 500, 800, 1200, 2000) —
+          czyli pasek nie opuszczał okna nigdy. Przy przewinięciu 2000 nakładał
+          się na kartę hotelu (zmierzone nakładanie: 1 karta).
+
+          Pasek ma JEDNO miejsce w drzewie — nagłówek serwisu, pasek kierunku,
+          treść — i ma naturalnie znikać nad krawędzią okna. Przyklejony zostaje
+          wyłącznie nagłówek serwisu (`site-shell`, `sticky top-0 z-30`).
+
+          Regresję pilnuje e2e/destination-bar-scroll-regression.spec.ts —
+          sprawdza `position`, mierzy prostokąt paska po każdym przewinięciu
+          i liczy nakładanie z kartami oraz z mapą. */}
+      <div data-ht="destination-bar" className="pt-2">
         <CollapsibleSearchBar
           // Re-key per search so the bar REMOUNTS on every submit and
           // re-derives `expanded` from the new `valid`. Without this, the

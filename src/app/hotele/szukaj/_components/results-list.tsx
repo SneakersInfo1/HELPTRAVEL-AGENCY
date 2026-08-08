@@ -843,7 +843,14 @@ export function ResultsList(props: ResultsListProps) {
               // HeaderOffsetProbe), a nie z wpisanych ręcznie 11rem — inaczej
               // kolumna albo wystawała poza ekran, albo zostawiała pod sobą
               // martwy pas.
-              style={{ maxHeight: "calc(100vh - var(--ht-header-h, 84px) - 8.5rem)" }}
+              //
+              // 9 rem = zmierzona treść między dołem nagłówka a górą podziału
+              // (tytuł z licznikiem, przełącznik Lista/Mapa, pasek szybkich
+              // filtrów) plus oddech u dołu. Po ustawieniu widoku przez
+              // `kotwicaMapy` góra podziału stoi na 220 px od krawędzi okna
+              // — ta sama wartość przy 100% i przy 125% zoomu, bo składają się
+              // na nią wyłącznie stałe w pikselach CSS.
+              style={{ maxHeight: "calc(100vh - var(--ht-header-h, 84px) - 9rem)" }}
             >
               {view.allRows.slice(0, 60).map(({ offer, entry }) => (
                 <div
@@ -858,7 +865,6 @@ export function ResultsList(props: ResultsListProps) {
                     offer={isPriced(entry) ? { ...offer, cheapestRate: entry } : offer}
                     searchQuery={childParams}
                     nights={nights}
-                    dense
                     priceSlot={
                       isPriced(entry) ? undefined : (
                         <PriceView entry={entry as "loading" | "error" | null | undefined} />
@@ -876,9 +882,27 @@ export function ResultsList(props: ResultsListProps) {
             </div>
             <div
               className="sticky"
+              // WYSOKOŚĆ, NIE PRZYKLEJENIE, decyduje o tym, czy mapa mieści się
+              // w oknie — i to ona była źródłem zgłoszenia „mapa zachowuje się
+              // inaczej przy 80% i przy 100%".
+              //
+              // `sticky` w tym układzie NIE MA ZAKRESU RUCHU: obie kolumny mają
+              // tę samą wysokość, więc wiersz siatki jest dokładnie tak wysoki
+              // jak mapa i nie ma jej gdzie jechać. Zmierzone: po przewinięciu
+              // o 400 px górna krawędź mapy była na −180 px, czyli mapa wyjechała
+              // ponad okno zamiast się zatrzymać. Klasa zostaje, bo działa
+              // w przypadku brzegowym (krótka lista = niższa kolumna obok), ale
+              // nie wolno na niej opierać poprawności.
+              //
+              // Dlatego obie kolumny dostają wysokość liczoną z `100vh`
+              // pomniejszonego o ZMIERZONY nagłówek i o 9 rem treści nad
+              // podziałem. Wcześniejsze 8,5 rem dawało dolną krawędź 2 px POD
+              // krawędzią okna przy 1080 px — przy 80% zoomu (okno 1350 px CSS)
+              // te 2 px ginęły w zapasie i wszystko wyglądało dobrze, a przy
+              // 100% mapa wystawała i trzeba było ją doscrollować.
               style={{
-                top: "calc(var(--ht-header-h, 84px) + 5.5rem)",
-                height: "calc(100vh - var(--ht-header-h, 84px) - 8.5rem)",
+                top: "calc(var(--ht-header-h, 84px) + 0.5rem)",
+                height: "calc(100vh - var(--ht-header-h, 84px) - 9rem)",
               }}
             >
               <div className="relative isolate h-full">

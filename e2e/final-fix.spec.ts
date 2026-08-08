@@ -131,29 +131,45 @@ test.describe("FINAL FIX — dostępność ofert", () => {
 test.describe("FINAL FIX — górne paski", () => {
   test.use({ viewport: { width: 1920, height: 1080 } });
 
-  test("pasek wyszukiwania przykleja się dokładnie pod nagłówkiem", async ({ page }) => {
+  // PRZEPISANE 2026-08-08 po decyzji właściciela. Poprzednia wersja tego testu
+  // utrwalała design, który został ODRZUCONY: wymagała, żeby pasek kierunku
+  // miał TEN SAM promień co nagłówek („jeden system wizualny") i szukała go
+  // przez selektor `main > div.sticky > div`, czyli wymagała też, żeby był
+  // przyklejony. Właściciel odrzucił oba założenia wprost: „nie chcę dwóch
+  // podobnych zaokrąglonych kart" i „ten element nie ma być sticky".
+  //
+  // Teraz test pilnuje NOWEGO wymagania: nagłówek zostaje pływającą pastylką,
+  // pasek kierunku jest prostokątny (promień 0–8 px), a spójność ma wynikać
+  // z kolorów, typografii i ikon — nie z jednakowego kształtu.
+  test("nagłówek i pasek kierunku to DWA różne kształty, nie dwie pastylki", async ({ page }) => {
     await page.goto(SEARCH);
     await dismissCookies(page);
     await expect(page.locator('a[href*="/hotele/lp"]').first()).toBeVisible({ timeout: 25_000 });
-    await page.evaluate(() => window.scrollTo(0, 1200));
-    await page.waitForTimeout(500);
 
     const geometria = await page.evaluate(() => {
-      const header = document.querySelector("header")!.getBoundingClientRect();
-      const pasek = document.querySelector("main > div.sticky > div")!.getBoundingClientRect();
-      return { dolNaglowka: header.bottom, goraPaska: pasek.top, promienNaglowka: getComputedStyle(document.querySelector("header")!).borderTopLeftRadius, promienPaska: getComputedStyle(document.querySelector("main > div.sticky > div")!).borderTopLeftRadius, lewaNaglowka: header.left, lewaPaska: pasek.left };
+      const header = document.querySelector("header") as HTMLElement;
+      const pasek = document.querySelector('[data-ht="destination-bar"]') as HTMLElement;
+      const wnetrze = pasek.firstElementChild as HTMLElement;
+      const promien = (el: HTMLElement) => parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+      return {
+        promienNaglowka: promien(header),
+        promienPaska: Math.max(promien(pasek), promien(wnetrze)),
+        pozycjaPaska: getComputedStyle(pasek).position,
+      };
     });
 
-    // Wcześniej: nagłówek kończył się na 82 px, a pasek przyklejał się na 84 px
-    // — między nimi przez cały czas przewijania prześwitywała treść.
+    // Pasek jest prostokątny — górna granica z briefu to 8 px.
     expect(
-      geometria.goraPaska - geometria.dolNaglowka,
-      "między nagłówkiem a paskiem prześwituje treść albo pasek wchodzi pod nagłówek",
-    ).toBeGreaterThanOrEqual(0);
-    expect(geometria.goraPaska - geometria.dolNaglowka).toBeLessThanOrEqual(16);
-    // Jeden system wizualny: ten sam promień i ta sama linia lewej krawędzi.
-    expect(geometria.promienPaska).toBe(geometria.promienNaglowka);
-    expect(Math.abs(geometria.lewaPaska - geometria.lewaNaglowka)).toBeLessThanOrEqual(1);
+      geometria.promienPaska,
+      `pasek kierunku ma promień ${geometria.promienPaska} px — miał być prostokątny (0–8 px)`,
+    ).toBeLessThanOrEqual(8);
+    // Nagłówek zostaje pastylką, więc kształty MUSZĄ się różnić.
+    expect(
+      geometria.promienNaglowka,
+      "nagłówek przestał być pływającą pastylką — to nie było w zakresie zmiany",
+    ).toBeGreaterThan(8);
+    // I pasek nadal nie może być przyklejony.
+    expect(["static", "relative"], "pasek kierunku znowu jest przyklejony").toContain(geometria.pozycjaPaska);
   });
 
   test("filtry mają ikony, nie same etykiety", async ({ page }) => {
