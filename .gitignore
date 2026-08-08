@@ -68,3 +68,12 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# Katalog roboczy na jednorazowe skrypty, logi buildow i zrzuty Lighthouse.
+# 78 MB artefaktow, ktore nie sa czescia aplikacji.
+/tmp/
+
+# Surowe przebiegi `npx tsx e2e/audit-shots.ts <etykieta>` — po 13-16 MB kazdy
+# i w pelni odtwarzalne tym skryptem. Do repozytorium (publicznego) trafia
+# kuratorowany dowod w `shots/final-fix/` plus oba `pomiary.json`.
+/docs/hotel-redesign/shots/audyt-*/

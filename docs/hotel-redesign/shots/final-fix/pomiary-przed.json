@@ -1,0 +1,719 @@
+{
+  "desktop-1920/wyniki": {
+    "vw": 1920,
+    "scrollW": 1920,
+    "poziomyOverflow": false,
+    "wystajace": [
+      "a.skip-to-content"
+    ],
+    "zaMaleCele": [
+      "a 1×1 „Przejdź do głównej treści\"",
+      "a 77×37 „Kierunki\"",
+      "a 148×37 „Pomysły na wyjazd\"",
+      "a 106×37 „Jak to działa\"",
+      "a 92×37 „O serwisie\"",
+      "a 112×37 „Polubione\"",
+      "a 128×37 „Znajdź wyjazd\"",
+      "button 102×36 „Edytuj\"",
+      "select 320×42 „RekomendowaneCena rosnącoCen\"",
+      "input 146×34 „\"",
+      "input 146×34 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\""
+    ],
+    "zaMaleCeleRazem": 22,
+    "nakladki": [
+      {
+        "el": "div.fixed.inset-x-2",
+        "box": "768×260 @ 576,804",
+        "naWierzchu": true
+      }
+    ],
+    "kartaSzerokosc": 1408
+  },
+  "desktop-1920/po-scrollu": {
+    "vw": 1920,
+    "scrollW": 1920,
+    "poziomyOverflow": false,
+    "wystajace": [
+      "a.skip-to-content"
+    ],
+    "zaMaleCele": [
+      "a 77×37 „Kierunki\"",
+      "a 148×37 „Pomysły na wyjazd\"",
+      "a 106×37 „Jak to działa\"",
+      "a 92×37 „O serwisie\"",
+      "a 112×37 „Polubione\"",
+      "a 128×37 „Znajdź wyjazd\"",
+      "button 102×36 „Edytuj\"",
+      "select 320×42 „RekomendowaneCena rosnącoCen\"",
+      "input 146×34 „\"",
+      "input 146×34 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\""
+    ],
+    "zaMaleCeleRazem": 21,
+    "nakladki": [
+      {
+        "el": "div.fixed.inset-x-2",
+        "box": "768×260 @ 576,804",
+        "naWierzchu": true
+      }
+    ],
+    "kartaSzerokosc": 1408
+  },
+  "desktop-1920/mapa": {
+    "doPowlokiMs": 1541,
+    "doZnacznikaMs": 1633,
+    "znaczniki": 26,
+    "uklad": {
+      "vw": 1920,
+      "scrollW": 1920,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content"
+      ],
+      "zaMaleCele": [
+        "a 1×1 „Przejdź do głównej treści\"",
+        "a 77×37 „Kierunki\"",
+        "a 148×37 „Pomysły na wyjazd\"",
+        "a 106×37 „Jak to działa\"",
+        "a 92×37 „O serwisie\"",
+        "a 112×37 „Polubione\"",
+        "a 128×37 „Znajdź wyjazd\"",
+        "button 102×36 „Edytuj\"",
+        "button 91×28 „5od 987 zł\"",
+        "button 98×28 „33od 586 zł\"",
+        "button 91×28 „7od 605 zł\"",
+        "button 91×28 „9od 467 zł\"",
+        "button 98×28 „28od 726 zł\"",
+        "button 98×28 „12od 682 zł\"",
+        "button 98×28 „4od 1218 zł\""
+      ],
+      "zaMaleCeleRazem": 35,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "768×260 @ 576,804",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": 955
+    }
+  },
+  "desktop-1920/klik-znacznika": {
+    "przesuniecie": {
+      "dx": 46,
+      "dy": 43
+    }
+  },
+  "desktop-1920/hotel": {
+    "domMs": 20160,
+    "uklad": {
+      "vw": 1920,
+      "scrollW": 1920,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content"
+      ],
+      "zaMaleCele": [
+        "a 1×1 „Przejdź do głównej treści\"",
+        "a 77×37 „Kierunki\"",
+        "a 148×37 „Pomysły na wyjazd\"",
+        "a 106×37 „Jak to działa\"",
+        "a 92×37 „O serwisie\"",
+        "a 112×37 „Polubione\"",
+        "a 128×37 „Znajdź wyjazd\"",
+        "a 81×17 „Strona główna\"",
+        "a 44×17 „Kierunki\"",
+        "a 40×17 „Málaga\"",
+        "button 264×40 „Pokaż wszystkie zdjęcia (15)\"",
+        "a 81×33 „Przegląd\"",
+        "a 68×33 „Pokoje\"",
+        "a 116×33 „Udogodnienia\"",
+        "a 96×33 „Lokalizacja\""
+      ],
+      "zaMaleCeleRazem": 19,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "768×260 @ 576,804",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "desktop-1920/pokoje": {
+    "grup": 0,
+    "brakDostepnosci": false,
+    "uklad": {
+      "vw": 1920,
+      "scrollW": 1920,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content"
+      ],
+      "zaMaleCele": [
+        "a 77×37 „Kierunki\"",
+        "a 148×37 „Pomysły na wyjazd\"",
+        "a 106×37 „Jak to działa\"",
+        "a 92×37 „O serwisie\"",
+        "a 112×37 „Polubione\"",
+        "a 128×37 „Znajdź wyjazd\"",
+        "button 164×27 „Pokój dwuosobowy\"",
+        "button 212×27 „Double room (twin beds)\"",
+        "a 139×19 „Polityce prywatności\""
+      ],
+      "zaMaleCeleRazem": 9,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "768×260 @ 576,804",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "laptop-1440/wyniki": {
+    "vw": 1440,
+    "scrollW": 1440,
+    "poziomyOverflow": false,
+    "wystajace": [
+      "a.skip-to-content"
+    ],
+    "zaMaleCele": [
+      "a 1×1 „Przejdź do głównej treści\"",
+      "a 77×37 „Kierunki\"",
+      "a 148×37 „Pomysły na wyjazd\"",
+      "a 106×37 „Jak to działa\"",
+      "a 92×37 „O serwisie\"",
+      "a 112×37 „Polubione\"",
+      "a 128×37 „Znajdź wyjazd\"",
+      "button 102×36 „Edytuj\"",
+      "select 300×42 „RekomendowaneCena rosnącoCen\"",
+      "input 136×34 „\"",
+      "input 136×34 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\""
+    ],
+    "zaMaleCeleRazem": 19,
+    "nakladki": [
+      {
+        "el": "div.fixed.inset-x-2",
+        "box": "768×260 @ 336,624",
+        "naWierzchu": true
+      }
+    ],
+    "kartaSzerokosc": 1036
+  },
+  "laptop-1440/po-scrollu": {
+    "vw": 1440,
+    "scrollW": 1440,
+    "poziomyOverflow": false,
+    "wystajace": [
+      "a.skip-to-content"
+    ],
+    "zaMaleCele": [
+      "a 77×37 „Kierunki\"",
+      "a 148×37 „Pomysły na wyjazd\"",
+      "a 106×37 „Jak to działa\"",
+      "a 92×37 „O serwisie\"",
+      "a 112×37 „Polubione\"",
+      "a 128×37 „Znajdź wyjazd\"",
+      "button 102×36 „Edytuj\"",
+      "select 300×42 „RekomendowaneCena rosnącoCen\"",
+      "input 136×34 „\"",
+      "input 136×34 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\"",
+      "input 16×16 „\""
+    ],
+    "zaMaleCeleRazem": 18,
+    "nakladki": [
+      {
+        "el": "div.fixed.inset-x-2",
+        "box": "768×260 @ 336,624",
+        "naWierzchu": true
+      }
+    ],
+    "kartaSzerokosc": 1036
+  },
+  "laptop-1440/mapa": {
+    "doPowlokiMs": 1195,
+    "doZnacznikaMs": 1277,
+    "znaczniki": 22,
+    "uklad": {
+      "vw": 1440,
+      "scrollW": 1440,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content"
+      ],
+      "zaMaleCele": [
+        "a 1×1 „Przejdź do głównej treści\"",
+        "a 77×37 „Kierunki\"",
+        "a 148×37 „Pomysły na wyjazd\"",
+        "a 106×37 „Jak to działa\"",
+        "a 92×37 „O serwisie\"",
+        "a 112×37 „Polubione\"",
+        "a 128×37 „Znajdź wyjazd\"",
+        "button 102×36 „Edytuj\"",
+        "button 59×28 „3935 zł\"",
+        "button 98×28 „21od 467 zł\"",
+        "button 98×28 „42od 586 zł\"",
+        "button 98×28 „3od 1312 zł\"",
+        "button 98×28 „23od 726 zł\"",
+        "button 91×28 „5od 605 zł\"",
+        "button 91×28 „6od 840 zł\""
+      ],
+      "zaMaleCeleRazem": 31,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "768×260 @ 336,624",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": 735
+    }
+  },
+  "laptop-1440/klik-znacznika": {
+    "przesuniecie": {
+      "dx": 31,
+      "dy": 39
+    }
+  },
+  "laptop-1440/hotel": {
+    "domMs": 4076,
+    "uklad": {
+      "vw": 1440,
+      "scrollW": 1440,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content"
+      ],
+      "zaMaleCele": [
+        "a 1×1 „Przejdź do głównej treści\"",
+        "a 77×37 „Kierunki\"",
+        "a 148×37 „Pomysły na wyjazd\"",
+        "a 106×37 „Jak to działa\"",
+        "a 92×37 „O serwisie\"",
+        "a 112×37 „Polubione\"",
+        "a 128×37 „Znajdź wyjazd\"",
+        "a 81×17 „Strona główna\"",
+        "a 44×17 „Kierunki\"",
+        "a 40×17 „Málaga\"",
+        "button 264×40 „Pokaż wszystkie zdjęcia (15)\"",
+        "a 139×19 „Polityce prywatności\""
+      ],
+      "zaMaleCeleRazem": 12,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "768×260 @ 336,624",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "laptop-1440/pokoje": {
+    "grup": 0,
+    "brakDostepnosci": false,
+    "uklad": {
+      "vw": 1440,
+      "scrollW": 1440,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content"
+      ],
+      "zaMaleCele": [
+        "a 77×37 „Kierunki\"",
+        "a 148×37 „Pomysły na wyjazd\"",
+        "a 106×37 „Jak to działa\"",
+        "a 92×37 „O serwisie\"",
+        "a 112×37 „Polubione\"",
+        "a 128×37 „Znajdź wyjazd\"",
+        "button 164×27 „Pokój dwuosobowy\"",
+        "button 212×27 „Double room (twin beds)\"",
+        "a 139×19 „Polityce prywatności\""
+      ],
+      "zaMaleCeleRazem": 9,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "768×260 @ 336,624",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "tablet-768/wyniki": {
+    "vw": 768,
+    "scrollW": 768,
+    "poziomyOverflow": false,
+    "wystajace": [
+      "a.skip-to-content"
+    ],
+    "zaMaleCele": [
+      "a 1×1 „Przejdź do głównej treści\"",
+      "button 102×36 „Edytuj\"",
+      "a 139×19 „Polityce prywatności\""
+    ],
+    "zaMaleCeleRazem": 3,
+    "nakladki": [
+      {
+        "el": "button.fixed.bottom-[max(1.25rem,env(safe-area-inset-bottom))]",
+        "box": "200×48 @ 284,956",
+        "naWierzchu": false
+      },
+      {
+        "el": "div.fixed.inset-x-2",
+        "box": "752×260 @ 8,748",
+        "naWierzchu": true
+      }
+    ],
+    "kartaSzerokosc": 720
+  },
+  "tablet-768/po-scrollu": {
+    "vw": 768,
+    "scrollW": 768,
+    "poziomyOverflow": false,
+    "wystajace": [
+      "a.skip-to-content"
+    ],
+    "zaMaleCele": [
+      "button 102×36 „Edytuj\"",
+      "a 139×19 „Polityce prywatności\""
+    ],
+    "zaMaleCeleRazem": 2,
+    "nakladki": [
+      {
+        "el": "button.fixed.bottom-[max(1.25rem,env(safe-area-inset-bottom))]",
+        "box": "200×48 @ 284,956",
+        "naWierzchu": false
+      },
+      {
+        "el": "div.fixed.inset-x-2",
+        "box": "752×260 @ 8,748",
+        "naWierzchu": true
+      }
+    ],
+    "kartaSzerokosc": 720
+  },
+  "tablet-768/mapa": {
+    "doPowlokiMs": 1082,
+    "doZnacznikaMs": 1183,
+    "znaczniki": 29,
+    "uklad": {
+      "vw": 768,
+      "scrollW": 768,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content"
+      ],
+      "zaMaleCele": [
+        "a 1×1 „Przejdź do głównej treści\"",
+        "button 102×36 „Edytuj\"",
+        "button 105×28 „10od 2273 zł\"",
+        "button 91×28 „9od 467 zł\"",
+        "button 98×28 „17od 747 zł\"",
+        "button 97×28 „6od 1185 zł\"",
+        "button 98×28 „36od 586 zł\"",
+        "button 98×28 „12od 659 zł\"",
+        "button 59×28 „1218 zł\"",
+        "button 98×28 „6od 2676 zł\"",
+        "button 98×28 „10od 605 zł\"",
+        "button 91×28 „5od 920 zł\"",
+        "button 52×28 „901 zł\"",
+        "button 59×28 „3127 zł\"",
+        "button 98×28 „3od 1969 zł\""
+      ],
+      "zaMaleCeleRazem": 36,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-0",
+          "box": "768×1024 @ 0,0",
+          "naWierzchu": true
+        },
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "752×260 @ 8,748",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "tablet-768/klik-znacznika": {
+    "przesuniecie": {
+      "dx": 44,
+      "dy": -263
+    }
+  },
+  "tablet-768/hotel": {
+    "domMs": 5746,
+    "uklad": {
+      "vw": 768,
+      "scrollW": 768,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content",
+        "button.relative.h-full.w-full",
+        "img.object-cover"
+      ],
+      "zaMaleCele": [
+        "a 1×1 „Przejdź do głównej treści\"",
+        "a 81×17 „Strona główna\"",
+        "a 44×17 „Kierunki\"",
+        "a 40×17 „Málaga\"",
+        "button 162×40 „Wszystkie (15)\"",
+        "a 81×33 „Przegląd\"",
+        "a 68×33 „Pokoje\"",
+        "a 116×33 „Udogodnienia\"",
+        "a 96×33 „Lokalizacja\"",
+        "a 76×33 „Polityka\"",
+        "a 139×19 „Polityce prywatności\""
+      ],
+      "zaMaleCeleRazem": 11,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-0",
+          "box": "768×84 @ 0,940",
+          "naWierzchu": false
+        },
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "752×260 @ 8,748",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "tablet-768/pokoje": {
+    "grup": 0,
+    "brakDostepnosci": false,
+    "uklad": {
+      "vw": 768,
+      "scrollW": 768,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content",
+        "button.relative.h-full.w-full",
+        "img.object-cover"
+      ],
+      "zaMaleCele": [
+        "button 212×27 „Double room (twin beds)\"",
+        "a 139×19 „Polityce prywatności\""
+      ],
+      "zaMaleCeleRazem": 2,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-0",
+          "box": "768×84 @ 0,940",
+          "naWierzchu": false
+        },
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "752×260 @ 8,748",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "mobile-390/wyniki": {
+    "vw": 390,
+    "scrollW": 390,
+    "poziomyOverflow": false,
+    "wystajace": [
+      "a.skip-to-content"
+    ],
+    "zaMaleCele": [
+      "a 1×1 „Przejdź do głównej treści\"",
+      "button 102×36 „Edytuj\"",
+      "a 139×19 „Polityce prywatności\""
+    ],
+    "zaMaleCeleRazem": 3,
+    "nakladki": [
+      {
+        "el": "button.fixed.bottom-[max(1.25rem,env(safe-area-inset-bottom))]",
+        "box": "200×48 @ 95,776",
+        "naWierzchu": false
+      },
+      {
+        "el": "div.fixed.inset-x-2",
+        "box": "374×493 @ 8,344",
+        "naWierzchu": true
+      }
+    ],
+    "kartaSzerokosc": 358
+  },
+  "mobile-390/po-scrollu": {
+    "vw": 390,
+    "scrollW": 390,
+    "poziomyOverflow": false,
+    "wystajace": [
+      "a.skip-to-content"
+    ],
+    "zaMaleCele": [
+      "button 102×36 „Edytuj\"",
+      "a 139×19 „Polityce prywatności\""
+    ],
+    "zaMaleCeleRazem": 2,
+    "nakladki": [
+      {
+        "el": "button.fixed.bottom-[max(1.25rem,env(safe-area-inset-bottom))]",
+        "box": "200×48 @ 95,776",
+        "naWierzchu": false
+      },
+      {
+        "el": "div.fixed.inset-x-2",
+        "box": "374×493 @ 8,344",
+        "naWierzchu": true
+      }
+    ],
+    "kartaSzerokosc": 358
+  },
+  "mobile-390/mapa": {
+    "doPowlokiMs": 1287,
+    "doZnacznikaMs": 1338,
+    "znaczniki": 13,
+    "uklad": {
+      "vw": 390,
+      "scrollW": 390,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content"
+      ],
+      "zaMaleCele": [
+        "a 1×1 „Przejdź do głównej treści\"",
+        "button 102×36 „Edytuj\"",
+        "button 98×28 „53od 491 zł\"",
+        "button 98×28 „4od 1965 zł\"",
+        "button 98×28 „13od 473 zł\"",
+        "button 98×28 „25od 467 zł\"",
+        "button 98×28 „44od 586 zł\"",
+        "button 98×28 „15od 906 zł\"",
+        "button 91×28 „7od 556 zł\"",
+        "button 98×28 „2od 2196 zł\"",
+        "button 98×28 „13od 605 zł\"",
+        "button 52×28 „701 zł\"",
+        "button 91×28 „2od 645 zł\"",
+        "button 91×28 „2od 560 zł\"",
+        "button 52×28 „901 zł\""
+      ],
+      "zaMaleCeleRazem": 20,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-0",
+          "box": "390×844 @ 0,0",
+          "naWierzchu": false
+        },
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "374×493 @ 8,344",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "mobile-390/klik-znacznika": {
+    "przesuniecie": {
+      "dx": -75,
+      "dy": -30
+    }
+  },
+  "mobile-390/hotel": {
+    "domMs": 2915,
+    "uklad": {
+      "vw": 390,
+      "scrollW": 390,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content",
+        "button.relative.h-full.w-full",
+        "img.object-cover",
+        "a.shrink-0.rounded-lg.px-3",
+        "li",
+        "button.whitespace-nowrap.border-b-2.px-3"
+      ],
+      "zaMaleCele": [
+        "a 1×1 „Przejdź do głównej treści\"",
+        "a 81×17 „Strona główna\"",
+        "a 44×17 „Kierunki\"",
+        "a 40×17 „Málaga\"",
+        "button 162×40 „Wszystkie (15)\"",
+        "a 81×33 „Przegląd\"",
+        "a 68×33 „Pokoje\"",
+        "a 116×33 „Udogodnienia\"",
+        "a 96×33 „Lokalizacja\"",
+        "a 76×33 „Polityka\"",
+        "a 139×19 „Polityce prywatności\""
+      ],
+      "zaMaleCeleRazem": 11,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-0",
+          "box": "390×84 @ 0,760",
+          "naWierzchu": false
+        },
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "374×493 @ 8,344",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  },
+  "mobile-390/pokoje": {
+    "grup": 0,
+    "brakDostepnosci": false,
+    "uklad": {
+      "vw": 390,
+      "scrollW": 390,
+      "poziomyOverflow": false,
+      "wystajace": [
+        "a.skip-to-content",
+        "button.relative.h-full.w-full",
+        "img.object-cover",
+        "a.shrink-0.rounded-lg.px-3",
+        "li",
+        "button.whitespace-nowrap.border-b-2.px-3"
+      ],
+      "zaMaleCele": [
+        "button 188×26 „Double room (twin beds)\"",
+        "a 139×19 „Polityce prywatności\""
+      ],
+      "zaMaleCeleRazem": 2,
+      "nakladki": [
+        {
+          "el": "div.fixed.inset-x-0",
+          "box": "390×84 @ 0,760",
+          "naWierzchu": false
+        },
+        {
+          "el": "div.fixed.inset-x-2",
+          "box": "374×493 @ 8,344",
+          "naWierzchu": true
+        }
+      ],
+      "kartaSzerokosc": null
+    }
+  }
+}

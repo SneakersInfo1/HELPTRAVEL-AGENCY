@@ -93,6 +93,14 @@ test.describe("V3 polubione", () => {
     await page.goto(SEARCH);
     await dismissCookies(page);
     await expect(page.locator('a[href*="/hotele/lp"]').first()).toBeVisible({ timeout: 25_000 });
+    // Czekamy na KONIEC skanu cen, zanim klikniemy serce.
+    //
+    // Test bywał chwiejny w pełnym przebiegu (w izolacji przechodził zawsze):
+    // dopóki ceny dojeżdżają, lista przesortowuje się i podmienia węzły DOM,
+    // więc kliknięte serce potrafiło zniknąć razem ze swoją kartą, zanim
+    // asercja zdążyła je zobaczyć. To właściwość strony, nie usterka — po
+    // skanie kolejność jest stabilna i test mierzy to, co ma mierzyć.
+    await waitForScan(page);
 
     const serce = page.getByRole("button", { name: "Dodaj do polubionych" }).first();
     await serce.click();
