@@ -17,9 +17,9 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -30,7 +30,13 @@ import {
   type ConsentDecision,
   type ConsentRecord,
 } from "./types";
-import { readConsent, writeConsent, clearConsent } from "./storage";
+import {
+  clearConsent,
+  consentServerSnapshot,
+  consentSnapshot,
+  invalidateConsentSnapshot,
+  writeConsent,
+} from "./storage";
 
 export const CONSENT_CHANGE_EVENT = "helptravel:consent-change";
 
@@ -70,18 +76,40 @@ function dispatchConsentChange(decision: ConsentDecision) {
   );
 }
 
-export function ConsentProvider({ children }: { children: ReactNode }) {
-  // SSR renders with hydrating=true so the banner doesn't flash for users
-  // who already consented. After mount we read localStorage and reconcile.
-  const [isHydrating, setIsHydrating] = useState(true);
-  const [record, setRecord] = useState<ConsentRecord | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+/** Powiadamiacz store'u zgody — jedno miejsce, z którego React się dowiaduje. */
+const sluchacze = new Set<() => void>();
+function subskrybujZgode(onChange: () => void): () => void {
+  sluchacze.add(onChange);
+  // Zmiana w innej karcie przeglądarki też ma odświeżyć ten stan.
+  const naStorage = () => onChange();
+  if (typeof window !== "undefined") window.addEventListener("storage", naStorage);
+  return () => {
+    sluchacze.delete(onChange);
+    if (typeof window !== "undefined") window.removeEventListener("storage", naStorage);
+  };
+}
+function powiadomOZgodzie(): void {
+  invalidateConsentSnapshot();
+  for (const s of sluchacze) s();
+}
 
-  useEffect(() => {
-    const r = readConsent();
-    setRecord(r);
-    setIsHydrating(false);
-  }, []);
+export function ConsentProvider({ children }: { children: ReactNode }) {
+  // Zgoda mieszka w localStorage, czyli POZA Reactem — i dokładnie do tego
+  // służy `useSyncExternalStore`. Wcześniej stan czytał `useEffect`
+  // z `setState` w środku: dodatkowy przebieg renderu na każdym wejściu na
+  // stronę i błąd lintu `react-hooks/set-state-in-effect`.
+  //
+  // Migawka serwerowa to `null`, więc pierwszy render klienta zgadza się
+  // z serwerowym i baner nie mruga u gościa, który już podjął decyzję.
+  const record = useSyncExternalStore(subskrybujZgode, consentSnapshot, consentServerSnapshot);
+  // `isHydrating` zostaje w API kontekstu, bo czytają je konsumenci. Znaczy
+  // teraz „jesteśmy jeszcze na serwerze / przed pierwszym malowaniem".
+  const isHydrating = useSyncExternalStore(
+    subskrybujZgode,
+    () => false,
+    () => true,
+  );
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const decision = useMemo<ConsentDecision>(
     () => record?.decision ?? DEFAULT_DECISION,
@@ -90,8 +118,8 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
   const needsDecision = !isHydrating && record === null;
 
   const commit = useCallback((next: ConsentDecision) => {
-    const r = writeConsent(next);
-    setRecord(r);
+    writeConsent(next);
+    powiadomOZgodzie();
     dispatchConsentChange(next);
   }, []);
 
@@ -119,7 +147,7 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
 
   const withdraw = useCallback(() => {
     clearConsent();
-    setRecord(null);
+    powiadomOZgodzie();
     dispatchConsentChange(DEFAULT_DECISION);
   }, []);
 

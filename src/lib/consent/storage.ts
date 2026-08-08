@@ -92,6 +92,54 @@ export function clearConsent(): void {
   }
 }
 
+// ── Zapamiętany odczyt dla `useSyncExternalStore` ────────────────────────────
+//
+// `readConsent()` parsuje JSON i zwraca ZA KAŻDYM RAZEM nowy obiekt, więc nie
+// nadaje się na `getSnapshot`: React porównuje migawki tożsamością i wpadłby
+// w nieskończoną pętlę renderów. Trzymamy więc jedną migawkę i podmieniamy ją
+// tylko wtedy, gdy zmieni się TREŚĆ zapisu.
+//
+// Po co w ogóle: `ConsentProvider` czytał localStorage w `useEffect` i wołał
+// tam `setState`, co jest w tym repo błędem lintu (`react-hooks/
+// set-state-in-effect`) i realnie powoduje dodatkowy przebieg renderu na
+// każdym wejściu na stronę. `useSyncExternalStore` jest dokładnie tym
+// narzędziem: stan żyje poza Reactem (w localStorage), a serwer dostaje własną
+// migawkę, więc hydracja się zgadza i baner nie mruga.
+
+let migawka: ConsentRecord | null = null;
+let migawkaSurowa: string | null = null;
+/**
+ * Czy `migawkaSurowa` w ogóle coś znaczy.
+ *
+ * Osobna flaga, a NIE wartownik w postaci nietypowego napisu: `null` jest
+ * poprawną wartością odczytu (brak zapisu w localStorage), więc bez tej flagi
+ * pierwszy odczyt (brak zgody) byłby nieodróżnialny od stanu początkowego
+ * i `readConsent()` nie wykonałoby się ani razu.
+ */
+let migawkaWazna = false;
+
+/** Migawka zapisu zgody — stabilna tożsamość, dopóki treść się nie zmieni. */
+export function consentSnapshot(): ConsentRecord | null {
+  const ls = safeLocalStorage();
+  const raw = ls ? ls.getItem(CONSENT_STORAGE_KEY) : null;
+  if (!migawkaWazna || raw !== migawkaSurowa) {
+    migawkaSurowa = raw;
+    migawkaWazna = true;
+    migawka = readConsent();
+  }
+  return migawka;
+}
+
+/** Migawka serwerowa — na serwerze nie ma localStorage, więc „brak decyzji". */
+export function consentServerSnapshot(): ConsentRecord | null {
+  return null;
+}
+
+/** Unieważnia zapamiętaną migawkę po naszym własnym zapisie. */
+export function invalidateConsentSnapshot(): void {
+  migawkaWazna = false;
+}
+
 /** Effective decision when no record exists — strictest possible. */
 export function effectiveDecision(record: ConsentRecord | null): ConsentDecision {
   return record?.decision ?? DEFAULT_DECISION;

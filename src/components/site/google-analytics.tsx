@@ -63,9 +63,17 @@ export function GoogleAnalytics() {
 
   const analyticsAllowed = Boolean(measurementId) && decision.analytics;
 
-  if (analyticsAllowed) {
-    wasEverEnabledRef.current = true;
-  }
+  // Zapis do refa przeniesiony z ciała renderu do efektu.
+  //
+  // Przy renderze współbieżnym React może przerwać i ODRZUCIĆ render — a zapis
+  // do refa już się wykonał. Ref pamiętałby wtedy przebieg, który nigdy nie
+  // trafił na ekran, czyli „gtag był włączony", choć nigdy się nie załadował.
+  // Efekt odpala się dopiero po zatwierdzonym renderze i ustawia flagę PRZED
+  // efektem sprzątającym niżej (kolejność efektów w pliku = kolejność
+  // wykonania), więc zachowanie się nie zmienia.
+  useEffect(() => {
+    if (analyticsAllowed) wasEverEnabledRef.current = true;
+  }, [analyticsAllowed]);
 
   // If user withdraws consent after gtag loaded, signal denial to GA.
   useEffect(() => {

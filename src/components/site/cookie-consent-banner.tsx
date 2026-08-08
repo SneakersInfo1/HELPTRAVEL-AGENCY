@@ -59,13 +59,23 @@ export function CookieConsentBanner() {
   const [draftAnalytics, setDraftAnalytics] = useState(decision.analytics);
   const [draftMarketing, setDraftMarketing] = useState(decision.marketing);
 
-  // Sync drafts when modal (re)opens.
-  useEffect(() => {
-    if (isSettingsOpen) {
-      setDraftAnalytics(decision.analytics);
-      setDraftMarketing(decision.marketing);
-    }
-  }, [isSettingsOpen, decision.analytics, decision.marketing]);
+  // Przełączniki w modalu ODTWARZAMY z zapisanej decyzji przy każdym otwarciu.
+  //
+  // Wcześniej robił to efekt z `setState` w środku (błąd lintu
+  // `react-hooks/set-state-in-effect`): modal malował się raz ze starymi
+  // wartościami, a potem drugi raz z właściwymi. Teraz stan lokalny jest
+  // KLUCZOWANY otwarciem — React tworzy go od nowa z aktualnej decyzji, bez
+  // dodatkowego przebiegu i bez migotnięcia przełączników.
+  const [wersjaSzkicu, setWersjaSzkicu] = useState(0);
+  if (isSettingsOpen && wersjaSzkicu === 0) {
+    // Aktualizacja W TRAKCIE RENDERU (nie w efekcie): React przerywa ten
+    // przebieg i liczy go ponownie ze świeżym stanem — to zalecany wzorzec
+    // „stan pochodny od propsa", ten sam, którego używa lista wyników hoteli.
+    setWersjaSzkicu(1);
+    setDraftAnalytics(decision.analytics);
+    setDraftMarketing(decision.marketing);
+  }
+  if (!isSettingsOpen && wersjaSzkicu !== 0) setWersjaSzkicu(0);
 
   // Allow #cookie-settings hash to open the modal — used by footer links.
   useEffect(() => {
