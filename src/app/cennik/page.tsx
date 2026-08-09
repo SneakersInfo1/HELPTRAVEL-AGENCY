@@ -12,7 +12,11 @@ import { FinalCtaBanner } from "@/components/site/final-cta-banner";
 // że transakcja, którą właśnie zaczyna, dzieje się poza serwisem.
 //
 // Każda liczba i każde twierdzenie poniżej ma pokrycie w kodzie:
-//   • „wł. podatków i opłat · płatność w PLN" — booking-summary-card.tsx:249
+//   • rozbicie „do zapłaty teraz" / „dodatkowo na miejscu" —
+//     booking-summary-card.tsx (BreakdownPodatkowy), model:
+//     lib/hotels/domain/checkout-price.ts. NIE obiecujemy globalnie, że
+//     podatki są wliczone: zmierzone 14 315 z 17 776 taryf ma opłaty płatne
+//     w obiekcie (docs/hotel-redesign/price-integrity-audit.md).
 //   • NUITEE TRAVEL jako rozliczający — reservation-form.tsx:440, payment-slot.tsx:183
 //   • brak BLIK-a — payment-brands.tsx:43
 //   • „Bezpłatna anulacja do {data}" przy ofercie — card-price.tsx:86
@@ -21,12 +25,12 @@ import { FinalCtaBanner } from "@/components/site/final-cta-banner";
 export const metadata: Metadata = {
   title: "Ile kosztuje rezerwacja",
   description:
-    "Wyszukiwanie i porównywanie jest bezpłatne. Płacisz za nocleg lub przelot — kwotę z podsumowania, w złotówkach, z podatkami i opłatami w środku.",
+    "Wyszukiwanie i porównywanie jest bezpłatne. Płacisz kwotę z podsumowania rezerwacji, w złotówkach. Przy ofertach, w których obiekt pobiera część podatków na miejscu, pokazujemy tę kwotę osobno przed płatnością.",
   alternates: { canonical: "/cennik" },
   openGraph: {
     title: "Ile kosztuje rezerwacja | HelpTravel",
     description:
-      "Za wyszukiwanie nie płacisz nic. Za nocleg płacisz tyle, ile widnieje w podsumowaniu — w PLN, z podatkami i opłatami.",
+      "Za wyszukiwanie nie płacisz nic. Za nocleg płacisz tyle, ile widnieje w podsumowaniu rezerwacji — w PLN. Ewentualne opłaty pobierane przez obiekt pokazujemy osobno.",
     url: "/cennik",
   },
 };
@@ -98,7 +102,9 @@ export default function PricingPage() {
             <div className="rounded-lg bg-surface-sunken p-5">
               <dt className="text-base font-bold text-ink">Nocleg</dt>
               <dd className="mt-1.5 text-base leading-7 text-ink-muted">
-                Kwota z podsumowania rezerwacji, w PLN, wraz z podatkami i opłatami.
+                Kwota z podsumowania rezerwacji, w PLN. Część obiektów pobiera
+                podatki lokalne dopiero na miejscu — jeżeli tak jest, pokazujemy
+                tę kwotę osobno w podsumowaniu, zanim zapłacisz.
               </dd>
             </div>
             <div className="rounded-lg bg-surface-sunken p-5">

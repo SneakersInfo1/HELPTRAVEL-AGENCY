@@ -32,7 +32,7 @@ const copy = {
     moreOptions: (n: number) => `${n} ${n === 1 ? "opcja noclegu" : n < 5 ? "opcje noclegu" : "opcji noclegu"}`,
     perNight: "/ noc",
     totalForNights: (total: string, n: number) =>
-      `${total} za ${n} ${n === 1 ? "noc" : n < 5 ? "noce" : "nocy"} · wł. podatków i opłat`,
+      `${total} za ${n} ${n === 1 ? "noc" : n < 5 ? "noce" : "nocy"}`,
     filtersTitle: "Filtry",
     filtersOpen: "Filtry i sortowanie",
     filtersClose: "Zamknij",
