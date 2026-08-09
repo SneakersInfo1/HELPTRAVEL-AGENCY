@@ -11,6 +11,7 @@
 import { useState } from "react";
 
 import { ratingLabel } from "@/lib/hotels/rating";
+import type { CheckoutPriceWire } from "@/lib/hotels/domain/checkout-price";
 
 interface Props {
   hotelName: string;
@@ -25,6 +26,12 @@ interface Props {
   board?: string;
   price?: number;
   currency: string;
+  /**
+   * Znormalizowane rozbicie ceny z PREBOOKA — jedyne wiarygodne źródło tego,
+   * co gość płaci teraz, a co na miejscu. Obecne dopiero na kroku płatności;
+   * przed prebookiem znamy jedynie cenę orientacyjną z listingu.
+   */
+  checkoutPrice?: CheckoutPriceWire;
   cancel?: "free" | "nrf";
   cancelUntil?: string;
 }
@@ -93,6 +100,98 @@ function nightNoun(n: number): string {
   return "nocy";
 }
 
+/**
+ * Rozbicie „teraz vs na miejscu" — jedyne miejsce, w którym karta mówi
+ * o podatkach, i mówi wyłącznie to, co wynika z danych prebooka.
+ *
+ * Świadomie NIE pokazujemy „łącznego kosztu pobytu", nawet gdy arytmetycznie
+ * dałoby się go policzyć: nie mamy potwierdzenia dostawcy, że `taxesAndFees`
+ * wyczerpuje opłaty pobierane w obiekcie. Suma, która okaże się niepełna przy
+ * meldowaniu, byłaby tym samym kłamstwem co poprzednie „wł. podatków".
+ * Szczegóły i warunek odblokowania: `domain/checkout-price.ts`.
+ */
+function BreakdownPodatkowy({ price }: { price: CheckoutPriceWire }) {
+  if (price.taxSummary === "unknown") {
+    // Dostawca nie podał rozbicia — nie zmyślamy ani w jedną, ani w drugą stronę.
+    return <p className="mt-0.5 text-right text-[11px] text-neutral-400">płatność w {price.currency}</p>;
+  }
+
+  if (price.taxSummary === "all-included") {
+    return (
+      <p className="mt-0.5 text-right text-[11px] text-neutral-500">
+        w tym podatki i opłaty · płatność w {price.currency}
+      </p>
+    );
+  }
+
+  // some-at-property — gość MUSI zobaczyć, że to nie jest całość kosztu.
+  const kwota =
+    price.payableAtProperty !== null && price.atPropertyCurrency
+      ? formatPrice(price.payableAtProperty, price.atPropertyCurrency)
+      : null;
+
+  return (
+    <div className="mt-3 rounded-lg bg-amber-50 p-2.5 ring-1 ring-amber-200/70">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-semibold text-amber-900">Dodatkowo na miejscu</span>
+        <span className="text-sm font-bold text-amber-900">
+          {kwota ?? "kwota wg cennika obiektu"}
+        </span>
+      </div>
+      <ul className="mt-1.5 space-y-0.5">
+        {price.atPropertyItems.map((t, i) => (
+          <li key={`${t.description ?? "poz"}-${i}`} className="flex justify-between gap-2 text-[11px] text-amber-800">
+            <span className="min-w-0 truncate">{t.description ?? "opłata"}</span>
+            <span className="shrink-0 tabular-nums">
+              {t.amount !== null && t.currency ? formatPrice(t.amount, t.currency) : "wg obiektu"}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {price.includedItems.length > 0 && (
+        // Miks included/excluded — nie wolno napisać ogólnego „wliczone",
+        // ale trzeba powiedzieć, że część JEST w cenie.
+        <p className="mt-1.5 border-t border-amber-200/70 pt-1.5 text-[11px] text-amber-800">
+          Pozostałe podatki i opłaty są już w kwocie powyżej.
+        </p>
+      )}
+      {price.atPropertyHasUncountable && (
+        <p className="mt-1 text-[11px] text-amber-800">
+          Dostawca nie podał kwoty wszystkich opłat — obiekt poda ją przy meldowaniu.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Co dostawca zmienił między wyborem oferty a prebookiem.
+ *
+ * Prebook potrafi wrócić z inną ceną, innym wyżywieniem albo innymi zasadami
+ * anulacji niż to, co gość widział na liście — zmierzone: ta sama oferta
+ * potrafi zmienić cenę o 64 zł w kilka sekund. Gość musi to zobaczyć PRZED
+ * płatnością, a nie na wyciągu.
+ */
+function ZmianyPoPrebooku({ price }: { price: CheckoutPriceWire }) {
+  const zmiany: string[] = [];
+  const pct = price.priceChangePercent ?? 0;
+  if (pct > 0) zmiany.push(`cena wzrosła o ${Math.abs(pct).toFixed(1).replace(".", ",")}%`);
+  if (pct < 0) zmiany.push(`cena spadła o ${Math.abs(pct).toFixed(1).replace(".", ",")}%`);
+  if (price.boardChanged) zmiany.push("zmieniło się wyżywienie");
+  if (price.cancellationChanged) zmiany.push("zmieniły się zasady anulowania");
+  if (zmiany.length === 0) return null;
+
+  return (
+    <div
+      role="status"
+      className="mt-3 rounded-lg bg-sky-50 p-2.5 text-[11px] leading-4 text-sky-900 ring-1 ring-sky-200"
+    >
+      <span className="font-semibold">Oferta została zaktualizowana:</span>{" "}
+      {zmiany.join(", ")}. Poniżej jest aktualna kwota — to ona zostanie pobrana.
+    </div>
+  );
+}
+
 function formatPrice(amount: number, currency: string): string {
   return new Intl.NumberFormat("pl-PL", {
     style: "currency",
@@ -138,6 +237,7 @@ export function BookingSummaryCard({
   board,
   price,
   currency,
+  checkoutPrice,
   cancel,
   cancelUntil,
 }: Props) {
@@ -240,14 +340,35 @@ export function BookingSummaryCard({
               </span>
             </div>
             <div className="mt-1 flex items-baseline justify-between">
-              <span className="text-sm font-semibold text-neutral-900">Razem</span>
+              <span className="text-sm font-semibold text-neutral-900">
+                {checkoutPrice ? "Do zapłaty teraz" : "Razem"}
+              </span>
               <span className="text-xl font-bold text-neutral-900">
                 {formatPrice(price, currency)}
               </span>
             </div>
-            <p className="mt-0.5 text-right text-[11px] text-neutral-400">
-              wł. podatków i opłat · płatność w PLN
-            </p>
+
+            {/* ── ETYKIETA PODATKOWA WYNIKA Z DANYCH, NIE Z NADZIEI ──────────
+                Do 2026-08-08 stało tu bezwarunkowe „wł. podatków i opłat".
+                Pomiar na żywym LiteAPI: nieprawdziwe dla 14 315 z 17 776
+                taryf (80,5%), średnio 352 zł nieujawnionej dopłaty — podczas
+                gdy strona pokoju mówiła prawdę. Ten sam błąd naprawiono
+                wcześniej w `result-card.tsx`; tutaj przetrwał, bo karta
+                w ogóle nie dostawała rozbicia podatkowego.
+                Pomiar: docs/hotel-redesign/price-integrity-audit.md */}
+            {checkoutPrice ? (
+              <>
+                <BreakdownPodatkowy price={checkoutPrice} />
+                <ZmianyPoPrebooku price={checkoutPrice} />
+              </>
+            ) : (
+              // Przed prebookiem znamy tylko cenę orientacyjną z listingu i NIE
+              // wiemy, co jest w niej zawarte. Milczenie jest tu jedyną uczciwą
+              // opcją — dowiemy się przy potwierdzaniu oferty.
+              <p className="mt-0.5 text-right text-[11px] text-neutral-400">
+                cena orientacyjna · potwierdzimy ją przed płatnością
+              </p>
+            )}
           </div>
         )}
       </div>

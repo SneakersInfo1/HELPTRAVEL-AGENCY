@@ -380,7 +380,15 @@ export const LiteApiRateSchema = z.object({
       // Zmierzone: initialPrice === total na 400/400 taryf. Dostawca NIE daje
       // własnej ceny bazowej, więc uczciwej przeceny nie da się z tego policzyć.
       // Trzymamy pole, żeby dało się to zweryfikować w kodzie, a nie zakładać.
-      initialPrice: z.array(PriceAmountSchema).optional(),
+      //
+      // `.nullish()`, NIE `.optional()` — poprawka 2026-08-08. `.optional()`
+      // dopuszcza wyłącznie BRAK klucza, a dostawca realnie przysyła
+      // `initialPrice: null` (potwierdzone na surowej odpowiedzi prebooka
+      // hotelu lp88f00). Przy `.optional()` taka wartość wywracała parsowanie
+      // CAŁEGO `retailRate`, a razem z nim cenę i rozbicie podatkowe taryfy.
+      // To ta sama klasa błędu co incydent z `LiteApiHotelDetailSchema`:
+      // puste pola przychodzą jako `null`, nie jako brak pola.
+      initialPrice: z.array(PriceAmountSchema).nullish(),
       // Rozbicie podatków i opłat. `included: false` znaczy, że pozycja NIE
       // jest w `total` — gość dopłaci ją w hotelu. Zmierzone: 209 z 400 taryf
       // ma taką pozycję (najczęściej VAT), podczas gdy UI bezwarunkowo pisze
@@ -447,6 +455,25 @@ export type LiteApiRatesResponse = z.infer<typeof LiteApiRatesResponseSchema>;
 // ────────────────────────────────────────────────────────────────────────────
 // Prebook (`POST /rates/prebook` with `usePaymentSdk: true`)
 
+/**
+ * `roomTypes[]` w odpowiedzi PREBOOKA.
+ *
+ * Kształt jest TEN SAM co w `/hotels/rates` (zmierzone na żywej odpowiedzi
+ * 2026-08-08), więc taryfy parsujemy istniejącym `LiteApiRateSchema` — dzięki
+ * temu `retailRate.taxesAndFees` ma dokładnie jedną definicję w całym repo.
+ *
+ * DEFENSYWNIE: `offerId` jest `.optional()`, a cała tablica ma `.catch(undefined)`.
+ * Powód jest twardy: rozbicie podatkowe to dana POMOCNICZA, a `prebookId` +
+ * `price` to dane, bez których nie ma transakcji. Zły kształt podatków nie ma
+ * prawa wywrócić parsowania prebooka i zablokować gościowi zakupu.
+ */
+const LiteApiPrebookRoomTypeSchema = z
+  .object({
+    offerId: z.string().optional(),
+    rates: z.array(LiteApiRateSchema).optional(),
+  })
+  .passthrough();
+
 export const LiteApiPrebookResponseSchema = z.object({
   data: z.object({
     prebookId: z.string(),
@@ -454,10 +481,33 @@ export const LiteApiPrebookResponseSchema = z.object({
     secretKey: z.string().optional(), // returned when usePaymentSdk=true
     hotelId: z.string().optional(),
     rateId: z.string().optional(),
+    offerId: z.string().optional(),
     price: z.number().optional(),
     currency: CurrencyCodeSchema.optional(),
     cancellationPolicies: LiteApiCancellationPolicySchema.optional(),
     expiresAt: z.string().optional(),
+
+    // ── Pola, które schemat DO 2026-08-08 po cichu wyrzucał ────────────────
+    //
+    // Schematy w tym repo są nie-strict, więc każde niezadeklarowane pole Zod
+    // kasuje bez śladu. Skutek był realny i kosztowny: checkout nie miał
+    // rozbicia podatkowego, więc pisał bezwarunkowe „wł. podatków i opłat"
+    // — nieprawdziwe dla 14 315 z 17 776 zmierzonych taryf (80,5%), średnio
+    // 352 zł nieujawnionej dopłaty. Pomiar i surowa odpowiedź prebooka:
+    // `docs/hotel-redesign/price-integrity-audit.md`.
+    //
+    // Dostawca ODDAJE te dane. To my je wyrzucaliśmy.
+
+    /** Taryfy z rozbiciem `retailRate.taxesAndFees` — źródło prawdy checkoutu. */
+    roomTypes: z.array(LiteApiPrebookRoomTypeSchema).nullish().catch(undefined),
+    /** Cena po stronie gościa; zmierzone: równa `price`. */
+    sellingPriceToUser: z.number().nullish(),
+    /** >0 = podrożało, <0 = staniało względem oferty z wyszukiwarki. */
+    priceDifferencePercent: z.number().nullish(),
+    /** Dostawca zmienił zasady anulacji między rates a prebook. */
+    cancellationChanged: z.boolean().nullish(),
+    /** Dostawca zmienił wyżywienie między rates a prebook. */
+    boardChanged: z.boolean().nullish(),
     // LiteAPI flags whether THIS prebook (and its Stripe PaymentIntent) is
     // sandbox/test mode. Authoritative env signal for the payment widget —
     // see B6. Location varies (data.* or top-level), capture both.

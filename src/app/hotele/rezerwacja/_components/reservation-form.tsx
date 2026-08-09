@@ -28,6 +28,7 @@ import { BookingSummaryCard } from "./booking-summary-card";
 import { CheckoutSteps } from "./checkout-steps";
 import { OptionalGuestsAccordion } from "./optional-guests-accordion";
 import { PaymentBrandsInline } from "./payment-brands";
+import type { CheckoutPriceWire } from "@/lib/hotels/domain/checkout-price";
 import { PaymentSlot, type PaymentSlotPrebook } from "./payment-slot";
 import { TrustStrip } from "./trust-strip";
 
@@ -311,8 +312,14 @@ export function ReservationForm({
         error?: string;
         debug?: { liteApiStatus?: number; liteApiCode?: string };
         rateSummary?: { price?: number; currency?: string };
+        checkoutPrice?: CheckoutPriceWire;
       };
-      if (!res.ok || !data.sessionId || !data.secretKey) {
+      // `checkoutPrice` jest WYMAGANE, nie opcjonalne w praktyce: serwer robi
+      // fail-closed (502 `prebook_no_authoritative_price`), gdy prebook nie dał
+      // wiarygodnej ceny. Sprawdzamy je tu jeszcze raz, bo od tej kwoty zależy,
+      // ile gość zostanie obciążony — a stary kod podstawiał w tym miejscu
+      // liczbę z `?price=` w URL-u, czyli daną od klienta.
+      if (!res.ok || !data.sessionId || !data.secretKey || !data.checkoutPrice) {
         // Operator-visible diagnostic: open DevTools → Console after a failed
         // attempt and you see the underlying LiteAPI status + code immediately,
         // without needing to dig through Vercel logs (B6/B7 plumbing).
@@ -336,8 +343,14 @@ export function ReservationForm({
       setPay({
         secretKey: data.secretKey,
         sessionId: data.sessionId,
-        amount: data.rateSummary?.price ?? price ?? 0,
-        currency: data.rateSummary?.currency ?? currency,
+        // Kwota WYŁĄCZNIE z prebooka. Poprzednio: `data.rateSummary?.price ??
+        // price ?? 0`, gdzie `price` to wartość z `?price=` w URL-u. Ta sama
+        // liczba szła potem do konstruktora `LiteAPIPayment` jako `amount`,
+        // więc gość mógł zobaczyć na przycisku płatności kwotę podaną przez
+        // przeglądarkę, a nie tę, którą obciąża dostawca.
+        amount: data.checkoutPrice.payableNow,
+        currency: data.checkoutPrice.currency,
+        checkoutPrice: data.checkoutPrice,
         // Prefer the env bound to this prebook; fall back to the server prop
         // (B6 key-mode heuristic) if the API didn't include it.
         widgetEnv: data.widgetEnv ?? (publicKey === "live" ? "live" : "sandbox"),
@@ -375,6 +388,9 @@ export function ReservationForm({
       adults={adults}
       board={board}
       price={paying ? pay!.amount : price}
+      // Rozbicie podatkowe istnieje dopiero po prebooku. Przed nim karta
+      // celowo milczy o podatkach zamiast zgadywać.
+      checkoutPrice={paying ? pay!.checkoutPrice : undefined}
       currency={paying ? pay!.currency : currency}
       cancel={cancel}
       cancelUntil={cancelUntil}

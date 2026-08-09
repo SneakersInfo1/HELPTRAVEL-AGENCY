@@ -19,6 +19,7 @@ import {
 } from "@/lib/liteapi";
 import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { normalizeGuestsForRooms } from "@/lib/booking/guests";
+import { buildCheckoutPrice, checkoutPriceNaDrut } from "@/lib/hotels/domain/checkout-price";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   SESSION_TTL_SECONDS,
@@ -122,19 +123,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── CENA: WYŁĄCZNIE Z PREBOOKA. FAIL CLOSED. ─────────────────────────────
+    //
+    // Do 2026-08-08 stało tu `pre.price ?? b.rate.price`, gdzie `b.rate.price`
+    // pochodzi z `?price=` w URL-u, czyli od klienta. Skutek był taki, że przy
+    // braku ceny z prebooka checkout i przycisk płatności pokazywały liczbę
+    // podaną przez przeglądarkę — a dostawca obciążał swoją. Kwota na ekranie
+    // mogła się różnić od kwoty na wyciągu.
+    //
+    // Brak ceny z prebooka to BŁĄD PROCESU, nie sytuacja do podstawienia
+    // wartości zastępczej. Nie zgadujemy i nie otwieramy płatności.
+    const priceModel = buildCheckoutPrice(pre);
+    if (!priceModel) {
+      console.error(
+        `[booking][prebook] brak wiarygodnej ceny z prebooka sessionId=${sessionId} prebookId=${pre.prebookId} — fail closed, płatność NIE otwarta`,
+      );
+      return NextResponse.json(
+        {
+          error: "prebook_no_authoritative_price",
+          message:
+            "Nie udało się potwierdzić ceny u dostawcy. Wróć do wyboru pokoju i spróbuj ponownie — nic nie zostało obciążone.",
+        },
+        { status: 502 },
+      );
+    }
+
+    const checkoutPrice = checkoutPriceNaDrut(priceModel);
+
     const now = Date.now();
     const rec: SessionRecord = {
       prebookId: pre.prebookId,
       transactionId: pre.transactionId,
       secretKey: pre.secretKey,
       offerId: b.offerId,
-      price: pre.price ?? b.rate.price,
-      currency: pre.currency ?? b.rate.currency,
+      price: checkoutPrice.payableNow,
+      currency: checkoutPrice.currency,
       hotelSummary: { name: b.hotel.name, city: b.hotel.city },
       rateSummary: {
         boardName: b.rate.boardName,
-        price: pre.price ?? b.rate.price,
-        currency: pre.currency ?? b.rate.currency,
+        price: checkoutPrice.payableNow,
+        currency: checkoutPrice.currency,
         checkin: b.rate.checkin,
         checkout: b.rate.checkout,
       },
@@ -169,6 +197,10 @@ export async function POST(request: NextRequest) {
       expiresAt: new Date(now + SESSION_TTL_SECONDS * 1000).toISOString(),
       hotelSummary: rec.hotelSummary,
       rateSummary: rec.rateSummary,
+      // Znormalizowane rozbicie ceny z PREBOOKA — jedyne źródło prawdy dla
+      // checkoutu. Zawiera rozdzielone „płatne teraz" i „płatne na miejscu"
+      // oraz sygnały zmiany warunków (cena / anulacja / wyżywienie).
+      checkoutPrice,
     };
     if (idemKey) await setIdempotent(idemKey, 200, responseBody);
     return NextResponse.json(responseBody, { status: 200 });

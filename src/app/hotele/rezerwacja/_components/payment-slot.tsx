@@ -36,11 +36,28 @@ declare global {
   }
 }
 
+import type { CheckoutPriceWire } from "@/lib/hotels/domain/checkout-price";
+
 export interface PaymentSlotPrebook {
   secretKey: string;
   sessionId: string;
+  /**
+   * Kwota do zapłaty TERAZ — wyłącznie z prebooka (`data.price`).
+   * NIGDY z query stringa: ta wartość idzie do konstruktora `LiteAPIPayment`,
+   * więc rozjazd z kwotą dostawcy znaczyłby inną liczbę na przycisku niż na
+   * wyciągu z banku.
+   */
   amount: number;
   currency: string;
+  /**
+   * Pełne rozbicie „teraz vs na miejscu" z prebooka — do podsumowania.
+   *
+   * OPCJONALNE, bo ten sam typ współdzielą LOTY (`/loty/platnosc`), które mają
+   * własny kontrakt cenowy i nie przechodzą przez hotelowy `buildCheckoutPrice`.
+   * Dla hoteli jest zawsze obecne: serwer robi fail-closed, gdy prebook nie da
+   * wiarygodnej ceny.
+   */
+  checkoutPrice?: CheckoutPriceWire;
   widgetEnv: "live" | "sandbox";
 }
 

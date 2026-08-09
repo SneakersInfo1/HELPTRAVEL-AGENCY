@@ -16,9 +16,22 @@ export interface PrebookInput {
 }
 
 export async function prebook(input: PrebookInput): Promise<LiteApiPrebookResponse> {
-  // LiteAPI naming drift: getRates returns `rateId`, but POST /rates/prebook
-  // requires the same value under the field name `offerId`. We keep the
-  // internal name (`rateId`) consistent and rename only at the boundary.
+  // UWAGA — to NIE jest zwykła zmiana nazwy pola.
+  //
+  // Poprzednia wersja tego komentarza twierdziła, że `/hotels/rates` zwraca
+  // `rateId`, a prebook chce „TĘ SAMĄ WARTOŚĆ pod nazwą `offerId`". To
+  // nieprawda i kosztowało dwa odrzucone prebooki podczas audytu 2026-08-08:
+  //
+  //   • `rates[].rateId`        — identyfikuje TARYFĘ (zmierzone: 551 znaków)
+  //   • `roomTypes[].offerId`   — to, czego chce prebook (zmierzone: 1084 znaki)
+  //
+  // Wysłanie `rateId` daje `4002 invalid offerId`. Parametr wejściowy nazywa
+  // się tu historycznie `rateId`, ale WARTOŚĆ, którą trzeba podać, pochodzi
+  // z `roomTypes[].offerId` — tak robi UI (`rooms-section.tsx:510` przez
+  // `domain/room.ts:172`) i `scripts/booking-smoke.ts:44-50`.
+  //
+  // Konsekwencja warta zapamiętania: `offerId` żyje na poziomie roomType'u,
+  // a rozbicie podatkowe na poziomie taryfy (`rates[].retailRate`).
   const body = {
     offerId: input.rateId,
     clientReference: input.clientReference,
