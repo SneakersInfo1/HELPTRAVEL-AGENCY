@@ -1,38 +1,50 @@
 "use client";
 
-// Nawigacja po sekcjach strony hotelu (brief §11.3).
+// Nawigacja po sekcjach strony hotelu.
 //
-// Sticky na desktopie, przewijalna poziomo na mobile. Podświetla sekcję,
-// która jest aktualnie na ekranie.
+// PASEK JEST STATYCZNY — i nie wolno go przykleić.
 //
-// DWIE rzeczy, które łatwo tu zepsuć i o które ten komponent dba:
+// Decyzja właściciela (2026-08-09), taka sama jak wcześniej dla paska kierunku
+// na `/hotele/szukaj`: pasek ma istnieć w JEDNYM miejscu w przepływie
+// dokumentu i naturalnie znikać nad krawędzią okna przy przewijaniu. Nie
+// wraca, nie goni scrolla. Przyklejony zostaje wyłącznie nagłówek serwisu.
+//
+// Wcześniej było tu `sticky top-[72px] z-20`. Razem ze sticky nagłówkiem dawało
+// to dwa paski jadące za treścią i zjadające górę ekranu na telefonie.
+//
+// DWIE rzeczy, o które ten komponent dba poza tym:
 //
 // 1. **Przewijanie pod sticky nagłówkiem.** Zwykłe `scrollIntoView()` chowa
-//    nagłówek sekcji za paskiem wyszukiwania (sticky, ~72–84 px) i za samym
-//    paskiem zakładek. Dlatego liczymy offset ręcznie.
+//    nagłówek sekcji za paskiem wyszukiwania. Liczymy offset ręcznie —
+//    ale już TYLKO na nagłówek, bo pasek zakładek nie jest przyklejony
+//    i nie zasłania celu.
 // 2. **Sekcje, których nie ma.** Hotel bez opinii nie może mieć zakładki
 //    „Opinie" prowadzącej donikąd — renderujemy tylko te, których kotwice
 //    faktycznie istnieją w DOM.
 
 import { useEffect, useState } from "react";
+import { BedDouble, MapPin, ShieldCheck, Sparkles, Star, type LucideIcon } from "lucide-react";
 
 interface TabDef {
   id: string;
   label: string;
+  Icon: LucideIcon;
 }
 
-const LABELS: Record<string, string> = {
-  rooms: "Pokoje",
-  amenities: "Udogodnienia",
-  reviews: "Opinie",
-  location: "Lokalizacja",
-  policies: "Zasady",
+const TABS: Record<string, { label: string; Icon: LucideIcon }> = {
+  rooms: { label: "Pokoje", Icon: BedDouble },
+  amenities: { label: "Udogodnienia", Icon: Sparkles },
+  reviews: { label: "Opinie", Icon: Star },
+  location: { label: "Lokalizacja", Icon: MapPin },
+  policies: { label: "Zasady", Icon: ShieldCheck },
 };
 
-// Wysokość sticky paska wyszukiwania + zapas na sam pasek zakładek.
-// Mobile ma niższy nagłówek niż sm+ — patrz `page.tsx` (`top-[72px] sm:top-[84px]`).
-const SCROLL_OFFSET_MOBILE = 132;
-const SCROLL_OFFSET_DESKTOP = 148;
+// Wysokość samego sticky paska wyszukiwania + oddech.
+// Pasek zakładek NIE wchodzi już do tej sumy — jest statyczny, więc w chwili
+// dojazdu do sekcji dawno go nad ekranem nie ma. Wcześniej doliczone 132/148
+// zostawiało nad nagłówkiem sekcji pas martwej przestrzeni.
+const SCROLL_OFFSET_MOBILE = 88;
+const SCROLL_OFFSET_DESKTOP = 100;
 
 /**
  * @param sectionIds kotwice sekcji, które strona FAKTYCZNIE wyrenderowała.
@@ -47,8 +59,8 @@ export function SectionTabs({ sectionIds }: { sectionIds: string[] }) {
 
   const sectionKey = sectionIds.join(",");
   const present: TabDef[] = sectionIds
-    .filter((id) => id in LABELS)
-    .map((id) => ({ id, label: LABELS[id] }));
+    .filter((id) => id in TABS)
+    .map((id) => ({ id, label: TABS[id].label, Icon: TABS[id].Icon }));
 
   // Podświetlenie aktywnej sekcji. IntersectionObserver zamiast nasłuchu
   // `scroll` — nie odpala się przy każdym pikselu przewinięcia.
@@ -65,9 +77,10 @@ export function SectionTabs({ sectionIds }: { sectionIds: string[] }) {
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
         if (visible) setActive(visible.target.id);
       },
-      // Górny margines odcina obszar pod sticky nagłówkiem, żeby sekcja
-      // stawała się „aktywna" dopiero, gdy realnie widać jej początek.
-      { rootMargin: "-140px 0px -60% 0px", threshold: 0 },
+      // Margines odcina obszar pod sticky NAGŁÓWKIEM (nie pod zakładkami —
+      // te już nie są przyklejone), żeby sekcja stawała się „aktywna"
+      // dopiero, gdy realnie widać jej początek.
+      { rootMargin: "-100px 0px -60% 0px", threshold: 0 },
     );
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -94,24 +107,36 @@ export function SectionTabs({ sectionIds }: { sectionIds: string[] }) {
   return (
     <nav
       aria-label="Sekcje strony hotelu"
-      className="sticky top-[72px] z-20 -mx-4 border-b border-neutral-200 bg-white/95 px-4 backdrop-blur sm:top-[84px] sm:mx-0 sm:rounded-t-2xl sm:px-2"
+      data-ht="hotel-tabs"
+      // BEZ `sticky`, BEZ `fixed`, BEZ `z-*`. Zwykły blok w przepływie.
+      // Zaokrąglona obudowa z delikatną ramką i cieniem — ma wyglądać jak
+      // element sterujący, a nie jak kreska pod treścią.
+      className="rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-sm"
     >
-      <ul className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {present.map((t) => {
-          const isActive = active === t.id;
+      {/* Przewijanie poziome zamknięte W PASKU, nie w stronie — bez tego
+          pięć zakładek z ikonami wypychało `document` w poziomie na 360 px. */}
+      <ul className="flex gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {present.map(({ id, label, Icon }) => {
+          const isActive = active === id;
           return (
-            <li key={t.id}>
+            <li key={id} className="shrink-0">
               <button
                 type="button"
-                onClick={() => goTo(t.id)}
+                onClick={() => goTo(id)}
                 aria-current={isActive ? "true" : undefined}
-                className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+                // min-h-11 = 44 px — minimalny cel dotyku (WCAG 2.2 AA).
+                className={`inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl px-3.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 motion-reduce:transition-none ${
                   isActive
-                    ? "border-emerald-700 text-emerald-800"
-                    : "border-transparent text-neutral-600 hover:text-neutral-900"
+                    ? "bg-emerald-700 text-white shadow-sm"
+                    : "text-neutral-700 hover:bg-emerald-50 hover:text-emerald-800"
                 }`}
               >
-                {t.label}
+                <Icon
+                  aria-hidden
+                  className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-emerald-700/70"}`}
+                  strokeWidth={2}
+                />
+                {label}
               </button>
             </li>
           );
