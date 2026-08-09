@@ -67,8 +67,8 @@ function wolnoPobieracNaZapas(): boolean {
   return c.effectiveType !== "slow-2g" && c.effectiveType !== "2g";
 }
 import { facilityGroupsFor } from "@/lib/hotels/facility-filters";
-import { publishFilterOptions } from "@/lib/hotels/filter-options-store";
-import { resetViewMode, setViewMode, useViewMode } from "@/lib/hotels/view-mode-store";
+import { publishFilterOptions, resetFilterOptions } from "@/lib/hotels/filter-options-store";
+import { setViewMode, syncViewModeToSearch, useViewMode } from "@/lib/hotels/view-mode-store";
 import { useMediaQuery } from "@/lib/ui/use-media-query";
 import {
   applyFiltersAndSort,
@@ -237,11 +237,22 @@ export function ResultsList(props: ResultsListProps) {
     areaSigRef.current = ctxSig;
     if (areaBounds !== null) setAreaBounds(null);
     if (selectedId !== null) setSelectedId(null);
-    // Store trybu widoku żyje poza Reactem, więc przetrwałby nawigację między
-    // wyszukiwaniami — gość wracałby do wyszukiwarki i lądował od razu
-    // w mapie nowego kierunku, nie wiedząc dlaczego.
-    resetViewMode();
+    // Tryb widoku NIE jest tu kasowany — to store poza Reactem, a mutowanie go
+    // w ciele renderu budziło subskrybentów `useSyncExternalStore`, w tym
+    // RODZICA (`ResultsLayout`). Robi to teraz efekt niżej.
   }
+
+  // N2 — tryb widoku dopasowany do wyszukiwania: W EFEKCIE, nie w renderze.
+  //
+  // Pamięć „które wyszukiwanie już zsynchronizowaliśmy" siedzi w tym samym
+  // module co sam tryb (`view-mode-store`), a nie w oknie komponentu. Dzięki
+  // temu powrót z hotelu na TEN SAM listing zachowuje mapę, a zmiana dat,
+  // gości albo kierunku ją kasuje. Wcześniej pilnował tego `useRef`, który
+  // przy każdym montowaniu startował pusty — więc zwykłe „Wstecz" wyglądało
+  // jak nowe wyszukiwanie i wyrzucało gościa z mapy na listę.
+  useEffect(() => {
+    syncViewModeToSearch(ctxSig);
+  }, [ctxSig]);
 
   // ── Dociąganie PEŁNEJ puli kierunku (2026-07-11) ──────────────────────────
   // Serwer wysyła pierwszą stronę (300); tu w tle dociągamy kolejne strony
@@ -313,6 +324,18 @@ export function ResultsList(props: ResultsListProps) {
     }
     return merged;
   }, [pool, expansion, sourceSig]);
+
+  // N3 — zmiana kierunku CZYŚCI opcje filtrów.
+  //
+  // `resetFilterOptions()` istniało od początku, ale nie było wołane z żadnego
+  // miejsca w repo — czyli było martwe. Opcje poprzedniego kierunku wisiały
+  // w module do chwili, aż lista opublikuje nowe, więc gość przechodzący
+  // Heraklion → Antalya widział przez ten czas sieci hotelowe i udogodnienia
+  // z Heraklionu. Reset MUSI iść przed publikacją i być kluczowany na
+  // kierunku, nie na puli (pula rośnie w trakcie dociągania stron).
+  useEffect(() => {
+    resetFilterOptions();
+  }, [sourceSig]);
 
   // Panel filtrów renderuje się PRZED tą sekcją (siatka strony), więc nie zna
   // puli. Publikujemy więc opcje, które pula faktycznie obsługuje — dzięki

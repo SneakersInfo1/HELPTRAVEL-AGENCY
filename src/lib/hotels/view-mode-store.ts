@@ -48,12 +48,37 @@ export function useViewMode(): ViewMode {
 }
 
 /**
- * Reset przy wejściu na świeże wyniki.
+ * Ostatnie wyszukiwanie, dla którego zsynchronizowaliśmy tryb widoku.
  *
- * Store żyje poza Reactem, więc przetrwałby nawigację klienta między
- * wyszukiwaniami: gość szukałby Rodos, przełączał na mapę, wracał do
- * wyszukiwarki i lądował od razu w mapie nowego kierunku, nie wiedząc czemu.
+ * Musi żyć W TYM SAMYM MIEJSCU co `mode` — czyli w module, nie w oknie
+ * komponentu. Poprzednia wersja pilnowała tego `useRef`-em w `ResultsList`,
+ * a ref powstaje od nowa przy KAŻDYM montowaniu. Skutek: powrót z hotelu na
+ * listing wyglądał dla kodu jak nowe wyszukiwanie i kasował tryb mapy —
+ * gość wchodził w hotel z mapy, wracał i lądował na liście.
  */
-export function resetViewMode(): void {
+let ostatniaSygnatura: string | null = null;
+
+/**
+ * Dopasowuje tryb widoku do BIEŻĄCEGO wyszukiwania.
+ *
+ * Resetuje do listy tylko wtedy, gdy wyszukiwanie faktycznie się zmieniło —
+ * inaczej gość szukałby Rodos, przełączał na mapę, wracał do wyszukiwarki
+ * i lądował od razu w mapie nowego kierunku, nie wiedząc czemu.
+ *
+ * WOŁAĆ Z EFEKTU, NIGDY Z CIAŁA RENDERU. Ta funkcja mutuje store i budzi
+ * subskrybentów `useSyncExternalStore` — m.in. `ResultsLayout`, czyli
+ * RODZICA `ResultsList`. Zrobione w trakcie renderu znaczy aktualizację
+ * innego komponentu w fazie renderu i ryzyko rozjazdu: rodzic zdążył się
+ * wyrenderować w trybie mapy, dziecko już w trybie listy.
+ */
+export function syncViewModeToSearch(sygnatura: string): void {
+  if (ostatniaSygnatura === sygnatura) return;
+  ostatniaSygnatura = sygnatura;
   setViewMode("list");
+}
+
+/** Wyłącznie dla testów — store żyje w module i przeciekałby między przypadkami. */
+export function __resetViewModeStoreForTests(): void {
+  ostatniaSygnatura = null;
+  mode = "list";
 }

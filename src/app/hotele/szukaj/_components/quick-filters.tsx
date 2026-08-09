@@ -91,9 +91,18 @@ export function QuickFilters({ compact = false }: { compact?: boolean } = {}) {
         next.set(listowy, wartosc);
       }
 
-      // `scroll: false` — przewinięcie na górę po kliknięciu chipa wyrzuciłoby
-      // gościa z mapy, na którą właśnie patrzy.
-      router.push(`?${next.toString()}`, { scroll: false });
+      // `replace`, NIE `push` — ujednolicone z panelem bocznym
+      // (`filters-sidebar.tsx:191`, który zawsze robił `router.replace`).
+      //
+      // Zmierzone przed poprawką: każdy kliknięty chip dokładał wpis do
+      // historii. Gość, który zaznaczył dwa filtry i wszedł w hotel, musiał
+      // nacisnąć „Wstecz" trzy razy, żeby wyjść z wyników — a każde
+      // naciśnięcie po drodze CICHO ZDEJMOWAŁO mu jeden filtr. Dla gościa
+      // wyglądało to jak samoczynne rozjeżdżanie się filtrów.
+      //
+      // Zmiana filtra to korekta bieżącego widoku, nie nowa lokalizacja.
+      // `scroll: false` — przewinięcie na górę wyrzuciłoby gościa z mapy.
+      router.replace(`?${next.toString()}`, { scroll: false });
     },
     [router, sp],
   );
