@@ -19,7 +19,14 @@ const csp = [
   // production.nuitee.flights — logo linii lotniczych i providerów LiteAPI Flights
   // (carrier.marketingLogo, np. .../static/images/airlines/BA.png). Bez tego CSP
   // blokuje wszystkie loga linii → broken image w wynikach lotów.
-  "img-src 'self' data: blob: https://*.nuitee.link https://wsrv.nl https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.cupid.travel https://*.liteapi.travel https://*.nuitee.flights https://*.geoapify.com https://maps.geoapify.com https://www.google-analytics.com https://www.googletagmanager.com",
+  // c.clarity.ms — piksel pomiarowy Microsoft Clarity. Clarity jest celową
+  // integracją (components/site/microsoft-clarity.tsx, layout.tsx:219) i miała
+  // już zgodę w `script-src` oraz `connect-src`, ale NIE w `img-src` — więc
+  // przeglądarka odrzucała `c.clarity.ms/c.gif`. Zmierzone w sesji E2E:
+  // 18 błędów CSP w konsoli na jedną przejściówkę przez listing, plus cicha
+  // utrata części pomiaru. Wpisany DOKŁADNY host, nie `*.clarity.ms` —
+  // rozszerzamy tylko o to, co realnie było blokowane.
+  "img-src 'self' data: blob: https://*.nuitee.link https://wsrv.nl https://images.unsplash.com https://images.pexels.com https://videos.pexels.com https://static.cupid.travel https://*.cupid.travel https://*.liteapi.travel https://*.nuitee.flights https://*.geoapify.com https://maps.geoapify.com https://www.google-analytics.com https://www.googletagmanager.com https://c.clarity.ms https://c.bing.com",
   "media-src 'self' https://videos.pexels.com",
   // maplibre-gl renderuje kafelki w Web Workerze tworzonym z blob-a.
   // To zostaje — zmienił się dostawca mapy, nie sposób jej rysowania.
