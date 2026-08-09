@@ -1138,6 +1138,24 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
                 suppressDestTriggerFocusRef.current = false;
                 return;
               }
+              // NA TELEFONIE FOKUS NIE OTWIERA WYBORU KIERUNKU.
+              //
+              // Zgłoszenie właściciela: przewijanie strony zaczęte palcem NA
+              // tym polu samo otwierało picker. Przyczyna jest w przeglądarce,
+              // nie w gescie — dotknięcie pola tekstowego nadaje mu fokus
+              // natychmiast, ZANIM wiadomo, czy palec pojedzie w bok (scroll),
+              // czy oderwie się w miejscu (tap). `onFocus` odpalał się więc
+              // przy każdym przewinięciu rozpoczętym w tym miejscu ekranu.
+              //
+              // Na telefonie otwieranie zostaje wyłącznie na `onClick` powyżej,
+              // bo przeglądarka NIE wysyła `click` po geście, który okazał się
+              // przewijaniem. To jest ta sama, natywna heurystyka tap-vs-scroll,
+              // którą i tak musielibyśmy odtworzyć progiem ruchu — tylko
+              // dokładniejsza i zgodna z zachowaniem systemu.
+              //
+              // Desktop zostaje bez zmian: tam fokus przychodzi z tabulatora
+              // albo z kliknięcia i w obu przypadkach jest świadomy.
+              if (window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches) return;
               openDestinationSuggestions();
             }}
             onBlur={(event) => {
