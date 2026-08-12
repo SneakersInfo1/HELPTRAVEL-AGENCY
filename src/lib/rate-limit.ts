@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 type LimiterKey =
   | "discovery"
   | "stays-search"
+  | "stays-rates-batch"
   | "flights-search"
   | "activities-search"
   | "booking-prebook"
@@ -28,11 +29,37 @@ const LIMIT_PER_MINUTE = 20;
 // kluczu. Jeden świeży skan megamiasta ≈ 46 calli; 320/min pozwala na
 // swobodne skakanie między kierunkami bez otwierania wektora nadużyć
 // (endpointy read-only, LiteAPI i tak limituje nas upstream).
+// stays-rates-batch WYDZIELONE Z `stays-search` 2026-08-12, na podstawie
+// POMIARU, nie przeczucia.
+//
+// Zmierzone lokalnie na produkcyjnym buildzie:
+//   • limiter przepuszcza 325 żądań, potem 429 z `Retry-After: 59`;
+//   • jedna sesja na Rodos (10 wejść w hotel + „Wstecz") wysłała 41 zapytań
+//     do `/api/hotels/meta` i 18 paczek stawek — czyli METADANE zjadały 2/3
+//     wspólnego budżetu, z którego mają korzystać CENY;
+//   • pełny skan największego możliwego kierunku to 2000 hoteli / 50 = 40
+//     paczek stawek.
+//
+// Trzy fakty, które wymuszają osobny kubełek:
+//   1. Klucz limitera to ADRES IP, a 90% ruchu tego serwisu to telefony —
+//      czyli CGNAT operatora, gdzie dziesiątki gości dzielą jeden adres.
+//   2. Skan cen jest z natury paczkowy: 40 żądań w kilka sekund to
+//      NORMALNE zachowanie jednego gościa, nie nadużycie.
+//   3. Gdy limiter odrzuci taką paczkę, gość nie widzi „zwolnij" tylko
+//      „Nie udało się sprawdzić dostępności hoteli" — czyli wygląda to
+//      jak brak ofert.
+//
+// 600/min/IP = 15 pełnych skanów najgrubszego kierunku na minutę: mieści
+// kilku gości za wspólnym adresem, a nadal jest TWARDYM sufitem (endpoint
+// wymaga POST-a z konkretnymi identyfikatorami hoteli, więc nie jest celem
+// crawlerów, a scraper katalogu potrzebowałby rzędów wielkości więcej).
+// Ochrona przed botami ZOSTAJE — zmienia się próg, nie jej istnienie.
 const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   "booking-prebook": 10,
   "booking-book": 10,
   "admin-email-test": 5,
   "stays-search": 320,
+  "stays-rates-batch": 600,
   // concierge: każdy request kosztuje tokeny LLM (OpenRouter) — ciasny limit
   // 10/min/IP chroni budżet przed jednym klientem spamującym czat.
   concierge: 10,

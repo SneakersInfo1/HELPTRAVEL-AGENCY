@@ -6,7 +6,15 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 
 import { POOL_MAX_TOTAL, POOL_PAGE_SIZE, type MetaOffer } from "@/lib/hotels/meta-pool";
 import type { PriceQuery, SlimRate } from "@/lib/hotels/price-batcher";
-import { ensurePrice, getPrice, getVersion, subscribe, type PriceEntry } from "@/lib/hotels/price-store";
+import {
+  ensurePrice,
+  getPrice,
+  getVersion,
+  retryFailedPrices,
+  subscribe,
+  type PipelineState,
+  type PriceEntry,
+} from "@/lib/hotels/price-store";
 
 import { ResultCard } from "./result-card";
 import { PriceView } from "./card-price";
@@ -100,6 +108,25 @@ interface PoolExpansion {
   nextOffset: number;
   done: boolean;
 }
+
+/**
+ * Dociągnięte strony puli, PRZECHOWANE POZA KOMPONENTEM (per karta przeglądarki).
+ *
+ * ZMIERZONE, nie przewidziane (forensyka 2026-08-11, Rodos): jedna sesja
+ * z dziesięcioma wejściami w hotel i powrotami wysłała **41 zapytań do
+ * `/api/hotels/meta`** przy zaledwie 18 paczkach stawek. Przyczyna: stan
+ * dociągania siedział w `useState`, a każdy powrót „Wstecz" montuje listę od
+ * nowa — więc cała pula kierunku pobierała się jeszcze raz, od strony zerowej.
+ *
+ * To nie było tylko marnotrawstwo. Metadane i stawki dzielą JEDEN klucz
+ * limitera, więc te powtórki zjadały budżet, z którego mają korzystać ceny —
+ * i przy kliencie za wspólnym adresem (CGNAT operatora komórkowego) właśnie
+ * one przewracały skan cen w 429.
+ *
+ * Ceny leżą w takim samym module (`price-store`) i dokładnie dlatego powrót
+ * z hotelu nigdy ich nie pobierał ponownie. Pula musi mieć to samo.
+ */
+const pamiecPuli = new Map<string, PoolExpansion>();
 
 interface ResultsListProps {
   // FIRST page of the destination pool (server-rendered, ~300). The client
@@ -271,7 +298,12 @@ export function ResultsList(props: ResultsListProps) {
     const st: PoolExpansion =
       expansion.sig === sourceSig
         ? expansion
-        : { sig: sourceSig, hotels: [], nextOffset: poolNextOffset ?? POOL_PAGE_SIZE, done: false };
+        : pamiecPuli.get(sourceSig) ?? {
+            sig: sourceSig,
+            hotels: [],
+            nextOffset: poolNextOffset ?? POOL_PAGE_SIZE,
+            done: false,
+          };
     if (st.done || st.nextOffset >= POOL_MAX_TOTAL) return;
     const controller = new AbortController();
     void (async () => {
@@ -294,12 +326,16 @@ export function ResultsList(props: ResultsListProps) {
         const nextOffset = st.nextOffset + rawCount;
         // Krótsza strona = koniec listy; sufit chroni budżet skanu stawek.
         const done = rawCount < POOL_PAGE_SIZE || nextOffset >= POOL_MAX_TOTAL;
-        setExpansion({ sig: sourceSig, hotels: [...st.hotels, ...got], nextOffset, done });
+        const next: PoolExpansion = { sig: sourceSig, hotels: [...st.hotels, ...got], nextOffset, done };
+        pamiecPuli.set(sourceSig, next);
+        setExpansion(next);
       } catch {
         // Awaria dociągania NIE psuje wyników — zostajemy przy tym, co mamy
         // (co najmniej serwerowe 300). Abort (unmount/zmiana kierunku) ciszej.
         if (!controller.signal.aborted) {
-          setExpansion({ sig: sourceSig, hotels: st.hotels, nextOffset: st.nextOffset, done: true });
+          const next: PoolExpansion = { sig: sourceSig, hotels: st.hotels, nextOffset: st.nextOffset, done: true };
+          pamiecPuli.set(sourceSig, next);
+          setExpansion(next);
         }
       }
     })();
@@ -311,8 +347,12 @@ export function ResultsList(props: ResultsListProps) {
 
   // Pula łączna: serwerowa strona + dociągnięte, dedupe po hotelId (łańcuch
   // fallbacków w /api/hotels/meta może na styku stron zwrócić duplikaty).
+  /** Stan dociągania dla BIEŻĄCEGO kierunku — ze stanu albo z pamięci karty. */
+  const stanPuli: PoolExpansion | null =
+    expansion.sig === sourceSig ? expansion : pamiecPuli.get(sourceSig) ?? null;
+
   const fullPool = useMemo(() => {
-    const extraHotels = expansion.sig === sourceSig ? expansion.hotels : [];
+    const extraHotels = stanPuli?.hotels ?? [];
     if (extraHotels.length === 0) return pool;
     const seen = new Set(pool.map((o) => o.hotelId));
     const merged = [...pool];
@@ -323,7 +363,7 @@ export function ResultsList(props: ResultsListProps) {
       }
     }
     return merged;
-  }, [pool, expansion, sourceSig]);
+  }, [pool, stanPuli]);
 
   // N3 — zmiana kierunku CZYŚCI opcje filtrów.
   //
@@ -641,9 +681,68 @@ export function ResultsList(props: ResultsListProps) {
   // Skan „gotowy" dopiero gdy: wszystkie znane hotele wycenione ORAZ nie ma
   // już stron puli do dociągnięcia (inaczej licznik zamarłby na 300/300 tuż
   // przed dosypaniem kolejnej strony).
-  const expansionPending =
-    Boolean(poolSource && poolHasMore) && !(expansion.sig === sourceSig && expansion.done);
+  const expansionPending = Boolean(poolSource && poolHasMore) && !(stanPuli?.done ?? false);
   const scanComplete = view.scanning === 0 && !expansionPending;
+
+  // ── Jawny stan całego lejka cen (§20 briefu) ─────────────────────────────
+  //
+  // „Skan skończony" NIE ZNACZY „udało się". Ten sam warunek był prawdziwy
+  // przy komplecie cen i przy zerze cen po awarii wszystkich paczek — a lista
+  // wyglądała wtedy na kompletną. Rozróżnienie steruje komunikatem i akcją.
+  const pipelineState: PipelineState = !scanComplete
+    ? "loading"
+    : view.failed === 0
+      ? "success"
+      : view.availableCount === 0
+        ? "failed"
+        : "partial";
+
+  // ── Samoczynna ponowka nieudanych cen (§21 briefu) ───────────────────────
+  //
+  // „Odśwież stronę" nie jest naprawą, tylko przerzuceniem awarii na gościa —
+  // i kosztuje go przewinięcie, filtry oraz WSZYSTKIE już pobrane ceny.
+  // System ma spróbować sam.
+  //
+  // JEDEN przebieg, po zakończeniu skanu, raz na wyszukiwanie. Nie odpytujemy
+  // w pętli: batcher ma już własne ponowki z odczekaniem, więc ta warstwa
+  // łapie wyłącznie awarię, która przetrwała cały skan (typowo wyczerpany
+  // budżet limitera — okno przesuwne zwalnia się w kilka sekund).
+  const autoPonowkaRef = useRef<{ sig: string; timer: ReturnType<typeof setTimeout> | null }>({
+    sig: "",
+    timer: null,
+  });
+  // Budzik kasujemy TYLKO przy odmontowaniu, nie przy każdym przebiegu efektu.
+  // Efekt zależy m.in. od `view.failed`, a samo zaplanowanie ponowki tę liczbę
+  // zmienia — sprzątanie w każdym przebiegu kasowałoby własny budzik, zanim
+  // zdąży wystrzelić, i automatyczna ponowka nie odpaliłaby NIGDY.
+  useEffect(() => {
+    // Obiekt w refie jest MUTOWANY, nigdy podmieniany — dzięki temu ta
+    // referencja pozostaje tym samym obiektem do końca życia komponentu
+    // i sprzątanie widzi realny budzik, a nie kopię sprzed jego ustawienia.
+    const st = autoPonowkaRef.current;
+    return () => {
+      if (st.timer !== null) clearTimeout(st.timer);
+      st.timer = null;
+    };
+  }, []);
+  const hotelIdsSig = poolIdSig;
+  useEffect(() => {
+    if (!scanComplete || view.failed === 0) return;
+    const st = autoPonowkaRef.current;
+    if (st.sig === ctxSig) return; // jedna ponowka na wyszukiwanie
+    st.sig = ctxSig;
+    st.timer = setTimeout(() => {
+      st.timer = null;
+      retryFailedPrices(hotelIdsSig ? hotelIdsSig.split(",") : [], ctx);
+    }, 2500);
+    // ctx jest stabilne w granicach ctxSig; hotelIdsSig niesie listę hoteli.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanComplete, view.failed, ctxSig, hotelIdsSig]);
+
+  /** Ręczna ponowka — bez przeładowania strony, tylko nieudany podzbiór. */
+  const ponowNieudane = () => {
+    retryFailedPrices(fullPool.map((o) => o.hotelId), ctx);
+  };
 
   // Paczkę mapy pobieramy w bezczynności, PO wyrenderowaniu wyników.
   //
@@ -685,31 +784,62 @@ export function ResultsList(props: ResultsListProps) {
     return () => window.clearTimeout(t);
   }, [scanComplete]);
 
-  // Mapa ma sens dopiero, gdy jest co na niej postawić.
-  const mapAvailable = mapPoints.length > 0;
+  // ── Czy mapa MA PRAWO istnieć ────────────────────────────────────────────
+  //
+  // Liczone z CAŁEJ PULI KIERUNKU, nie z aktualnie widocznych punktów — i to
+  // jest naprawa, nie kosmetyka.
+  //
+  // Wcześniej stało tu `mapPoints.length > 0`, czyli wartość zależna od cen,
+  // filtrów i ograniczenia do obszaru. Gdy któreś z nich chwilowo dawało zero
+  // punktów (świeżo wybrany obszar na mapie, filtr wykluczający wszystko,
+  // moment po zmianie filtrów, zanim dojdą ceny), `mapAvailable` przewracało
+  // się na `false` — a wtedy blok mapy renderował `null`, blok listy też
+  // (`viewMode === "map"`), i gość zostawał z PUSTYM PANELEM bez mapy, bez
+  // listy i bez przełącznika. To jest zgłoszone „mapa czasem zostaje pusta":
+  // nie awaria MapLibre, tylko warunek renderu.
+  //
+  // Pula kierunku nie znika przy zmianie filtrów, więc ten warunek się nie
+  // chwieje. Sytuację „w tym kadrze nie ma nic" obsługuje komunikat WEWNĄTRZ
+  // mapy, gdzie stoi też przycisk powrotu do całego kierunku.
+  const mapAvailable = useMemo(
+    () =>
+      fullPool.some(
+        (o) => typeof o.latitude === "number" && typeof o.longitude === "number",
+      ),
+    [fullPool],
+  );
+  /** Jedyny warunek renderu mapy — i jednocześnie dopełnienie warunku listy. */
+  const pokazMape = viewMode === "map" && mapAvailable;
   // Szukamy w `mapRows`, nie w `allRows`: znacznik może wskazywać hotel, którego
   // cena jeszcze nie doszła — a klik w niego musi otworzyć podgląd tak samo.
   const selectedRow = selectedId
     ? view.mapRows.find((r) => r.offer.hotelId === selectedId) ?? null
     : null;
 
-  // Wejście w tryb mapy dosuwa widok tak, żeby mapa PRZYKLEIŁA SIĘ od razu.
+  // Wejście w tryb mapy dosuwa widok do góry podziału.
   //
-  // Nad mapą stoi nagłówek serwisu, pasek wyszukiwania, tytuł, licznik i pasek
-  // szybkich filtrów — razem ~360 px. Mapa jest `sticky` i ma wysokość liczoną
-  // od przyklejonej pozycji, więc przy przewinięciu 0 wystawała ~150 px poniżej
-  // krawędzi okna: dolna część mapy razem z podglądem wybranego obiektu była
-  // poza ekranem, dopóki gość sam nie przewinął. Zmierzone na 1920×1080.
+  // ŚWIADOMY GEST, NIE EFEKT. Wcześniej robił to `useEffect` zależny od
+  // `viewMode`, więc odpalał się także wtedy, gdy tryb mapy został ODTWORZONY
+  // — na przykład po „Wstecz" z karty hotelu. Gość, który nic nie kliknął,
+  // dostawał wtedy samoczynne, płynne przewinięcie strony. Teraz przewijamy
+  // wyłącznie w obsłudze kliknięcia w „Mapa" i skokowo (`auto`), bo płynne
+  // przewijanie nakładało się na montowanie mapy i zostawiało ją w połowie
+  // kadru.
   const kotwicaMapy = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (viewMode !== "map" || !isDesktop) return;
+  const dosunDoMapy = () => {
+    if (!isDesktop) return;
     const el = kotwicaMapy.current;
     if (!el) return;
     const gora = el.getBoundingClientRect().top + window.scrollY;
     // `- 8` daje oddech, żeby mapa nie dotykała paska wyszukiwania.
-    const cel = Math.max(0, gora - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ht-header-h")) || 84) - 8);
-    if (Math.abs(window.scrollY - cel) > 4) window.scrollTo({ top: cel, behavior: "smooth" });
-  }, [viewMode, isDesktop]);
+    const cel = Math.max(
+      0,
+      gora -
+        (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ht-header-h")) || 84) -
+        8,
+    );
+    if (Math.abs(window.scrollY - cel) > 4) window.scrollTo({ top: cel, behavior: "auto" });
+  };
 
   const mapNode = (
     <HotelMap
@@ -748,9 +878,9 @@ export function ResultsList(props: ResultsListProps) {
     <div className="space-y-4" ref={kotwicaMapy}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ResultsSubtitle
-          scanComplete={scanComplete}
+          pipelineState={pipelineState}
+          onRetry={ponowNieudane}
           availableCount={view.availableCount}
-          failedCount={view.failed}
           nights={nights}
           adults={ctx.adults}
           page={view.safePage}
@@ -773,7 +903,10 @@ export function ResultsList(props: ResultsListProps) {
               <button
                 key={mode}
                 type="button"
-                onClick={() => setViewMode(mode)}
+                onClick={() => {
+                  setViewMode(mode);
+                  if (mode === "map") dosunDoMapy();
+                }}
                 // Najechanie i dotknięcie ściągają paczkę mapy, zanim padnie
                 // klik — razem z pobraniem w bezczynności daje to praktycznie
                 // natychmiastowe otwarcie.
@@ -800,13 +933,13 @@ export function ResultsList(props: ResultsListProps) {
           w zasięgu ręki. W trybie listy byłyby zdublowaniem panelu obok.
           Na telefonie pasek renderuje się WEWNĄTRZ pełnoekranowej mapy (niżej),
           bo tam ten fragment drzewa jest zasłonięty. */}
-      {viewMode === "map" && isDesktop && <QuickFilters />}
+      {pokazMape && isDesktop && <QuickFilters />}
 
       {/* ── WIDOK MAPY ────────────────────────────────────────────────────
           Desktop: podział 55/45, mapa przyklejona do okna i wysoka na cały
           ekran pomniejszony o paski (brief §13B). Telefon: mapa na pełny
           ekran, a wybrany hotel wjeżdża kartą od dołu (brief §13D). */}
-      {viewMode === "map" && mapAvailable ? (
+      {pokazMape ? (
         // JEDNA instancja mapy. Wariantów NIE przełączamy klasami `lg:hidden`,
         // bo Tailwind renderuje wtedy oba drzewa — a to znaczyłoby dwie mapy
         // MapLibre naraz, dwa canvasy i dwa komplety pobranych kafelków,
@@ -904,18 +1037,14 @@ export function ResultsList(props: ResultsListProps) {
               )}
             </div>
             <div
-              className="sticky"
-              // WYSOKOŚĆ, NIE PRZYKLEJENIE, decyduje o tym, czy mapa mieści się
-              // w oknie — i to ona była źródłem zgłoszenia „mapa zachowuje się
-              // inaczej przy 80% i przy 100%".
+              // BEZ `sticky`. BEZ `fixed`. BEZ `top`. Decyzja produktowa
+              // właściciela (2026-08-11): na listingu nic nie goni przewijania.
               //
-              // `sticky` w tym układzie NIE MA ZAKRESU RUCHU: obie kolumny mają
-              // tę samą wysokość, więc wiersz siatki jest dokładnie tak wysoki
-              // jak mapa i nie ma jej gdzie jechać. Zmierzone: po przewinięciu
-              // o 400 px górna krawędź mapy była na −180 px, czyli mapa wyjechała
-              // ponad okno zamiast się zatrzymać. Klasa zostaje, bo działa
-              // w przypadku brzegowym (krótka lista = niższa kolumna obok), ale
-              // nie wolno na niej opierać poprawności.
+              // Usunięcie jest bezpieczne, bo przyklejenie i tak NIE MIAŁO
+              // ZAKRESU RUCHU: obie kolumny podziału mają tę samą wysokość,
+              // więc wiersz siatki jest dokładnie tak wysoki jak mapa i nie ma
+              // jej dokąd jechać. To WYSOKOŚĆ, nie przyklejenie, decyduje
+              // o tym, czy mapa mieści się w oknie.
               //
               // Dlatego obie kolumny dostają wysokość liczoną z `100vh`
               // pomniejszonego o ZMIERZONY nagłówek i o 9 rem treści nad
@@ -924,7 +1053,6 @@ export function ResultsList(props: ResultsListProps) {
               // te 2 px ginęły w zapasie i wszystko wyglądało dobrze, a przy
               // 100% mapa wystawała i trzeba było ją doscrollować.
               style={{
-                top: "calc(var(--ht-header-h, 84px) + 0.5rem)",
                 height: "calc(100vh - var(--ht-header-h, 84px) - 9rem)",
               }}
             >
@@ -955,14 +1083,22 @@ export function ResultsList(props: ResultsListProps) {
         )
       ) : null}
 
-      {viewMode === "map" ? null : (<>
+      {/* DOPEŁNIENIE, NIE DRUGI WARUNEK. Lista renderuje się dokładnie wtedy,
+          gdy nie renderuje się mapa — dzięki temu nie istnieje stan, w którym
+          nie ma ANI mapy, ANI listy. Wcześniej oba bloki miały niezależne
+          warunki (`viewMode === "map" && mapAvailable` vs `viewMode === "map"`)
+          i przy `mapAvailable === false` w trybie mapy oba dawały `null`. */}
+      {pokazMape ? null : (<>
       {/* With loading-row padding above, displayed.length is 0 only AFTER
           the scan completes AND nothing matched (either no available hotels
           at all, or filters wiped everything). */}
       {view.displayed.length === 0 ? (
-        view.availableCount === 0 && view.failed > 0 ? (
+        pipelineState === "failed" ? (
           // Awaria pobierania cen ≠ brak miejsc. Uczciwy komunikat + akcja,
           // zamiast fałszywego „nic nie ma" (audyt mobilny 2026-07-03).
+          //
+          // Przycisk ponawia SAM PODZBIÓR, bez przeładowania strony: gość
+          // zachowuje przewinięcie, filtry i te ceny, które już doszły.
           <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center">
             <p className="text-sm font-semibold text-neutral-900">
               Nie udało się sprawdzić dostępności hoteli
@@ -972,7 +1108,7 @@ export function ResultsList(props: ResultsListProps) {
             </p>
             <button
               type="button"
-              onClick={() => window.location.reload()}
+              onClick={ponowNieudane}
               className="mt-4 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               Spróbuj ponownie
@@ -1025,24 +1161,25 @@ function obiektySlowo(n: number): string {
 
 // Podtytuł listy wyników — patrz komentarz przy `countLine` niżej.
 function ResultsSubtitle({
-  scanComplete,
+  pipelineState,
+  onRetry,
   availableCount,
-  failedCount,
   nights,
   adults,
   page,
   totalPages,
   filteredCount,
 }: {
-  scanComplete: boolean;
+  pipelineState: PipelineState;
+  onRetry: () => void;
   availableCount: number;
-  failedCount: number;
   nights: number;
   adults: number;
   page: number;
   totalPages: number;
   filteredCount: number;
 }) {
+  const scanComplete = pipelineState !== "loading";
   const filteredOut = availableCount - filteredCount;
 
   const nightsLabel =
@@ -1104,14 +1241,21 @@ function ResultsSubtitle({
         {adults} {adultsLabel}
       </span>
       {/* Awaria pobierania cen zostaje zgłoszona — to uczciwe — ale bez liczby.
-          „300 obiektów bez sprawdzonej ceny" brzmiało jak raport z serwerowni;
-          gościa interesuje tylko to, że warto odświeżyć. */}
-      {scanComplete && failedCount > 0 && (
+          „300 obiektów bez sprawdzonej ceny" brzmiało jak raport z serwerowni.
+          Nie ma tu też „odśwież stronę": przeładowanie kasuje przewinięcie,
+          filtry i wszystkie pobrane ceny, żeby powtórzyć kilka nieudanych
+          zapytań. Ponawiamy sam nieudany podzbiór, w miejscu. */}
+      {pipelineState === "partial" && (
         <>
           <span aria-hidden>·</span>
-          <span className="text-amber-700">
-            części cen nie udało się sprawdzić — odśwież stronę
-          </span>
+          <span className="text-amber-700">Nie udało się sprawdzić cen części obiektów.</span>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex min-h-6 items-center rounded-full px-2 py-0.5 text-sm font-semibold text-emerald-800 underline underline-offset-2 transition hover:bg-emerald-50"
+          >
+            Spróbuj ponownie
+          </button>
         </>
       )}
       {totalPages > 1 && (

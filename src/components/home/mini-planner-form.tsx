@@ -148,7 +148,26 @@ interface AnchoredDestinationPosition {
   maxHeight: number;
 }
 
-const MOBILE_DESTINATION_BREAKPOINT = "(min-width: 640px)";
+/**
+ * PRZEDZIAŁ DESKTOPOWY, NIE MOBILNY — nazwa ma znaczenie.
+ *
+ * Ta stała nazywała się `MOBILE_DESTINATION_BREAKPOINT`, a jej zapytanie to
+ * `(min-width: 640px)`, czyli `.matches === true` znaczy DESKTOP. Nazwa mówiła
+ * dokładnie odwrotnie niż wartość i przewróciła KAŻDĄ gałąź, która z niej
+ * korzystała: picker otwierał się na telefonie przy `pointerdown` (czyli przy
+ * dotknięciu, zanim wiadomo, czy to tap czy przewinięcie), a na desktopie
+ * przestał się otwierać z klawiatury.
+ *
+ * Poprawka z 9 sierpnia (b9a1727) opisywała w komentarzu właściwe zachowanie,
+ * ale wstawiła warunek po złej stronie i na telefonie nie zmieniła NIC.
+ * Dlatego nazwa jest teraz zgodna z treścią, a odczyt idzie przez `czyDesktop()`.
+ */
+const DESKTOP_DESTINATION_BREAKPOINT = "(min-width: 640px)";
+
+/** `true` = desktop/tablet (≥640 px). Jedyne miejsce, gdzie czytamy ten próg. */
+function czyDesktop(): boolean {
+  return window.matchMedia(DESKTOP_DESTINATION_BREAKPOINT).matches;
+}
 const DESTINATION_LIST_HEIGHT = 384;
 /**
  * Minimalna szerokość rozwiniętej listy podpowiedzi na desktopie.
@@ -323,7 +342,7 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
     // Otwarcie na ZYCZENIE: dotkniecie pola albo pisanie. Tylko po tym efekt
     // pobierajacy podpowiedzi ma prawo pokazac panel — patrz listaNaZyczenieRef.
     listaNaZyczenieRef.current = true;
-    const desktop = window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches;
+    const desktop = czyDesktop();
     setIsDestDesktop(desktop);
     if (desktop && destInputRef.current) {
       setDestListPosition(getDestinationListPosition(destInputRef.current));
@@ -1121,17 +1140,21 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
             value={destQuery}
             onChange={(event) => changeDestinationQuery(event.target.value)}
             onKeyDown={handleDestKeyDown}
+            // OTWARCIE IDZIE PRZEZ `click` — NA OBU PLATFORMACH.
+            //
+            // `click` to jedyne zdarzenie wskaźnika, które przeglądarka wysyła
+            // DOPIERO PO ROZSTRZYGNIĘCIU, czy gest był dotknięciem, czy
+            // przewinięciem. Gdy palec ruszy w bok, Chrome wysyła
+            // `pointercancel` i `click` NIE PRZYCHODZI. To ta sama natywna
+            // heurystyka tap-vs-scroll, którą inaczej musielibyśmy odtwarzać
+            // progiem ruchu — tylko dokładniejsza i zgodna z systemem.
+            //
+            // POPRZEDNIO otwierał to `pointerdown` (czyli moment dotknięcia),
+            // ograniczony warunkiem, który przez mylącą nazwę stałej celował
+            // w telefon zamiast w desktop. Stąd zgłoszenie: przewijanie strony
+            // zaczęte palcem na tym polu otwierało picker.
             onClick={() => {
-              if (
-                window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches &&
-                !destOpen
-              ) openDestinationSuggestions();
-            }}
-            onPointerDown={(event) => {
-              if (!window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches) {
-                event.preventDefault();
-                openDestinationSuggestions();
-              }
+              if (!destOpen) openDestinationSuggestions();
             }}
             onFocus={() => {
               if (suppressDestTriggerFocusRef.current) {
@@ -1140,25 +1163,42 @@ export function MiniPlannerForm({ compact = false, initial, mode = "hotels" }: M
               }
               // NA TELEFONIE FOKUS NIE OTWIERA WYBORU KIERUNKU.
               //
-              // Zgłoszenie właściciela: przewijanie strony zaczęte palcem NA
-              // tym polu samo otwierało picker. Przyczyna jest w przeglądarce,
-              // nie w gescie — dotknięcie pola tekstowego nadaje mu fokus
-              // natychmiast, ZANIM wiadomo, czy palec pojedzie w bok (scroll),
-              // czy oderwie się w miejscu (tap). `onFocus` odpalał się więc
-              // przy każdym przewinięciu rozpoczętym w tym miejscu ekranu.
+              // Dotknięcie pola tekstowego nadaje mu fokus, zanim wiadomo, czy
+              // palec pojedzie w bok. Otwieranie na fokusie znaczyłoby więc
+              // otwieranie na przewinięciu — czyli ten sam błąd, tylko innym
+              // kanałem. Na telefonie zostaje wyłącznie `click` powyżej.
               //
-              // Na telefonie otwieranie zostaje wyłącznie na `onClick` powyżej,
-              // bo przeglądarka NIE wysyła `click` po geście, który okazał się
-              // przewijaniem. To jest ta sama, natywna heurystyka tap-vs-scroll,
-              // którą i tak musielibyśmy odtworzyć progiem ruchu — tylko
-              // dokładniejsza i zgodna z zachowaniem systemu.
-              //
-              // Desktop zostaje bez zmian: tam fokus przychodzi z tabulatora
-              // albo z kliknięcia i w obu przypadkach jest świadomy.
-              if (window.matchMedia(MOBILE_DESTINATION_BREAKPOINT).matches) return;
+              // NA DESKTOPIE FOKUS OTWIERA i to jest konieczne, nie ozdobne:
+              // klawiatura dochodzi tu tabulatorem, bez żadnego kliknięcia,
+              // a lista podpowiedzi jest jedyną drogą do wyboru kierunku.
+              // Poprzednia wersja tego warunku wyłączała otwieranie właśnie
+              // na desktopie i odcinała nawigację klawiaturą.
+              if (!czyDesktop()) return;
               openDestinationSuggestions();
             }}
             onBlur={(event) => {
+              // NA TELEFONIE UTRATA FOKUSU NIE ZAMYKA ARKUSZA.
+              //
+              // To jest przyczyna, przez którą poprzednia próba naprawy „tapu"
+              // została cofnięta: przewijanie przestawało otwierać picker, ale
+              // dotknięcie też przestawało go otwierać.
+              //
+              // Zmierzona sekwencja (Chromium, 390 px, prawdziwy gest):
+              // `pointerdown → focus → click → arkusz się montuje → autoFocus
+              // arkusza zabiera fokus polu-wyzwalaczowi → onBlur`. W tym
+              // `onBlur` `relatedTarget` to pole ARKUSZA, ale `destPortalRef`
+              // nie ma jeszcze przypisanego węzła (ref dostaje wartość w tym
+              // samym commicie), więc warunek uznawał arkusz za „element poza
+              // komponentem" i natychmiast go zamykał.
+              //
+              // Wcześniej nie było tego widać, bo `preventDefault()` na
+              // `pointerdown` w ogóle nie dopuszczał fokusu do wyzwalacza.
+              //
+              // Arkusz mobilny jest modalny (`aria-modal`) i ma własne wyjścia:
+              // ✕, przycisk Wstecz i `useDismissOnOutside`. Ten handler jest
+              // wyłącznie od DESKTOPOWEGO wyjścia tabulatorem — i tak też jest
+              // opisany poniżej.
+              if (!czyDesktop()) return;
               // Zamykamy WYŁĄCZNIE wtedy, gdy fokus poszedł na konkretny element
               // poza komponentem (tabulator, klik w inne pole). `relatedTarget`
               // równy null to m.in. naciśnięcie paska przewijania — tam lista

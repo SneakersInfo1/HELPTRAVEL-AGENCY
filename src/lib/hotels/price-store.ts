@@ -14,6 +14,17 @@ import { fetchHotelPrice, type PriceQuery, type SlimRate } from "./price-batcher
 // "error" = pobranie ceny padło (NIE wiemy, czy hotel jest dostępny).
 export type PriceEntry = SlimRate | null | "loading" | "error";
 
+/**
+ * Jawny stan całego skanu cen dla listy wyników.
+ *
+ * Po co osobny typ: wcześniej „koniec skanu" znaczyło tylko tyle, że nic już
+ * nie leci — a to jest PRAWDĄ ZARÓWNO wtedy, gdy wszystkie ceny doszły, jak
+ * i wtedy, gdy wszystkie zapytania padły. Lista wyglądała wtedy na kompletną
+ * mimo zera cen. Stan musi rozróżniać te przypadki, bo sterują innym
+ * komunikatem i inną akcją.
+ */
+export type PipelineState = "loading" | "success" | "partial" | "failed";
+
 function ctxKey(q: Omit<PriceQuery, "hotelId">): string {
   return [q.checkin, q.checkout, q.adults, [...q.children].sort((a, b) => a - b).join("."), q.rooms, q.currency].join("|");
 }
@@ -69,4 +80,36 @@ export function ensurePrice(q: PriceQuery): void {
     .finally(() => {
       emit();
     });
+}
+
+/**
+ * Ponawia pobranie cen dla hoteli, których poprzednia próba padła.
+ *
+ * DLACZEGO ISTNIEJE. Jedyną drogą wyjścia z „części cen nie udało się
+ * sprawdzić" było przeładowanie strony — czyli utrata przewinięcia, filtrów
+ * i już pobranych cen po to, żeby powtórzyć kilka nieudanych zapytań.
+ * Ponowienie samego PODZBIORU jest tańsze dla dostawcy i bezbolesne dla
+ * gościa. Zwraca liczbę hoteli wziętych do ponowienia (0 = nie było czego).
+ *
+ * Ceny, które doszły poprawnie, NIE SĄ RUSZANE — jedna nieudana paczka nie
+ * może kasować czterdziestu udanych.
+ */
+export function retryFailedPrices(hotelIds: string[], ctx: Omit<PriceQuery, "hotelId">): number {
+  const prefix = ctxKey(ctx);
+  const doPonowienia: string[] = [];
+  for (const hotelId of hotelIds) {
+    if (store.get(`${prefix}::${hotelId}`) === "error") doPonowienia.push(hotelId);
+  }
+  if (doPonowienia.length === 0) return 0;
+  for (const hotelId of doPonowienia) store.delete(`${prefix}::${hotelId}`);
+  emit(); // karty wracają do „Sprawdzam cenę", zanim polecą zapytania
+  for (const hotelId of doPonowienia) ensurePrice({ hotelId, ...ctx });
+  return doPonowienia.length;
+}
+
+/** Wyłącznie dla testów — store żyje w module i przeciekałby między przypadkami. */
+export function __resetPriceStoreForTests(): void {
+  store.clear();
+  listeners.clear();
+  version = 0;
 }

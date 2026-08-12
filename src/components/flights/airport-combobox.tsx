@@ -35,7 +35,20 @@ interface AnchoredListPosition {
   maxHeight: number;
 }
 
-const MOBILE_BREAKPOINT = "(min-width: 640px)";
+/**
+ * PRZEDZIAŁ DESKTOPOWY, NIE MOBILNY — patrz bliźniacza stała
+ * `DESKTOP_DESTINATION_BREAKPOINT` w mini-planner-form.tsx. Nazwa
+ * `MOBILE_BREAKPOINT` przy zapytaniu `(min-width: 640px)` przewróciła tu
+ * dokładnie te same trzy gałęzie co w polu „Dokąd": pole „Skąd" otwierało
+ * arkusz lotnisk już przy dotknięciu, więc przewinięcie strony zaczęte na nim
+ * wyrzucało gościa w pełnoekranowy wybór lotniska.
+ */
+const DESKTOP_BREAKPOINT = "(min-width: 640px)";
+
+/** `true` = desktop/tablet (≥640 px). Jedyne miejsce odczytu progu. */
+function czyDesktop(): boolean {
+  return window.matchMedia(DESKTOP_BREAKPOINT).matches;
+}
 const AIRPORT_LIST_HEIGHT = 320;
 /** Patrz `DESTINATION_LIST_MIN_WIDTH` w mini-planner-form.tsx — ta sama reguła. */
 const AIRPORT_LIST_MIN_WIDTH = 360;
@@ -129,7 +142,7 @@ export function AirportCombobox({
   }
 
   function openSuggestions() {
-    const desktop = window.matchMedia(MOBILE_BREAKPOINT).matches;
+    const desktop = czyDesktop();
     setIsDesktop(desktop);
     if (desktop && inputRef.current) setListPosition(getAnchoredListPosition(inputRef.current));
     setOpen(true);
@@ -295,20 +308,22 @@ export function AirportCombobox({
             setHighlight(-1);
           }}
           onKeyDown={handleKeyDown}
+          // Otwarcie na `click`, na obu platformach — jedyne zdarzenie
+          // wysyłane DOPIERO po rozstrzygnięciu tap vs przewinięcie.
+          // Szczegóły przy bliźniaczym polu „Dokąd" w mini-planner-form.tsx.
           onClick={() => {
-            if (window.matchMedia(MOBILE_BREAKPOINT).matches && !open) openSuggestions();
-          }}
-          onPointerDown={(event) => {
-            if (!window.matchMedia(MOBILE_BREAKPOINT).matches) {
-              event.preventDefault();
-              openSuggestions();
-            }
+            if (!open) openSuggestions();
           }}
           onFocus={(e) => {
             if (suppressTriggerFocusRef.current) {
               suppressTriggerFocusRef.current = false;
               return;
             }
+            // Na telefonie fokus przychodzi z dotknięcia, zanim wiadomo, czy
+            // gest okaże się przewinięciem — otwieranie zostaje na `click`.
+            // Na desktopie fokus MUSI otwierać, bo tabulator nie generuje
+            // kliknięcia, a bez listy nie da się wybrać lotniska.
+            if (!czyDesktop()) return;
             // Wejście w pole = pokaż pełną listę (nie filtruj po potwierdzonym
             // wyborze) i zaznacz tekst, żeby pierwszy znak go zastąpił.
             openSuggestions();
@@ -316,6 +331,12 @@ export function AirportCombobox({
             e.currentTarget.select();
           }}
           onBlur={(event) => {
+            // Na telefonie utrata fokusu NIE zamyka arkusza — arkusz jest
+            // modalny i sam przejmuje fokus swoim `autoFocus`, a jego `ref`
+            // portalu nie jest jeszcze przypisany w chwili tego `onBlur`.
+            // Pełne uzasadnienie z pomiarem: bliźniacze pole „Dokąd"
+            // w mini-planner-form.tsx.
+            if (!czyDesktop()) return;
             // Tylko realne przeniesienie fokusu zamyka listę; `relatedTarget`
             // równy null (pasek przewijania, klik w tło) zostawia decyzję
             // hakowi wyżej, który odróżnia pasek od kliknięcia poza polem.

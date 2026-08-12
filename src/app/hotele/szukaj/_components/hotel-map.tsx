@@ -155,10 +155,41 @@ export function HotelMap({
   }, [points]);
 
   // ── Utworzenie mapy (raz) ────────────────────────────────────────────────
+  //
+  // ZASADA PO FORENSYCE 2026-08-11: komponent NIGDY nie ma prawa zostać
+  // w stanie „ani mapy, ani komunikatu".
+  //
+  // Zmierzone na produkcyjnym buildzie (30 × lista↔mapa + 10 × mapa→hotel→
+  // Wstecz): 50 kontekstów WebGL utworzonych, 50 zwolnionych, zero osieroconych
+  // canvasów, zero pustych map — cykl życia MapLibre jest tu czysty i to NIE
+  // BYŁA przyczyna zgłoszenia (`Map.remove()` w maplibre-gl v6 sam woła
+  // `WEBGL_lose_context.loseContext()`; sprawdzone w źródle w node_modules).
+  //
+  // Zostają jednak trzy ścieżki, na których gość zobaczyłby wieczny szkielet
+  // zamiast mapy albo komunikatu, i one są tu domykane:
+  //   1. `styledata` nie dochodzi (odrzucony styl, zabity kontekst, zawieszony
+  //      wątek) → `ready` na zawsze `false`;
+  //   2. kontener znika między pobraniem paczki a utworzeniem mapy → cichy
+  //      `return` bez ustawienia `failed`;
+  //   3. przeglądarka odbiera kontekst WebGL już DZIAŁAJĄCEJ mapie
+  //      (`webglcontextlost`) → canvas zostaje, ale nic nie rysuje.
   useEffect(() => {
     let cancelled = false;
     let map: MapLibreMap | null = null;
     let odepnijGesty: (() => void) | null = null;
+    /** Czy mapa zdążyła zgłosić `styledata` — rozdziela błędy startu od kafelków. */
+    let wystartowala = false;
+    // Czuwak: jeżeli w tym czasie mapa nie zgłosi gotowości, pokazujemy
+    // uczciwy komunikat awaryjny. 12 s to wielokrotność zmierzonego czasu do
+    // `styledata` (~0,9 s) — próg ma łapać ZAWIESZENIE, nie wolne łącze.
+    let czuwak: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      czuwak = null;
+      if (!cancelled) setFailed(true);
+    }, 12_000);
+    const rozbrojCzuwak = () => {
+      if (czuwak !== null) clearTimeout(czuwak);
+      czuwak = null;
+    };
     // Kopia referencji do sprzątania: `markersRef.current` może wskazywać
     // inną mapę w chwili odmontowania, a wtedy cleanup zostawiłby znaczniki
     // (wyciek + „duchy" po przełączeniu widoku).
@@ -171,7 +202,14 @@ export function HotelMap({
           // CSS biblioteki — bez niego kontrolki i canvas mają zerowe wymiary.
           import("maplibre-gl/dist/maplibre-gl.css"),
         ]);
-        if (cancelled || !containerRef.current) return;
+        if (cancelled) return;
+        if (!containerRef.current) {
+          // Kontener zniknął, a komponent NIE został odmontowany. Bez tego
+          // `return` zostawiał wieczny szkielet: ani mapy, ani błędu.
+          rozbrojCzuwak();
+          setFailed(true);
+          return;
+        }
 
         map = new GlMap({
           container: containerRef.current,
@@ -230,7 +268,30 @@ export function HotelMap({
         // `project()` i `getBounds()` już działają — a to wszystko, czego
         // potrzebują znaczniki. Kafelki dociągają się w tle, pod nimi.
         map.once("styledata", () => {
+          wystartowala = true;
+          rozbrojCzuwak();
           if (!cancelled) setReady(true);
+        });
+        // Styl odrzucony przez walidator kończy się zdarzeniem `error`,
+        // a NIE `styledata` (sprawdzone w źródle: `Style._load` przy błędzie
+        // walidacji wychodzi PRZED wysłaniem `styledata`). Bez tego nasłuchu
+        // MapLibre tylko wypisywał błąd do konsoli, a gość patrzył na
+        // pulsujący szkielet bez końca.
+        //
+        // Liczą się WYŁĄCZNIE błędy sprzed startu. Po starcie `error` znaczy
+        // najczęściej niedociągnięty kafelek — mapa działa, a przewracanie jej
+        // wtedy w komunikat awaryjny byłoby lekarstwem gorszym od choroby.
+        map.on("error", () => {
+          if (cancelled || wystartowala) return;
+          rozbrojCzuwak();
+          setFailed(true);
+        });
+        // Przeglądarka może odebrać kontekst WebGL DZIAŁAJĄCEJ mapie (limit
+        // kontekstów, uśpiona karta, reset sterownika). Canvas zostaje wtedy
+        // w drzewie, ale nie rysuje nic — czyli dokładnie „pusta mapa".
+        // MapLibre sam tego nie odzyskuje, więc mówimy o tym wprost.
+        map.getCanvas().addEventListener("webglcontextlost", () => {
+          if (!cancelled) setFailed(true);
         });
         map.on("moveend", () => {
           if (cancelled) return;
@@ -265,6 +326,7 @@ export function HotelMap({
         // awaryjny), więc cleanup się NIE uruchomi — a kontekst WebGL, worker
         // kafelków i nasłuchy zostałyby żywe do odmontowania całej strony.
         sprzataj();
+        rozbrojCzuwak();
         if (!cancelled) setFailed(true);
       }
     })();
@@ -274,16 +336,30 @@ export function HotelMap({
       odepnijGesty?.();
       odepnijGesty = null;
       // Kolejność ma znaczenie: znaczniki trzymają referencje do mapy.
-      for (const m of liveMarkers.values()) m.remove();
+      for (const m of liveMarkers.values()) {
+        try {
+          m.remove();
+        } catch {
+          // Znacznik po zabranym kontekście potrafi rzucić przy odpinaniu.
+        }
+      }
       liveMarkers.clear();
       cellsRef.current.clear();
-      map?.remove();
+      // `remove()` na mapie, która nie zdążyła dostać kontekstu, potrafi
+      // rzucić — a wtedy DALSZE linie (zerowanie refów) nigdy by się nie
+      // wykonały i następna instancja zastałaby wskaźnik na trupa.
+      try {
+        map?.remove();
+      } catch {
+        // Zwolnienie zasobów jest best-effort; poprawność stanu nie jest.
+      }
       map = null;
       mapRef.current = null;
     }
 
     return () => {
       cancelled = true;
+      rozbrojCzuwak();
       sprzataj();
     };
     // Celowo raz: `initialCenter` przy pustej puli byłby [0,0], a po dojściu

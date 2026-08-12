@@ -262,13 +262,21 @@ export function FiltersSidebar() {
             </button>
           </div>
         )}
-        {/* Offset = zmierzona wysokość nagłówka + wysokość paska wyszukiwania.
-            Wcześniej stało tu wpisane ręcznie 148 px, które nie miało związku
-            z realną geometrią (patrz HeaderOffsetProbe) — panel podłaził pod
-            pasek albo zostawiał pod nim szparę, zależnie od breakpointu. */}
+        {/* PANEL BOCZNY NIE GONI PRZEWIJANIA — decyzja produktowa właściciela
+            (2026-08-11), ta sama zasada co dla paska kierunku i zakładek
+            hotelu.
+
+            Było tu `lg:sticky` z offsetem liczonym z `--ht-header-h`. Panel
+            stał wtedy w oknie przez całe przewijanie listy, a mini-mapa nad
+            filtrami jechała razem z nim. Teraz sidebar, mini-mapa,
+            sortowanie i filtry mają JEDNO miejsce w normalnym przepływie
+            dokumentu i naturalnie znikają nad krawędzią okna.
+
+            `sticky bottom-0` przy przycisku „Zastosuj" niżej ZOSTAJE — to
+            wnętrze pełnoekranowego arkusza mobilnego (własny kontekst
+            przewijania), a nie przyklejenie do strony. */}
         <div
-          className={`space-y-5 lg:sticky ${openOnMobile ? "flex-1 overflow-y-auto overscroll-contain p-5" : ""}`}
-          style={{ top: "calc(var(--ht-header-h, 84px) + 4.75rem)" }}
+          className={`space-y-5 ${openOnMobile ? "flex-1 overflow-y-auto overscroll-contain p-5" : ""}`}
         >
           {/* Podgląd mapy NAD filtrami (brief V3 §4) — jak w interfejsie
               referencyjnym. Statyczny obraz, zero JavaScriptu mapy; pełny
@@ -279,9 +287,9 @@ export function FiltersSidebar() {
             <MiniMapPreview onOpen={() => setOpenOnMobile(false)} />
           </div>
 
-          {/* Apply / reset row at top — Booking-style. The whole sidebar is
-              sticky on desktop, so the action stays in view as the user
-              scrolls through filter content. */}
+          {/* Apply / reset row at top — Booking-style. Stoi NA GÓRZE panelu,
+              bo panel nie jest już przyklejony: gość widzi akcję od razu po
+              wejściu w filtry, zamiast szukać jej pod listą pól. */}
           <div className="-mx-1 flex gap-2 border-b border-neutral-200 pb-4">
             <button
               type="button"

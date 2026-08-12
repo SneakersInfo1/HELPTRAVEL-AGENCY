@@ -38,7 +38,11 @@ const BodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "stays-search");
+  // WŁASNY kubełek, nie wspólny `stays-search` — uzasadnienie i pomiary przy
+  // LIMIT_OVERRIDES w lib/rate-limit.ts. W skrócie: pełny skan kierunku to do
+  // 40 paczek w kilka sekund i to jest normalne zachowanie JEDNEGO gościa,
+  // a dzielenie budżetu z metadanymi przewracało cały skan w 429.
+  const limited = await enforceRateLimit(request, "stays-rates-batch");
   if (limited) return limited;
 
   try {
