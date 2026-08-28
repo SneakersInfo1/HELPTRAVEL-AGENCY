@@ -21,6 +21,7 @@ import { sendBookingConfirmation } from "@/lib/email/send-booking-confirmation";
 import {
   deleteSession,
   getIdempotent,
+  getCompleted,
   getSession,
   getSessionBooking,
   isSessionExpired,
@@ -262,16 +263,27 @@ export async function POST(request: NextRequest) {
           console.log(
             `[booking][book] session gone but LiteAPI HAS bookingId=${found.bookingId} status=${found.status} for clientReference=${sessionId} — NOT a failure, suppressing BOOK_FAILED_AFTER_PAYMENT`,
           );
+          // Prefer what we already stored. /bookings returns a SPARSER view
+          // than the session did (no city, no boardName), so blindly writing
+          // the provider shape would DEGRADE a good record — the confirmation
+          // page would silently lose "Santa Ponsa" and "Room Only". Merge:
+          // provider fills only the gaps.
+          const prior = await getCompleted(found.bookingId).catch(() => null);
+          const hotelSummary = prior?.hotelSummary?.name
+            ? prior.hotelSummary
+            : { name: found.hotel?.name ?? "Twój hotel" };
+          const rateSummary = prior?.rateSummary?.checkin
+            ? prior.rateSummary
+            : { checkin: found.checkin ?? "", checkout: found.checkout ?? "" };
+          const price = prior?.price ?? found.price;
+          const currency = prior?.currency ?? found.currency;
           const recovered = {
             bookingId: found.bookingId,
-            confirmationCode: found.hotelConfirmationCode ?? null,
-            hotelSummary: { name: found.hotel?.name ?? "Twój hotel" },
-            rateSummary: {
-              checkin: found.checkin ?? "",
-              checkout: found.checkout ?? "",
-            },
-            price: found.price,
-            currency: found.currency,
+            confirmationCode: found.hotelConfirmationCode || prior?.confirmationCode || null,
+            hotelSummary,
+            rateSummary,
+            price,
+            currency,
             status: "confirmed" as const,
             // The email was already attempted on the original request; we have
             // no holder data here, so never claim a send.
@@ -280,13 +292,13 @@ export async function POST(request: NextRequest) {
           };
           await saveCompleted({
             bookingId: found.bookingId,
-            confirmationCode: found.hotelConfirmationCode,
-            status: found.status ?? "CONFIRMED",
-            hotelSummary: recovered.hotelSummary,
-            rateSummary: recovered.rateSummary,
-            price: found.price,
-            currency: found.currency,
-            createdAt: Date.now(),
+            confirmationCode: found.hotelConfirmationCode || prior?.confirmationCode,
+            status: found.status ?? prior?.status ?? "CONFIRMED",
+            hotelSummary,
+            rateSummary,
+            price,
+            currency,
+            createdAt: prior?.createdAt ?? Date.now(),
           });
           await saveSessionBooking(sessionId, {
             bookingId: found.bookingId,

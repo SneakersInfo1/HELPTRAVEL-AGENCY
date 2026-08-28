@@ -1127,3 +1127,84 @@ test("CASE 6: duplicate Stripe redirect (same sid + payment_intent, 3 hits) => e
     }
   });
 });
+
+test("CASE 4c: provider reconcile MERGES onto the stored record — never degrades it", async () => {
+  // GET /bookings returns a sparser view than the session did: no city, no
+  // boardName. Writing that shape blindly would silently strip "Santa Ponsa"
+  // and "Room Only" off a real customer's confirmation page.
+  await withEnv(ALERTING_ENV, async () => {
+    const fake = makeFakeRedis();
+    __resetResendClientForTests();
+    // A rich record we already hold, exactly like production's 9c-OQvmqJ.
+    fake.store.set("booking:v1:completed:bk_1", {
+      bookingId: "bk_1",
+      confirmationCode: "HCC-RICH",
+      status: "CONFIRMED",
+      hotelSummary: { name: "Seventy Barcelona", city: "Barcelona" },
+      rateSummary: {
+        boardName: "Room Only",
+        price: 2878.92,
+        currency: "PLN",
+        checkin: "2026-07-15",
+        checkout: "2026-07-18",
+      },
+      price: 2878.92,
+      currency: "PLN",
+      createdAt: 1700000000000,
+    });
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch((url) => {
+      if (url.includes("/rates/book")) return { status: 200, body: BOOK_OK };
+      // Sparse provider view: no city, no boardName, no confirmation code.
+      return {
+        status: 200,
+        body: {
+          data: [
+            {
+              bookingId: "bk_1",
+              status: "CONFIRMED",
+              hotelConfirmationCode: "",
+              checkin: "2026-07-15",
+              checkout: "2026-07-18",
+              hotel: { hotelId: "lp1", name: "Seventy Barcelona" },
+            },
+          ],
+        },
+      };
+    });
+    try {
+      const { POST } = await import("./book/route");
+      const r = await POST(
+        post("http://t/api/booking/book", {
+          sessionId: "merge-sess",
+          paymentIntentId: "pi_merge",
+        }),
+      );
+      assert.equal(r.status, 200);
+
+      const stored = fake.store.get("booking:v1:completed:bk_1") as Record<string, unknown>;
+      const hotel = stored.hotelSummary as Record<string, unknown>;
+      const rate = stored.rateSummary as Record<string, unknown>;
+      assert.equal(hotel.city, "Barcelona", "city must survive the reconcile");
+      assert.equal(rate.boardName, "Room Only", "board must survive the reconcile");
+      assert.equal(stored.price, 2878.92, "price must survive the reconcile");
+      assert.equal(stored.confirmationCode, "HCC-RICH", "hotel code must survive");
+      assert.equal(stored.createdAt, 1700000000000, "original booking time preserved");
+
+      // ...and the response the customer sees keeps the rich fields too.
+      const j = (await r.json()) as Record<string, unknown>;
+      assert.equal((j.hotelSummary as Record<string, unknown>).city, "Barcelona");
+      assert.equal((j.rateSummary as Record<string, unknown>).boardName, "Room Only");
+
+      assert.equal(bookCalls().length, 0, "NO /rates/book");
+      assert.deepEqual(
+        alertCalls().filter((a) => a.level === "critical"),
+        [],
+      );
+    } finally {
+      restore();
+      __resetResendClientForTests();
+      __resetBookingRedisForTests();
+    }
+  });
+});
