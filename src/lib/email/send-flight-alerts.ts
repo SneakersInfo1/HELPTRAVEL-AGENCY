@@ -7,7 +7,13 @@
 // Numery dokumentów nigdy nie trafiają do maili (operujemy na zamaskowanych).
 
 import { notifyWarning } from "@/lib/alerting/notify";
-import { getBcc, getDefaultFrom, getReplyTo, getResendClient } from "./client";
+import {
+  MISSING_FROM_REASON,
+  getBcc,
+  getDefaultFrom,
+  getReplyTo,
+  getResendClient,
+} from "./client";
 import type { FlightContactData } from "@/lib/flights/session";
 
 function adminAddress(): string {
@@ -38,6 +44,11 @@ export async function sendFlightManualReviewAlert(input: {
     console.warn(`[email][flight-manual-review] skipped — RESEND_API_KEY not set sid=${input.sessionId}`);
     return;
   }
+  const from = getDefaultFrom();
+  if (!from) {
+    console.error(`[email][flight-manual-review] SKIPPED sid=${input.sessionId} — ${MISSING_FROM_REASON}`);
+    return;
+  }
   const to = adminAddress();
   const html = `
     <h2>⚠️ Lot: płatność OK, rezerwacja wymaga ręcznej weryfikacji</h2>
@@ -53,7 +64,7 @@ export async function sendFlightManualReviewAlert(input: {
   try {
     const res = await withTimeout(
       client.emails.send({
-        from: getDefaultFrom(),
+        from,
         to,
         ...(getReplyTo() ? { replyTo: getReplyTo()! } : {}),
         subject: `[HelpTravel] Lot manual_review — sid ${input.sessionId.slice(0, 8)}`,
@@ -90,6 +101,20 @@ export async function sendFlightConfirmation(input: {
     console.warn(`[email][flight-confirmation] skipped — RESEND_API_KEY not set bookingId=${input.bookingId}`);
     return;
   }
+  // Customer-facing: the old resend.dev fallback answered 403 for every
+  // recipient but the Resend account owner (hotel incydent 2026-08-28) —
+  // skip loudly rather than pretend to send.
+  const from = getDefaultFrom();
+  if (!from) {
+    console.error(`[email][flight-confirmation] SKIPPED bookingId=${input.bookingId} — ${MISSING_FROM_REASON}`);
+    void notifyWarning({
+      source: "email",
+      title: "Flight confirmation email skipped — sender not configured",
+      body: `Booking ${input.bookingId} jest potwierdzony. ${MISSING_FROM_REASON}`,
+      fields: { bookingId: input.bookingId, to, errorCode: "BOOKING_CONFIRMATION_EMAIL_FAILED" },
+    }).catch(() => {});
+    return;
+  }
   const ticketLine = input.ticketingPending
     ? "<p>Rezerwacja jest potwierdzona. Status wystawienia biletu zostanie zaktualizowany po otrzymaniu danych od przewoźnika.</p>"
     : "<p>Bilet został wystawiony. Szczegóły znajdziesz w potwierdzeniu rezerwacji.</p>";
@@ -104,7 +129,7 @@ export async function sendFlightConfirmation(input: {
   try {
     const res = await withTimeout(
       client.emails.send({
-        from: getDefaultFrom(),
+        from,
         to,
         ...(getReplyTo() ? { replyTo: getReplyTo()! } : {}),
         ...(getBcc() ? { bcc: getBcc()! } : {}),

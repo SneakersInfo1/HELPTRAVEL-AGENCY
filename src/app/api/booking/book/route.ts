@@ -22,9 +22,11 @@ import {
   deleteSession,
   getIdempotent,
   getSession,
+  getSessionBooking,
   isSessionExpired,
   saveCompleted,
   saveFailed,
+  saveSessionBooking,
   setIdempotent,
   type SessionRecord,
 } from "@/lib/booking/session";
@@ -101,6 +103,32 @@ async function finalizeAndRespond(args: {
     currency: session.currency,
     createdAt: Date.now(),
   });
+
+  const baseBody = {
+    bookingId: booking.bookingId,
+    confirmationCode: booking.hotelConfirmationCode ?? null,
+    hotelSummary: session.hotelSummary,
+    // Surfaced so the confirmation page can render real post-payment details
+    // (dates, board, price, guests) instead of just an ID — looks credible.
+    rateSummary: session.rateSummary,
+    price: session.price,
+    currency: session.currency,
+    guestCount,
+    status: "confirmed" as const,
+  };
+
+  // Durable, sessionId-keyed proof of success — written BEFORE the email and
+  // BEFORE deleteSession. `completed` is keyed by bookingId, so without this
+  // nothing keyed by sessionId showed the booking had succeeded, and a
+  // return-page revisit past the 300s idem window produced a FALSE
+  // [CRITICAL] BOOK_FAILED_AFTER_PAYMENT (incydent 2026-08-28, 9c-OQvmqJ).
+  // Never throws — a confirmed booking must not fail on a bookkeeping write.
+  await saveSessionBooking(sessionId, {
+    bookingId: booking.bookingId,
+    body: { ...baseBody, emailSent: false, emailTo: null },
+    createdAt: Date.now(),
+  });
+
   await deleteSession(sessionId);
 
   // Courtesy confirmation email. The booking is ALREADY persisted above
@@ -126,22 +154,22 @@ async function finalizeAndRespond(args: {
   );
 
   const body = {
-    bookingId: booking.bookingId,
-    confirmationCode: booking.hotelConfirmationCode ?? null,
-    hotelSummary: session.hotelSummary,
-    // Surfaced so the confirmation page can render real post-payment details
-    // (dates, board, price, guests) instead of just an ID — looks credible.
-    rateSummary: session.rateSummary,
-    price: session.price,
-    currency: session.currency,
-    guestCount,
-    status: "confirmed" as const,
+    ...baseBody,
     emailSent,
     // The holder's own address, echoed back to them on their own noindex
     // confirmation page so we can show "wysłaliśmy potwierdzenie na …". Only
     // when the send actually succeeded — never a false claim.
     emailTo: emailSent ? holder.email : null,
   };
+  // Refresh the pointer with the real email outcome so a later replay renders
+  // the same page this request did. Best-effort by construction.
+  if (emailSent) {
+    await saveSessionBooking(sessionId, {
+      bookingId: booking.bookingId,
+      body,
+      createdAt: Date.now(),
+    });
+  }
   if (idemKey) await setIdempotent(idemKey, 200, body);
   return NextResponse.json(body, { status: 200 });
 }
@@ -183,6 +211,22 @@ export async function POST(request: NextRequest) {
   }
   const { sessionId, paymentIntentId } = parsed.data;
 
+  // DURABLE IDEMPOTENCY — checked before anything else touches the session.
+  // If this sessionId already produced a confirmed booking, replay that exact
+  // response: no session lookup, no /rates/book, no alert, no second email.
+  // Unlike the 300s idem cache above this survives for the record TTL (90d),
+  // which is what the return page needs: it is `force-dynamic`, so every
+  // revisit of /hotele/rezerwacja/return?sid=…&payment_intent=… re-runs
+  // finalization (incydent 2026-08-28: a revisit 30m38s after a CONFIRMED
+  // booking raised a false [CRITICAL] BOOK_FAILED_AFTER_PAYMENT).
+  const alreadyBooked = await getSessionBooking(sessionId);
+  if (alreadyBooked) {
+    console.log(
+      `[booking][book] replay sessionId=${sessionId} bookingId=${alreadyBooked.bookingId} — booking already confirmed, returning persisted result (no LiteAPI call)`,
+    );
+    return NextResponse.json(alreadyBooked.body, { status: 200 });
+  }
+
   let session;
   try {
     session = await getSession(sessionId);
@@ -205,6 +249,62 @@ export async function POST(request: NextRequest) {
     //   (b) Stale session without payment evidence (user refreshed an old tab,
     //       robot, etc.) → benign session expiry, original behavior preserved.
     if (paymentIntentId) {
+      // SECOND NET before we cry wolf. A missing session is NOT evidence that
+      // the booking failed — we delete it ourselves on the success path. The
+      // durable pointer above is the primary proof; it can be absent for a
+      // booking made before that pointer existed, or if its write failed. Ask
+      // the provider, whose `clientReference` index is authoritative. Only if
+      // LiteAPI ALSO has nothing is this genuinely paid-but-unbooked.
+      try {
+        const existing = await listBookingsByClientReference(sessionId);
+        if (existing.length > 0) {
+          const found = existing[0]!;
+          console.log(
+            `[booking][book] session gone but LiteAPI HAS bookingId=${found.bookingId} status=${found.status} for clientReference=${sessionId} — NOT a failure, suppressing BOOK_FAILED_AFTER_PAYMENT`,
+          );
+          const recovered = {
+            bookingId: found.bookingId,
+            confirmationCode: found.hotelConfirmationCode ?? null,
+            hotelSummary: { name: found.hotel?.name ?? "Twój hotel" },
+            rateSummary: {
+              checkin: found.checkin ?? "",
+              checkout: found.checkout ?? "",
+            },
+            price: found.price,
+            currency: found.currency,
+            status: "confirmed" as const,
+            // The email was already attempted on the original request; we have
+            // no holder data here, so never claim a send.
+            emailSent: false,
+            emailTo: null,
+          };
+          await saveCompleted({
+            bookingId: found.bookingId,
+            confirmationCode: found.hotelConfirmationCode,
+            status: found.status ?? "CONFIRMED",
+            hotelSummary: recovered.hotelSummary,
+            rateSummary: recovered.rateSummary,
+            price: found.price,
+            currency: found.currency,
+            createdAt: Date.now(),
+          });
+          await saveSessionBooking(sessionId, {
+            bookingId: found.bookingId,
+            body: recovered,
+            createdAt: Date.now(),
+          });
+          if (idemKey) await setIdempotent(idemKey, 200, recovered);
+          return NextResponse.json(recovered, { status: 200 });
+        }
+      } catch (lookupErr) {
+        // Lookup failed — we cannot prove success, so fall through and alert.
+        // A false [CRITICAL] is recoverable; a silently dropped paid customer
+        // is not.
+        console.warn(
+          `[booking][book] provider reconcile failed for expired sessionId=${sessionId}: ${lookupErr instanceof Error ? lookupErr.message : String(lookupErr)} — proceeding with recovery alert`,
+        );
+      }
+
       const message = `Płatność została zarejestrowana, ale rezerwacja wymaga ręcznego potwierdzenia. Skontaktuj się z nami: ${SUPPORT_EMAIL}.`;
       try {
         await saveFailed({
@@ -214,7 +314,8 @@ export async function POST(request: NextRequest) {
           // PaymentIntent ID (support looks it up to confirm the charge state).
           paymentIntentId,
           errorCode: "BOOK_FAILED_AFTER_PAYMENT",
-          message: "session_expired_after_payment",
+          message:
+            "session_expired_after_payment (no durable booking pointer AND no LiteAPI booking for this clientReference)",
           createdAt: Date.now(),
         });
       } catch (persistErr) {
@@ -223,13 +324,13 @@ export async function POST(request: NextRequest) {
         );
       }
       console.error(
-        `[liteapi][booking][CRITICAL] session_expired_after_payment sessionId=${sessionId} paymentIntentId=${paymentIntentId} ip=${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"} — manual recovery required (Stripe charge may have been captured; LiteAPI /rates/book never called)`,
+        `[liteapi][booking][CRITICAL] session_expired_after_payment sessionId=${sessionId} paymentIntentId=${paymentIntentId} ip=${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"} — manual recovery required (Stripe charge may have been captured; no durable booking pointer and LiteAPI has no booking for this clientReference)`,
       );
       // Fire-and-forget Slack/Discord alert. Don't await — banner UX already shows.
       notifyCritical({
         source: "booking",
         title: "Session expired after payment",
-        body: "Customer's Stripe charge may have been captured, but our session expired before /rates/book was called. Manual recovery required.",
+        body: "Customer's Stripe charge may have been captured, and NEITHER our durable booking pointer NOR LiteAPI has a booking for this session. Manual recovery required.",
         fields: { sessionId, paymentIntentId, errorCode: "BOOK_FAILED_AFTER_PAYMENT" },
       }).catch(() => {});
       const body = {

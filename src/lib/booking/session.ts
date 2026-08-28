@@ -139,6 +139,7 @@ const sKey = (id: string) => `booking:${KEY_VERSION}:session:${id}`;
 const cKey = (id: string) => `booking:${KEY_VERSION}:completed:${id}`;
 const fKey = (id: string) => `booking:${KEY_VERSION}:failed:${id}`;
 const iKey = (k: string) => `booking:${KEY_VERSION}:idem:${k}`;
+const sbKey = (id: string) => `booking:${KEY_VERSION}:session-booking:${id}`;
 
 export function isSessionExpired(rec: SessionRecord, now = Date.now()): boolean {
   return now - rec.createdAt > SESSION_TTL_SECONDS * 1000;
@@ -168,6 +169,56 @@ export async function saveFailed(rec: FailedRecord): Promise<void> {
   // MUST persist. Caller re-logs [CRITICAL] if this throws — a paid-but-
   // unbooked recovery record is never lost silently.
   await getRedis().set(fKey(rec.sessionId), rec, { ex: RECORD_TTL_SECONDS });
+}
+
+// ── Durable session → booking pointer ───────────────────────────────────────
+// INCYDENT 2026-08-28 (booking 9c-OQvmqJ, sid c9897a4a-…): after a SUCCESSFUL
+// booking we `deleteSession(sid)`, and the `completed` record is keyed by
+// bookingId — so NOTHING keyed by sessionId proved the booking had succeeded.
+// The only thing hiding that was the 300s idempotency cache. The return page
+// is `force-dynamic`, so any revisit of
+// /hotele/rezerwacja/return?sid=…&payment_intent=… more than 5 minutes later
+// re-ran finalization, found no session, saw the payment_intent, and fired a
+// FALSE [CRITICAL] "Session expired after payment" — measured 30m38s after the
+// real booking was persisted.
+//
+// This pointer is the durable, sessionId-keyed proof of success. It stores the
+// exact 200 body we already returned, so a replay returns the identical
+// confirmation for the full 90-day record lifetime instead of alerting.
+export interface SessionBookingPointer {
+  bookingId: string;
+  /** The exact response body `finalizeAndRespond` returned for this session. */
+  body: unknown;
+  createdAt: number;
+}
+
+/**
+ * Best-effort: a write failure must NEVER turn a confirmed, already-persisted
+ * booking into a failure (RULE 6). We log loudly and rely on the LiteAPI
+ * `clientReference` reconcile as the second net.
+ */
+export async function saveSessionBooking(
+  sessionId: string,
+  rec: SessionBookingPointer,
+): Promise<void> {
+  try {
+    await getRedis().set(sbKey(sessionId), rec, { ex: RECORD_TTL_SECONDS });
+  } catch (err) {
+    console.error(
+      `[booking][session-booking] persist FAILED sessionId=${sessionId} bookingId=${rec.bookingId} — a later return-page revisit may emit a false BOOK_FAILED_AFTER_PAYMENT (${err instanceof Error ? err.message : String(err)})`,
+    );
+  }
+}
+
+/** Best-effort read — a lookup failure must not block the booking path. */
+export async function getSessionBooking(
+  sessionId: string,
+): Promise<SessionBookingPointer | null> {
+  try {
+    return (await getRedis().get<SessionBookingPointer>(sbKey(sessionId))) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export interface IdempotentCached {

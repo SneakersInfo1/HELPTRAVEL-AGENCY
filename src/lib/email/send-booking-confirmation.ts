@@ -16,7 +16,13 @@
 //   • Error → bookingId + error + recipient (no other PII).
 
 import { notifyWarning } from "@/lib/alerting/notify";
-import { getBcc, getDefaultFrom, getReplyTo, getResendClient } from "./client";
+import {
+  MISSING_FROM_REASON,
+  getBcc,
+  getDefaultFrom,
+  getReplyTo,
+  getResendClient,
+} from "./client";
 import { renderBookingConfirmation } from "./templates/booking-confirmation";
 
 export interface SendBookingConfirmationInput {
@@ -32,7 +38,7 @@ export interface SendBookingConfirmationInput {
 
 export type SendResult =
   | { ok: true; messageId?: string }
-  | { ok: false; skipped: "no_api_key" | "no_email" }
+  | { ok: false; skipped: "no_api_key" | "no_email" | "no_sender" }
   | { ok: false; error: string };
 
 export async function sendBookingConfirmation(
@@ -80,6 +86,29 @@ export async function sendBookingConfirmation(
   });
 
   const from = getDefaultFrom();
+  // No usable sender → skip LOUDLY instead of attempting a send that Resend
+  // would answer with 403 (incydent 2026-08-28: a real customer's confirmation
+  // died exactly this way, on the old hardcoded resend.dev fallback). The
+  // booking is already persisted and stays CONFIRMED — only the courtesy mail
+  // is skipped, and the operator gets a warning naming the env var to set.
+  if (!from) {
+    console.error(
+      `[email][booking-confirmation] SKIPPED — no sender configured; bookingId=${input.bookingId} to=${to}. ${MISSING_FROM_REASON}`,
+    );
+    void notifyWarning({
+      source: "email",
+      title: "Booking confirmation email skipped — sender not configured",
+      body: `Booking ${input.bookingId} is CONFIRMED. ${MISSING_FROM_REASON}`,
+      fields: {
+        bookingId: input.bookingId,
+        to,
+        errorCode: "BOOKING_CONFIRMATION_EMAIL_FAILED",
+        reason: "no_sender",
+      },
+    }).catch(() => {});
+    return { ok: false, skipped: "no_sender" };
+  }
+
   const replyTo = getReplyTo();
   const bcc = getBcc();
 
@@ -128,6 +157,9 @@ export async function sendBookingConfirmation(
         fields: {
           bookingId: input.bookingId,
           to,
+          // Explicit, greppable code. Deliberately NOT BOOK_FAILED_AFTER_PAYMENT:
+          // the provider booking is confirmed and persisted — only the mail failed.
+          errorCode: "BOOKING_CONFIRMATION_EMAIL_FAILED",
           error: result.error.message,
           // Resend sometimes returns a `name` field with the error class
           // (e.g. "validation_error", "rate_limit_exceeded"). Stringify
@@ -151,7 +183,12 @@ export async function sendBookingConfirmation(
       source: "email",
       title: "Booking confirmation email threw",
       body: `Resend client threw (network / auth / etc). Booking ${input.bookingId} is confirmed; manual email may be required.`,
-      fields: { bookingId: input.bookingId, to, error: message },
+      fields: {
+        bookingId: input.bookingId,
+        to,
+        errorCode: "BOOKING_CONFIRMATION_EMAIL_FAILED",
+        error: message,
+      },
     }).catch(() => {});
     return { ok: false, error: message };
   }
