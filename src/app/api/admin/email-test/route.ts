@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { sendBookingConfirmation } from "@/lib/email/send-booking-confirmation";
+import { getDefaultFrom, getReplyTo } from "@/lib/email/client";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -43,6 +44,27 @@ export async function POST(request: NextRequest) {
           "Pass a valid recipient as ?to=YOU@EXAMPLE.COM (the address that will receive the test email).",
       },
       { status: 400 },
+    );
+  }
+
+  // Resolved up-front so both the success and the failure branch can report
+  // exactly which sender this environment would use.
+  const from = getDefaultFrom();
+  const replyTo = getReplyTo();
+  if (!from) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "no_sender",
+        from: null,
+        replyTo: replyTo ?? null,
+        message:
+          "EMAIL_FROM is not configured on this environment, so no email was attempted. " +
+          "Set it to an address on a Resend-VERIFIED domain " +
+          '(e.g. "HelpTravel.pl <rezerwacje@mail.helptravel.pl>") in Vercel and redeploy. ' +
+          "The onboarding@resend.dev testing sender is deliberately NOT a production fallback.",
+      },
+      { status: 503 },
     );
   }
 
@@ -79,6 +101,14 @@ export async function POST(request: NextRequest) {
         ok: true,
         messageId: result.messageId,
         to,
+        // Echo the RESOLVED sender so an operator can verify the production
+        // email config without reading env vars out of the Vercel dashboard.
+        // Neither value is a secret (they appear in every outgoing header),
+        // and this route is behind the /admin Basic Auth gate.
+        // Added after incydent 2026-08-28, where the sender silently fell back
+        // to onboarding@resend.dev and every customer confirmation got a 403.
+        from,
+        replyTo: replyTo ?? null,
         message:
           "Test email queued. Check your inbox (and spam folder!) within ~30 seconds.",
       },
