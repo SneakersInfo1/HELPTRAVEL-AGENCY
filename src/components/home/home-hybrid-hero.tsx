@@ -232,14 +232,15 @@ export function HomeHybridHero({
                   heroImage={tile.heroImage}
                   fromPricePerNight={tile.fromPricePerNight}
                   flightFromPln={tile.flightFromPln}
-                  // Pierwsze sześć = tyle, ile realnie widać w pasie na
-                  // najszerszym układzie (~6,3 kafelka). Zmierzone przed
-                  // zmianą: po wejściu na stronę miało wczytane zdjęcie 8 z 18
-                  // kafelków na desktopie i 0 z 18 na mobile — reszta dociągała
-                  // się dopiero pod palcem, więc pas witał użytkownika rzędem
-                  // pustych prostokątów. Dalsze karty ZOSTAJĄ leniwe: 18 zdjęć
-                  // naraz to koszt, którego nikt nie ogląda.
-                  eager={index < 6}
+                  // DWA, nie sześć. Zmierzone przed zmianą: po wejściu na
+                  // stronę pas miał wczytane zdjęcie 8 z 18 kafelków na
+                  // desktopie i 0 z 18 na telefonie — czyli problemem pustych
+                  // kafelków był wyłącznie telefon, a tam widać 1,86 karty.
+                  // Sześć kart eager kosztowało 550 kB pobranych przed
+                  // zgięciem (patrz komentarz przy `eager` w InspireTile);
+                  // dwie to dokładnie te, na które użytkownik patrzy.
+                  // Reszta zostaje leniwa i dociąga się przy przewijaniu.
+                  eager={index < 2}
                 />
               ),
             }))}

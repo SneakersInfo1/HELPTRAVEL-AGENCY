@@ -37,12 +37,22 @@ interface InspireTileProps {
   /**
    * Pobierz zdjęcie od razu, bez czekania na zbliżenie do pola widzenia.
    *
-   * Dotyczy tylko kart, które widać na pierwszym ekranie pasa — reszta zostaje
-   * leniwa. BEZ `priority`: to podniosłoby `fetchpriority` na `high` i te kilka
-   * kafelków konkurowałoby o pasmo ze zdjęciem hero, czyli z elementem LCP
-   * strony. `loading="eager"` samo w sobie zdejmuje tylko bramkę leniwości —
-   * obraz pod zgięciem dostaje w przeglądarce priorytet niski i dojeżdża
-   * spokojnie w tle, zamiast wskakiwać dopiero pod palcem użytkownika.
+   * BEZ `priority`: to podniosłoby `fetchpriority` na `high` i kafelek
+   * konkurowałby wprost ze zdjęciem hero, czyli z elementem LCP strony.
+   *
+   * UWAGA, ZMIERZONE — `loading="eager"` NIE jest darmowe. Next dokłada dla
+   * takiego obrazu `<link rel="preload" as="image">` w `<head>`, więc skaner
+   * wstępny startuje z nim jeszcze PRZED odkryciem zdjęcia hero (zmierzone na
+   * buildzie produkcyjnym: kafelki start 718 ms, hero 736 ms). Priorytet
+   * zostaje niski, ale bajty są realne: przy DPR 2 jeden kafelek to ~92 kB,
+   * bo `object-cover` każe pobrać plik 750 px szeroki, żeby pokazać pas
+   * 378 px. Sześć takich kart = 550 kB pobrane przed zgięciem.
+   *
+   * Dlatego eager dostają WYŁĄCZNIE karty realnie widoczne na telefonie
+   * (1,86 kafelka na 375 px), a nie cały pierwszy ekran desktopu. Desktop
+   * i tak radzi sobie sam: przy samej leniwości przeglądarka wczytywała tam
+   * 8 z 18 kafelków bez przewijania, podczas gdy na telefonie 0 z 18 — i to
+   * telefon był problemem.
    */
   eager?: boolean;
 }
