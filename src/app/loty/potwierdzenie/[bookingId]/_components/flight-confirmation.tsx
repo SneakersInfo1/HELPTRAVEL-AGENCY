@@ -22,6 +22,7 @@ import { CheckCircle2, Clock, Info, RefreshCw, XCircle } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
 import { clearFlightFlow } from "@/lib/flights/flow-storage";
+import { fmtDuration, fmtTime, stopsLabel } from "@/lib/flights/display";
 import { formatFlightPriceExact } from "@/lib/flights/money";
 import { FLIGHT_SHELL_NARROW } from "@/lib/flights/layout";
 
@@ -39,6 +40,8 @@ interface ItineraryLeg {
 interface BookingData {
   bookingId: string;
   bookingStatus: string;
+  /** `paid` | `processing` | `failed` | `pending` — co WIEMY o pieniądzach. */
+  paymentStatus: string | null;
   ticketingStatus: string;
   pnr: string | null;
   eTicketNumbers: string[];
@@ -59,9 +62,13 @@ const STATUS: Record<string, { text: string; note: string; tone: "ok" | "wait" |
     note: "Przewoźnik jeszcze nie odesłał potwierdzenia. To normalne przy części taryf — damy znać mailem, gdy tylko spłynie.",
     tone: "wait",
   },
+  // `manual_review` NIE MA stałej treści: rozstrzyga ją `paymentStatus`.
+  // Do 2026-08-29 stało tu „Płatność została odnotowana" niezależnie od tego,
+  // czy cokolwiek pobraliśmy — czyli obietnica zwrotu nieistniejącego
+  // obciążenia. Wypełnia to `noteForManualReview` niżej.
   manual_review: {
     text: "Rezerwacja w weryfikacji",
-    note: "Płatność została odnotowana, ale rezerwacja wymaga ręcznej weryfikacji. Skontaktujemy się z Tobą jak najszybciej.",
+    note: "",
     tone: "wait",
   },
   cancelled: {
@@ -76,19 +83,18 @@ function fmtDateTime(iso: string): string {
   if (Number.isNaN(d.getTime())) return "";
   return new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "long" }).format(d);
 }
-function fmtTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" }).format(d);
-}
-function fmtDuration(min: number): string {
-  if (!Number.isFinite(min) || min <= 0) return "";
-  return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
-}
-function stopsLabel(stops: number): string {
-  if (stops === 0) return "bezpośredni";
-  if (stops === 1) return "1 przesiadka";
-  return `${stops} przesiadki`;
+
+/**
+ * Treść dla `manual_review` — zależna od tego, co wiemy o pieniądzach.
+ *
+ * `paid` = LiteAPI przyjęło booking albo Stripe potwierdził obciążenie.
+ * Wszystko inne (`processing`, `failed`, brak) znaczy NIE WIEMY — i tak trzeba
+ * to napisać, zamiast obiecywać zwrot czegoś, czego może nie być.
+ */
+function noteForManualReview(paymentStatus: string | null): string {
+  return paymentStatus === "paid"
+    ? "Płatność została potwierdzona, ale rezerwacja wymaga ręcznej weryfikacji. Skontaktujemy się z Tobą jak najszybciej."
+    : "Sprawdzamy status Twojej płatności i rezerwacji. Skontaktujemy się z Tobą jak najszybciej — prosimy nie ponawiać płatności.";
 }
 
 export function FlightConfirmation({ bookingId }: { bookingId: string }) {
@@ -126,7 +132,11 @@ export function FlightConfirmation({ bookingId }: { bookingId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
 
-  const s = data ? (STATUS[data.bookingStatus] ?? { text: "Status rezerwacji", note: "", tone: "wait" as const }) : null;
+  const base = data ? (STATUS[data.bookingStatus] ?? { text: "Status rezerwacji", note: "", tone: "wait" as const }) : null;
+  const s =
+    base && data?.bookingStatus === "manual_review"
+      ? { ...base, note: noteForManualReview(data.paymentStatus) }
+      : base;
   const toneCls =
     s?.tone === "ok"
       ? "border-brand/30 bg-brand-soft"

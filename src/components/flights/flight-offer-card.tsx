@@ -176,7 +176,11 @@ export function FlightOfferCard({ offer, travellers, cheapestId, fastestId, best
         {/* ── Strefa 3: cena + CTA (stała szerokość — przyciski w jednej linii) ── */}
         <div className="flex items-end justify-between gap-3 sm:flex-col sm:items-stretch sm:gap-2 xl:w-56 xl:shrink-0 xl:justify-center xl:border-l xl:border-line xl:pl-6">
           <div className="sm:text-right">
-            <div className="text-xl font-bold leading-tight text-accent">
+            {/* `data-offer-total` — uchwyt dla testów, jak `data-offer-card`
+                wyżej. Pomiar „czy kwota mieści się na 375 px i nie łamie się
+                na dwie linie" musi celować w KONKRETNY element, a nie w węzeł
+                tekstowy: ten drugi nie ma pudełka i pomiar zwraca null. */}
+            <div data-offer-total className="text-xl font-bold leading-tight text-accent">
               {formatFlightPriceExact(offer.total, offer.currency)}
             </div>
             <div className="text-xs text-ink-muted">

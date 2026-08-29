@@ -257,12 +257,19 @@ export function FlightResults(props: Props) {
                 : ` · ${visible.length} z ${offers.length} ofert`
               : ""}
           </p>
-          {cheapestAvg !== null && (
-            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-sm bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand-strong">
-              <Tag aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
-              Najtańszy od {formatFlightPrice(cheapestAvg, "PLN")} śr./os.
-            </p>
-          )}
+          {/* Miejsce na plakietkę jest REZERWOWANE od pierwszego renderu.
+              Bez tego blok nagłówka rósł w chwili, gdy dojeżdżały oferty,
+              i spychał całą listę w dół — zmierzone 0,0859 CLS na 390 px
+              (107 px przeskoku razem z paskiem kontrolek niżej). Wysokość
+              odpowiada linii `text-xs` z `py-0.5` i `mt-1.5`. */}
+          <div className="min-h-[26px]">
+            {cheapestAvg !== null && (
+              <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-sm bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand-strong">
+                <Tag aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
+                Najtańszy od {formatFlightPrice(cheapestAvg, "PLN")} śr./os.
+              </p>
+            )}
+          </div>
         </div>
 
       </header>
@@ -282,14 +289,22 @@ export function FlightResults(props: Props) {
       {/* Pasek kontrolek. Na mobile STICKY pod paskiem wyszukiwania — po
           przewinięciu do trzeciej oferty filtry i sort znikały z ekranu
           i jedynym sposobem na zawężenie listy był powrót na samą górę. */}
-      {offers && offers.length > 0 && (
+      {/* Pasek renderuje się TAKŻE w trakcie ładowania — bezczynny, ale tej
+          samej wysokości. Warunek „są oferty" oznaczał, że pasek pojawiał się
+          dopiero z danymi i przesuwał listę o własną wysokość; rezerwowanie
+          miejsca przez konstrukcję (ten sam element) jest odporniejsze niż
+          zgadnięta wartość `min-height`. Pusty wynik dalej pasek chowa —
+          nie ma czego filtrować. */}
+      {(offers === null || offers.length > 0) && (
         <div
-          className={`sticky ${FLIGHT_CONTROLS_STICKY_TOP} z-10 -mx-4 mt-4 flex items-center gap-2 border-b border-line bg-surface/95 px-4 py-2 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:static lg:z-auto lg:mx-0 lg:mt-5 lg:justify-end lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none`}
+          className={`sticky ${FLIGHT_CONTROLS_STICKY_TOP} z-10 -mx-4 mt-4 flex items-center gap-2 border-b border-line bg-surface/95 px-4 py-2 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:static lg:z-auto lg:mx-0 lg:mt-5 lg:justify-end lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none ${offers === null ? "opacity-60" : ""}`}
+          {...(offers === null ? { "aria-hidden": true } : {})}
         >
           <button
             ref={filtersButtonRef}
             type="button"
             onClick={() => setDrawerOpen(true)}
+            disabled={offers === null}
             aria-haspopup="dialog"
             aria-expanded={drawerOpen}
             className={`${controlCls} lg:hidden`}
@@ -307,6 +322,7 @@ export function FlightResults(props: Props) {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
+              disabled={offers === null}
               aria-label="Sortowanie ofert"
               className="h-11 rounded-md border border-line bg-surface-raised px-2.5 text-sm font-semibold text-ink focus:border-brand focus:outline-none"
             >

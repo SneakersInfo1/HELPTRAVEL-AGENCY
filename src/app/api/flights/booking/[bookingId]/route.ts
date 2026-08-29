@@ -94,6 +94,11 @@ export async function GET(_request: NextRequest, ctx: { params: Promise<{ bookin
   return NextResponse.json({
     bookingId,
     bookingStatus,
+    // Strona potwierdzenia MUSI wiedzieć, co wiemy o pieniądzach: dla
+    // `manual_review` mówiła dotąd „Płatność została odnotowana" niezależnie od
+    // tego, czy cokolwiek zostało pobrane. Teraz rozróżnia `paid` od
+    // `processing` (status nierozstrzygnięty) — patrz `payment-evidence.ts`.
+    paymentStatus: session?.paymentStatus ?? (completed ? "paid" : null),
     ticketingStatus,
     pnr: live.pnr ?? completed?.pnr ?? session?.pnr ?? null,
     eTicketNumbers: live.eTickets ?? completed?.eTicketNumbers ?? session?.eTicketNumbers ?? [],
