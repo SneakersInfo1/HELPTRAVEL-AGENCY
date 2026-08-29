@@ -568,22 +568,128 @@ Uczciwa lista — te rzeczy są w briefie, a nie ma ich w tej gałęzi.
 
 ## 27. Ryzyka, które zostają
 
-1. **Finalizacja ufa, że wywołanie strony powrotu == udana płatność.**
-   `finalizeFlightBooking` oznacza `paymentStatus:"paid"` na podstawie samego
-   wejścia na `/loty/platnosc/return?sid=…`, bez pytania dostawcy o status
-   transakcji. Bramka `priceGatePassed` zamyka wariant „sesja bez `secretKey`",
-   ale użytkownik nadal może wywołać finalizację WŁASNEJ opłaconej-nie-do-końca
-   sesji. Skutkiem jest odrzucenie przez LiteAPI (transakcja nieprzechwycona)
-   i fałszywy alert `manual_review`, a nie darmowy bilet. Domknięcie wymaga
-   zapytania o status transakcji u dostawcy — czyli kontraktu, którego nie da
-   się zweryfikować bez realnej płatności (punkt 26.1).
-2. **`itinerary` w mailu pochodzi od klienta.** Świadomie: nie dotyka ceny ani
-   rezerwacji, a alternatywą było parsowanie niezmierzonego kształtu
-   `prebook.booking.journey`. Podmiana zmieni treść maila, który podmieniający
-   dostanie na własny adres.
-3. **`confirmationSent` ustawiane PRZED wysyłką.** Nieudany mail nie zostanie
-   ponowiony przez webhook. Zachowanie odziedziczone, nie pogorszone — ale to
-   realna luka w dostarczalności.
-4. **Verify ufa `previousTotal` od klienta** przy fladze „cena się zmieniła".
-   Po dodaniu bramki prebooka nie ma to już wpływu na kwotę obciążenia; może
-   jedynie ukryć komunikat o zmianie na kroku taryfy przed samym klientem.
+Sekcja przepisana po hardeningu 2026-08-30. Trzy ryzyka z pierwszej wersji
+(finalizacja ufa adresowi powrotu / trasa w mailu od klienta / `confirmationSent`
+przed wysyłką) są **zamknięte** — opis domknięcia w §28. Poniżej to, co ZOSTAJE.
+
+1. **BLOKER: nic z tej ścieżki nie przeszło prawdziwą kartą.**
+   Zmierzone (`pnpm probe:flight-env`, tylko odczyt): klucz `prod_`, brak
+   jakiegokolwiek klucza `sand_`, widget w trybie `live` → **Stripe LIVE**.
+   Pełne E2E bez prawdziwych pieniędzy jest NIEMOŻLIWE tym zestawem kluczy.
+   Plan kontrolowanego testu: `docs/flights-v2/test-platnosci-plan.md`.
+
+2. **Wiązanie `payment_intent` jest oparte na analogii, nie na pomiarze.**
+   To ryzyko WPROWADZONE przez hardening. `secretKey` prebooka traktujemy jak
+   Stripe client secret `pi_<id>_secret_<...>` — zmierzone dla HOTELI
+   (`liteapi/widget-env.ts`, `hotele/rezerwacja/return/page.tsx`), dla LOTÓW
+   przyjęte przez podobieństwo. Jeśli LiteAPI opakowuje transakcję lotniczą
+   inaczej, bramka `payment_intent_mismatch` odrzuci PRAWDZIWĄ płatność.
+   Kod jest fail-safe w jedną stronę (brak parametru = przepuszczamy), ale
+   niezgodny parametr blokuje twardo.
+   **Pomiar za 0 zł:** dojść do kroku płatności i sprawdzić w logach Vercela
+   linię `[flights][prebook] secretKey bez rozpoznawalnego pi_…`. Jest → nie ma
+   wiązania (i nie ma ryzyka). Nie ma → wiązanie działa, ale zgodność
+   z adresem powrotu zweryfikuje dopiero realna płatność.
+
+3. **Trasa od dostawcy: kształt nieprzetestowany na żywym payloadzie.**
+   `extractProviderItinerary` szuka węzła z `segments[]` niosącymi kody
+   lotnisk — pola zmierzone w `/flights/rates`, ale GŁĘBOKOŚĆ w odpowiedzi
+   prebooka i bookingu jest zgadnięta (przeszukanie wszerz zamiast stałej
+   ścieżki). Gdy nie znajdzie nic, mail wraca do migawki od klienta, czyli do
+   zachowania sprzed zmiany. Ryzyko: brak poprawy, nie regresja.
+
+4. **Lejek lotów nie ma kill-switcha.** Hotele mają `BOOKING_FLOW_MODE`;
+   loty nie mają odpowiednika. Jeśli coś pójdzie źle na produkcji, jedyną
+   drogą wyłączenia płatności za loty jest rollback deploymentu.
+
+5. **Verify ufa `previousTotal` od klienta** przy fladze „cena się zmieniła".
+   Po bramce prebooka nie ma to wpływu na kwotę obciążenia; może jedynie ukryć
+   komunikat o zmianie na kroku taryfy przed samym klientem.
+
+6. **`ancillaries.ts` (95 linii) jest martwy** — świadomie, od PR #102: mapper
+   `servicesAttachable` czeka na potwierdzenie kontraktu realną rezerwacją.
+   Nie jest częścią tej gałęzi; zostaje razem z ryzykiem 1.
+
+7. **Ten sam wzorzec cache'u idempotencji istnieje w hotelach.**
+   `api/booking/prebook/route.ts` czyta `Idempotency-Key` przed walidacją body,
+   tak jak robiły to loty przed 2026-08-30. Nie ruszaliśmy tego: to inna,
+   produkcyjna ścieżka płatności, a gałąź dotyczy lotów. **Do zaadresowania
+   osobno.**
+
+---
+
+## 28. Co domknął hardening (2026-08-30)
+
+| Ryzyko z pierwszej wersji | Stan | Gdzie |
+|---|---|---|
+| Finalizacja ufa wejściu na stronę powrotu | **zamknięte** | `payment-evidence.ts`, `finalize.ts` |
+| Trasa w mailu pochodzi od klienta | **zamknięte** | `provider-itinerary.ts` |
+| `confirmationSent` przed wysyłką | **zamknięte** | `finalize.ts: sendConfirmationOnce` |
+
+### 28.1 Dowód płatności
+
+Nie jesteśmy merchant of record — PaymentIntent należy do Nuitee Travel, więc
+pozytywnego dowodu nie da się wziąć wprost ze Stripe'a bez ich klucza.
+Świadomie NIE sięgamy po `payment-wrapper.liteapi.travel/config` (endpoint
+nieudokumentowany; jego zmiana zablokowałaby finalizację ludziom, którzy JUŻ
+zapłacili — awaria gorsza od łatanej).
+
+Zamiast tego trzy warstwy:
+
+| Warstwa | Co daje | Kierunek |
+|---|---|---|
+| `payment_intent` vs `pi_…` z prebooka | odrzucenie cudzej/odtworzonej transakcji | negatywny |
+| `redirect_status` | `failed`/`canceled` → brak pieniędzy; `processing` → wstrzymanie | negatywny |
+| LiteAPI przyjmuje `TRANSACTION_ID` | jedyny dowód POZYTYWNY | pozytywny |
+
+Stąd `paymentStatus:"paid"` ustawiamy **po** udanym bookingu, a nie przed.
+Przed bookiem jest `processing` — ślad „byliśmy tu" bez twierdzenia o pieniądzach.
+
+Fail-safe jest jednokierunkowe: **brak** parametrów nie blokuje nikogo,
+**sprzeczny** parametr blokuje twardo.
+
+### 28.2 Maszyna stanów
+
+`src/lib/flights/state.ts` — tabela przejść + inwariant „`confirmed` wymaga
+`paid`", sprawdzany przy KAŻDYM zapisie na ścieżce płatności (`saveChecked`).
+Nazwy pól w Redisie bez zmian (rekordy żyją 24 h / 90 dni; rename unieważniłby
+rekordy paid-but-unbooked w locie). Jedyne nowe wartości: `paymentStatus:
+"processing"` i `confirmationEmail`.
+
+Tabela złapała własny błąd przy pierwszym uruchomieniu — `PAYMENT_CREATED →
+BOOKING_STARTED` brakowało w dozwolonych. To jest argument za tą tabelą.
+
+### 28.3 Klasyfikacja porażki bookingu
+
+| Sytuacja | Przedtem | Teraz |
+|---|---|---|
+| 4xx dostawcy, brak dowodu zapłaty | „Płatność odnotowana" + [CRITICAL] | 402 „płatność nie została potwierdzona", zero alertu |
+| 4xx dostawcy, Stripe potwierdził | „Płatność odnotowana" | manual_review + `paid` (poprawnie) |
+| 5xx / timeout / sieć | „Płatność odnotowana" | manual_review + `processing`, alert mówi „status NIEROZSTRZYGNIĘTY" |
+
+### 28.4 Bezpieczeństwo — znalezione i naprawione
+
+**Wyciek `secretKey` przez cache idempotencji.** Odpowiedź prebooka niesie
+Stripe client secret. Cache był czytany PRZED walidacją body i kluczowany samym
+nagłówkiem od klienta, a front miał fallback `String(Date.now())` — znak czasu
+w milisekundach. Puste żądanie z trafionym kluczem oddawało cudzy `secretKey`
+i `sessionId`. Naprawione dwustronnie: wpis związany z odciskiem żądania
+(oferta + mail + kwota + waluta), fallback przez `getRandomValues`.
+Regresja: `flight-routes.test.ts` — „zgadnięty Idempotency-Key + CUDZE żądanie".
+
+**Usunięte `?email=` z `GET /api/flights/booking/[id]`.** Wyglądało na drugą
+warstwę autoryzacji, ale odpalało się tylko wtedy, gdy wywołujący SAM podał
+parametr — omijane przez pominięcie. Żaden front go nie wysyłał.
+
+### 28.5 Pomiary wydajności (build produkcyjny, 390 px, 1000 ofert)
+
+```
+pierwsza karta 588 ms | renderowane karty 20 → 120 po pięciu „pokaż więcej"
+węzły DOM 1325 → 6741 | filtr 23 ms | long tasks 2 (max 59 ms)
+CLS 0,0027 (przed naprawą 0,0859) | duplikaty zapytań 0
+```
+
+Lista stronicuje po 20 (`PAGE_SIZE`), więc 1000 ofert nie trafia do DOM-u.
+CLS: pasek kontrolek i plakietka ceny renderowały się dopiero z danymi
+i spychały listę o 107 px — pasek renderuje się teraz też w trakcie ładowania,
+bezczynny i tej samej wysokości.
