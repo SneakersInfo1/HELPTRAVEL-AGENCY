@@ -228,8 +228,12 @@ export function FlightResults(props: Props) {
     router.push("/loty/dodatki");
   }
 
+  // `h-11` = 44 px, nie `h-10`. Zmierzone testem e2e: przycisk „Filtry"
+  // i lista sortowania miały po 40 px, czyli poniżej progu celu dotykowego
+  // obowiązującego w tym repo. Na pasku, który na telefonie jest przyklejony
+  // i używany jedną ręką w biegu, to nie jest zaokrąglenie w dół.
   const controlCls =
-    "inline-flex h-10 items-center gap-1.5 rounded-md border border-line bg-surface-raised px-3 font-semibold text-ink transition hover:border-brand/40 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100";
+    "inline-flex h-11 items-center gap-1.5 rounded-md border border-line bg-surface-raised px-3 font-semibold text-ink transition hover:border-brand/40 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100";
 
   return (
     <main className={`${FLIGHT_SHELL_WIDE} min-h-[60vh] py-6 sm:py-8`}>
@@ -304,7 +308,7 @@ export function FlightResults(props: Props) {
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
               aria-label="Sortowanie ofert"
-              className="h-10 rounded-md border border-line bg-surface-raised px-2.5 text-sm font-semibold text-ink focus:border-brand focus:outline-none"
+              className="h-11 rounded-md border border-line bg-surface-raised px-2.5 text-sm font-semibold text-ink focus:border-brand focus:outline-none"
             >
               {SORT_OPTIONS.map((o) => (
                 <option key={o.key} value={o.key}>{o.label}</option>

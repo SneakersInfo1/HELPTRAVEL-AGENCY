@@ -302,17 +302,27 @@ export function FlightExtras() {
               {error}
               {/* Recovery: odbuduj URL wyników z flow + fresh=1 (świeże oferty, nie ta
                   sama wygasła). Pusty „/loty/wyniki" dawał ślepy zaułek. */}
+              {/* CELOWO inna etykieta niż przycisk „Wróć do wyników" niżej:
+                  tamten to zwykły powrót, a ten wymusza ŚWIEŻE wyszukiwanie
+                  (`fresh=1`), bo stara oferta siedzi jeszcze w cache. Dwa
+                  przyciski o tej samej nazwie i różnym działaniu na jednym
+                  ekranie to nie jest drobiazg — użytkownik nie ma jak zgadnąć,
+                  który go odblokuje. */}
               <button
                 onClick={() => router.push(buildResultsUrl(flow, { fresh: true }))}
                 className="ml-2 font-semibold underline underline-offset-2"
               >
-                Wróć do wyników
+                Pokaż świeże wyniki
               </button>
             </div>
           )}
 
-          {/* Akcje desktopowe — na mobile robi to sticky pasek na dole. */}
-          <div className="mt-6 hidden items-center justify-between gap-3 lg:flex">
+          {/* Akcje w treści. Na mobile DUBLUJĄ sticky pasek — i to jest celowe:
+              dopóki baner zgód wisi na dole ekranu, paska nie ma (przechwytywał
+              kliknięcia), więc gość bez rozstrzygniętej zgody musi mieć czym
+              przejść dalej. Po zgodzie pasek wraca i staje się wygodniejszą
+              drogą, a ten przycisk zwykłym końcem sekcji. */}
+          <div className="mt-6 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               onClick={() => router.back()}
               className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-semibold text-ink-muted transition hover:bg-surface-sunken hover:text-ink active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"

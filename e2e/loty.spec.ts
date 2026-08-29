@@ -11,14 +11,47 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
+// Serwis jest polski i `LanguageProvider` czyta jezyk przegladarki. Playwright
+// startuje domyslnie z `en-US`, wiec provider przelaczal UI na angielski JUZ PO
+// hydracji — serwer renderowal `/kierunki`, klient `/en/kierunki` i React
+// zglaszal „Hydration failed", po czym odtwarzal drzewo od nowa. Skutek dla
+// testow byl taki, ze lista wynikow potrafila zostac na szkielecie mimo
+// odpowiedzi 200 z `/api/flights/rates` w 300 ms.
+//
+// `pl-PL` to jednoczesnie realny warunek uzytkownika tego serwisu (>90 % ruchu
+// z Polski), wiec test staje sie BLIZSZY produkcji, a nie dalszy.
+test.use({ locale: "pl-PL" });
+
 const SEARCH =
   "/loty/wyniki?origin=WAW&originLabel=Warszawa&destination=BCN&destLabel=Barcelona" +
   "&depart=2026-09-20&return=2026-09-27&adults=2";
 
 /** Wejście na wyniki + poczekanie na pierwszą realną kartę oferty. */
+/**
+ * Rozstrzyga baner zgód, wybierając „Tylko niezbędne".
+ *
+ * DLACZEGO TO JEST W KAŻDYM TEŚCIE: baner stoi `fixed bottom-2 z-40`, więc
+ * dopóki wisi, PRZECHWYTUJE kliknięcia w dolnej części ekranu — Playwright
+ * odmawia wtedy kliknięcia w „Wybierz" i w sticky pasek, i ma rację, bo realny
+ * palec też trafiłby w baner. To samo zgłoszenie doprowadziło do tego, że
+ * `FlightStickyCta` w ogóle się nie renderuje, dopóki zgoda nie jest podjęta.
+ *
+ * Wybieramy opcję najbardziej ochronną dla prywatności — nie „Akceptuję
+ * wszystkie" — więc testy chodzą po ścieżce BEZ analityki, czyli tej samej,
+ * którą dostaje użytkownik odmawiający zgody.
+ */
+async function zamknijZgody(page: Page) {
+  const tylkoNiezbedne = page.getByRole("button", { name: "Tylko niezbędne" });
+  if (await tylkoNiezbedne.isVisible().catch(() => false)) {
+    await tylkoNiezbedne.click();
+    await expect(tylkoNiezbedne).toBeHidden();
+  }
+}
+
 async function otworzWyniki(page: Page) {
   await page.goto(SEARCH, { waitUntil: "domcontentloaded" });
   await expect(page.locator("main article[data-offer-card]").first()).toBeVisible({ timeout: 90_000 });
+  await zamknijZgody(page);
 }
 
 test.describe("Wyniki lotów", () => {
@@ -277,27 +310,41 @@ test.describe("Dane podróżnych", () => {
 });
 
 test.describe("Kolizje i dostępność", () => {
-  test("na żadnym kroku lejka nic nie pływa nad ceną ani CTA", async ({ page }) => {
+  test("w lejku lotów nie ma dymka konsjerża, a sticky CTA jest naprawdę klikalne", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await otworzWyniki(page);
 
-    for (const url of [SEARCH, null] as const) {
-      if (url) await page.goto(url, { waitUntil: "domcontentloaded" });
-      const pływające = await page.evaluate(() =>
-        Array.from(document.querySelectorAll("body *"))
-          .filter((e) => getComputedStyle(e).position === "fixed" && (e as HTMLElement).offsetParent !== null)
-          .map((e) => String((e as HTMLElement).className).slice(0, 60)),
-      );
-      // Na wynikach jedynym pływającym elementem może być baner zgód — dymek
-      // konsjerża jest w lejku lotów wyłączony (zasłaniał ceny taryf).
-      expect(pływające.join("|")).not.toMatch(/z-40 flex flex-col items-end/);
-    }
+    // Konsjerż siedział na cenie taryfy „Smart" (zmierzone na 390 px), więc
+    // w lejku lotów go nie ma. `QuickSearchLauncher` był wyłączony od początku.
+    const dymek = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("body *")).some(
+        (e) =>
+          getComputedStyle(e).position === "fixed" &&
+          /z-40 flex flex-col items-end/.test(String((e as HTMLElement).className)),
+      ),
+    );
+    expect(dymek).toBe(false);
 
     await page.locator("main article[data-offer-card]").first().getByRole("button", { name: "Wybierz" }).click();
     await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
     await page.waitForTimeout(600);
 
-    // Każda cena taryfy widoczna w oknie musi być klikalna (nic jej nie przykrywa).
+    // Sticky pasek musi być nie tylko WIDOCZNY, ale i klikalny — Playwright
+    // odmawia kliknięcia, gdy cokolwiek przechwytuje zdarzenia w tym punkcie.
+    // Dokładnie tak wyszło, że robił to baner zgód.
+    await page.getByRole("button", { name: /Dalej do danych/ }).last().click({ trial: true });
+
+    // Sticky pasek Z DEFINICJI przykrywa to, co akurat jest przy dolnej
+    // krawędzi — to nie jest defekt, tylko sposób działania paska. Defektem
+    // byłoby, gdyby coś zostało zasłonięte NA STAŁE, czyli po dojechaniu na sam
+    // dół. Dlatego najpierw scrollujemy do końca (bez płynnego przewijania,
+    // które psuje pomiar), a dopiero potem sprawdzamy przykrycie.
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    });
+    await page.waitForTimeout(500);
+
     const zasłonięte = await page.evaluate(() => {
       const out: string[] = [];
       for (const el of Array.from(document.querySelectorAll("main label p"))) {

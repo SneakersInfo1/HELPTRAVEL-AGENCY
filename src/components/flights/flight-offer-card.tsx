@@ -205,7 +205,10 @@ export function FlightOfferCard({ offer, travellers, cheapestId, fastestId, best
           type="button"
           onClick={() => setShowDetails((v) => !v)}
           aria-expanded={showDetails}
-          className="flex w-full items-center gap-1 py-2.5 text-left font-semibold text-brand transition hover:opacity-80 active:opacity-60 motion-reduce:transition-none"
+          // `min-h-11` = 44 px. Samo `py-2.5` dawało 38 px (18 px tekstu + 20 px
+          // odstępu) — zmierzone testem e2e, nie oszacowane. Cel dotykowy poniżej
+          // 44 px jest w tym repo błędem, nie drobiazgiem.
+          className="flex min-h-11 w-full items-center gap-1 py-2 text-left font-semibold text-brand transition hover:opacity-80 active:opacity-60 motion-reduce:transition-none"
         >
           <span className="text-xs">{showDetails ? "Ukryj szczegóły lotu" : "Szczegóły lotu"}</span>
           <ChevronDown

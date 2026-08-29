@@ -13,16 +13,24 @@
 // serwisy z §12 briefu (Booking, Kiwi).
 //
 // ── KOLIZJE ──────────────────────────────────────────────────────────────────
-// Pasek stoi na `--z-sticky` (30), czyli PONIŻEJ dymka konsjerża (z-40) i
-// banera zgód (z-40). To celowe: pasek nie może przykryć zgody na cookies.
-// Za to konsjerż musi ustąpić W PIONIE — robi to `ConciergeLauncher`, który na
-// trasach lejka lotów jedzie wyżej. Zależność jest OBUSTRONNA i dlatego opisana
-// po obu stronach; zmiana wysokości tego paska wymaga sprawdzenia tamtej.
+// Pasek stoi na `--z-sticky` (30), czyli PONIŻEJ banera zgód (z-40). To celowe:
+// pasek nie może przykryć zgody na cookies. Konsjerż w lejku lotów nie
+// występuje w ogóle (zasłaniał ceny taryf — patrz `concierge-launcher.tsx`).
+//
+// ALE „niżej" nie wystarcza. Playwright wykrył, że dopóki baner zgód wisi na
+// dole ekranu, to ON przechwytuje kliknięcia w tym miejscu — czyli pasek jest
+// widoczny, a mimo to NIE DA SIĘ go nacisnąć. Dla gościa, który trafia prosto
+// w lejek lotów (link bezpośredni, tryb prywatny), oznaczałoby to checkout
+// z niedostępnym przyciskiem. Dopóki zgoda nie jest rozstrzygnięta, paska
+// po prostu nie ma — akcję niesie wtedy przycisk w treści formularza, który
+// renderujemy zawsze. Po decyzji pasek wraca.
 //
 // Wysokość paska + safe-area oddajemy stronie przez `FLIGHT_STICKY_CTA_PAD`,
 // żeby ostatni element formularza nie chował się pod paskiem.
 
 import type { ReactNode } from "react";
+
+import { useConsent } from "@/lib/consent/context";
 
 /** Dopełnienie dolne dla kontenera strony, która renderuje ten pasek. */
 export const FLIGHT_STICKY_CTA_PAD = "pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0";
@@ -40,6 +48,9 @@ interface Props {
 }
 
 export function FlightStickyCta({ amount, amountNote, actionLabel, onAction, disabled = false, children }: Props) {
+  const { needsDecision, isSettingsOpen } = useConsent();
+  if (needsDecision || isSettingsOpen) return null;
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface-raised/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] lg:hidden">
       {children}

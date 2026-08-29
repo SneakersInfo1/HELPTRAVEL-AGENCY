@@ -9,13 +9,13 @@
     "mainW": 375,
     "gutterPct": 0,
     "cardW": 343,
-    "cardH": 296,
-    "docH": 7081,
+    "cardH": 302,
+    "docH": 7205,
     "headerRadius": "0px",
     "headerW": 375,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "button|flex.min-h-11.w-full"
   },
   {
     "screen": "dodatki",
@@ -28,12 +28,12 @@
     "gutterPct": 0,
     "cardW": null,
     "cardH": null,
-    "docH": 2163,
+    "docH": 2291,
     "headerRadius": "0px",
     "headerW": 375,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "span|text-sm"
   },
   {
     "screen": "pasazerowie",
@@ -46,12 +46,12 @@
     "gutterPct": 0,
     "cardW": null,
     "cardH": null,
-    "docH": 3266,
+    "docH": 3370,
     "headerRadius": "0px",
     "headerW": 375,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "span|text-sm"
   },
   {
     "screen": "wyniki",
@@ -63,13 +63,13 @@
     "mainW": 390,
     "gutterPct": 0,
     "cardW": 358,
-    "cardH": 296,
-    "docH": 7081,
+    "cardH": 302,
+    "docH": 7205,
     "headerRadius": "0px",
     "headerW": 390,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "div|flex.flex-col.gap-3"
   },
   {
     "screen": "dodatki",
@@ -82,12 +82,12 @@
     "gutterPct": 0,
     "cardW": null,
     "cardH": null,
-    "docH": 2163,
+    "docH": 2291,
     "headerRadius": "0px",
     "headerW": 390,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "span|text-sm"
   },
   {
     "screen": "pasazerowie",
@@ -100,12 +100,12 @@
     "gutterPct": 0,
     "cardW": null,
     "cardH": null,
-    "docH": 3266,
+    "docH": 3370,
     "headerRadius": "0px",
     "headerW": 390,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "span|text-sm"
   },
   {
     "screen": "wyniki",
@@ -117,13 +117,13 @@
     "mainW": 412,
     "gutterPct": 0,
     "cardW": 380,
-    "cardH": 296,
-    "docH": 7081,
+    "cardH": 302,
+    "docH": 7205,
     "headerRadius": "0px",
     "headerW": 412,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "button|inline-flex.h-11.shrink-0"
   },
   {
     "screen": "dodatki",
@@ -136,12 +136,12 @@
     "gutterPct": 0,
     "cardW": null,
     "cardH": null,
-    "docH": 2163,
+    "docH": 2291,
     "headerRadius": "0px",
     "headerW": 412,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "span|text-sm"
   },
   {
     "screen": "pasazerowie",
@@ -154,12 +154,12 @@
     "gutterPct": 0,
     "cardW": null,
     "cardH": null,
-    "docH": 3245,
+    "docH": 3349,
     "headerRadius": "0px",
     "headerW": 412,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "button|inline-flex.min-h-11.items-center"
+    "bottomRightOwner": "span|text-sm"
   },
   {
     "screen": "wyniki",
@@ -171,13 +171,13 @@
     "mainW": 768,
     "gutterPct": 0,
     "cardW": 720,
-    "cardH": 229,
-    "docH": 6152,
+    "cardH": 235,
+    "docH": 6276,
     "headerRadius": "0px",
     "headerW": 768,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "div|fixed.inset-x-2.bottom-2"
+    "bottomRightOwner": "div|flex.flex-col.gap-3"
   },
   {
     "screen": "dodatki",
@@ -190,12 +190,12 @@
     "gutterPct": 0,
     "cardW": null,
     "cardH": null,
-    "docH": 1877,
+    "docH": 1949,
     "headerRadius": "0px",
     "headerW": 768,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "div|fixed.inset-x-2.bottom-2"
+    "bottomRightOwner": "span|text-sm"
   },
   {
     "screen": "pasazerowie",
@@ -208,12 +208,12 @@
     "gutterPct": 0,
     "cardW": null,
     "cardH": null,
-    "docH": 2236,
+    "docH": 2284,
     "headerRadius": "0px",
     "headerW": 768,
     "priceInFirstViewport": true,
     "ctaInFirstViewport": true,
-    "bottomRightOwner": "div|fixed.inset-x-2.bottom-2"
+    "bottomRightOwner": "span|text-sm"
   },
   {
     "screen": "wyniki",
@@ -225,8 +225,8 @@
     "mainW": 1440,
     "gutterPct": 0,
     "cardW": 1036,
-    "cardH": 203,
-    "docH": 4835,
+    "cardH": 209,
+    "docH": 4959,
     "headerRadius": "0px",
     "headerW": 1440,
     "priceInFirstViewport": true,
@@ -279,8 +279,8 @@
     "mainW": 1720,
     "gutterPct": 10.4,
     "cardW": 1288,
-    "cardH": 203,
-    "docH": 4811,
+    "cardH": 209,
+    "docH": 4935,
     "headerRadius": "0px",
     "headerW": 1920,
     "priceInFirstViewport": true,

@@ -9,13 +9,46 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
+// Serwis jest polski i `LanguageProvider` czyta jezyk przegladarki. Playwright
+// startuje domyslnie z `en-US`, wiec provider przelaczal UI na angielski JUZ PO
+// hydracji — serwer renderowal `/kierunki`, klient `/en/kierunki` i React
+// zglaszal „Hydration failed", po czym odtwarzal drzewo od nowa. Skutek dla
+// testow byl taki, ze lista wynikow potrafila zostac na szkielecie mimo
+// odpowiedzi 200 z `/api/flights/rates` w 300 ms.
+//
+// `pl-PL` to jednoczesnie realny warunek uzytkownika tego serwisu (>90 % ruchu
+// z Polski), wiec test staje sie BLIZSZY produkcji, a nie dalszy.
+test.use({ locale: "pl-PL" });
+
 const SEARCH =
   "/loty/wyniki?origin=WAW&originLabel=Warszawa&destination=BCN&destLabel=Barcelona" +
   "&depart=2026-09-20&return=2026-09-27&adults=2";
 
+/**
+ * Rozstrzyga baner zgód, wybierając „Tylko niezbędne".
+ *
+ * DLACZEGO TO JEST W KAŻDYM TEŚCIE: baner stoi `fixed bottom-2 z-40`, więc
+ * dopóki wisi, PRZECHWYTUJE kliknięcia w dolnej części ekranu — Playwright
+ * odmawia wtedy kliknięcia w „Wybierz" i w sticky pasek, i ma rację, bo realny
+ * palec też trafiłby w baner. To samo zgłoszenie doprowadziło do tego, że
+ * `FlightStickyCta` w ogóle się nie renderuje, dopóki zgoda nie jest podjęta.
+ *
+ * Wybieramy opcję najbardziej ochronną dla prywatności — nie „Akceptuję
+ * wszystkie" — więc testy chodzą po ścieżce BEZ analityki, czyli tej samej,
+ * którą dostaje użytkownik odmawiający zgody.
+ */
+async function zamknijZgody(page: Page) {
+  const tylkoNiezbedne = page.getByRole("button", { name: "Tylko niezbędne" });
+  if (await tylkoNiezbedne.isVisible().catch(() => false)) {
+    await tylkoNiezbedne.click();
+    await expect(tylkoNiezbedne).toBeHidden();
+  }
+}
+
 async function otworzWyniki(page: Page) {
   await page.goto(SEARCH, { waitUntil: "domcontentloaded" });
   await expect(page.locator("main article[data-offer-card]").first()).toBeVisible({ timeout: 90_000 });
+  await zamknijZgody(page);
 }
 
 /** Doprowadza do formularza pasażerów i wypełnia go poprawnymi danymi. */
@@ -164,6 +197,7 @@ test.describe("Stany bledu", () => {
     );
     await page.goto(SEARCH, { waitUntil: "domcontentloaded" });
     await expect(page.getByText(/Brak lot/)).toBeVisible({ timeout: 30_000 });
+    await zamknijZgody(page);
     // Pusta trasa nie jest naprawialna odswiezeniem — nie proponujemy go.
     await expect(page.getByRole("button", { name: /Sprobuj ponownie|Spróbuj ponownie/ })).toBeHidden();
   });
@@ -178,6 +212,7 @@ test.describe("Stany bledu", () => {
     );
     await page.goto(SEARCH, { waitUntil: "domcontentloaded" });
     await expect(page.getByText(/Dostawca zwrocil blad/)).toBeVisible({ timeout: 30_000 });
+    await zamknijZgody(page);
     await expect(page.getByRole("button", { name: /Spr.buj ponownie/ })).toBeVisible();
   });
 
@@ -201,7 +236,7 @@ test.describe("Stany bledu", () => {
     await page.getByRole("button", { name: /Dalej do danych/ }).first().click();
     await expect(page.getByText(/wygas/i).first()).toBeVisible({ timeout: 60_000 });
 
-    await page.getByRole("button", { name: /Wr.. do wynik.w/ }).click();
+    await page.getByRole("button", { name: "Pokaż świeże wyniki" }).click();
     await page.waitForURL(/\/loty\/wyniki/, { timeout: 20_000 });
     // `fresh=1` MUSI byc w URL-u — inaczej cache odda te sama martwa oferte.
     expect(page.url()).toContain("fresh=1");

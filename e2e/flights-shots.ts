@@ -74,13 +74,23 @@ async function measure(page: Page, screen: string, viewport: string): Promise<Me
       const priceEl = all.find(
         (el) => el.children.length === 0 && /\d[\d\s]*(,\d{2})?\s*zł/.test(el.textContent ?? ""),
       );
-      const ctaEl = all.find(
+      // WSZYSTKIE pasujące CTA, nie pierwsze w kolejności DOM. Po dodaniu
+      // przycisku w treści formularza (obok sticky paska) `find` zwracał ten
+      // z końca strony i pomiar mówił „CTA poza pierwszym ekranem", mimo że
+      // sticky pasek stał na dole ekranu. Pytanie brzmi „czy KTÓRYKOLWIEK jest
+      // w polu widzenia", a nie „czy ten pierwszy".
+      const ctaEls = all.filter(
         (el) =>
           (el.tagName === "BUTTON" || el.tagName === "A") &&
-          /Wybierz|Dalej|Przejdź do płatności|Zapłać/.test(el.textContent ?? ""),
+          /Wybierz|Dalej|Przejd|Do p.atno|Zap.a/.test(el.textContent ?? ""),
       );
       const priceRect = priceEl?.getBoundingClientRect() ?? null;
-      const ctaRect = ctaEl?.getBoundingClientRect() ?? null;
+      const ctaRect =
+        ctaEls
+          .map((el) => el.getBoundingClientRect())
+          .find((r) => r.height > 0 && r.top >= 0 && r.top < vh) ??
+        ctaEls[0]?.getBoundingClientRect() ??
+        null;
 
       const owner = document.elementFromPoint(vw - 40, vh - 40);
       const ownerLabel = owner
@@ -136,6 +146,18 @@ async function main() {
       )
       .catch(() => {});
     await page.waitForTimeout(1000);
+    // Zamykamy baner zgód PRZED pomiarem: dopóki wisi, zajmuje dolną krawędź
+    // ekranu i sticky pasek z ceną świadomie się nie renderuje (przy widocznym
+    // banerze i tak nie dałoby się go nacisnąć). Mierzymy więc stan, w którym
+    // jest 99 % ruchu — zgoda zapada na pierwszej stronie wizyty, a do lejka
+    // lotów wchodzi się później. Stan „pierwsza wizyta, baner otwarty" jest
+    // opisany w raporcie jako świadomy kompromis, nie ukryty.
+    const tylkoNiezbedne = page.getByRole("button", { name: "Tylko niezbędne" });
+    if (await tylkoNiezbedne.isVisible().catch(() => false)) {
+      await tylkoNiezbedne.click();
+      await page.waitForTimeout(300);
+    }
+
     results.push(await measure(page, "wyniki", vp.name));
     await page.screenshot({ path: join(OUT, `${vp.name}-01-wyniki.png`) });
 

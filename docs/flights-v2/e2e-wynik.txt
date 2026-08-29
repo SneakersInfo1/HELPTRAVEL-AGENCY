@@ -1,145 +1,28 @@
-
 Running 26 tests using 1 worker
-
-  x   1 e2e\loty-bledy.spec.ts:52:7 › Zmiana ceny przy prebooku › wzrost ceny: modal z obiema kwotami; odmowa nie tworzy platnosci (1.5m)
-  x   2 e2e\loty-bledy.spec.ts:88:7 › Zmiana ceny przy prebooku › spadek ceny tez idzie przez akceptacje (nie wolno milczec) (1.5m)
-  x   3 e2e\loty-bledy.spec.ts:105:7 › Zmiana ceny przy prebooku › akceptacja ponawia prebook z NOWA kwota jako zaakceptowana (1.5m)
-  x   4 e2e\loty-bledy.spec.ts:161:7 › Stany bledu › zero wynikow: rozroznia brak lotow od awarii (0ms)
-  -   5 e2e\loty-bledy.spec.ts:171:7 › Stany bledu › awaria dostawcy: uczciwy komunikat + akcja naprawcza
-  -   6 e2e\loty-bledy.spec.ts:184:7 › Stany bledu › wygasla oferta na kroku taryfy: komunikat + powrot po SWIEZE wyniki
-  -   7 e2e\loty-bledy.spec.ts:210:7 › Stany bledu › platnosc bez potwierdzonej kwoty NIE pokazuje formularza karty
-  -   8 e2e\loty-bledy.spec.ts:241:7 › Stany bledu › wygasla sesja platnosci: mowi CO sie stalo i CO zrobic
-  -   9 e2e\loty-bledy.spec.ts:266:7 › Stany bledu › oferta wygasla przy prebooku: komunikat zamiast technicznego bledu
-  x  10 e2e\loty.spec.ts:25:7 › Wyniki lotów › karta oferty niesie komplet informacji do decyzji (0ms)
-  -  11 e2e\loty.spec.ts:39:7 › Wyniki lotów › desktop 1920: karta wykorzystuje szerokość ekranu, nagłówek jest pasem
-  -  12 e2e\loty.spec.ts:65:7 › Wyniki lotów › mobile 390: brak poziomego przewijania i sensowna gęstość listy
-  -  13 e2e\loty.spec.ts:83:7 › Wyniki lotów › sortowanie zmienia kolejność, a najtańsza oferta faktycznie jest najtańsza
-  -  14 e2e\loty.spec.ts:106:7 › Wyniki lotów › filtr „bezpośrednie” zawęża listę i pokazuje licznik aktywnych filtrów
-  -  15 e2e\loty.spec.ts:128:7 › Wyniki lotów › pasek filtrów zostaje widoczny i klikalny po przewinięciu listy
-  -  16 e2e\loty.spec.ts:153:7 › Wyniki lotów › filtry na mobile otwierają się arkuszem i dają się zamknąć
-  -  17 e2e\loty.spec.ts:167:7 › Krok taryfy › wybór lotu prowadzi do taryf; ceny mają grosze i widać różnice bagażowe
-  -  18 e2e\loty.spec.ts:181:7 › Krok taryfy › mobile: kwota i akcja są widoczne bez przewijania
-  -  19 e2e\loty.spec.ts:211:7 › Dane podróżnych › pusty formularz nie idzie dalej: pokazuje błędy i przewija do pierwszego
-  -  20 e2e\loty.spec.ts:233:7 › Dane podróżnych › pola mają autofill i właściwe klawiatury (telefon = tel, e-mail = email)
-  -  21 e2e\loty.spec.ts:250:7 › Dane podróżnych › dokument wygasający przed podróżą jest odrzucany po stronie klienta
-  -  22 e2e\loty.spec.ts:265:7 › Dane podróżnych › mobile: cena i CTA widoczne od razu, bez przewijania przez formularz
-  -  23 e2e\loty.spec.ts:280:7 › Kolizje i dostępność › na żadnym kroku lejka nic nie pływa nad ceną ani CTA
-  -  24 e2e\loty.spec.ts:316:7 › Kolizje i dostępność › modal filtrów jest zamykalny z klawiatury i ma semantykę dialogu
-  -  25 e2e\loty.spec.ts:327:7 › Kolizje i dostępność › arkusz filtrów zamyka się Escape i oddaje fokus przyciskowi
-  -  26 e2e\loty.spec.ts:338:7 › Kolizje i dostępność › cele dotykowe na mobile mają co najmniej 44 px
-
-
-  1) e2e\loty-bledy.spec.ts:52:7 › Zmiana ceny przy prebooku › wzrost ceny: modal z obiema kwotami; odmowa nie tworzy platnosci 
-
-    Test timeout of 90000ms exceeded.
-
-    Error: locator.click: Test timeout of 90000ms exceeded.
-    Call log:
-      - waiting for locator('main article').first().getByRole('button', { name: 'Wybierz' })
-
-
-      22 | async function doFormularzaZDanymi(page: Page) {
-      23 |   await otworzWyniki(page);
-    > 24 |   await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
-         |                                                                                       ^
-      25 |   await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
-      26 |   // Wprost na formularz — bez klikania "Dalej", żeby nie wołać verify u dostawcy.
-      27 |   await page.goto("/loty/pasazerowie", { waitUntil: "domcontentloaded" });
-        at doFormularzaZDanymi (C:\Users\kubao\Documents\New project\helptravel-agency\.claude\worktrees\flights-experience-v2-9b5c2e\e2e\loty-bledy.spec.ts:24:87)
-        at C:\Users\kubao\Documents\New project\helptravel-agency\.claude\worktrees\flights-experience-v2-9b5c2e\e2e\loty-bledy.spec.ts:68:5
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results\loty-bledy-Zmiana-ceny-prz-02088-odmowa-nie-tworzy-platnosci\test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results\loty-bledy-Zmiana-ceny-prz-02088-odmowa-nie-tworzy-platnosci\error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results\loty-bledy-Zmiana-ceny-prz-02088-odmowa-nie-tworzy-platnosci\trace.zip
-    Usage:
-
-        pnpm exec playwright show-trace test-results\loty-bledy-Zmiana-ceny-prz-02088-odmowa-nie-tworzy-platnosci\trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  2) e2e\loty-bledy.spec.ts:88:7 › Zmiana ceny przy prebooku › spadek ceny tez idzie przez akceptacje (nie wolno milczec) 
-
-    Test timeout of 90000ms exceeded.
-
-    Error: locator.click: Test timeout of 90000ms exceeded.
-    Call log:
-      - waiting for locator('main article').first().getByRole('button', { name: 'Wybierz' })
-
-
-      22 | async function doFormularzaZDanymi(page: Page) {
-      23 |   await otworzWyniki(page);
-    > 24 |   await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
-         |                                                                                       ^
-      25 |   await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
-      26 |   // Wprost na formularz — bez klikania "Dalej", żeby nie wołać verify u dostawcy.
-      27 |   await page.goto("/loty/pasazerowie", { waitUntil: "domcontentloaded" });
-        at doFormularzaZDanymi (C:\Users\kubao\Documents\New project\helptravel-agency\.claude\worktrees\flights-experience-v2-9b5c2e\e2e\loty-bledy.spec.ts:24:87)
-        at C:\Users\kubao\Documents\New project\helptravel-agency\.claude\worktrees\flights-experience-v2-9b5c2e\e2e\loty-bledy.spec.ts:96:5
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results\loty-bledy-Zmiana-ceny-prz-da49f-ceptacje-nie-wolno-milczec-\test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results\loty-bledy-Zmiana-ceny-prz-da49f-ceptacje-nie-wolno-milczec-\error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results\loty-bledy-Zmiana-ceny-prz-da49f-ceptacje-nie-wolno-milczec-\trace.zip
-    Usage:
-
-        pnpm exec playwright show-trace test-results\loty-bledy-Zmiana-ceny-prz-da49f-ceptacje-nie-wolno-milczec-\trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  3) e2e\loty-bledy.spec.ts:105:7 › Zmiana ceny przy prebooku › akceptacja ponawia prebook z NOWA kwota jako zaakceptowana 
-
-    Test timeout of 90000ms exceeded.
-
-    Error: locator.click: Test timeout of 90000ms exceeded.
-    Call log:
-      - waiting for locator('main article').first().getByRole('button', { name: 'Wybierz' })
-
-
-      22 | async function doFormularzaZDanymi(page: Page) {
-      23 |   await otworzWyniki(page);
-    > 24 |   await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
-         |                                                                                       ^
-      25 |   await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
-      26 |   // Wprost na formularz — bez klikania "Dalej", żeby nie wołać verify u dostawcy.
-      27 |   await page.goto("/loty/pasazerowie", { waitUntil: "domcontentloaded" });
-        at doFormularzaZDanymi (C:\Users\kubao\Documents\New project\helptravel-agency\.claude\worktrees\flights-experience-v2-9b5c2e\e2e\loty-bledy.spec.ts:24:87)
-        at C:\Users\kubao\Documents\New project\helptravel-agency\.claude\worktrees\flights-experience-v2-9b5c2e\e2e\loty-bledy.spec.ts:145:5
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results\loty-bledy-Zmiana-ceny-prz-8eeea-WA-kwota-jako-zaakceptowana\test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results\loty-bledy-Zmiana-ceny-prz-8eeea-WA-kwota-jako-zaakceptowana\error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results\loty-bledy-Zmiana-ceny-prz-8eeea-WA-kwota-jako-zaakceptowana\trace.zip
-    Usage:
-
-        pnpm exec playwright show-trace test-results\loty-bledy-Zmiana-ceny-prz-8eeea-WA-kwota-jako-zaakceptowana\trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  4) e2e\loty-bledy.spec.ts:161:7 › Stany bledu › zero wynikow: rozroznia brak lotow od awarii ─────
-
-    Error: worker process exited unexpectedly (code=3221225794, signal=null)
-
-  5) e2e\loty.spec.ts:25:7 › Wyniki lotów › karta oferty niesie komplet informacji do decyzji ──────
-
-    Error: worker process exited unexpectedly (code=3221225794, signal=null)
-
-  5 failed
-    e2e\loty-bledy.spec.ts:52:7 › Zmiana ceny przy prebooku › wzrost ceny: modal z obiema kwotami; odmowa nie tworzy platnosci 
-    e2e\loty-bledy.spec.ts:88:7 › Zmiana ceny przy prebooku › spadek ceny tez idzie przez akceptacje (nie wolno milczec) 
-    e2e\loty-bledy.spec.ts:105:7 › Zmiana ceny przy prebooku › akceptacja ponawia prebook z NOWA kwota jako zaakceptowana 
-    e2e\loty-bledy.spec.ts:161:7 › Stany bledu › zero wynikow: rozroznia brak lotow od awarii ──────
-    e2e\loty.spec.ts:25:7 › Wyniki lotów › karta oferty niesie komplet informacji do decyzji ───────
-  21 did not run
+  ok  1 e2e\loty-bledy.spec.ts:85:7 › Zmiana ceny przy prebooku › wzrost ceny: modal z obiema kwotami; odmowa nie tworzy platnosci (5.6s)
+  ok  2 e2e\loty-bledy.spec.ts:121:7 › Zmiana ceny przy prebooku › spadek ceny tez idzie przez akceptacje (nie wolno milczec) (5.7s)
+  ok  3 e2e\loty-bledy.spec.ts:138:7 › Zmiana ceny przy prebooku › akceptacja ponawia prebook z NOWA kwota jako zaakceptowana (6.0s)
+  ok  4 e2e\loty-bledy.spec.ts:194:7 › Stany bledu › zero wynikow: rozroznia brak lotow od awarii (1.6s)
+  ok  5 e2e\loty-bledy.spec.ts:205:7 › Stany bledu › awaria dostawcy: uczciwy komunikat + akcja naprawcza (2.1s)
+  ok  6 e2e\loty-bledy.spec.ts:219:7 › Stany bledu › wygasla oferta na kroku taryfy: komunikat + powrot po SWIEZE wyniki (3.0s)
+  ok  7 e2e\loty-bledy.spec.ts:245:7 › Stany bledu › platnosc bez potwierdzonej kwoty NIE pokazuje formularza karty (5.2s)
+  ok  8 e2e\loty-bledy.spec.ts:276:7 › Stany bledu › wygasla sesja platnosci: mowi CO sie stalo i CO zrobic (5.5s)
+  ok  9 e2e\loty-bledy.spec.ts:301:7 › Stany bledu › oferta wygasla przy prebooku: komunikat zamiast technicznego bledu (5.2s)
+  ok 10 e2e\loty.spec.ts:58:7 › Wyniki lotów › karta oferty niesie komplet informacji do decyzji (3.7s)
+  ok 11 e2e\loty.spec.ts:72:7 › Wyniki lotów › desktop 1920: karta wykorzystuje szerokość ekranu, nagłówek jest pasem (1.8s)
+  ok 12 e2e\loty.spec.ts:98:7 › Wyniki lotów › mobile 390: brak poziomego przewijania i sensowna gęstość listy (1.6s)
+  ok 13 e2e\loty.spec.ts:116:7 › Wyniki lotów › sortowanie zmienia kolejność, a najtańsza oferta faktycznie jest najtańsza (2.7s)
+  ok 14 e2e\loty.spec.ts:139:7 › Wyniki lotów › filtr „bezpośrednie” zawęża listę i pokazuje licznik aktywnych filtrów (2.4s)
+  ok 15 e2e\loty.spec.ts:161:7 › Wyniki lotów › pasek filtrów zostaje widoczny i klikalny po przewinięciu listy (2.1s)
+  ok 16 e2e\loty.spec.ts:186:7 › Wyniki lotów › filtry na mobile otwierają się arkuszem i dają się zamknąć (2.0s)
+  ok 17 e2e\loty.spec.ts:200:7 › Krok taryfy › wybór lotu prowadzi do taryf; ceny mają grosze i widać różnice bagażowe (2.0s)
+  ok 18 e2e\loty.spec.ts:214:7 › Krok taryfy › mobile: kwota i akcja są widoczne bez przewijania (2.4s)
+  ok 19 e2e\loty.spec.ts:244:7 › Dane podróżnych › pusty formularz nie idzie dalej: pokazuje błędy i przewija do pierwszego (3.4s)
+  ok 20 e2e\loty.spec.ts:266:7 › Dane podróżnych › pola mają autofill i właściwe klawiatury (telefon = tel, e-mail = email) (2.5s)
+  ok 21 e2e\loty.spec.ts:283:7 › Dane podróżnych › dokument wygasający przed podróżą jest odrzucany po stronie klienta (3.6s)
+  ok 22 e2e\loty.spec.ts:298:7 › Dane podróżnych › mobile: cena i CTA widoczne od razu, bez przewijania przez formularz (3.0s)
+  ok 23 e2e\loty.spec.ts:313:7 › Kolizje i dostępność › w lejku lotów nie ma dymka konsjerża, a sticky CTA jest naprawdę klikalne (3.1s)
+  ok 24 e2e\loty.spec.ts:363:7 › Kolizje i dostępność › modal filtrów jest zamykalny z klawiatury i ma semantykę dialogu (1.9s)
+  ok 25 e2e\loty.spec.ts:374:7 › Kolizje i dostępność › arkusz filtrów zamyka się Escape i oddaje fokus przyciskowi (1.8s)
+  ok 26 e2e\loty.spec.ts:385:7 › Kolizje i dostępność › cele dotykowe na mobile mają co najmniej 44 px (1.6s)
+  26 passed (1.4m)

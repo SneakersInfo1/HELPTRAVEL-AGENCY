@@ -528,14 +528,25 @@ export default function PassengersPage() {
             {errors["terms"] && <p role="alert" className={errCls}>{errors["terms"]}</p>}
           </div>
 
-          <div className="hidden lg:block">
+          {/* Na mobile TU jest jedyny przycisk, dopóki baner zgód wisi na dole
+              (wtedy sticky pasek się nie renderuje, bo przechwytywał kliknięcia).
+              Po zgodzie pasek wraca i ten przycisk zostaje jako naturalny koniec
+              formularza. */}
+          <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               onClick={() => router.back()}
               type="button"
-              className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-semibold text-ink-muted transition hover:bg-surface-sunken hover:text-ink active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-semibold text-ink-muted transition hover:bg-surface-sunken hover:text-ink active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               <ArrowLeft aria-hidden className="h-4 w-4" strokeWidth={2} />
               Wróć do taryf
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex h-12 items-center justify-center rounded-md bg-brand px-6 font-bold text-white transition hover:opacity-90 active:scale-[0.98] disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100 lg:hidden"
+            >
+              <span className="text-sm">{submitting ? "Przygotowuję płatność…" : "Przejdź do płatności →"}</span>
             </button>
           </div>
         </div>
