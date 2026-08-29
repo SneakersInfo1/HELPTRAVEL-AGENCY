@@ -43,7 +43,7 @@ function LegRowSkeleton() {
 
 function OfferCardSkeleton() {
   return (
-    <article className="rounded-lg border border-line bg-surface-raised p-4 shadow-sm sm:p-5">
+    <article data-offer-skeleton className="rounded-lg border border-line bg-surface-raised p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-stretch xl:gap-6">
         <div className="min-w-0 flex-1 space-y-4">
           <LegRowSkeleton />

@@ -18,13 +18,13 @@ const SEARCH =
 /** Wejście na wyniki + poczekanie na pierwszą realną kartę oferty. */
 async function otworzWyniki(page: Page) {
   await page.goto(SEARCH, { waitUntil: "domcontentloaded" });
-  await expect(page.locator("main article").first()).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator("main article[data-offer-card]").first()).toBeVisible({ timeout: 90_000 });
 }
 
 test.describe("Wyniki lotów", () => {
   test("karta oferty niesie komplet informacji do decyzji", async ({ page }) => {
     await otworzWyniki(page);
-    const karta = page.locator("main article").first();
+    const karta = page.locator("main article[data-offer-card]").first();
 
     // Godziny, kody lotnisk, czas, przesiadki, przewoźnik, cena, CTA.
     await expect(karta).toContainText(/\d{2}:\d{2}/);
@@ -42,7 +42,7 @@ test.describe("Wyniki lotów", () => {
 
     const geo = await page.evaluate(() => {
       const h = document.querySelector("header")!;
-      const card = document.querySelector("main article")!;
+      const card = document.querySelector("main article[data-offer-card]")!;
       const main = document.querySelector("main")!;
       return {
         radius: getComputedStyle(h).borderTopLeftRadius,
@@ -67,7 +67,7 @@ test.describe("Wyniki lotów", () => {
     await otworzWyniki(page);
 
     const m = await page.evaluate(() => {
-      const card = document.querySelector("main article")!.getBoundingClientRect();
+      const card = document.querySelector("main article[data-offer-card]")!.getBoundingClientRect();
       return {
         overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
         cardH: Math.round(card.height),
@@ -84,7 +84,7 @@ test.describe("Wyniki lotów", () => {
     await otworzWyniki(page);
     const cena = async () =>
       page.evaluate(() => {
-        const el = document.querySelector("main article");
+        const el = document.querySelector("main article[data-offer-card]");
         const txt = el?.textContent ?? "";
         const m = txt.match(/(\d[\d \s]*(?:,\d{2})?)\s*zł/);
         return m ? Number.parseFloat(m[1].replace(/[ \s]/g, "").replace(",", ".")) : NaN;
@@ -107,17 +107,17 @@ test.describe("Wyniki lotów", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await otworzWyniki(page);
 
-    const przed = await page.locator("main article").count();
+    const przed = await page.locator("main article[data-offer-card]").count();
     const bezposrednie = page.getByRole("checkbox", { name: /Bezpośrednie/ });
     test.skip((await bezposrednie.count()) === 0, "ta trasa nie ma filtra przesiadek");
     await bezposrednie.first().check();
     await page.waitForTimeout(400);
 
     await expect(page.getByRole("button", { name: /Wyczyść wszystko/ })).toBeVisible();
-    const po = await page.locator("main article").count();
+    const po = await page.locator("main article[data-offer-card]").count();
     expect(po).toBeLessThanOrEqual(przed);
     // Każda pozostała karta musi być bezpośrednia w obie strony.
-    const teksty = await page.locator("main article").allTextContents();
+    const teksty = await page.locator("main article[data-offer-card]").allTextContents();
     for (const t of teksty.slice(0, 5)) expect(t).not.toMatch(/przesiadk/);
   });
 
@@ -166,7 +166,7 @@ test.describe("Wyniki lotów", () => {
 test.describe("Krok taryfy", () => {
   test("wybór lotu prowadzi do taryf; ceny mają grosze i widać różnice bagażowe", async ({ page }) => {
     await otworzWyniki(page);
-    await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
+    await page.locator("main article[data-offer-card]").first().getByRole("button", { name: "Wybierz" }).click();
     await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
 
     await expect(page.getByRole("heading", { name: "Bagaż i taryfa" })).toBeVisible();
@@ -181,7 +181,7 @@ test.describe("Krok taryfy", () => {
   test("mobile: kwota i akcja są widoczne bez przewijania", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await otworzWyniki(page);
-    await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
+    await page.locator("main article[data-offer-card]").first().getByRole("button", { name: "Wybierz" }).click();
     await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
     await page.waitForTimeout(600);
 
@@ -200,7 +200,7 @@ test.describe("Krok taryfy", () => {
 test.describe("Dane podróżnych", () => {
   test.beforeEach(async ({ page }) => {
     await otworzWyniki(page);
-    await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
+    await page.locator("main article[data-offer-card]").first().getByRole("button", { name: "Wybierz" }).click();
     await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
     // Wchodzimy WPROST, bez verify — kontekst jest już w sessionStorage.
     // Nie klikamy „Dalej", żeby nie mnożyć wywołań dostawcy.
@@ -293,7 +293,7 @@ test.describe("Kolizje i dostępność", () => {
       expect(pływające.join("|")).not.toMatch(/z-40 flex flex-col items-end/);
     }
 
-    await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
+    await page.locator("main article[data-offer-card]").first().getByRole("button", { name: "Wybierz" }).click();
     await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
     await page.waitForTimeout(600);
 

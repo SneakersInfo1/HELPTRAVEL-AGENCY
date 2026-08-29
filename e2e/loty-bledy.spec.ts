@@ -15,13 +15,13 @@ const SEARCH =
 
 async function otworzWyniki(page: Page) {
   await page.goto(SEARCH, { waitUntil: "domcontentloaded" });
-  await expect(page.locator("main article").first()).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator("main article[data-offer-card]").first()).toBeVisible({ timeout: 90_000 });
 }
 
 /** Doprowadza do formularza pasażerów i wypełnia go poprawnymi danymi. */
 async function doFormularzaZDanymi(page: Page) {
   await otworzWyniki(page);
-  await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
+  await page.locator("main article[data-offer-card]").first().getByRole("button", { name: "Wybierz" }).click();
   await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
   // Wprost na formularz — bez klikania "Dalej", żeby nie wołać verify u dostawcy.
   await page.goto("/loty/pasazerowie", { waitUntil: "domcontentloaded" });
@@ -183,7 +183,7 @@ test.describe("Stany bledu", () => {
 
   test("wygasla oferta na kroku taryfy: komunikat + powrot po SWIEZE wyniki", async ({ page }) => {
     await otworzWyniki(page);
-    await page.locator("main article").first().getByRole("button", { name: "Wybierz" }).click();
+    await page.locator("main article[data-offer-card]").first().getByRole("button", { name: "Wybierz" }).click();
     await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
 
     await page.route("**/api/flights/verify", (route) =>

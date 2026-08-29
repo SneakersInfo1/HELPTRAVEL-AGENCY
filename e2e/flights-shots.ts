@@ -58,7 +58,15 @@ async function measure(page: Page, screen: string, viewport: string): Promise<Me
       const main = document.querySelector("main")?.getBoundingClientRect() ?? null;
       const header = document.querySelector("header");
       const headerRect = header?.getBoundingClientRect() ?? null;
-      const card = document.querySelector("main article")?.getBoundingClientRect() ?? null;
+      // REALNA karta oferty, nie szkielet ładowania. Szkielet renderuje taki sam
+      // `<article>` (i tak ma być), więc `main article` łapał jedno i drugie —
+      // pierwsza wersja tego skryptu mierzyła przez to wysokość SZKIELETU.
+      // Rozpoznajemy po zawartości (cena + przycisk „Wybierz"), a nie po
+      // atrybucie, żeby ten sam skrypt działał na gałęzi PRZED zmianą.
+      const card =
+        (Array.from(document.querySelectorAll("main article")).find(
+          (a) => /zł/.test(a.textContent ?? "") && /Wybierz/.test(a.textContent ?? ""),
+        ) as HTMLElement | undefined)?.getBoundingClientRect() ?? null;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
@@ -115,15 +123,26 @@ async function main() {
     const page = await ctx.newPage();
 
     await page.goto(`${BASE}${SEARCH}`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("main article", { timeout: 120_000 }).catch(() => {});
-    await page.waitForTimeout(1500);
+    // Czekamy na REALNĄ ofertę (przycisk „Wybierz" istnieje tylko w karcie,
+    // nigdy w szkielecie), a nie na pierwszy lepszy `<article>`.
+    await page
+      .waitForFunction(
+        () =>
+          Array.from(document.querySelectorAll("main article")).some((a) =>
+            /Wybierz/.test(a.textContent ?? ""),
+          ),
+        undefined,
+        { timeout: 120_000 },
+      )
+      .catch(() => {});
+    await page.waitForTimeout(1000);
     results.push(await measure(page, "wyniki", vp.name));
     await page.screenshot({ path: join(OUT, `${vp.name}-01-wyniki.png`) });
 
     const picked = await page
       .evaluate(() => {
         const b = Array.from(document.querySelectorAll("main article button")).find(
-          (x) => x.textContent?.trim() === "Wybierz",
+          (x) => (x.textContent ?? "").trim() === "Wybierz",
         ) as HTMLButtonElement | undefined;
         if (!b) return false;
         b.click();

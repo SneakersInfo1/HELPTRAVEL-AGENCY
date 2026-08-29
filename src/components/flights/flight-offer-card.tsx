@@ -126,7 +126,15 @@ export function FlightOfferCard({ offer, travellers, cheapestId, fastestId, best
   const hasBadges = isBest || isCheapest || isFastest || direct;
 
   return (
-    <article className="rounded-lg border border-line bg-surface-raised shadow-sm transition hover:shadow-md motion-reduce:transition-none">
+    // `data-offer-card` to UCHWYT DLA TESTÓW I POMIARÓW, nie styl.
+    // Szkielet ładowania też renderuje `<article>` o tym samym kształcie (i tak
+    // ma być — po to jest szkielet), więc selektor `main article` łapał jedno
+    // i drugie. Pierwsza wersja testów e2e mierzyła przez to wysokość SZKIELETU
+    // zamiast karty i czekała na przycisk „Wybierz", którego w szkielecie nie ma.
+    <article
+      data-offer-card
+      className="rounded-lg border border-line bg-surface-raised shadow-sm transition hover:shadow-md motion-reduce:transition-none"
+    >
       <div className="flex flex-col gap-3 p-4 sm:p-5 xl:flex-row xl:items-stretch xl:gap-6">
         {/* ── Strefa 1: rejsy (rośnie) ── */}
         <div className="min-w-0 flex-1 space-y-2.5">
