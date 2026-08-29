@@ -96,5 +96,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ booking
     price: completed?.price ?? session?.price ?? null,
     currency: completed?.currency ?? session?.currency ?? null,
     passengers: session?.passengerData?.map((p) => ({ firstName: p.firstName, lastName: p.lastName, type: p.type })) ?? [],
+    // Trasa i taryfa do strony potwierdzenia. Do 2026-08-29 potwierdzenie
+    // pokazywało wyłącznie numer, status i kwotę — klient nie miał na nim
+    // ANI JEDNEJ informacji o locie, który właśnie kupił.
+    itinerary: session?.itinerary ?? null,
   });
 }

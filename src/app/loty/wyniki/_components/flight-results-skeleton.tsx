@@ -15,13 +15,13 @@ const FLIGHT_MESSAGES = [
 ];
 
 function Bar({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-neutral-100 ${className}`} />;
+  return <div className={`animate-pulse rounded-sm bg-surface-sunken ${className}`} />;
 }
 
 function LegRowSkeleton() {
   return (
     <div className="flex items-center gap-3">
-      <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-neutral-100" />
+      <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-surface-sunken" />
       <div className="flex flex-1 items-center gap-3">
         <div className="text-right">
           <Bar className="h-4 w-12" />
@@ -29,7 +29,7 @@ function LegRowSkeleton() {
         </div>
         <div className="flex-1">
           <Bar className="mx-auto h-2.5 w-14" />
-          <div className="my-2 h-px bg-neutral-200" />
+          <div className="my-2 h-px bg-line" />
           <Bar className="mx-auto h-2.5 w-16" />
         </div>
         <div>
@@ -43,8 +43,8 @@ function LegRowSkeleton() {
 
 function OfferCardSkeleton() {
   return (
-    <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <article className="rounded-lg border border-line bg-surface-raised p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-stretch xl:gap-6">
         <div className="min-w-0 flex-1 space-y-4">
           <LegRowSkeleton />
           <LegRowSkeleton />
@@ -53,10 +53,10 @@ function OfferCardSkeleton() {
             <Bar className="h-4 w-16" />
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2 border-t border-neutral-100 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+        <div className="flex shrink-0 flex-col items-end gap-2 border-t border-line pt-3 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
           <Bar className="h-6 w-24" />
           <Bar className="h-2.5 w-28" />
-          <div className="mt-1 h-10 w-24 animate-pulse rounded-lg bg-emerald-100" />
+          <div className="mt-1 h-11 w-24 animate-pulse rounded-md bg-brand-soft" />
         </div>
       </div>
     </article>
@@ -66,7 +66,7 @@ function OfferCardSkeleton() {
 /** Szkielet panelu filtrów (desktop) — żeby lewa kolumna nie była pusta. */
 export function FlightFiltersSkeleton() {
   return (
-    <div className="sticky top-6 rounded-2xl border border-neutral-200 bg-white p-4">
+    <div className="sticky top-28 rounded-lg border border-line bg-surface-raised p-4">
       <Bar className="h-4 w-24" />
       <div className="mt-4 space-y-5">
         {[0, 1, 2].map((g) => (
@@ -75,7 +75,7 @@ export function FlightFiltersSkeleton() {
             <div className="mt-2 space-y-2">
               {[0, 1, 2].map((r) => (
                 <div key={r} className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-pulse rounded bg-neutral-100" />
+                  <div className="h-4 w-4 animate-pulse rounded-sm bg-surface-sunken" />
                   <Bar className="h-3 w-2/3" />
                 </div>
               ))}

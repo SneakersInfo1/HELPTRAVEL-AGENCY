@@ -14,7 +14,12 @@ import {
   getReplyTo,
   getResendClient,
 } from "./client";
-import type { FlightContactData } from "@/lib/flights/session";
+import type { FlightBookingRecord, FlightContactData } from "@/lib/flights/session";
+import {
+  renderFlightCancellation,
+  renderFlightConfirmation,
+  type FlightEmailLeg,
+} from "./templates/flight-confirmation";
 
 function adminAddress(): string {
   return (
@@ -82,15 +87,36 @@ export async function sendFlightManualReviewAlert(input: {
   }
 }
 
-/** Potwierdzenie rezerwacji lotu do klienta (Faza 1.6; copy doszlifujemy w Fazie 5). */
-export async function sendFlightConfirmation(input: {
+function supportEmail(): string {
+  return process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "pomoc@helptravel.pl";
+}
+
+export interface FlightConfirmationInput {
   bookingId: string;
   to: string;
   pnr?: string;
+  eTicketNumbers?: string[];
   ticketingPending?: boolean;
   price?: number;
   currency?: string;
-}): Promise<void> {
+  legs?: FlightEmailLeg[];
+  fareName?: string;
+  hasCarryOnBag?: boolean;
+  hasCheckedBag?: boolean;
+  passengers?: Array<{ firstName: string; lastName: string; type?: string }>;
+}
+
+/**
+ * Potwierdzenie rezerwacji lotu do klienta.
+ *
+ * Treść renderuje `templates/flight-confirmation.ts` — do 2026-08-29 były to
+ * cztery linijki HTML-a sklejone tutaj, bez trasy, dat, lotnisk, pasażerów,
+ * taryfy i bagażu (czyli bez wszystkiego, czego wymaga brief §11).
+ *
+ * NIGDY nie rzuca: mail jest side-effectem i nie może wywrócić stanu
+ * rezerwacji (brief §11). Awaria idzie w log + `notifyWarning`.
+ */
+export async function sendFlightConfirmation(input: FlightConfirmationInput): Promise<void> {
   const to = input.to?.trim();
   if (!to) {
     console.warn(`[email][flight-confirmation] skipped — brak adresu bookingId=${input.bookingId}`);
@@ -101,9 +127,9 @@ export async function sendFlightConfirmation(input: {
     console.warn(`[email][flight-confirmation] skipped — RESEND_API_KEY not set bookingId=${input.bookingId}`);
     return;
   }
-  // Customer-facing: the old resend.dev fallback answered 403 for every
-  // recipient but the Resend account owner (hotel incydent 2026-08-28) —
-  // skip loudly rather than pretend to send.
+  // Customer-facing: stary fallback resend.dev odpowiadał 403 dla każdego
+  // odbiorcy poza właścicielem konta Resend (incydent hotelowy 2026-08-28) —
+  // lepiej pominąć głośno niż udawać, że wysłaliśmy.
   const from = getDefaultFrom();
   if (!from) {
     console.error(`[email][flight-confirmation] SKIPPED bookingId=${input.bookingId} — ${MISSING_FROM_REASON}`);
@@ -115,17 +141,22 @@ export async function sendFlightConfirmation(input: {
     }).catch(() => {});
     return;
   }
-  const ticketLine = input.ticketingPending
-    ? "<p>Rezerwacja jest potwierdzona. Status wystawienia biletu zostanie zaktualizowany po otrzymaniu danych od przewoźnika.</p>"
-    : "<p>Bilet został wystawiony. Szczegóły znajdziesz w potwierdzeniu rezerwacji.</p>";
-  const price = typeof input.price === "number" ? `${input.price.toFixed(2)} ${input.currency ?? "PLN"}` : "";
-  const html = `
-    <h2>Rezerwacja lotu potwierdzona</h2>
-    <p>Numer rezerwacji: <b>${input.bookingId}</b>${input.pnr ? ` · PNR: <b>${input.pnr}</b>` : ""}</p>
-    ${price ? `<p>Kwota: <b>${price}</b></p>` : ""}
-    ${ticketLine}
-    <p>Dziękujemy, że wybrałeś HelpTravel.</p>
-  `;
+
+  const mail = renderFlightConfirmation({
+    bookingId: input.bookingId,
+    pnr: input.pnr,
+    eTicketNumbers: input.eTicketNumbers,
+    ticketingPending: input.ticketingPending,
+    legs: input.legs,
+    fareName: input.fareName,
+    hasCarryOnBag: input.hasCarryOnBag,
+    hasCheckedBag: input.hasCheckedBag,
+    passengers: input.passengers,
+    price: input.price,
+    currency: input.currency,
+    supportEmail: supportEmail(),
+  });
+
   try {
     const res = await withTimeout(
       client.emails.send({
@@ -133,9 +164,9 @@ export async function sendFlightConfirmation(input: {
         to,
         ...(getReplyTo() ? { replyTo: getReplyTo()! } : {}),
         ...(getBcc() ? { bcc: getBcc()! } : {}),
-        subject: `Potwierdzenie rezerwacji lotu — ${input.bookingId}`,
-        html,
-        text: `Rezerwacja lotu potwierdzona. Numer: ${input.bookingId}${input.pnr ? ` PNR: ${input.pnr}` : ""}.`,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
         headers: { "X-Entity-Ref-ID": input.bookingId },
       }),
     );
@@ -153,4 +184,91 @@ export async function sendFlightConfirmation(input: {
   } catch (err) {
     console.error(`[email][flight-confirmation] THREW bookingId=${input.bookingId} error=${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+/**
+ * Mail o ANULOWANIU rezerwacji lotu.
+ *
+ * Istnieje, bo webhook `flight.book.cancelled` wołał dotąd
+ * `sendFlightConfirmation` — czyli klient, któremu przewoźnik anulował lot,
+ * dostawał wiadomość zatytułowaną „Potwierdzenie rezerwacji lotu" i zaczynającą
+ * się od słów „Rezerwacja lotu potwierdzona". Trudno o gorszy moment na
+ * sprzeczny komunikat.
+ */
+export async function sendFlightCancellation(input: {
+  bookingId: string;
+  to: string;
+  pnr?: string;
+  price?: number;
+  currency?: string;
+}): Promise<void> {
+  const to = input.to?.trim();
+  if (!to) return;
+  const client = getResendClient();
+  if (!client) {
+    console.warn(`[email][flight-cancellation] skipped — RESEND_API_KEY not set bookingId=${input.bookingId}`);
+    return;
+  }
+  const from = getDefaultFrom();
+  if (!from) {
+    console.error(`[email][flight-cancellation] SKIPPED bookingId=${input.bookingId} — ${MISSING_FROM_REASON}`);
+    return;
+  }
+  const mail = renderFlightCancellation({
+    bookingId: input.bookingId,
+    pnr: input.pnr,
+    price: input.price,
+    currency: input.currency,
+    supportEmail: supportEmail(),
+  });
+  try {
+    const res = await withTimeout(
+      client.emails.send({
+        from,
+        to,
+        ...(getReplyTo() ? { replyTo: getReplyTo()! } : {}),
+        ...(getBcc() ? { bcc: getBcc()! } : {}),
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+        headers: { "X-Entity-Ref-ID": `${input.bookingId}-cancelled` },
+      }),
+    );
+    if (res.error) {
+      console.error(`[email][flight-cancellation] FAILED bookingId=${input.bookingId} error=${res.error.message}`);
+    } else {
+      console.log(`[email][flight-cancellation] sent bookingId=${input.bookingId} messageId=${res.data?.id ?? "?"}`);
+    }
+  } catch (err) {
+    console.error(`[email][flight-cancellation] THREW bookingId=${input.bookingId} error=${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * Buduje wejście do maila potwierdzającego z rekordu sesji.
+ *
+ * Jedno miejsce dla obu wywołujących (finalizacja po płatności ORAZ webhook
+ * `flight.book.confirmed`) — inaczej ten sam mail wychodziłby z dwóch ścieżek
+ * z różną zawartością, zależnie od tego, która zdążyła pierwsza.
+ */
+export function flightConfirmationInputFromSession(
+  session: FlightBookingRecord,
+  extra: { bookingId: string; pnr?: string; eTicketNumbers?: string[]; ticketingPending: boolean },
+): FlightConfirmationInput | null {
+  const to = session.contactData?.email;
+  if (!to) return null;
+  return {
+    bookingId: extra.bookingId,
+    to,
+    pnr: extra.pnr,
+    eTicketNumbers: extra.eTicketNumbers,
+    ticketingPending: extra.ticketingPending,
+    price: session.price,
+    currency: session.currency,
+    legs: session.itinerary?.legs,
+    fareName: session.itinerary?.fareName,
+    hasCarryOnBag: session.itinerary?.hasCarryOnBag,
+    hasCheckedBag: session.itinerary?.hasCheckedBag,
+    passengers: session.passengerData?.map((p) => ({ firstName: p.firstName, lastName: p.lastName, type: p.type })),
+  };
 }

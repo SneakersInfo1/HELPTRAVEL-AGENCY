@@ -185,6 +185,23 @@ export function SiteShell({ children }: { children: ReactNode }) {
     // `/hotele/w/<miasto>` ma dwa segmenty, więc tu nie wpada.
     (/^\/hotele\/[^/]+$/.test(sciezka) && sciezka !== "/hotele/rezerwacja");
 
+  // LEJEK LOTÓW (Flights V2, 2026-08-29).
+  //
+  // Ta sama choroba co przy hotelach i ta sama diagnoza — tyle że zmierzona
+  // ostrzej, bo lejek lotów jest węższy u siebie. Playwright, viewport 1920:
+  //
+  //   /loty/wyniki       treść 779 px · 59,4 % ekranu białe · KARTA OFERTY 463 px
+  //   /loty/dodatki      treść 672 px · 65,0 % ekranu białe
+  //   /loty/pasazerowie  treść 1024 px · 46,7 % ekranu białe
+  //
+  // Sekcja lotów miała u siebie `max-w-6xl` / `max-w-2xl`, ale i tak nie miała
+  // szans: ta rama nakładała na nią `max-w-7xl`. Zdejmujemy ograniczenie, a
+  // szerokościami steruje `lib/flights/layout.ts` — tam każdy krok lejka ma
+  // własną wartość, bo wyniki i formularz płatności mają przeciwne potrzeby.
+  //
+  // Zakres: WSZYSTKO pod /loty. Poza nim nic się nie zmienia.
+  const isFlights = sciezka === "/loty" || sciezka.startsWith("/loty/");
+
   // PEŁNA SZEROKOŚĆ NA STRONIE GŁÓWNEJ (właściciel 2026-08-02: „żeby nie było
   // białych pasków po bokach na mobile i na pc").
   //
@@ -200,7 +217,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // nieczytelna, a tego zadanie nie dotyczyło.
   const ramaCls = isHome
     ? "max-w-none"
-    : isHotelWide
+    : isHotelWide || isFlights
       ? "max-w-none pb-4"
       : "max-w-7xl px-4 pb-4 sm:px-6 lg:px-8";
   // Sekcje pełnoszerokościowe biorą padding same — ten sam zestaw wartości,
@@ -211,6 +228,14 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // inaczej dotykałyby krawędzi ekranu. Wartości zgrane z `HOTEL_SHELL*`,
   // żeby logo, treść i stopka stały w jednej linii.
   const hotelEdgeCls = isHotelWide ? "mx-4 sm:mx-6 xl:mx-10" : "";
+  // Lejek lotów: nagłówek jest PASEM, jak na stronie głównej (brief §4 —
+  // „prostokątny, bez ogromnego border-radius, bez białych luk po bokach").
+  // Padding zgrany z `FLIGHT_SHELL_WIDE` (px-4 sm:px-6 xl:px-10), a wewnętrzny
+  // rząd dostaje ten sam limit szerokości co treść pod spodem — bez tego logo
+  // stałoby na krawędzi ekranu, a pierwsza karta oferty 120 px dalej, co czyta
+  // się jak dwa różne układy sklejone w pionie.
+  const flightsHeaderPadCls = "px-4 sm:px-6 xl:px-10";
+  const flightsHeaderInnerCls = isFlights ? "mx-auto w-full max-w-[1720px]" : "";
 
   return (
     <div className={`mx-auto flex min-h-screen w-full flex-col ${ramaCls}`}>
@@ -251,10 +276,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
         className={
           isHome
             ? `sticky top-0 z-30 border-b border-emerald-900/15 bg-surface-raised/85 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md ${bleedPadCls}`
-            : `sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/15 bg-surface-raised/85 px-3 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md sm:px-4 ${hotelEdgeCls}`
+            : isFlights
+              ? `sticky top-0 z-30 border-b border-emerald-900/15 bg-surface-raised/85 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md ${flightsHeaderPadCls}`
+              : `sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/15 bg-surface-raised/85 px-3 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md sm:px-4 ${hotelEdgeCls}`
         }
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className={`flex items-center justify-between gap-3 ${flightsHeaderInnerCls}`}>
           <div className="flex min-w-0 items-center gap-3">
             <LocalizedLink
               href="/"

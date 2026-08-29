@@ -1,20 +1,34 @@
 "use client";
 
-// /loty/platnosc — krok płatności (Faza 3.4). Renderuje LiteAPI Payment SDK
-// przez współdzielony PaymentSlot (race-fix #payment-element + publicKey=
-// widgetEnv są w nim zaszyte). Przed pokazaniem płatności: jeśli od ostatniego
-// verify minęło > 10 min — ponawiamy verify (reguła z briefu 3.4).
+// /loty/platnosc — krok płatności. Renderuje LiteAPI Payment SDK przez
+// współdzielony PaymentSlot (race-fix #payment-element + publicKey=widgetEnv
+// są w nim zaszyte).
 //
-// Kontekst (sessionId/secretKey/widgetEnv/kwota) z sessionStorage (FlightFlow).
-// Brak → wróć do wyników. secretKey idzie tylko do widgetu, nie zapisujemy go
-// nigdzie indziej.
+// ── ZMIANY Flights V2 (2026-08-29) ───────────────────────────────────────────
+//
+// KWOTA POCHODZI Z SERWERA. Do tej pory „Do zapłaty" brało się z
+// `sessionStorage` (`flow.verifiedTotal`). Realnie pobierana kwota była
+// bezpieczna — PaymentIntent siedzi po stronie LiteAPI i wisi na `secretKey`,
+// front nie ma na nią wpływu (patrz `payment-slot.tsx`: do konstruktora widgetu
+// idą tylko publicKey/secretKey/returnUrl/targetElement, ŻADNEJ kwoty). Ale
+// ostatnia liczba, jaką człowiek widzi przed obciążeniem karty, nie może
+// pochodzić z magazynu, który sam może edytować i który potrafi się rozjechać.
+// Teraz pytamy `GET /api/flights/session/[sessionId]` i pokazujemy to, co
+// odpowie serwer; `sessionStorage` służy już tylko do kontekstu trasy.
+//
+// Świadomie NIE re-verify'ujemy tu oferty: `offerId` został skonsumowany przez
+// prebook, więc verify mógłby zwrócić OFFER_UNAVAILABLE i ZABLOKOWAĆ ważną
+// płatność albo pokazać inną cenę niż realnie pobierana.
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Lock, ShieldCheck } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
-import { fmtMoneyPln } from "@/lib/flights/display";
+import { formatFlightPriceExact } from "@/lib/flights/money";
+import { FLIGHT_SHELL_NARROW } from "@/lib/flights/layout";
 import { loadFlightFlow, type FlightFlow } from "@/lib/flights/flow-storage";
+import { FlightStepNav } from "@/components/flights/flight-step-nav";
 import { PaymentSlot, type PaymentSlotPrebook } from "@/app/hotele/rezerwacja/_components/payment-slot";
 
 export default function FlightPaymentPage() {
@@ -33,70 +47,109 @@ export default function FlightPaymentPage() {
       router.replace("/loty/wyniki");
       return;
     }
-    // Cena jest już ZABLOKOWANA przez prebook: f.verifiedTotal to kwota zwrócona
-    // przez /flights/prebooks (ustawiona na stronie pasażerów) i dokładnie ją
-    // obciąży PaymentIntent powiązany z secretKey. Świadomie NIE re-verify'ujemy
-    // tu oferty — offerId został już skonsumowany przez prebook, więc verify
-    // mógłby zwrócić OFFER_UNAVAILABLE i ZABLOKOWAĆ ważną płatność, albo pokazać
-    // inną cenę niż realnie pobierana. Źródłem prawdy o kwocie jest prebook.
-    const amount = f.verifiedTotal ?? 0;
-    const currency = f.verifiedCurrency ?? "PLN";
-    // Deferred (setTimeout 0) — unika kaskadowego renderu w efekcie
-    // (react-hooks/set-state-in-effect); wzorzec użyty w home-search-tabs.
-    window.setTimeout(() => {
+
+    // WSZYSTKIE setState idą do środka funkcji asynchronicznej. Wywołanie
+    // `setFlow(f)` wprost w ciele efektu jest błędem reguły
+    // `react-hooks/set-state-in-effect` (kaskadowy render) — poprzednia wersja
+    // obchodziła to `setTimeout(…, 0)`, ale skoro i tak czekamy tu na serwer
+    // po autorytatywną kwotę, naturalnym miejscem jest to oczekiwanie.
+    void (async () => {
+      // Kwota AUTORYTATYWNA — z serwera, nie z sessionStorage.
+      let amount: number | null = null;
+      let currency = "PLN";
+      try {
+        const res = await fetch(`/api/flights/session/${encodeURIComponent(f.sessionId!)}`, { cache: "no-store" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.payable || typeof json.amount !== "number") {
+          setFlow(f);
+          setStatus("error");
+          setNotice(
+            res.status === 410
+              ? "Sesja rezerwacji wygasła. Wróć do wyników i wybierz lot ponownie."
+              : "Nie udało się potwierdzić kwoty do zapłaty. Rozpocznij rezerwację od nowa.",
+          );
+          track("flight_payment_error", { code: String(json.error ?? "amount_unconfirmed"), http_status: res.status });
+          return;
+        }
+        amount = json.amount;
+        currency = json.currency ?? "PLN";
+      } catch {
+        setFlow(f);
+        setStatus("error");
+        setNotice("Problem z połączeniem. Odśwież stronę.");
+        return;
+      }
+
       setFlow(f);
-      setPrebook({ secretKey: f.secretKey!, sessionId: f.sessionId!, amount, currency, widgetEnv: f.widgetEnv ?? "live" });
+      setPrebook({ secretKey: f.secretKey!, sessionId: f.sessionId!, amount: amount!, currency, widgetEnv: f.widgetEnv ?? "live" });
       setStatus("ready");
-    }, 0);
-    track("flight_payment_start", { amount, currency });
+      track("flight_payment_start", { amount: amount!, currency });
+    })();
   }, [router]);
 
   if (!flow || status === "checking") {
-    return <main className="mx-auto max-w-2xl px-4 py-12 text-sm text-neutral-500">Potwierdzam cenę i dostępność…</main>;
+    return (
+      <main className={`${FLIGHT_SHELL_NARROW} py-12`}>
+        <FlightStepNav current="platnosc" className="mb-6" />
+        <p className="text-sm text-ink-muted">Potwierdzam kwotę do zapłaty…</p>
+      </main>
+    );
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-neutral-900">Płatność</h1>
-      <p className="mt-1 text-sm text-neutral-600">
-        {flow.origin} → {flow.destination} · {flow.adults + flow.children + flow.infants} pasażerów
+    <main className={`${FLIGHT_SHELL_NARROW} py-6 sm:py-8`}>
+      <FlightStepNav current="platnosc" className="mb-4" />
+
+      <h1 className="text-2xl font-bold text-ink sm:text-3xl">Płatność</h1>
+      <p className="mt-1 text-sm text-ink-muted">
+        {flow.origin} → {flow.destination} · {flow.adults + flow.children + flow.infants}{" "}
+        {flow.adults + flow.children + flow.infants === 1 ? "podróżny" : "podróżnych"}
       </p>
 
-      {notice && (
-        <div className="mt-4 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">{notice}</div>
-      )}
-
       {status === "error" ? (
-        <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6 text-center">
-          <p className="text-sm text-neutral-700">{notice}</p>
-          <button onClick={() => router.push("/loty/wyniki")} className="mt-4 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
-            Wróć do wyników
+        <div className="mt-6 rounded-lg border border-line bg-surface-raised p-6 text-center">
+          <p className="text-sm text-ink">{notice}</p>
+          <button
+            onClick={() => router.push("/loty/wyniki")}
+            className="mt-4 inline-flex h-11 items-center rounded-md bg-brand px-5 font-semibold text-white transition hover:opacity-90 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+          >
+            <span className="text-sm">Wróć do wyników</span>
           </button>
         </div>
       ) : prebook ? (
         <div className="mt-6 space-y-4">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm font-semibold text-neutral-700">Do zapłaty</span>
-              <span className="text-2xl font-bold text-emerald-700">{fmtMoneyPln(prebook.amount, prebook.currency)}</span>
+          <div className="rounded-lg border border-line bg-surface-raised p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-semibold text-ink">Do zapłaty</span>
+              <span className="text-2xl font-bold text-accent">
+                {formatFlightPriceExact(prebook.amount, prebook.currency)}
+              </span>
             </div>
-            <p className="mt-1 text-[11px] text-neutral-500">
-              Bezpieczna, szyfrowana płatność. Obciążenie karty może widnieć pod nazwą operatora płatności (NUITEE TRAVEL) —
-              to merchant of record obsługujący rezerwację.
+            <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-muted">
+              <ShieldCheck aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" strokeWidth={2} />
+              <span>
+                Kwota potwierdzona po stronie serwera — zapłacisz dokładnie tyle. Obciążenie karty może widnieć pod nazwą
+                operatora płatności (NUITEE TRAVEL), który jest merchant of record obsługującym tę rezerwację.
+              </span>
             </p>
           </div>
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+          <div className="rounded-lg border border-line bg-surface-raised p-5">
             <PaymentSlot
               prebook={prebook}
               returnBaseUrl={typeof window !== "undefined" ? window.location.origin : ""}
               returnPath="/loty/platnosc/return"
-              submitText={`Zapłać ${fmtMoneyPln(prebook.amount, prebook.currency)}`}
+              submitText={`Zapłać ${formatFlightPriceExact(prebook.amount, prebook.currency)}`}
               onMountFail={() => {
                 setStatus("error");
                 setNotice("Nie udało się załadować formularza płatności. Odśwież stronę lub spróbuj ponownie.");
+                track("flight_payment_error", { code: "widget_mount_failed" });
               }}
             />
           </div>
+          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-ink-muted">
+            <Lock aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
+            Szyfrowane połączenie · Nie przechowujemy danych karty
+          </p>
         </div>
       ) : null}
     </main>

@@ -9,6 +9,7 @@
 // brak — ikona samolotu. Czysty, reużywalny komponent (wyniki, szczegóły, mail).
 
 import { useState } from "react";
+import { Plane } from "lucide-react";
 
 interface Props {
   /** carrier.marketingLogo z LiteAPI. */
@@ -34,9 +35,12 @@ export function AirlineLogo({ logoUrl, code, name, size = 24, className = "" }: 
         aria-label={label}
         title={label}
         style={{ width: size, height: size }}
-        className={`grid shrink-0 place-items-center rounded bg-emerald-50 text-[10px] font-bold leading-none text-emerald-700 ${className}`}
+        className={`grid shrink-0 place-items-center rounded-sm bg-brand-soft text-[10px] font-bold leading-none text-brand-strong ${className}`}
       >
-        {badge || "✈"}
+        {/* Bez emoji: znak samolotu renderuje font systemowy, więc wygląda
+            inaczej na każdej platformie i nie da się go zaprojektować.
+            Ikona z Lucide jest tym samym kształtem wszędzie. */}
+        {badge || <Plane aria-hidden style={{ width: size * 0.6, height: size * 0.6 }} strokeWidth={2} />}
       </span>
     );
   }
@@ -53,7 +57,7 @@ export function AirlineLogo({ logoUrl, code, name, size = 24, className = "" }: 
       decoding="async"
       onError={() => setFailed(true)}
       style={{ width: size, height: size }}
-      className={`shrink-0 rounded bg-white object-contain ${className}`}
+      className={`shrink-0 rounded bg-surface-raised object-contain ${className}`}
     />
   );
 }

@@ -17,6 +17,7 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { notifyCritical } from "@/lib/alerting/notify";
 import { prebookFlight, toFlightApiError } from "@/lib/flights/client";
+import { priceChanged } from "@/lib/flights/money";
 import { FlightPrebookInputSchema } from "@/lib/flights/types";
 import {
   FLIGHT_SESSION_TTL_SECONDS,
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
     bookingStatus: "intent",
     passengerData: maskedPassengers,
     contactData: { ...b.contact },
+    itinerary: b.itinerary,
     createdAt: now,
     updatedAt: now,
   };
@@ -127,15 +129,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 3b. BRAMKA KWOTY — bez niej nie ma sesji płatności.
+    //
+    // Prebook zwraca kwotę locka; to ona obciąży kartę (PaymentIntent jest
+    // związany z `secretKey` po stronie LiteAPI, front nie ma na nią wpływu).
+    // Ale ZGODA użytkownika dotyczyła kwoty z poprzedniego kroku. Jeśli te dwie
+    // liczby się różnią, jedyne uczciwe zachowanie to NIE ODDAWAĆ `secretKey`
+    // i odesłać frontowi obie kwoty do potwierdzenia.
+    //
+    // Brak ceny w odpowiedzi traktujemy tak samo twardo: skoro nie wiemy, ile
+    // zejdzie z karty, nie wolno nam otworzyć płatności. (Kontrakt zmierzony
+    // w Fazie 0 — `docs/liteapi-flights-sample-prebook.json` — zawsze niesie
+    // `price` i `currency`, więc ich brak to sygnał awarii, nie wariant.)
+    if (typeof pre.price !== "number" || !Number.isFinite(pre.price)) {
+      console.error(`[flights][prebook][CRITICAL] prebook bez ceny sid=${sessionId} prebookId=${pre.prebookId}`);
+      return NextResponse.json(
+        { error: "prebook_no_price", message: "Nie udało się potwierdzić kwoty rezerwacji. Spróbuj ponownie." },
+        { status: 502 },
+      );
+    }
+    const lockedCurrency = (pre.currency ?? b.acceptedCurrency).toUpperCase();
+    const currencyMismatch = lockedCurrency !== b.acceptedCurrency;
+    const amountMismatch = priceChanged(pre.price, b.acceptedTotal);
+
     // 4. Zapis prebookId + transactionId ZANIM cokolwiek wróci. secretKey NIE do storage.
+    //    Zapisujemy TAKŻE przy rozjeździe kwoty — prebook u dostawcy istnieje,
+    //    więc rekord musi istnieć u nas (RULE 6: nigdy po cichu nie gubimy
+    //    stanu, nawet gdy ścieżka kończy się błędem dla użytkownika).
     const rec: FlightBookingRecord = {
       ...intent,
       prebookId: pre.prebookId,
       transactionId: pre.transactionId,
       bookingStatus: "prebooked",
       price: pre.price,
-      currency: pre.currency,
-      verifiedOfferSnapshot: { total: pre.price, currency: pre.currency, verifiedAt: Date.now() },
+      currency: lockedCurrency,
+      acceptedTotal: b.acceptedTotal,
+      acceptedCurrency: b.acceptedCurrency,
+      priceGatePassed: !amountMismatch && !currencyMismatch,
+      verifiedOfferSnapshot: { total: pre.price, currency: lockedCurrency, verifiedAt: Date.now() },
       updatedAt: Date.now(),
     };
     try {
@@ -160,6 +191,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rozjazd kwoty/waluty → 409 BEZ `secretKey`. Front pokazuje modal z obiema
+    // liczbami; po akceptacji wysyła prebook ponownie z `acceptedTotal` równym
+    // nowej kwocie i dostaje świeżą sesję płatności. Ten prebook zostaje
+    // porzucony (lock taryfy wygasa sam) — świadomy koszt: lepiej zmarnować
+    // lock u dostawcy niż obciążyć kartę kwotą, której klient nie widział.
+    if (currencyMismatch) {
+      console.warn(
+        `[flights][prebook] CURRENCY_MISMATCH sid=${sessionId} accepted=${b.acceptedCurrency} locked=${lockedCurrency}`,
+      );
+      return NextResponse.json(
+        {
+          error: "CURRENCY_MISMATCH",
+          message: "Rezerwacja wróciła w innej walucie niż pokazana. Rozpocznij rezerwację od nowa.",
+          acceptedCurrency: b.acceptedCurrency,
+          lockedCurrency,
+        },
+        { status: 409 },
+      );
+    }
+    if (amountMismatch) {
+      console.warn(
+        `[flights][prebook] PRICE_CHANGED sid=${sessionId} accepted=${b.acceptedTotal} locked=${pre.price}`,
+      );
+      return NextResponse.json(
+        {
+          error: "PRICE_CHANGED",
+          message: "Cena lotu zmieniła się przy blokowaniu miejsc.",
+          acceptedTotal: b.acceptedTotal,
+          lockedTotal: pre.price,
+          currency: lockedCurrency,
+        },
+        { status: 409 },
+      );
+    }
+
     const widgetEnv: "live" | "sandbox" =
       pre.sandbox === false ? "live" : pre.sandbox === true ? "sandbox" : getLiteApiWidgetEnv();
 
@@ -168,7 +234,7 @@ export async function POST(request: NextRequest) {
       secretKey: pre.secretKey, // tylko do frontu (widget); transactionId zostaje serwerowo
       widgetEnv,
       price: pre.price,
-      currency: pre.currency,
+      currency: lockedCurrency,
       paymentTypes: pre.paymentTypes,
       expiresAt: new Date(now + FLIGHT_SESSION_TTL_SECONDS * 1000).toISOString(),
     };

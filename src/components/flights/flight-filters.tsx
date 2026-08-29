@@ -5,7 +5,8 @@
 // sekcje, które da się zastosować na danych (data-driven faceting). Używany w
 // sidebarze (desktop) i w drawerze (mobile) — ten sam komponent.
 
-import { fmtDuration, fmtMoneyPln } from "@/lib/flights/display";
+import { fmtDuration } from "@/lib/flights/display";
+import { formatFlightPrice } from "@/lib/flights/money";
 import { lookupAirport } from "@/lib/flights/airports";
 import { AirlineLogo } from "@/components/flights/airline-logo";
 import {
@@ -29,6 +30,9 @@ interface Props {
   filters: FlightFilters;
   onChange: (next: FlightFilters) => void;
   onClear: () => void;
+  /** Arkusz mobilny ma własny nagłówek z przyciskiem zamknięcia — bez tego
+   *  słowo „Filtry" pojawiało się dwa razy jedno pod drugim. */
+  hideHeading?: boolean;
 }
 
 function toggle<T>(arr: T[], value: T): T[] {
@@ -37,8 +41,8 @@ function toggle<T>(arr: T[], value: T): T[] {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-neutral-100 py-4 first:border-t-0 first:pt-0">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-500">{title}</h3>
+    <div className="border-t border-line py-4 first:border-t-0 first:pt-0">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-ink-muted">{title}</h3>
       <div className="mt-2.5 space-y-2">{children}</div>
     </div>
   );
@@ -46,21 +50,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Check({ checked, onChange, label, count, icon }: { checked: boolean; onChange: () => void; label: string; count?: number; icon?: React.ReactNode }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 text-sm text-neutral-700">
+    <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-ink">
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="h-4 w-4 shrink-0 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
+        className="h-4 w-4 shrink-0 rounded border-line text-brand focus:ring-brand"
       />
       {icon}
       <span className="flex-1 truncate">{label}</span>
-      {typeof count === "number" && <span className="text-xs tabular-nums text-neutral-400">{count}</span>}
+      {typeof count === "number" && <span className="text-xs tabular-nums text-ink-muted">{count}</span>}
     </label>
   );
 }
 
-export function FlightFiltersPanel({ facets, filters, onChange, onClear }: Props) {
+export function FlightFiltersPanel({ facets, filters, onChange, onClear, hideHeading = false }: Props) {
   const set = (patch: Partial<FlightFilters>) => onChange({ ...filters, ...patch });
   const showAirlines = facets.airlines.length > 1;
   const showOriginAirports = facets.originAirports.length > 1;
@@ -70,14 +74,20 @@ export function FlightFiltersPanel({ facets, filters, onChange, onClear }: Props
 
   return (
     <div className="text-sm">
-      <div className="flex items-center justify-between pb-3">
-        <h2 className="text-sm font-bold text-neutral-900">Filtry</h2>
-        {hasActiveFilters(filters) && (
-          <button type="button" onClick={onClear} className="text-xs font-semibold text-emerald-700 hover:underline">
-            Wyczyść filtry
-          </button>
-        )}
-      </div>
+      {(!hideHeading || hasActiveFilters(filters)) && (
+        <div className="flex items-center justify-between pb-3">
+          {hideHeading ? <span /> : <h2 className="text-sm font-bold text-ink">Filtry</h2>}
+          {hasActiveFilters(filters) && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="inline-flex h-8 items-center rounded-sm px-2 text-xs font-semibold text-brand transition hover:bg-brand-soft active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
+            >
+              Wyczyść wszystko
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Przesiadki */}
       {facets.stops.length > 0 && (
@@ -104,11 +114,11 @@ export function FlightFiltersPanel({ facets, filters, onChange, onClear }: Props
             step={10}
             value={filters.maxPrice ?? facets.priceMax}
             onChange={(e) => set({ maxPrice: Number(e.target.value) >= facets.priceMax ? null : Number(e.target.value) })}
-            className="w-full accent-emerald-600"
+            className="w-full accent-[var(--brand)]"
             aria-label="Cena maksymalna"
           />
-          <p className="text-xs text-neutral-500">
-            do <span className="font-semibold text-neutral-800">{fmtMoneyPln(filters.maxPrice ?? facets.priceMax, "PLN")}</span>
+          <p className="text-xs text-ink-muted">
+            do <span className="font-semibold text-ink">{formatFlightPrice(filters.maxPrice ?? facets.priceMax, "PLN")}</span>
           </p>
         </Section>
       )}
@@ -159,11 +169,11 @@ export function FlightFiltersPanel({ facets, filters, onChange, onClear }: Props
             step={15}
             value={filters.maxDuration ?? facets.durationMax}
             onChange={(e) => set({ maxDuration: Number(e.target.value) >= facets.durationMax ? null : Number(e.target.value) })}
-            className="w-full accent-emerald-600"
+            className="w-full accent-[var(--brand)]"
             aria-label="Maksymalny czas podróży"
           />
-          <p className="text-xs text-neutral-500">
-            do <span className="font-semibold text-neutral-800">{fmtDuration(filters.maxDuration ?? facets.durationMax)}</span>
+          <p className="text-xs text-ink-muted">
+            do <span className="font-semibold text-ink">{fmtDuration(filters.maxDuration ?? facets.durationMax)}</span>
           </p>
         </Section>
       )}

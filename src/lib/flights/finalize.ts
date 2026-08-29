@@ -12,7 +12,11 @@
 // BEZPOŚREDNIO (in-process, ta sama deployment) — zero self-fetchu.
 
 import { notifyCritical } from "@/lib/alerting/notify";
-import { sendFlightConfirmation, sendFlightManualReviewAlert } from "@/lib/email/send-flight-alerts";
+import {
+  flightConfirmationInputFromSession,
+  sendFlightConfirmation,
+  sendFlightManualReviewAlert,
+} from "@/lib/email/send-flight-alerts";
 import { bookFlight, extractBookingId, toFlightApiError } from "@/lib/flights/client";
 import {
   getFlightSession,
@@ -81,6 +85,22 @@ export async function finalizeFlightBooking(sessionId: string): Promise<Finalize
   if (!session.prebookId || !session.transactionId) {
     return { status: 409, body: { error: "session_incomplete", message: "Brak danych prebooka — rozpocznij rezerwację od nowa." } };
   }
+  // Bramka kwoty (2026-08-29). Sesja, w której cena locka rozjechała się z ceną
+  // zaakceptowaną przez klienta, NIGDY nie dostała `secretKey`, więc nie mogła
+  // zostać opłacona. Gdyby ktoś wszedł na `/loty/platnosc/return?sid=…` z takim
+  // identyfikatorem (a klient go zna — jest w jego własnym URL-u powrotu),
+  // dotychczasowy kod oznaczyłby sesję jako `paid` i poszedł bookować.
+  // `undefined` przepuszczamy: to sesje sprzed wprowadzenia flagi.
+  if (session.priceGatePassed === false) {
+    console.warn(`[flights][finalize] odmowa: bramka kwoty nie przeszła sid=${sessionId}`);
+    return {
+      status: 409,
+      body: {
+        error: "price_not_confirmed",
+        message: "Cena tej rezerwacji nie została potwierdzona. Rozpocznij rezerwację od nowa.",
+      },
+    };
+  }
 
   // Płatność uznajemy za wykonaną (wołane PO sukcesie widgetu). Oznacz
   // paymentStatus=paid + bookingStatus=booking PRZED próbą — od tego momentu
@@ -121,14 +141,13 @@ export async function finalizeFlightBooking(sessionId: string): Promise<Finalize
       });
     }
     if (shouldSendMail) {
-      sendFlightConfirmation({
+      const mail = flightConfirmationInputFromSession(session, {
         bookingId,
-        to: session.contactData!.email,
         pnr: facts.pnr,
+        eTicketNumbers: facts.eTicketNumbers,
         ticketingPending: facts.ticketingStatus !== "ticketed",
-        price: session.price,
-        currency: session.currency,
-      }).catch(() => {});
+      });
+      if (mail) sendFlightConfirmation(mail).catch(() => {});
     }
 
     return { status: 200, body: { bookingId, bookingStatus, ticketingStatus: facts.ticketingStatus, pnr: facts.pnr } };

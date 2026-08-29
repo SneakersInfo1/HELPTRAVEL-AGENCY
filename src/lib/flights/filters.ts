@@ -34,15 +34,27 @@ export const EMPTY_FILTERS: FlightFilters = {
 };
 
 export function hasActiveFilters(f: FlightFilters): boolean {
-  return (
-    f.stops.length > 0 ||
-    f.airlines.length > 0 ||
-    f.departBuckets.length > 0 ||
-    f.originAirports.length > 0 ||
-    f.baggage.length > 0 ||
-    f.maxDuration !== null ||
-    f.maxPrice !== null
-  );
+  return countActiveFilters(f) > 0;
+}
+
+/**
+ * Ile filtrów jest AKTYWNYCH — do plakietki przy przycisku „Filtry" na mobile.
+ *
+ * Liczymy KATEGORIE, nie zaznaczenia: „2 linie lotnicze + bezpośrednie" to dla
+ * użytkownika dwa filtry, a nie trzy. Suwaki liczą się po jednym, gdy zeszły
+ * z wartości domyślnej. Bez tej liczby jedynym sygnałem, że lista jest zawężona,
+ * była kropka — nie dało się z niej odczytać, ile trzeba cofnąć.
+ */
+export function countActiveFilters(f: FlightFilters): number {
+  let n = 0;
+  if (f.stops.length > 0) n += 1;
+  if (f.airlines.length > 0) n += 1;
+  if (f.departBuckets.length > 0) n += 1;
+  if (f.originAirports.length > 0) n += 1;
+  if (f.baggage.length > 0) n += 1;
+  if (f.maxDuration !== null) n += 1;
+  if (f.maxPrice !== null) n += 1;
+  return n;
 }
 
 export const TIME_BUCKETS: { key: TimeBucket; label: string; range: string }[] = [

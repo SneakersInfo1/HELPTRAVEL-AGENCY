@@ -156,6 +156,26 @@ export function ConciergeLauncher() {
   // (zweryfikowane 375px, 2026-07-11). Pasek znika na lg → wracamy do bottom-6.
   const isResultsRoute = pathNoLocale.startsWith("/hotele/szukaj") || pathNoLocale.startsWith("/loty/wyniki");
   const lifted = compact && !isResultsRoute;
+
+  // ── LEJEK LOTÓW: dymka NIE MA (Flights V2, 2026-08-29) ────────────────────
+  //
+  // Zmierzone na 390 px, `/loty/dodatki`: dymek (fixed, 52×52 w prawym dolnym
+  // rogu, z-40) siedział dokładnie na dopłacie „+862,00 zł" przy taryfie Smart.
+  // To nie jest przypadek tej jednej trasy — w lejku lotów PRAWY DOLNY RÓG jest
+  // zajęty przez ceny i akcje na każdym kroku: kolumna cen taryf, przycisk
+  // „Wybierz" na karcie oferty, sticky pasek „kwota + Dalej". Element pływający
+  // w tym rogu MUSI coś z tego zasłonić.
+  //
+  // Podnoszenie go wyżej tylko przesuwa problem na inny wiersz listy, więc
+  // rozstrzygamy to na poziomie produktu, a nie pikseli: konsjerż jest
+  // narzędziem DOBORU wyjazdu, a lejek lotów jest ścieżką ZAKUPU. Kto tu jest,
+  // już wybrał trasę i termin. Dokładnie z tego powodu `QuickSearchLauncher`
+  // jest wyłączony na `/loty/*` od początku — to jest ta sama decyzja,
+  // domknięta dla drugiego pływającego elementu.
+  //
+  // Poza lotami NIC się nie zmienia: homepage, hotele i strony treści mają
+  // dymek jak dotąd.
+  const isFlightFunnel = pathNoLocale === "/loty" || pathNoLocale.startsWith("/loty/");
   // Server snapshot = true (ukryty): SSR nigdy nie renderuje teasera, więc
   // hydracja jest spójna; klientowy snapshot wchodzi zaraz po niej.
   const teaserDismissed = useSyncExternalStore(subscribeTeaser, readTeaserDismissed, () => true);
@@ -408,7 +428,7 @@ export function ConciergeLauncher() {
     }
   };
 
-  if (!ENABLED) return null;
+  if (!ENABLED || isFlightFunnel) return null;
 
   return (
     <>

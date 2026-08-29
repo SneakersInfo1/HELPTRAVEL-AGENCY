@@ -30,7 +30,12 @@ import {
   verifyWebhookAuthToken,
 } from "@/lib/liteapi";
 import { notifyCritical, notifyWarning } from "@/lib/alerting/notify";
-import { sendFlightConfirmation, sendFlightManualReviewAlert } from "@/lib/email/send-flight-alerts";
+import {
+  flightConfirmationInputFromSession,
+  sendFlightCancellation,
+  sendFlightConfirmation,
+  sendFlightManualReviewAlert,
+} from "@/lib/email/send-flight-alerts";
 import { getFlightBooking } from "@/lib/flights/client";
 import {
   getFlightSession,
@@ -192,7 +197,13 @@ export async function POST(request: NextRequest) {
       await saveFlightSession(sessionId, { ...session, bookingId: effectiveBookingId, bookingStatus: "confirmed", paymentStatus: "paid", ticketingStatus: ticketing, pnr: live?.pnr ?? session.pnr, eTicketNumbers: live?.eTickets ?? session.eTicketNumbers, confirmationSent: session.confirmationSent || sendMail, updatedAt: Date.now() });
       await saveFlightCompleted({ bookingId: effectiveBookingId, sessionId, status: "CONFIRMED", pnr: live?.pnr ?? session.pnr, eTicketNumbers: live?.eTickets ?? session.eTicketNumbers, ticketingStatus: ticketing, price: session.price, currency: session.currency, createdAt: Date.now() });
       if (sendMail) {
-        sendFlightConfirmation({ bookingId: effectiveBookingId, to: session.contactData!.email, pnr: live?.pnr ?? session.pnr, ticketingPending: ticketing !== "ticketed", price: session.price, currency: session.currency }).catch(() => {});
+        const mail = flightConfirmationInputFromSession(session, {
+          bookingId: effectiveBookingId,
+          pnr: live?.pnr ?? session.pnr,
+          eTicketNumbers: live?.eTickets ?? session.eTicketNumbers,
+          ticketingPending: ticketing !== "ticketed",
+        });
+        if (mail) sendFlightConfirmation(mail).catch(() => {});
       }
       break;
     }
@@ -218,8 +229,17 @@ export async function POST(request: NextRequest) {
     case "flight.book.cancelled": {
       await saveFlightSession(sessionId, { ...session, bookingStatus: "cancelled", updatedAt: Date.now() });
       notifyWarning({ source: "flights-webhook", title: "Flight booking cancelled", body: "Rezerwacja lotu została anulowana. Zweryfikuj, czy zgodne z prośbą klienta.", fields: { sessionId, bookingId: effectiveBookingId } }).catch(() => {});
+      // Mail o ANULOWANIU, nie potwierdzenie. Do 2026-08-29 leciał tu
+      // `sendFlightConfirmation`, czyli klient z anulowanym lotem dostawał
+      // wiadomość „Rezerwacja lotu potwierdzona".
       if (session.contactData?.email) {
-        sendFlightConfirmation({ bookingId: effectiveBookingId, to: session.contactData.email, ticketingPending: false, price: session.price, currency: session.currency }).catch(() => {});
+        sendFlightCancellation({
+          bookingId: effectiveBookingId,
+          to: session.contactData.email,
+          pnr: session.pnr,
+          price: session.price,
+          currency: session.currency,
+        }).catch(() => {});
       }
       break;
     }

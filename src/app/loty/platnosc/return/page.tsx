@@ -13,6 +13,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { finalizeFlightBooking } from "@/lib/flights/finalize";
+import { FLIGHT_SHELL_NARROW } from "@/lib/flights/layout";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -30,7 +31,7 @@ export default async function FlightReturnPage({ searchParams }: { searchParams:
   if (!sid) {
     return (
       <Shell title="Brak identyfikatora sesji">
-        <p className="text-sm text-neutral-600">Nie rozpoznaliśmy sesji płatności. Jeśli pieniądze zostały pobrane, napisz do nas: {SUPPORT_EMAIL}.</p>
+        <p className="text-sm text-ink-muted">Nie rozpoznaliśmy sesji płatności. Jeśli pieniądze zostały pobrane, napisz do nas: {SUPPORT_EMAIL}.</p>
       </Shell>
     );
   }
@@ -48,7 +49,7 @@ export default async function FlightReturnPage({ searchParams }: { searchParams:
     // jeszcze oznaczony jako paid, więc uczciwy komunikat + kontakt.
     return (
       <Shell title="Problem z finalizacją">
-        <p className="text-sm text-neutral-600">Wystąpił problem techniczny. Jeśli płatność przeszła, skontaktujemy się z Tobą. Możesz też napisać: {SUPPORT_EMAIL}.</p>
+        <p className="text-sm text-ink-muted">Wystąpił problem techniczny. Jeśli płatność przeszła, skontaktujemy się z Tobą. Możesz też napisać: {SUPPORT_EMAIL}.</p>
       </Shell>
     );
   }
@@ -62,10 +63,10 @@ export default async function FlightReturnPage({ searchParams }: { searchParams:
   if (status === 202 || body.bookingStatus === "manual_review") {
     return (
       <Shell title="Rezerwacja w weryfikacji">
-        <p className="text-sm text-neutral-700">
+        <p className="text-sm text-ink">
           Płatność została odnotowana, ale rezerwacja wymaga ręcznej weryfikacji. Skontaktujemy się z Tobą jak najszybciej.
         </p>
-        <p className="mt-2 text-xs text-neutral-500">W razie pytań: {SUPPORT_EMAIL}.</p>
+        <p className="mt-2 text-xs text-ink-muted">W razie pytań: {SUPPORT_EMAIL}.</p>
       </Shell>
     );
   }
@@ -73,10 +74,10 @@ export default async function FlightReturnPage({ searchParams }: { searchParams:
   // Inny błąd.
   return (
     <Shell title="Nie udało się sfinalizować rezerwacji">
-      <p className="text-sm text-neutral-700">{body.message || "Spróbuj ponownie. Jeśli płatność została pobrana, napisz do nas."}</p>
+      <p className="text-sm text-ink">{body.message || "Spróbuj ponownie. Jeśli płatność została pobrana, napisz do nas."}</p>
       <div className="mt-4 flex gap-3">
-        <Link href="/loty/platnosc" className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Wróć do płatności</Link>
-        <a href={`mailto:${SUPPORT_EMAIL}`} className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">Napisz do nas</a>
+        <Link href="/loty/platnosc" className="inline-flex h-11 items-center rounded-md bg-brand px-4 font-semibold transition hover:opacity-90"><span className="text-sm text-white">Wróć do płatności</span></Link>
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex h-11 items-center rounded-md border border-line px-4 font-semibold transition hover:bg-surface-sunken"><span className="text-sm text-ink">Napisz do nas</span></a>
       </div>
     </Shell>
   );
@@ -84,9 +85,9 @@ export default async function FlightReturnPage({ searchParams }: { searchParams:
 
 function Shell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <main className="mx-auto max-w-xl px-4 py-12">
-      <div className="rounded-2xl border border-neutral-200 bg-white p-6">
-        <h1 className="text-xl font-bold text-neutral-900">{title}</h1>
+    <main className={`${FLIGHT_SHELL_NARROW} py-12`}>
+      <div className="rounded-lg border border-line bg-surface-raised p-6">
+        <h1 className="text-xl font-bold text-ink">{title}</h1>
         <div className="mt-3">{children}</div>
       </div>
     </main>

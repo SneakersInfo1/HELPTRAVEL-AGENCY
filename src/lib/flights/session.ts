@@ -14,6 +14,8 @@
 
 import { Redis } from "@upstash/redis";
 
+import type { FlightItinerarySnapshot } from "./types";
+
 const KEY_VERSION = "v1";
 // 24h — Payment SDK + bankowe SCA potrafią trwać >30 min (patrz analogiczny
 // komentarz w booking/session.ts). LiteAPI ma własny, krótszy rate-lock, więc
@@ -135,8 +137,34 @@ export interface FlightBookingRecord {
   manualReviewReason?: string;
   /** Strażnik anty-duplikat maila potwierdzającego (book route ↔ webhook). */
   confirmationSent?: boolean;
+  /** Kwota locka z prebooka — TO jest kwota, którą obciąży karta. */
   price?: number;
   currency?: string;
+  /**
+   * Kwota, którą użytkownik zaakceptował na kroku poprzedzającym prebook.
+   * Trzymana obok `price` NIE dla wyświetlania, tylko jako ślad audytowy:
+   * przy sporze da się odtworzyć, co klient widział, a co zablokował dostawca.
+   */
+  acceptedTotal?: number;
+  acceptedCurrency?: string;
+  /**
+   * Trasa + taryfa do maila i strony potwierdzenia. Dane PREZENTACYJNE od
+   * klienta — nigdy nie wpływają na cenę ani na booking (patrz
+   * `FlightItinerarySnapshotSchema`). Bez nich mail potwierdzający nie miał
+   * czym wypełnić wymogów briefu §11 (trasa, daty, lotniska, taryfa, bagaż).
+   */
+  itinerary?: FlightItinerarySnapshot;
+  /**
+   * `true` = kwota i waluta locka zgadzają się z tym, co zaakceptował klient.
+   *
+   * Tylko taka sesja może przejść przez `finalizeFlightBooking`. Gdy bramka
+   * nie przeszła, `secretKey` nigdy nie opuścił serwera, więc płatności nie
+   * było — a mimo to sesja istnieje w Redis (prebook u dostawcy powstał).
+   * Bez tej flagi wystarczyłoby wejść na `/loty/platnosc/return?sid=…` z
+   * własnym, znanym sobie identyfikatorem, żeby oznaczyć taką sesję jako
+   * opłaconą i wywołać booking, którego nikt nie opłacił.
+   */
+  priceGatePassed?: boolean;
   createdAt: number;
   updatedAt: number;
 }

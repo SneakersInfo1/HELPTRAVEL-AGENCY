@@ -7,6 +7,8 @@
 
 import type { Metadata } from "next";
 
+import { FLIGHT_SHELL_NARROW, FLIGHT_STICKY_TOP } from "@/lib/flights/layout";
+
 import { FlightResults } from "./_components/flight-results";
 import { FlightSearchBar } from "./_components/flight-search-bar";
 
@@ -52,9 +54,9 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
 
   if (!valid) {
     return (
-      <main className="mx-auto min-h-[60vh] max-w-3xl px-4 py-12">
-        <h1 className="text-2xl font-bold text-neutral-900">Wyniki lotów</h1>
-        <p className="mt-4 text-sm text-neutral-600">
+      <main className={`${FLIGHT_SHELL_NARROW} min-h-[60vh] py-12`}>
+        <h1 className="text-2xl font-bold text-ink">Wyniki lotów</h1>
+        <p className="mt-4 text-sm text-ink-muted">
           Brak poprawnych parametrów wyszukiwania. Wróć na stronę główną i wybierz lot.
         </p>
       </main>
@@ -76,8 +78,10 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
   return (
     <>
       {/* Pasek edycji wyszukiwania — sticky pod headerem, jak na hotelach.
-          Pozwala zmienić kierunek/daty bez wracania na homepage. */}
-      <div className="sticky top-[72px] z-20 shadow-sm sm:top-[84px]">
+          Pozwala zmienić kierunek/daty bez wracania na homepage.
+          Offset z `FLIGHT_STICKY_TOP`, nie z palca: header lotów jest teraz
+          pasem bez `mt-2`, więc stare `top-[72px]` zostawiało szczelinę. */}
+      <div className={`sticky ${FLIGHT_STICKY_TOP} z-20 shadow-sm`}>
         <FlightSearchBar
           key={`sb-${searchKey}`}
           origins={origins}

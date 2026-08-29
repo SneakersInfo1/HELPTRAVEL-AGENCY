@@ -96,6 +96,39 @@ export type FlightContact = z.infer<typeof FlightContactSchema>;
 
 // ── WEJŚCIE: prebook / verify (z naszego API) ────────────────────────────────
 
+/**
+ * Migawka trasy do MAILA I POTWIERDZENIA — dane wyłącznie do wyświetlenia.
+ *
+ * Pochodzi od klienta (z `flow.offer`), więc CELOWO nie dotyka niczego, co ma
+ * znaczenie finansowe ani rezerwacyjne: cena idzie z prebooka, booking z
+ * `prebookId`. Gdyby ktoś podmienił te pola, zmieni wyłącznie treść maila,
+ * który dostanie na własny adres. Alternatywą byłoby parsowanie
+ * `prebook.booking.journey` od dostawcy, ale jego kształt nie jest w tym
+ * projekcie zmierzony (próbka z Fazy 0 opisuje go jako „object"), a zgadywanie
+ * kształtu na ścieżce płatności jest gorsze niż jawnie oznaczone dane
+ * prezentacyjne.
+ */
+export const FlightItinerarySnapshotSchema = z.object({
+  legs: z
+    .array(
+      z.object({
+        direction: z.enum(["OUTBOUND", "INBOUND"]),
+        originCode: IATA,
+        destinationCode: IATA,
+        departureTime: z.string().max(40),
+        arrivalTime: z.string().max(40),
+        durationMinutes: z.number().int().min(0).max(10_000),
+        stops: z.number().int().min(0).max(5),
+        carrier: z.string().trim().max(80),
+      }),
+    )
+    .max(2),
+  fareName: z.string().trim().max(80).optional(),
+  hasCarryOnBag: z.boolean().optional(),
+  hasCheckedBag: z.boolean().optional(),
+});
+export type FlightItinerarySnapshot = z.infer<typeof FlightItinerarySnapshotSchema>;
+
 export const FlightVerifyInputSchema = z.object({ offerId: z.string().min(8) });
 export const FlightPrebookInputSchema = z.object({
   offerId: z.string().min(8),
@@ -103,6 +136,24 @@ export const FlightPrebookInputSchema = z.object({
   passengers: z.array(FlightPassengerSchema).min(1).max(9),
   /** Daty podróży z wyszukiwania — do walidacji ważności dokumentu i snapshotu. */
   lastTravelDate: ISO_DATE.optional(),
+  /**
+   * Kwota, którą użytkownik ZOBACZYŁ I ZAAKCEPTOWAŁ na poprzednim kroku.
+   *
+   * WYMAGANE — to jest bramka zgody, nie pole opcjonalne. Prebook zwraca własną
+   * cenę locka i do 2026-08-29 front po prostu ją nadpisywał
+   * (`pasazerowie/page.tsx`: `verifiedTotal: json.price ?? …`), więc użytkownik,
+   * który zaakceptował 2 727 zł, mógł zobaczyć na płatności 2 900 zł i tyle
+   * zapłacić, nie dostawszy ani jednego komunikatu o zmianie. Serwer porównuje
+   * teraz obie liczby i przy różnicy NIE ODDAJE `secretKey`.
+   *
+   * To NIE jest źródło prawdy o kwocie — kwotę ustala prebook. To deklaracja
+   * klienta „na tyle się zgodziłem", służąca wyłącznie do wykrycia rozjazdu.
+   */
+  acceptedTotal: z.number().positive().finite(),
+  /** Waluta, w której użytkownik zaakceptował kwotę. Rozjazd = twardy błąd. */
+  acceptedCurrency: z.string().trim().toUpperCase().length(3),
+  /** Trasa do maila potwierdzającego — patrz komentarz przy schemacie. */
+  itinerary: FlightItinerarySnapshotSchema.optional(),
 });
 export type FlightPrebookInput = z.infer<typeof FlightPrebookInputSchema>;
 

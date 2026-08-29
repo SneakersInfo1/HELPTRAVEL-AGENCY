@@ -188,12 +188,55 @@ export interface TrackEventMap {
     new_price?: number;
     currency?: string;
   };
+  /**
+   * Wybór taryfy na kroku „Bagaż i taryfa" (Flights V2).
+   *
+   * Brakującego ogniwa nie dało się obejść: między `flight_select` (klik na
+   * liście) a `flight_prebook` (lock u dostawcy) leżał cały krok wyboru bagażu
+   * i nie było wiadomo, ilu ludzi na nim odpada ani KTÓRĄ taryfę wybierają.
+   * `has_checked_bag` odpowiada na pytanie warte pieniędzy: czy klient dopłaca
+   * za bagaż rejestrowany, czy leci z najtańszą.
+   */
+  fare_selected: {
+    offer_id: string;
+    fare_name?: string;
+    price?: number;
+    currency?: string;
+    has_checked_bag?: boolean;
+    has_carry_on_bag?: boolean;
+  };
   flight_passenger_form_start: {
     offer_id?: string;
+  };
+  /** Formularz pasażerów przeszedł walidację i został wysłany do prebooka. */
+  passenger_step_completed: {
+    offer_id?: string;
+    passengers?: number;
+  };
+  /**
+   * Odzyskiwanie po wygaśnięciu oferty (LiteAPI 52099/53010).
+   * `outcome` rozróżnia: zaczęte / odzyskane / nieodzyskane — bez tego nie da
+   * się powiedzieć, czy automatyczny fresh re-search w ogóle ratuje lejek.
+   */
+  flight_offer_recovery: {
+    offer_id?: string;
+    outcome: "started" | "recovered" | "failed";
   };
   flight_prebook: {
     offer_id?: string;
     price?: number;
+    currency?: string;
+  };
+  /**
+   * Kwota locka z prebooka rozjechała się z kwotą zaakceptowaną przez klienta.
+   * Osobno od `flight_verify_price_change`, bo to INNY moment i inne ryzyko:
+   * tu użytkownik jest już po formularzu, więc każdy taki przypadek kosztuje
+   * najwięcej. Rosnąca liczba = sygnał, że oferty są za stare przy prebooku.
+   */
+  flight_prebook_price_change: {
+    offer_id?: string;
+    accepted_price?: number;
+    locked_price?: number;
     currency?: string;
   };
   flight_payment_start: {

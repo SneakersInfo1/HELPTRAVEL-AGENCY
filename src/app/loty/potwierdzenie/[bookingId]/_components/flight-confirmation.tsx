@@ -1,16 +1,40 @@
 "use client";
 
-// Potwierdzenie rezerwacji lotu (Faza 3.5). Pobiera GET /api/flights/booking/
-// [bookingId] (źródło prawdy: status + ticketing odświeżane live). Pokazuje
-// status, pasażerów, PNR, e-bilety. ticketingStatus=pending → uczciwy komunikat
-// (Faza 5). Przycisk „Odśwież status" ponawia GET. `purchase` (GA4) raz na
-// potwierdzeniu (item_category:flight — odróżnialne od hoteli).
+// Potwierdzenie rezerwacji lotu. Pobiera GET /api/flights/booking/[bookingId]
+// (źródło prawdy: status + ticketing odświeżane live GET-em u dostawcy).
+//
+// ── ZMIANY Flights V2 (2026-08-29) ───────────────────────────────────────────
+//
+// TRASA NA POTWIERDZENIU. Do tej pory ekran pokazywał numer rezerwacji, status,
+// PNR, listę nazwisk i kwotę — i ANI JEDNEJ informacji o locie, który klient
+// właśnie kupił. Żadnej daty, godziny, lotniska, przewoźnika. Teraz trasa
+// przychodzi z sesji (`itinerary`) i jest pierwszą rzeczą pod statusem.
+//
+// KWOTA. `formatFlightPriceExact` — „Zapłacono" musi zgadzać się co do grosza
+// z wyciągiem z karty, a `maximumFractionDigits: 0` gubiło grosze.
+//
+// STATUS `pending_confirmation` dostał własny, uczciwy opis: „potwierdzana"
+// bez dopisku brzmiało jak awaria, a to normalny stan części taryf GDS.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { CheckCircle2, Clock, Info, RefreshCw, XCircle } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
 import { clearFlightFlow } from "@/lib/flights/flow-storage";
+import { formatFlightPriceExact } from "@/lib/flights/money";
+import { FLIGHT_SHELL_NARROW } from "@/lib/flights/layout";
+
+interface ItineraryLeg {
+  direction: "OUTBOUND" | "INBOUND";
+  originCode: string;
+  destinationCode: string;
+  departureTime: string;
+  arrivalTime: string;
+  durationMinutes: number;
+  stops: number;
+  carrier: string;
+}
 
 interface BookingData {
   bookingId: string;
@@ -21,14 +45,51 @@ interface BookingData {
   price: number | null;
   currency: string | null;
   passengers: Array<{ firstName: string; lastName: string; type: string }>;
+  itinerary: { legs: ItineraryLeg[]; fareName?: string; hasCarryOnBag?: boolean; hasCheckedBag?: boolean } | null;
 }
 
-const STATUS_LABEL: Record<string, { text: string; tone: string }> = {
-  confirmed: { text: "Rezerwacja potwierdzona", tone: "emerald" },
-  pending_confirmation: { text: "Rezerwacja w trakcie potwierdzania", tone: "amber" },
-  manual_review: { text: "Rezerwacja w weryfikacji", tone: "amber" },
-  cancelled: { text: "Rezerwacja anulowana", tone: "red" },
+const STATUS: Record<string, { text: string; note: string; tone: "ok" | "wait" | "bad" }> = {
+  confirmed: {
+    text: "Rezerwacja potwierdzona",
+    note: "Przewoźnik potwierdził miejsca. Szczegóły lotu znajdziesz poniżej i w mailu.",
+    tone: "ok",
+  },
+  pending_confirmation: {
+    text: "Rezerwacja w trakcie potwierdzania",
+    note: "Przewoźnik jeszcze nie odesłał potwierdzenia. To normalne przy części taryf — damy znać mailem, gdy tylko spłynie.",
+    tone: "wait",
+  },
+  manual_review: {
+    text: "Rezerwacja w weryfikacji",
+    note: "Płatność została odnotowana, ale rezerwacja wymaga ręcznej weryfikacji. Skontaktujemy się z Tobą jak najszybciej.",
+    tone: "wait",
+  },
+  cancelled: {
+    text: "Rezerwacja anulowana",
+    note: "Ta rezerwacja została anulowana. Jeśli to nie Ty o to prosiłeś — napisz do nas.",
+    tone: "bad",
+  },
 };
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "long" }).format(d);
+}
+function fmtTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" }).format(d);
+}
+function fmtDuration(min: number): string {
+  if (!Number.isFinite(min) || min <= 0) return "";
+  return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
+}
+function stopsLabel(stops: number): string {
+  if (stops === 0) return "bezpośredni";
+  if (stops === 1) return "1 przesiadka";
+  return `${stops} przesiadki`;
+}
 
 export function FlightConfirmation({ bookingId }: { bookingId: string }) {
   const [data, setData] = useState<BookingData | null>(null);
@@ -65,77 +126,141 @@ export function FlightConfirmation({ bookingId }: { bookingId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
 
-  const label = data ? (STATUS_LABEL[data.bookingStatus] ?? { text: "Status rezerwacji", tone: "neutral" }) : null;
+  const s = data ? (STATUS[data.bookingStatus] ?? { text: "Status rezerwacji", note: "", tone: "wait" as const }) : null;
   const toneCls =
-    label?.tone === "emerald" ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-    : label?.tone === "amber" ? "bg-amber-50 text-amber-900 border-amber-200"
-    : label?.tone === "red" ? "bg-red-50 text-red-800 border-red-200"
-    : "bg-neutral-50 text-neutral-700 border-neutral-200";
+    s?.tone === "ok"
+      ? "border-brand/30 bg-brand-soft"
+      : s?.tone === "bad"
+        ? "border-error/30 bg-error/5"
+        : "border-warning/40 bg-warning/10";
+  const StatusIcon = s?.tone === "ok" ? CheckCircle2 : s?.tone === "bad" ? XCircle : Clock;
+  const bags = data?.itinerary
+    ? [data.itinerary.hasCarryOnBag ? "podręczny" : null, data.itinerary.hasCheckedBag ? "rejestrowany" : null]
+        .filter(Boolean)
+        .join(" + ")
+    : "";
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold text-neutral-900">Twoja rezerwacja lotu</h1>
+    <main className={`${FLIGHT_SHELL_NARROW} py-8 sm:py-10`}>
+      <h1 className="text-2xl font-bold text-ink sm:text-3xl">Twoja rezerwacja lotu</h1>
 
-      {loading && !data && <p className="mt-4 text-sm text-neutral-500">Wczytywanie statusu…</p>}
-      {error && <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p>}
+      {loading && !data && <p className="mt-4 text-sm text-ink-muted">Wczytywanie statusu…</p>}
+      {error && <p className="mt-4 rounded-md bg-error/5 px-4 py-3 text-sm font-medium text-error">{error}</p>}
 
-      {data && (
+      {data && s && (
         <div className="mt-4 space-y-4">
-          <div className={`rounded-2xl border p-5 ${toneCls}`}>
-            <p className="text-lg font-bold">{label?.text}</p>
-            {data.bookingStatus === "confirmed" && (
-              <p className="mt-1 text-sm">Rezerwacja została potwierdzona. Szczegóły lotu i status biletu znajdziesz poniżej.</p>
-            )}
-            <p className="mt-1 text-sm">Numer rezerwacji: <span className="font-mono font-semibold">{data.bookingId}</span></p>
-            {data.pnr && <p className="text-sm">PNR: <span className="font-mono font-semibold">{data.pnr}</span></p>}
+          <div className={`rounded-lg border p-5 ${toneCls}`}>
+            <p className="flex items-center gap-2 text-lg font-bold text-ink">
+              <StatusIcon aria-hidden className="h-5 w-5 shrink-0" strokeWidth={2} />
+              {s.text}
+            </p>
+            {s.note && <p className="mt-1.5 text-sm text-ink">{s.note}</p>}
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink">
+              <span>
+                Numer rezerwacji: <span className="font-mono font-semibold">{data.bookingId}</span>
+              </span>
+              {data.pnr && (
+                <span>
+                  PNR: <span className="font-mono font-semibold">{data.pnr}</span>
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Ticketing pending — uczciwy komunikat (Faza 5). */}
-          {data.bookingStatus === "confirmed" && data.ticketingStatus !== "ticketed" && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Rezerwacja jest potwierdzona. Status wystawienia biletu zostanie zaktualizowany po otrzymaniu danych od przewoźnika.
+          {/* Trasa — pierwsza rzecz, której szuka człowiek na potwierdzeniu. */}
+          {data.itinerary && data.itinerary.legs.length > 0 && (
+            <div className="rounded-lg border border-line bg-surface-raised p-5">
+              <h2 className="text-sm font-bold text-ink">Twój lot</h2>
+              <div className="mt-2 divide-y divide-line">
+                {data.itinerary.legs.map((l) => (
+                  <div key={l.direction} className="py-3 first:pt-0 last:pb-0">
+                    <p className="text-xs font-bold uppercase tracking-wide text-brand">
+                      {l.direction === "OUTBOUND" ? "Wylot" : "Powrót"}
+                      <span className="ml-1.5 font-medium normal-case tracking-normal text-ink-muted">
+                        · {fmtDateTime(l.departureTime)}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-base font-bold tabular-nums text-ink">
+                      {fmtTime(l.departureTime)} {l.originCode} → {fmtTime(l.arrivalTime)} {l.destinationCode}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      {fmtDuration(l.durationMinutes)} · {stopsLabel(l.stops)}
+                      {l.carrier ? ` · ${l.carrier}` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {(data.itinerary.fareName || bags) && (
+                <p className="mt-3 border-t border-line pt-3 text-xs text-ink-muted">
+                  {data.itinerary.fareName ? `Taryfa: ${data.itinerary.fareName}` : ""}
+                  {data.itinerary.fareName && bags ? " · " : ""}
+                  {bags ? `Bagaż w cenie: ${bags}` : ""}
+                </p>
+              )}
             </div>
           )}
-          {data.bookingStatus === "manual_review" && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Płatność została odnotowana, ale rezerwacja wymaga ręcznej weryfikacji. Skontaktujemy się z Tobą jak najszybciej.
-            </div>
+
+          {/* Ticketing pending — uczciwy komunikat. */}
+          {data.bookingStatus === "confirmed" && data.ticketingStatus !== "ticketed" && (
+            <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-ink">
+              <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
+              Numer biletu (e-ticket) prześlemy mailem, gdy przewoźnik go wystawi — zwykle w ciągu kilku godzin.
+            </p>
           )}
 
           {data.eTicketNumbers.length > 0 && (
-            <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-              <h2 className="text-sm font-bold text-neutral-900">E-bilety</h2>
-              <ul className="mt-2 space-y-1 text-sm text-neutral-700">
-                {data.eTicketNumbers.map((t) => <li key={t} className="font-mono">{t}</li>)}
+            <div className="rounded-lg border border-line bg-surface-raised p-5">
+              <h2 className="text-sm font-bold text-ink">E-bilety</h2>
+              <ul className="mt-2 space-y-1 text-sm text-ink">
+                {data.eTicketNumbers.map((t) => (
+                  <li key={t} className="font-mono">{t}</li>
+                ))}
               </ul>
             </div>
           )}
 
           {data.passengers.length > 0 && (
-            <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-              <h2 className="text-sm font-bold text-neutral-900">Pasażerowie</h2>
-              <ul className="mt-2 space-y-1 text-sm text-neutral-700">
-                {data.passengers.map((p, i) => <li key={i}>{p.firstName} {p.lastName} <span className="text-neutral-400">· {p.type}</span></li>)}
+            <div className="rounded-lg border border-line bg-surface-raised p-5">
+              <h2 className="text-sm font-bold text-ink">Podróżni</h2>
+              <ul className="mt-2 space-y-1 text-sm text-ink">
+                {data.passengers.map((p, i) => (
+                  <li key={i}>
+                    {p.firstName} {p.lastName} <span className="text-ink-muted">· {p.type}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
 
           {data.price !== null && (
-            <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+            <div className="rounded-lg border border-line bg-surface-raised p-5">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm font-semibold text-neutral-700">Zapłacono</span>
-                <span className="text-xl font-bold text-emerald-700">
-                  {new Intl.NumberFormat("pl-PL", { style: "currency", currency: data.currency ?? "PLN", maximumFractionDigits: 0 }).format(data.price)}
+                <span className="text-sm font-semibold text-ink">Zapłacono</span>
+                <span className="text-xl font-bold text-accent">
+                  {formatFlightPriceExact(data.price, data.currency ?? "PLN")}
                 </span>
               </div>
+              <p className="mt-1 text-xs text-ink-muted">Cena zawiera podatki i opłaty lotniskowe.</p>
             </div>
           )}
 
           <div className="flex flex-wrap gap-3">
-            <button onClick={() => load()} disabled={loading} className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-60">
-              {loading ? "Odświeżam…" : "Odśwież status"}
+            <button
+              onClick={() => load()}
+              disabled={loading}
+              className="inline-flex h-11 items-center gap-1.5 rounded-md border border-line px-4 font-semibold text-ink transition hover:bg-surface-sunken active:scale-[0.98] disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
+            >
+              <RefreshCw aria-hidden className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} strokeWidth={2} />
+              <span className="text-sm">{loading ? "Odświeżam…" : "Odśwież status"}</span>
             </button>
-            <Link href="/" className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Strona główna</Link>
+            <Link
+              href="/"
+              className="inline-flex h-11 items-center rounded-md bg-brand px-5 font-semibold transition hover:opacity-90 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+            >
+              {/* Kolor etykiety na SPANIE: globalne `a { color: inherit }` bije
+                  `text-white` postawione na samym <a>. */}
+              <span className="text-sm text-white">Strona główna</span>
+            </Link>
           </div>
         </div>
       )}
