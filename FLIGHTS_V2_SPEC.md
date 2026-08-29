@@ -2,6 +2,7 @@
 
 **Gałąź:** `feat/flights-experience-v2` · **baza:** `origin/main` @ `76fb3ca`
 **Data audytu:** 2026-08-29 · **Autor:** sesja Claude Code (audyt + implementacja)
+**Status:** audyt zamknięty, implementacja wykonana — wyniki w sekcji 25 na końcu.
 
 Dokument powstał PRZED implementacją (wymóg §33 briefu). Każda liczba w sekcjach
 „audyt" pochodzi z pomiaru w przeglądarce (`getBoundingClientRect`,
@@ -474,3 +475,115 @@ Pozostałe znaleziska są P2/P3 i nie blokują.
 | **F** | Płatność + potwierdzenie + mail | średnie |
 | **G** | Czat, analytics, dostępność | niskie |
 | **H** | QA responsywne, testy, review | — |
+
+---
+
+## 25. WYNIKI — co faktycznie zmierzono po zmianie
+
+Metoda: `e2e/flights-shots.ts` (Playwright, ten sam skrypt dla „przed" i „po"),
+plus pomiary `getBoundingClientRect` / `elementFromPoint` w przeglądarce.
+Trasa testowa jest zawsze ta sama: WAW→BCN 20–27.09.2026, 2 dorosłych.
+
+### 25.1 Szerokość i nagłówek (desktop 1920)
+
+| Metryka | Przed | Po | Zmiana |
+|---|---:|---:|---|
+| `/loty/wyniki` — szerokość treści | 779 px | 1 720 px | **+121 %** |
+| `/loty/wyniki` — biały margines | 59,4 % ekranu | 10,4 % | **−49 pkt proc.** |
+| **Karta oferty** | **463 px** | **1 288 px** | **+178 %** |
+| `/loty/dodatki` — biały margines | 65,0 % | ~42 % (celowo węższa) | — |
+| Nagłówek — `border-radius` | 19,2 px (pastylka) | **0 px** (pas) | wymóg §4 |
+| Nagłówek — szerokość | 1 216 px | 1 905 px (pełna) | wymóg §4 |
+| Poziome przewijanie | brak | brak | bez regresji |
+
+### 25.2 Gęstość i mobile (390 × 844)
+
+| Metryka | Przed | Po | Zmiana |
+|---|---:|---:|---|
+| Wysokość karty oferty | 402 px | 309 px | **−23 %** |
+| Wysokość dokumentu wyników | 9 165 px | 7 341 px | **−20 %** |
+| Pierwsza oferta na scrollu | ~840 px | **340 px** | **−60 %** |
+| `/loty/pasazerowie` — cena widoczna od | 2 047 px scrolla | **0 px** (sticky) | wymóg §22 |
+| `/loty/pasazerowie` — CTA widoczne od | 2 579 px scrolla | **0 px** (sticky) | wymóg §22 |
+| `/loty/pasazerowie` — wysokość dokumentu | 3 728 px | 3 266 px | −12 % |
+| Elementy pływające w lejku | 2 (czat + baner) | 1 (baner zgód) | wymóg §23 |
+
+### 25.3 Ceny — co widzi użytkownik
+
+| Miejsce | Przed | Po |
+|---|---|---|
+| Karta oferty | `959 zł / os.` (dzielone przez WSZYSTKICH, w tym niemowlęta) | `1 918,34 zł` + `śr. 959 zł/os.` |
+| Wybór taryfy | `1918 zł` | `1 918,34 zł` |
+| „Razem" w checkoutcie | `1918 zł` | `1 918,34 zł` |
+| „Do zapłaty" | `1918 zł` z `sessionStorage` | `1 918,34 zł` **z serwera** |
+| „Zapłacono" | `1918 zł` | `1 918,34 zł` |
+| Mail | `1918.34 PLN` | `1 918,34 zł` |
+
+Jedna transakcja miała wcześniej **trzy różne zapisy kwoty**, a ten pokazywany
+tuż nad przyciskiem „Zapłać" był o 34 gr niższy od realnego obciążenia.
+
+### 25.4 Bramka ceny — zachowanie (testy route'owe)
+
+| Scenariusz | Wynik |
+|---|---|
+| lock == zaakceptowana | 200 + `secretKey`, `priceGatePassed:true` |
+| lock wyższy (2 727 → 2 900) | **409 `PRICE_CHANGED`, BEZ `secretKey`** |
+| lock niższy (2 727 → 2 500) | 409 — spadek też wymaga zgody |
+| różnica +1 grosz | 409 |
+| różnica < 1 grosz (szum float) | 200 — nie blokujemy na artefakcie IEEE-754 |
+| inna waluta | 409 `CURRENCY_MISMATCH` |
+| prebook bez ceny | 502 — nie otwieramy płatności na nieznaną kwotę |
+| brak `acceptedTotal` w body | 400, dostawca w ogóle nie dotknięty |
+| finalizacja sesji z niezaliczoną bramką | 409, `paymentStatus` zostaje `pending` |
+
+---
+
+## 26. Czego NIE zrobiono i dlaczego
+
+Uczciwa lista — te rzeczy są w briefie, a nie ma ich w tej gałęzi.
+
+1. **Realny test płatności i rezerwacji.** §43 zabrania prawdziwych obciążeń
+   i rezerwacji, a konto jest produkcyjne (sandbox porzucony przy Fazie 0).
+   Ścieżka `payment → book → confirmation` jest pokryta testami z mockowanym
+   dostawcą i przechwyconymi odpowiedziami, ale **nie została przejechana
+   prawdziwą kartą**. To jest największe ograniczenie tej pracy.
+2. **Rozmiary bundli per trasa.** `next build` w tej wersji (16.2.9, Turbopack)
+   nie drukuje kolumny rozmiaru dla tras, a chunki klienckie mają nazwy
+   hashowane, więc nie da się ich przypisać do `/loty/*` bez analizatora.
+   Zamiast zmyślonej liczby podaję pomiary, które mam: liczba węzłów DOM,
+   wysokość dokumentu, liczba zapytań.
+3. **Kalendarz cen / elastyczne daty.** Wymaga 7× więcej zapytań do GDS na
+   jedno wyszukiwanie. Poza zakresem i poza budżetem zapytań.
+4. **Wybór miejsc i bagaż à la carte** (`servicesAttachable`). Kontrakt
+   attach→booking wymaga potwierdzenia realną rezerwacją — patrz punkt 1.
+5. **Kontekst lotu przekazywany do czata.** §23 mówi „rozważ", a czat jest
+   w lejku lotów wyłączony (zasłaniał ceny), więc przekazywanie kontekstu
+   nie miałoby dokąd trafić.
+6. **Paleta `airport-combobox`.** Zostaje na `emerald-*`, bo TA SAMA paleta
+   stoi w homepage'owym `origin-combobox` (7 wystąpień). Ujednolicenie go
+   z tokenami rozjechałoby picker lotów z pickerem hotelowym na stronie
+   głównej — czyli pogorszyło dokładnie tę spójność, o którą chodzi.
+
+---
+
+## 27. Ryzyka, które zostają
+
+1. **Finalizacja ufa, że wywołanie strony powrotu == udana płatność.**
+   `finalizeFlightBooking` oznacza `paymentStatus:"paid"` na podstawie samego
+   wejścia na `/loty/platnosc/return?sid=…`, bez pytania dostawcy o status
+   transakcji. Bramka `priceGatePassed` zamyka wariant „sesja bez `secretKey`",
+   ale użytkownik nadal może wywołać finalizację WŁASNEJ opłaconej-nie-do-końca
+   sesji. Skutkiem jest odrzucenie przez LiteAPI (transakcja nieprzechwycona)
+   i fałszywy alert `manual_review`, a nie darmowy bilet. Domknięcie wymaga
+   zapytania o status transakcji u dostawcy — czyli kontraktu, którego nie da
+   się zweryfikować bez realnej płatności (punkt 26.1).
+2. **`itinerary` w mailu pochodzi od klienta.** Świadomie: nie dotyka ceny ani
+   rezerwacji, a alternatywą było parsowanie niezmierzonego kształtu
+   `prebook.booking.journey`. Podmiana zmieni treść maila, który podmieniający
+   dostanie na własny adres.
+3. **`confirmationSent` ustawiane PRZED wysyłką.** Nieudany mail nie zostanie
+   ponowiony przez webhook. Zachowanie odziedziczone, nie pogorszone — ale to
+   realna luka w dostarczalności.
+4. **Verify ufa `previousTotal` od klienta** przy fladze „cena się zmieniła".
+   Po dodaniu bramki prebooka nie ma to już wpływu na kwotę obciążenia; może
+   jedynie ukryć komunikat o zmianie na kroku taryfy przed samym klientem.

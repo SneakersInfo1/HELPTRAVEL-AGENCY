@@ -16,7 +16,7 @@
 //     trzeciej oferty kontrolki znikały z ekranu i nie było jak zawęzić listy,
 //   • licznik aktywnych filtrów przy przycisku „Filtry".
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SlidersHorizontal, Tag, X } from "lucide-react";
 
@@ -25,7 +25,7 @@ import { type DisplayOffer } from "@/lib/flights/display";
 import { averagePerTraveller, formatFlightPrice } from "@/lib/flights/money";
 import { saveFlightFlow } from "@/lib/flights/flow-storage";
 import { originHeaderLabel } from "@/lib/flights/airports";
-import { FLIGHT_RESULTS_GRID, FLIGHT_SHELL_WIDE, FLIGHT_STICKY_TOP } from "@/lib/flights/layout";
+import { FLIGHT_CONTROLS_STICKY_TOP, FLIGHT_RESULTS_GRID, FLIGHT_SHELL_WIDE } from "@/lib/flights/layout";
 import {
   EMPTY_FILTERS,
   SORT_OPTIONS,
@@ -71,6 +71,8 @@ export function FlightResults(props: Props) {
   const [sort, setSort] = useState<SortKey>("best");
   const [filters, setFilters] = useState<FlightFilters>(EMPTY_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
+  const filtersButtonRef = useRef<HTMLButtonElement>(null);
   // Paginacja „Pokaż więcej": 150 kart naraz to ~7000 nodów DOM i strona wysoka
   // na dziesiątki tysięcy pikseli. Sort/filtry działają na PEŁNEJ puli; tniemy
   // wyłącznie render. Zmiana sortu/filtrów wraca do pierwszej strony.
@@ -160,6 +162,29 @@ export function FlightResults(props: Props) {
   useEffect(() => {
     setShownCount(PAGE_SIZE);
   }, [filters, sort]);
+
+  // Arkusz filtrów: Escape zamyka, fokus wchodzi do środka i WRACA na przycisk,
+  // z którego wyszedł, a tło nie przewija się pod spodem. Bez tego arkusz jest
+  // pułapką dla klawiatury i czytnika ekranu — otwierasz go i nie ma wyjścia
+  // inaczej niż myszą w tło.
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    filtersButtonRef.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    drawerCloseRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDrawer();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [drawerOpen, closeDrawer]);
   const rendered = visible.slice(0, shownCount);
   const remaining = visible.length - rendered.length;
   const activeFilters = countActiveFilters(filters);
@@ -255,9 +280,16 @@ export function FlightResults(props: Props) {
           i jedynym sposobem na zawężenie listy był powrót na samą górę. */}
       {offers && offers.length > 0 && (
         <div
-          className={`sticky ${FLIGHT_STICKY_TOP} z-10 -mx-4 mt-4 flex items-center gap-2 border-b border-line bg-surface/95 px-4 py-2.5 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:static lg:z-auto lg:mx-0 lg:mt-5 lg:justify-end lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none`}
+          className={`sticky ${FLIGHT_CONTROLS_STICKY_TOP} z-10 -mx-4 mt-4 flex items-center gap-2 border-b border-line bg-surface/95 px-4 py-2 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:static lg:z-auto lg:mx-0 lg:mt-5 lg:justify-end lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none`}
         >
-          <button type="button" onClick={() => setDrawerOpen(true)} className={`${controlCls} lg:hidden`}>
+          <button
+            ref={filtersButtonRef}
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={drawerOpen}
+            className={`${controlCls} lg:hidden`}
+          >
             <SlidersHorizontal aria-hidden className="h-4 w-4" strokeWidth={2} />
             <span className="text-sm">Filtry</span>
             {activeFilters > 0 && (
@@ -379,13 +411,14 @@ export function FlightResults(props: Props) {
       {/* Drawer filtrów (mobile) */}
       {drawerOpen && facets && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Filtry lotów">
-          <div className="absolute inset-0 bg-ink/40" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute inset-0 bg-ink/40" onClick={closeDrawer} aria-hidden />
           <div className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col rounded-t-lg bg-surface-raised pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-center justify-between border-b border-line px-5 py-3">
               <h2 className="text-sm font-bold text-ink">Filtry</h2>
               <button
+                ref={drawerCloseRef}
                 type="button"
-                onClick={() => setDrawerOpen(false)}
+                onClick={closeDrawer}
                 aria-label="Zamknij filtry"
                 className="grid h-11 w-11 place-items-center rounded-full text-ink-muted transition hover:bg-surface-sunken active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
               >
@@ -404,7 +437,7 @@ export function FlightResults(props: Props) {
             <div className="border-t border-line px-5 py-3">
               <button
                 type="button"
-                onClick={() => setDrawerOpen(false)}
+                onClick={closeDrawer}
                 className="inline-flex h-12 w-full items-center justify-center rounded-md bg-brand font-bold text-white transition hover:opacity-90 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 <span className="text-sm">Pokaż {visible.length} {visible.length === 1 ? "ofertę" : "ofert"}</span>

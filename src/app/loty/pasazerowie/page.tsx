@@ -38,9 +38,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Lock } from "lucide-react";
 
 import { track } from "@/lib/analytics/track";
-import { formatFlightPrice, formatFlightPriceExact } from "@/lib/flights/money";
+import { averagePerTraveller, formatFlightPrice, formatFlightPriceExact } from "@/lib/flights/money";
 import { FLIGHT_SHELL_FORM } from "@/lib/flights/layout";
-import { averagePerTraveller } from "@/lib/flights/money";
 import { loadFlightFlow, patchFlightFlow, flowTravellers, type FlightFlow } from "@/lib/flights/flow-storage";
 import { FlightItinerarySummary } from "@/components/flights/flight-itinerary-summary";
 import { FlightPriceChangeDialog } from "@/components/flights/flight-price-change-dialog";
@@ -280,7 +279,15 @@ export default function PassengersPage() {
       el?.querySelector<HTMLElement>("input,select")?.focus({ preventScroll: true });
       return;
     }
-    void submitPrebook(flow.selectedTotal ?? 0, flow.selectedCurrency ?? "PLN", true);
+    // Bez znanej kwoty NIE RUSZAMY prebooka. `acceptedTotal` jest bramką zgody,
+    // więc wysłanie tam zera byłoby deklaracją „zgadzam się na 0 zł" — serwer
+    // odrzuciłby ją jako `invalid_body`, a użytkownik zobaczyłby techniczny
+    // komunikat zamiast prawdy: że oferta straciła cenę i trzeba wybrać nową.
+    if (typeof flow.selectedTotal !== "number" || flow.selectedTotal <= 0) {
+      setSubmitError("Nie znamy aktualnej ceny tej oferty. Wróć do wyników i wybierz lot ponownie.");
+      return;
+    }
+    void submitPrebook(flow.selectedTotal, flow.selectedCurrency ?? "PLN", true);
   }
 
   if (!flow) {
@@ -325,8 +332,13 @@ export default function PassengersPage() {
                     value={p.firstName}
                     onChange={(e) => setPaxField(i, "firstName", e.target.value)}
                     aria-invalid={Boolean(errors[`p${i}.firstName`])}
+                    aria-describedby={errors[`p${i}.firstName`] ? `err-p${i}.firstName` : undefined}
                   />
-                  {errors[`p${i}.firstName`] && <p className={errCls}>{errors[`p${i}.firstName`]}</p>}
+                  {errors[`p${i}.firstName`] && (
+                    <p id={`err-p${i}.firstName`} role="alert" className={errCls}>
+                      {errors[`p${i}.firstName`]}
+                    </p>
+                  )}
                 </div>
                 <div id={`field-p${i}.lastName`} className={fieldCls}>
                   <label className={labelCls} htmlFor={`p${i}-last`}>Nazwisko</label>
@@ -337,8 +349,13 @@ export default function PassengersPage() {
                     value={p.lastName}
                     onChange={(e) => setPaxField(i, "lastName", e.target.value)}
                     aria-invalid={Boolean(errors[`p${i}.lastName`])}
+                    aria-describedby={errors[`p${i}.lastName`] ? `err-p${i}.lastName` : undefined}
                   />
-                  {errors[`p${i}.lastName`] && <p className={errCls}>{errors[`p${i}.lastName`]}</p>}
+                  {errors[`p${i}.lastName`] && (
+                    <p id={`err-p${i}.lastName`} role="alert" className={errCls}>
+                      {errors[`p${i}.lastName`]}
+                    </p>
+                  )}
                 </div>
                 <div id={`field-p${i}.birthday`} className={fieldCls}>
                   <label className={labelCls} htmlFor={`p${i}-bday`}>Data urodzenia</label>
@@ -350,8 +367,13 @@ export default function PassengersPage() {
                     value={p.birthday}
                     onChange={(e) => setPaxField(i, "birthday", e.target.value)}
                     aria-invalid={Boolean(errors[`p${i}.birthday`])}
+                    aria-describedby={errors[`p${i}.birthday`] ? `err-p${i}.birthday` : undefined}
                   />
-                  {errors[`p${i}.birthday`] && <p className={errCls}>{errors[`p${i}.birthday`]}</p>}
+                  {errors[`p${i}.birthday`] && (
+                    <p id={`err-p${i}.birthday`} role="alert" className={errCls}>
+                      {errors[`p${i}.birthday`]}
+                    </p>
+                  )}
                 </div>
                 <div id={`field-p${i}.gender`} className={fieldCls}>
                   <label className={labelCls} htmlFor={`p${i}-gender`}>Płeć</label>
@@ -361,13 +383,18 @@ export default function PassengersPage() {
                     value={p.gender}
                     onChange={(e) => setPaxField(i, "gender", e.target.value)}
                     aria-invalid={Boolean(errors[`p${i}.gender`])}
+                    aria-describedby={errors[`p${i}.gender`] ? `err-p${i}.gender` : undefined}
                   >
                     <option value="">—</option>
                     <option value="M">Mężczyzna</option>
                     <option value="F">Kobieta</option>
                     <option value="X">Inna</option>
                   </select>
-                  {errors[`p${i}.gender`] && <p className={errCls}>{errors[`p${i}.gender`]}</p>}
+                  {errors[`p${i}.gender`] && (
+                    <p id={`err-p${i}.gender`} role="alert" className={errCls}>
+                      {errors[`p${i}.gender`]}
+                    </p>
+                  )}
                 </div>
                 <div id={`field-p${i}.nationality`} className={fieldCls}>
                   <label className={labelCls} htmlFor={`p${i}-nat`}>Obywatelstwo (kod, np. PL)</label>
@@ -380,8 +407,13 @@ export default function PassengersPage() {
                     value={p.nationality}
                     onChange={(e) => setPaxField(i, "nationality", e.target.value.toUpperCase())}
                     aria-invalid={Boolean(errors[`p${i}.nationality`])}
+                    aria-describedby={errors[`p${i}.nationality`] ? `err-p${i}.nationality` : undefined}
                   />
-                  {errors[`p${i}.nationality`] && <p className={errCls}>{errors[`p${i}.nationality`]}</p>}
+                  {errors[`p${i}.nationality`] && (
+                    <p id={`err-p${i}.nationality`} role="alert" className={errCls}>
+                      {errors[`p${i}.nationality`]}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className={labelCls} htmlFor={`p${i}-doctype`}>Dokument</label>
@@ -406,8 +438,13 @@ export default function PassengersPage() {
                     value={p.documentNumber}
                     onChange={(e) => setPaxField(i, "documentNumber", e.target.value.toUpperCase())}
                     aria-invalid={Boolean(errors[`p${i}.documentNumber`])}
+                    aria-describedby={errors[`p${i}.documentNumber`] ? `err-p${i}.documentNumber` : undefined}
                   />
-                  {errors[`p${i}.documentNumber`] && <p className={errCls}>{errors[`p${i}.documentNumber`]}</p>}
+                  {errors[`p${i}.documentNumber`] && (
+                    <p id={`err-p${i}.documentNumber`} role="alert" className={errCls}>
+                      {errors[`p${i}.documentNumber`]}
+                    </p>
+                  )}
                 </div>
                 <div id={`field-p${i}.documentExpiry`} className={fieldCls}>
                   <label className={labelCls} htmlFor={`p${i}-docexp`}>Ważny do</label>
@@ -418,8 +455,13 @@ export default function PassengersPage() {
                     value={p.documentExpiry}
                     onChange={(e) => setPaxField(i, "documentExpiry", e.target.value)}
                     aria-invalid={Boolean(errors[`p${i}.documentExpiry`])}
+                    aria-describedby={errors[`p${i}.documentExpiry`] ? `err-p${i}.documentExpiry` : undefined}
                   />
-                  {errors[`p${i}.documentExpiry`] && <p className={errCls}>{errors[`p${i}.documentExpiry`]}</p>}
+                  {errors[`p${i}.documentExpiry`] && (
+                    <p id={`err-p${i}.documentExpiry`} role="alert" className={errCls}>
+                      {errors[`p${i}.documentExpiry`]}
+                    </p>
+                  )}
                 </div>
               </div>
             </fieldset>
@@ -432,18 +474,18 @@ export default function PassengersPage() {
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div id="field-c.firstName" className={fieldCls}>
                 <label className={labelCls} htmlFor="c-first">Imię</label>
-                <input id="c-first" className={inputCls} autoComplete="section-contact given-name" value={contact.firstName} onChange={(e) => setContact({ ...contact, firstName: e.target.value })} aria-invalid={Boolean(errors["c.firstName"])} />
-                {errors["c.firstName"] && <p className={errCls}>{errors["c.firstName"]}</p>}
+                <input id="c-first" className={inputCls} autoComplete="section-contact given-name" value={contact.firstName} onChange={(e) => setContact({ ...contact, firstName: e.target.value })} aria-invalid={Boolean(errors["c.firstName"])} aria-describedby={errors["c.firstName"] ? "err-c.firstName" : undefined} />
+                {errors["c.firstName"] && <p id="err-c.firstName" role="alert" className={errCls}>{errors["c.firstName"]}</p>}
               </div>
               <div id="field-c.lastName" className={fieldCls}>
                 <label className={labelCls} htmlFor="c-last">Nazwisko</label>
-                <input id="c-last" className={inputCls} autoComplete="section-contact family-name" value={contact.lastName} onChange={(e) => setContact({ ...contact, lastName: e.target.value })} aria-invalid={Boolean(errors["c.lastName"])} />
-                {errors["c.lastName"] && <p className={errCls}>{errors["c.lastName"]}</p>}
+                <input id="c-last" className={inputCls} autoComplete="section-contact family-name" value={contact.lastName} onChange={(e) => setContact({ ...contact, lastName: e.target.value })} aria-invalid={Boolean(errors["c.lastName"])} aria-describedby={errors["c.lastName"] ? "err-c.lastName" : undefined} />
+                {errors["c.lastName"] && <p id="err-c.lastName" role="alert" className={errCls}>{errors["c.lastName"]}</p>}
               </div>
               <div id="field-c.email" className={fieldCls}>
                 <label className={labelCls} htmlFor="c-email">E-mail</label>
-                <input id="c-email" type="email" inputMode="email" autoComplete="section-contact email" className={inputCls} value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} aria-invalid={Boolean(errors["c.email"])} />
-                {errors["c.email"] && <p className={errCls}>{errors["c.email"]}</p>}
+                <input id="c-email" type="email" inputMode="email" autoComplete="section-contact email" className={inputCls} value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} aria-invalid={Boolean(errors["c.email"])} aria-describedby={errors["c.email"] ? "err-c.email" : undefined} />
+                {errors["c.email"] && <p id="err-c.email" role="alert" className={errCls}>{errors["c.email"]}</p>}
               </div>
               <div id="field-c.phoneNumber" className={fieldCls}>
                 <label className={labelCls} htmlFor="c-phone">Telefon</label>
@@ -465,10 +507,10 @@ export default function PassengersPage() {
                     autoComplete="section-contact tel-national"
                     value={contact.phoneNumber}
                     onChange={(e) => setContact({ ...contact, phoneNumber: e.target.value })}
-                    aria-invalid={Boolean(errors["c.phoneNumber"])}
+                    aria-invalid={Boolean(errors["c.phoneNumber"])} aria-describedby={errors["c.phoneNumber"] ? "err-c.phoneNumber" : undefined}
                   />
                 </div>
-                {errors["c.phoneNumber"] && <p className={errCls}>{errors["c.phoneNumber"]}</p>}
+                {errors["c.phoneNumber"] && <p id="err-c.phoneNumber" role="alert" className={errCls}>{errors["c.phoneNumber"]}</p>}
               </div>
             </div>
           </fieldset>
@@ -483,7 +525,7 @@ export default function PassengersPage() {
                 <Link href="/polityka-prywatnosci" className="font-medium underline underline-offset-2" target="_blank"><span className="text-brand">Politykę prywatności</span></Link>.
               </span>
             </label>
-            {errors["terms"] && <p className={errCls}>{errors["terms"]}</p>}
+            {errors["terms"] && <p role="alert" className={errCls}>{errors["terms"]}</p>}
           </div>
 
           <div className="hidden lg:block">

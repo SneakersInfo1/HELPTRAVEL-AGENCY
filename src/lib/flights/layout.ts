@@ -86,3 +86,21 @@ export const FLIGHT_RESULTS_GRID =
  * paskiem przelatywała treść.
  */
 export const FLIGHT_STICKY_TOP = "top-[64px] sm:top-[72px]";
+
+/**
+ * Offset dla paska filtrów/sortowania, który przykleja się POD paskiem
+ * wyszukiwania (mobile i tablet; od `lg` kontrolki nie są sticky).
+ *
+ * Liczby są zmierzone, nie zgadnięte (390 px i 768 px, 2026-08-29):
+ *   nagłówek 65 px (mobile) / 73 px (od sm) + pasek wyszukiwania 69 px
+ * czyli 64+69 = 133 i 72+69 = 141.
+ *
+ * PUŁAPKA, KTÓRA TO WYWOŁAŁA: pierwsza wersja dawała obu paskom ten sam
+ * `FLIGHT_STICKY_TOP`. Oba przyklejały się do 64 px, pasek wyszukiwania miał
+ * wyższy z-index i po prostu PRZYKRYWAŁ kontrolki — czyli filtry, które miały
+ * być zawsze pod ręką, znikały dokładnie wtedy, gdy zaczynało się przewijanie.
+ *
+ * Twarde wartości są kruche na zmianę wysokości nagłówka, dlatego pilnuje ich
+ * test e2e („pasek filtrów zostaje widoczny po przewinięciu"), a nie komentarz.
+ */
+export const FLIGHT_CONTROLS_STICKY_TOP = "top-[133px] sm:top-[141px]";
