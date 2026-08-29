@@ -135,7 +135,7 @@ export function FlightOfferCard({ offer, travellers, cheapestId, fastestId, best
       data-offer-card
       className="rounded-lg border border-line bg-surface-raised shadow-sm transition hover:shadow-md motion-reduce:transition-none"
     >
-      <div className="flex flex-col gap-3 p-4 sm:p-5 xl:flex-row xl:items-stretch xl:gap-6">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-stretch sm:gap-5 sm:p-5 xl:gap-6">
         {/* ── Strefa 1: rejsy (rośnie) ── */}
         <div className="min-w-0 flex-1 space-y-2.5">
           {hasBadges && (
@@ -151,8 +151,17 @@ export function FlightOfferCard({ offer, travellers, cheapestId, fastestId, best
           ))}
         </div>
 
-        {/* ── Strefa 2: przewoźnik + bagaż (stała, chowa się na wąskim) ── */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-line pt-3 xl:w-52 xl:shrink-0 xl:flex-col xl:items-start xl:justify-center xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+        {/* Strefy 2 i 3 dzielą jeden wiersz w przedziale sm–xl, a od xl wchodzą
+            do wiersza rodzica (`display: contents`).
+
+            POMIAR, KTÓRY TO WYWOŁAŁ: pierwsza wersja przełączała układ dopiero
+            na `xl`, więc na tablecie (768 px) karta miała TRZY ułożone pionowo
+            bloki i urosła z 241 px do 317 px — czyli redesign pogorszył
+            dokładnie tę szerokość, na której wcześniej było dobrze. Widać to
+            było wyłącznie w tabeli przed/po; na oko karta wyglądała poprawnie. */}
+        <div className="flex flex-col gap-3 border-t border-line pt-3 sm:w-52 sm:shrink-0 sm:justify-center sm:gap-2 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0 xl:contents">
+        {/* ── Strefa 2: przewoźnik + bagaż ── */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 xl:w-52 xl:shrink-0 xl:flex-col xl:items-start xl:justify-center xl:border-l xl:border-line xl:pl-6">
           <span className="text-xs font-semibold text-ink">{carrierNames}</span>
           {offer.hasCarryOnBag && <BagChip kind="carry" />}
           {offer.hasCheckedBag && <BagChip kind="checked" />}
@@ -165,8 +174,8 @@ export function FlightOfferCard({ offer, travellers, cheapestId, fastestId, best
         </div>
 
         {/* ── Strefa 3: cena + CTA (stała szerokość — przyciski w jednej linii) ── */}
-        <div className="flex items-end justify-between gap-3 border-t border-line pt-3 xl:w-56 xl:shrink-0 xl:flex-col xl:items-stretch xl:justify-center xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-          <div className="xl:text-right">
+        <div className="flex items-end justify-between gap-3 sm:flex-col sm:items-stretch sm:gap-2 xl:w-56 xl:shrink-0 xl:justify-center xl:border-l xl:border-line xl:pl-6">
+          <div className="sm:text-right">
             <div className="text-xl font-bold leading-tight text-accent">
               {formatFlightPriceExact(offer.total, offer.currency)}
             </div>
@@ -186,6 +195,7 @@ export function FlightOfferCard({ offer, travellers, cheapestId, fastestId, best
                 utility Tailwinda — `text-sm` na <button> w tym repo nic nie robi. */}
             <span className="text-sm">Wybierz</span>
           </button>
+        </div>
         </div>
       </div>
 
