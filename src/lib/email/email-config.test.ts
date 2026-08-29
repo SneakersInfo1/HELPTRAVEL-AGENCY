@@ -139,13 +139,24 @@ test("CASE 8: manual resend for an existing CONFIRMED booking is allowed", () =>
   assert.equal(plan.booking.status, "CONFIRMED");
 });
 
-test("CASE 8: the resend path can never book or charge — no such imports exist", () => {
-  // Static guarantee, not a mock: if someone later imports the booking or
-  // payment machinery into this script, this test fails.
-  const src = fs.readFileSync(
-    path.join(process.cwd(), "scripts", "resend-booking-confirmation.ts"),
-    "utf8",
-  );
+// Both manual-resend surfaces: the local script and the admin-only route the
+// operator calls on production (where the real RESEND_API_KEY lives).
+const RESEND_SURFACES = [
+  ["scripts", "resend-booking-confirmation.ts"],
+  ["src", "app", "api", "admin", "resend-confirmation", "route.ts"],
+];
+
+for (const parts of RESEND_SURFACES) {
+  const label = parts[parts.length - 1] === "route.ts" ? "admin route" : "local script";
+  test(`CASE 8: the resend ${label} can never book or charge — no such imports exist`, () => {
+    // Static guarantee, not a mock: if someone later imports the booking or
+    // payment machinery into this surface, this test fails.
+    const src = fs.readFileSync(path.join(process.cwd(), ...parts), "utf8");
+    assertCannotBookOrCharge(src);
+  });
+}
+
+function assertCannotBookOrCharge(src: string): void {
   const importLines = src
     .split("\n")
     .filter((l) => l.trimStart().startsWith("import "))
@@ -165,7 +176,7 @@ test("CASE 8: the resend path can never book or charge — no such imports exist
   ]) {
     assert.ok(
       !importLines.includes(forbidden),
-      `resend script must not import anything referencing "${forbidden}"`,
+      `resend surface must not import anything referencing "${forbidden}"`,
     );
   }
   // ...and it must not hand-roll a request either.
@@ -174,9 +185,9 @@ test("CASE 8: the resend path can never book or charge — no such imports exist
     .filter((l) => !l.trimStart().startsWith("//"))
     .join("\n");
   for (const forbidden of ["fetch(", "bookHotel(", "saveCompleted(", "saveFailed("]) {
-    assert.ok(!code.includes(forbidden), `resend script must never call "${forbidden}"`);
+    assert.ok(!code.includes(forbidden), `resend surface must never call "${forbidden}"`);
   }
-});
+}
 
 test("CASE 9: manual resend for an UNKNOWN booking is refused, nothing is sent", () => {
   const plan = planConfirmationResend({

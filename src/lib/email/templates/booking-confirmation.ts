@@ -33,7 +33,10 @@ export interface BookingConfirmationData {
     lastName: string;
     email: string;
   };
-  guestCount: number;
+  /** Liczba osób. Pomijamy wiersz "Goście", gdy nieznana (np. przy ręcznym
+   *  doslaniu potwierdzenia, gdy sesja z `pax` juz wygasla) — lepiej nie pokazac
+   *  nic niz podac zmyslona liczbe. */
+  guestCount?: number | null;
   /** Support contact address surfaced in the body + cancellation note. */
   supportEmail: string;
 }
@@ -116,6 +119,14 @@ export function renderBookingConfirmation(data: BookingConfirmationData): Render
       ? fmtMoney(data.price, data.currency || "PLN")
       : null;
   const siteUrl = getSiteUrl();
+  // Null when we don't know the party size — the "Goście" row is then omitted
+  // entirely from both the HTML and the plain-text body. A manual resend for an
+  // older booking has no `pax` (the session that carried it is long gone), and
+  // an invented number on a confirmation is worse than no number at all.
+  const guestsLine =
+    typeof data.guestCount === "number" && data.guestCount > 0
+      ? plGuests(data.guestCount)
+      : null;
 
   const subject = `Potwierdzenie rezerwacji – ${data.hotelName}`;
 
@@ -157,7 +168,7 @@ export function renderBookingConfirmation(data: BookingConfirmationData): Render
                 <tr><td style="padding:14px 0 6px 0;font-size:13px;color:#3b5d4d;width:140px;">Przyjazd</td><td style="padding:14px 0 6px 0;font-size:14px;font-weight:600;color:#0f2e1f;">${escHtml(checkinFmt)}</td></tr>
                 <tr><td style="padding:0 0 6px 0;font-size:13px;color:#3b5d4d;">Wyjazd</td><td style="padding:0 0 6px 0;font-size:14px;font-weight:600;color:#0f2e1f;">${escHtml(checkoutFmt)}</td></tr>
                 <tr><td style="padding:0 0 6px 0;font-size:13px;color:#3b5d4d;">Długość pobytu</td><td style="padding:0 0 6px 0;font-size:14px;font-weight:600;color:#0f2e1f;">${escHtml(plNights(nights))}</td></tr>
-                <tr><td style="padding:0 0 6px 0;font-size:13px;color:#3b5d4d;">Goście</td><td style="padding:0 0 6px 0;font-size:14px;font-weight:600;color:#0f2e1f;">${escHtml(plGuests(data.guestCount))}</td></tr>
+                ${guestsLine ? `<tr><td style="padding:0 0 6px 0;font-size:13px;color:#3b5d4d;">Goście</td><td style="padding:0 0 6px 0;font-size:14px;font-weight:600;color:#0f2e1f;">${escHtml(guestsLine)}</td></tr>` : ""}
                 ${data.boardName ? `<tr><td style="padding:0 0 6px 0;font-size:13px;color:#3b5d4d;">Pakiet</td><td style="padding:0 0 6px 0;font-size:14px;font-weight:600;color:#0f2e1f;">${escHtml(data.boardName)}</td></tr>` : ""}
               </table>
             </td></tr>
@@ -247,7 +258,7 @@ export function renderBookingConfirmation(data: BookingConfirmationData): Render
     `Przyjazd: ${checkinFmt}`,
     `Wyjazd: ${checkoutFmt}`,
     `Długość pobytu: ${plNights(nights)}`,
-    `Goście: ${plGuests(data.guestCount)}`,
+    guestsLine ? `Goście: ${guestsLine}` : null,
     data.boardName ? `Pakiet: ${data.boardName}` : null,
     moneyFmt ? `Kwota zapłacona: ${moneyFmt}` : null,
     ``,

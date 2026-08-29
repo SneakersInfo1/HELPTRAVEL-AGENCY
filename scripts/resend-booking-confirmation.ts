@@ -22,7 +22,7 @@
 //
 // Flagi:
 //   --to=ADRES     nadpisuje odbiorcę (domyślnie: holder z LiteAPI)
-//   --guests=N     liczba osób w mailu (domyślnie: liczba pokoi z LiteAPI, min. 1)
+//   --guests=N     liczba osób w mailu; bez tej flagi wiersz "Goście" jest pomijany
 //   --send         WYKONUJE realną wysyłkę. Bez tej flagi to tylko podgląd.
 
 import { getCompleted, type CompletedRecord } from "../src/lib/booking/session";
@@ -68,7 +68,6 @@ async function main(): Promise<void> {
   let holderFirstName = "";
   let holderLastName = "";
   let holderEmail = toOverride ?? "";
-  let roomsFromProvider: number | undefined;
   let providerStatus = "(nie odpytano)";
   try {
     const provider = await getBooking(bookingId);
@@ -76,7 +75,6 @@ async function main(): Promise<void> {
     holderFirstName = provider.holder?.firstName?.trim() ?? "";
     holderLastName = provider.holder?.lastName?.trim() ?? "";
     if (!holderEmail) holderEmail = provider.holder?.email?.trim() ?? "";
-    roomsFromProvider = provider.bookedRooms?.length;
   } catch (err) {
     console.warn(
       `  ! LiteAPI GET /bookings/${bookingId} nie powiodlo sie (${err instanceof Error ? err.message : String(err)}).`,
@@ -96,10 +94,13 @@ async function main(): Promise<void> {
   if (!plan.allowed) fail(plan.reason);
   const { booking: completed, recipient, from } = plan;
 
-  const guestCount = Math.max(
-    1,
-    Number.parseInt(guestsOverride ?? "", 10) || roomsFromProvider || 1,
-  );
+  // Pomijamy, gdy nie podano --guests. Sesja z `pax` dawno wygasla, a pole
+  // `adults` u dostawcy rowna sie maxOccupancy pokoju, wiec nie da sie
+  // odroznic zamowionej obladzonosci od pojemnosci. Zmyslona liczba na
+  // potwierdzeniu jest gorsza niz jej brak — szablon wtedy nie renderuje
+  // wiersza "Goscie".
+  const parsedGuests = Number.parseInt(guestsOverride ?? "", 10);
+  const guestCount = Number.isFinite(parsedGuests) && parsedGuests > 0 ? parsedGuests : null;
   const replyTo = getReplyTo();
 
   // 4) Podgląd: dokładnie ten sam render, którego użyje wysyłka.
@@ -130,7 +131,7 @@ async function main(): Promise<void> {
   console.log(`  hotel                : ${completed.hotelSummary.name}${city}`);
   console.log(`  pobyt                : ${completed.rateSummary.checkin} -> ${completed.rateSummary.checkout}`);
   console.log(`  kwota                : ${completed.price ?? "-"} ${completed.currency ?? "PLN"}`);
-  console.log(`  goscie w mailu       : ${guestCount}`);
+  console.log(`  goscie w mailu       : ${guestCount ?? "(pominiete - nieznane)"}`);
   console.log("\n  -- E-MAIL --------------------------------------------------");
   console.log(`  From                 : ${from}`);
   console.log(`  Reply-To             : ${replyTo ?? "(nie ustawiono)"}`);

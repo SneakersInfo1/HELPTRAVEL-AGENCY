@@ -33,7 +33,8 @@ export interface SendBookingConfirmationInput {
   price?: number;
   currency?: string;
   holder: { firstName: string; lastName: string; email: string };
-  guestCount: number;
+  /** Liczba osob; pomijana w mailu, gdy nieznana (recznie doslane potwierdzenie). */
+  guestCount?: number | null;
 }
 
 export type SendResult =
@@ -81,7 +82,8 @@ export async function sendBookingConfirmation(
     // the boundary so the template never has to guess.
     currency: input.currency ?? "PLN",
     holder: input.holder,
-    guestCount: Math.max(1, input.guestCount),
+    guestCount:
+      typeof input.guestCount === "number" && input.guestCount > 0 ? input.guestCount : null,
     supportEmail,
   });
 

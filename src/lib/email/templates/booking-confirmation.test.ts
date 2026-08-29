@@ -201,3 +201,74 @@ test("plain text contains site footer links", () => {
   assert.doesNotMatch(out.text, /\/linki-partnerskie/);
   assert.doesNotMatch(out.html, /\/linki-partnerskie/);
 });
+
+// ── Guest count is omitted, never invented ─────────────────────────────────
+// A manual resend for an older booking has no `pax` (the session that carried
+// it expired long ago). Printing "1 osoba" on a confirmation for a 5-person
+// apartment would be a visible lie, so the row is dropped instead.
+
+test("guestCount omitted → no Goście row in HTML or text", () => {
+  const rendered = renderBookingConfirmation({
+    bookingId: "9c-OQvmqJ",
+    confirmationCode: null,
+    hotelName: "Globales Costa de la Calma",
+    city: "Santa Ponsa",
+    checkin: "2026-09-10",
+    checkout: "2026-09-17",
+    boardName: "Room Only",
+    price: 6240.43,
+    currency: "PLN",
+    holder: { firstName: "Marcin", lastName: "Kubina", email: "m@example.com" },
+    supportEmail: "pomoc@helptravel.pl",
+  });
+  assert.ok(!rendered.html.includes("Goście"), "HTML must not show a guests row");
+  assert.ok(!rendered.text.includes("Goście"), "text body must not show a guests line");
+  assert.ok(!rendered.html.includes("osoba"), "no invented person count anywhere");
+  assert.ok(!rendered.html.includes("osób"), "no invented person count anywhere");
+  // Everything else still renders.
+  assert.ok(rendered.html.includes("Globales Costa de la Calma"));
+  assert.ok(rendered.html.includes("Santa Ponsa"));
+  assert.ok(rendered.html.includes("Room Only"));
+  assert.match(rendered.subject, /Globales Costa de la Calma/);
+});
+
+test("guestCount null / zero / negative are all treated as unknown", () => {
+  for (const guestCount of [null, undefined, 0, -3]) {
+    const r = renderBookingConfirmation({
+      bookingId: "bk",
+      hotelName: "H",
+      checkin: "2026-09-10",
+      checkout: "2026-09-12",
+      holder: { firstName: "A", lastName: "B", email: "a@b.pl" },
+      guestCount: guestCount as number | null | undefined,
+      supportEmail: "pomoc@helptravel.pl",
+    });
+    assert.ok(!r.html.includes("Goście"), `guestCount=${String(guestCount)} must omit the row`);
+  }
+});
+
+test("a known guestCount still renders, correctly pluralised", () => {
+  const one = renderBookingConfirmation({
+    bookingId: "bk",
+    hotelName: "H",
+    checkin: "2026-09-10",
+    checkout: "2026-09-12",
+    holder: { firstName: "A", lastName: "B", email: "a@b.pl" },
+    guestCount: 1,
+    supportEmail: "pomoc@helptravel.pl",
+  });
+  assert.ok(one.html.includes("Goście"));
+  assert.ok(one.html.includes("1 osoba"));
+
+  const five = renderBookingConfirmation({
+    bookingId: "bk",
+    hotelName: "H",
+    checkin: "2026-09-10",
+    checkout: "2026-09-12",
+    holder: { firstName: "A", lastName: "B", email: "a@b.pl" },
+    guestCount: 5,
+    supportEmail: "pomoc@helptravel.pl",
+  });
+  assert.ok(five.html.includes("5 osób"));
+  assert.ok(five.text.includes("Goście: 5 osób"));
+});
