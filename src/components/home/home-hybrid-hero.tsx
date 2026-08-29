@@ -174,7 +174,11 @@ export function HomeHybridHero({
             osoba nawigująca klawiaturą nie widziałaby, na której z osiemnastu
             kart stoi. Zmienną czyta reguła `:focus-visible` w globals.css
             i dziedziczą ją też strzałki karuzeli. */}
-        <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-6 [--focus-ring:#fff] sm:px-8 sm:py-8 lg:px-12">
+        {/* py-5/py-6 zamiast py-6/py-8: pas jest ciemną płachtą pod hero, więc
+            każdy pion, który nic nie niesie, czyta się jako ciężar. Razem ze
+            spłaszczeniem kafelków (patrz InspireTile) daje to 335 → ~270 px na
+            mobile i 416 → ~310 px na desktopie. */}
+        <div className="relative z-10 border-t border-white/10 bg-emerald-950 px-5 py-5 [--focus-ring:#fff] sm:px-8 sm:py-6 lg:px-12">
           {/* Nagłówek pasa (tytuł + dopisek + strzałki) renderuje sama karuzela
               — inaczej strzałki, pozycjonowane absolutnie, wchodziły na dopisek.
               Embla zamiast natywnego overflow-x: znika szary pasek przewijania
@@ -185,12 +189,19 @@ export function HomeHybridHero({
             tone="dark"
             listId="home_inspire"
             listName={bandHeading}
-            // Karty ~1,4× szersze niż wcześniej. Na 375 px kafelek miał ~150 px
-            // szerokości i mieścił pięć wierszy tekstu — nadtytuł schodził do
-            // 10 px, a cena łamała się w środku. Szerszy kafelek to ten sam pas
-            // i ta sama liczba kierunków, tylko czytelna; liczba kart została
-            // bez zmian (18 to jawna decyzja właściciela z 2026-07-03).
-            slideClassName="min-w-0 shrink-0 basis-[58%] pl-3 sm:basis-[38%] sm:pl-4 md:basis-[29%] lg:basis-[24%] xl:basis-[19%]"
+            // MOBILE ZOSTAJE 58% — to nie jest wartość do „dokręcenia".
+            // Zmierzone: najdłuższa nazwa w zestawie („Palma de Mallorca") ma
+            // 154 px przy 18 px/600, a kafelek 58% daje jej 169 px światła.
+            // Przy 54% zostaje 155 px, czyli jeden piksel zapasu — i nazwa
+            // łamie się na dwie linie przy pierwszej zmianie kroju. Kompaktowość
+            // na mobile bierzemy z WYSOKOŚCI (proporcje kafelka), nie z szerokości.
+            //
+            // Desktop schodzi 29/24/19 → 26/21/17: przy kwadratowej karcie ta
+            // sama szerokość dawała wyraźnie wyższy pas, a w polu widzenia
+            // mieści się teraz ~6,3 kafelka zamiast 5,6 — pas czyta się jak
+            // pas, a nie jak rząd dużych kart. Liczba kierunków bez zmian
+            // (18 to jawna decyzja właściciela z 2026-07-03).
+            slideClassName="min-w-0 shrink-0 basis-[58%] pl-3 sm:basis-[38%] sm:pl-4 md:basis-[26%] lg:basis-[21%] xl:basis-[17%]"
             header={
               // <h2>, nie <p>: nazwy miast na kartach to <h3>, więc z tym
               // nadtytułem jako akapitem dokument skakał z H1 hero prosto na
@@ -208,7 +219,7 @@ export function HomeHybridHero({
                 Loty z Warszawy · ceny w PLN
               </span>
             }
-            items={featured.map((tile) => ({
+            items={featured.map((tile, index) => ({
               slug: tile.destination.slug,
               name: localizeCity(tile.destination.city),
               category: localizeCountry(tile.destination.country),
@@ -221,6 +232,14 @@ export function HomeHybridHero({
                   heroImage={tile.heroImage}
                   fromPricePerNight={tile.fromPricePerNight}
                   flightFromPln={tile.flightFromPln}
+                  // Pierwsze sześć = tyle, ile realnie widać w pasie na
+                  // najszerszym układzie (~6,3 kafelka). Zmierzone przed
+                  // zmianą: po wejściu na stronę miało wczytane zdjęcie 8 z 18
+                  // kafelków na desktopie i 0 z 18 na mobile — reszta dociągała
+                  // się dopiero pod palcem, więc pas witał użytkownika rzędem
+                  // pustych prostokątów. Dalsze karty ZOSTAJĄ leniwe: 18 zdjęć
+                  // naraz to koszt, którego nikt nie ogląda.
+                  eager={index < 6}
                 />
               ),
             }))}

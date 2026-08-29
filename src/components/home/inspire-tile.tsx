@@ -34,7 +34,41 @@ interface InspireTileProps {
   fromPricePerNight?: number;
   /** Najtańszy lot w obie strony z Warszawy (total PLN/os., snapshot). */
   flightFromPln?: number;
+  /**
+   * Pobierz zdjęcie od razu, bez czekania na zbliżenie do pola widzenia.
+   *
+   * Dotyczy tylko kart, które widać na pierwszym ekranie pasa — reszta zostaje
+   * leniwa. BEZ `priority`: to podniosłoby `fetchpriority` na `high` i te kilka
+   * kafelków konkurowałoby o pasmo ze zdjęciem hero, czyli z elementem LCP
+   * strony. `loading="eager"` samo w sobie zdejmuje tylko bramkę leniwości —
+   * obraz pod zgięciem dostaje w przeglądarce priorytet niski i dojeżdża
+   * spokojnie w tle, zamiast wskakiwać dopiero pod palcem użytkownika.
+   */
+  eager?: boolean;
 }
+
+/**
+ * Krotność, o jaką `object-cover` powiększa zdjęcie względem szerokości karty.
+ *
+ * Kafelek jest kwadratowy (`aspect-square`, na mobile 9/10), a zdjęcia
+ * z Pexels są panoramiczne — zmierzony oryginał kierunku to 3996 × 2248,
+ * czyli 16:9. `object-cover` dopasowuje obraz do WYSOKOŚCI karty, więc
+ * realnie renderowana szerokość zdjęcia to `wysokość karty × 1,78`, a nie
+ * szerokość karty. Atrybut `sizes` opisuje właśnie renderowaną szerokość
+ * obrazu — nie szerokość pudełka — więc wartości niżej są przemnożone o tę
+ * krotność. Bez tego przeglądarka pobierała plik ~2× za wąski i skalowała go
+ * w górę (zmierzone 2026-08-29: karta 239 px, plik 384 px, potrzeba 532 px →
+ * rozciągnięcie 1,73× na desktopie i 2,08× przy DPR 1). To jest cała
+ * przyczyna „rozpikselowanych" kafelków; kompresja i proxy nie miały z tym nic
+ * wspólnego, dlatego wcześniejsze podbicia `quality` nic nie dały.
+ *
+ * Wartości są celowo minimalnie ZANIŻONE względem ideału (≤1,09×), żeby
+ * przeglądarka trafiała w niższy szczebel drabinki `deviceSizes` — różnicy nie
+ * widać, a plik jest o szczebel lżejszy. Przykład: 375 px @DPR 3 przy 104vw
+ * łapie 1920w (~130 kB), przy 93vw — 1200w.
+ */
+const SIZES_KAFELKA =
+  "(max-width: 639px) 93vw, (max-width: 767px) 59vw, (max-width: 1023px) 41vw, (max-width: 1279px) 32vw, 26vw";
 
 export function InspireTile({
   destination,
@@ -42,6 +76,7 @@ export function InspireTile({
   defaultTravelers = 2,
   fromPricePerNight,
   flightFromPln,
+  eager = false,
 }: InspireTileProps) {
   // Daty ŚWIADOMIE niewypełnione — użytkownik wybiera termin sam na wynikach
   // (decyzja właściciela 2026-07-04: termin ceny zostaje na karcie).
@@ -64,13 +99,30 @@ export function InspireTile({
       // nie istnieje. Bez stanu wciśnięcia cała informacja zwrotna karty jest
       // widoczna wyłącznie dla 10% użytkowników, a pozostali dotykają kafelka
       // i do momentu nawigacji nie dostają żadnego potwierdzenia.
-      className="group relative flex aspect-[3/4] overflow-hidden rounded-md bg-brand-soft shadow-[var(--shadow-md)] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-lg)] active:scale-[0.985] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 sm:aspect-[4/5]"
+      // PROPORCJE: kwadrat od `sm`, 9/10 na mobile (było 3/4 i 4/5).
+      // Karta pionowa 4:5 miała 299 px wysokości na desktopie, z czego 110 px
+      // zajmował sam blok tekstu — 37% kafelka było ciemną płachtą, a na
+      // mobile 44%. Kwadrat oddaje pasowi ~60 px na kartę (desktop) i ~40 px
+      // (mobile), a zdjęcie nadal dostaje ponad połowę kafelka. Przy okazji
+      // spada krotność `object-cover` (2,22 → 1,78), czyli plik potrzebny do
+      // ostrości jest o jeden szczebel lżejszy — patrz SIZES_KAFELKA.
+      //
+      // TŁO POD ZDJĘCIEM: ciemna zieleń marki, nie `brand-soft`. Pas ma tło
+      // `emerald-950`, więc jasny mięsisty prostokąt świecił na nim przez cały
+      // czas ładowania i to on odpowiadał za wrażenie „migających" kafelków.
+      // Ciemne tło znika w pasie — karta pojawia się, zamiast błyskać.
+      //
+      // `ring` zamiast cienia: `--shadow-md` jest liczony z `ink` przy kryciu
+      // 0,08, czyli na `emerald-950` jest fizycznie niewidoczny. Włoskowy
+      // biały ring realnie oddziela kartę od pasa.
+      className="group relative flex aspect-[9/10] overflow-hidden rounded-md bg-brand-strong ring-1 ring-white/10 transition duration-200 ease-out hover:-translate-y-0.5 hover:ring-white/25 active:scale-[0.985] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 sm:aspect-square"
     >
       <Image
         src={heroImage}
         alt={`${cityLabel}, ${countryLabel}`}
         fill
-        sizes="(max-width: 640px) 58vw, (max-width: 1024px) 27vw, 17vw"
+        sizes={SIZES_KAFELKA}
+        loading={eager ? "eager" : "lazy"}
         className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
       />
 
@@ -80,8 +132,8 @@ export function InspireTile({
           blisko. Wcześniej ta informacja znikała całkowicie, gdy kierunek miał
           cenę pakietu, czyli akurat na kartach, które klika się najczęściej. */}
       {flightHours ? (
-        <span className="absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-sm">
-          <Plane aria-hidden strokeWidth={2} className="h-3.5 w-3.5 shrink-0" />
+        <span className="absolute left-2 top-2 z-20 inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
+          <Plane aria-hidden strokeWidth={2} className="h-3 w-3 shrink-0" />
           {flightHours}
           <span className="sr-only"> lotu z Polski</span>
         </span>
@@ -100,7 +152,11 @@ export function InspireTile({
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
         />
-        <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.93)_45%,rgba(5,18,11,0.96)_100%)] p-3">
+        {/* p-2.5 na mobile: te 4 px z każdej strony to nie kosmetyka, tylko
+            szerokość dla linii ceny. Przy karcie 189 px i odjętym chevronie
+            wiersz ceny ma 169 px zamiast 125 px — czterocyfrowa cena za dobę
+            (a takie realnie wychodzą, 198–1166 zł) przestaje się łamać. */}
+        <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.93)_45%,rgba(5,18,11,0.96)_100%)] p-2.5 sm:p-3">
         {/* 12 px zamiast 10 px: kraj był najmniejszym tekstem na całej stronie
             głównej, a niesie kontekst potrzebny przy miastach, których nazwa
             nie mówi, gdzie leżą (Faro, Kos, Bari).
@@ -111,16 +167,21 @@ export function InspireTile({
             Kolor z krycia bieli, nie `emerald-200`: zieleń poza tokenami
             konkurowała z bursztynem ceny, a akcent użyty gdziekolwiek indziej
             przestaje znaczyć „tu jest pieniądz". */}
-        <p className="text-xs font-semibold text-white/70">{countryLabel}</p>
+        {/* Interlinie w tym bloku są ciaśniejsze niż domyślne z tokenów: cztery
+            wiersze po 1,5 dawały 104 px na karcie wysokiej 210 px, czyli
+            połowę kafelka zjadała płachta tekstu. Ciaśniejsze wiodące oddaje
+            8 px z powrotem zdjęciu i nie rusza ROZMIARÓW pisma — te były
+            dobierane pomiarem (12 px dla kraju, 18 px dla miasta). */}
+        <p className="text-xs font-semibold leading-[1.35] text-white/70">{countryLabel}</p>
         {/* 18 px na KAŻDYM ekranie, bez skoku do 24 px wyżej. Kafelek w tym
             pasie nie robi się szerszy wraz z ekranem — na 1280 px ma ~197 px,
             czyli mniej niż na telefonie ma proporcjonalnie. Przy 24 px „Palma
             de Mallorca" łamała się na dwie linie i scrim TEJ JEDNEJ karty rósł
             o ćwierć wysokości, więc pas wyglądał na zepsuty. Zmierzone na
             375 / 768 / 1280 px. */}
-        <h3 className="mt-0.5 text-lg font-semibold leading-tight tracking-[-0.01em]">{cityLabel}</h3>
+        <h3 className="mt-0.5 text-lg font-semibold leading-[1.15] tracking-[-0.01em]">{cityLabel}</h3>
 
-        <div className="mt-1.5 flex items-end justify-between gap-2">
+        <div className="mt-1 flex items-end justify-between gap-2">
           <div className="min-w-0">
             {/* DWIE OSOBNE LICZBY, nigdy ich suma.
                 Do 2026-08-02 kafelek pokazywał tu jedną cenę pakietu
@@ -133,7 +194,7 @@ export function InspireTile({
                 Hotel i lot pochodzą z RÓŻNYCH okien dat, więc nie wolno ich tu
                 dodać — suma byłaby liczbą, której nikt nie policzył. */}
             {typeof fromPricePerNight === "number" && (
-              <p className="text-sm font-bold leading-snug text-accent-bright">
+              <p className="text-sm font-bold leading-tight text-accent-bright">
                 Hotel{" "}
                 <span className="whitespace-nowrap">
                   od {formatPricePln(fromPricePerNight)}
@@ -142,7 +203,7 @@ export function InspireTile({
               </p>
             )}
             {typeof flightFromPln === "number" && (
-              <p className="mt-0.5 text-xs font-medium leading-snug text-white/85">
+              <p className="mt-0.5 text-xs font-medium leading-tight text-white/85">
                 Lot<span className="hidden sm:inline"> z Warszawy</span>{" "}
                 <span className="whitespace-nowrap">od {formatPricePln(flightFromPln)}</span>
               </p>
@@ -151,11 +212,15 @@ export function InspireTile({
 
           {/* Afordancja „to jest klikalne". Cały kafelek jest linkiem, więc to
               tylko znacznik wizualny (aria-hidden) — nie osobny cel dotykowy
-              i nie drugi tab-stop. Pełny przycisk zjadłby szerokość, której
-              na 375 px nie ma. */}
+              i nie drugi tab-stop.
+              OD `sm` W GÓRĘ, nie na mobile: znacznik reaguje na `hover`, czyli
+              komunikuje coś wyłącznie na desktopie, a na telefonie zabierał
+              36 px z wiersza ceny — tam, gdzie karta ma 189 px szerokości
+              i to właśnie cena walczy o miejsce. Na mobile afordancję niesie
+              `active:scale` całej karty, które działa pod palcem. */}
           <span
             aria-hidden
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition duration-200 ease-out group-hover:bg-accent-bright group-hover:text-brand-strong motion-reduce:transition-none"
+            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition duration-200 ease-out group-hover:bg-accent-bright group-hover:text-brand-strong motion-reduce:transition-none sm:flex"
           >
             <ChevronRight strokeWidth={2.5} className="h-4 w-4" />
           </span>
