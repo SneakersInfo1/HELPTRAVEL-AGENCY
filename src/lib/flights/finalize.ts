@@ -211,14 +211,37 @@ export async function finalizeFlightBooking(
     at: Date.now(),
   };
 
+  // Sesja, która wyszła już poza `prebooked` (booking w toku, manual_review,
+  // pending), NIE MOŻE zostać cofnięta przez adres powrotu. Klient ma w
+  // historii przeglądarki adresy z WCZEŚNIEJSZYCH prób — wejście na stary
+  // adres z `redirect_status=failed` po udanej płatności zamieniłoby
+  // „sprawdzamy Twoją rezerwację" na „nie pobraliśmy środków". Dowód z adresu
+  // powrotu ma prawo zablokować START, nie przepisać przeszłości.
+  const przedPlatnoscia = session.bookingStatus === "prebooked" || session.bookingStatus === "intent";
+
   if (evidence.verdict === "rejected") {
-    console.warn(`[flights][finalize] odmowa: dowód przeciw płatności sid=${sessionId} powód=${evidence.reason}`);
+    console.warn(
+      `[flights][finalize] odmowa: dowód przeciw płatności sid=${sessionId} powód=${evidence.reason} stan=${session.bookingStatus}`,
+    );
     await saveFlightSession(sessionId, {
       ...session,
-      paymentStatus: "failed",
+      ...(przedPlatnoscia ? { paymentStatus: "failed" as const } : {}),
       paymentEvidence: evidenceRecord,
       updatedAt: Date.now(),
     }).catch(() => {});
+    if (!przedPlatnoscia) {
+      // Rezerwacja już gdzieś jest w toku — nie mówimy klientowi, że nic nie
+      // pobraliśmy, bo tego nie wiemy.
+      return {
+        status: 202,
+        body: {
+          error: "manual_review",
+          bookingStatus: session.bookingStatus,
+          message:
+            "Sprawdzamy status Twojej płatności i rezerwacji. Skontaktujemy się z Tobą jak najszybciej — nie ponawiaj płatności.",
+        },
+      };
+    }
     return {
       status: 402,
       body: {
@@ -241,7 +264,7 @@ export async function finalizeFlightBooking(
     // zapłaci dwa razy za ten sam lot.
     await saveFlightSession(sessionId, {
       ...session,
-      paymentStatus: "processing",
+      ...(przedPlatnoscia ? { paymentStatus: "processing" as const } : {}),
       paymentEvidence: evidenceRecord,
       updatedAt: Date.now(),
     }).catch(() => {});

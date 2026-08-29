@@ -31,12 +31,37 @@ test("homepage zostaje pełnoszerokościowa i się renderuje", async ({ page }) 
   expect(await szerokoscRamy(page)).toBeGreaterThan(1800);
 });
 
-test("wyszukiwarka lotów działa i ZOSTAJE w kontenerze 1280", async ({ page }) => {
-  await page.goto("/loty/wyniki?origin=WAW&destination=BCN&date=2026-09-15&adults=1");
+/**
+ * Loty: rama ZDJĘTA, szerokość pilnowana u siebie.
+ *
+ * Do 2026-08-29 ten test wymagał 1280 px, bo tak wyglądał kontrakt przed
+ * Flights V2. V2 świadomie zdjął ograniczenie ramy dla `/loty/*`
+ * (`site-shell.tsx`, commit c9ed2ec) — zmierzone na 1920: treść 779 px,
+ * 59,4 % ekranu białe, karta oferty 463 px. Szerokościami steruje teraz
+ * `lib/flights/layout.ts`, osobno dla każdego kroku lejka.
+ *
+ * Test nie znika, tylko pilnuje NOWEGO kontraktu: rama się nie ogranicza,
+ * ale powłoka treści ma twardy sufit. Bez tego przypadkowe `max-w-none`
+ * na `main` przeszłoby niezauważone.
+ */
+test("wyszukiwarka lotów działa; rama zdjęta, ale treść ma sufit 1720", async ({ page }) => {
+  // `depart=`, nie `date=`. Stary adres używał parametru, którego strona nie
+  // rozumie, więc renderowała ekran „Brak poprawnych parametrów" w wąskiej
+  // powłoce 760 px — a test mierzył ramę WOKÓŁ TEGO EKRANU i przechodził
+  // z niewłaściwego powodu. Dopiero zdjęcie ograniczenia ramy przez V2 to
+  // ujawniło.
+  await page.goto("/loty/wyniki?origin=WAW&destination=BCN&depart=2026-09-15&adults=1");
   // Strona ma się wyrenderować bez błędu — treść zależy od dostawcy, więc
   // sprawdzamy powłokę, nie konkretne oferty.
   await expect(page.locator("body")).not.toContainText("Application error", { timeout: 25_000 });
-  expect(await szerokoscRamy(page)).toBeLessThanOrEqual(1280);
+  expect(await szerokoscRamy(page)).toBeGreaterThan(1800);
+
+  const szerokoscTresci = await page.evaluate(() => {
+    const m = document.querySelector("main");
+    return m ? Math.round(m.getBoundingClientRect().width) : -1;
+  });
+  expect(szerokoscTresci, "powłoka wyników przekroczyła FLIGHT_SHELL_WIDE").toBeLessThanOrEqual(1720);
+  expect(szerokoscTresci, "powłoka wyników zwęziła się do stanu sprzed V2").toBeGreaterThan(1280);
 });
 
 test("strona treściowa hotelu (miasto) zostaje w kontenerze 1280", async ({ page }) => {

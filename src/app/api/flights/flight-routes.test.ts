@@ -1024,3 +1024,62 @@ test("GET booking: nigdy nie oddaje numeru dokumentu ani identyfikatorów płatn
     }
   });
 });
+
+
+test("return: STARY adres powrotu (failed) nie cofa sesji, która jest już w rezerwacji", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "12121212-1212-4121-8121-121212121212";
+    // Klient zapłacił, book padł na 5xx → manual_review z nierozstrzygniętą
+    // płatnością. Teraz wraca do historii przeglądarki i otwiera adres
+    // z WCZEŚNIEJSZEJ, nieudanej próby.
+    await seedPrebookedSession(redis, sessionId, {
+      bookingStatus: "manual_review",
+      paymentStatus: "processing",
+      manualReviewReason: "book failed: PROVIDER_ERROR",
+    });
+    const restore = mockFetch(() => ({ status: 200, body: {} }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, {
+        paymentIntentId: "pi_3Ab9XyZ0000001",
+        redirectStatus: "failed",
+      });
+      // NIE mówimy „nie pobraliśmy środków" — tego nie wiemy.
+      assert.equal(out.status, 202);
+      assert.equal(out.body.error, "manual_review");
+      const after = await getFlightSession(sessionId);
+      assert.equal(after?.bookingStatus, "manual_review", "stan rezerwacji został nadpisany");
+      assert.notEqual(after?.paymentStatus, "failed", "stary adres cofnął status płatności");
+      // Dowód i tak zapisujemy — jest śladem audytowym.
+      assert.equal(after?.paymentEvidence?.verdict, "rejected");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("return: stary adres NIE blokuje potwierdzonej rezerwacji (bramka `confirmed` jest pierwsza)", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "13131313-1313-4131-8131-131313131313";
+    await seedPrebookedSession(redis, sessionId, {
+      bookingStatus: "confirmed",
+      paymentStatus: "paid",
+      bookingId: "bk_done",
+    });
+    const restore = mockFetch(() => ({ status: 200, body: {} }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { redirectStatus: "failed" });
+      assert.equal(out.status, 200);
+      assert.equal(out.body.bookingId, "bk_done");
+      assert.equal(out.body.alreadyBooked, true);
+      const after = await getFlightSession(sessionId);
+      assert.equal(after?.paymentStatus, "paid");
+      assert.equal(after?.bookingStatus, "confirmed");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
