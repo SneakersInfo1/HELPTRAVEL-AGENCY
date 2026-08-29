@@ -14,6 +14,8 @@
 
 import { Redis } from "@upstash/redis";
 
+import type { PaymentEvidenceVerdict } from "./payment-evidence";
+import type { FlightEmailState } from "./state";
 import type { FlightItinerarySnapshot } from "./types";
 
 const KEY_VERSION = "v1";
@@ -67,7 +69,14 @@ export function __resetFlightRedisForTests(): void {
 
 // ── Typy domenowe ───────────────────────────────────────────────────────────
 
-export type FlightPaymentStatus = "pending" | "paid" | "failed";
+/**
+ * `processing` (nowe 2026-08-29): wróciliśmy z widgetu płatności, ale nie mamy
+ * jeszcze POZYTYWNEGO dowodu obciążenia. Poprzednio ten moment zapisywał od
+ * razu `paid` — czyli twierdziliśmy o pieniądzach coś, czego nie sprawdziliśmy.
+ * `paid` ustawiamy dopiero, gdy LiteAPI przyjmie booking na tę transakcję
+ * (patrz `payment-evidence.ts`).
+ */
+export type FlightPaymentStatus = "pending" | "processing" | "paid" | "failed";
 export type FlightBookingStatus =
   | "intent" // utworzyliśmy intencję przed prebookiem
   | "prebooked" // prebook OK, czekamy na płatność
@@ -135,8 +144,33 @@ export interface FlightBookingRecord {
   passengerData?: MaskedPassenger[];
   contactData?: FlightContactData;
   manualReviewReason?: string;
-  /** Strażnik anty-duplikat maila potwierdzającego (book route ↔ webhook). */
+  /**
+   * Strażnik anty-duplikat maila potwierdzającego (book route ↔ webhook).
+   *
+   * ZNACZENIE ZMIENIONE 2026-08-29: `true` oznacza teraz „Resend PRZYJĄŁ
+   * wiadomość", a nie „zamierzamy wysłać". Do tej pory flaga leciała w górę
+   * razem z decyzją o wysyłce, więc nieudany mail nigdy nie był ponowiony —
+   * webhook widział `confirmationSent:true` i pomijał wysyłkę.
+   */
   confirmationSent?: boolean;
+  /** Stan wysyłki maila — rozdzielony od `bookingStatus` (mail nie cofa rezerwacji). */
+  confirmationEmail?: FlightEmailState;
+  /** Ile razy próbowaliśmy wysłać potwierdzenie (limit ponowień w webhooku). */
+  confirmationAttempts?: number;
+  /**
+   * `pi_…` wyliczone z `secretKey` prebooka. IDENTYFIKATOR, nie sekret —
+   * sam w sobie nie pozwala potwierdzić płatności, ale pozwala odrzucić adres
+   * powrotu należący do innej transakcji. `secretKey` nadal NIE jest zapisywany.
+   */
+  paymentIntentId?: string;
+  /** Co powiedział adres powrotu ze Stripe'a. Ślad audytowy przy sporze. */
+  paymentEvidence?: {
+    verdict: PaymentEvidenceVerdict;
+    reason: string;
+    redirectStatus?: string;
+    returnedPaymentIntentId?: string;
+    at: number;
+  };
   /** Kwota locka z prebooka — TO jest kwota, którą obciąży karta. */
   price?: number;
   currency?: string;
@@ -154,6 +188,14 @@ export interface FlightBookingRecord {
    * czym wypełnić wymogów briefu §11 (trasa, daty, lotniska, taryfa, bagaż).
    */
   itinerary?: FlightItinerarySnapshot;
+  /**
+   * Trasa ODCZYTANA Z ODPOWIEDZI DOSTAWCY (prebook `booking.journey`, a po
+   * rezerwacji `GET /flights/bookings/{id}`). Ma pierwszeństwo przed
+   * `itinerary` wszędzie, gdzie pokazujemy klientowi, co kupił — mail i strona
+   * potwierdzenia. `itinerary` zostaje jako zapasowe źródło, bo kształt
+   * odpowiedzi dostawcy nie jest umową i potrafi przyjść niekompletny.
+   */
+  providerItinerary?: FlightItinerarySnapshot;
   /**
    * `true` = kwota i waluta locka zgadzają się z tym, co zaakceptował klient.
    *
@@ -284,6 +326,21 @@ export async function getFlightFailed(sessionId: string): Promise<FlightFailedRe
 export interface IdempotentCached {
   status: number;
   body: unknown;
+  /**
+   * Odcisk ŻĄDANIA, które utworzyło ten wpis (hash oferty + maila + kwoty).
+   *
+   * DLACZEGO (audyt bezpieczeństwa 2026-08-29): odpowiedź prebooka niesie
+   * `secretKey` — Stripe client secret. Cache był kluczowany WYŁĄCZNIE
+   * nagłówkiem `Idempotency-Key` od klienta i odczytywany PRZED walidacją body,
+   * więc kto trafił w cudzy klucz, dostawał cudzy `secretKey` i `sessionId`
+   * wysyłając puste żądanie. Klucz jest zwykle `crypto.randomUUID()`, ale front
+   * miał fallback `String(Date.now())` — czyli w przeglądarce bez
+   * `crypto.randomUUID` (kontekst niezabezpieczony) klucz był znakiem czasu.
+   *
+   * Teraz wpis wydajemy tylko wtedy, gdy powtórzone żądanie DOTYCZY TEJ SAMEJ
+   * rezerwacji. Zgadnięcie klucza przestaje wystarczać.
+   */
+  fingerprint?: string;
 }
 export async function getFlightIdempotent(key: string): Promise<IdempotentCached | null> {
   try {
@@ -292,9 +349,9 @@ export async function getFlightIdempotent(key: string): Promise<IdempotentCached
     return null; // best-effort — nigdy nie blokuj rezerwacji na idem-cache
   }
 }
-export async function setFlightIdempotent(key: string, status: number, body: unknown): Promise<void> {
+export async function setFlightIdempotent(key: string, status: number, body: unknown, fingerprint?: string): Promise<void> {
   try {
-    await getRedis().set(iKey(key), { status, body }, { ex: IDEM_TTL_SECONDS });
+    await getRedis().set(iKey(key), { status, body, fingerprint }, { ex: IDEM_TTL_SECONDS });
   } catch {
     /* best-effort */
   }

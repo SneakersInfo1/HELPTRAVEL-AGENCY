@@ -14,6 +14,7 @@ import {
   getReplyTo,
   getResendClient,
 } from "./client";
+import { mergeItineraries } from "@/lib/flights/provider-itinerary";
 import type { FlightBookingRecord, FlightContactData } from "@/lib/flights/session";
 import {
   renderFlightCancellation,
@@ -43,6 +44,8 @@ export async function sendFlightManualReviewAlert(input: {
   prebookId?: string;
   reason: string;
   contact?: FlightContactData;
+  /** Werdykt o dowodzie płatności — decyduje, czy w ogóle wolno pisać „klient zapłacił”. */
+  paymentEvidence?: string;
 }): Promise<void> {
   const client = getResendClient();
   if (!client) {
@@ -55,12 +58,24 @@ export async function sendFlightManualReviewAlert(input: {
     return;
   }
   const to = adminAddress();
+  // Nagłówek MUSI odzwierciedlać to, co faktycznie wiemy o pieniądzach.
+  // Poprzednia wersja pisała „Klient zapłacił" przy każdej porażce booka —
+  // także wtedy, gdy płatności nigdy nie było, a wtedy operator dzwonił do
+  // klienta z przeprosinami za obciążenie, którego nie ma.
+  const paid = input.paymentEvidence?.startsWith("consistent") === true;
+  const headline = paid
+    ? "⚠️ Lot: płatność POTWIERDZONA, rezerwacja wymaga ręcznej weryfikacji"
+    : "⚠️ Lot: rezerwacja nieudana, status płatności NIEROZSTRZYGNIĘTY";
+  const lead = paid
+    ? "Stripe potwierdził płatność, ale <code>/flights/bookings</code> nie powiodło się po retry."
+    : "<code>/flights/bookings</code> nie powiodło się, a statusu płatności nie dało się potwierdzić. <b>Sprawdź transakcję w panelu LiteAPI PRZED kontaktem z klientem.</b>";
   const html = `
-    <h2>⚠️ Lot: płatność OK, rezerwacja wymaga ręcznej weryfikacji</h2>
-    <p>Klient zapłacił, ale <code>/flights/bookings</code> nie powiodło się po retry.</p>
+    <h2>${headline}</h2>
+    <p>${lead}</p>
     <ul>
       <li><b>sessionId:</b> ${input.sessionId}</li>
       <li><b>prebookId:</b> ${input.prebookId ?? "—"}</li>
+      <li><b>dowód płatności:</b> ${input.paymentEvidence ?? "—"}</li>
       <li><b>kontakt klienta:</b> ${input.contact?.email ?? "—"} / ${input.contact?.firstName ?? ""} ${input.contact?.lastName ?? ""}</li>
       <li><b>powód:</b> ${input.reason}</li>
     </ul>
@@ -72,9 +87,9 @@ export async function sendFlightManualReviewAlert(input: {
         from,
         to,
         ...(getReplyTo() ? { replyTo: getReplyTo()! } : {}),
-        subject: `[HelpTravel] Lot manual_review — sid ${input.sessionId.slice(0, 8)}`,
+        subject: `[HelpTravel] Lot manual_review (${paid ? "PAID" : "PAYMENT UNRESOLVED"}) — sid ${input.sessionId.slice(0, 8)}`,
         html,
-        text: `Lot manual_review. sessionId=${input.sessionId} prebookId=${input.prebookId ?? "-"} reason=${input.reason} contact=${input.contact?.email ?? "-"}`,
+        text: `Lot manual_review. sessionId=${input.sessionId} prebookId=${input.prebookId ?? "-"} paymentEvidence=${input.paymentEvidence ?? "-"} reason=${input.reason} contact=${input.contact?.email ?? "-"}`,
       }),
     );
     if (res.error) {
@@ -106,6 +121,12 @@ export interface FlightConfirmationInput {
   passengers?: Array<{ firstName: string; lastName: string; type?: string }>;
 }
 
+/** Wynik wysyłki — `sent` opisuje FAKT, nie zamiar. */
+export interface FlightEmailResult {
+  sent: boolean;
+  reason?: "no_address" | "no_client" | "no_sender" | "rejected" | "threw";
+}
+
 /**
  * Potwierdzenie rezerwacji lotu do klienta.
  *
@@ -115,17 +136,21 @@ export interface FlightConfirmationInput {
  *
  * NIGDY nie rzuca: mail jest side-effectem i nie może wywrócić stanu
  * rezerwacji (brief §11). Awaria idzie w log + `notifyWarning`.
+ *
+ * ZWRACA WYNIK (zmiana 2026-08-29): wołający ustawia `confirmationSent`
+ * wyłącznie na `sent:true`. Wcześniej flaga szła w górę razem z DECYZJĄ o
+ * wysyłce, więc pojedyncza odmowa Resenda zamykała drogę ponowieniu na zawsze.
  */
-export async function sendFlightConfirmation(input: FlightConfirmationInput): Promise<void> {
+export async function sendFlightConfirmation(input: FlightConfirmationInput): Promise<FlightEmailResult> {
   const to = input.to?.trim();
   if (!to) {
     console.warn(`[email][flight-confirmation] skipped — brak adresu bookingId=${input.bookingId}`);
-    return;
+    return { sent: false, reason: "no_address" };
   }
   const client = getResendClient();
   if (!client) {
     console.warn(`[email][flight-confirmation] skipped — RESEND_API_KEY not set bookingId=${input.bookingId}`);
-    return;
+    return { sent: false, reason: "no_client" };
   }
   // Customer-facing: stary fallback resend.dev odpowiadał 403 dla każdego
   // odbiorcy poza właścicielem konta Resend (incydent hotelowy 2026-08-28) —
@@ -139,7 +164,7 @@ export async function sendFlightConfirmation(input: FlightConfirmationInput): Pr
       body: `Booking ${input.bookingId} jest potwierdzony. ${MISSING_FROM_REASON}`,
       fields: { bookingId: input.bookingId, to, errorCode: "BOOKING_CONFIRMATION_EMAIL_FAILED" },
     }).catch(() => {});
-    return;
+    return { sent: false, reason: "no_sender" };
   }
 
   const mail = renderFlightConfirmation({
@@ -178,11 +203,13 @@ export async function sendFlightConfirmation(input: FlightConfirmationInput): Pr
         body: `Resend odrzucił wysyłkę. Booking ${input.bookingId} potwierdzony; być może potrzebny ręczny mail.`,
         fields: { bookingId: input.bookingId, to, error: res.error.message },
       }).catch(() => {});
-    } else {
-      console.log(`[email][flight-confirmation] sent bookingId=${input.bookingId} messageId=${res.data?.id ?? "?"}`);
+      return { sent: false, reason: "rejected" };
     }
+    console.log(`[email][flight-confirmation] sent bookingId=${input.bookingId} messageId=${res.data?.id ?? "?"}`);
+    return { sent: true };
   } catch (err) {
     console.error(`[email][flight-confirmation] THREW bookingId=${input.bookingId} error=${err instanceof Error ? err.message : String(err)}`);
+    return { sent: false, reason: "threw" };
   }
 }
 
@@ -257,18 +284,25 @@ export function flightConfirmationInputFromSession(
 ): FlightConfirmationInput | null {
   const to = session.contactData?.email;
   if (!to) return null;
+  // Trasa: NAJPIERW dostawca (prebook/booking), migawka z przeglądarki dopiero
+  // jako uzupełnienie brakujących pól. Mail jest jedynym dokumentem, jaki klient
+  // dostaje po zapłacie — nie może opisywać lotu słowami jego własnej karty.
+  const { itinerary } = mergeItineraries(session.providerItinerary, session.itinerary);
   return {
     bookingId: extra.bookingId,
     to,
     pnr: extra.pnr,
     eTicketNumbers: extra.eTicketNumbers,
     ticketingPending: extra.ticketingPending,
+    // Kwota z rekordu serwerowego (lock prebooka) — nigdy z przeglądarki.
     price: session.price,
     currency: session.currency,
-    legs: session.itinerary?.legs,
-    fareName: session.itinerary?.fareName,
-    hasCarryOnBag: session.itinerary?.hasCarryOnBag,
-    hasCheckedBag: session.itinerary?.hasCheckedBag,
+    legs: itinerary?.legs,
+    fareName: itinerary?.fareName,
+    hasCarryOnBag: itinerary?.hasCarryOnBag,
+    hasCheckedBag: itinerary?.hasCheckedBag,
+    // Nazwiska z rekordu serwerowego zapisanego przy prebooku — to te same
+    // dane, które poszły do dostawcy w bilecie.
     passengers: session.passengerData?.map((p) => ({ firstName: p.firstName, lastName: p.lastName, type: p.type })),
   };
 }

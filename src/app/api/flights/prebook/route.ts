@@ -9,7 +9,7 @@
 //      wróci do frontu. secretKey idzie do frontu, ale NIGDY do storage.
 //   5. Numery dokumentów pasażerów maskowane do ostatnich 3 znaków w storage.
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
 
@@ -18,6 +18,8 @@ import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { notifyCritical } from "@/lib/alerting/notify";
 import { prebookFlight, toFlightApiError } from "@/lib/flights/client";
 import { priceChanged } from "@/lib/flights/money";
+import { paymentIntentIdFromSecret } from "@/lib/flights/payment-evidence";
+import { extractProviderItinerary } from "@/lib/flights/provider-itinerary";
 import { FlightPrebookInputSchema } from "@/lib/flights/types";
 import {
   FLIGHT_SESSION_TTL_SECONDS,
@@ -40,10 +42,6 @@ export async function POST(request: NextRequest) {
   if (limited) return limited;
 
   const idemKey = request.headers.get("idempotency-key")?.trim() || null;
-  if (idemKey) {
-    const cached = await getFlightIdempotent(idemKey);
-    if (cached) return NextResponse.json(cached.body, { status: cached.status });
-  }
 
   let json: unknown;
   try {
@@ -56,6 +54,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_body", issues: parsed.error.issues }, { status: 400 });
   }
   const b = parsed.data;
+
+  // ── IDEMPOTENCJA — PO walidacji i związana z treścią żądania ──────────────
+  //
+  // Odpowiedź prebooka zawiera `secretKey` (Stripe client secret). Do
+  // 2026-08-29 cache był odczytywany PRZED parsowaniem body i kluczowany samym
+  // nagłówkiem od klienta, więc wystarczyło trafić w cudzy `Idempotency-Key`
+  // (front miał fallback `String(Date.now())`), żeby PUSTYM żądaniem dostać
+  // cudzy `secretKey` i `sessionId`. Teraz wpis wydajemy tylko żądaniu, które
+  // dotyczy tej samej oferty, tego samego klienta i tej samej kwoty.
+  const fingerprint = createHash("sha256")
+    .update(`${b.offerId}|${b.contact.email.toLowerCase()}|${b.acceptedTotal}|${b.acceptedCurrency}`)
+    .digest("hex")
+    .slice(0, 32);
+  if (idemKey) {
+    const cached = await getFlightIdempotent(idemKey);
+    if (cached && cached.fingerprint === fingerprint) {
+      return NextResponse.json(cached.body, { status: cached.status });
+    }
+    if (cached) {
+      console.warn(`[flights][prebook] Idempotency-Key trafiony, ale odcisk żądania NIE pasuje — traktuję jak nowe żądanie`);
+    }
+  }
 
   // Reguła 1.3: dokument ważny PO ostatniej dacie podróży.
   if (b.lastTravelDate) {
@@ -156,10 +176,20 @@ export async function POST(request: NextRequest) {
     //    Zapisujemy TAKŻE przy rozjeździe kwoty — prebook u dostawcy istnieje,
     //    więc rekord musi istnieć u nas (RULE 6: nigdy po cichu nie gubimy
     //    stanu, nawet gdy ścieżka kończy się błędem dla użytkownika).
+    // `secretKey` to Stripe client secret `pi_<id>_secret_<...>` (patrz
+    // liteapi/widget-env.ts). Zapisujemy z niego SAM identyfikator — nie sekret
+    // — żeby strona powrotu miała z czym porównać `?payment_intent=`. Bez tego
+    // adres powrotu jednej sesji działa na dowolnej innej.
+    const paymentIntentId = paymentIntentIdFromSecret(pre.secretKey);
+    if (!paymentIntentId) {
+      console.warn(`[flights][prebook] secretKey bez rozpoznawalnego pi_… sid=${sessionId} — dowód płatności zdegradowany do „unverified”`);
+    }
+
     const rec: FlightBookingRecord = {
       ...intent,
       prebookId: pre.prebookId,
       transactionId: pre.transactionId,
+      paymentIntentId,
       bookingStatus: "prebooked",
       price: pre.price,
       currency: lockedCurrency,
@@ -167,6 +197,11 @@ export async function POST(request: NextRequest) {
       acceptedCurrency: b.acceptedCurrency,
       priceGatePassed: !amountMismatch && !currencyMismatch,
       verifiedOfferSnapshot: { total: pre.price, currency: lockedCurrency, verifiedAt: Date.now() },
+      // Trasa OD DOSTAWCY, zapisana już tutaj: `booking` z prebooka niesie
+      // własny `journey`, a to jedyne autorytatywne źródło trasy dostępne
+      // ZANIM powstanie rezerwacja. `undefined`, gdy payload jej nie zawiera —
+      // wtedy zostaje migawka od klienta, czyli dzisiejsze zachowanie.
+      providerItinerary: extractProviderItinerary(pre.booking) ?? undefined,
       updatedAt: Date.now(),
     };
     try {
@@ -238,7 +273,7 @@ export async function POST(request: NextRequest) {
       paymentTypes: pre.paymentTypes,
       expiresAt: new Date(now + FLIGHT_SESSION_TTL_SECONDS * 1000).toISOString(),
     };
-    if (idemKey) await setFlightIdempotent(idemKey, 200, responseBody);
+    if (idemKey) await setFlightIdempotent(idemKey, 200, responseBody, fingerprint);
     return NextResponse.json(responseBody, { status: 200 });
   } catch (err) {
     const e = toFlightApiError(err, "prebook");

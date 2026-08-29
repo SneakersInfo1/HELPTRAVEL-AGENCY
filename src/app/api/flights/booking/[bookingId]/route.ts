@@ -1,10 +1,15 @@
 // GET /api/flights/booking/[bookingId] — dane strony potwierdzenia lotu.
 //
 // Autoryzacja: jak przy hotelach — znajomość bookingId (losowy identyfikator)
-// JEST capability. Dodatkowo, jeśli podasz ?email=, musi się zgadzać z mailem
-// kontaktu z sesji (druga warstwa, gdy sesja jest dostępna). Zwracamy WYŁĄCZNIE
-// pola bezpieczne dla klienta — nigdy transactionId/prebookId/secretKey ani
-// numerów dokumentów.
+// JEST capability. Zwracamy WYŁĄCZNIE pola bezpieczne dla klienta — nigdy
+// transactionId/prebookId/secretKey ani numerów dokumentów.
+//
+// USUNIĘTE 2026-08-29: opcjonalne `?email=`, które porównywano z mailem
+// kontaktu. Wyglądało na drugą warstwę autoryzacji, a nią nie było —
+// sprawdzenie odpalało się TYLKO wtedy, gdy wywołujący sam podał parametr,
+// więc każdy, kto chciał je ominąć, po prostu go nie wysyłał. Żadne miejsce
+// we froncie go nie wysyłało. Kontrola, którą omija się przez pominięcie,
+// nie jest kontrolą — jest zaciemnieniem tego, co naprawdę chroni zasób.
 //
 // ticketingStatus odświeżamy LIVE przez GET /flights/bookings/{id} (webhook to
 // tylko trigger; GET = źródło prawdy — brief 1.6). Awaria live-GET nie wywraca
@@ -13,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getFlightBooking } from "@/lib/flights/client";
+import { extractProviderItinerary, mergeItineraries } from "@/lib/flights/provider-itinerary";
 import {
   getFlightCompleted,
   getFlightSession,
@@ -39,9 +45,8 @@ function ticketingFromLive(data: unknown): { ticketingStatus?: FlightTicketingSt
   };
 }
 
-export async function GET(request: NextRequest, ctx: { params: Promise<{ bookingId: string }> }) {
+export async function GET(_request: NextRequest, ctx: { params: Promise<{ bookingId: string }> }) {
   const { bookingId } = await ctx.params;
-  const emailParam = request.nextUrl.searchParams.get("email")?.trim().toLowerCase();
 
   const completed = await getFlightCompleted(bookingId).catch(() => null);
   const sessionId = await getSessionIdByBooking(bookingId).catch(() => null);
@@ -51,16 +56,13 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ booking
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // Druga warstwa autoryzacji (gdy znamy sesję): email musi pasować.
-  if (emailParam && session?.contactData?.email && session.contactData.email.toLowerCase() !== emailParam) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-
   // Odśwież status biletu LIVE (best-effort).
   let live: ReturnType<typeof ticketingFromLive> = {};
+  let liveItinerary: ReturnType<typeof extractProviderItinerary> = null;
   try {
     const res = await getFlightBooking(bookingId);
     live = ticketingFromLive(res);
+    liveItinerary = extractProviderItinerary(res);
     // Nadpisz cache, gdy live przyniósł świeższe dane.
     if (completed) {
       await saveFlightCompleted({
@@ -77,6 +79,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ booking
         pnr: live.pnr ?? session.pnr,
         eTicketNumbers: live.eTickets ?? session.eTicketNumbers,
         ticketingStatus: live.ticketingStatus ?? session.ticketingStatus,
+        providerItinerary: liveItinerary ?? session.providerItinerary,
         updatedAt: Date.now(),
       }).catch(() => {});
     }
@@ -84,6 +87,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ booking
     // Live-GET padł — pokazujemy ostatni znany stan z Redis.
   }
 
+  const merged = mergeItineraries(liveItinerary ?? session?.providerItinerary, session?.itinerary);
   const bookingStatus = session?.bookingStatus ?? completed?.status ?? "confirmed";
   const ticketingStatus = live.ticketingStatus ?? completed?.ticketingStatus ?? session?.ticketingStatus ?? "unknown";
 
@@ -99,6 +103,12 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ booking
     // Trasa i taryfa do strony potwierdzenia. Do 2026-08-29 potwierdzenie
     // pokazywało wyłącznie numer, status i kwotę — klient nie miał na nim
     // ANI JEDNEJ informacji o locie, który właśnie kupił.
-    itinerary: session?.itinerary ?? null,
+    //
+    // KOLEJNOŚĆ ŹRÓDEŁ (2026-08-29): live-GET od dostawcy → trasa zapisana
+    // przy prebooku → migawka z przeglądarki. Strona potwierdzenia opisuje
+    // kupiony bilet, więc nie może mówić danymi z `sessionStorage`, kiedy
+    // dostawca powiedział, co realnie zarezerwował.
+    itinerary: merged.itinerary ?? null,
+    itinerarySource: merged.source,
   });
 }

@@ -146,7 +146,9 @@ function prebookOk(price: number, currency = "PLN") {
       {
         prebookId: "pb_flight_1",
         transactionId: "tx_flight_1",
-        secretKey: "pi_secret_flight_1",
+        // Realny kształt Stripe'owego client secret — z niego prebook wylicza
+        // `paymentIntentId`, którym strona powrotu porównuje `?payment_intent=`.
+        secretKey: "pi_3Ab9XyZ0000001_secret_kLmNoPqRsTu",
         price,
         currency,
         paymentTypes: ["CARD"],
@@ -180,13 +182,16 @@ test("prebook: cena locka == zaakceptowana → 200 + secretKey", async () => {
       const res = await POST(prebookRequest(prebookBody()));
       const json = await res.json();
       assert.equal(res.status, 200);
-      assert.equal(json.secretKey, "pi_secret_flight_1");
+      assert.equal(json.secretKey, "pi_3Ab9XyZ0000001_secret_kLmNoPqRsTu");
       assert.equal(json.price, 1918.34);
       // transactionId NIGDY nie wychodzi do klienta.
       assert.equal(json.transactionId, undefined);
       const session = await getFlightSession(json.sessionId);
       assert.equal(session?.priceGatePassed, true);
       assert.equal(session?.acceptedTotal, 1918.34);
+      // Identyfikator PaymentIntentu zapisany, SEKRET nie.
+      assert.equal(session?.paymentIntentId, "pi_3Ab9XyZ0000001");
+      assert.equal(JSON.stringify(session).includes("kLmNoPqRsTu"), false);
     } finally {
       teardown(restore);
     }
@@ -473,8 +478,10 @@ test("book: błąd dostawcy po płatności → manual_review, rekord awarii, 202
       assert.equal(out.status, 202);
       assert.equal(out.body.bookingStatus, "manual_review");
       const after = await getFlightSession(sessionId);
-      // Płatność JEST odnotowana, booking oznaczony do ręcznej weryfikacji.
-      assert.equal(after?.paymentStatus, "paid");
+      // 5xx = NIEROZSTRZYGNIĘTE. Obciążenie mogło przejść, a odpowiedź zginąć,
+      // więc rezerwacja idzie do człowieka — ale `paid` byłoby twierdzeniem o
+      // pieniądzach, którego nikt nie potwierdził. Zostaje `processing`.
+      assert.equal(after?.paymentStatus, "processing");
       assert.equal(after?.bookingStatus, "manual_review");
       const failed = [...redis.store.keys()].filter((k) => k.includes(":failed:"));
       assert.equal(failed.length, 1);
@@ -562,6 +569,456 @@ test("GET session: nieznany identyfikator → 404 (bez wycieku informacji)", asy
         params: Promise.resolve({ sessionId: "nie-ma-takiej" }),
       });
       assert.equal(res.status, 404);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+
+// ── DOWÓD PŁATNOŚCI NA STRONIE POWROTU ───────────────────────────────────────
+//
+// Rdzeń hardeningu 2026-08-29: samo wejście na `/loty/platnosc/return?sid=…`
+// nie jest dowodem zapłaty. Adres zna każdy, kto zaczął checkout.
+
+/** Sesja gotowa do finalizacji (po prebooku, bramka kwoty zdana). */
+async function seedPrebookedSession(
+  redis: ReturnType<typeof makeFakeRedis>,
+  sessionId: string,
+  over: Record<string, unknown> = {},
+) {
+  await redis.set(`flight:v1:session:${sessionId}`, {
+    searchSessionId: sessionId,
+    offerId: "OFFER_ABCDEFGH",
+    prebookId: "pb_1",
+    transactionId: "tx_1",
+    paymentIntentId: "pi_3Ab9XyZ0000001",
+    paymentStatus: "pending",
+    bookingStatus: "prebooked",
+    priceGatePassed: true,
+    contactData: CONTACT,
+    price: 1918.34,
+    currency: "PLN",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    ...over,
+  });
+}
+
+test("return: redirect_status=failed → 402, dostawca NIETKNIĘTY, sesja NIE jest paid", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "55555555-5555-4555-8555-555555555555";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x", status: "CONFIRMED" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_3Ab9XyZ0000001", redirectStatus: "failed" });
+      assert.equal(out.status, 402);
+      assert.equal(out.body.error, "payment_not_completed");
+      assert.equal(fetchCalls.filter((c) => c.url.includes("/flights/bookings")).length, 0);
+      const after = await getFlightSession(sessionId);
+      assert.equal(after?.paymentStatus, "failed");
+      assert.notEqual(after?.bookingStatus, "confirmed");
+      // Zero rekordów paid-but-unbooked: nie było płatności, nie ma czego ratować.
+      assert.equal([...redis.store.keys()].filter((k) => k.includes(":failed:")).length, 0);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("return: payment_intent z CUDZEJ transakcji → 402 mismatch, brak bookingu", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666666";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x", status: "CONFIRMED" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
+      assert.equal(out.status, 402);
+      assert.equal(out.body.reason, "payment_intent_mismatch");
+      assert.equal(fetchCalls.filter((c) => c.url.includes("/flights/bookings")).length, 0);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("return: płatność w toku (3DS) → 202 processing, brak bookingu, sesja NIEpłatna", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "77777777-7777-4777-8777-777777777777";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_3Ab9XyZ0000001", redirectStatus: "processing" });
+      assert.equal(out.status, 202);
+      assert.equal(out.body.error, "payment_processing");
+      assert.equal(fetchCalls.filter((c) => c.url.includes("/flights/bookings")).length, 0);
+
+      // Widget nie może się zamontować drugi raz w trakcie trwającego 3DS.
+      const { GET } = await import("./session/[sessionId]/route");
+      const ses = await (await GET(new Request("http://localhost/x"), { params: Promise.resolve({ sessionId }) })).json();
+      assert.equal(ses.payable, false);
+      assert.equal(ses.paymentStatus, "processing");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("return: nieudana próba NIE pali prebooka — po `failed` sesja znów jest płatna", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "88888888-8888-4888-8888-888888888888";
+    await seedPrebookedSession(redis, sessionId, { paymentStatus: "failed" });
+    const restore = mockFetch(() => ({ status: 200, body: {} }));
+    try {
+      const { GET } = await import("./session/[sessionId]/route");
+      const ses = await (await GET(new Request("http://localhost/x"), { params: Promise.resolve({ sessionId }) })).json();
+      assert.equal(ses.payable, true, "po odrzuconej karcie klient musi móc spróbować ponownie");
+      assert.equal(ses.amount, 1918.34);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("return: brak parametrów Stripe'a NIE blokuje (autorytetem zostaje LiteAPI)", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "99999999-9999-4999-8999-999999999999";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_ok", status: "CONFIRMED" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId);
+      assert.equal(out.status, 200);
+      assert.equal(out.body.bookingId, "bk_ok");
+      const after = await getFlightSession(sessionId);
+      // `paid` DOPIERO po przyjęciu bookingu przez dostawcę.
+      assert.equal(after?.paymentStatus, "paid");
+      assert.equal(after?.paymentEvidence?.verdict, "unverified");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("book 4xx bez dowodu zapłaty → 402 płatności-nie-było, BEZ fałszywego manual_review", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 400, body: { error: { code: 43001, description: "transaction not captured" } } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId);
+      assert.equal(out.status, 402);
+      assert.equal(out.body.error, "payment_not_completed");
+      const after = await getFlightSession(sessionId);
+      assert.equal(after?.paymentStatus, "failed");
+      assert.equal(after?.bookingStatus, "failed");
+      // Kluczowe: człowiek NIE jest budzony do rezerwacji, za którą nikt nie zapłacił.
+      assert.equal([...redis.store.keys()].filter((k) => k.includes(":failed:")).length, 0);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("book 4xx MIMO potwierdzenia ze Stripe'a → manual_review + paid (pieniądze są)", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 400, body: { error: { code: 43001, description: "rejected" } } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_3Ab9XyZ0000001", redirectStatus: "succeeded" });
+      assert.equal(out.status, 202);
+      assert.equal(out.body.bookingStatus, "manual_review");
+      const after = await getFlightSession(sessionId);
+      assert.equal(after?.paymentStatus, "paid");
+      assert.equal([...redis.store.keys()].filter((k) => k.includes(":failed:")).length, 1);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+// ── SEMANTYKA confirmationSent ───────────────────────────────────────────────
+
+test("mail: confirmationSent odzwierciedla FAKT wysyłki, nie zamiar", async () => {
+  await withEnv({ ...LIVE_ENV, RESEND_API_KEY: undefined }, async () => {
+    const redis = await setup();
+    const sessionId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_mail", status: "CONFIRMED" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId);
+      assert.equal(out.status, 200);
+      assert.equal(out.body.emailSent, false, "bez klucza Resend nie wolno twierdzić, że mail poszedł");
+      const after = await getFlightSession(sessionId);
+      // Rezerwacja stoi — porażka maila jej NIE cofa.
+      assert.equal(after?.bookingStatus, "confirmed");
+      assert.equal(after?.confirmationSent, false);
+      assert.equal(after?.confirmationEmail, "EMAIL_FAILED");
+      assert.equal(after?.confirmationAttempts, 1);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("mail: po nieudanej wysyłce webhook MOŻE ponowić; po udanej — nie ponawia", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    await seedPrebookedSession(redis, sessionId, {
+      bookingStatus: "confirmed",
+      paymentStatus: "paid",
+      bookingId: "bk_r",
+      confirmationSent: false,
+      confirmationAttempts: 1,
+    });
+    const restore = mockFetch(() => ({ status: 200, body: {} }));
+    try {
+      const { sendConfirmationOnce } = await import("@/lib/flights/finalize");
+      const session = (await getFlightSession(sessionId))!;
+      const again = await sendConfirmationOnce(sessionId, session, { bookingId: "bk_r", ticketingPending: true });
+      assert.equal(again.attempted, true, "nieudana wysyłka musi dać się ponowić");
+
+      const sentAlready = await sendConfirmationOnce(
+        sessionId,
+        { ...session, confirmationSent: true },
+        { bookingId: "bk_r", ticketingPending: true },
+      );
+      assert.equal(sentAlready.attempted, false, "udana wysyłka nie może się powtórzyć");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("mail: licznik prób zatrzymuje pętlę webhooków (żadnego spamu do klienta)", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    await seedPrebookedSession(redis, sessionId, {
+      bookingStatus: "confirmed",
+      paymentStatus: "paid",
+      confirmationSent: false,
+      confirmationAttempts: 3,
+    });
+    const restore = mockFetch(() => ({ status: 200, body: {} }));
+    try {
+      const { sendConfirmationOnce, MAX_CONFIRMATION_ATTEMPTS } = await import("@/lib/flights/finalize");
+      assert.equal(MAX_CONFIRMATION_ATTEMPTS, 3);
+      const session = (await getFlightSession(sessionId))!;
+      const res = await sendConfirmationOnce(sessionId, session, { bookingId: "bk_r", ticketingPending: true });
+      assert.equal(res.attempted, false);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+// ── TRASA W MAILU: DOSTAWCA PRZED PRZEGLĄDARKĄ ───────────────────────────────
+
+test("mail: trasa z prebooka dostawcy WYPIERA podmienioną migawkę z przeglądarki", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch((url) =>
+      url.includes("/flights/bookings")
+        ? { status: 200, body: { data: [{ bookingId: "bk_it", status: "CONFIRMED" }] } }
+        : {
+            status: 200,
+            body: {
+              data: [
+                {
+                  ...prebookOk(1918.34).data[0],
+                  booking: {
+                    journey: {
+                      segments: [
+                        {
+                          originCode: "WAW",
+                          destinationCode: "BCN",
+                          departureTime: "2026-09-20T08:20:00",
+                          arrivalTime: "2026-09-20T11:10:00",
+                          direction: "OUTBOUND",
+                          duration: { minutes: 170 },
+                          carrier: { marketingName: "Wizz Air" },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+    );
+    try {
+      const { POST } = await import("./prebook/route");
+      // Klient wysyła migawkę z ZUPEŁNIE innym lotem.
+      const body = prebookBody({
+        itinerary: {
+          legs: [
+            {
+              direction: "OUTBOUND",
+              originCode: "AAA",
+              destinationCode: "BBB",
+              departureTime: "2000-01-01T00:00:00",
+              arrivalTime: "2000-01-01T01:00:00",
+              durationMinutes: 60,
+              stops: 0,
+              carrier: "Zmyślone Linie",
+            },
+          ],
+          fareName: "Zmyślona",
+        },
+      });
+      const pre = await (await POST(prebookRequest(body))).json();
+      const session = (await getFlightSession(pre.sessionId))!;
+      assert.equal(session.providerItinerary?.legs[0].originCode, "WAW");
+
+      const { flightConfirmationInputFromSession } = await import("@/lib/email/send-flight-alerts");
+      const mail = flightConfirmationInputFromSession(session, { bookingId: "bk_it", ticketingPending: true })!;
+      assert.equal(mail.legs?.[0].originCode, "WAW", "mail pokazał trasę z przeglądarki");
+      assert.equal(mail.legs?.[0].carrier, "Wizz Air");
+      assert.equal(mail.legs?.[0].destinationCode, "BCN");
+      // Taryfa: dostawca jej nie zwrócił, więc uzupełnia ją migawka — to jedyne
+      // pole, w którym dane klienta wciąż mają prawo głosu.
+      assert.equal(mail.fareName, "Zmyślona");
+      // Kwota ZAWSZE z rekordu serwerowego.
+      assert.equal(mail.price, 1918.34);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+
+// ── BEZPIECZEŃSTWO: CACHE IDEMPOTENCJI NIE JEST WYCIEKIEM `secretKey` ────────
+//
+// Odpowiedź prebooka niesie Stripe client secret. Cache był kluczowany samym
+// nagłówkiem od klienta i czytany PRZED walidacją body, a front miał fallback
+// `String(Date.now())` — czyli klucz dawał się zgadnąć. Wpis wydajemy teraz
+// tylko żądaniu o tym samym odcisku (oferta + mail + kwota + waluta).
+
+test("idem: zgadnięty Idempotency-Key + CUDZE żądanie → NIE oddaje zapisanego secretKey", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    let prebooks = 0;
+    const restore = mockFetch(() => {
+      prebooks += 1;
+      return { status: 200, body: prebookOk(1918.34) };
+    });
+    try {
+      const { POST } = await import("./prebook/route");
+      const key = { "idempotency-key": "1756500000000" }; // znak czasu — zgadywalny
+
+      const victim = await (await POST(prebookRequest(prebookBody(), key))).json();
+      assert.equal(victim.secretKey, "pi_3Ab9XyZ0000001_secret_kLmNoPqRsTu");
+
+      // Napastnik zna klucz, ale nie zna oferty/maila/kwoty ofiary.
+      const attackerBody = prebookBody({ contact: { ...CONTACT, email: "napastnik@example.com" } });
+      const attacker = await (await POST(prebookRequest(attackerBody, key))).json();
+
+      assert.notEqual(attacker.sessionId, victim.sessionId, "napastnik dostał sesję ofiary");
+      assert.equal(prebooks, 2, "cache oddał odpowiedź zamiast wykonać własny prebook");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("idem: TEN SAM klient z tym samym żądaniem dalej dostaje cache (double submit)", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    let prebooks = 0;
+    const restore = mockFetch(() => {
+      prebooks += 1;
+      return { status: 200, body: prebookOk(1918.34) };
+    });
+    try {
+      const { POST } = await import("./prebook/route");
+      const key = { "idempotency-key": "idem-double-submit" };
+      const a = await (await POST(prebookRequest(prebookBody(), key))).json();
+      const b = await (await POST(prebookRequest(prebookBody(), key))).json();
+      assert.equal(a.sessionId, b.sessionId);
+      assert.equal(prebooks, 1, "double submit utworzył drugi lock taryfy u dostawcy");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("idem: zmiana KWOTY przy tym samym kluczu tworzy nowy prebook, nie oddaje starej kwoty", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    // Dostawca lockuje dokładnie tyle, ile klient zaakceptował (mock nie widzi
+    // `acceptedTotal` — do LiteAPI idzie już przetworzone body — więc sterujemy
+    // ceną z zewnątrz).
+    let lockPrice = 1918.34;
+    const restore = mockFetch(() => ({ status: 200, body: prebookOk(lockPrice) }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const key = { "idempotency-key": "idem-same-key" };
+      const first = await (await POST(prebookRequest(prebookBody(), key))).json();
+      lockPrice = 2900;
+      const second = await (await POST(prebookRequest(prebookBody({ acceptedTotal: 2900 }), key))).json();
+      assert.equal(first.price, 1918.34);
+      assert.equal(second.price, 2900, "cache oddał kwotę z poprzedniej zgody");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+// ── BEZPIECZEŃSTWO: CO WYCHODZI Z API ────────────────────────────────────────
+
+test("prebook: odpowiedź NIE zawiera transactionId ani prebookId", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({ status: 200, body: prebookOk(1918.34) }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const raw = await (await POST(prebookRequest(prebookBody()))).text();
+      assert.equal(raw.includes("tx_flight_1"), false);
+      assert.equal(raw.includes("pb_flight_1"), false);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("GET booking: nigdy nie oddaje numeru dokumentu ani identyfikatorów płatności", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+    await seedPrebookedSession(redis, sessionId, {
+      bookingStatus: "confirmed",
+      paymentStatus: "paid",
+      bookingId: "bk_sec",
+      passengerData: [{ firstName: "Jan", lastName: "Kowalski", type: "ADT", documentNumberMasked: "******567" }],
+    });
+    await redis.set(`flight:v1:bybooking:bk_sec`, sessionId);
+    const restore = mockFetch(() => ({ status: 500, body: {} })); // live-GET pada — bierzemy Redis
+    try {
+      const { GET } = await import("./booking/[bookingId]/route");
+      const res = await GET(new NextRequest("http://localhost/api/flights/booking/bk_sec"), {
+        params: Promise.resolve({ bookingId: "bk_sec" }),
+      });
+      const raw = await res.text();
+      assert.equal(res.status, 200);
+      for (const secret of ["tx_1", "pb_1", "pi_3Ab9XyZ0000001", "AB1234567", "******567"]) {
+        assert.equal(raw.includes(secret), false, `wyciek: ${secret}`);
+      }
     } finally {
       teardown(restore);
     }

@@ -73,23 +73,23 @@ function bucketOf(iso: string): TimeBucket {
 }
 
 /** Liczba przesiadek całej oferty = maksimum po odcinkach (round-trip: oba kierunki). */
-export function offerStops(o: DisplayOffer): StopBucket {
+function offerStops(o: DisplayOffer): StopBucket {
   const max = o.legs.reduce((m, l) => Math.max(m, l.stops), 0);
   return (max >= 2 ? 2 : max) as StopBucket;
 }
 
 /** Lotnisko wylotu oferty (pierwszy odcinek outbound). */
-export function offerOriginCode(o: DisplayOffer): string {
+function offerOriginCode(o: DisplayOffer): string {
   return o.legs[0]?.originCode ?? "";
 }
 
 /** Godzina wylotu (outbound) — do bucketów i sortu „najwcześniejszy/najpóźniejszy". */
-export function offerDepartTime(o: DisplayOffer): string {
+function offerDepartTime(o: DisplayOffer): string {
   return o.legs[0]?.departureTime ?? "";
 }
 
 /** Przewoźnicy oferty (kod, nazwa, logo) ze wszystkich segmentów — filtr linii. */
-export function offerAirlines(o: DisplayOffer): Airline[] {
+function offerAirlines(o: DisplayOffer): Airline[] {
   const map = new Map<string, Airline>();
   for (const leg of o.legs) {
     for (const s of leg.segments) {

@@ -40,10 +40,18 @@ export async function GET(_request: Request, ctx: { params: Promise<{ sessionId:
       currency: session.currency ?? null,
       bookingStatus: session.bookingStatus,
       paymentStatus: session.paymentStatus,
-      /** Bramka kwoty przeszła — front może pokazać formularz płatności. */
+      /**
+       * Bramka kwoty przeszła — front może pokazać formularz płatności.
+       *
+       * `failed` przepuszczamy ŚWIADOMIE: nieudana próba (odrzucona karta,
+       * porzucone 3DS) nie unieważnia prebooka, a Stripe pozwala ponowić ten
+       * sam PaymentIntent. Blokada zmuszałaby klienta do drugiego prebooka.
+       * `processing` jest natomiast TWARDO blokowane — mieć dwa równoległe
+       * widgety na jedną transakcję to prosta droga do podwójnego obciążenia.
+       */
       payable:
         session.bookingStatus === "prebooked" &&
-        session.paymentStatus === "pending" &&
+        (session.paymentStatus === "pending" || session.paymentStatus === "failed") &&
         session.priceGatePassed !== false &&
         typeof session.price === "number",
       bookingId: session.bookingId ?? null,

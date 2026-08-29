@@ -30,13 +30,10 @@ import {
   verifyWebhookAuthToken,
 } from "@/lib/liteapi";
 import { notifyCritical, notifyWarning } from "@/lib/alerting/notify";
-import {
-  flightConfirmationInputFromSession,
-  sendFlightCancellation,
-  sendFlightConfirmation,
-  sendFlightManualReviewAlert,
-} from "@/lib/email/send-flight-alerts";
+import { sendFlightCancellation, sendFlightManualReviewAlert } from "@/lib/email/send-flight-alerts";
 import { getFlightBooking } from "@/lib/flights/client";
+import { sendConfirmationOnce } from "@/lib/flights/finalize";
+import { extractProviderItinerary } from "@/lib/flights/provider-itinerary";
 import {
   getFlightSession,
   getSessionIdByBooking,
@@ -91,13 +88,14 @@ function ticketingFromLive(data: unknown): { status?: string; pnr?: string; eTic
 async function refreshFromLive(session: FlightBookingRecord, bookingId: string) {
   try {
     const res = await getFlightBooking(bookingId);
-    const live = ticketingFromLive(res);
+    const live = { ...ticketingFromLive(res), itinerary: extractProviderItinerary(res) ?? undefined };
     await saveFlightSession(session.searchSessionId, {
       ...session,
       bookingId,
       pnr: live.pnr ?? session.pnr,
       eTicketNumbers: live.eTickets ?? session.eTicketNumbers,
       ticketingStatus: live.ticketingStatus ?? session.ticketingStatus,
+      providerItinerary: live.itinerary ?? session.providerItinerary,
       updatedAt: Date.now(),
     });
     return live;
@@ -193,18 +191,34 @@ export async function POST(request: NextRequest) {
       await linkBookingToSession(effectiveBookingId, sessionId);
       const live = await refreshFromLive(session, effectiveBookingId);
       const ticketing = live?.ticketingStatus ?? "pending";
-      const sendMail = !session.confirmationSent && Boolean(session.contactData?.email);
-      await saveFlightSession(sessionId, { ...session, bookingId: effectiveBookingId, bookingStatus: "confirmed", paymentStatus: "paid", ticketingStatus: ticketing, pnr: live?.pnr ?? session.pnr, eTicketNumbers: live?.eTickets ?? session.eTicketNumbers, confirmationSent: session.confirmationSent || sendMail, updatedAt: Date.now() });
+      // Webhook `flight.book.confirmed` JEST potwierdzeniem od dostawcy, że
+      // rezerwacja istnieje — a rezerwacja u LiteAPI powstaje wyłącznie na
+      // opłaconej transakcji. To jedyne miejsce poza udanym bookiem, w którym
+      // wolno zapisać `paymentStatus:"paid"`.
+      const confirmed: FlightBookingRecord = {
+        ...session,
+        bookingId: effectiveBookingId,
+        bookingStatus: "confirmed",
+        paymentStatus: "paid",
+        ticketingStatus: ticketing,
+        pnr: live?.pnr ?? session.pnr,
+        eTicketNumbers: live?.eTickets ?? session.eTicketNumbers,
+        // Trasa od dostawcy z live-GET-a, gdy przyszła; inaczej ta z prebooka.
+        providerItinerary: live?.itinerary ?? session.providerItinerary,
+        confirmationEmail: session.confirmationSent ? session.confirmationEmail : "EMAIL_PENDING",
+        updatedAt: Date.now(),
+      };
+      await saveFlightSession(sessionId, confirmed);
       await saveFlightCompleted({ bookingId: effectiveBookingId, sessionId, status: "CONFIRMED", pnr: live?.pnr ?? session.pnr, eTicketNumbers: live?.eTickets ?? session.eTicketNumbers, ticketingStatus: ticketing, price: session.price, currency: session.currency, createdAt: Date.now() });
-      if (sendMail) {
-        const mail = flightConfirmationInputFromSession(session, {
-          bookingId: effectiveBookingId,
-          pnr: live?.pnr ?? session.pnr,
-          eTicketNumbers: live?.eTickets ?? session.eTicketNumbers,
-          ticketingPending: ticketing !== "ticketed",
-        });
-        if (mail) sendFlightConfirmation(mail).catch(() => {});
-      }
+      // Mail przez wspólną bramkę: wysyła TYLKO gdy poprzednia próba nie
+      // doszła, ustawia `confirmationSent` z FAKTU wysyłki i zlicza próby,
+      // żeby seria webhooków nie zamieniła się w serię maili.
+      await sendConfirmationOnce(sessionId, confirmed, {
+        bookingId: effectiveBookingId,
+        pnr: live?.pnr ?? session.pnr,
+        eTicketNumbers: live?.eTickets ?? session.eTicketNumbers,
+        ticketingPending: ticketing !== "ticketed",
+      });
       break;
     }
     case "flight.book.pending.confirmation": {
@@ -223,7 +237,15 @@ export async function POST(request: NextRequest) {
       await saveFlightSession(sessionId, { ...session, bookingStatus: "manual_review", manualReviewReason: reason, updatedAt: Date.now() });
       await saveFlightFailed({ sessionId, prebookId: session.prebookId, transactionId: session.transactionId, bookingId: effectiveBookingId, errorCode: eventName, message: reason, manualReviewReason: reason, createdAt: Date.now() }).catch(() => {});
       notifyCritical({ source: "flights-webhook", title: `Flight ${eventName} after payment — manual review`, body: "Webhook zgłosił niepowodzenie/wygaśnięcie rezerwacji po płatności. Wymaga ręcznej weryfikacji.", fields: { sessionId, bookingId: effectiveBookingId, prebookId: session.prebookId } }).catch(() => {});
-      sendFlightManualReviewAlert({ sessionId, prebookId: session.prebookId, reason, contact: session.contactData }).catch(() => {});
+      sendFlightManualReviewAlert({
+        sessionId,
+        prebookId: session.prebookId,
+        reason,
+        contact: session.contactData,
+        // Ten sam werdykt, który zapisała finalizacja. Bez niego alert znów
+        // twierdziłby „klient zapłacił" przy każdej porażce.
+        paymentEvidence: session.paymentEvidence ? `${session.paymentEvidence.verdict}/${session.paymentEvidence.reason}` : undefined,
+      }).catch(() => {});
       break;
     }
     case "flight.book.cancelled": {

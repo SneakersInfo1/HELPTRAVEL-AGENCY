@@ -95,6 +95,34 @@ function titleFor(gender: Gender | "", type: PaxType): "MR" | "MRS" | "MISS" | u
   return undefined;
 }
 
+/**
+ * Klucz idempotencji — ZAWSZE nieprzewidywalny.
+ *
+ * Poprzedni fallback (`String(Date.now())`) był znakiem czasu w milisekundach,
+ * czyli wartością, którą da się zgadnąć. Ten klucz identyfikuje wpis w cache'u
+ * prebooka, a ten cache zwraca `secretKey` — zgadywalny klucz był więc
+ * ścieżką do cudzego poświadczenia płatności. `crypto.randomUUID` bywa
+ * niedostępne (kontekst niezabezpieczony), ale `getRandomValues` jest wszędzie.
+ */
+function newIdempotencyKey(): string {
+  // `crypto` jest typowane jako zawsze pełne `Crypto`, a w praktyce
+  // `randomUUID` istnieje tylko w kontekście zabezpieczonym — stąd odczyt
+  // przez `unknown`, a nie przez zawężanie typu.
+  const c = (typeof crypto !== "undefined" ? crypto : undefined) as
+    | { randomUUID?: () => string; getRandomValues?: (a: Uint8Array) => Uint8Array }
+    | undefined;
+  if (typeof c?.randomUUID === "function") return c.randomUUID();
+  if (typeof c?.getRandomValues === "function") {
+    const b = new Uint8Array(16);
+    c.getRandomValues(b);
+    return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  }
+  // Ostatnia deska ratunku: bez API losowego lepiej NIE wysyłać nagłówka niż
+  // wysyłać zgadywalny. Pusty klucz = serwer pomija cache (dwa submity dadzą
+  // dwa locki taryfy, ale nikt nie dostanie cudzego `secretKey`).
+  return "";
+}
+
 export default function PassengersPage() {
   const router = useRouter();
   const [flow, setFlow] = useState<FlightFlow | null>(null);
@@ -160,14 +188,17 @@ export default function PassengersPage() {
   async function submitPrebook(acceptedTotal: number, acceptedCurrency: string, freshIdemKey: boolean) {
     if (!flow) return;
     if (freshIdemKey || !idemKeyRef.current) {
-      idemKeyRef.current = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
+      idemKeyRef.current = newIdempotencyKey();
     }
     setSubmitting(true);
     setSubmitError(null);
     try {
       const res = await fetch("/api/flights/prebook", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": idemKeyRef.current },
+        headers: {
+          "Content-Type": "application/json",
+          ...(idemKeyRef.current ? { "Idempotency-Key": idemKeyRef.current } : {}),
+        },
         body: JSON.stringify({
           offerId: flow.offerId,
           lastTravelDate,
