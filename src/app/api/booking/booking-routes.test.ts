@@ -1208,3 +1208,210 @@ test("CASE 4c: provider reconcile MERGES onto the stored record — never degrad
     }
   });
 });
+
+// ── Admin resend-confirmation route ────────────────────────────────────────
+// The production recovery surface (the real RESEND_API_KEY lives only on
+// Vercel). Behind /admin Basic Auth in middleware; these tests exercise the
+// handler itself.
+
+const RESEND_ENV = {
+  ...LIVE_ENV,
+  RESEND_API_KEY: "re_test_key",
+  EMAIL_FROM: "HelpTravel.pl <rezerwacje@mail.helptravel.pl>",
+  EMAIL_REPLY_TO: "kontakt@helptravel.pl",
+};
+
+const CONFIRMED_RECORD = {
+  bookingId: "9c-OQvmqJ",
+  confirmationCode: "",
+  status: "CONFIRMED",
+  hotelSummary: { name: "Globales Costa de la Calma", city: "Santa Ponsa" },
+  rateSummary: {
+    boardName: "Room Only",
+    price: 6240.43,
+    currency: "PLN",
+    checkin: "2026-09-10",
+    checkout: "2026-09-17",
+  },
+  price: 6240.43,
+  currency: "PLN",
+  createdAt: 1787946864307,
+};
+
+const PROVIDER_BOOKING = {
+  data: {
+    bookingId: "9c-OQvmqJ",
+    status: "CONFIRMED",
+    checkin: "2026-09-10",
+    checkout: "2026-09-17",
+    hotel: { hotelId: "lp6566f447", name: "Globales Costa de la Calma" },
+    holder: { firstName: "Marcin", lastName: "Kubina", email: "marcinkubina9@gmail.com" },
+  },
+};
+
+function adminPost(qs: string): NextRequest {
+  return new NextRequest(`http://t/api/admin/resend-confirmation?${qs}`, { method: "POST" });
+}
+
+test("CASE 8 (route): dry run for a CONFIRMED booking reports the plan and sends NOTHING", async () => {
+  await withEnv(RESEND_ENV, async () => {
+    const fake = makeFakeRedis();
+    fake.store.set("booking:v1:completed:9c-OQvmqJ", CONFIRMED_RECORD);
+    __setBookingRedisForTests(fake);
+    __resetResendClientForTests();
+    const restore = mockFetch(() => ({ status: 200, body: PROVIDER_BOOKING }));
+    try {
+      const { POST } = await import("../admin/resend-confirmation/route");
+      const r = await POST(adminPost("bookingId=9c-OQvmqJ"));
+      assert.equal(r.status, 200);
+      const j = (await r.json()) as Record<string, unknown>;
+
+      assert.equal(j.ok, true);
+      assert.equal(j.dryRun, true);
+      assert.equal(j.bookingId, "9c-OQvmqJ");
+      assert.equal(j.status, "CONFIRMED");
+      assert.equal(j.to, "marcinkubina9@gmail.com", "recipient read from the provider holder");
+      assert.equal(j.from, "HelpTravel.pl <rezerwacje@mail.helptravel.pl>");
+      assert.equal(j.replyTo, "kontakt@helptravel.pl");
+      assert.match(String(j.subject), /Globales Costa de la Calma/);
+      assert.equal(j.guestCount, null, "guest count omitted when not supplied");
+
+      // No Resend traffic at all on a dry run.
+      assert.equal(
+        fetchCalls.filter((c) => c.url.includes(RESEND_URL)).length,
+        0,
+        "dry run must not contact Resend",
+      );
+      assert.equal(bookCalls().length, 0, "never /rates/book");
+    } finally {
+      restore();
+      __resetResendClientForTests();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("CASE 8 (route): &send=1 sends exactly one email, and still no booking/charge", async () => {
+  await withEnv(RESEND_ENV, async () => {
+    const fake = makeFakeRedis();
+    fake.store.set("booking:v1:completed:9c-OQvmqJ", CONFIRMED_RECORD);
+    __setBookingRedisForTests(fake);
+    __resetResendClientForTests();
+    const restore = mockFetch((url) =>
+      url.includes(RESEND_URL)
+        ? { status: 200, body: { id: "msg_resend_1" } }
+        : { status: 200, body: PROVIDER_BOOKING },
+    );
+    try {
+      const { POST } = await import("../admin/resend-confirmation/route");
+      const r = await POST(adminPost("bookingId=9c-OQvmqJ&send=1"));
+      assert.equal(r.status, 200);
+      const j = (await r.json()) as Record<string, unknown>;
+      assert.equal(j.ok, true);
+      assert.equal(j.sent, true);
+      assert.equal(j.dryRun, false);
+      assert.equal(j.messageId, "msg_resend_1");
+
+      const resendCalls = fetchCalls.filter((c) => c.url.includes(RESEND_URL));
+      assert.equal(resendCalls.length, 1, "exactly one email");
+      const sent = resendCalls[0]!.body as Record<string, unknown>;
+      assert.equal(sent.from, "HelpTravel.pl <rezerwacje@mail.helptravel.pl>");
+      assert.equal(sent.to, "marcinkubina9@gmail.com");
+      // The Resend SDK serialises `replyTo` as `reply_to` on the wire.
+      assert.equal(sent.reply_to ?? sent.replyTo, "kontakt@helptravel.pl");
+      assert.ok(!String(sent.html).includes("Goście"), "no invented guest count");
+      assert.ok(String(sent.html).includes("Santa Ponsa"), "rich stored data preserved");
+
+      assert.equal(bookCalls().length, 0, "NO /rates/book");
+      assert.equal(
+        fetchCalls.filter((c) => c.url.includes("prebook")).length,
+        0,
+        "NO /rates/prebook",
+      );
+      assert.equal(
+        fetchCalls.filter((c) => c.url.toLowerCase().includes("stripe")).length,
+        0,
+        "NO Stripe traffic",
+      );
+      // The stored booking is untouched — price and status unchanged.
+      const after = fake.store.get("booking:v1:completed:9c-OQvmqJ") as Record<string, unknown>;
+      assert.deepEqual(after, CONFIRMED_RECORD, "booking record must not be modified");
+    } finally {
+      restore();
+      __resetResendClientForTests();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("CASE 9 (route): unknown booking → 409 refused, no email", async () => {
+  await withEnv(RESEND_ENV, async () => {
+    __setBookingRedisForTests(makeFakeRedis());
+    __resetResendClientForTests();
+    const restore = mockFetch(() => ({ status: 404, body: { error: "not found" } }));
+    try {
+      const { POST } = await import("../admin/resend-confirmation/route");
+      const r = await POST(adminPost("bookingId=does-not-exist"));
+      assert.equal(r.status, 409);
+      const j = (await r.json()) as Record<string, unknown>;
+      assert.equal(j.ok, false);
+      assert.equal(j.error, "refused");
+      assert.match(String(j.message), /nie znaleziono rezerwacji/);
+      assert.equal(
+        fetchCalls.filter((c) => c.url.includes(RESEND_URL)).length,
+        0,
+        "refusal must not send anything",
+      );
+    } finally {
+      restore();
+      __resetResendClientForTests();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("CASE 9 (route): unconfirmed booking → 409 refused even with &send=1", async () => {
+  await withEnv(RESEND_ENV, async () => {
+    const fake = makeFakeRedis();
+    fake.store.set("booking:v1:completed:bad", { ...CONFIRMED_RECORD, bookingId: "bad", status: "CANCELLED" });
+    __setBookingRedisForTests(fake);
+    __resetResendClientForTests();
+    const restore = mockFetch(() => ({ status: 200, body: PROVIDER_BOOKING }));
+    try {
+      const { POST } = await import("../admin/resend-confirmation/route");
+      const r = await POST(adminPost("bookingId=bad&send=1"));
+      assert.equal(r.status, 409);
+      assert.equal(
+        fetchCalls.filter((c) => c.url.includes(RESEND_URL)).length,
+        0,
+        "cancelled booking must never be mailed",
+      );
+    } finally {
+      restore();
+      __resetResendClientForTests();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("CASE 7 (route): production without EMAIL_FROM refuses instead of using resend.dev", async () => {
+  await withEnv({ ...RESEND_ENV, EMAIL_FROM: undefined, VERCEL_ENV: "production" }, async () => {
+    const fake = makeFakeRedis();
+    fake.store.set("booking:v1:completed:9c-OQvmqJ", CONFIRMED_RECORD);
+    __setBookingRedisForTests(fake);
+    __resetResendClientForTests();
+    const restore = mockFetch(() => ({ status: 200, body: PROVIDER_BOOKING }));
+    try {
+      const { POST } = await import("../admin/resend-confirmation/route");
+      const r = await POST(adminPost("bookingId=9c-OQvmqJ&send=1"));
+      assert.equal(r.status, 409);
+      const j = (await r.json()) as Record<string, unknown>;
+      assert.match(String(j.message), /EMAIL_FROM/);
+      assert.equal(fetchCalls.filter((c) => c.url.includes(RESEND_URL)).length, 0);
+    } finally {
+      restore();
+      __resetResendClientForTests();
+      __resetBookingRedisForTests();
+    }
+  });
+});
