@@ -8,7 +8,7 @@
 import type { Metadata } from "next";
 
 import { isFlightsLive } from "@/lib/config/featureFlags";
-import { FLIGHT_SHELL_NARROW, FLIGHT_STICKY_TOP } from "@/lib/flights/layout";
+import { FLIGHT_SHELL_BAR, FLIGHT_SHELL_NARROW, FLIGHT_STICKY_TOP } from "@/lib/flights/layout";
 
 import { FlightResults } from "./_components/flight-results";
 import { FlightSearchBar } from "./_components/flight-search-bar";
@@ -82,7 +82,7 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
           i nadal ma wartość informacyjną), ale mówimy o tym NA WEJŚCIU, zanim
           ktoś wypełni formularz pasażerów i uderzy w ścianę na płatności. */}
       {!isFlightsLive() ? (
-        <div className={`${FLIGHT_SHELL_NARROW} pt-4`}>
+        <div className={`${FLIGHT_SHELL_BAR} pt-4`}>
           <p
             role="status"
             className="rounded-lg border border-line bg-surface-sunken px-4 py-3 text-sm text-ink"

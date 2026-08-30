@@ -733,6 +733,15 @@ Fail-safe zachowany: `secretKey` bez rozpoznawalnego `pi_` daje
 `expectedPaymentIntentId === undefined`, a wtedy porównanie się nie odbywa
 (test „FAIL-SAFE: nierozpoznany format secretKey NIE blokuje płacącego klienta").
 
+**Czy istnieje wariant z innym formatem?** Strukturalnie nie. Dostawca płatności
+jest wybierany PER ŚRODOWISKO, nie per oferta ani per przewoźnik — ten sam
+`POST /config` zwraca `origin:"stripe"` w obu trybach
+(`live` → `stripe-cupid-travel-us` + `pk_live_…`, `sandbox` → `stripe-test` +
+`pk_test_…`). Format `pi_<id>_secret_<...>` jest kontraktem STRIPE'A, nie
+LiteAPI, więc nie zależy od taryfy ani linii lotniczej. Gdyby LiteAPI kiedyś
+podmieniło dostawcę, `paymentIntentIdFromSecret` zwróci `undefined` i bramka
+sama się wyłączy — degradacja do `unverified`, nie odrzucenie płatności.
+
 ### 29.2 Łańcuch ceny — zmierzony do PaymentIntentu włącznie
 
 W tym samym przebiegu, na 5 różnych ofertach:
