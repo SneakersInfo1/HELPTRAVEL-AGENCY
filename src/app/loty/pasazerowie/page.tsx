@@ -41,34 +41,28 @@ import { track } from "@/lib/analytics/track";
 import { averagePerTraveller, formatFlightPrice, formatFlightPriceExact } from "@/lib/flights/money";
 import { FLIGHT_SHELL_FORM } from "@/lib/flights/layout";
 import { loadFlightFlow, patchFlightFlow, flowTravellers, type FlightFlow } from "@/lib/flights/flow-storage";
+import { NAME_TOO_SHORT_HELP, formFieldKey } from "@/lib/flights/name-policy";
+import {
+  collectPassengerFormErrors,
+  type PassengerFormContact,
+  type PassengerFormPax,
+} from "@/lib/flights/passenger-form";
 import { FlightItinerarySummary } from "@/components/flights/flight-itinerary-summary";
 import { FlightPriceChangeDialog } from "@/components/flights/flight-price-change-dialog";
 import { FlightStepNav } from "@/components/flights/flight-step-nav";
 import { FLIGHT_STICKY_CTA_PAD, FlightStickyCta } from "@/components/flights/flight-sticky-cta";
 
 type Gender = "M" | "F" | "X";
-type DocType = "passport" | "id";
 type PaxType = "ADT" | "CHD" | "INF";
 
-interface PaxForm {
-  type: PaxType;
-  firstName: string;
-  lastName: string;
-  birthday: string;
-  gender: Gender | "";
-  nationality: string;
-  documentType: DocType;
-  documentNumber: string;
-  documentExpiry: string;
-}
+// Ten sam adres, którym posługuje się strona powrotu z płatności — serwis nie
+// ma osobnej strony „Kontakt", więc linkowanie do `/kontakt` byłoby 404.
+const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "pomoc@helptravel.pl";
 
-interface ContactForm {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  phoneCountryCode: string;
-}
+// Kształt stanu formularza mieszka razem z jego walidacją — inaczej reguła
+// „imię ma co najmniej 3 znaki" musiałaby istnieć w dwóch miejscach.
+type PaxForm = PassengerFormPax;
+type ContactForm = PassengerFormContact;
 
 function emptyPax(type: PaxType): PaxForm {
   return { type, firstName: "", lastName: "", birthday: "", gender: "", nationality: "PL", documentType: "passport", documentNumber: "", documentExpiry: "" };
@@ -132,6 +126,11 @@ export default function PassengersPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Dyskretna podpowiedź pokazywana WYŁĄCZNIE wtedy, gdy dostawca odrzucił
+  // nazwę za krótką — dla osób, których prawdziwe nazwisko ma mniej niż 3
+  // znaki („Li", „Ng", „Ho"). Nie poprawiamy takich danych, tylko mówimy
+  // wprost, że to nasze ograniczenie techniczne, i dajemy drogę wyjścia.
+  const [nameHelp, setNameHelp] = useState<string | null>(null);
   const [priceChange, setPriceChange] = useState<{ acceptedTotal: number; lockedTotal: number; currency: string } | null>(null);
   // Klucz idempotencji per PRÓBA wysyłki — ten sam przy powtórzeniu tego samego
   // żądania (double submit), nowy dopiero gdy zmienia się treść (np. po
@@ -162,25 +161,19 @@ export default function PassengersPage() {
   }
 
   /** Zwraca mapę błędów (pustą = OK). ZWRACA, a nie tylko zapisuje w stanie —
-   *  wołający potrzebuje wyniku NATYCHMIAST, żeby przewinąć do pierwszego pola. */
+   *  wołający potrzebuje wyniku NATYCHMIAST, żeby przewinąć do pierwszego pola.
+   *  Same reguły siedzą w `lib/flights/passenger-form` — tam są testowalne i
+   *  tam dzielą próg długości nazwy ze schematem serwerowym. */
   function collectErrors(): Record<string, string> {
-    const e: Record<string, string> = {};
-    pax.forEach((p, i) => {
-      if (!p.firstName.trim()) e[`p${i}.firstName`] = "Wpisz imię";
-      if (!p.lastName.trim()) e[`p${i}.lastName`] = "Wpisz nazwisko";
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(p.birthday)) e[`p${i}.birthday`] = "Wpisz datę urodzenia";
-      if (!p.gender) e[`p${i}.gender`] = "Wybierz płeć";
-      if (p.nationality.length !== 2) e[`p${i}.nationality`] = "Kod kraju (2 litery)";
-      if (p.documentNumber.trim().length < 3) e[`p${i}.documentNumber`] = "Wpisz numer dokumentu";
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(p.documentExpiry)) e[`p${i}.documentExpiry`] = "Wpisz datę ważności";
-      else if (lastTravelDate && p.documentExpiry <= lastTravelDate) e[`p${i}.documentExpiry`] = "Dokument musi być ważny po dacie podróży";
-    });
-    if (!contact.firstName.trim()) e["c.firstName"] = "Wpisz imię";
-    if (!contact.lastName.trim()) e["c.lastName"] = "Wpisz nazwisko";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact.email)) e["c.email"] = "Wpisz poprawny e-mail";
-    if (contact.phoneNumber.replace(/\D/g, "").length < 6) e["c.phoneNumber"] = "Wpisz numer telefonu";
-    if (!acceptTerms) e["terms"] = "Zaakceptuj regulamin i politykę prywatności";
-    return e;
+    return collectPassengerFormErrors({ pax, contact, acceptTerms, lastTravelDate });
+  }
+
+  /** Przewija do pola i ustawia w nim kursor. `scroll-mt-28` na kontenerze
+   *  odsuwa je spod sticky headera. */
+  function focusField(key: string) {
+    const el = document.getElementById(`field-${key}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.querySelector<HTMLElement>("input,select")?.focus({ preventScroll: true });
   }
 
   /** Wysyła prebook z podaną kwotą zaakceptowaną. Wydzielone, bo wołamy to
@@ -281,6 +274,33 @@ export default function PassengersPage() {
           );
           return;
         }
+        // WALIDACJA OD DOSTAWCY (HTTP 422). Dane przeszły naszą bramkę, ale
+        // dostawca ich nie przyjął — najczęściej dlatego, że wymaga co najmniej
+        // trzech znaków w imieniu i nazwisku. Pokazujemy to PRZY POLU, którego
+        // dotyczy, zamiast banera „błąd dostawcy, spróbuj ponownie" (rady, która
+        // nie mogła zadziałać). Wpisane dane zostają nietknięte.
+        if (res.status === 422) {
+          const issues = Array.isArray(json.issues) ? (json.issues as Array<{ path?: unknown; message?: unknown }>) : [];
+          const pola: Record<string, string> = {};
+          for (const i of issues) {
+            const key = Array.isArray(i.path) ? formFieldKey(i.path as Array<string | number>) : null;
+            if (key && typeof i.message === "string") pola[key] = i.message;
+          }
+          track("flight_payment_error", {
+            code: String(json.reason ?? json.error ?? "validation"),
+            http_status: res.status,
+          });
+          if (Object.keys(pola).length) {
+            setErrors((prev) => ({ ...prev, ...pola }));
+            focusField(Object.keys(pola)[0]!);
+            // Baner zbiorczy jest zbędny, skoro błąd stoi przy polu.
+            setSubmitError(null);
+          } else {
+            setSubmitError(json.message || "Sprawdź dane podróżnych i spróbuj ponownie.");
+          }
+          setNameHelp(typeof json.help === "string" ? json.help : null);
+          return;
+        }
         track("flight_payment_error", { code: String(json.error ?? "prebook_failed"), http_status: res.status });
         setSubmitError(json.message || "Nie udało się przygotować rezerwacji. Spróbuj ponownie.");
         return;
@@ -313,13 +333,17 @@ export default function PassengersPage() {
     setErrors(e);
     const firstKey = Object.keys(e)[0];
     if (firstKey) {
-      // `scroll-margin-top` na kontenerze pola (klasa `scroll-mt-28`) — bez
-      // tego sticky header przykrywał pole, do którego właśnie przewinęliśmy.
-      const el = document.getElementById(`field-${firstKey}`);
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      el?.querySelector<HTMLElement>("input,select")?.focus({ preventScroll: true });
+      // Za krótkie imię/nazwisko wyłapujemy TUTAJ — żądanie do dostawcy w ogóle
+      // nie powstaje. Podpowiedź o kontakcie z nami pokazujemy tylko wtedy, gdy
+      // pole jest wypełnione, a mimo to za krótkie (czyli komuś naprawdę może
+      // chodzić o nazwisko dwuliterowe), nie przy pustym formularzu.
+      const zaKrotkie = Object.values(e).some((m) => m.includes("co najmniej 3 znaki"));
+      setNameHelp(zaKrotkie ? NAME_TOO_SHORT_HELP : null);
+      setSubmitError(null);
+      focusField(firstKey);
       return;
     }
+    setNameHelp(null);
     // Bez znanej kwoty NIE RUSZAMY prebooka. `acceptedTotal` jest bramką zgody,
     // więc wysłanie tam zera byłoby deklaracją „zgadzam się na 0 zł" — serwer
     // odrzuciłby ją jako `invalid_body`, a użytkownik zobaczyłby techniczny
@@ -639,6 +663,14 @@ export default function PassengersPage() {
               Cena i dostępność potwierdzane przed płatnością
             </p>
             {submitError && <p className="mt-2 rounded-md bg-error/5 px-3 py-2 text-xs font-medium text-error">{submitError}</p>}
+            {nameHelp && (
+              <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+                {nameHelp}{" "}
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium underline underline-offset-2">
+                  <span className="text-brand">{SUPPORT_EMAIL}</span>
+                </a>
+              </p>
+            )}
           </div>
         </aside>
       </form>
@@ -652,6 +684,14 @@ export default function PassengersPage() {
       >
         {submitError && (
           <p className="border-b border-line bg-error/5 px-4 py-2 text-xs font-medium text-error">{submitError}</p>
+        )}
+        {nameHelp && (
+          <p className="border-b border-line px-4 py-2 text-xs leading-relaxed text-ink-muted">
+            {nameHelp}{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium underline underline-offset-2">
+              <span className="text-brand">{SUPPORT_EMAIL}</span>
+            </a>
+          </p>
         )}
       </FlightStickyCta>
 

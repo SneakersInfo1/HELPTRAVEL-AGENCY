@@ -53,6 +53,15 @@ interface ClientRequestOptions<TSchema extends ZodTypeAny> {
   schema: TSchema;
   timeoutMs?: number; // default 30s, override 60s for prebook/book
   retries?: number; // default 3
+  // Opt-in escape hatch from the retry loop for responses that LOOK transient
+  // (5xx) but are in fact deterministic rejections of the payload. LiteAPI
+  // Flights answers a too-short passenger name with HTTP 500 + `{error:{code:
+  // 53099}}` — retrying it three times only tripled provider traffic and made
+  // the user wait through two backoffs for a verdict that could never change.
+  // Deliberately per-call-site, NOT a global rule: only the caller knows which
+  // of its 5xx bodies are deterministic. Callers that omit it keep the
+  // unchanged policy (3 attempts on 5xx/network).
+  noRetryWhen?: (body: unknown, status: number) => boolean;
   signal?: AbortSignal;
   // Sesja C2 — opt-in Next.js Data Cache. When set, the underlying
   // fetch() is called with `cache: "force-cache"` + `next: {revalidate, tags}`
@@ -144,7 +153,12 @@ function buildUrl(base: string, path: string, query?: Record<string, string | nu
   return url.toString();
 }
 
-function redactPii<T>(value: T): T {
+/**
+ * Shallow, key-based PII redaction for anything that goes into a log line.
+ * Exported because the flight error journal needs the SAME rules — a second
+ * redactor would be a second thing to keep in sync.
+ */
+export function redactPii<T>(value: T): T {
   // Shallow redaction — drop guest emails/phones/cards from log lines without
   // mutating the original object.
   if (!value || typeof value !== "object") return value;
@@ -247,7 +261,8 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
       const body = await readBody(res);
 
       if (!res.ok) {
-        if (RETRYABLE_STATUS.has(res.status) && attempt < maxRetries) {
+        const deterministic = opts.noRetryWhen?.(body, res.status) === true;
+        if (RETRYABLE_STATUS.has(res.status) && attempt < maxRetries && !deterministic) {
           await new Promise((r) => setTimeout(r, jitter(2 ** attempt * 200)));
           continue;
         }

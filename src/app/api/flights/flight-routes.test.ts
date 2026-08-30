@@ -1269,3 +1269,221 @@ test("finalizacja czyta status z data[0].booking — NIE udaje 'confirmed' przy 
     }
   });
 });
+
+// ── BRAMKA DŁUGOŚCI IMIENIA I NAZWISKA (kod 53099, zmierzony 2026-08-30) ─────
+//
+// Dostawca odrzuca imiona i nazwiska krótsze niż 3 znaki — HTTP 500 z kodem
+// 53099 w ciele. To jest walidacja DETERMINISTYCZNA przebrana za awarię
+// serwera. Przed poprawką kończyło się to trzema wywołaniami u dostawcy,
+// błędem 502 i komunikatem „Dostawca lotów zwrócił błąd. Spróbuj ponownie za
+// chwilę” — czyli zachętą do powtarzania czegoś, co nigdy nie zadziała.
+
+/** Ciało błędu dostawcy zmierzone sondą `probe:flight-name-gate`. */
+function nameTooShortBody(opis: string) {
+  return { error: { code: 53099, description: opis } };
+}
+const OPIS_KONTAKT_I_PAX1 =
+  "Contact name is too short — must be at least 3 characters; Passenger 1 name is too short — must be at least 3 characters";
+
+/** Wpisy dziennika błędów zapisane w (udawanym) Redisie. */
+function errorLogs(redis: { store: Map<string, unknown> }): Array<Record<string, unknown>> {
+  return [...redis.store.entries()]
+    .filter(([k]) => k.includes(":errlog:"))
+    .map(([, v]) => v as Record<string, unknown>);
+}
+
+test("D. serwer sam odrzuca nazwisko „Li” — dostawca NIE jest dotykany", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({ status: 200, body: prebookOk(1918.34) }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const res = await POST(prebookRequest(prebookBody({ passengers: [{ ...PASSENGER, lastName: "Li" }] })));
+      const json = await res.json();
+      assert.equal(res.status, 400);
+      assert.equal(json.error, "invalid_body");
+      // Front nie jest jedyną ochroną — to jest ta druga bramka.
+      assert.equal(fetchCalls.length, 0, "poszło żądanie do dostawcy mimo złych danych");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("D. serwer odrzuca też za krótkie imię KONTAKTU", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({ status: 200, body: prebookOk(1918.34) }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const res = await POST(prebookRequest(prebookBody({ contact: { ...CONTACT, firstName: "Ja" } })));
+      assert.equal(res.status, 400);
+      assert.equal(fetchCalls.length, 0);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("E. 53099 od dostawcy → HTTP 422 VALIDATION, ZERO ponowień", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({ status: 500, body: nameTooShortBody(OPIS_KONTAKT_I_PAX1) }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const res = await POST(prebookRequest(prebookBody()));
+      const json = await res.json();
+
+      assert.equal(res.status, 422);
+      assert.equal(json.error, "VALIDATION");
+      assert.equal(json.reason, "NAME_TOO_SHORT");
+      // JEDNO wywołanie. Deterministycznej odmowy nie ma sensu powtarzać.
+      const prebooks = fetchCalls.filter((c) => c.url.includes("/flights/prebooks"));
+      assert.equal(prebooks.length, 1, `dostawca dotknięty ${prebooks.length}x zamiast raz`);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("E. odpowiedź wskazuje pola i podaje pomoc — bez kodu dostawcy i jego nazwy", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({ status: 500, body: nameTooShortBody(OPIS_KONTAKT_I_PAX1) }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const res = await POST(prebookRequest(prebookBody()));
+      const json = await res.json();
+
+      const sciezki = (json.issues as Array<{ path: unknown[] }>).map((i) => i.path.join("."));
+      assert.deepEqual(sciezki, [
+        "contact.firstName",
+        "contact.lastName",
+        "passengers.0.firstName",
+        "passengers.0.lastName",
+      ]);
+      assert.match(json.message, /3 znaki/);
+      assert.match(json.help, /skontaktuj się z HelpTravel/i);
+
+      const cale = JSON.stringify(json);
+      assert.equal(cale.includes("53099"), false, "kod dostawcy wyciekl do klienta");
+      assert.equal(/liteapi/i.test(cale), false, "nazwa dostawcy wyciekla do klienta");
+      assert.equal(/Dostawca lotów zwrócił błąd/.test(cale), false, "nadal udajemy awarie dostawcy");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("H. 53099 dla „Passenger 2” celuje w drugiego pasażera", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({
+      status: 500,
+      body: nameTooShortBody("Passenger 2 name is too short — must be at least 3 characters"),
+    }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const res = await POST(
+        prebookRequest(prebookBody({ passengers: [PASSENGER, { ...PASSENGER, firstName: "Anna" }] })),
+      );
+      const json = await res.json();
+      const sciezki = (json.issues as Array<{ path: unknown[] }>).map((i) => i.path.join("."));
+      assert.deepEqual(sciezki, ["passengers.1.firstName", "passengers.1.lastName"]);
+      assert.equal(
+        sciezki.some((s) => s.startsWith("passengers.0")),
+        false,
+        "obwiniony pasazer 1",
+      );
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("F. zwykła awaria 500 dostawcy zostaje awarią — 502 i ponowienia wg polityki", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({
+      status: 500,
+      body: { error: { code: 50000, description: "Internal server error" } },
+    }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const res = await POST(prebookRequest(prebookBody()));
+      const json = await res.json();
+
+      assert.equal(res.status, 502);
+      assert.equal(json.error, "PROVIDER_ERROR");
+      // Polityka ponawiania NIE została wyłączona globalnie.
+      const prebooks = fetchCalls.filter((c) => c.url.includes("/flights/prebooks"));
+      assert.equal(prebooks.length, 3, `awaria przejsciowa ponowiona ${prebooks.length}x zamiast 3x`);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("G. dziennik błędu zapisuje FAKTY, a nie dane pasażera", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const restore = mockFetch(() => ({
+      status: 500,
+      body: nameTooShortBody(
+        'Passenger 1 name "Li" is too short; contact jan@example.com; pi_3Ab9_secret_kLmNoPqRsTu',
+      ),
+    }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const res = await POST(prebookRequest(prebookBody()));
+      await res.json();
+
+      const logi = errorLogs(redis);
+      assert.equal(logi.length, 1, "blad prebooka nie trafil do dziennika");
+      const wpis = logi[0]!;
+      assert.equal(wpis.stage, "prebook");
+      assert.equal(wpis.httpStatus, 500);
+      assert.equal(wpis.liteApiCode, 53099);
+      assert.equal(wpis.classification, "VALIDATION");
+      assert.equal(wpis.retryable, false);
+      assert.equal(typeof wpis.sessionId, "string");
+
+      const serial = JSON.stringify(wpis);
+      for (const tajne of [
+        "Kowalski", // nazwisko pasażera i kontaktu
+        "jan@example.com", // e-mail kontaktu
+        "AB1234567", // numer dokumentu
+        "500600700", // telefon
+        "kLmNoPqRsTu", // client secret Stripe'a
+        "secret_",
+        "prod_test_private", // klucz API
+        "1990-05-04", // data urodzenia
+      ]) {
+        assert.equal(serial.includes(tajne), false, `dziennik zawiera ${tajne}`);
+      }
+      // Sam fakt „za krótkie” musi zostać — bez niego wpis jest bezużyteczny.
+      assert.match(String(wpis.description), /too short/);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("G. dziennik notuje też awarię przejściową jako PONAWIALNĄ", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const restore = mockFetch(() => ({
+      status: 500,
+      body: { error: { code: 50000, description: "Internal server error" } },
+    }));
+    try {
+      const { POST } = await import("./prebook/route");
+      await (await POST(prebookRequest(prebookBody()))).json();
+      const wpis = errorLogs(redis)[0]!;
+      assert.equal(wpis.classification, "PROVIDER_ERROR");
+      assert.equal(wpis.retryable, true);
+    } finally {
+      teardown(restore);
+    }
+  });
+});

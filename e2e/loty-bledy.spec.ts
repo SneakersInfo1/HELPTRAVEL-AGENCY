@@ -322,3 +322,92 @@ test.describe("Stany bledu", () => {
     await expect(page).toHaveURL(/\/loty\/pasazerowie/);
   });
 });
+
+test.describe("Za krótkie imię i nazwisko (próg dostawcy: 3 znaki)", () => {
+  /**
+   * Liczy KAŻDE żądanie do prebooka i od razu je odbija.
+   *
+   * Sam licznik jest tu dowodem: bramka ma zatrzymać formularz PRZED siecią,
+   * więc test, który tylko sprawdza komunikat, przepuściłby wersję wysyłającą
+   * żądanie i dopiero potem rysującą błąd.
+   */
+  async function licznikPrebooka(page: Page) {
+    const stan = { wywolania: 0 };
+    await page.route("**/api/flights/prebook", async (route) => {
+      stan.wywolania += 1;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "NIE_POWINNO_BYC" }),
+      });
+    });
+    return stan;
+  }
+
+  test("imie „J” i „Ja” nie tworza zadania do dostawcy; „Jan” przechodzi dalej", async ({ page }) => {
+    const stan = await licznikPrebooka(page);
+    await doFormularzaZDanymi(page);
+
+    for (const zaKrotkie of ["J", "Ja"]) {
+      await page.fill("#p0-first", zaKrotkie);
+      await klikDoPlatnosci(page);
+      await expect(page.getByText("Imię musi mieć co najmniej 3 znaki.")).toBeVisible();
+      expect(stan.wywolania, `„${zaKrotkie}" poleciało do prebooka`).toBe(0);
+      await expect(page).toHaveURL(/\/loty\/pasazerowie/);
+      // Reszta formularza nietknięta — nikt nie kasuje wpisanych danych.
+      await expect(page.locator("#p0-last")).toHaveValue("Kowalski");
+      await expect(page.locator("#c-email")).toHaveValue("jan@example.com");
+    }
+
+    // Trzy znaki przechodzą naszą bramkę — dopiero teraz leci żądanie.
+    await page.fill("#p0-first", "Jan");
+    await klikDoPlatnosci(page);
+    await expect.poll(() => stan.wywolania, { timeout: 15_000 }).toBe(1);
+  });
+
+  test("nazwisko „Li” zatrzymuje sie u nas i tlumaczy, co dalej", async ({ page }) => {
+    const stan = await licznikPrebooka(page);
+    await doFormularzaZDanymi(page);
+    await page.fill("#p0-last", "Li");
+    await klikDoPlatnosci(page);
+
+    await expect(page.getByText("Nazwisko musi mieć co najmniej 3 znaki.")).toBeVisible();
+    // Osoba o dwuliterowym nazwisku musi dostać drogę wyjścia, a nie ślepy zaułek.
+    await expect(page.getByText(/skontaktuj się z HelpTravel/i).first()).toBeVisible();
+    expect(stan.wywolania).toBe(0);
+    // Nazwisko zostaje TAKIE, JAK JE WPISANO — niczego nie „naprawiamy".
+    await expect(page.locator("#p0-last")).toHaveValue("Li");
+  });
+
+  test("422 z serwera lada przy wlasciwym polu, nie w banerze awarii", async ({ page }) => {
+    // Scenariusz obronny: dane przeszły naszą bramkę, ale dostawca ich nie
+    // przyjął. Odpowiedź udaje tę z `/api/flights/prebook` po mapowaniu 53099.
+    await page.route("**/api/flights/prebook", (route) =>
+      route.fulfill({
+        status: 422,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "VALIDATION",
+          reason: "NAME_TOO_SHORT",
+          message: "Imię i nazwisko muszą mieć co najmniej 3 znaki.",
+          help: "Jeśli Twoje prawidłowe imię lub nazwisko ma mniej niż 3 znaki, skontaktuj się z HelpTravel — zarezerwujemy ten lot dla Ciebie ręcznie.",
+          issues: [{ path: ["passengers", 0, "lastName"], message: "Nazwisko musi mieć co najmniej 3 znaki." }],
+        }),
+      }),
+    );
+
+    await doFormularzaZDanymi(page);
+    await klikDoPlatnosci(page);
+
+    await expect(page.getByText("Nazwisko musi mieć co najmniej 3 znaki.")).toBeVisible();
+    await expect(page.getByText(/skontaktuj się z HelpTravel/i).first()).toBeVisible();
+    // NIE wolno pokazać „awarii dostawcy" ani kodu 53099.
+    await expect(page.getByText(/Dostawca lotów zwrócił błąd/)).toHaveCount(0);
+    await expect(page.getByText("53099")).toHaveCount(0);
+    // Dane zostają na miejscu — nikt nie każe wypełniać formularza od nowa.
+    await expect(page.locator("#p0-first")).toHaveValue("Jan");
+    await expect(page.locator("#p0-last")).toHaveValue("Kowalski");
+    await expect(page.locator("#c-phone")).toHaveValue("500600700");
+    await expect(page).toHaveURL(/\/loty\/pasazerowie/);
+  });
+});

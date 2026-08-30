@@ -10,6 +10,8 @@
 
 import { z } from "zod";
 
+import { NAME_TOO_SHORT_FIRST, NAME_TOO_SHORT_LAST, isNameLongEnough } from "./name-policy";
+
 // ── WEJŚCIE: search (/api/flights/rates) ─────────────────────────────────────
 
 const IATA = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, "Kod IATA = 3 litery");
@@ -54,14 +56,22 @@ export type FlightSearchInput = z.infer<typeof FlightSearchInputSchema>;
 
 // ── WEJŚCIE: dane pasażera + kontakt (brief 1.3) ─────────────────────────────
 
+// Imię i nazwisko: dostawca odrzuca cokolwiek krótszego niż 3 znaki (kod
+// 53099, zmierzony 2026-08-30 — patrz `name-policy.ts`). Do tej pory stało tu
+// `min(1)`, więc „x”/„xx” przechodziło naszą bramkę i wywracało się dopiero u
+// dostawcy — po trzech próbach i pod przebraniem awarii serwera. Próg żyje w
+// JEDNYM miejscu: tym samym, którego używa formularz na `/loty/pasazerowie`.
+const FirstNameSchema = z.string().trim().min(1, "Wpisz imię").max(60).refine(isNameLongEnough, NAME_TOO_SHORT_FIRST);
+const LastNameSchema = z.string().trim().min(1, "Wpisz nazwisko").max(60).refine(isNameLongEnough, NAME_TOO_SHORT_LAST);
+
 const DOC_TYPE = z.enum(["passport", "id"]); // LiteAPI: małymi literami
 const GENDER = z.enum(["M", "F", "X"]); // LiteAPI: M/F/X (zmierzone)
 
 export const FlightPassengerSchema = z
   .object({
     title: z.enum(["MR", "MRS", "MS", "MISS"]).optional(),
-    firstName: z.string().trim().min(1).max(60),
-    lastName: z.string().trim().min(1).max(60),
+    firstName: FirstNameSchema,
+    lastName: LastNameSchema,
     birthday: ISO_DATE,
     gender: GENDER,
     nationality: z.string().trim().toUpperCase().length(2),
@@ -86,8 +96,8 @@ export const FlightPassengerSchema = z
 export type FlightPassenger = z.infer<typeof FlightPassengerSchema>;
 
 export const FlightContactSchema = z.object({
-  firstName: z.string().trim().min(1).max(60),
-  lastName: z.string().trim().min(1).max(60),
+  firstName: FirstNameSchema,
+  lastName: LastNameSchema,
   email: z.string().trim().email().max(120),
   phoneNumber: z.string().trim().min(5).max(20).regex(/^[0-9 +\-()]+$/, "Nieprawidłowy telefon"),
   phoneCountryCode: z.string().trim().regex(/^\d{1,4}$/).default("48"),

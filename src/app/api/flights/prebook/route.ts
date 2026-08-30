@@ -8,6 +8,8 @@
 //   4. Zapis prebookId + transactionId w Redis — NATYCHMIAST, ZANIM cokolwiek
 //      wróci do frontu. secretKey idzie do frontu, ale NIGDY do storage.
 //   5. Numery dokumentów pasażerów maskowane do ostatnich 3 znaków w storage.
+//   6. Każdy błąd dostawcy trafia do dziennika (`saveFlightErrorLog`) —
+//      wyłącznie jako FAKTY i DŁUGOŚCI pól, nigdy dane pasażera.
 
 import { createHash, randomUUID } from "node:crypto";
 
@@ -19,6 +21,12 @@ import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { notifyCritical } from "@/lib/alerting/notify";
 import { prebookFlight, toFlightApiError } from "@/lib/flights/client";
 import { priceChanged } from "@/lib/flights/money";
+import {
+  NAME_TOO_SHORT_HELP,
+  nameLength,
+  nameTooShortIssues,
+  sanitizeProviderDescription,
+} from "@/lib/flights/name-policy";
 import { paymentIntentIdFromSecret } from "@/lib/flights/payment-evidence";
 import { extractProviderItinerary } from "@/lib/flights/provider-itinerary";
 import { FlightPrebookInputSchema } from "@/lib/flights/types";
@@ -28,6 +36,7 @@ import {
   getFlightIdempotent,
   linkPrebookToSession,
   maskDocumentNumber,
+  saveFlightErrorLog,
   saveFlightSession,
   setFlightIdempotent,
   type FlightBookingRecord,
@@ -294,11 +303,59 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const e = toFlightApiError(err, "prebook");
     console.warn(
-      `[flights][prebook] ${e.code} sid=${sessionId} liteApiStatus=${e.liteApiStatus} liteApiCode=${e.liteApiCode}`,
+      `[flights][prebook] ${e.code}${e.reason ? `/${e.reason}` : ""} sid=${sessionId} ` +
+        `liteApiStatus=${e.liteApiStatus} liteApiCode=${e.liteApiCode} retryable=${e.retryable}`,
     );
-    return NextResponse.json(
-      { error: e.code, message: e.message, debug: { liteApiStatus: e.liteApiStatus, liteApiCode: e.liteApiCode } },
-      { status: e.httpStatus },
-    );
+
+    // DZIENNIK. `console.warn` gubi kontekst po kilku dniach i nie da się go
+    // przeszukać po sesji; wpis w Redisie żyje 30 dni i wiąże błąd z sesją.
+    // Zapisujemy fakty i DŁUGOŚCI odrzuconych pól — to wystarczy, żeby odróżnić
+    // „za krótkie imię" od awarii, bez trzymania czyjegokolwiek nazwiska.
+    // Best-effort: `saveFlightErrorLog` sam połyka błędy zapisu.
+    void saveFlightErrorLog({
+      id: randomUUID(),
+      stage: "prebook",
+      sessionId,
+      httpStatus: e.liteApiStatus,
+      liteApiCode: e.liteApiCode,
+      description: sanitizeProviderDescription(e.providerDescription),
+      classification: e.code,
+      reason: e.reason,
+      retryable: e.retryable,
+      elapsedMs: Date.now() - now,
+      requestRedacted: {
+        // offerId nie jest PII, ale jest długi — starczy początek do korelacji.
+        offerIdPrefix: b.offerId.slice(0, 12),
+        offerIdLength: b.offerId.length,
+        acceptedTotal: b.acceptedTotal,
+        acceptedCurrency: b.acceptedCurrency,
+        contact: {
+          firstNameLength: nameLength(b.contact.firstName),
+          lastNameLength: nameLength(b.contact.lastName),
+        },
+        passengers: b.passengers.map((p) => ({
+          type: p.type,
+          firstNameLength: nameLength(p.firstName),
+          lastNameLength: nameLength(p.lastName),
+        })),
+      },
+      createdAt: Date.now(),
+    });
+
+    // ODPOWIEDŹ DLA KLIENTA. `debug: {liteApiStatus, liteApiCode}` zniknęło —
+    // nikt tego nie czytał, a wysyłało kod dostawcy prosto do przeglądarki.
+    // Diagnostyka żyje teraz w logu i w dzienniku powyżej.
+    const responseBody: Record<string, unknown> = { error: e.code, message: e.message };
+    if (e.reason) responseBody.reason = e.reason;
+    if (e.reason === "NAME_TOO_SHORT") {
+      // Wskazanie pól bierzemy z OPISU dostawcy, nie z własnych danych: nasza
+      // walidacja już je przepuściła, więc to dostawca wie, komu nie starczyło
+      // znaków. Gdy opis nie nazywa nikogo, zostaje sam komunikat zbiorczy —
+      // lepszy niż podświetlenie losowego pola.
+      const issues = nameTooShortIssues(e.providerDescription ?? "");
+      if (issues.length) responseBody.issues = issues;
+      responseBody.help = NAME_TOO_SHORT_HELP;
+    }
+    return NextResponse.json(responseBody, { status: e.httpStatus });
   }
 }

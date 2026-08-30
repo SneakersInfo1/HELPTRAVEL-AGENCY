@@ -242,13 +242,38 @@ export interface FlightFailedRecord {
   createdAt: number;
 }
 
-/** Wpis błędu LiteAPI (request/response) — bez klucza API, bez pełnych numerów dokumentów. */
+/**
+ * Wpis dziennika błędów dostawcy.
+ *
+ * CO TU WOLNO: fakty operacyjne — etap, status, kod, sklasyfikowana przyczyna,
+ * czy warto ponawiać, i DŁUGOŚCI pól, które dostawca odrzucił.
+ *
+ * CZEGO TU NIE WOLNO NIGDY: klucza API, `secretKey`/client secretu Stripe'a,
+ * numeru dokumentu (nawet zamaskowanego), imion, nazwisk, adresu e-mail,
+ * telefonu, daty urodzenia ani żadnego innego PII. Opis od dostawcy przechodzi
+ * przez `sanitizeProviderDescription`, bo bywa echem tego, co wysłaliśmy.
+ *
+ * TTL: 30 dni (`ERRLOG_TTL_SECONDS`).
+ */
 export interface FlightErrorLogRecord {
   id: string;
   stage: "search" | "verify" | "prebook" | "book" | "getBooking" | "webhook";
   sessionId?: string;
   httpStatus?: number;
   liteApiCode?: string | number;
+  /** Opis od dostawcy PO sanityzacji — nigdy surowy. */
+  description?: string;
+  /** Nasza taksonomia (`FlightErrorCode`): VALIDATION / PROVIDER_ERROR / … */
+  classification?: string;
+  /** Podpowiedź dla operatora: czy powtórzenie tego żądania ma sens. */
+  retryable?: boolean;
+  /** Doprecyzowanie klasyfikacji, gdy je znamy (np. NAME_TOO_SHORT). */
+  reason?: string;
+  /**
+   * Ile minęło od utworzenia intencji do błędu. Wiek OFERTY byłby lepszy, ale
+   * nie ma go na wejściu prebooka — front nie wysyła znacznika czasu oferty.
+   */
+  elapsedMs?: number;
   requestRedacted?: unknown;
   responseRedacted?: unknown;
   createdAt: number;

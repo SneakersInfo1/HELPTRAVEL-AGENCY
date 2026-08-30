@@ -11,6 +11,12 @@ import { liteApiRequest } from "@/lib/liteapi/client";
 import { LiteApiError } from "@/lib/liteapi/errors";
 
 import {
+  NAME_TOO_SHORT_GENERIC,
+  isDeterministicProviderValidation,
+  isProviderNameTooShort,
+} from "./name-policy";
+
+import {
   FlightBookResponseSchema,
   FlightGetBookingResponseSchema,
   FlightPrebookResponseSchema,
@@ -30,15 +36,40 @@ export type FlightErrorCode =
   | "VALIDATION" // walidacja danych wejściowych po stronie LiteAPI
   | "UNKNOWN";
 
+/**
+ * Dopowiedzenie do `code` — mówi, DLACZEGO dane odrzucono, gdy da się to
+ * ustalić. `NAME_TOO_SHORT` uruchamia w route’cie wskazanie konkretnych pól
+ * formularza; `PROVIDER_REJECTED_INPUT` to reszta deterministycznych odmów.
+ */
+export type FlightErrorReason = "NAME_TOO_SHORT" | "PROVIDER_REJECTED_INPUT";
+
 export class FlightApiError extends Error {
   readonly code: FlightErrorCode;
   readonly httpStatus: number;
   readonly liteApiStatus?: number;
   readonly liteApiCode?: string | number;
+  readonly reason?: FlightErrorReason;
+  /**
+   * Surowy opis od dostawcy — WYŁĄCZNIE do dalszej obróbki po stronie serwera
+   * (wskazanie pola, wpis do dziennika po sanityzacji). NIGDY nie wolno go
+   * oddać klientowi: bywa po angielsku, niesie kod dostawcy i może echować to,
+   * co wysłaliśmy.
+   */
+  readonly providerDescription?: string;
+  /** Czy powtórzenie TEGO SAMEGO żądania ma jakiekolwiek szanse powodzenia. */
+  readonly retryable: boolean;
   constructor(
     code: FlightErrorCode,
     message: string,
-    opts: { httpStatus?: number; liteApiStatus?: number; liteApiCode?: string | number; cause?: unknown } = {},
+    opts: {
+      httpStatus?: number;
+      liteApiStatus?: number;
+      liteApiCode?: string | number;
+      reason?: FlightErrorReason;
+      providerDescription?: string;
+      retryable?: boolean;
+      cause?: unknown;
+    } = {},
   ) {
     super(message, { cause: opts.cause });
     this.name = "FlightApiError";
@@ -46,20 +77,23 @@ export class FlightApiError extends Error {
     this.httpStatus = opts.httpStatus ?? 502;
     this.liteApiStatus = opts.liteApiStatus;
     this.liteApiCode = opts.liteApiCode;
+    this.reason = opts.reason;
+    this.providerDescription = opts.providerDescription;
+    this.retryable = opts.retryable ?? false;
   }
 }
 
 /** Wyciąga numeryczny kod + opis dostawcy z body LiteAPI ({error:{code,description,message}}). */
-function providerError(body: unknown): { code?: number; text: string } {
+function providerError(body: unknown): { code?: number; text: string; raw: string } {
   if (body && typeof body === "object") {
     const e = (body as { error?: { code?: unknown; description?: unknown; message?: unknown } }).error;
     if (e && typeof e === "object") {
       const code = typeof e.code === "number" ? e.code : Number(e.code);
-      const text = `${e.description ?? ""} ${e.message ?? ""}`.toLowerCase();
-      return { code: Number.isFinite(code) ? code : undefined, text };
+      const raw = `${e.description ?? ""} ${e.message ?? ""}`.trim();
+      return { code: Number.isFinite(code) ? code : undefined, text: raw.toLowerCase(), raw };
     }
   }
-  return { text: "" };
+  return { text: "", raw: "" };
 }
 
 /** Mapuje surowy LiteApiError z klienta na taksonomię domenową lotów. */
@@ -67,8 +101,34 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
   if (err instanceof FlightApiError) return err;
   if (err instanceof LiteApiError) {
     const status = err.status ?? 0;
-    const { code: provCode, text } = providerError(err.body);
+    const { code: provCode, text, raw } = providerError(err.body);
     const label = err.internalCode;
+
+    // WALIDACJA PRZEBRANA ZA AWARIĘ. Dostawca odrzuca za krótkie imię/nazwisko
+    // przez HTTP 500 + `{error:{code:53099}}` — status sugeruje awarię serwera,
+    // a to jest odmowa danych wejściowych, która przy tym samym payloadzie
+    // powtórzy się zawsze. Wcześniej kończyło się to jako PROVIDER_ERROR/502 i
+    // komunikatem „Spróbuj ponownie za chwilę” — radą, która nie mogła
+    // zadziałać. Bramka stoi PRZED wszystkimi innymi, bo jest najbardziej
+    // szczegółowa (i jako jedyna zmierzona na żywym kluczu).
+    if (isDeterministicProviderValidation(err.body)) {
+      const tooShort = isProviderNameTooShort(err.body);
+      return new FlightApiError(
+        "VALIDATION",
+        tooShort
+          ? NAME_TOO_SHORT_GENERIC
+          : "Dane pasażera zostały odrzucone. Sprawdź imiona, nazwiska i dane dokumentu.",
+        {
+          httpStatus: 422,
+          liteApiStatus: status,
+          liteApiCode: provCode ?? label,
+          reason: tooShort ? "NAME_TOO_SHORT" : "PROVIDER_REJECTED_INPUT",
+          providerDescription: raw,
+          retryable: false,
+          cause: err,
+        },
+      );
+    }
     // Sold out / wygasła oferta: kod 53010, etykieta SOLD_OUT/RATE_EXPIRED, albo tekst.
     // 52099 ("failed to verify flight offer" / "unable to process verify request"):
     // verify NIE potrafi potwierdzić TEJ oferty (wygasła albo GDS jej nie przeliczy).
@@ -87,6 +147,8 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
         httpStatus: 409,
         liteApiStatus: status,
         liteApiCode: provCode ?? label,
+        providerDescription: raw,
+        retryable: false,
         cause: err,
       });
     }
@@ -96,6 +158,9 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
         httpStatus: 422,
         liteApiStatus: status,
         liteApiCode: provCode ?? label,
+        reason: "PROVIDER_REJECTED_INPUT",
+        providerDescription: raw,
+        retryable: false,
         cause: err,
       });
     }
@@ -103,10 +168,12 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
       httpStatus: 502,
       liteApiStatus: status,
       liteApiCode: provCode ?? label,
+      providerDescription: raw,
+      retryable: true,
       cause: err,
     });
   }
-  return new FlightApiError("UNKNOWN", `Błąd na etapie ${stage}.`, { httpStatus: 500, cause: err });
+  return new FlightApiError("UNKNOWN", `Błąd na etapie ${stage}.`, { httpStatus: 500, retryable: true, cause: err });
 }
 
 // ── Wywołania ────────────────────────────────────────────────────────────────
@@ -196,6 +263,10 @@ export async function prebookFlight(args: { offerId: string; contact: FlightCont
     schema: FlightPrebookResponseSchema,
     body,
     timeoutMs: 60_000, // prebook bywa wolniejszy (lock taryfy u dostawcy)
+    // Deterministyczna odmowa danych (53099) NIE jest ponawiana — ten sam
+    // payload dostanie tę samą odpowiedź. Awarie przejściowe, timeouty i błędy
+    // sieci zachowują domyślne trzy próby.
+    noRetryWhen: isDeterministicProviderValidation,
   });
   const d = res.data[0];
   return {
