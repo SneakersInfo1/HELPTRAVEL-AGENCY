@@ -32,11 +32,17 @@ export const NAME_TOO_SHORT_LAST = "Nazwisko musi mieć co najmniej 3 znaki.";
 export const NAME_TOO_SHORT_GENERIC = "Imię i nazwisko muszą mieć co najmniej 3 znaki.";
 /**
  * Podpowiedź dla osób, których prawdziwe imię lub nazwisko jest krótsze.
+ *
  * Świadomie NIE nazywa dostawcy ani kodu błędu — to nasze ograniczenie wobec
  * klienta, nie jego problem z cudzym API.
+ *
+ * Obiecuje WERYFIKACJĘ, nie rezerwację. Wcześniejsza wersja mówiła
+ * „zarezerwujemy ten lot dla Ciebie ręcznie" — a tego nie wiemy: ręczna ścieżka
+ * u dostawcy nie jest w tym projekcie potwierdzona, więc byłaby to obietnica
+ * złożona w chwili, w której klient jest najbardziej skłonny w nią uwierzyć.
  */
 export const NAME_TOO_SHORT_HELP =
-  "Jeśli Twoje prawidłowe imię lub nazwisko ma mniej niż 3 znaki, skontaktuj się z HelpTravel — zarezerwujemy ten lot dla Ciebie ręcznie.";
+  "Jeśli Twoje prawidłowe imię lub nazwisko ma mniej niż 3 znaki, skontaktuj się z HelpTravel — pomożemy zweryfikować możliwość rezerwacji.";
 
 /**
  * Długość imienia w ZNAKACH — po obcięciu spacji i po złożeniu znaków

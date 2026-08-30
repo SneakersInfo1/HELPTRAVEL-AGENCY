@@ -390,7 +390,7 @@ test.describe("Za krótkie imię i nazwisko (próg dostawcy: 3 znaki)", () => {
           error: "VALIDATION",
           reason: "NAME_TOO_SHORT",
           message: "Imię i nazwisko muszą mieć co najmniej 3 znaki.",
-          help: "Jeśli Twoje prawidłowe imię lub nazwisko ma mniej niż 3 znaki, skontaktuj się z HelpTravel — zarezerwujemy ten lot dla Ciebie ręcznie.",
+          help: "Jeśli Twoje prawidłowe imię lub nazwisko ma mniej niż 3 znaki, skontaktuj się z HelpTravel — pomożemy zweryfikować możliwość rezerwacji.",
           issues: [{ path: ["passengers", 0, "lastName"], message: "Nazwisko musi mieć co najmniej 3 znaki." }],
         }),
       }),
