@@ -27,7 +27,7 @@ import { Lock, ShieldCheck } from "lucide-react";
 import { track } from "@/lib/analytics/track";
 import { formatFlightPriceExact } from "@/lib/flights/money";
 import { FLIGHT_SHELL_NARROW } from "@/lib/flights/layout";
-import { loadFlightFlow, type FlightFlow } from "@/lib/flights/flow-storage";
+import { loadFlightFlow, resolveWidgetEnv, type FlightFlow } from "@/lib/flights/flow-storage";
 import { FlightStepNav } from "@/components/flights/flight-step-nav";
 import { PaymentSlot, type PaymentSlotPrebook } from "@/app/hotele/rezerwacja/_components/payment-slot";
 
@@ -85,7 +85,7 @@ export default function FlightPaymentPage() {
       }
 
       setFlow(f);
-      setPrebook({ secretKey: f.secretKey!, sessionId: f.sessionId!, amount: amount!, currency, widgetEnv: f.widgetEnv ?? "live" });
+      setPrebook({ secretKey: f.secretKey!, sessionId: f.sessionId!, amount: amount!, currency, widgetEnv: resolveWidgetEnv(f.widgetEnv) });
       setStatus("ready");
       track("flight_payment_start", { amount: amount!, currency });
     })();

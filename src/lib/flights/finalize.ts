@@ -218,6 +218,98 @@ export async function finalizeFlightBooking(
     console.warn(
       `[flights][finalize] odmowa: dowód przeciw płatności sid=${sessionId} powód=${evidence.reason} stan=${session.bookingStatus}`,
     );
+
+    // ── NIEZGODNY `payment_intent` — INCYDENT, NIE ODMOWA ───────────────────
+    //
+    // Adres powrotu niesie identyfikator INNEJ transakcji. To znaczy dokładnie
+    // jedno: **nie wiemy, co się stało z pieniędzmi tego klienta**. Mógł
+    // zapłacić i trafić na sklejone sesje w jednej karcie; mógł nie zapłacić
+    // wcale.
+    //
+    // Do 2026-08-30 kończyło się to zapisem `paymentStatus:"failed"`,
+    // odpowiedzią 402 i zdaniem „Rozpocznij rezerwację od nowa" — czyli
+    // twierdzeniem o cudzych pieniądzach, którego nikt nie sprawdził, plus
+    // zachętą do zapłacenia drugi raz. Do tego bez alertu i bez rekordu, więc
+    // nikt by się o tym nie dowiedział.
+    //
+    // Teraz: trwały incydent, człowiek w pętli, zero sugestii ponownej
+    // płatności. `processing` (nie `failed`) blokuje `payable` w
+    // `GET /api/flights/session/[id]`, więc klient nie zamontuje widgetu
+    // drugi raz — to jest ta sama ochrona przed podwójnym obciążeniem, co
+    // przy 3DS w toku.
+    //
+    // ALERT DOKŁADNIE RAZ wychodzi ze stanu, nie z licznika: po tym zapisie
+    // `bookingStatus` to `manual_review`, więc każde kolejne wejście na adres
+    // powrotu ma `przedPlatnoscia === false` i wpada do gałęzi niżej, która
+    // niczego nie alarmuje.
+    if (przedPlatnoscia && evidence.reason === "payment_intent_mismatch") {
+      const reason = "payment_verification_required";
+      console.error(
+        `[flights][finalize][CRITICAL] payment_intent MISMATCH sid=${sessionId} prebookId=${session.prebookId} — status płatności NIEZNANY, incydent do człowieka`,
+      );
+      try {
+        await saveFlightSession(sessionId, {
+          ...session,
+          paymentStatus: "processing",
+          bookingStatus: "manual_review",
+          manualReviewReason: reason,
+          paymentEvidence: evidenceRecord,
+          updatedAt: Date.now(),
+        });
+        // Rekord trwały — `prebookId` i `transactionId` MUSZĄ w nim być,
+        // inaczej ręczne dokończenie rezerwacji jest niemożliwe.
+        await saveFlightFailed({
+          sessionId,
+          prebookId: session.prebookId,
+          transactionId: session.transactionId,
+          errorCode: reason,
+          message:
+            "Adres powrotu niesie payment_intent innej transakcji — statusu płatności nie da się potwierdzić automatycznie.",
+          manualReviewReason: reason,
+          createdAt: Date.now(),
+        });
+      } catch (persistErr) {
+        console.error(
+          `[flights][finalize][CRITICAL] zapis incydentu FAILED sid=${sessionId} — ${persistErr instanceof Error ? persistErr.message : String(persistErr)}`,
+        );
+      }
+
+      notifyCritical({
+        source: "flights-finalize",
+        title: "Flight payment verification MISMATCH — manual review",
+        body:
+          "Adres powrotu niesie payment_intent innej transakcji niż prebook tej sesji. " +
+          "NIE WIADOMO, czy klient zapłacił. Sprawdź transakcję w panelu LiteAPI/Stripe PRZED kontaktem z klientem. " +
+          "Klientowi powiedzieliśmy wyłącznie, że sprawdzamy — i żeby nie płacił ponownie.",
+        fields: {
+          sessionId,
+          prebookId: session.prebookId,
+          contactEmail: session.contactData?.email,
+          expectedPaymentIntentId: session.paymentIntentId,
+          returnedPaymentIntentId: evidence.returnedPaymentIntentId,
+          redirectStatus: evidence.redirectStatus,
+        },
+      }).catch(() => {});
+      sendFlightManualReviewAlert({
+        sessionId,
+        prebookId: session.prebookId,
+        reason,
+        contact: session.contactData,
+        paymentEvidence: `${evidence.verdict}/${evidence.reason}`,
+      }).catch(() => {});
+
+      return {
+        status: 202,
+        body: {
+          error: "manual_review",
+          bookingStatus: "manual_review",
+          message:
+            "Nie udało się automatycznie potwierdzić statusu płatności. " +
+            "Nie wykonuj płatności ponownie. Sprawdzamy Twoją rezerwację.",
+        },
+      };
+    }
+
     await saveFlightSession(sessionId, {
       ...session,
       ...(przedPlatnoscia ? { paymentStatus: "failed" as const } : {}),
@@ -237,16 +329,17 @@ export async function finalizeFlightBooking(
         },
       };
     }
+    // Tu dochodzi już TYLKO `redirect_failed`: Stripe powiedział wprost, że
+    // płatność się nie udała. To jedyny wariant, w którym uczciwie wolno
+    // powiedzieć „nie pobraliśmy środków" i zaprosić do ponownej próby.
+    // `reason` zniknęło z odpowiedzi — kod techniczny nie jest informacją dla
+    // klienta, a do diagnozy służą log i `paymentEvidence` w rekordzie sesji.
     return {
       status: 402,
       body: {
         error: "payment_not_completed",
         paymentStatus: "failed",
-        reason: evidence.reason,
-        message:
-          evidence.reason === "payment_intent_mismatch"
-            ? "Ta płatność nie pasuje do rezerwacji. Rozpocznij rezerwację od nowa."
-            : "Płatność nie została zakończona. Nie pobraliśmy żadnych środków — możesz spróbować ponownie.",
+        message: "Płatność nie została zakończona. Nie pobraliśmy żadnych środków — możesz spróbować ponownie.",
       },
     };
   }

@@ -63,7 +63,9 @@ export async function POST(request: NextRequest) {
     const e = toFlightApiError(err, "verify");
     console.warn(`[flights][verify] ${e.code} liteApiStatus=${e.liteApiStatus} liteApiCode=${e.liteApiCode}`);
     return NextResponse.json(
-      { error: e.code, message: e.message, debug: { liteApiStatus: e.liteApiStatus, liteApiCode: e.liteApiCode } },
+      // Bez `debug` — kod dostawcy nie jest informacją dla przeglądarki.
+      // Diagnostyka zostaje w logu serwera (linia wyżej), gdzie jest komplet.
+      { error: e.code, message: e.message },
       { status: e.httpStatus },
     );
   }

@@ -89,6 +89,26 @@ export function clearFlightFlow(): void {
 }
 
 /** Liczba podróżnych w tym przepływie (dorośli + dzieci + niemowlęta). */
+/**
+ * Środowisko widgetu płatności odczytane z magazynu — FAIL-SAFE.
+ *
+ * `widgetEnv` decyduje, o który klucz publishable widget poprosi LiteAPI.
+ * Klucz z innego trybu niż client secret sprawia, że Payment Element w ogóle
+ * się nie montuje (patrz `liteapi/widget-env.ts`). Gdy tryb jest nieznany,
+ * jedyny bezpieczny domysł to `sandbox`: w najgorszym razie widget nie wstanie
+ * i zobaczymy to od razu. Domysł `live` znaczyłby „pokaż prawdziwy formularz
+ * płatności, choć nie wiem, w jakim jestem środowisku" — a to jest dokładnie
+ * ta decyzja, której nie wolno podejmować domyślnie.
+ *
+ * Przyjmujemy `unknown`, bo źródłem jest `sessionStorage`: może tam siedzieć
+ * stara wersja pola, ręczna edycja albo przycięty JSON.
+ */
+export type FlightWidgetEnv = "live" | "sandbox";
+
+export function resolveWidgetEnv(stored: unknown): FlightWidgetEnv {
+  return stored === "live" || stored === "sandbox" ? stored : "sandbox";
+}
+
 export function flowTravellers(flow: Pick<FlightFlow, "adults" | "children" | "infants">): number {
   return flow.adults + flow.children + flow.infants;
 }

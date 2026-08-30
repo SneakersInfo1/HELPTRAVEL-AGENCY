@@ -631,24 +631,6 @@ test("return: redirect_status=failed → 402, dostawca NIETKNIĘTY, sesja NIE je
   });
 });
 
-test("return: payment_intent z CUDZEJ transakcji → 402 mismatch, brak bookingu", async () => {
-  await withEnv(LIVE_ENV, async () => {
-    const redis = await setup();
-    const sessionId = "66666666-6666-4666-8666-666666666666";
-    await seedPrebookedSession(redis, sessionId);
-    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x", status: "CONFIRMED" }] } }));
-    try {
-      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
-      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
-      assert.equal(out.status, 402);
-      assert.equal(out.body.reason, "payment_intent_mismatch");
-      assert.equal(fetchCalls.filter((c) => c.url.includes("/flights/bookings")).length, 0);
-    } finally {
-      teardown(restore);
-    }
-  });
-});
-
 test("return: płatność w toku (3DS) → 202 processing, brak bookingu, sesja NIEpłatna", async () => {
   await withEnv(LIVE_ENV, async () => {
     const redis = await setup();
@@ -1482,6 +1464,337 @@ test("G. dziennik notuje też awarię przejściową jako PONAWIALNĄ", async () 
       const wpis = errorLogs(redis)[0]!;
       assert.equal(wpis.classification, "PROVIDER_ERROR");
       assert.equal(wpis.retryable, true);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+// ── NIEZGODNY `payment_intent` — INCYDENT, NIE ODMOWA ────────────────────────
+//
+// Adres powrotu z CUDZYM `payment_intent` znaczy jedno: nie wiemy, co się stało
+// z pieniędzmi tego klienta. Do 2026-08-30 kończyło się to zapisem
+// `paymentStatus:"failed"`, odpowiedzią 402 i komunikatem „Rozpocznij
+// rezerwację od nowa" — czyli twierdzeniem o cudzych pieniądzach, którego nikt
+// nie sprawdził, plus zachętą do zapłacenia drugi raz. Bez alertu, bez rekordu,
+// bez śladu dla człowieka.
+//
+// Teraz to jest incydent: trwały rekord, alert dokładnie raz, dane do recovery
+// nietknięte i komunikat, który NIE każe płacić ponownie.
+
+const ALERT_ENV = { ...LIVE_ENV, ALERT_WEBHOOK_URL: "https://hooks.example.test/alert" };
+
+/** Alerty lecą fire-and-forget — daj im dojść do (udawanego) fetcha. */
+async function przepuscAlerty() {
+  await new Promise((r) => setTimeout(r, 30));
+}
+function alerty() {
+  return fetchCalls.filter((c) => c.url.includes("hooks.example.test"));
+}
+
+test("mismatch: 202 manual_review zamiast 402 — i ANI SŁOWA o ponownej płatności", async () => {
+  await withEnv(ALERT_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666661";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x", status: "CONFIRMED" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
+
+      assert.equal(out.status, 202);
+      assert.equal(out.body.error, "manual_review");
+      assert.equal(out.body.bookingStatus, "manual_review");
+      assert.match(String(out.body.message), /Nie wykonuj płatności ponownie/);
+      // Dostawca NIETKNIĘTY — nie bookujemy na niepotwierdzonej płatności.
+      assert.equal(fetchCalls.filter((c) => c.url.includes("/flights/bookings")).length, 0);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("mismatch: NIE twierdzimy, że płatność się nie udała", async () => {
+  await withEnv(ALERT_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666662";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
+      const after = await getFlightSession(sessionId);
+      // `failed` byłoby twierdzeniem o pieniądzach, którego nikt nie sprawdził.
+      assert.notEqual(after?.paymentStatus, "failed");
+      assert.notEqual(after?.paymentStatus, "paid");
+      assert.equal(after?.paymentStatus, "processing");
+      assert.equal(after?.bookingStatus, "manual_review");
+      assert.equal(after?.manualReviewReason, "payment_verification_required");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("mismatch: trwały rekord incydentu + dane do recovery NIETKNIĘTE", async () => {
+  await withEnv(ALERT_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666663";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
+
+      const failed = [...redis.store.entries()].filter(([k]) => k.includes(":failed:"));
+      assert.equal(failed.length, 1, "brak trwałego rekordu incydentu");
+      const rec = failed[0]![1] as Record<string, unknown>;
+      assert.equal(rec.sessionId, sessionId);
+      assert.equal(rec.manualReviewReason, "payment_verification_required");
+      // Bez prebookId/transactionId nie da się dokończyć rezerwacji ręcznie.
+      assert.equal(rec.prebookId, "pb_1");
+      assert.equal(rec.transactionId, "tx_1");
+
+      const after = await getFlightSession(sessionId);
+      assert.equal(after?.prebookId, "pb_1", "skasowany prebookId — recovery niemożliwe");
+      assert.equal(after?.transactionId, "tx_1", "skasowany transactionId — recovery niemożliwe");
+      assert.equal(after?.paymentIntentId, "pi_3Ab9XyZ0000001", "skasowany paymentIntentId");
+      // Ślad, CO przyszło w adresie powrotu — bez tego nikt tego nie odtworzy.
+      assert.equal(
+        (after?.paymentEvidence as Record<string, unknown> | undefined)?.returnedPaymentIntentId,
+        "pi_cudze",
+      );
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("mismatch: alert leci DOKŁADNIE RAZ — odświeżenie strony nie alarmuje ponownie", async () => {
+  await withEnv(ALERT_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666664";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const first = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
+      await przepuscAlerty();
+      assert.equal(alerty().length, 1, `alertów po pierwszym wejściu: ${alerty().length}`);
+
+      // Klient odświeża stronę powrotu (albo wraca z historii).
+      const second = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
+      await przepuscAlerty();
+      assert.equal(alerty().length, 1, `alert powtórzony: ${alerty().length}`);
+
+      // Odpowiedź zostaje spójna — dalej „sprawdzamy", nigdy „zapłać jeszcze raz".
+      assert.equal(first.status, 202);
+      assert.equal(second.status, 202);
+      assert.equal(second.body.error, "manual_review");
+      assert.match(String(second.body.message), /nie ponawiaj|Nie wykonuj płatności ponownie/i);
+      // Wciąż jeden rekord incydentu, nie dwa.
+      assert.equal([...redis.store.keys()].filter((k) => k.includes(":failed:")).length, 1);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("mismatch: odpowiedź nie zdradza kodów technicznych ani dostawców", async () => {
+  await withEnv(ALERT_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666665";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
+      const cale = JSON.stringify(out.body);
+      for (const zakazane of ["payment_intent_mismatch", "pi_cudze", "pi_3Ab9", "LiteAPI", "liteapi", "Stripe", "stripe", "redirect_status"]) {
+        assert.equal(cale.includes(zakazane), false, `odpowiedź zawiera „${zakazane}"`);
+      }
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("mismatch po ROZPOCZĘTEJ rezerwacji nie cofa jej do „nie zapłacono”", async () => {
+  await withEnv(ALERT_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666666";
+    await seedPrebookedSession(redis, sessionId, { bookingStatus: "booking", paymentStatus: "paid" });
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_cudze", redirectStatus: "succeeded" });
+      assert.equal(out.status, 202);
+      assert.equal(out.body.error, "manual_review");
+      const after = await getFlightSession(sessionId);
+      assert.equal(after?.paymentStatus, "paid", "cofnięto potwierdzoną płatność");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("redirect_status=failed NADAL mówi uczciwie, że pieniędzy nie pobraliśmy", async () => {
+  // Regresja na drugą gałąź `rejected`: tu Stripe powiedział WPROST, że
+  // płatność się nie udała. To jedyny wariant, w którym wolno zaprosić do
+  // ponownej próby — i nie wolno go zamienić w incydent.
+  await withEnv(ALERT_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666667";
+    await seedPrebookedSession(redis, sessionId);
+    const restore = mockFetch(() => ({ status: 200, body: { data: [{ bookingId: "bk_x" }] } }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { paymentIntentId: "pi_3Ab9XyZ0000001", redirectStatus: "failed" });
+      await przepuscAlerty();
+      assert.equal(out.status, 402);
+      assert.equal((await getFlightSession(sessionId))?.paymentStatus, "failed");
+      assert.equal([...redis.store.keys()].filter((k) => k.includes(":failed:")).length, 0);
+      assert.equal(alerty().length, 0, "zwykła odmowa karty nie jest incydentem");
+      // I tu też bez kodów technicznych.
+      assert.equal(JSON.stringify(out.body).includes("redirect_failed"), false);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+// ── BEZPIECZEŃSTWO ODCZYTU REZERWACJI ────────────────────────────────────────
+//
+// Model autoryzacji: znajomość `bookingId` JEST uprawnieniem (capability URL) —
+// tak samo jak przy hotelach. Identyfikator pochodzi od dostawcy; pomiar na
+// produkcji (2026-08-30) pokazał UUID-a wersji 7, 36 znaków, kształt
+// `019ec7ff-…` — 74 bity losowe. Zgadywanie nie jest realną drogą.
+//
+// Czego brakowało: żadnego SUFITU na liczbę prób. Endpoint oddaje imiona i
+// nazwiska pasażerów, a nie miał limitera — więc skanowanie nic nie kosztowało
+// i nie zostawiało śladu. To nie jest IDOR, ale jest to brak taniej warstwy.
+
+/** Limiter, który zawsze odmawia — do sprawdzenia gałęzi 429. */
+function odmawiajacyLimiter() {
+  return {
+    limit: async () => ({ success: false, limit: 30, remaining: 0, reset: Date.now() + 60_000 }),
+  } as unknown as Parameters<typeof __setLimiterForTests>[1];
+}
+
+/** Wszystko, co w odpowiedzi mogłoby być danymi osobowymi. */
+const PII_PROBKI = ["Jan", "Kowalski", "jan@example.com", "500600700", "AB1234567", "1990-05-04"];
+
+test("nieznany bookingId → 404 i ZERO danych osobowych w odpowiedzi", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({ status: 200, body: { data: [] } }));
+    try {
+      const { GET } = await import("./booking/[bookingId]/route");
+      const res = await GET(new NextRequest("http://localhost/api/flights/booking/019ec7ff-0000-7000-8000-000000000000"), {
+        params: Promise.resolve({ bookingId: "019ec7ff-0000-7000-8000-000000000000" }),
+      });
+      const json = await res.json();
+      assert.equal(res.status, 404);
+      assert.equal(json.error, "not_found");
+      const cale = JSON.stringify(json);
+      for (const p of PII_PROBKI) assert.equal(cale.includes(p), false, `404 zawiera „${p}"`);
+      // 404 nie rozróżnia „nigdy nie istniał" od „istnieje, ale nie Twój" —
+      // nie ma z czego zbudować wyroczni.
+      assert.equal(Object.keys(json).length, 1);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("bookingId ze śmieciami nie wywraca endpointu i nie ujawnia niczego", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    await setup();
+    const restore = mockFetch(() => ({ status: 200, body: { data: [] } }));
+    try {
+      const { GET } = await import("./booking/[bookingId]/route");
+      for (const zly of ["../../etc/passwd", "'; DROP TABLE", "%00", "a".repeat(500), ""]) {
+        const res = await GET(new NextRequest(`http://localhost/api/flights/booking/x`), {
+          params: Promise.resolve({ bookingId: zly }),
+        });
+        const json = await res.json();
+        assert.equal(res.status, 404, `nieoczekiwany status dla „${zly.slice(0, 20)}"`);
+        const cale = JSON.stringify(json);
+        for (const p of PII_PROBKI) assert.equal(cale.includes(p), false);
+      }
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("skanowanie ma sufit: limiter odcina 429 PRZED dotknięciem magazynu", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    // Prawdziwa rezerwacja w magazynie — gdyby limiter nie działał, poniższe
+    // żądanie oddałoby imię i nazwisko.
+    await redis.set(`flight:v1:bybooking:bk_real`, "sid_real");
+    await redis.set(`flight:v1:session:sid_real`, {
+      searchSessionId: "sid_real",
+      bookingId: "bk_real",
+      bookingStatus: "confirmed",
+      paymentStatus: "paid",
+      passengerData: [{ firstName: "Jan", lastName: "Kowalski", type: "ADT" }],
+      contactData: CONTACT,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    __setLimiterForTests("booking-lookup", odmawiajacyLimiter());
+    const restore = mockFetch(() => ({ status: 200, body: { data: [] } }));
+    try {
+      const { GET } = await import("./booking/[bookingId]/route");
+      const res = await GET(new NextRequest("http://localhost/api/flights/booking/bk_real"), {
+        params: Promise.resolve({ bookingId: "bk_real" }),
+      });
+      assert.equal(res.status, 429);
+      const cale = JSON.stringify(await res.json());
+      for (const p of PII_PROBKI) assert.equal(cale.includes(p), false, `429 zawiera „${p}"`);
+      // Limiter stoi PRZED odczytem — dostawca też nietknięty.
+      assert.equal(fetchCalls.length, 0);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("właściciel rezerwacji dalej dostaje swoje dane (limiter nie psuje ścieżki)", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    await redis.set(`flight:v1:bybooking:bk_ok`, "sid_ok");
+    await redis.set(`flight:v1:session:sid_ok`, {
+      searchSessionId: "sid_ok",
+      bookingId: "bk_ok",
+      bookingStatus: "confirmed",
+      paymentStatus: "paid",
+      price: 1918.34,
+      currency: "PLN",
+      passengerData: [
+        { firstName: "Jan", lastName: "Kowalski", type: "ADT", documentNumberMasked: "******567", birthday: "1990-05-04" },
+      ],
+      contactData: CONTACT,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    const restore = mockFetch(() => ({ status: 200, body: { data: [] } }));
+    try {
+      const { GET } = await import("./booking/[bookingId]/route");
+      const res = await GET(new NextRequest("http://localhost/api/flights/booking/bk_ok"), {
+        params: Promise.resolve({ bookingId: "bk_ok" }),
+      });
+      assert.equal(res.status, 200);
+      const json = await res.json();
+      // Pasażer widzi własne imię — to jest sens tej strony.
+      assert.equal(json.passengers[0].firstName, "Jan");
+      // Ale NIC ponad to, co potrzebne do potwierdzenia.
+      const cale = JSON.stringify(json);
+      for (const tajne of ["******567", "1990-05-04", "jan@example.com", "500600700", "tx_", "pb_", "pi_"]) {
+        assert.equal(cale.includes(tajne), false, `odpowiedź zawiera „${tajne}"`);
+      }
     } finally {
       teardown(restore);
     }

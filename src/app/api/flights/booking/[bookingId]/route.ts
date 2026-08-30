@@ -11,12 +11,18 @@
 // we froncie go nie wysyłało. Kontrola, którą omija się przez pominięcie,
 // nie jest kontrolą — jest zaciemnieniem tego, co naprawdę chroni zasób.
 //
+// SUFIT (2026-08-30): endpoint dostał limiter `booking-lookup` (30/min/IP).
+// To nie jest naprawa IDOR-a — `bookingId` ma 74 bity losowe i pozostaje
+// wystarczającym uprawnieniem — tylko domknięcie braku jakiegokolwiek kosztu
+// po stronie skanującego.
+//
 // ticketingStatus odświeżamy LIVE przez GET /flights/bookings/{id} (webhook to
 // tylko trigger; GET = źródło prawdy — brief 1.6). Awaria live-GET nie wywraca
 // strony: zwracamy ostatni znany stan z Redis.
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { getFlightBooking } from "@/lib/flights/client";
 import { readFlightBookingFacts } from "@/lib/flights/booking-facts";
 import { extractProviderItinerary, mergeItineraries } from "@/lib/flights/provider-itinerary";
@@ -43,7 +49,15 @@ function ticketingFromLive(data: unknown): { ticketingStatus?: FlightTicketingSt
   return { status: f.status, pnr: f.pnr, eTickets: f.eTicketNumbers, ticketingStatus: f.ticketingStatus };
 }
 
-export async function GET(_request: NextRequest, ctx: { params: Promise<{ bookingId: string }> }) {
+export async function GET(request: NextRequest, ctx: { params: Promise<{ bookingId: string }> }) {
+  // SUFIT NA SKANOWANIE. Autoryzacją jest sam `bookingId` (UUID v7 od
+  // dostawcy, 74 bity losowe — zgadywanie odpada), ale endpoint oddaje imię
+  // i nazwisko pasażera i do 2026-08-30 nie miał żadnego ograniczenia liczby
+  // prób. Limiter stoi PRZED odczytem magazynu i przed wywołaniem dostawcy,
+  // więc odrzucone żądanie nie kosztuje nic i niczego nie ujawnia.
+  const limited = await enforceRateLimit(request, "booking-lookup");
+  if (limited) return limited;
+
   const { bookingId } = await ctx.params;
 
   const completed = await getFlightCompleted(bookingId).catch(() => null);

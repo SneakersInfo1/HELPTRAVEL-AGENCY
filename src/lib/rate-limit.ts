@@ -11,6 +11,7 @@ type LimiterKey =
   | "activities-search"
   | "booking-prebook"
   | "booking-book"
+  | "booking-lookup"
   | "admin-email-test"
   | "concierge"
   | "destination-suggest";
@@ -57,6 +58,15 @@ const LIMIT_PER_MINUTE = 20;
 const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   "booking-prebook": 10,
   "booking-book": 10,
+  // booking-lookup: odczyt strony potwierdzenia. Autoryzacją jest znajomość
+  // `bookingId` — u lotów to UUID v7 od dostawcy (zmierzone na produkcji
+  // 2026-08-30: 36 znaków, 74 bity losowe), więc zgadywanie nie jest realną
+  // drogą. Ale endpoint oddaje imię i nazwisko pasażera, a do tej pory nie miał
+  // ŻADNEGO sufitu: skanowanie nic nie kosztowało i nie zostawiało śladu.
+  // 30/min/IP jest niewidoczne dla człowieka (strona pobiera dane RAZ przy
+  // wejściu, bez odpytywania w pętli), mieści kilku gości za wspólnym CGNAT-em
+  // i zamienia „bez ograniczeń" w mierzalny, widoczny w logach limit.
+  "booking-lookup": 30,
   "admin-email-test": 5,
   "stays-search": 320,
   "stays-rates-batch": 600,
