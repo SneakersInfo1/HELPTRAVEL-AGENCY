@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getFlightBooking } from "@/lib/flights/client";
+import { readFlightBookingFacts } from "@/lib/flights/booking-facts";
 import { extractProviderItinerary, mergeItineraries } from "@/lib/flights/provider-itinerary";
 import {
   getFlightCompleted,
@@ -31,18 +32,15 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Live GET → fakty. Czytnik WSPÓLNY z finalizacją (`booking-facts.ts`):
+ * zmierzony payload produkcyjny trzyma `status`/`pnr`/`eTicketNumbers` w
+ * `data[0].booking`, nie w `data[0]`, więc lokalne parsowanie zwracało same
+ * `undefined` i strona potwierdzenia nigdy nie pokazywała PNR-u.
+ */
 function ticketingFromLive(data: unknown): { ticketingStatus?: FlightTicketingStatus; pnr?: string; eTickets?: string[]; status?: string } {
-  const node = Array.isArray((data as { data?: unknown })?.data)
-    ? (data as { data: unknown[] }).data[0]
-    : ((data as { data?: unknown }).data ?? data);
-  const rec = (node && typeof node === "object" ? node : {}) as Record<string, unknown>;
-  const eTickets = Array.isArray(rec.eTicketNumbers) ? (rec.eTicketNumbers as string[]) : undefined;
-  return {
-    status: typeof rec.status === "string" ? rec.status : undefined,
-    pnr: typeof rec.pnr === "string" ? rec.pnr : undefined,
-    eTickets,
-    ticketingStatus: eTickets && eTickets.length > 0 ? "ticketed" : "pending",
-  };
+  const f = readFlightBookingFacts(data);
+  return { status: f.status, pnr: f.pnr, eTickets: f.eTicketNumbers, ticketingStatus: f.ticketingStatus };
 }
 
 export async function GET(_request: NextRequest, ctx: { params: Promise<{ bookingId: string }> }) {

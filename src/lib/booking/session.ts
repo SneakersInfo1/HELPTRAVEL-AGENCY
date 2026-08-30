@@ -11,6 +11,8 @@
 
 import { Redis } from "@upstash/redis";
 
+import { assertNoProductionStoreInTests } from "@/lib/testing/production-guard";
+
 import { BookingError } from "@/lib/liteapi";
 
 const KEY_VERSION = "v1";
@@ -53,6 +55,9 @@ function getRedis(): RedisLike {
   if (redis === undefined) {
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    // Ten sam bezpiecznik co przy lotach — hotelowe rekordy leżą w TEJ SAMEJ
+    // produkcyjnej bazie, więc zapomniana atrapa kosztowałaby tyle samo.
+    if (url && token) assertNoProductionStoreInTests("hotele");
     redis = url && token ? (new Redis({ url, token }) as unknown as RedisLike) : null;
   }
   if (!redis) throw storeDown();

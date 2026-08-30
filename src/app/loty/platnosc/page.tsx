@@ -66,7 +66,11 @@ export default function FlightPaymentPage() {
           setNotice(
             res.status === 410
               ? "Sesja rezerwacji wygasła. Wróć do wyników i wybierz lot ponownie."
-              : "Nie udało się potwierdzić kwoty do zapłaty. Rozpocznij rezerwację od nowa.",
+              : json.flightsDisabled === true
+                ? // Kill-switch, nie awaria sesji. Nie każemy zaczynać od nowa,
+                  // bo powtórzenie tej samej drogi skończy się tak samo.
+                  "Rezerwacja lotów jest chwilowo niedostępna. Twoje dane nie zostały nigdzie wysłane, a karta nie została obciążona. Spróbuj ponownie później."
+                : "Nie udało się potwierdzić kwoty do zapłaty. Rozpocznij rezerwację od nowa.",
           );
           track("flight_payment_error", { code: String(json.error ?? "amount_unconfirmed"), http_status: res.status });
           return;

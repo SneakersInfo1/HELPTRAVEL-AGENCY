@@ -16,6 +16,7 @@
 
 import { NextResponse } from "next/server";
 
+import { isFlightsLive } from "@/lib/config/featureFlags";
 import { getFlightSession, isFlightSessionExpired } from "@/lib/flights/session";
 
 export const runtime = "nodejs";
@@ -50,10 +51,20 @@ export async function GET(_request: Request, ctx: { params: Promise<{ sessionId:
        * widgety na jedną transakcję to prosta droga do podwójnego obciążenia.
        */
       payable:
+        isFlightsLive() &&
         session.bookingStatus === "prebooked" &&
         (session.paymentStatus === "pending" || session.paymentStatus === "failed") &&
         session.priceGatePassed !== false &&
         typeof session.price === "number",
+      /**
+       * Kill-switch (`FLIGHTS_FLOW_MODE`) zdjął `payable`, choć sama sesja jest
+       * w porządku. Front musi to rozróżnić, bo komunikat jest inny: „chwilowo
+       * niedostępne" zamiast „sesja wygasła".
+       *
+       * Dotyczy WYŁĄCZNIE startu płatności. Rezerwacja już opłacona finalizuje
+       * się normalnie — ta trasa nie bierze udziału w finalizacji.
+       */
+      flightsDisabled: !isFlightsLive(),
       bookingId: session.bookingId ?? null,
     },
     { status: 200, headers: { "Cache-Control": "no-store" } },

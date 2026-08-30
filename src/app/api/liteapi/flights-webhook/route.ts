@@ -32,6 +32,7 @@ import {
 import { notifyCritical, notifyWarning } from "@/lib/alerting/notify";
 import { sendFlightCancellation, sendFlightManualReviewAlert } from "@/lib/email/send-flight-alerts";
 import { getFlightBooking } from "@/lib/flights/client";
+import { readFlightBookingFacts } from "@/lib/flights/booking-facts";
 import { sendConfirmationOnce } from "@/lib/flights/finalize";
 import { extractProviderItinerary } from "@/lib/flights/provider-itinerary";
 import {
@@ -70,18 +71,15 @@ function firstData(embedded: EmbeddedFlightResponse | null) {
   return Array.isArray(d) ? d[0] : d;
 }
 
+/**
+ * Live GET → fakty. Czytnik jest WSPÓLNY z finalizacją (`booking-facts.ts`):
+ * zmierzony payload produkcyjny trzyma `status`/`pnr`/`eTicketNumbers` w
+ * `data[0].booking`, a nie w `data[0]`, więc lokalne parsowanie zwracało tu
+ * same `undefined` i strona potwierdzenia nigdy nie pokazywała PNR-u.
+ */
 function ticketingFromLive(data: unknown): { status?: string; pnr?: string; eTickets?: string[]; ticketingStatus: FlightTicketingStatus } {
-  const node = Array.isArray((data as { data?: unknown })?.data)
-    ? (data as { data: unknown[] }).data[0]
-    : ((data as { data?: unknown }).data ?? data);
-  const rec = (node && typeof node === "object" ? node : {}) as Record<string, unknown>;
-  const eTickets = Array.isArray(rec.eTicketNumbers) ? (rec.eTicketNumbers as string[]) : undefined;
-  return {
-    status: typeof rec.status === "string" ? rec.status : undefined,
-    pnr: typeof rec.pnr === "string" ? rec.pnr : undefined,
-    eTickets,
-    ticketingStatus: eTickets && eTickets.length > 0 ? "ticketed" : "pending",
-  };
+  const f = readFlightBookingFacts(data);
+  return { status: f.status, pnr: f.pnr, eTickets: f.eTicketNumbers, ticketingStatus: f.ticketingStatus };
 }
 
 /** Odśwież rekord przez live GET (źródło prawdy). Best-effort. */

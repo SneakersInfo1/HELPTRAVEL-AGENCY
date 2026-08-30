@@ -1,0 +1,153 @@
+{
+  "note": "KSZTAŁT odpowiedzi GET /flights/bookings/{id} zmierzony na PRAWDZIWEJ rezerwacji lotniczej (produkcja, 2026-08-30). Wartości celowo zastąpione opisem typu — rekord zawiera dane osobowe pasażera. Służy do weryfikacji `extractProviderItinerary` i schematów.",
+  "httpStatus": 200,
+  "ekstraktorZnalazlTrase": true,
+  "odcinkow": 1,
+  "structure": {
+    "data": [
+      {
+        "booking": {
+          "bookingId": "<string, 36 zn.>",
+          "status": "<string, 7 zn.>",
+          "timestamp": "<ISO datetime>",
+          "journey": {
+            "journeyKey": "<string, 16 zn.>",
+            "segments": [
+              {
+                "arrivalTime": "<ISO datetime>",
+                "carrier": {
+                  "marketingCode": "<string, 2 zn.>",
+                  "marketingLogo": "<string, 63 zn.>",
+                  "marketingName": "<string, 8 zn.>",
+                  "operatingCode": "<string, 2 zn.>",
+                  "operatingLogo": "<string, 63 zn.>",
+                  "operatingName": "<string, 8 zn.>"
+                },
+                "departureTime": "<ISO datetime>",
+                "originCode": "<IATA: WAW>",
+                "destinationCode": "<IATA: LTN>",
+                "direction": "<string, 8 zn.>",
+                "duration": {
+                  "iso8601": "<string, 7 zn.>",
+                  "minutes": "<number>"
+                },
+                "flight": {
+                  "marketingNumber": "<string, 4 zn.>",
+                  "operatingNumber": "<string, 4 zn.>"
+                },
+                "segmentKey": "<string, 8 zn.>",
+                "originName": "<string, 21 zn.>",
+                "destinationName": "<string, 20 zn.>"
+              },
+              "<… łącznie 1>"
+            ],
+            "pricing": {
+              "display": {
+                "total": "<number>",
+                "currency": "<IATA: PLN>",
+                "base": "<number>",
+                "fees": "<number>",
+                "taxes": "<number>",
+                "perPassenger": {
+                  "adult": {
+                    "base": "<głębiej niż 8 poziomów>",
+                    "currency": "<głębiej niż 8 poziomów>",
+                    "fees": "<głębiej niż 8 poziomów>",
+                    "taxes": "<głębiej niż 8 poziomów>",
+                    "total": "<głębiej niż 8 poziomów>"
+                  },
+                  "child": {
+                    "base": "<głębiej niż 8 poziomów>",
+                    "currency": "<głębiej niż 8 poziomów>",
+                    "fees": "<głębiej niż 8 poziomów>",
+                    "taxes": "<głębiej niż 8 poziomów>",
+                    "total": "<głębiej niż 8 poziomów>"
+                  },
+                  "infant": {
+                    "base": "<głębiej niż 8 poziomów>",
+                    "currency": "<głębiej niż 8 poziomów>",
+                    "fees": "<głębiej niż 8 poziomów>",
+                    "taxes": "<głębiej niż 8 poziomów>",
+                    "total": "<głębiej niż 8 poziomów>"
+                  }
+                }
+              },
+              "converted": "<boolean>"
+            },
+            "baggage": {
+              "hasCarryOnBag": "<boolean>",
+              "hasCheckedBag": "<boolean>",
+              "included": [
+                {
+                  "bagType": "<string, 8 zn.>",
+                  "description": "<string, 13 zn.>",
+                  "passengerType": "<IATA: ADT>",
+                  "pieces": "<number>",
+                  "pricing": {
+                    "display": "<głębiej niż 8 poziomów>",
+                    "converted": "<głębiej niż 8 poziomów>"
+                  },
+                  "size": "<string, 10 zn.>",
+                  "unit": "<string, 2 zn.>",
+                  "weightKg": "<number>"
+                },
+                "<… łącznie 1>"
+              ],
+              "paid": [
+                {
+                  "bagType": "<string, 7 zn.>",
+                  "description": "<string, 11 zn.>",
+                  "passengerType": "<IATA: ADT>",
+                  "pieces": "<number>",
+                  "pricing": {
+                    "display": "<głębiej niż 8 poziomów>",
+                    "converted": "<głębiej niż 8 poziomów>"
+                  },
+                  "unit": "<string, 2 zn.>",
+                  "weightKg": "<number>"
+                },
+                "<… łącznie 20>"
+              ]
+            },
+            "terms": {
+              "changeable": "<boolean>",
+              "refundable": "<boolean>",
+              "summary": [
+                {
+                  "level": "<string, 7 zn.>",
+                  "message": "<string, 22 zn.>"
+                },
+                "<… łącznie 3>"
+              ]
+            }
+          },
+          "passengers": [
+            {
+              "title": "<string, 2 zn.>",
+              "firstName": "<string, 5 zn.>",
+              "lastName": "<string, 11 zn.>",
+              "birthday": "<ISO date>",
+              "gender": "<string, 1 zn.>",
+              "nationality": "<string, 2 zn.>",
+              "documentType": "<string, 8 zn.>",
+              "documentNumber": "<string, 8 zn.>",
+              "documentIssueCountry": "<string, 2 zn.>",
+              "documentExpiry": "<ISO date>"
+            },
+            "<… łącznie 1>"
+          ],
+          "contact": {
+            "firstName": "<string, 5 zn.>",
+            "email": "<string, 22 zn.>"
+          },
+          "pricing": {
+            "subtotal": "<number>",
+            "totalAmount": "<number>",
+            "currency": "<IATA: PLN>"
+          }
+        }
+      },
+      "<… łącznie 1>"
+    ]
+  }
+}

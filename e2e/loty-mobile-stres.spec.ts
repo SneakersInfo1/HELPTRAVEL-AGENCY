@@ -12,7 +12,17 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { zablokujZapisyLotow } from "./_bezpiecznik-lotow";
+
 test.use({ locale: "pl-PL" });
+
+// BEZPIECZNIK: niezamockowany zapis w lejku lotów (prebook / book / finalizacja
+// po powrocie z płatności) wywala test, zamiast utworzyć prawdziwy lock taryfy
+// na produkcyjnym kluczu. Testy, które mockują te trasy same, rejestrują swoje
+// przechwycenie PÓŹNIEJ, więc mają pierwszeństwo.
+test.beforeEach(async ({ page }) => {
+  await zablokujZapisyLotow(page);
+});
 
 const WIDTHS = [
   { name: "375x812 (iPhone SE/13 mini)", width: 375, height: 812 },

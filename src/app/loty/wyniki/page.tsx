@@ -7,6 +7,7 @@
 
 import type { Metadata } from "next";
 
+import { isFlightsLive } from "@/lib/config/featureFlags";
 import { FLIGHT_SHELL_NARROW, FLIGHT_STICKY_TOP } from "@/lib/flights/layout";
 
 import { FlightResults } from "./_components/flight-results";
@@ -77,6 +78,21 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
 
   return (
     <>
+      {/* Kill-switch lotów. Wyszukiwanie zostaje włączone (nie rusza pieniędzy
+          i nadal ma wartość informacyjną), ale mówimy o tym NA WEJŚCIU, zanim
+          ktoś wypełni formularz pasażerów i uderzy w ścianę na płatności. */}
+      {!isFlightsLive() ? (
+        <div className={`${FLIGHT_SHELL_NARROW} pt-4`}>
+          <p
+            role="status"
+            className="rounded-lg border border-line bg-surface-sunken px-4 py-3 text-sm text-ink"
+          >
+            Rezerwacja lotów jest chwilowo niedostępna — ceny i połączenia możesz przeglądać, ale nie
+            dokończysz teraz rezerwacji.
+          </p>
+        </div>
+      ) : null}
+
       {/* Pasek edycji wyszukiwania — sticky pod headerem, jak na hotelach.
           Pozwala zmienić kierunek/daty bez wracania na homepage.
           Offset z `FLIGHT_STICKY_TOP`, nie z palca: header lotów jest teraz

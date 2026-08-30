@@ -18,6 +18,42 @@ export function isBookingLive(): boolean {
   return getBookingFlowMode() === "live";
 }
 
+// ── LOTY ─────────────────────────────────────────────────────────────────────
+//
+// `FLIGHTS_FLOW_MODE` — hamulec bezpieczeństwa ścieżki lotów, funkcjonalny
+// odpowiednik `BOOKING_FLOW_MODE` przy hotelach (ta sama konwencja nazw i ta
+// sama wartość domyślna: WYŁĄCZONE, dopóki ktoś świadomie nie włączy).
+//
+// CO WYŁĄCZA (granica pieniędzy — start NOWYCH płatności i rezerwacji):
+//   • `POST /api/flights/prebook` → 503, zanim powstanie lock taryfy i zanim
+//     LiteAPI otworzy PaymentIntent,
+//   • `payable` w `GET /api/flights/session/[id]` → `false`, więc widget
+//     płatności nie zamontuje się dla sesji, która jeszcze nie zapłaciła,
+//   • CTA na `/loty/wyniki` → uczciwy komunikat zamiast ścieżki w ślepy zaułek.
+//
+// CZEGO NIE WYŁĄCZA — I TO JEST TU NAJWAŻNIEJSZE:
+//   • `POST /api/flights/book` i `finalizeFlightBooking` (strona powrotu),
+//   • webhooka `flights-webhook`,
+//   • `GET /api/flights/booking/[id]` i strony potwierdzenia,
+//   • wyszukiwania (`/flights/rates`, `verify`) — nie ruszają pieniędzy.
+//
+// Powód: człowiek, który JUŻ ZAPŁACIŁ, ma pieniądze u dostawcy i żadnej
+// rezerwacji. Odcięcie mu finalizacji zamieniłoby awarię w kradzież. Kill-switch
+// ma zatrzymać NAPŁYW nowych transakcji, nigdy dokończenie już rozpoczętych.
+//
+// Włączenie: `FLIGHTS_FLOW_MODE=live` (Vercel → env → redeploy).
+// Wyłączenie awaryjne: ustaw cokolwiek innego (albo usuń) → redeploy.
+
+export type FlightsFlowMode = "disabled" | "live";
+
+export function getFlightsFlowMode(): FlightsFlowMode {
+  return process.env.FLIGHTS_FLOW_MODE?.trim().toLowerCase() === "live" ? "live" : "disabled";
+}
+
+export function isFlightsLive(): boolean {
+  return getFlightsFlowMode() === "live";
+}
+
 // FAZA 3 — boilerplate COVID/higiena (maseczki, dezynfekcja między pobytami,
 // dystans fizyczny…) sprawia, że serwis wygląda jak skopiowany 4 lata temu.
 // Domyślnie UKRYTE; ustaw HIDE_COVID_FACILITIES=false, żeby pokazać z powrotem.

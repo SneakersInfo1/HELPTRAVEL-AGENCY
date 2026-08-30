@@ -108,6 +108,9 @@ const ENV: Record<string, string | undefined> = {
   LITEAPI_ENV: "production",
   UPSTASH_REDIS_REST_URL: undefined,
   UPSTASH_REDIS_REST_TOKEN: undefined,
+  // Inwarianty ceny opisują ścieżkę WŁĄCZONĄ. Zachowanie hamulca
+  // (`FLIGHTS_FLOW_MODE`) ma własne testy w `flight-routes.test.ts`.
+  FLIGHTS_FLOW_MODE: "live",
   RESEND_API_KEY: undefined,
   EMAIL_FROM: undefined,
   ALERT_WEBHOOK_URL: undefined,

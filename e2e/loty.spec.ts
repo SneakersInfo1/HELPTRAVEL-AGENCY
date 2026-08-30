@@ -11,6 +11,8 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { zablokujZapisyLotow } from "./_bezpiecznik-lotow";
+
 // Serwis jest polski i `LanguageProvider` czyta jezyk przegladarki. Playwright
 // startuje domyslnie z `en-US`, wiec provider przelaczal UI na angielski JUZ PO
 // hydracji — serwer renderowal `/kierunki`, klient `/en/kierunki` i React
@@ -21,6 +23,14 @@ import { expect, test, type Page } from "@playwright/test";
 // `pl-PL` to jednoczesnie realny warunek uzytkownika tego serwisu (>90 % ruchu
 // z Polski), wiec test staje sie BLIZSZY produkcji, a nie dalszy.
 test.use({ locale: "pl-PL" });
+
+// BEZPIECZNIK: niezamockowany zapis w lejku lotów (prebook / book / finalizacja
+// po powrocie z płatności) wywala test, zamiast utworzyć prawdziwy lock taryfy
+// na produkcyjnym kluczu. Testy, które mockują te trasy same, rejestrują swoje
+// przechwycenie PÓŹNIEJ, więc mają pierwszeństwo.
+test.beforeEach(async ({ page }) => {
+  await zablokujZapisyLotow(page);
+});
 
 const SEARCH =
   "/loty/wyniki?origin=WAW&originLabel=Warszawa&destination=BCN&destLabel=Barcelona" +

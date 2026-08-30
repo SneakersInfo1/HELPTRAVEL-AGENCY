@@ -91,6 +91,9 @@ const LIVE_ENV: Record<string, string | undefined> = {
   LITEAPI_ENV: "production",
   UPSTASH_REDIS_REST_URL: undefined,
   UPSTASH_REDIS_REST_TOKEN: undefined,
+  // Kill-switch lotów WŁĄCZONY — domyślną (wyłączoną) sprawdza osobny test
+  // niżej. Bez tego cała ta suita opisywałaby wyłącznie odmowę 503.
+  FLIGHTS_FLOW_MODE: "live",
   // Mail ma być bezczynny niezależnie od powłoki dewelopera.
   RESEND_API_KEY: undefined,
   EMAIL_FROM: undefined,
@@ -1078,6 +1081,189 @@ test("return: stary adres NIE blokuje potwierdzonej rezerwacji (bramka `confirme
       const after = await getFlightSession(sessionId);
       assert.equal(after?.paymentStatus, "paid");
       assert.equal(after?.bookingStatus, "confirmed");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+// ── KILL-SWITCH LOTÓW (`FLIGHTS_FLOW_MODE`) ──────────────────────────────────
+//
+// Hamulec ma zatrzymać NAPŁYW nowych transakcji, nie dokończenie tych, za które
+// ktoś mógł już zapłacić. Drugi z tych warunków jest ważniejszy: odcięcie
+// finalizacji człowiekowi, który ma obciążoną kartę, zamienia awarię w
+// zabranie pieniędzy bez rezerwacji. Dlatego testujemy OBIE strony.
+
+const KILLED_ENV: Record<string, string | undefined> = { ...LIVE_ENV, FLIGHTS_FLOW_MODE: "disabled" };
+
+test("kill-switch: prebook odmawia 503 i NIE dotyka dostawcy ani storage", async () => {
+  await withEnv(KILLED_ENV, async () => {
+    const redis = await setup();
+    const restore = mockFetch(() => ({ status: 200, body: prebookOk(1918.34) }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const res = await POST(prebookRequest(prebookBody()));
+      const json = await res.json();
+      assert.equal(res.status, 503);
+      assert.equal(json.error, "flights_disabled");
+      // Bez `secretKey` — żadna sesja płatności nie powstała.
+      assert.equal(json.secretKey, undefined);
+      assert.equal(json.sessionId, undefined);
+      // Dostawca nietknięty: ani locka taryfy, ani PaymentIntentu.
+      assert.equal(fetchCalls.length, 0);
+      // Storage nietknięty: nie ma nawet rekordu intencji.
+      assert.equal(redis.store.size, 0);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("kill-switch: sesja prebookowana przestaje być `payable` (widget się nie zamontuje)", async () => {
+  await withEnv(KILLED_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "33333333-3333-4333-8333-333333333333";
+    await redis.set(`flight:v1:session:${sessionId}`, {
+      searchSessionId: sessionId,
+      offerId: "OFFER_ABCDEFGH",
+      prebookId: "pb_kill_1",
+      transactionId: "tx_kill_1",
+      paymentStatus: "pending",
+      bookingStatus: "prebooked",
+      priceGatePassed: true,
+      price: 1918.34,
+      currency: "PLN",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    const restore = mockFetch(() => ({ status: 200, body: {} }));
+    try {
+      const { GET } = await import("./session/[sessionId]/route");
+      const res = await GET(new Request("http://x/api/flights/session/x"), {
+        params: Promise.resolve({ sessionId }),
+      });
+      const json = await res.json();
+      assert.equal(res.status, 200);
+      assert.equal(json.payable, false);
+      // Front musi odróżnić „wyłączone" od „sesja wygasła" — inny komunikat.
+      assert.equal(json.flightsDisabled, true);
+      // Kwota nadal raportowana: rekord jest zdrowy, tylko ścieżka zamknięta.
+      assert.equal(json.amount, 1918.34);
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("kill-switch NIE odcina finalizacji — klient, który mógł zapłacić, dostaje rezerwację", async () => {
+  await withEnv(KILLED_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "44444444-4444-4444-8444-444444444444";
+    await redis.set(`flight:v1:session:${sessionId}`, {
+      searchSessionId: sessionId,
+      offerId: "OFFER_ABCDEFGH",
+      prebookId: "pb_kill_2",
+      transactionId: "tx_kill_2",
+      paymentStatus: "pending",
+      bookingStatus: "prebooked",
+      priceGatePassed: true,
+      price: 1918.34,
+      currency: "PLN",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    const restore = mockFetch(() => ({
+      status: 200,
+      body: { data: [{ booking: { bookingId: "bk_kill_2", status: "CONFIRMED" } }] },
+    }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { redirectStatus: "succeeded" });
+      // TO JEST NAJWAŻNIEJSZA ASERCJA W TYM PLIKU: hamulec nie może
+      // zostawić opłaconego klienta bez rezerwacji.
+      assert.equal(out.status, 200);
+      assert.equal(out.body.bookingId, "bk_kill_2");
+      assert.equal(out.body.bookingStatus, "confirmed");
+      assert.equal(fetchCalls.filter((c) => c.url.includes("/flights/bookings")).length, 1);
+      const after = await getFlightSession(sessionId);
+      assert.equal(after?.paymentStatus, "paid");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+test("kill-switch NIE ukrywa istniejącego potwierdzenia", async () => {
+  await withEnv(KILLED_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "55555555-5555-4555-8555-555555555555";
+    await redis.set(`flight:v1:bybooking:bk_kill_3`, sessionId);
+    await redis.set(`flight:v1:session:${sessionId}`, {
+      searchSessionId: sessionId,
+      offerId: "OFFER_ABCDEFGH",
+      prebookId: "pb_kill_3",
+      transactionId: "tx_kill_3",
+      paymentStatus: "paid",
+      bookingStatus: "confirmed",
+      bookingId: "bk_kill_3",
+      price: 1918.34,
+      currency: "PLN",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    const restore = mockFetch(() => ({
+      status: 200,
+      body: { data: [{ booking: { bookingId: "bk_kill_3", status: "CONFIRMED" } }] },
+    }));
+    try {
+      const { GET } = await import("./booking/[bookingId]/route");
+      const res = await GET(new NextRequest("http://x/api/flights/booking/bk_kill_3"), {
+        params: Promise.resolve({ bookingId: "bk_kill_3" }),
+      });
+      const json = await res.json();
+      assert.equal(res.status, 200);
+      assert.equal(json.bookingId, "bk_kill_3");
+      assert.equal(json.bookingStatus, "confirmed");
+    } finally {
+      teardown(restore);
+    }
+  });
+});
+
+// ── KSZTAŁT ODPOWIEDZI DOSTAWCY (zmierzony na produkcji 2026-08-30) ──────────
+
+test("finalizacja czyta status z data[0].booking — NIE udaje 'confirmed' przy PENDING", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const redis = await setup();
+    const sessionId = "66666666-6666-4666-8666-666666666666";
+    await redis.set(`flight:v1:session:${sessionId}`, {
+      searchSessionId: sessionId,
+      offerId: "OFFER_ABCDEFGH",
+      prebookId: "pb_shape_1",
+      transactionId: "tx_shape_1",
+      paymentStatus: "pending",
+      bookingStatus: "prebooked",
+      priceGatePassed: true,
+      price: 1918.34,
+      currency: "PLN",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    // Zagnieżdżenie 1:1 ze zmierzonego payloadu produkcyjnego.
+    const restore = mockFetch(() => ({
+      status: 200,
+      body: { data: [{ booking: { bookingId: "bk_shape_1", status: "PENDING" } }] },
+    }));
+    try {
+      const { finalizeFlightBooking } = await import("@/lib/flights/finalize");
+      const out = await finalizeFlightBooking(sessionId, { redirectStatus: "succeeded" });
+      assert.equal(out.status, 200);
+      // Przed poprawką: `data[0].status` === undefined → mapBookingStatus →
+      // "confirmed". Klient dostałby mail „potwierdzone" na rezerwację, której
+      // dostawca nie potwierdził.
+      assert.equal(out.body.bookingStatus, "pending_confirmation");
+      // bookingId też siedzi poziom głębiej — bez tego podstawialiśmy prebookId.
+      assert.equal(out.body.bookingId, "bk_shape_1");
     } finally {
       teardown(restore);
     }

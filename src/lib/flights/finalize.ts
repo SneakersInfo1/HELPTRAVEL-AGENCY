@@ -33,6 +33,7 @@ import {
   sendFlightManualReviewAlert,
 } from "@/lib/email/send-flight-alerts";
 import { bookFlight, extractBookingId, toFlightApiError } from "@/lib/flights/client";
+import { readFlightBookingFacts } from "@/lib/flights/booking-facts";
 import {
   evaluatePaymentEvidence,
   isPaymentDisprovedByBookingFailure,
@@ -62,29 +63,23 @@ export interface FinalizeReturnParams {
   redirectStatus?: string;
 }
 
-/** Wyciąga status/pnr/eticket z odpowiedzi book (kształt zależny od dostawcy). */
+/**
+ * Fakty o rezerwacji — jeden wspólny czytnik (`booking-facts.ts`).
+ *
+ * Poprzednia wersja czytała `status`/`pnr`/`eTicketNumbers` wprost z `data[0]`.
+ * Zmierzony payload produkcyjny trzyma je poziom głębiej, w `data[0].booking`,
+ * więc `status` wychodził `undefined` i `mapBookingStatus` domyślnie zwracało
+ * „confirmed" — także dla rezerwacji, której dostawca nie potwierdził.
+ */
 function readBookingFacts(data: unknown): {
   bookingId?: string;
   status?: string;
   pnr?: string;
   eTicketNumbers?: string[];
-  ticketingStatus?: FlightTicketingStatus;
+  ticketingStatus: FlightTicketingStatus;
 } {
-  const node = Array.isArray((data as { data?: unknown })?.data)
-    ? (data as { data: unknown[] }).data[0]
-    : ((data as { data?: unknown }).data ?? data);
-  const rec = (node && typeof node === "object" ? node : {}) as Record<string, unknown>;
-  const bookingId = extractBookingId(data);
-  const status = typeof rec.status === "string" ? rec.status : undefined;
-  const pnr =
-    typeof rec.pnr === "string"
-      ? rec.pnr
-      : typeof (rec.booking as Record<string, unknown>)?.pnr === "string"
-        ? ((rec.booking as Record<string, unknown>).pnr as string)
-        : undefined;
-  const tickets = Array.isArray(rec.eTicketNumbers) ? (rec.eTicketNumbers as string[]) : undefined;
-  const ticketingStatus: FlightTicketingStatus = tickets && tickets.length > 0 ? "ticketed" : "pending";
-  return { bookingId, status, pnr, eTicketNumbers: tickets, ticketingStatus };
+  const facts = readFlightBookingFacts(data);
+  return { ...facts, bookingId: facts.bookingId ?? extractBookingId(data) };
 }
 
 function mapBookingStatus(raw?: string): FlightBookingStatus {

@@ -8,6 +8,7 @@
 //   • boundary error mapping via errors.ts
 
 import { ZodError, type ZodTypeAny, type z } from "zod";
+import { assertNoProviderWriteInTests } from "@/lib/testing/production-guard";
 import {
   LiteApiError,
   LiteApiNetworkError,
@@ -237,6 +238,10 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
       } else {
         fetchInit.cache = "no-store";
       }
+      // Bezpiecznik testowy: pod runnerem testów nie wolno REALNIE utworzyć
+      // prebooka ani rezerwacji. Przepuszcza wszystko, co ma podmieniony
+      // `fetch` (czyli każdy istniejący test) i wszystkie odczyty.
+      assertNoProviderWriteInTests(url);
       const res = await fetch(url, fetchInit);
 
       const body = await readBody(res);

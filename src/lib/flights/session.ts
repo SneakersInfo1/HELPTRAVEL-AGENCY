@@ -14,6 +14,8 @@
 
 import { Redis } from "@upstash/redis";
 
+import { assertNoProductionStoreInTests } from "@/lib/testing/production-guard";
+
 import type { PaymentEvidenceVerdict } from "./payment-evidence";
 import type { FlightEmailState } from "./state";
 import type { FlightItinerarySnapshot } from "./types";
@@ -52,6 +54,10 @@ function getRedis(): RedisLike {
   if (redis === undefined) {
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    // Bezpiecznik: pod testem bez wstrzykniętej atrapy NIE budujemy klienta
+    // produkcyjnego. Rzucany błąd jest INNEGO typu niż
+    // `FlightStoreUnavailableError`, żeby nie zamienił się w ciche HTTP 503.
+    if (url && token) assertNoProductionStoreInTests("loty");
     redis = url && token ? (new Redis({ url, token }) as unknown as RedisLike) : null;
   }
   if (!redis) throw new FlightStoreUnavailableError();

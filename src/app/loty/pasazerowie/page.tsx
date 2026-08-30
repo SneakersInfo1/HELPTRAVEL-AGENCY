@@ -271,6 +271,16 @@ export default function PassengersPage() {
           setSubmitError("Ta oferta wygasła. Wróć do wyników i wybierz lot ponownie.");
           return;
         }
+        if (json.error === "flights_disabled") {
+          // Kill-switch (FLIGHTS_FLOW_MODE). Nic nie powstało po drugiej
+          // stronie — ani lock taryfy, ani sesja płatności — więc mówimy to
+          // wprost, zamiast sugerować, że coś poszło nie tak z danymi.
+          track("flight_payment_error", { code: "flights_disabled", http_status: res.status });
+          setSubmitError(
+            "Rezerwacja lotów jest chwilowo niedostępna. Nie utworzyliśmy żadnej rezerwacji ani płatności. Spróbuj ponownie później.",
+          );
+          return;
+        }
         track("flight_payment_error", { code: String(json.error ?? "prebook_failed"), http_status: res.status });
         setSubmitError(json.message || "Nie udało się przygotować rezerwacji. Spróbuj ponownie.");
         return;

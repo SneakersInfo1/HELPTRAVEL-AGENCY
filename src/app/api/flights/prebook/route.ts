@@ -14,6 +14,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { isFlightsLive } from "@/lib/config/featureFlags";
 import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { notifyCritical } from "@/lib/alerting/notify";
 import { prebookFlight, toFlightApiError } from "@/lib/flights/client";
@@ -38,6 +39,21 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
+  // KILL-SWITCH — pierwsza instrukcja, przed limiterem, walidacją, Redisem
+  // i LiteAPI. To granica pieniędzy: za nią powstaje lock taryfy i
+  // PaymentIntent. Finalizacja (`/api/flights/book`, strona powrotu) NIE jest
+  // gated — patrz komentarz przy `getFlightsFlowMode`.
+  if (!isFlightsLive()) {
+    console.warn("[flights][prebook] odmowa: FLIGHTS_FLOW_MODE != live");
+    return NextResponse.json(
+      {
+        error: "flights_disabled",
+        message: "Rezerwacja lotów jest chwilowo niedostępna. Spróbuj ponownie później.",
+      },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   const limited = await enforceRateLimit(request, "booking-prebook");
   if (limited) return limited;
 
