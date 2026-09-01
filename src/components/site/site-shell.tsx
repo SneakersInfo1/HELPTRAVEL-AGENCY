@@ -11,6 +11,7 @@ import { HeaderSearchTrigger } from "@/components/site/header-search-trigger";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
 import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
+import { SHELL_BAR_INNER, SHELL_BAR_PAD } from "@/lib/ui/layout";
 
 const copy = {
   pl: {
@@ -202,51 +203,73 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // Zakres: WSZYSTKO pod /loty. Poza nim nic się nie zmienia.
   const isFlights = sciezka === "/loty" || sciezka.startsWith("/loty/");
 
-  // PEŁNA SZEROKOŚĆ NA STRONIE GŁÓWNEJ (właściciel 2026-08-02: „żeby nie było
-  // białych pasków po bokach na mobile i na pc").
+  // ── NAGŁÓWEK I STOPKA SĄ PASEM NA KAŻDEJ TRASIE (brief §2–§4, 2026-09-01) ──
   //
-  // Białe pasy brały się STĄD, a nie z samej strony: ta rama nakładała
-  // `px-4 sm:px-6 lg:px-8` również na `/`, więc hero ze zdjęciem kończył się
-  // 16 px przed krawędzią telefonu i 32 px przed krawędzią monitora. Na home
-  // padding schodzi do zera i należy do poszczególnych sekcji, dzięki czemu
-  // tło hero i pas kierunków idą od krawędzi do krawędzi, a tekst dalej ma
-  // swój margines.
+  // Do tej pory były nim tylko na homepage i w lotach. Wszędzie indziej były
+  // PŁYWAJĄCĄ PASTYLKĄ — i to nie dlatego, że ktoś tak zaprojektował nagłówek,
+  // tylko dlatego, że nagłówek siedział W ŚRODKU ramy ograniczonej do
+  // `max-w-7xl`. Zmierzone przed poprawką (viewport 1920):
   //
-  // Pozostałe strony (artykuły, wyniki, checkout) zostają w `max-w-7xl`
-  // z paddingiem: treść tekstowa rozjechana na całą szerokość monitora jest
-  // nieczytelna, a tego zadanie nie dotyczyło.
-  const ramaCls = isHome
-    ? "max-w-none"
+  //   homepage        nagłówek x=0    szer. 1920   promień 0
+  //   /hotele/szukaj  nagłówek x=40   szer. 1840   promień 19,2 px
+  //   /kierunki       nagłówek x=352  szer. 1216   promień 19,2 px
+  //   /regulamin      nagłówek x=352  szer. 1216   promień 19,2 px
+  //
+  // Czyli na podstronach 37 % szerokości monitora było marginesem WOKÓŁ
+  // nagłówka, a on sam wyglądał jak biała karta doklejona nad stroną.
+  //
+  // Poprawka jest jedna i wspólna: rama przestaje ograniczać szerokość
+  // (`max-w-*` schodzi na `<main>` każdej strony — tam, gdzie od dawna jest
+  // w hotelach i lotach), a nagłówek i stopka dostają tę samą budowę co na
+  // homepage: pas na pełną szerokość + wewnętrzny rząd z limitem.
+  //
+  // Limit rzędu jest RÓŻNY dla różnych rodzin tras i to jest celowe: logo ma
+  // stać w jednej linii pionowej z pierwszą kartą pod spodem. Wspólna liczba
+  // dla wszystkich robiłaby „schodek" na hotelach (treść 1840) i lotach (1720).
+  const pasPadCls = isHome
+    ? "px-4 sm:px-6 xl:px-8"
     : isHotelWide || isFlights
-      ? "max-w-none pb-4"
-      : "max-w-7xl px-4 pb-4 sm:px-6 lg:px-8";
-  // Sekcje pełnoszerokościowe biorą padding same — ten sam zestaw wartości,
-  // żeby nagłówek, stopka i sekcje strony miały wspólną linię lewego marginesu.
-  const bleedPadCls = "px-4 sm:px-6 xl:px-8";
-  // Na szerokich trasach hotelowych nagłówek i stopka zostają PASTYLKAMI (tak
-  // jak na reszcie serwisu), ale marginesy muszą przejść z ramy na nie same —
-  // inaczej dotykałyby krawędzi ekranu. Wartości zgrane z `HOTEL_SHELL*`,
-  // żeby logo, treść i stopka stały w jednej linii.
-  const hotelEdgeCls = isHotelWide ? "mx-4 sm:mx-6 xl:mx-10" : "";
-  // Lejek lotów: nagłówek jest PASEM, jak na stronie głównej (brief §4 —
-  // „prostokątny, bez ogromnego border-radius, bez białych luk po bokach").
-  // Padding zgrany z `FLIGHT_SHELL_WIDE` (px-4 sm:px-6 xl:px-10), a wewnętrzny
-  // rząd dostaje ten sam limit szerokości co treść pod spodem — bez tego logo
-  // stałoby na krawędzi ekranu, a pierwsza karta oferty 120 px dalej, co czyta
-  // się jak dwa różne układy sklejone w pionie.
-  const flightsHeaderPadCls = "px-4 sm:px-6 xl:px-10";
-  const flightsHeaderInnerCls = isFlights ? "mx-auto w-full max-w-[1720px]" : "";
+      ? "px-4 sm:px-6 xl:px-10"
+      : SHELL_BAR_PAD;
+  const pasInnerCls = isHome
+    ? "w-full"
+    : isHotelWide
+      ? "mx-auto w-full max-w-[1840px]"
+      : isFlights
+        ? "mx-auto w-full max-w-[1720px]"
+        : SHELL_BAR_INNER;
+  const pasCls = `border-emerald-900/15 bg-surface-raised/85 backdrop-blur-md ${pasPadCls}`;
 
+  // RAMA NIE OGRANICZA JUŻ NICZEGO.
+  //
+  // Do 2026-09-01 stało tu `max-w-7xl px-4 pb-4 sm:px-6 lg:px-8` dla wszystkich
+  // tras poza homepage, hotelami i lotami — i to był korzeń obu problemów
+  // z briefu naraz:
+  //
+  //  1. Nagłówek jest DZIECKIEM tej ramy, więc razem z nią zjeżdżał na
+  //     środek ekranu i przestawał być pasem (§2).
+  //  2. Każda strona dokładała do tego własne `max-w-7xl px-4 sm:px-6 lg:px-8`,
+  //     więc limity i paddingi mnożyły się: 1920 → 1280 → 1216 → 1152 px
+  //     realnej treści, czyli 40 % monitora na marginesy (§5, §6).
+  //
+  // Szerokość należy teraz do `<main>` każdej strony — dokładnie tak, jak od
+  // 2026-08-07 (hotele) i 2026-08-29 (loty) działa w sekcjach, które ten sam
+  // problem miały już rozwiązany. Wartości: `src/lib/ui/layout.ts`.
+  //
+  // `min-h-[100dvh]` zamiast `min-h-screen`: na telefonie `100vh` liczy się do
+  // krawędzi EKRANU, nie okna, więc pasek adresu przeglądarki dokładał kilkadziesiąt
+  // pikseli wysokości, których nie da się zobaczyć — i strona zawsze miała
+  // pionowy scroll, nawet gdy treść mieściła się w oknie.
   return (
-    <div className={`mx-auto flex min-h-screen w-full flex-col ${ramaCls}`}>
+    <div className="flex min-h-[100dvh] w-full flex-col">
       {/* Skip link removed 2026-05-26 — it duplicated the one already rendered
           by src/app/layout.tsx (both pointed at #main-content, creating two
           competing focus targets for keyboard/AT users). Layout's skip link
           is canonical; this site-shell only owns the #main-content wrapper. */}
 
-      {/* Na home nagłówek jest PASEM przyklejonym do krawędzi: pływająca
-          pastylka z marginesem i promieniem 1,2rem wyglądałaby jak wyspa nad
-          treścią, która idzie od brzegu do brzegu. Poza home bez zmian. */}
+      {/* Nagłówek jest PASEM przyklejonym do krawędzi — na KAŻDEJ trasie.
+          Pływająca pastylka z marginesem i promieniem 1,2 rem wyglądała jak
+          biała wyspa doklejona nad stroną; szczegóły i pomiary przy `pasCls`. */}
       <header
         // ODDZIELENIE OD TREŚCI — zgłoszenie właściciela ze zrzutu podstrony
         // „City break": biały nagłówek na białej sekcji zlewał się w jedną
@@ -273,15 +296,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
         // przestaje się parsować — a wtedy znikają wszystkie style, nie tylko
         // cień. Kosztowało to jedną pomyłkę: opisując tokeny, pisz je słownie,
         // nigdy jako gotową nazwę klasy z symbolem wieloznacznym.
-        className={
-          isHome
-            ? `sticky top-0 z-30 border-b border-emerald-900/15 bg-surface-raised/85 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md ${bleedPadCls}`
-            : isFlights
-              ? `sticky top-0 z-30 border-b border-emerald-900/15 bg-surface-raised/85 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md ${flightsHeaderPadCls}`
-              : `sticky top-0 z-30 mt-2 rounded-[1.2rem] border border-emerald-900/15 bg-surface-raised/85 px-3 py-2 shadow-[var(--shadow-lg)] backdrop-blur-md sm:px-4 ${hotelEdgeCls}`
-        }
+        className={`sticky top-0 z-30 border-b py-2 shadow-[var(--shadow-lg)] ${pasCls}`}
       >
-        <div className={`flex items-center justify-between gap-3 ${flightsHeaderInnerCls}`}>
+        <div className={`flex items-center justify-between gap-3 ${pasInnerCls}`}>
           <div className="flex min-w-0 items-center gap-3">
             <LocalizedLink
               href="/"
@@ -384,7 +401,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             id="mobile-nav-panel"
             role="region"
             aria-label="Menu mobilne"
-            className="mt-4 grid gap-3 border-t border-emerald-900/10 pt-4 lg:hidden"
+            className={`mt-4 grid gap-3 border-t border-emerald-900/10 pt-4 lg:hidden ${pasInnerCls}`}
           >
             <p className="text-sm leading-6 text-emerald-900/70">{text.headerNote}</p>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -433,15 +450,18 @@ export function SiteShell({ children }: { children: ReactNode }) {
         ) : null}
       </header>
 
-      <div id="main-content" className="flex flex-1 flex-col">
+      {/* `min-w-0`: bez tego dziecko flexa ma domyślnie `min-width: auto`,
+          więc szeroka tabela albo długi ciąg bez spacji rozpycha CAŁĄ powłokę
+          i strona dostaje poziomy scroll (brief §13). */}
+      <div id="main-content" className="flex min-w-0 flex-1 flex-col">
         {children}
       </div>
 
       {isCheckout ? (
         /* Minimal checkout footer — logo, legal links, disclaimer. Nothing
            that can pull the buyer back out of the funnel. */
-        <footer className="mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)]">
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
+        <footer className={`mt-8 border-t border-emerald-900/10 bg-white/95 py-6 ${pasPadCls}`}>
+          <div className={`flex flex-col items-center gap-4 sm:flex-row sm:justify-between ${pasInnerCls}`}>
             {/* Kwadrat 384×384: poprzednie `width={150} height={93}` deklarowało
                 proporcje, których plik nie ma (źródło jest kwadratowe), więc
                 miejsce rezerwowane pod obraz nie zgadzało się z tym, co się
@@ -481,21 +501,20 @@ export function SiteShell({ children }: { children: ReactNode }) {
               ))}
             </nav>
           </div>
-          <p className="mt-4 border-t border-emerald-900/10 pt-3 text-center text-[11px] text-emerald-900/60 sm:text-left">
+          <p
+            className={`mt-4 border-t border-emerald-900/10 pt-3 text-center text-[11px] text-emerald-900/60 sm:text-left ${pasInnerCls}`}
+          >
             {text.footerMetaRight}
           </p>
         </footer>
       ) : (
-      <footer
-        className={
-          isHome
-            ? `mt-8 border-t border-emerald-900/10 bg-white/95 py-8 ${bleedPadCls}`
-            : `mt-8 rounded-[2rem] border border-emerald-900/10 bg-white/95 p-6 shadow-[0_16px_45px_rgba(16,84,48,0.06)] ${hotelEdgeCls}`
-        }
-      >
+      /* Stopka jest PASEM na każdej trasie — z tego samego powodu co nagłówek.
+         Pływająca karta z promieniem 2 rem kończyła stronę „wyspą" zawieszoną
+         nad tłem, przez co dół serwisu wyglądał na inny produkt niż homepage. */
+      <footer className={`mt-8 border-t border-emerald-900/10 bg-white/95 py-8 ${pasPadCls}`}>
         {/* Gęściej: 5 kolumn zamiast 4 na desktopie, 2 na tablecie. Trzy
             rzadkie, wysokie kolumny zostawiały pustkę i wydłużały stronę. */}
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.85fr_0.85fr_0.85fr_0.95fr]">
+        <div className={`grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.85fr_0.85fr_0.85fr_0.95fr] ${pasInnerCls}`}>
           <div>
             {/* TRZECIE użycie tego samego pliku 1018 KB — stopka głównego
                 layoutu, czyli KAŻDA strona serwisu. Przeoczone przy pierwszym
