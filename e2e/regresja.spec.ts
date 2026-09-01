@@ -24,6 +24,38 @@ async function szerokoscRamy(page: import("@playwright/test").Page) {
   });
 }
 
+/**
+ * Szerokość KOLUMNY TREŚCI strony — nie pudełka powłoki.
+ *
+ * Potrzebna od 2026-09-01. Wcześniej wystarczyła `szerokoscRamy`, bo rama
+ * nakładała `max-w-7xl` na wszystko poza homepage, hotelami i lotami. Po
+ * przebudowie powłoki (nagłówek musiał być pasem na pełną szerokość, brief §2)
+ * rama jest CELOWO pełnoszerokościowa na każdej trasie, a limit należy do
+ * `<main>` konkretnej strony — tak jak od dawna w hotelach i lotach.
+ *
+ * Bez tej miary testy strony miasta i checkoutu raportowały 1920 px i
+ * wyglądały na regresję szerokości, choć treść nie drgnęła.
+ */
+async function szerokoscTresciStrony(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const main = document.querySelector("main");
+    if (!main) return -1;
+    const szerMain = Math.round(main.getBoundingClientRect().width);
+    // `<main>` z własnym limitem JEST kolumną treści.
+    if (szerMain < window.innerWidth) return szerMain;
+    // Jeśli nie ma limitu, jest tylko pełnoszerokościowym tłem (checkout,
+    // wyniki hoteli), a limit siedzi na jego BEZPOŚREDNICH dzieciach.
+    // Bierzemy najszersze z nich — najwęższe byłoby zwykłą kartą w środku
+    // sekcji i mówiłoby o czymś zupełnie innym.
+    let najszersze = 0;
+    for (const el of Array.from(main.children) as HTMLElement[]) {
+      const w = Math.round(el.getBoundingClientRect().width);
+      if (w > najszersze) najszersze = w;
+    }
+    return najszersze || szerMain;
+  });
+}
+
 test("homepage zostaje pełnoszerokościowa i się renderuje", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
@@ -64,16 +96,30 @@ test("wyszukiwarka lotów działa; rama zdjęta, ale treść ma sufit 1720", asy
   expect(szerokoscTresci, "powłoka wyników zwęziła się do stanu sprzed V2").toBeGreaterThan(1280);
 });
 
-test("strona treściowa hotelu (miasto) zostaje w kontenerze 1280", async ({ page }) => {
+test("strona miasta nie dostaje szerokości wyników hoteli", async ({ page }) => {
   await page.goto("/hotele/w/hurghada");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
-  // `/hotele/w/<miasto>` ma DWA segmenty po /hotele/, więc nie łapie się
-  // w wyjątek szerokości — to jest ta granica, której pilnuje ten test.
-  expect(await szerokoscRamy(page)).toBeLessThanOrEqual(1280);
+  const szerokosc = await szerokoscTresciStrony(page);
+
+  // GRANICA, KTÓREJ PILNUJE TEN TEST — bez zmian: `/hotele/w/<miasto>` ma DWA
+  // segmenty po /hotele/, więc nie łapie się w wyjątek szerokości sekcji
+  // hotelowej (1840 px) i nie może go dostać przypadkiem.
+  expect(szerokosc, "strona miasta dostała szerokość wyników hoteli").toBeLessThan(1700);
+
+  // ZMIANA WARTOŚCI 2026-09-01 (brief §6). Test wymagał wcześniej ≤1280 px,
+  // bo tak wyglądał kontrakt przed przebudową powłoki. Strona miasta to
+  // landing z siatkami kart (statystyki 4 kolumny, polecane hotele 3 kolumny,
+  // dzielnice, miesiące), a nie długi tekst — należy więc do rodziny
+  // MARKETPLACE/DISCOVERY i dostaje `SHELL_DISCOVERY` (1600 px).
+  // Ten próg pilnuje, żeby nie wróciła po cichu do 1280.
+  expect(szerokosc, "strona miasta zwęziła się z powrotem do 1280").toBeGreaterThan(1280);
 });
 
 test("checkout zostaje wąski i skupiony", async ({ page }) => {
   await page.goto("/hotele/rezerwacja");
   await expect(page.locator("body")).not.toContainText("Application error", { timeout: 20_000 });
-  expect(await szerokoscRamy(page)).toBeLessThanOrEqual(1280);
+  // Wymaganie bez zmian — checkout ma zostać wąski. Zmienił się tylko sposób
+  // pomiaru: limit siedzi na sekcji w środku `<main>`, bo rama powłoki jest
+  // teraz celowo pełnoszerokościowa na każdej trasie.
+  expect(await szerokoscTresciStrony(page)).toBeLessThanOrEqual(1280);
 });

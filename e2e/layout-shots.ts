@@ -174,6 +174,13 @@ async function zmierz(page: Page): Promise<Pomiar> {
             ["IMG", "SVG", "CANVAS", "VIDEO"].includes(node.tagName) ||
             Array.from(node.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? "").trim().length > 0);
           if (!rysuje) continue;
+          // ZAMKNIĘTE `<details>`: Chromium NIE maluje ich zawartości, ale
+          // `getBoundingClientRect` i tak zwraca dla niej pudełko z układu.
+          // Bez tego wyjątku strony z akordeonem FAQ (landingi /wyjazdy/*)
+          // raportowały UJEMNĄ lukę przed stopką — pomiar mówił, że odpowiedź
+          // nachodzi na stopkę, a na zrzucie ekranu nie było jej w ogóle.
+          const zwiniete = node.closest("details");
+          if (zwiniete && !zwiniete.open && !zwiniete.querySelector("summary")?.contains(node)) continue;
           const r = node.getBoundingClientRect();
           if (r.height > 0 && r.width > 0 && r.bottom > dol) dol = r.bottom;
         }
