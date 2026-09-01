@@ -7,6 +7,7 @@ import {
   getPublishedDestinations,
 } from "@/lib/mvp/publisher-content";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
+import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 export const metadata: Metadata = {
   title: "Mapa serwisu",
@@ -29,7 +30,7 @@ export default function SiteMapPage() {
   const articles = getEditorialArticles();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
+    <main className={`flex w-full flex-1 flex-col gap-6 py-6 ${SHELL_DISCOVERY}`}>
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <h1 className="mt-3 font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">Wszystkie najważniejsze sekcje w jednym miejscu</h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">

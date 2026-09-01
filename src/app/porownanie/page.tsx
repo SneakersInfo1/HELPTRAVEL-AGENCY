@@ -10,6 +10,7 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { comparisonPairs } from "@/lib/mvp/comparisons";
 import { getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 export const revalidate = 86400;
 
@@ -77,7 +78,7 @@ export default function ComparisonsHubPage() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

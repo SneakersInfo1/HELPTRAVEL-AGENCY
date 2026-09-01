@@ -19,6 +19,7 @@ import { foldCategorySlug } from "@/lib/mvp/category-slug";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { type SiteLocale } from "@/lib/mvp/locale";
 import type { DestinationProfile } from "@/lib/mvp/types";
+import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 export const revalidate = 86400;
 
@@ -339,7 +340,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8">
+    <main className={`flex w-full flex-1 flex-col gap-10 py-6 ${SHELL_DISCOVERY}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
       {/* HERO */}
@@ -501,7 +502,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
           <h2 className="mb-6 font-display text-2xl text-ink sm:text-3xl">
             Przewodniki po najważniejszych kierunkach
           </h2>
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="ht-karty [--ht-kol-lg:3] [--ht-kol-xl:4]">
             {guideCards.map((item) => (
               <DestinationGuideCard
                 key={item.destination.slug}

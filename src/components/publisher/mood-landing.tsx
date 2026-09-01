@@ -12,6 +12,7 @@ import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { TRAVEL_MOODS, getMoodBySlug, type MoodPick } from "@/lib/mvp/travel-moods";
 import type { DestinationProfile } from "@/lib/mvp/types";
+import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 // Default search window for the "Zobacz hotele i loty" CTA so the link lands on
 // real results (the search page needs valid dates) instead of the date prompt.
@@ -149,7 +150,7 @@ export async function MoodLanding({ slug }: { slug: string }) {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8">
+    <main className={`flex w-full flex-1 flex-col gap-10 py-6 ${SHELL_DISCOVERY}`}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -234,7 +235,7 @@ export async function MoodLanding({ slug }: { slug: string }) {
           </Link>
         </div>
 
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="ht-karty mt-6 [--ht-kol-lg:3]">
           {cards.map((item) => (
             <MoodDestinationCard
               key={item.pick.name}

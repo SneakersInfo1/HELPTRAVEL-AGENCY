@@ -13,6 +13,7 @@ import {
 import { curatedDestinations } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 export async function CategoryPage({ slug }: { slug: string }) {
   const category = getEditorialCategoryBySlug(slug);
@@ -83,7 +84,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: category.title }]} />
@@ -123,7 +124,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="ht-karty [--ht-kol-lg:2] [--ht-kol-xl:3] [--ht-odstep:1rem]">
         {articles.map((article) => (
           <EditorialArticleCard key={article.slug} article={article} />
         ))}
@@ -139,7 +140,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
           </Link>
         </div>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-3">
+        <div className="ht-karty mt-6 [--ht-kol-lg:3] [--ht-kol-xl:4]">
           {destinations.filter(Boolean).map((item) =>
             item ? (
               <DestinationGuideCard

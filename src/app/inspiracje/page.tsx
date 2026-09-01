@@ -12,6 +12,7 @@ import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import type { DestinationProfile } from "@/lib/mvp/types";
+import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 export const revalidate = 86400;
 
@@ -120,7 +121,7 @@ export default async function InspirationsIndexPage() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8">
+    <main className={`flex w-full flex-1 flex-col gap-10 py-6 ${SHELL_DISCOVERY}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
       <MediaHero
@@ -139,7 +140,7 @@ export default async function InspirationsIndexPage() {
 
       <section>
         <h2 className="font-display text-2xl text-ink sm:text-3xl">Wybierz styl wyjazdu</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="ht-karty mt-6 [--ht-kol-lg:3] [--ht-odstep:1rem]">
           {categoryCards.map(({ category, image }) => (
             <Link
               key={category.slug}
@@ -177,7 +178,7 @@ export default async function InspirationsIndexPage() {
 
       <section>
         <h2 className="font-display text-2xl text-ink sm:text-3xl">Najnowsze poradniki</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="ht-karty mt-6 [--ht-kol-lg:3] [--ht-odstep:1rem]">
           {articleCards.map(({ article, image }) => (
             <EditorialArticleCard key={article.slug} article={article} imageUrl={image} />
           ))}

@@ -81,3 +81,6 @@ next-env.d.ts
 # Zrzuty referencyjne layoutu — lokalne, poza repo (101 MB PNG, repo jest publiczne).
 # Do repo trafiaja tylko pomiary (pomiary.json) i raport porownawczy.
 docs/layout-hardening/shots/**/*.png
+
+# Skrypty diagnostyczne uruchamiane recznie w trakcie pracy nad ukladem.
+.probe/

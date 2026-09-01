@@ -79,7 +79,15 @@ export function DestinationGuideCard({
           src={media.heroImage}
           alt=""
           fill
-          sizes="(max-width: 768px) 100vw, 33vw"
+          // Zgrane z `.ht-karty` po poszerzeniu powłoki discovery do 1600 px:
+          // 1 kolumna do 640, 2 do 1024, 3 do 1440, 4 powyżej. Bez tej
+          // aktualizacji `33vw` pobierałoby na monitorze 1920 obraz 634 px do
+          // kafla, który ma 370 px — czyli 1,7× więcej bajtów niż potrzeba.
+          //
+          // Kierunek błędu jest tu bezpieczny (nadmiar, nie niedomiar), ale
+          // repo ma już za sobą przypadek odwrotny: `sizes` mniejsze niż realna
+          // szerokość kafla dało upscale 1,7–2,1× i widoczną pikselozę.
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1440px) 33vw, 25vw"
           className="object-cover"
         />
         {/* Scrim przypięty do bloku tekstu (0,72 = zmierzona podłoga dla 4,5:1

@@ -535,3 +535,64 @@ video {
   cursor: not-allowed;
 }
 
+
+/* ─────────────────────────────────────────────────────────────────────
+ * SIATKA KART Z WYŚRODKOWANYM OSTATNIM RZĘDEM (brief §5, 2026-09-01)
+ *
+ * PROBLEM: „jedna samotna karta w kolejnym rzędzie, a pozostałe 75%
+ * szerokości jest puste". Zmierzone w DOM na 1920 px:
+ *
+ *   /kierunki        siatka przewodników   3 kolumny · 22 karty · reszta 1
+ *   /city-breaki     siatka kierunków      3 kolumny ·  7 kart  · reszta 1
+ *   /cieple-kierunki siatka artykułów      2 kolumny ·  9 kart  · reszta 1
+ *   /przewodniki     siatka artykułów      2 kolumny · 11 kart  · reszta 1
+ *   /weekendowe-...  siatka artykułów      2 kolumny ·  5 kart  · reszta 1
+ *
+ * Liczby kart pochodzą z DANYCH i są różne na każdej stronie (3, 5, 7, 9,
+ * 11, 22), więc ŻADNA stała liczba kolumn tego nie rozwiąże — dobranie
+ * kolumn pod „te pięć kart" tylko przenosi problem na następną kategorię.
+ *
+ * ROZWIĄZANIE: `flex-wrap` zamiast `grid` plus `justify-content: center`.
+ * Pełne rzędy mają dokładnie 100% szerokości, więc wyśrodkowanie ich NIE
+ * RUSZA — zmienia się wyłącznie rząd niepełny, czyli dokładnie ten jeden
+ * przypadek, o który chodzi. Karta zachowuje swoją normalną szerokość,
+ * więc `sizes` przy zdjęciach zostaje poprawne (rozciągnięcie osieroconej
+ * karty na cały rząd dałoby obraz pobierany w 1/3 potrzebnej szerokości
+ * i rozmyty — ten błąd repo już raz popełniło).
+ *
+ * Liczba kolumn jest zmienną, więc sekcja może ją nadpisać u siebie
+ * bez pisania nowej reguły.
+ * ───────────────────────────────────────────────────────────────────── */
+.ht-karty {
+  --ht-kol: 1;
+  --ht-odstep: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ht-odstep);
+}
+
+.ht-karty > * {
+  flex: 0 0 calc((100% - (var(--ht-kol) - 1) * var(--ht-odstep)) / var(--ht-kol));
+  /* Bez tego dziecko flexa ma `min-width: auto` i długie słowo w tytule
+     rozpycha kolumnę ponad zadaną szerokość. */
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .ht-karty {
+    --ht-kol: var(--ht-kol-sm, 2);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ht-karty {
+    --ht-kol: var(--ht-kol-lg, 3);
+  }
+}
+
+@media (min-width: 1440px) {
+  .ht-karty {
+    --ht-kol: var(--ht-kol-xl, var(--ht-kol-lg, 3));
+  }
+}

@@ -36,6 +36,7 @@ import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { addDaysToIsoDate, defaultTravelStartDate } from "@/lib/mvp/travel-dates";
+import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 export const revalidate = 86400; // 24h ISR
 
@@ -348,7 +349,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <TrackView
         event="landing_view"
