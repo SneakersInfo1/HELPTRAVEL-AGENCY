@@ -1,0 +1,3878 @@
+{
+  "a-homepage@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4363,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 3827,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 431,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1920,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 113
+  },
+  "b-hotele-wyniki@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 5651,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 5115,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 431,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1840,
+    "pustkaProc": 4.2,
+    "lukaPrzedStopka": 56
+  },
+  "c-hotel-detal@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 5180,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 4645,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 431,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1760,
+    "pustkaProc": 8.3,
+    "lukaPrzedStopka": 96
+  },
+  "d-kierunki@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 8642,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 8083,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1536,
+    "pustkaProc": 20,
+    "lukaPrzedStopka": 96
+  },
+  "e-inspiracje@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3727,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 3167,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1536,
+    "pustkaProc": 20,
+    "lukaPrzedStopka": 96
+  },
+  "f-city-breaki@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3300,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 2740,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1536,
+    "pustkaProc": 20,
+    "lukaPrzedStopka": 96
+  },
+  "f2-wyjazdy-plaza@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3236,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 2676,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1536,
+    "pustkaProc": 20,
+    "lukaPrzedStopka": -3
+  },
+  "g-jak-pracujemy@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 2844,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 2285,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1088,
+    "pustkaProc": 43.3,
+    "lukaPrzedStopka": 96
+  },
+  "h-regulamin@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 15534,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 14974,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 62.5,
+    "lukaPrzedStopka": 80
+  },
+  "i-faq@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 2297,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 1738,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1104,
+    "pustkaProc": 42.5,
+    "lukaPrzedStopka": 98
+  },
+  "j-o-nas@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 2943,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 2383,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1088,
+    "pustkaProc": 43.3,
+    "lukaPrzedStopka": 96
+  },
+  "k-polubione@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 1080,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 521,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 0,
+    "pustkaProc": null,
+    "lukaPrzedStopka": 163
+  },
+  "l-porownanie@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4129,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 3570,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1536,
+    "pustkaProc": 20,
+    "lukaPrzedStopka": 89
+  },
+  "m-mapa-serwisu@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3219,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 2660,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1536,
+    "pustkaProc": 20,
+    "lukaPrzedStopka": 93
+  },
+  "n-cennik@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 2488,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 1928,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1088,
+    "pustkaProc": 43.3,
+    "lukaPrzedStopka": 96
+  },
+  "o-kierunek@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 7152,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 6593,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1536,
+    "pustkaProc": 20,
+    "lukaPrzedStopka": 114
+  },
+  "p-artykul@1920x1080": {
+    "okno": 1920,
+    "scrollWidth": 1920,
+    "bodyScrollWidth": 1920,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4015,
+    "header": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 3456,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1920,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1216,
+    "pustkaProc": 36.7,
+    "lukaPrzedStopka": 102
+  },
+  "a-homepage@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4065,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 3506,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1440,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 113
+  },
+  "b-hotele-wyniki@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 5202,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 4643,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1440,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 56
+  },
+  "c-hotel-detal@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 5316,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 4757,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1440,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 96
+  },
+  "d-kierunki@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 8779,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 8220,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1376,
+    "pustkaProc": 4.4,
+    "lukaPrzedStopka": 96
+  },
+  "e-inspiracje@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3574,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 3015,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1376,
+    "pustkaProc": 4.4,
+    "lukaPrzedStopka": 96
+  },
+  "f-city-breaki@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3470,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 2910,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1376,
+    "pustkaProc": 4.4,
+    "lukaPrzedStopka": 96
+  },
+  "f2-wyjazdy-plaza@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3169,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 2610,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1376,
+    "pustkaProc": 4.4,
+    "lukaPrzedStopka": -3
+  },
+  "g-jak-pracujemy@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 2844,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 2285,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1088,
+    "pustkaProc": 24.4,
+    "lukaPrzedStopka": 96
+  },
+  "h-regulamin@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 15534,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 14974,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 50,
+    "lukaPrzedStopka": 80
+  },
+  "i-faq@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 2297,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 1738,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1104,
+    "pustkaProc": 23.3,
+    "lukaPrzedStopka": 98
+  },
+  "j-o-nas@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 2943,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 2383,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1088,
+    "pustkaProc": 24.4,
+    "lukaPrzedStopka": 96
+  },
+  "k-polubione@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 1038,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 478,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 0,
+    "pustkaProc": null,
+    "lukaPrzedStopka": 121
+  },
+  "l-porownanie@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4177,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 3618,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1376,
+    "pustkaProc": 4.4,
+    "lukaPrzedStopka": 89
+  },
+  "m-mapa-serwisu@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3323,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 2764,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1376,
+    "pustkaProc": 4.4,
+    "lukaPrzedStopka": 93
+  },
+  "n-cennik@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 2488,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 1928,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1088,
+    "pustkaProc": 24.4,
+    "lukaPrzedStopka": 96
+  },
+  "o-kierunek@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 7322,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 6763,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1376,
+    "pustkaProc": 4.4,
+    "lukaPrzedStopka": 114
+  },
+  "p-artykul@1440x900": {
+    "okno": 1440,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4015,
+    "header": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 3456,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 1440,
+      "wysokosc": 455,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 1216,
+    "pustkaProc": 15.6,
+    "lukaPrzedStopka": 102
+  },
+  "a-homepage@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 5117,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 4218,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 768,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 105
+  },
+  "b-hotele-wyniki@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6597,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 5698,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 768,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 168
+  },
+  "c-hotel-detal@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 5961,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 5062,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 768,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 192
+  },
+  "d-kierunki@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 13166,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 12268,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 109
+  },
+  "e-inspiracje@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4515,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 3617,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 109
+  },
+  "f-city-breaki@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 5647,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 4748,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 96
+  },
+  "f2-wyjazdy-plaza@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4361,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 3463,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": -3
+  },
+  "g-jak-pracujemy@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3450,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 2552,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 109
+  },
+  "h-regulamin@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 15863,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 14964,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 80
+  },
+  "i-faq@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3394,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 2496,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 98
+  },
+  "j-o-nas@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3421,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 2523,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 109
+  },
+  "k-polubione@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 1401,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 502,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 0,
+    "pustkaProc": null,
+    "lukaPrzedStopka": 121
+  },
+  "l-porownanie@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6394,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 5496,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 89
+  },
+  "m-mapa-serwisu@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 5392,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 4493,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 93
+  },
+  "n-cennik@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3182,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 2284,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 109
+  },
+  "o-kierunek@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 12123,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 11224,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 114
+  },
+  "p-artykul@768x1024": {
+    "okno": 768,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6950,
+    "header": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 73,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 6051,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 768,
+      "wysokosc": 794,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 720,
+    "pustkaProc": 6.3,
+    "lukaPrzedStopka": 102
+  },
+  "a-homepage@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6243,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 5174,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 412,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 109
+  },
+  "b-hotele-wyniki@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 13468,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 12399,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 412,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 168
+  },
+  "c-hotel-detal@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 7643,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 6574,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 412,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 192
+  },
+  "d-kierunki@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 19392,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 18323,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 93
+  },
+  "e-inspiracje@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 7179,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 6110,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 93
+  },
+  "f-city-breaki@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 8437,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 7368,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 93
+  },
+  "f2-wyjazdy-plaza@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6789,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 5720,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": -31
+  },
+  "g-jak-pracujemy@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3860,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 2791,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 92
+  },
+  "h-regulamin@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 24813,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 23744,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 64
+  },
+  "i-faq@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4339,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 3270,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 98
+  },
+  "j-o-nas@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4293,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 3224,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 92
+  },
+  "k-polubione@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 1613,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 544,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 0,
+    "pustkaProc": null,
+    "lukaPrzedStopka": 121
+  },
+  "l-porownanie@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 10734,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 9665,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 81
+  },
+  "m-mapa-serwisu@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 9160,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 8091,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 93
+  },
+  "n-cennik@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4035,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 2966,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 93
+  },
+  "o-kierunek@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 15789,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 14720,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 114
+  },
+  "p-artykul@412x915": {
+    "okno": 412,
+    "scrollWidth": 412,
+    "bodyScrollWidth": 412,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 8610,
+    "header": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 7541,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 412,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 380,
+    "pustkaProc": 7.8,
+    "lukaPrzedStopka": 102
+  },
+  "a-homepage@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6282,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 5213,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 390,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 109
+  },
+  "b-hotele-wyniki@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 13171,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 12102,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 390,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 168
+  },
+  "c-hotel-detal@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 7819,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 6750,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 390,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 192
+  },
+  "d-kierunki@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 19353,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 18284,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 93
+  },
+  "e-inspiracje@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 7021,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 5952,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 93
+  },
+  "f-city-breaki@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 8768,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 7699,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 93
+  },
+  "f2-wyjazdy-plaza@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6888,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 5819,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": -59
+  },
+  "g-jak-pracujemy@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3944,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 2875,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 92
+  },
+  "h-regulamin@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 25796,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 24727,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 64
+  },
+  "i-faq@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4552,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 3483,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 98
+  },
+  "j-o-nas@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4505,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 3436,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 92
+  },
+  "k-polubione@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 1640,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 571,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 0,
+    "pustkaProc": null,
+    "lukaPrzedStopka": 121
+  },
+  "l-porownanie@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 11002,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 9933,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 81
+  },
+  "m-mapa-serwisu@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 9511,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 8442,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 93
+  },
+  "n-cennik@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4233,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 3164,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 93
+  },
+  "o-kierunek@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 16373,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 15304,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 114
+  },
+  "p-artykul@390x844": {
+    "okno": 390,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 9027,
+    "header": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 7958,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 390,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 358,
+    "pustkaProc": 8.2,
+    "lukaPrzedStopka": 102
+  },
+  "a-homepage@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6272,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 5203,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 375,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 109
+  },
+  "b-hotele-wyniki@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 12576,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 11507,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 375,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 168
+  },
+  "c-hotel-detal@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 7949,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 6880,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 375,
+    "pustkaProc": 0,
+    "lukaPrzedStopka": 192
+  },
+  "d-kierunki@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 20590,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 19521,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 93
+  },
+  "e-inspiracje@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6988,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 5919,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 93
+  },
+  "f-city-breaki@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 8864,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 7795,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 93
+  },
+  "f2-wyjazdy-plaza@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 6899,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 5830,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": -59
+  },
+  "g-jak-pracujemy@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 3946,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 2877,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 93
+  },
+  "h-regulamin@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 26777,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 25708,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 64
+  },
+  "i-faq@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4702,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 3633,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 98
+  },
+  "j-o-nas@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4528,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 3459,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 93
+  },
+  "k-polubione@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 1688,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 619,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 0,
+    "pustkaProc": null,
+    "lukaPrzedStopka": 121
+  },
+  "l-porownanie@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 11298,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 10229,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 81
+  },
+  "m-mapa-serwisu@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 9915,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 8846,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 93
+  },
+  "n-cennik@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 4332,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 3263,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 93
+  },
+  "o-kierunek@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 16661,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 15592,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 114
+  },
+  "p-artykul@375x812": {
+    "okno": 375,
+    "scrollWidth": 375,
+    "bodyScrollWidth": 375,
+    "przewijaPoziomo": false,
+    "winowajcy": [],
+    "wysokoscDokumentu": 9095,
+    "header": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 65,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "sticky"
+    },
+    "main": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 8026,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "footer": {
+      "x": 0,
+      "szerokosc": 375,
+      "wysokosc": 972,
+      "promien": "0px 0px 0px 0px",
+      "marginesy": "0px / 0px",
+      "maxSzer": "none",
+      "pozycja": "static"
+    },
+    "trescSzer": 343,
+    "pustkaProc": 8.5,
+    "lukaPrzedStopka": 102
+  }
+}
