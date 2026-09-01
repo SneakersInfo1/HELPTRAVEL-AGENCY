@@ -77,3 +77,7 @@ next-env.d.ts
 # i w pelni odtwarzalne tym skryptem. Do repozytorium (publicznego) trafia
 # kuratorowany dowod w `shots/final-fix/` plus oba `pomiary.json`.
 /docs/hotel-redesign/shots/audyt-*/
+
+# Zrzuty referencyjne layoutu — lokalne, poza repo (101 MB PNG, repo jest publiczne).
+# Do repo trafiaja tylko pomiary (pomiary.json) i raport porownawczy.
+docs/layout-hardening/shots/**/*.png
