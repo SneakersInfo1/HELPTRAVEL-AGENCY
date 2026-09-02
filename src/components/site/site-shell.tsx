@@ -11,7 +11,7 @@ import { HeaderSearchTrigger } from "@/components/site/header-search-trigger";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { useLanguage } from "@/components/site/language-provider";
 import { localeFromPathname, stripLocalePrefix } from "@/lib/mvp/locale";
-import { SHELL_BAR_INNER, SHELL_BAR_PAD } from "@/lib/ui/layout";
+import { SITE_HEADER_GUTTER } from "@/lib/ui/layout";
 
 const copy = {
   pl: {
@@ -161,47 +161,16 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // treść tekstowa nie może się rozjeżdżać na całą szerokość monitora.
   const isHome = stripLocalePrefix(pathname) === "/";
 
-  // SZEROKA SEKCJA HOTELOWA (przebudowa 2026-08-07, brief §4).
+  // ROZRÓŻNIANIE RODZIN TRAS PRZESTAŁO BYĆ POWŁOCE POTRZEBNE (2026-09-02).
   //
-  // To była PRAWDZIWA przyczyna „ogromnych białych marginesów" na 1920 px.
-  // Sekcja hotelowa mogła mieć u siebie dowolne `max-w-*` i nic by to nie
-  // dało: ta rama nakłada `max-w-7xl` (1280 px) na wszystko, co nie jest
-  // stroną główną. Zmierzone przed poprawką — treść 1216 px, po 352 px
-  // pustki z każdej strony, czyli 37% monitora.
-  //
-  // Zakres jest CELOWO wąski (brief §25: „nie psuj homepage i lotów").
-  // Wchodzą dokładnie dwie trasy:
-  //   • /hotele/szukaj      — lista + filtry + mapa, każdy piksel pracuje
-  //   • /hotele/<id>        — strona obiektu z kolażem zdjęć
-  // Poza nimi NIC się nie zmienia: /hotele/rezerwacja (checkout ma zostać
-  // wąski i skupiony), /hotele/w/<miasto> (strona treściowa), /loty/*,
-  // artykuły i homepage działają dokładnie jak dotąd.
-  //
-  // Szerokością steruje potem `lib/hotels/layout.ts` — rama tylko przestaje
-  // ją ograniczać i oddaje odstępy poziome do środka.
-  const sciezka = stripLocalePrefix(pathname);
-  const isHotelWide =
-    sciezka === "/hotele/szukaj" ||
-    // Jeden segment po /hotele/ i nie jest to checkout: strona obiektu.
-    // `/hotele/w/<miasto>` ma dwa segmenty, więc tu nie wpada.
-    (/^\/hotele\/[^/]+$/.test(sciezka) && sciezka !== "/hotele/rezerwacja");
-
-  // LEJEK LOTÓW (Flights V2, 2026-08-29).
-  //
-  // Ta sama choroba co przy hotelach i ta sama diagnoza — tyle że zmierzona
-  // ostrzej, bo lejek lotów jest węższy u siebie. Playwright, viewport 1920:
-  //
-  //   /loty/wyniki       treść 779 px · 59,4 % ekranu białe · KARTA OFERTY 463 px
-  //   /loty/dodatki      treść 672 px · 65,0 % ekranu białe
-  //   /loty/pasazerowie  treść 1024 px · 46,7 % ekranu białe
-  //
-  // Sekcja lotów miała u siebie `max-w-6xl` / `max-w-2xl`, ale i tak nie miała
-  // szans: ta rama nakładała na nią `max-w-7xl`. Zdejmujemy ograniczenie, a
-  // szerokościami steruje `lib/flights/layout.ts` — tam każdy krok lejka ma
-  // własną wartość, bo wyniki i formularz płatności mają przeciwne potrzeby.
-  //
-  // Zakres: WSZYSTKO pod /loty. Poza nim nic się nie zmienia.
-  const isFlights = sciezka === "/loty" || sciezka.startsWith("/loty/");
+  // Stały tu wcześniej `isHotelWide` i `isFlights`. Powstały, bo rama nakładała
+  // `max-w-7xl` na wszystko poza homepage, więc sekcje, które potrzebowały
+  // szerokości, musiały prosić o wyjątek. Rama nie ogranicza już niczego,
+  // a nagłówek ma jeden gutter dla całego serwisu — nie ma więc od czego robić
+  // wyjątków. Szerokość treści należy w całości do `<main>` każdej strony:
+  //   • hotele  → `src/lib/hotels/layout.ts`
+  //   • loty    → `src/lib/flights/layout.ts`
+  //   • reszta  → `src/lib/ui/layout.ts`
 
   // ── NAGŁÓWEK I STOPKA SĄ PASEM NA KAŻDEJ TRASIE (brief §2–§4, 2026-09-01) ──
   //
@@ -223,22 +192,18 @@ export function SiteShell({ children }: { children: ReactNode }) {
   // w hotelach i lotach), a nagłówek i stopka dostają tę samą budowę co na
   // homepage: pas na pełną szerokość + wewnętrzny rząd z limitem.
   //
-  // Limit rzędu jest RÓŻNY dla różnych rodzin tras i to jest celowe: logo ma
-  // stać w jednej linii pionowej z pierwszą kartą pod spodem. Wspólna liczba
-  // dla wszystkich robiłaby „schodek" na hotelach (treść 1840) i lotach (1720).
-  const pasPadCls = isHome
-    ? "px-4 sm:px-6 xl:px-8"
-    : isHotelWide || isFlights
-      ? "px-4 sm:px-6 xl:px-10"
-      : SHELL_BAR_PAD;
-  const pasInnerCls = isHome
-    ? "w-full"
-    : isHotelWide
-      ? "mx-auto w-full max-w-[1840px]"
-      : isFlights
-        ? "mx-auto w-full max-w-[1720px]"
-        : SHELL_BAR_INNER;
-  const pasCls = `border-emerald-900/15 bg-surface-raised/85 backdrop-blur-md ${pasPadCls}`;
+  // JEDEN GUTTER DLA CAŁEGO SERWISU (poprawka po zgłoszeniu z 2026-09-02).
+  //
+  // Pierwsza wersja tej przebudowy dawała rzędowi nagłówka limit szerokości
+  // ZALEŻNY OD RODZINY TRAS, żeby logo stało w linii z treścią pod spodem.
+  // Zmierzone skutki na 1920 px: homepage 32, hotele 40, loty 100, podstrony
+  // 160 — a na /regulamin logo wyrównywało się do kolumny TEKSTU szerokiej na
+  // 720 px. Logo skakało o 128 px między stroną główną a katalogiem kierunków.
+  //
+  // Nagłówek należy do OKNA, nie do artykułu pod nim. Wyrównanie nagłówka
+  // i szerokość treści są teraz od siebie niezależne: pas nie ma żadnego
+  // limitu wewnętrznego, tylko wspólny gutter ze `SITE_HEADER_GUTTER`.
+  const pasCls = `border-emerald-900/15 bg-surface-raised/85 backdrop-blur-md ${SITE_HEADER_GUTTER}`;
 
   // RAMA NIE OGRANICZA JUŻ NICZEGO.
   //
@@ -298,7 +263,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         // nigdy jako gotową nazwę klasy z symbolem wieloznacznym.
         className={`sticky top-0 z-30 border-b py-2 shadow-[var(--shadow-lg)] ${pasCls}`}
       >
-        <div className={`flex items-center justify-between gap-3 ${pasInnerCls}`}>
+        <div className="flex w-full items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <LocalizedLink
               href="/"
@@ -401,7 +366,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             id="mobile-nav-panel"
             role="region"
             aria-label="Menu mobilne"
-            className={`mt-4 grid gap-3 border-t border-emerald-900/10 pt-4 lg:hidden ${pasInnerCls}`}
+            className="mt-4 grid w-full gap-3 border-t border-emerald-900/10 pt-4 lg:hidden"
           >
             <p className="text-sm leading-6 text-emerald-900/70">{text.headerNote}</p>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -460,8 +425,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
       {isCheckout ? (
         /* Minimal checkout footer — logo, legal links, disclaimer. Nothing
            that can pull the buyer back out of the funnel. */
-        <footer className={`mt-8 border-t border-emerald-900/10 bg-white/95 py-6 ${pasPadCls}`}>
-          <div className={`flex flex-col items-center gap-4 sm:flex-row sm:justify-between ${pasInnerCls}`}>
+        <footer className={`mt-8 border-t border-emerald-900/10 bg-white/95 py-6 ${SITE_HEADER_GUTTER}`}>
+          <div className="flex w-full flex-col items-center gap-4 sm:flex-row sm:justify-between">
             {/* Kwadrat 384×384: poprzednie `width={150} height={93}` deklarowało
                 proporcje, których plik nie ma (źródło jest kwadratowe), więc
                 miejsce rezerwowane pod obraz nie zgadzało się z tym, co się
@@ -502,7 +467,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             </nav>
           </div>
           <p
-            className={`mt-4 border-t border-emerald-900/10 pt-3 text-center text-[11px] text-emerald-900/60 sm:text-left ${pasInnerCls}`}
+            className="mt-4 w-full border-t border-emerald-900/10 pt-3 text-center text-[11px] text-emerald-900/60 sm:text-left"
           >
             {text.footerMetaRight}
           </p>
@@ -511,10 +476,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
       /* Stopka jest PASEM na każdej trasie — z tego samego powodu co nagłówek.
          Pływająca karta z promieniem 2 rem kończyła stronę „wyspą" zawieszoną
          nad tłem, przez co dół serwisu wyglądał na inny produkt niż homepage. */
-      <footer className={`mt-8 border-t border-emerald-900/10 bg-white/95 py-8 ${pasPadCls}`}>
+      <footer className={`mt-8 border-t border-emerald-900/10 bg-white/95 py-8 ${SITE_HEADER_GUTTER}`}>
         {/* Gęściej: 5 kolumn zamiast 4 na desktopie, 2 na tablecie. Trzy
             rzadkie, wysokie kolumny zostawiały pustkę i wydłużały stronę. */}
-        <div className={`grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.85fr_0.85fr_0.85fr_0.95fr] ${pasInnerCls}`}>
+        <div className="grid w-full gap-8 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.85fr_0.85fr_0.85fr_0.95fr]">
           <div>
             {/* TRZECIE użycie tego samego pliku 1018 KB — stopka głównego
                 layoutu, czyli KAŻDA strona serwisu. Przeoczone przy pierwszym

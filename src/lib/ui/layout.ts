@@ -26,17 +26,53 @@
 // tak, jak od dawna działa to w hotelach i lotach.
 
 /**
+ * ── GLOBALNY GUTTER NAGŁÓWKA I STOPKI ───────────────────────────────────────
+ *
+ * JEDNA wartość dla całego serwisu. Wyrównanie nagłówka jest CELOWO oderwane
+ * od szerokości treści strony — to dwie niezależne rzeczy.
+ *
+ * ZGŁOSZENIE, KTÓRE TO WYWOŁAŁO (właściciel, 2026-09-02). Pierwsza wersja tej
+ * przebudowy dawała rzędowi nagłówka limit szerokości rodziny tras, żeby logo
+ * stało w jednej linii z treścią pod spodem. Zmierzone skutki na 1920 px:
+ *
+ *   homepage        logo x =  32
+ *   hotele          logo x =  40
+ *   loty            logo x = 100
+ *   podstrony       logo x = 160     ← na /regulamin logo wyrównywało się
+ *                                      do kolumny TEKSTU szerokiej na 720 px
+ *
+ * Logo skakało więc o 128 px między stroną główną a katalogiem kierunków.
+ * Wyrównywanie nagłówka do treści jest błędem zawsze, gdy treść bywa wąska:
+ * nagłówek należy do OKNA, nie do artykułu.
+ *
+ * Wartości wzięte ze strony głównej, bo to ona jest wzorcem — dzięki temu
+ * homepage nie drgnęła ani o piksel, a reszta serwisu dosunęła się do niej.
+ *
+ *   telefon 16 px · tablet 24 px · desktop 32 px
+ */
+export const SITE_HEADER_GUTTER = "px-4 sm:px-6 xl:px-8";
+
+/**
  * MARKETPLACE / DISCOVERY — katalogi kierunków, landingi kategorii, huby
  * treści. Siatki kart, które realnie korzystają z szerokości.
  *
- * 1600 px, a nie „ile się da": przy czterech kolumnach karta ma ~380 px i to
- * jest szerokość, przy której zdjęcie 16:10 i dwie linie nazwy miasta wyglądają
- * na zaprojektowane. Powyżej ~1700 px piąta kolumna jeszcze się nie mieści,
- * a cztery zaczynają wyglądać na rozciągnięte.
+ * ZMIANA 2026-09-02: było `max-w-[1600px]`, czyli na monitorze 1920 pudełko
+ * 1600 px z 160-pikselowymi marginesami. Właściciel: „nadal wygląda zbyt mocno
+ * jak centralny box (…) chcę wykorzystanie niemal całej szerokości viewportu,
+ * mały stały gutter". Warstwa hotelowa robiła to od dawna i była punktem
+ * odniesienia w zgłoszeniu.
  *
- * 1920 → 1536 treści (gutter 192)   1440 → 1376   1280 → 1216   390 → 358
+ * Teraz to praktycznie `width: 100%` z tym samym gutterem co nagłówek, więc
+ * logo i pierwsza karta stoją w JEDNEJ linii pionowej (x = 32 na 1920).
+ *
+ *   1920 → 1856 treści (gutter 32)   1440 → 1376   1280 → 1216   390 → 358
+ *
+ * Limit 2000 px NIE jest tym samym co poprzednie 1600: przy 1920 i 2560 nie
+ * daje o sobie znać w sposób, o który było zgłoszenie, a chroni przed
+ * układem na 3840 px, gdzie cztery kolumny kart miałyby po ~940 px i karta
+ * przestałaby wyglądać na zaprojektowaną.
  */
-export const SHELL_DISCOVERY = "mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8";
+export const SHELL_DISCOVERY = "mx-auto w-full max-w-[2000px] px-4 sm:px-6 xl:px-8";
 
 /**
  * STRONY TREŚCIOWE Z UKŁADEM — o serwisie, FAQ, cennik, mapa serwisu,
@@ -58,19 +94,9 @@ export const SHELL_CONTENT = "mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8
  */
 export const SHELL_TEXT = "mx-auto w-full max-w-3xl px-4 sm:px-6";
 
-/**
- * Wewnętrzny rząd nagłówka i stopki na trasach obsługiwanych przez ten moduł.
- *
- * Ta sama liczba co `SHELL_DISCOVERY`, ale BEZ `px-*` — padding poziomy
- * nakłada nagłówek/stopka u siebie, bo należy do pasa, a nie do rzędu.
- * Dzięki temu logo w nagłówku stoi w jednej linii pionowej z pierwszą kartą
- * pod spodem; rozjazd między nimi widać na szerokim ekranie od razu.
- */
-export const SHELL_BAR_INNER = "mx-auto w-full max-w-[1600px]";
-
-/**
- * Padding poziomy pasa nagłówka i stopki — zgrany z `SHELL_DISCOVERY`
- * i `SHELL_CONTENT`, żeby przejście między stronami nie robiło „schodka"
- * w lewym marginesie.
- */
-export const SHELL_BAR_PAD = "px-4 sm:px-6 lg:px-8";
+// `SHELL_BAR_INNER` i `SHELL_BAR_PAD` USUNIĘTE 2026-09-02.
+//
+// Były to limity szerokości rzędu nagłówka, osobne dla każdej rodziny tras.
+// To one powodowały skakanie logo (32 / 40 / 100 / 160 px) — patrz komentarz
+// przy `SITE_HEADER_GUTTER`. Nagłówek nie ma już żadnego limitu wewnętrznego:
+// jest pasem na całą szerokość okna z jednym wspólnym gutterem.

@@ -50,8 +50,8 @@ tylko rozciąga istniejący na resztę serwisu.
 | Rama powłoki | przestaje ograniczać szerokość; `min-h-screen` → `min-h-[100dvh]` |
 | Nagłówek | pas na pełną szerokość na **każdej** trasie: `x=0`, `radius 0`, `margin 0` |
 | Stopka | ta sama reguła co nagłówek |
-| Rząd wewnętrzny | limit **per rodzina tras**, żeby logo stało w linii z treścią: home pełny bleed, hotele 1840, loty 1720, reszta 1600 |
-| Discovery | własny `SHELL_DISCOVERY` = 1600 px |
+| Rząd wewnętrzny | **usunięty** — jeden wspólny gutter `SITE_HEADER_GUTTER` (16 / 24 / 32 px) |
+| Discovery | `SHELL_DISCOVERY` — praktycznie pełna szerokość, gutter 32 px (limit 2000 px dopiero na ultra-wide) |
 | Siatki kart | `.ht-karty` — niepełny rząd jest wyśrodkowany |
 | `/polubione` | usunięte `min-h-screen`, dodana szerokość |
 
@@ -62,7 +62,7 @@ i `lib/flights/layout.ts`).
 
 ## 3. Szerokości — podział wg §6 briefu
 
-**MARKETPLACE / DISCOVERY → 1600 px** (`SHELL_DISCOVERY`)
+**MARKETPLACE / DISCOVERY → praktycznie pełna szerokość** (`SHELL_DISCOVERY`, 1856 px treści na 1920)
 `/kierunki`, `/kierunki/<slug>`, `/inspiracje`, landingi kategorii
 (`/city-breaki`, `/cieple-kierunki`, `/tanie-podroze`, `/przewodniki`,
 `/bez-wizy`, `/weekendowe-wyjazdy`), `/wyjazdy/<typ>`, `/hotele/w/<miasto>`,
@@ -257,3 +257,71 @@ dostępu do treści. Pozycjonowanie chatbota **nie było zmieniane**.
 - treść stopki (zmieniona wyłącznie jej powłoka: karta → pas);
 - logika chatbota i konsjerża;
 - `/jak-pracujemy` — układ osi kroków (uzasadnienie w §3 wyżej).
+
+---
+
+## 10. RUNDA DRUGA (2026-09-02) — jeden gutter nagłówka i pełna szerokość discovery
+
+Preview z rundy pierwszej nie został przyjęty. Dwie uwagi właściciela, obie trafne.
+
+### 10.1 Logo skakało między trasami
+
+Runda pierwsza dawała rzędowi nagłówka limit szerokości **zgrany z treścią pod
+spodem** — po to, żeby logo stało w jednej linii z pierwszą kartą. Efekt uboczny
+był gorszy niż problem, który to rozwiązywało:
+
+| trasa (1920 px) | logo x — runda 1 | logo x — runda 2 |
+|---|---|---|
+| homepage | 32 | **32** |
+| `/kierunki` | 160 | **32** |
+| `/inspiracje` | 160 | **32** |
+| `/city-breaki` | 160 | **32** |
+| `/regulamin` | 160 | **32** |
+| hotel results | 40 | **32** |
+| flight results | 100 | **32** |
+
+Najgorszy przypadek to `/regulamin`: nagłówek wyrównywał się tam do kolumny
+**tekstu** szerokiej na 720 px, więc logo lądowało 128 px dalej niż na stronie
+głównej. Nagłówek należy do OKNA, nie do artykułu pod nim.
+
+Poprawka: `SITE_HEADER_GUTTER` — jedna wartość dla całego serwisu
+(16 / 24 / 32 px), rząd nagłówka **bez żadnego limitu szerokości**. Wyrównanie
+nagłówka i szerokość treści są od siebie niezależne. Wartości wzięte ze strony
+głównej, więc homepage nie drgnęła.
+
+Zniknęły przy tym `isHotelWide` i `isFlights` z powłoki — powstały wyłącznie po
+to, żeby prosić ramę o wyjątek na szerokość, a rama niczego już nie ogranicza.
+
+### 10.2 Discovery dalej wyglądało jak box na środku
+
+1600 px na monitorze 1920 to 160 px marginesu z każdej strony — właściciel:
+*„nadal wygląda zbyt mocno jak centralny box"*, z warstwą hotelową jako punktem
+odniesienia.
+
+| trasa (1920 px) | treść — runda 1 | treść — runda 2 | pustka |
+|---|---|---|---|
+| `/kierunki` | 1536 | **1856** | 40 % → 20 % → **3,3 %** |
+| `/inspiracje` | 1536 | **1856** | 43,3 % → 20 % → **3,3 %** |
+| `/city-breaki` | 1536 | **1856** | 40 % → 20 % → **3,3 %** |
+| `/wyjazdy/plaza` | 1536 | **1856** | 40 % → 20 % → **3,3 %** |
+| `/mapa-serwisu`, `/porownanie` | 1536 | **1856** | 42,5 % → 20 % → **3,3 %** |
+
+Treść zaczyna się teraz na `x = 32`, czyli w tej samej linii pionowej co logo.
+To nie było wymaganiem (brief mówi, że alignment i szerokość mają być
+niezależne) — wyszło jako efekt wspólnego guttera i jest lepsze niż wymóg.
+
+Limit `max-w-[2000px]` nie jest powrotem do boxa: na 1920 i 2560 nie daje o sobie
+znać, a chroni układ na 3840 px, gdzie cztery kolumny kart miałyby po ~940 px.
+
+Siatki kart na `/inspiracje` i `/wyjazdy/*` dostały czwartą kolumnę od 1440 px —
+przy 1856 px trzy kolumny dawały karty ~600 px, czyli rzadkie i rozciągnięte.
+
+### 10.3 Czego runda druga NIE zmieniła
+
+- **homepage** — logo 32, treść 1920, luka przed stopką 113 px: identycznie jak
+  w rundzie pierwszej i przed całą przebudową;
+- **hotele** — treść 1760 px startująca na `x = 80`, siatka `320px 1408px`,
+  powłoka 1840 px. Zmienił się wyłącznie nagłówek;
+- **loty** — treść 1640 px na `x = 140`, sufit `FLIGHT_SHELL_WIDE` nietknięty;
+- **strony tekstowe** — `/regulamin` i `/polityka-prywatnosci` dalej 720 px
+  kolumny w pasie pełnej szerokości.

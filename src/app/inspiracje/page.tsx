@@ -140,7 +140,7 @@ export default async function InspirationsIndexPage() {
 
       <section>
         <h2 className="font-display text-2xl text-ink sm:text-3xl">Wybierz styl wyjazdu</h2>
-        <div className="ht-karty mt-6 [--ht-kol-lg:3] [--ht-odstep:1rem]">
+        <div className="ht-karty mt-6 [--ht-kol-lg:3] [--ht-kol-xl:4] [--ht-odstep:1rem]">
           {categoryCards.map(({ category, image }) => (
             <Link
               key={category.slug}
@@ -178,7 +178,7 @@ export default async function InspirationsIndexPage() {
 
       <section>
         <h2 className="font-display text-2xl text-ink sm:text-3xl">Najnowsze poradniki</h2>
-        <div className="ht-karty mt-6 [--ht-kol-lg:3] [--ht-odstep:1rem]">
+        <div className="ht-karty mt-6 [--ht-kol-lg:3] [--ht-kol-xl:4] [--ht-odstep:1rem]">
           {articleCards.map(({ article, image }) => (
             <EditorialArticleCard key={article.slug} article={article} imageUrl={image} />
           ))}

@@ -15,6 +15,7 @@ import { expect, test, type Page } from "@playwright/test";
 const HOME = "/";
 const HOTELE =
   "/hotele/szukaj?destination=Rodos&country=Grecja&checkin=2026-11-18&checkout=2026-11-25&adults=2&rooms=1";
+const FLIGHTS = "/loty/wyniki?origin=WAW&destination=BCN&depart=2026-09-15&adults=1";
 const DISCOVERY = ["/kierunki", "/inspiracje", "/city-breaki", "/wyjazdy/plaza"];
 const TEKSTOWE = ["/regulamin", "/polityka-prywatnosci"];
 const PODSTRONY = ["/jak-pracujemy", "/o-nas", "/faq"];
@@ -95,6 +96,84 @@ test.describe("powłoka serwisu — nagłówek i stopka są pasem", () => {
       for (const promien of g.footer!.promienie) {
         expect(promien, "zewnętrzna powłoka stopki ma zaokrąglenie").toBe("0px");
       }
+    });
+  }
+});
+
+/**
+ * JEDEN GUTTER NAGŁÓWKA DLA CAŁEGO SERWISU.
+ *
+ * Zgłoszenie właściciela (2026-09-02): logo stało na x = 32 / 40 / 100 / 160
+ * w zależności od rodziny tras, bo rząd nagłówka dostawał limit szerokości
+ * zgrany z treścią pod spodem. Na /regulamin wyrównywało się przez to do
+ * kolumny TEKSTU szerokiej na 720 px i lądowało 128 px od pozycji z homepage.
+ *
+ * Ten test pilnuje, żeby wyrównanie nagłówka pozostało NIEZALEŻNE od szerokości
+ * treści strony — łapie zarówno powrót limitów, jak i podpięcie nagłówka pod
+ * `SHELL_*` którejkolwiek sekcji.
+ */
+test.describe("logo stoi w tym samym miejscu na wszystkich rodzinach tras", () => {
+  for (const widok of [DESKTOP, { width: 1440, height: 900 }, MOBILE]) {
+    test(`@ ${widok.width}px`, async ({ page }) => {
+      await bezBaneraZgod(page);
+      await page.setViewportSize(widok);
+
+      const pomiary: { trasa: string; x: number }[] = [];
+      for (const sciezka of [HOME, "/kierunki", "/inspiracje", "/regulamin", HOTELE, FLIGHTS]) {
+        await page.goto(sciezka, { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(sciezka === HOTELE ? 2500 : 700);
+        const x = await page.evaluate(() => {
+          const logo = document.querySelector("header img");
+          return logo ? Math.round(logo.getBoundingClientRect().x) : -1;
+        });
+        pomiary.push({ trasa: sciezka.split("?")[0], x });
+      }
+
+      const wartosci = pomiary.map((p) => p.x);
+      expect(Math.min(...wartosci), "logo nie zostało zmierzone na którejś trasie").toBeGreaterThan(0);
+      // Tolerancja 2 px na zaokrąglenia subpikselowe; realnie ma być identycznie.
+      expect(
+        Math.max(...wartosci) - Math.min(...wartosci),
+        `logo skacze między trasami: ${pomiary.map((p) => `${p.trasa}=${p.x}`).join(", ")}`,
+      ).toBeLessThanOrEqual(2);
+
+      // Gutter ma być mały i stały: 16 px na telefonie, 32 px na desktopie.
+      const oczekiwany = widok.width < 768 ? 16 : widok.width < 1280 ? 24 : 32;
+      expect(wartosci[0], `gutter nagłówka ≠ ${oczekiwany} px`).toBe(oczekiwany);
+    });
+  }
+});
+
+test.describe("discovery wykorzystuje niemal całą szerokość okna", () => {
+  for (const sciezka of ["/kierunki", "/inspiracje", "/city-breaki", "/wyjazdy/plaza"]) {
+    test(`${sciezka} @ 1920px`, async ({ page }) => {
+      await bezBaneraZgod(page);
+      await page.setViewportSize(DESKTOP);
+      await page.goto(sciezka, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(700);
+
+      const w = await page.evaluate(() => {
+        const main = document.querySelector("main") as HTMLElement | null;
+        if (!main) return null;
+        const cs = getComputedStyle(main);
+        const r = main.getBoundingClientRect();
+        return {
+          tresc: Math.round(r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)),
+          x: Math.round(r.x + parseFloat(cs.paddingLeft)),
+          okno: window.innerWidth,
+        };
+      });
+
+      expect(w).not.toBeNull();
+      // §9 zgłoszenia: „około 1840 px użytecznej szerokości, czyli ~40 px
+      // gutter z każdej strony" — ma wyglądać full/immersive, nie jak box
+      // 1600 px na dużym ekranie. Próg 1800 px zostawia zapas na zmianę
+      // guttera, ale nie przepuści powrotu do 1536.
+      expect(w!.tresc, "discovery zwęziło się z powrotem do centralnego boxa").toBeGreaterThanOrEqual(1800);
+      // Treść zaczyna się w tej samej linii co logo — to nie jest wymóg
+      // (brief mówi, że alignment i szerokość są niezależne), ale jest
+      // efektem ubocznym wspólnego guttera i warto wiedzieć, gdy zniknie.
+      expect(w!.x).toBeLessThanOrEqual(40);
     });
   }
 });

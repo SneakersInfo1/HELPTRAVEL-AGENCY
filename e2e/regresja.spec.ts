@@ -1,10 +1,15 @@
 /**
- * Straż nad tym, czego przebudowa hoteli NIE MIAŁA ruszyć (brief §25).
+ * Straż nad szerokościami rodzin tras.
  *
- * Powłoka serwisu (`site-shell.tsx`) jest wspólna dla całej strony, a sekcja
- * hotelowa dostała w niej wyjątek na szerokość. Ten plik pilnuje, żeby wyjątek
- * został wyjątkiem: homepage, loty, strony treściowe i checkout mają zachować
- * dotychczasowy kontener 1280 px.
+ * POWSTAŁ przy przebudowie hoteli (2026-08, brief §25), kiedy rama powłoki
+ * nakładała `max-w-7xl` na wszystko poza homepage, a sekcja hotelowa dostała
+ * w niej wyjątek. Plik pilnował wtedy, żeby wyjątek został wyjątkiem.
+ *
+ * OD 2026-09 rama nie ogranicza szerokości NIGDZIE i nie ma już wyjątków —
+ * szerokość należy do `<main>` każdej strony (`lib/{ui,hotels,flights}/layout.ts`).
+ * Plik pilnuje więc czegoś innego, ale równie konkretnego: każda rodzina tras
+ * trzyma się SWOJEJ szerokości i nie przejmuje cudzej. Homepage pełna, loty
+ * z sufitem 1720, discovery szerokie, checkout wąski.
  */
 import { test, expect } from "@playwright/test";
 
@@ -96,23 +101,27 @@ test("wyszukiwarka lotów działa; rama zdjęta, ale treść ma sufit 1720", asy
   expect(szerokoscTresci, "powłoka wyników zwęziła się do stanu sprzed V2").toBeGreaterThan(1280);
 });
 
-test("strona miasta nie dostaje szerokości wyników hoteli", async ({ page }) => {
+test("strona miasta jest szeroka i mieści się w systemie discovery", async ({ page }) => {
   await page.goto("/hotele/w/hurghada");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
   const szerokosc = await szerokoscTresciStrony(page);
 
-  // GRANICA, KTÓREJ PILNUJE TEN TEST — bez zmian: `/hotele/w/<miasto>` ma DWA
-  // segmenty po /hotele/, więc nie łapie się w wyjątek szerokości sekcji
-  // hotelowej (1840 px) i nie może go dostać przypadkiem.
-  expect(szerokosc, "strona miasta dostała szerokość wyników hoteli").toBeLessThan(1700);
-
-  // ZMIANA WARTOŚCI 2026-09-01 (brief §6). Test wymagał wcześniej ≤1280 px,
-  // bo tak wyglądał kontrakt przed przebudową powłoki. Strona miasta to
-  // landing z siatkami kart (statystyki 4 kolumny, polecane hotele 3 kolumny,
-  // dzielnice, miesiące), a nie długi tekst — należy więc do rodziny
-  // MARKETPLACE/DISCOVERY i dostaje `SHELL_DISCOVERY` (1600 px).
-  // Ten próg pilnuje, żeby nie wróciła po cichu do 1280.
-  expect(szerokosc, "strona miasta zwęziła się z powrotem do 1280").toBeGreaterThan(1280);
+  // HISTORIA TEGO PROGU — warto ją znać, zanim ktoś go znowu ruszy:
+  //
+  //  • do 2026-09-01 wymagał ≤1280 px. Pilnował, żeby wyjątek szerokości
+  //    zrobiony w ramie powłoki dla `/hotele/szukaj` i `/hotele/<id>` NIE
+  //    wyciekł na `/hotele/w/<miasto>`, które ma dwa segmenty po /hotele/.
+  //  • rama nie ma już żadnego wyjątku do wycieknięcia — nie ogranicza
+  //    szerokości nigdzie, więc tamten mechanizm przestał istnieć.
+  //  • strona miasta to landing z siatkami kart (statystyki 4 kolumny,
+  //    polecane hotele 3 kolumny, dzielnice, miesiące), a nie długi tekst,
+  //    więc należy do rodziny MARKETPLACE/DISCOVERY.
+  //
+  // Test pilnuje dziś tego, co nadal może się zepsuć: że strona miasta jest
+  // SZEROKA (nie wróciła po cichu do 1280) i że nie ma własnej, wymyślonej
+  // szerokości poza systemem — czyli mieści się w `SHELL_DISCOVERY`.
+  expect(szerokosc, "strona miasta zwęziła się z powrotem do wąskiego kontenera").toBeGreaterThan(1700);
+  expect(szerokosc, "strona miasta wyszła poza SHELL_DISCOVERY").toBeLessThanOrEqual(2000);
 });
 
 test("checkout zostaje wąski i skupiony", async ({ page }) => {

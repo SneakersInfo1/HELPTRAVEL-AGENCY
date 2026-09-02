@@ -119,7 +119,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 8642,
+    "wysokoscDokumentu": 9049,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -132,7 +132,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 8083,
+      "wysokosc": 8514,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -141,14 +141,14 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
       "pozycja": "static"
     },
-    "trescSzer": 1536,
-    "pustkaProc": 20,
+    "trescSzer": 1856,
+    "pustkaProc": 3.3,
     "lukaPrzedStopka": 96
   },
   "e-inspiracje@1920x1080": {
@@ -157,7 +157,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 3727,
+    "wysokoscDokumentu": 3650,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -170,7 +170,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 3167,
+      "wysokosc": 3115,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -179,14 +179,14 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
       "pozycja": "static"
     },
-    "trescSzer": 1536,
-    "pustkaProc": 20,
+    "trescSzer": 1856,
+    "pustkaProc": 3.3,
     "lukaPrzedStopka": 96
   },
   "f-city-breaki@1920x1080": {
@@ -195,7 +195,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 3300,
+    "wysokoscDokumentu": 3242,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -208,7 +208,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 2740,
+      "wysokosc": 2706,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -217,14 +217,14 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
       "pozycja": "static"
     },
-    "trescSzer": 1536,
-    "pustkaProc": 20,
+    "trescSzer": 1856,
+    "pustkaProc": 3.3,
     "lukaPrzedStopka": 96
   },
   "f2-wyjazdy-plaza@1920x1080": {
@@ -233,7 +233,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 3236,
+    "wysokoscDokumentu": 3150,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -246,7 +246,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 2676,
+      "wysokosc": 2614,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -255,15 +255,15 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
       "pozycja": "static"
     },
-    "trescSzer": 1536,
-    "pustkaProc": 20,
-    "lukaPrzedStopka": -3
+    "trescSzer": 1856,
+    "pustkaProc": 3.3,
+    "lukaPrzedStopka": 65
   },
   "g-jak-pracujemy@1920x1080": {
     "okno": 1920,
@@ -271,7 +271,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 2844,
+    "wysokoscDokumentu": 2820,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -293,7 +293,7 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -309,7 +309,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 15534,
+    "wysokoscDokumentu": 15510,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -331,7 +331,7 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -347,7 +347,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 2297,
+    "wysokoscDokumentu": 2273,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -369,7 +369,7 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -385,7 +385,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 2943,
+    "wysokoscDokumentu": 2919,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -407,7 +407,7 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -436,7 +436,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 521,
+      "wysokosc": 545,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -445,7 +445,7 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -453,7 +453,7 @@
     },
     "trescSzer": 0,
     "pustkaProc": null,
-    "lukaPrzedStopka": 163
+    "lukaPrzedStopka": 187
   },
   "l-porownanie@1920x1080": {
     "okno": 1920,
@@ -461,7 +461,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 4129,
+    "wysokoscDokumentu": 4081,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -474,7 +474,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 3570,
+      "wysokosc": 3546,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -483,14 +483,14 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
       "pozycja": "static"
     },
-    "trescSzer": 1536,
-    "pustkaProc": 20,
+    "trescSzer": 1856,
+    "pustkaProc": 3.3,
     "lukaPrzedStopka": 89
   },
   "m-mapa-serwisu@1920x1080": {
@@ -499,7 +499,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 3219,
+    "wysokoscDokumentu": 3039,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -512,7 +512,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 2660,
+      "wysokosc": 2504,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -521,14 +521,14 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
       "pozycja": "static"
     },
-    "trescSzer": 1536,
-    "pustkaProc": 20,
+    "trescSzer": 1856,
+    "pustkaProc": 3.3,
     "lukaPrzedStopka": 93
   },
   "n-cennik@1920x1080": {
@@ -537,7 +537,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 2488,
+    "wysokoscDokumentu": 2464,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -559,7 +559,7 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -575,7 +575,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 7152,
+    "wysokoscDokumentu": 6820,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -588,7 +588,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 6593,
+      "wysokosc": 6285,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -597,14 +597,14 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
       "pozycja": "static"
     },
-    "trescSzer": 1536,
-    "pustkaProc": 20,
+    "trescSzer": 1856,
+    "pustkaProc": 3.3,
     "lukaPrzedStopka": 114
   },
   "p-artykul@1920x1080": {
@@ -613,7 +613,7 @@
     "bodyScrollWidth": 1920,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 4015,
+    "wysokoscDokumentu": 3991,
     "header": {
       "x": 0,
       "szerokosc": 1920,
@@ -635,7 +635,7 @@
     "footer": {
       "x": 0,
       "szerokosc": 1920,
-      "wysokosc": 455,
+      "wysokosc": 431,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -651,7 +651,7 @@
     "bodyScrollWidth": 1440,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 4065,
+    "wysokoscDokumentu": 4046,
     "header": {
       "x": 0,
       "szerokosc": 1440,
@@ -664,7 +664,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1440,
-      "wysokosc": 3506,
+      "wysokosc": 3486,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -689,7 +689,7 @@
     "bodyScrollWidth": 1440,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 5202,
+    "wysokoscDokumentu": 5203,
     "header": {
       "x": 0,
       "szerokosc": 1440,
@@ -702,7 +702,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1440,
-      "wysokosc": 4643,
+      "wysokosc": 4644,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -803,7 +803,7 @@
     "bodyScrollWidth": 1440,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 3574,
+    "wysokoscDokumentu": 3364,
     "header": {
       "x": 0,
       "szerokosc": 1440,
@@ -816,7 +816,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1440,
-      "wysokosc": 3015,
+      "wysokosc": 2805,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -879,7 +879,7 @@
     "bodyScrollWidth": 1440,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 3169,
+    "wysokoscDokumentu": 3124,
     "header": {
       "x": 0,
       "szerokosc": 1440,
@@ -892,7 +892,7 @@
     "main": {
       "x": 0,
       "szerokosc": 1440,
-      "wysokosc": 2610,
+      "wysokosc": 2564,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -909,7 +909,7 @@
     },
     "trescSzer": 1376,
     "pustkaProc": 4.4,
-    "lukaPrzedStopka": -3
+    "lukaPrzedStopka": 65
   },
   "g-jak-pracujemy@1440x900": {
     "okno": 1440,
@@ -1335,7 +1335,7 @@
     "bodyScrollWidth": 768,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 6597,
+    "wysokoscDokumentu": 6615,
     "header": {
       "x": 0,
       "szerokosc": 768,
@@ -1348,7 +1348,7 @@
     "main": {
       "x": 0,
       "szerokosc": 768,
-      "wysokosc": 5698,
+      "wysokosc": 5717,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -1555,7 +1555,7 @@
     },
     "trescSzer": 720,
     "pustkaProc": 6.3,
-    "lukaPrzedStopka": -3
+    "lukaPrzedStopka": 65
   },
   "g-jak-pracujemy@768x1024": {
     "okno": 768,
@@ -1981,7 +1981,7 @@
     "bodyScrollWidth": 412,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 13468,
+    "wysokoscDokumentu": 13340,
     "header": {
       "x": 0,
       "szerokosc": 412,
@@ -1994,7 +1994,7 @@
     "main": {
       "x": 0,
       "szerokosc": 412,
-      "wysokosc": 12399,
+      "wysokosc": 12271,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -2201,7 +2201,7 @@
     },
     "trescSzer": 380,
     "pustkaProc": 7.8,
-    "lukaPrzedStopka": -31
+    "lukaPrzedStopka": 65
   },
   "g-jak-pracujemy@412x915": {
     "okno": 412,
@@ -2627,7 +2627,7 @@
     "bodyScrollWidth": 390,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 13171,
+    "wysokoscDokumentu": 12876,
     "header": {
       "x": 0,
       "szerokosc": 390,
@@ -2640,7 +2640,7 @@
     "main": {
       "x": 0,
       "szerokosc": 390,
-      "wysokosc": 12102,
+      "wysokosc": 11807,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -2847,7 +2847,7 @@
     },
     "trescSzer": 358,
     "pustkaProc": 8.2,
-    "lukaPrzedStopka": -59
+    "lukaPrzedStopka": 65
   },
   "g-jak-pracujemy@390x844": {
     "okno": 390,
@@ -3273,7 +3273,7 @@
     "bodyScrollWidth": 375,
     "przewijaPoziomo": false,
     "winowajcy": [],
-    "wysokoscDokumentu": 12576,
+    "wysokoscDokumentu": 13159,
     "header": {
       "x": 0,
       "szerokosc": 375,
@@ -3286,7 +3286,7 @@
     "main": {
       "x": 0,
       "szerokosc": 375,
-      "wysokosc": 11507,
+      "wysokosc": 12090,
       "promien": "0px 0px 0px 0px",
       "marginesy": "0px / 0px",
       "maxSzer": "none",
@@ -3493,7 +3493,7 @@
     },
     "trescSzer": 343,
     "pustkaProc": 8.5,
-    "lukaPrzedStopka": -59
+    "lukaPrzedStopka": 65
   },
   "g-jak-pracujemy@375x812": {
     "okno": 375,

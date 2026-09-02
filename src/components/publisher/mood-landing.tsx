@@ -235,7 +235,7 @@ export async function MoodLanding({ slug }: { slug: string }) {
           </Link>
         </div>
 
-        <div className="ht-karty mt-6 [--ht-kol-lg:3]">
+        <div className="ht-karty mt-6 [--ht-kol-lg:3] [--ht-kol-xl:4]">
           {cards.map((item) => (
             <MoodDestinationCard
               key={item.pick.name}
