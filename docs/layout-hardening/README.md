@@ -325,3 +325,54 @@ przy 1856 px trzy kolumny dawały karty ~600 px, czyli rzadkie i rozciągnięte.
 - **loty** — treść 1640 px na `x = 140`, sufit `FLIGHT_SHELL_WIDE` nietknięty;
 - **strony tekstowe** — `/regulamin` i `/polityka-prywatnosci` dalej 720 px
   kolumny w pasie pełnej szerokości.
+
+---
+
+## 11. RUNDA TRZECIA (2026-09-02) — 2560 px
+
+Właściciel wychwycił w raporcie zdanie, które było **nieprawdziwe
+rachunkowo**: że `max-w-[2000px]` „na 1920 i 2560 nie daje o sobie znać".
+Na 2560 daje 2560 − 2000 = 560 px, czyli 280 px marginesu z każdej strony.
+
+| viewport | treść (r.2) | treść (r.3) | gutter | % okna |
+|---|---|---|---|---|
+| 1440 | 1376 | **1376** | 32 | 95,6 % |
+| 1920 | 1856 | **1856** | 32 | 96,7 % |
+| 2560 | 1936 | **2496** | 32 | 75,6 % → **97,5 %** |
+| 3840 | 1936 | **2736** | 552 | 50,4 % → **71,3 %** |
+
+### Dlaczego regresja tego nie złapała
+
+To jest ważniejsze niż sama liczba. Test sprawdzał **wyłącznie 1920 px**
+i wymagał progu **bezwzględnego** (≥1800 px). 2000 > 1800, więc przechodził.
+
+Próg w pikselach nie potrafi opisać „pełnej szerokości", bo nie wie, jak
+szerokie jest okno. Regresja mierzy teraz **gutter względem okna** (≤40 px)
+i obejmuje 2560 × 1440 w każdej asercji o szerokości.
+
+### Szerokość karty — druga oś tego samego problemu
+
+„Pełna szerokość" osiągnięta kartami po 900 px nie jest sukcesem. Doszły więc
+breakpointy `3xl` (2200 px) i `4xl` (3000 px) oraz piąta i szósta kolumna:
+
+| viewport | kolumny | szerokość karty |
+|---|---|---|
+| 1440 | 4 | 317–445 px |
+| 1920 | 4 | 437–605 px |
+| 2560 | **5** | 473–483 px |
+| 3840 | **6** | 431–443 px |
+
+Żadna karta nie przekracza 700 px na żadnym viewporcie. Progi stoją **celowo
+powyżej 1920** — układ na 1920 został zaakceptowany i nie mógł się zmienić
+przy okazji naprawy 2560.
+
+> **Pułapka Tailwinda, która kosztowała jeden przebieg pomiarowy.**
+> Breakpointy były najpierw zapisane w `px`. Klasa `3xl:grid-cols-6` trafiała
+> do HTML, ale nie robiła NIC — na 2560 dalej wygrywało `lg:grid-cols-4`.
+> Dokumentacja mówi to wprost: własne breakpointy muszą być w **tej samej
+> jednostce co domyślne** (`rem`), inaczej wygenerowane utility sortują się
+> w złej kolejności i niższy breakpoint nadpisuje wyższy.
+> `137.5rem` = 2200 px, `187.5rem` = 3000 px.
+
+Narzędzie: `npx tsx e2e/szerokosci.ts` — treść, gutter, % okna i szerokość
+karty na 1440 / 1920 / 2560 / 3840 naraz.
