@@ -63,6 +63,35 @@
   --z-toast: 70;
 }
 
+@theme {
+  /* ── BREAKPOINTY DLA SZEROKICH EKRANÓW (2026-09-02) ─────────────────────
+   *
+   * Tailwind kończy domyślną skalę na `2xl` = 1536 px, więc monitor 2560
+   * i 3840 dostawały dokładnie ten sam układ co 1536 — cztery kolumny kart
+   * rozciągnięte na coraz większą szerokość.
+   *
+   * Progi NIE są zaokrągleniem szerokości monitorów, tylko punktami, w których
+   * dołożenie kolumny utrzymuje kartę przy ~450–500 px:
+   *   2200 px → piąta kolumna   (na 2560 karta ma ~480 px)
+   *   3000 px → szósta kolumna  (na 3840 karta ma ~440 px)
+   *
+   * Celowo POWYŻEJ 1920: układ na 1920 px został zaakceptowany przez
+   * właściciela i nie może się zmienić przy okazji naprawy 2560.
+   *
+   * JEDNOSTKA MA ZNACZENIE — i to kosztowało jeden przebieg pomiarowy.
+   * Pierwsza wersja miała tu `2200px` / `3000px`; klasa `3xl:grid-cols-6`
+   * trafiała do HTML, ale nie robiła NIC, bo na 2560 dalej wygrywało
+   * `lg:grid-cols-4`. Dokumentacja Tailwinda mówi to wprost: własne
+   * breakpointy trzeba podawać w TEJ SAMEJ jednostce co domyślne (czyli
+   * w `rem`), inaczej wygenerowane utility sortują się w złej kolejności
+   * i niższy breakpoint nadpisuje wyższy.
+   *
+   *   137.5rem = 2200 px      187.5rem = 3000 px
+   */
+  --breakpoint-3xl: 137.5rem;
+  --breakpoint-4xl: 187.5rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -121,6 +150,7 @@
 
   /* Jedna szerokość kontenera dla całego serwisu. */
   --container-page: 75rem;
+
 }
 
 * {
@@ -594,5 +624,28 @@ video {
 @media (min-width: 1440px) {
   .ht-karty {
     --ht-kol: var(--ht-kol-xl, var(--ht-kol-lg, 3));
+  }
+}
+
+/* Szerokie ekrany: kolumna dochodzi, żeby karta nie rosła w nieskończoność.
+ *
+ * Zmierzone przed poprawką na 2560 px: cztery kolumny dawały karty 457–475 px
+ * przy treści przyciętej do 1936 px. Po zdjęciu przycięcia (treść 2496 px) te
+ * same cztery kolumny dałyby 615 px, a siatka artykułów 818 px — czyli
+ * „pełna szerokość" okupiona kartami, które przestają wyglądać na kartę.
+ *
+ * Domyślne 5 i 6 NIE dziedziczą po `--ht-kol-lg/xl` celowo: sekcja, która
+ * na desktopie ma dwie albo trzy kolumny, na 2560 px też ma iść w górę.
+ * Sekcja, która naprawdę tego nie chce, nadpisuje `--ht-kol-3xl` u siebie.
+ */
+@media (min-width: 2200px) {
+  .ht-karty {
+    --ht-kol: var(--ht-kol-3xl, 5);
+  }
+}
+
+@media (min-width: 3000px) {
+  .ht-karty {
+    --ht-kol: var(--ht-kol-4xl, 6);
   }
 }

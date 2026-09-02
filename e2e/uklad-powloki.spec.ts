@@ -22,6 +22,12 @@ const PODSTRONY = ["/jak-pracujemy", "/o-nas", "/faq"];
 
 const MOBILE = { width: 390, height: 844 };
 const DESKTOP = { width: 1920, height: 1080 };
+/**
+ * 2560 × 1440 — viewport, ktorego brak w regresji pozwolil `max-w-[2000px]` przejsc
+ * niezauwazonym przez caly przebieg. Od 2026-09-02 kazda asercja o szerokosci
+ * obejmuje takze ten rozmiar.
+ */
+const SZEROKI = { width: 2560, height: 1440 };
 
 /**
  * Zgoda na cookies wstawiona z góry. Baner zgód jest `fixed` i przykrywa dolną
@@ -113,7 +119,7 @@ test.describe("powłoka serwisu — nagłówek i stopka są pasem", () => {
  * `SHELL_*` którejkolwiek sekcji.
  */
 test.describe("logo stoi w tym samym miejscu na wszystkich rodzinach tras", () => {
-  for (const widok of [DESKTOP, { width: 1440, height: 900 }, MOBILE]) {
+  for (const widok of [SZEROKI, DESKTOP, { width: 1440, height: 900 }, MOBILE]) {
     test(`@ ${widok.width}px`, async ({ page }) => {
       await bezBaneraZgod(page);
       await page.setViewportSize(widok);
@@ -144,42 +150,72 @@ test.describe("logo stoi w tym samym miejscu na wszystkich rodzinach tras", () =
   }
 });
 
+/**
+ * DISCOVERY MA BYĆ PEŁNOEKRANOWE NA KAŻDYM DESKTOPIE — także 2560.
+ *
+ * POPRZEDNIA WERSJA TEGO TESTU PRZEPUŚCIŁA REALNY BŁĄD i warto wiedzieć jak.
+ * Sprawdzała wyłącznie 1920 px i wymagała progu BEZWZGLĘDNEGO (≥1800 px).
+ * Powłoka miała wtedy `max-w-[2000px]`, więc na 1920 dawała 1856 px i test
+ * przechodził — a na 2560 przycinała treść do 1936 px, czyli 312 px marginesu
+ * z każdej strony i 75,6 % okna. Dokładnie ten centralny box, który zadanie
+ * miało usunąć; próg 1800 px nie miał szans go złapać, bo 2000 > 1800.
+ *
+ * Dlatego test mierzy teraz GUTTER WZGLĘDEM OKNA, nie liczbę pikseli, i robi
+ * to na trzech szerokościach desktopu. Sprawdza też szerokość pojedynczej
+ * karty — „pełna szerokość" osiągnięta kartami po 900 px nie jest sukcesem.
+ */
 test.describe("discovery wykorzystuje niemal całą szerokość okna", () => {
-  for (const sciezka of ["/kierunki", "/inspiracje", "/city-breaki", "/wyjazdy/plaza"]) {
-    test(`${sciezka} @ 1920px`, async ({ page }) => {
-      await bezBaneraZgod(page);
-      await page.setViewportSize(DESKTOP);
-      await page.goto(sciezka, { waitUntil: "domcontentloaded" });
-      await page.waitForTimeout(700);
+  for (const widok of [{ width: 1440, height: 900 }, DESKTOP, SZEROKI]) {
+    for (const sciezka of ["/kierunki", "/inspiracje", "/city-breaki", "/wyjazdy/plaza"]) {
+      test(`${sciezka} @ ${widok.width}px`, async ({ page }) => {
+        await bezBaneraZgod(page);
+        await page.setViewportSize(widok);
+        await page.goto(sciezka, { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(900);
 
-      const w = await page.evaluate(() => {
-        const main = document.querySelector("main") as HTMLElement | null;
-        if (!main) return null;
-        const cs = getComputedStyle(main);
-        const r = main.getBoundingClientRect();
-        return {
-          tresc: Math.round(r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)),
-          x: Math.round(r.x + parseFloat(cs.paddingLeft)),
-          okno: window.innerWidth,
-        };
+        const w = await page.evaluate(() => {
+          const main = document.querySelector("main") as HTMLElement | null;
+          if (!main) return null;
+          const cs = getComputedStyle(main);
+          const r = main.getBoundingClientRect();
+          // Najszersza KARTA. Celowo tylko `.ht-karty`, czyli realne siatki
+          // kart — nie każdy `.grid` na stronie. Chmura linków regionów na
+          // /kierunki jest zwykłym gridem i ma szerokie kolumny z założenia,
+          // a to nie jest ten problem, o którym mówiło zgłoszenie.
+          let najszerszaKarta = 0;
+          for (const g of Array.from(document.querySelectorAll<HTMLElement>("main .ht-karty"))) {
+            const dzieci = Array.from(g.children).filter((c) => c.getBoundingClientRect().width > 0);
+            if (dzieci.length < 3) continue;
+            const szer = dzieci[0].getBoundingClientRect().width;
+            if (szer > najszerszaKarta) najszerszaKarta = szer;
+          }
+          return {
+            tresc: Math.round(r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)),
+            x: Math.round(r.x + parseFloat(cs.paddingLeft)),
+            okno: window.innerWidth,
+            karta: Math.round(najszerszaKarta),
+          };
+        });
+
+        expect(w).not.toBeNull();
+        const gutter = Math.round((w!.okno - w!.tresc) / 2);
+        // WZGLĘDNIE, nie w pikselach: gutter ma zostać mały niezależnie od
+        // tego, jak szeroki jest monitor.
+        expect(
+          gutter,
+          `gutter ${gutter} px na oknie ${w!.okno} px — discovery wróciło do centralnego boxa`,
+        ).toBeLessThanOrEqual(40);
+        // Treść w jednej linii z logo — efekt uboczny wspólnego guttera.
+        expect(w!.x).toBeLessThanOrEqual(40);
+        // §3 zgłoszenia: „nie rozciągaj jednej karty do 700–900 px".
+        expect(w!.karta, `karta rozciągnęła się do ${w!.karta} px`).toBeLessThanOrEqual(700);
       });
-
-      expect(w).not.toBeNull();
-      // §9 zgłoszenia: „około 1840 px użytecznej szerokości, czyli ~40 px
-      // gutter z każdej strony" — ma wyglądać full/immersive, nie jak box
-      // 1600 px na dużym ekranie. Próg 1800 px zostawia zapas na zmianę
-      // guttera, ale nie przepuści powrotu do 1536.
-      expect(w!.tresc, "discovery zwęziło się z powrotem do centralnego boxa").toBeGreaterThanOrEqual(1800);
-      // Treść zaczyna się w tej samej linii co logo — to nie jest wymóg
-      // (brief mówi, że alignment i szerokość są niezależne), ale jest
-      // efektem ubocznym wspólnego guttera i warto wiedzieć, gdy zniknie.
-      expect(w!.x).toBeLessThanOrEqual(40);
-    });
+    }
   }
 });
 
 test.describe("brak poziomego przewijania", () => {
-  for (const widok of [MOBILE, { width: 375, height: 812 }, { width: 412, height: 915 }, DESKTOP]) {
+  for (const widok of [MOBILE, { width: 375, height: 812 }, { width: 412, height: 915 }, DESKTOP, SZEROKI]) {
     for (const sciezka of [HOME, ...DISCOVERY, ...TEKSTOWE]) {
       test(`${sciezka} @ ${widok.width}px`, async ({ page }) => {
         await bezBaneraZgod(page);

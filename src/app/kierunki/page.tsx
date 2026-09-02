@@ -396,7 +396,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
               <span className="text-sm font-semibold text-brand">Wszystkie hotele</span>
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-6 4xl:grid-cols-8">
             {popularTiles.map((tile) => (
               <DestinationTile key={tile.destination.slug} destination={tile.destination} heroImage={tile.heroImage} />
             ))}
@@ -413,7 +413,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
           Osobna strona dla każdego z tych kierunków: ceny w złotówkach, opis dzielnic i przejście prosto do
           wyszukiwarki z ustawionym miastem.
         </p>
-        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4 3xl:grid-cols-6 4xl:grid-cols-8">
           {commercialCards.map((c) => (
             <CommercialCityCard key={c.slug} {...c} />
           ))}
@@ -423,7 +423,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
       {/* WEDŁUG STYLU — category image tiles */}
       <section id="style" className="scroll-mt-20">
         <h2 className="mb-6 font-display text-2xl text-ink sm:text-3xl">Jaki wyjazd masz na myśli?</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 3xl:grid-cols-6">
           {categories.map((category) => {
             const image = imageBySlug.get(CATEGORY_IMAGE_SLUG[category.slug] ?? "") ?? null;
             return (
@@ -527,7 +527,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
             przewodnik, pogodę i ceny.
           </p>
         </div>
-        <div className="mt-7 grid gap-x-10 gap-y-8 lg:grid-cols-2">
+        <div className="mt-7 grid gap-x-10 gap-y-8 lg:grid-cols-2 3xl:grid-cols-4">
           {regionGroups.map((group) => (
             <div key={group.region} className="border-t border-line pt-5">
               <div className="flex items-baseline justify-between gap-3">

@@ -65,14 +65,35 @@ export const SITE_HEADER_GUTTER = "px-4 sm:px-6 xl:px-8";
  * Teraz to praktycznie `width: 100%` z tym samym gutterem co nagłówek, więc
  * logo i pierwsza karta stoją w JEDNEJ linii pionowej (x = 32 na 1920).
  *
- *   1920 → 1856 treści (gutter 32)   1440 → 1376   1280 → 1216   390 → 358
+ * ── POPRAWKA 2026-09-02 (druga uwaga do preview) ────────────────────────────
  *
- * Limit 2000 px NIE jest tym samym co poprzednie 1600: przy 1920 i 2560 nie
- * daje o sobie znać w sposób, o który było zgłoszenie, a chroni przed
- * układem na 3840 px, gdzie cztery kolumny kart miałyby po ~940 px i karta
- * przestałaby wyglądać na zaprojektowaną.
+ * Pierwsza wersja miała `max-w-[2000px]` i raport twierdził, że „na 1920
+ * i 2560 nie daje o sobie znać". To był BŁĄD RACHUNKOWY: 2560 − 2000 = 560,
+ * czyli 280 px marginesu z każdej strony. Zmierzone przed poprawką:
+ *
+ *   2560 → treść 1936 px · gutter 312 px · 75,6 % okna
+ *   3840 → treść 1936 px · gutter 952 px · 50,4 % okna
+ *
+ * Na monitorze 2560 wracał więc dokładnie ten centralny box, który to zadanie
+ * miało usunąć. Testy tego nie złapały, bo mierzyły wyłącznie 1920 i sprawdzały
+ * próg BEZWZGLĘDNY (≥1800 px) — a 2000 px go spełnia. Regresja pilnuje teraz
+ * guttera względem okna, nie liczby pikseli, i obejmuje 2560.
+ *
+ * Limit podniesiony do 2800 px:
+ *
+ *   1440 → 1376 (gutter 32 · 95,6 %)     2560 → 2496 (gutter 32 · 97,5 %)
+ *   1920 → 1856 (gutter 32 · 96,7 %)     3840 → 2736 (gutter 552 · 71,3 %)
+ *
+ * Czyli „viewport minus gutter" na wszystkim aż do 2560 włącznie, a limit
+ * odzywa się dopiero na naprawdę bardzo szerokich ekranach. Nie jest to
+ * ostrożność bez powodu: siatki dwu- i trzykolumnowe na tych stronach mają
+ * też bloki tekstowe, a przy 3840 px bez limitu kolumna miałaby ~1500 px.
+ *
+ * Za rozmiar KARTY odpowiada osobno `.ht-karty` w `globals.css`, gdzie od
+ * 2200 px dochodzi piąta kolumna, a od 3000 px szósta — bez tego „pełna
+ * szerokość" oznaczałaby karty po 615–818 px.
  */
-export const SHELL_DISCOVERY = "mx-auto w-full max-w-[2000px] px-4 sm:px-6 xl:px-8";
+export const SHELL_DISCOVERY = "mx-auto w-full max-w-[2800px] px-4 sm:px-6 xl:px-8";
 
 /**
  * STRONY TREŚCIOWE Z UKŁADEM — o serwisie, FAQ, cennik, mapa serwisu,
