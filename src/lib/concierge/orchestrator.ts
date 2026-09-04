@@ -99,6 +99,18 @@ interface UsageTotals {
   /** Tokeny wejścia odczytane z cache (10% ceny u Anthropic) — weryfikacja, że caching realnie działa. */
   cachedTokens: number;
   chatCalls: number;
+  /**
+   * Model i dostawca, które NAPRAWDĘ policzyły odpowiedź (echo z OpenRoutera).
+   * Bez tego logi nie mówią, co jedzie na produkcji: slug siedzi w zmiennej
+   * środowiskowej Vercela, a kod ma własny DEFAULT_MODEL — przy audycie
+   * 2026-09-04 nie dało się z logów rozstrzygnąć, który z nich odpowiadał.
+   */
+  model: string | null;
+  provider: string | null;
+  /** Ile razy odpowiedź modelu była zdeformowana i wymagała ponowienia. */
+  retries: number;
+  /** Ile wywołań narzędzi wykonano w tej turze (koszt i czas ogona). */
+  toolCalls: number;
 }
 
 function addUsage(totals: UsageTotals, payload: unknown): void {
@@ -121,6 +133,38 @@ function addUsage(totals: UsageTotals, payload: unknown): void {
       ? usage.prompt_tokens_details.cached_tokens
       : 0;
   totals.chatCalls += 1;
+}
+
+/** Echo modelu/dostawcy z odpowiedzi OpenRoutera (pola `model` i `provider`). */
+function noteModel(totals: UsageTotals, payload: unknown): void {
+  if (!payload || typeof payload !== "object") return;
+  const p = payload as { model?: unknown; provider?: unknown };
+  if (typeof p.model === "string" && p.model) totals.model = p.model;
+  if (typeof p.provider === "string" && p.provider) totals.provider = p.provider;
+}
+
+/**
+ * JEDNA linia na turę w logach runtime Vercela (§34 audytu): model i dostawca,
+ * które realnie odpowiedziały, czas tury, tokeny z podziałem na cache, liczba
+ * rund modelu, ponowień i wywołań narzędzi. Bez PII — logujemy liczby i slugi,
+ * nigdy treści rozmowy.
+ */
+function logTurn(usage: UsageTotals, elapsedMs: number, outcome: string): void {
+  const cachePct =
+    usage.promptTokens > 0 ? Math.round((usage.cachedTokens / usage.promptTokens) * 100) : 0;
+  console.log("[concierge] turn", {
+    model: usage.model,
+    provider: usage.provider,
+    outcome,
+    elapsedMs,
+    chatCalls: usage.chatCalls,
+    toolCalls: usage.toolCalls,
+    retries: usage.retries,
+    promptTokens: usage.promptTokens,
+    completionTokens: usage.completionTokens,
+    cachedTokens: usage.cachedTokens,
+    cachePct,
+  });
 }
 
 /** Wąska walidacja kształtu odpowiedzi modelu — patrz nagłówek pliku. */
@@ -153,10 +197,13 @@ async function chatWithRetry(
 ): Promise<unknown> {
   let response = await deps.chat(args);
   addUsage(usage, response);
+  noteModel(usage, response);
   if (isMalformedResponse(response) && !isHardApiError(response)) {
     console.warn("[concierge] zdeformowana odpowiedź modelu — jedna ponowna próba");
+    usage.retries += 1;
     response = await deps.chat(args);
     addUsage(usage, response);
+    noteModel(usage, response);
   }
   return response;
 }
@@ -340,15 +387,23 @@ export async function runConcierge(
   ];
 
   let offer: TripOffer | null = null;
-  const usage: UsageTotals = { promptTokens: 0, completionTokens: 0, cachedTokens: 0, chatCalls: 0 };
+  const usage: UsageTotals = {
+    promptTokens: 0,
+    completionTokens: 0,
+    cachedTokens: 0,
+    chatCalls: 0,
+    model: null,
+    provider: null,
+    retries: 0,
+    toolCalls: 0,
+  };
 
   const nowFn = deps.now ?? Date.now;
   const startedAt = nowFn();
   const timeLeft = () => TURN_BUDGET_MS - (nowFn() - startedAt);
   const chatTimeout = () => Math.min(CHAT_TIMEOUT_CAP_MS, Math.max(MIN_CHAT_BUDGET_MS, timeLeft() - 2_000));
   const outOfBudget = (): ConciergeResult => {
-    console.warn("[concierge] budżet czasowy tury wyczerpany", { elapsedMs: nowFn() - startedAt, hasOffer: offer !== null });
-    console.log("[concierge] usage", usage);
+    logTurn(usage, nowFn() - startedAt, offer ? "budget-exhausted+offer" : "budget-exhausted");
     return offer
       ? { text: OFFER_FALLBACK_TEXT, offer, error: false }
       : { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
@@ -360,6 +415,7 @@ export async function runConcierge(
 
     if (isMalformedResponse(response)) {
       console.error("concierge: OpenRouter error", response);
+      logTurn(usage, nowFn() - startedAt, "model-error");
       return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
     }
 
@@ -388,6 +444,7 @@ export async function runConcierge(
           });
           continue;
         }
+        usage.toolCalls += 1;
         const { result, offer: callOffer } = await dispatchToolCall(call, deps.executors);
         if (callOffer) offer = callOffer;
         messages.push({
@@ -400,12 +457,13 @@ export async function runConcierge(
     }
 
     if (typeof message.content === "string") {
-      console.log("[concierge] usage", usage);
+      logTurn(usage, nowFn() - startedAt, offer ? "ok+offer" : "ok");
       return { text: stripMarkdownArtifacts(message.content), offer, error: false };
     }
 
     // Ani content, ani tool_calls — traktujemy jak zdeformowaną odpowiedź.
     console.error("concierge: OpenRouter error", response);
+    logTurn(usage, nowFn() - startedAt, "empty-response");
     return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
   }
 
@@ -418,7 +476,7 @@ export async function runConcierge(
   }
   const finalMessage = (finalResponse as ChatCompletionResponse).choices![0]!.message!;
   if (typeof finalMessage.content === "string") {
-    console.log("[concierge] usage", usage);
+    logTurn(usage, nowFn() - startedAt, offer ? "ok+offer(max-rounds)" : "ok(max-rounds)");
     return { text: stripMarkdownArtifacts(finalMessage.content), offer, error: false };
   }
   console.error("concierge: OpenRouter error", finalResponse);
