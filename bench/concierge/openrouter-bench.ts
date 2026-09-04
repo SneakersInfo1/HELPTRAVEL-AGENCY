@@ -167,15 +167,36 @@ export function makeBenchChat(
   };
 }
 
-/** Koszt USD z REALNYCH tokenów; wejście z cache liczone stawką cache_read, gdy model ją ma. */
-export function costUsd(model: string, calls: ChatCallRecord[]): number {
+/**
+ * Koszt USD z REALNYCH tokenow — w DWOCH wariantach, bo to nie jest ta sama
+ * liczba i mylenie ich zaklamuje prognoze:
+ *
+ *  • `measured` — ile ten przebieg NAPRAWDE kosztowal, z uwzglednieniem
+ *    trafien w cache (w baterii 60–86% wejscia szlo z cache, bo 113 rozmow
+ *    leci pod rzad na tym samym prefiksie).
+ *  • `noCache`  — ten sam ruch wyceniony tak, jakby cache NIE trafil ani razu.
+ *
+ * Do PROGNOZ PRODUKCYJNYCH uzywa sie `noCache`. Na produkcji rozmowy sa
+ * rozrzucone w czasie, pierwsza tura kazdej sesji zawsze placi pelna stawke,
+ * a cache Anthropic/Google wygasa — zakladanie 80% trafien to myslenie
+ * zyczeniowe, ktore zaniza rachunek kilkukrotnie.
+ */
+export interface CostBreakdown {
+  measured: number;
+  noCache: number;
+}
+
+export function costUsd(model: string, calls: ChatCallRecord[]): CostBreakdown {
   const p = loadPricing()[model];
-  if (!p) return 0;
-  let usd = 0;
+  if (!p) return { measured: 0, noCache: 0 };
+  let measured = 0;
+  let noCache = 0;
   for (const c of calls) {
     const cached = p.cacheRead === null ? 0 : Math.min(c.cachedTokens, c.promptTokens);
     const fresh = c.promptTokens - cached;
-    usd += fresh * p.prompt + cached * (p.cacheRead ?? p.prompt) + c.completionTokens * p.completion;
+    const out = c.completionTokens * p.completion;
+    measured += fresh * p.prompt + cached * (p.cacheRead ?? p.prompt) + out;
+    noCache += c.promptTokens * p.prompt + out;
   }
-  return usd;
+  return { measured, noCache };
 }

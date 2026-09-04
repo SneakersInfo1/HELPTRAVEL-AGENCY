@@ -44,6 +44,7 @@ import {
   type ConciergeOpenSource,
 } from "@/lib/concierge/open-event";
 import { track } from "@/lib/analytics/track";
+import { readChatCloseStats } from "@/lib/concierge/chat-storage";
 import { useConsent } from "@/lib/consent/context";
 
 // CZAT ŁADOWANY DOPIERO PO OTWARCIU PANELU.
@@ -241,6 +242,15 @@ export function ConciergeLauncher() {
       setEntered(false);
       const done = () => {
         closeTimer.current = null;
+        // Domkniecie lejka: open -> message -> offer_shown -> offer_click.
+        // Bez tego nie da sie policzyc, ile rozmow konczy sie niczym. Licznik
+        // czytamy z sessionStorage (tam czat trzyma historie), zeby nie
+        // przeciagac stanu rozmowy przez launcher, ktory go celowo nie zna.
+        const stats = readChatCloseStats();
+        track("concierge_close", {
+          user_messages: stats.userMessages,
+          saw_offer: stats.sawOffer,
+        });
         setPanel("bubble");
         const destination = pendingNavigationRef.current;
         pendingNavigationRef.current = null;

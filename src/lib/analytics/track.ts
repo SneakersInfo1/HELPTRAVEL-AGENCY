@@ -275,6 +275,27 @@ export interface TrackEventMap {
   concierge_retry: {
     page_path?: string;
   };
+  /**
+   * Tura zakończona błędem. `concierge_retry` mierzy tylko te błędy, po których
+   * użytkownik KLIKNĄŁ ponowienie — czyli wierzchołek góry lodowej. Bez tego
+   * zdarzenia nie wiadomo, ilu ludzi po prostu zamknęło czat.
+   */
+  concierge_error: {
+    /** "model" = odpowiedź z error:true, "network" = żądanie nie doszło. */
+    kind: "model" | "network";
+    /** Czas do błędu w ms — odróżnia timeout od natychmiastowej odmowy. */
+    elapsed_ms?: number;
+  };
+  /**
+   * Zamknięcie panelu. Dopina lejek: open → message → offer_shown →
+   * offer_click. Bez niego nie da się policzyć, ile rozmów kończy się niczym.
+   */
+  concierge_close: {
+    /** Ile wiadomości użytkownika padło w tej sesji czatu przed zamknięciem. */
+    user_messages?: number;
+    /** Czy w rozmowie pojawiła się choć jedna karta oferty. */
+    saw_offer?: boolean;
+  };
 
   // ── Homepage: lejek NAD wyszukiwarką (redesign 2026-07) ──
   // Powód istnienia całej tej grupy: do tej pory z homepage leciały tylko

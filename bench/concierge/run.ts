@@ -34,6 +34,10 @@ interface Cli {
   dryRun: boolean;
   out: string;
   categories: string[] | null;
+  /** Probka WARSTWOWA: N przypadkow z zachowaniem proporcji kategorii. */
+  stratified: number | null;
+  /** Twardy sufit kosztu etapu (USD). Przekroczenie szacunku = STOP. */
+  maxUsd: number | null;
 }
 
 function parseCli(argv: string[]): Cli {
@@ -48,6 +52,8 @@ function parseCli(argv: string[]): Cli {
     dryRun: argv.includes("--dry-run"),
     out: get("out") ?? "bench/concierge/results",
     categories: get("categories") ? get("categories")!.split(",").map((s) => s.trim()) : null,
+    stratified: get("stratified") ? Number(get("stratified")) : null,
+    maxUsd: get("max-usd") ? Number(get("max-usd")) : null,
   };
 }
 
@@ -74,7 +80,8 @@ export interface CaseResult {
   completionTokens: number;
   cachedTokens: number;
   chatCalls: number;
-  costUsd: number;
+  costUsdMeasured: number;
+  costUsdNoCache: number;
   /** Statusy HTTP i tresci bledow — bez nich nie da sie odroznic slabego
    *  modelu od zerwanego polaczenia (pierwszy pelny przebieg: 3 modele po
    *  113/113 „bledow", w rzeczywistosci 429/5xx). */
@@ -206,7 +213,8 @@ async function runCase(
     completionTokens: chatRecords.reduce((a, c) => a + c.completionTokens, 0),
     cachedTokens: chatRecords.reduce((a, c) => a + c.cachedTokens, 0),
     chatCalls: chatRecords.length,
-    costUsd: costUsd(model, chatRecords),
+    costUsdMeasured: costUsd(model, chatRecords).measured,
+    costUsdNoCache: costUsd(model, chatRecords).noCache,
     toolResults,
     httpStatuses: [...new Set(chatRecords.map((c) => c.httpStatus))],
     transportErrors: [
@@ -250,49 +258,122 @@ function allCases(): EvalCase[] {
   return SEED_CASES;
 }
 
+/**
+ * Probka WARSTWOWA — bierze z kazdej kategorii udzial proporcjonalny do jej
+ * wielkosci, ale NIGDY mniej niz 1. Zwykle `slice(0, N)` wzieloby same
+ * pierwsze litery alfabetu kategorii (A=discovery, B=budget...) i caly
+ * screening przeszedlby obok halucynacji, wsparcia i rozmow wielaturowych.
+ * Wybor jest deterministyczny (co k-ty przypadek), wiec kazdy model i kazdy
+ * przebieg widzi DOKLADNIE ten sam zestaw.
+ */
+function stratify(cases: EvalCase[], target: number): EvalCase[] {
+  const byCat = new Map<string, EvalCase[]>();
+  for (const c of cases) {
+    const arr = byCat.get(c.category) ?? [];
+    arr.push(c);
+    byCat.set(c.category, arr);
+  }
+  const cats = [...byCat.keys()].sort();
+  const out: EvalCase[] = [];
+  for (const cat of cats) {
+    const arr = byCat.get(cat)!;
+    const want = Math.max(1, Math.round((arr.length / cases.length) * target));
+    const step = Math.max(1, Math.floor(arr.length / want));
+    for (let i = 0, taken = 0; i < arr.length && taken < want; i += step, taken++) {
+      out.push(arr[i]);
+    }
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
 function selectCases(cli: Cli): EvalCase[] {
   let cases = allCases();
   if (cli.categories) cases = cases.filter((c) => cli.categories!.includes(c.category));
+  if (cli.stratified) return stratify(cases, cli.stratified);
   if (cli.sample) cases = cases.slice(0, cli.sample);
   return cases;
 }
 
-// ── Dry run: koszt PRZED wydaniem pieniędzy (§47) ──────────────────────────
-function dryRun(cli: Cli, cases: EvalCase[]): void {
-  const pricing = loadPricing();
-  // Zmierzone na produkcji (logi runtime 2026-09-04): tura bez narzędzi
-  // ~6,9k tokenów wejścia, tura z narzędziami ~16,9k przy 2 wywołaniach.
-  const IN_PER_TURN = 12000;
-  const OUT_PER_TURN = 420;
+// ── Dry run: koszt PRZED wydaniem pieniędzy (§47) ─────────────────────────
+//
+// Liczby wzięte z REALNYCH przebiegów, nie z sufitu: 113 przypadków (197 tur)
+// na gemini-2.5-flash-lite dało 1,29 mln tokenów wejścia i 47 tys. wyjścia,
+// czyli ~6 550 wejścia i ~240 wyjścia na turę BEZ zakładania cache.
+//
+// Świadomie NIE zakładamy tu wysokiego odsetka trafień w cache. W baterii
+// wychodziło 60–86%, bo rozmowy lecą jedna po drugiej na tym samym prefiksie
+// — i właśnie dlatego poprzedni szacunek był zbyt optymistyczny. Sufit ma być
+// sufitem.
+const IN_PER_TURN_NO_CACHE = 6550;
+const OUT_PER_TURN = 240;
+
+function estimateUsd(model: string, turns: number): number | null {
+  const p = loadPricing()[model];
+  if (!p) return null;
+  return turns * (IN_PER_TURN_NO_CACHE * p.prompt + OUT_PER_TURN * p.completion);
+}
+
+function dryRun(cli: Cli, cases: EvalCase[]): number {
   const turns = cases.reduce((a, c) => a + c.turns.length, 0);
+  const cats = [...new Set(cases.map((c) => c.category))].sort();
 
   console.log("DRY RUN — nic nie zostało wywołane, zero kosztu.\n");
   console.log("przypadków: " + cases.length + ", tur łącznie: " + turns);
-  console.log("założenia/turę: " + IN_PER_TURN + " tok. wejścia, " + OUT_PER_TURN + " tok. wyjścia\n");
+  console.log("kategorii: " + cats.length + " (" + cats.join(", ") + ")");
+  console.log(
+    "\nzałożenia/turę (BEZ cache, z realnych pomiarów): " +
+      IN_PER_TURN_NO_CACHE +
+      " tok. wejścia, " +
+      OUT_PER_TURN +
+      " tok. wyjścia\n",
+  );
+
   let total = 0;
-  const rows: string[] = [];
   for (const m of cli.models) {
-    const p = pricing[m];
-    if (!p) {
-      rows.push(m.padEnd(34) + "BRAK W CENNIKU");
+    const usd = estimateUsd(m, turns);
+    if (usd === null) {
+      console.log(m.padEnd(36) + "BRAK W CENNIKU");
       continue;
     }
-    const usd = turns * (IN_PER_TURN * p.prompt + OUT_PER_TURN * p.completion);
     total += usd;
-    rows.push(m.padEnd(34) + "$" + usd.toFixed(2));
+    console.log(m.padEnd(36) + "$" + usd.toFixed(3));
   }
-  console.log(rows.join("\n"));
-  console.log("\nSZACOWANY KOSZT CAŁOŚCI: $" + total.toFixed(2));
-  console.log("(górna granica — nie uwzględnia cache, który na produkcji zdejmuje ~80% wejścia)");
+  console.log("\nSZACOWANY MAKSYMALNY KOSZT ETAPU: $" + total.toFixed(2));
+
+  if (cli.maxUsd !== null) {
+    if (total > cli.maxUsd) {
+      console.log(
+        "\nSTOP — szacunek $" +
+          total.toFixed(2) +
+          " PRZEKRACZA zadany sufit $" +
+          cli.maxUsd.toFixed(2) +
+          ". Zmniejsz próbkę albo listę modeli.",
+      );
+      return 2;
+    }
+    console.log("mieści się w suficie $" + cli.maxUsd.toFixed(2) + " — można ruszać.");
+  }
+  return 0;
 }
 
 async function main(): Promise<number> {
   const cli = parseCli(process.argv.slice(2));
   const cases = selectCases(cli);
 
-  if (cli.dryRun) {
-    dryRun(cli, cases);
-    return 0;
+  if (cli.dryRun) return dryRun(cli, cases);
+
+  // Sufit kosztu obowiazuje takze przy realnym przebiegu — bez tego flaga
+  // --max-usd bylaby ozdobnikiem dzialajacym tylko w dry-runie.
+  if (cli.maxUsd !== null) {
+    const turns = cases.reduce((a, c) => a + c.turns.length, 0);
+    const est = cli.models.reduce((a, m) => a + (estimateUsd(m, turns) ?? 0), 0);
+    if (est > cli.maxUsd) {
+      console.error(
+        "STOP — szacunek $" + est.toFixed(2) + " przekracza sufit $" + cli.maxUsd.toFixed(2),
+      );
+      return 2;
+    }
+    console.log("szacunek $" + est.toFixed(2) + " / sufit $" + cli.maxUsd.toFixed(2));
   }
 
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -331,7 +412,8 @@ async function main(): Promise<number> {
         .reduce<Record<string, number>>((acc, c) => ((acc[c] = (acc[c] ?? 0) + 1), acc), {}),
       p50TurnMs: percentile(turnLat, 50),
       p95TurnMs: percentile(turnLat, 95),
-      totalCostUsd: results.reduce((a, r) => a + r.costUsd, 0),
+      totalCostUsd: results.reduce((a, r) => a + r.costUsdMeasured, 0),
+      totalCostUsdNoCache: results.reduce((a, r) => a + r.costUsdNoCache, 0),
       promptTokens: results.reduce((a, r) => a + r.promptTokens, 0),
       completionTokens: results.reduce((a, r) => a + r.completionTokens, 0),
       cachedTokens: results.reduce((a, r) => a + r.cachedTokens, 0),

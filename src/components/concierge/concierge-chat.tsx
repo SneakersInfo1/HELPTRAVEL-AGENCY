@@ -20,6 +20,7 @@ import { ArrowRight, Building2, RotateCcw, Send, Sun, Umbrella } from "lucide-re
 
 import { TripOfferCard } from "./trip-offer-card";
 import { track } from "@/lib/analytics/track";
+import { CHAT_STORAGE_KEY } from "@/lib/concierge/chat-storage";
 import type { TripOffer } from "@/lib/concierge/types";
 
 export interface ConciergeMessage {
@@ -30,7 +31,7 @@ export interface ConciergeMessage {
   isError?: boolean;
 }
 
-const STORAGE_KEY = "helptravel-concierge-chat-v1";
+const STORAGE_KEY = CHAT_STORAGE_KEY;
 const MAX_STORED_MESSAGES = 40;
 const MAX_INPUT_LENGTH = 1500;
 const HISTORY_WINDOW = 20;
@@ -269,6 +270,7 @@ export function ConciergeChat({
   // utknąć na true — input byłby zablokowany na zawsze.
   const deliver = useCallback(async (next: ConciergeMessage[]) => {
     setPending(true);
+    const startedAt = Date.now();
     try {
       const result = await postChat(next);
       if (!result.ok) {
@@ -276,8 +278,15 @@ export function ConciergeChat({
           result.kind === "rate-limit"
             ? "Zbyt wiele wiadomości — odczekaj chwilę i spróbuj ponownie."
             : "Chwilowo nie mogę się połączyć — spróbuj za moment.";
+        // `concierge_retry` widzi tylko tych, którzy KLIKNĘLI ponowienie —
+        // czyli wierzchołek góry lodowej. Bez tego zdarzenia nie wiadomo,
+        // ilu ludzi po prostu zamknęło czat po błędzie.
+        track("concierge_error", { kind: "network", elapsed_ms: Date.now() - startedAt });
         setMessages((cur) => [...cur, { role: "assistant", content: errorText, isError: true }]);
         return;
+      }
+      if (result.error) {
+        track("concierge_error", { kind: "model", elapsed_ms: Date.now() - startedAt });
       }
       if (result.offer) {
         track("concierge_offer_shown", {
