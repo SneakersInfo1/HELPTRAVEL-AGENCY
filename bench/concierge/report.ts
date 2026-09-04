@@ -15,6 +15,7 @@ interface Summary {
   p50TurnMs: number;
   p95TurnMs: number;
   totalCostUsd: number;
+  totalCostUsdNoCache?: number;
   promptTokens: number;
   completionTokens: number;
   cachedTokens: number;
@@ -50,32 +51,36 @@ const pad = (s: string, n: number) => s.padEnd(n);
 const padL = (s: string, n: number) => s.padStart(n);
 
 console.log("");
-console.log(
+// „1k rozmów" liczymy z wariantu BEZ CACHE. Na produkcji rozmowy są
+// rozrzucone w czasie i pierwsza tura każdej sesji zawsze płaci pełną stawkę,
+// więc przenoszenie 60–90% trafień z baterii (gdzie 113 rozmów leci pod rząd
+// na jednym prefiksie) zaniżałoby rachunek kilkukrotnie.
+const head =
   pad("MODEL", 32) +
-    padL("PASS", 6) +
-    padL("p50ms", 8) +
-    padL("p95ms", 8) +
-    padL("USD/14", 9) +
-    padL("USD/1k rozm.", 14) +
-    padL("cache%", 8),
-);
-console.log("-".repeat(85));
+  padL("PASS", 6) +
+  padL("p50ms", 8) +
+  padL("p95ms", 8) +
+  padL("USD/1k", 9) +
+  padL("USD/10k", 10) +
+  padL("cache%", 8);
+console.log(head);
+console.log("-".repeat(head.length));
 
 for (const { summary: s } of rows) {
-  // Koszt 1000 ROZMÓW: dataset ma `turns` tur w `cases` rozmowach, więc
-  // skalujemy koszt jednej rozmowy z tego samego zestawu.
-  const perConversation = s.totalCostUsd / s.cases;
+  const noCache = s.totalCostUsdNoCache ?? s.totalCostUsd;
+  const perConversation = noCache / s.cases;
   const cachePct = s.promptTokens > 0 ? (s.cachedTokens / s.promptTokens) * 100 : 0;
   console.log(
     pad(s.model, 32) +
       padL((s.deterministicPassRate * 100).toFixed(0) + "%", 6) +
       padL(String(s.p50TurnMs), 8) +
       padL(String(s.p95TurnMs), 8) +
-      padL("$" + s.totalCostUsd.toFixed(4), 9) +
-      padL("$" + (perConversation * 1000).toFixed(2), 14) +
+      padL("$" + (perConversation * 1000).toFixed(2), 9) +
+      padL("$" + (perConversation * 10000).toFixed(1), 10) +
       padL(cachePct.toFixed(0) + "%", 8),
   );
 }
+console.log("(USD/1k i /10k = prognoza BEZ cache; cache% to obserwacja z baterii)");
 
 console.log("\nNARUSZENIA wg kodu:");
 const allCodes = [...new Set(rows.flatMap((r) => Object.keys(r.summary.failuresByCode)))].sort();

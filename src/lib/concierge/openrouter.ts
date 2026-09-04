@@ -1,4 +1,10 @@
 // Server-only HTTP client for OpenRouter Chat Completions API. Do not import from client components.
+//
+// KONFIGURACJA MODELU (§41 audytu — model zmienia się zmienną, nie refaktorem):
+//   OPENROUTER_MODEL           model podstawowy (brak → DEFAULT_MODEL z tego pliku)
+//   OPENROUTER_FALLBACK_MODEL  model zapasowy; pusty = brak zapasu
+// Zapas uruchamia się WYŁĄCZNIE na awarię (brak treści i brak tool_calls albo
+// błąd API) — nigdy dlatego, że odpowiedź się nie podoba.
 
 // Hard cost/abuse safeguards
 export const MAX_TOOL_ROUNDS = 4;
@@ -34,6 +40,32 @@ function isInvalidModelError(payload: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const message = typeof err.message === "string" ? err.message.toLowerCase() : "";
   return err.code === 404 && (message.includes("model") || message.includes("slug"));
+}
+
+/**
+ * Awaria, po ktorej warto sprobowac INNEGO modelu (§15 audytu): brak
+ * uzytecznej odpowiedzi mimo poprawnego transportu.
+ *
+ * Zaobserwowane na zywo na dev-serverze: gemini-2.5-flash-lite zwrocil
+ * `native_finish_reason: MALFORMED_FUNCTION_CALL` dwa razy z rzedu, wiec
+ * uzytkownik dostal „Chwilowo nie moge odpowiedziec". Ponawianie na TYM SAMYM
+ * modelu nie pomaga, bo defekt jest systematyczny dla modelu, nie losowy.
+ *
+ * NIE jest awaria: odpowiedz, ktora sie uzytkownikowi nie podoba. Zapas
+ * wlacza sie wylacznie na brak tresci i brak tool_calls.
+ */
+function isTransientModelFailure(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return true;
+  const p = payload as {
+    error?: unknown;
+    choices?: Array<{ finish_reason?: string; message?: { content?: unknown; tool_calls?: unknown } }>;
+  };
+  if (p.error) return true;
+  const choice = p.choices?.[0];
+  if (!choice?.message) return true;
+  const hasContent = typeof choice.message.content === "string" && choice.message.content.length > 0;
+  const hasToolCalls = Array.isArray(choice.message.tool_calls) && choice.message.tool_calls.length > 0;
+  return !hasContent && !hasToolCalls;
 }
 
 async function requestChatCompletion(
@@ -85,13 +117,25 @@ export async function chatCompletion(args: ChatCompletionArgs): Promise<unknown>
   const model = process.env.OPENROUTER_MODEL?.trim() || DEFAULT_MODEL;
   const result = await requestChatCompletion(apiKey, model, args);
 
-  // Fallback: env wskazuje slug, którego OpenRouter nie zna → ponów raz na
+  // Fallback 1: env wskazuje slug, którego OpenRouter nie zna → ponów raz na
   // modelu wbudowanym (chyba że to on właśnie zawiódł).
   if (model !== DEFAULT_MODEL && isInvalidModelError(result)) {
     console.error(
       `[concierge] OPENROUTER_MODEL="${model}" odrzucony przez OpenRouter (zły/nieistniejący slug) — fallback na ${DEFAULT_MODEL}. Popraw albo usuń zmienną środowiskową.`,
     );
     return requestChatCompletion(apiKey, DEFAULT_MODEL, args);
+  }
+
+  // Fallback 2: model odpowiedział, ale bezużytecznie (brak treści i brak
+  // tool_calls) → JEDNA próba na modelu zapasowym z env. Świadomie WEWNĄTRZ
+  // chatCompletion: narzędzia wykonuje orkiestrator dopiero po powrocie, więc
+  // zmiana modelu nie może wykonać żadnego tool-calla drugi raz.
+  const fallback = process.env.OPENROUTER_FALLBACK_MODEL?.trim();
+  if (fallback && fallback !== model && isTransientModelFailure(result)) {
+    console.warn(
+      `[concierge] model ${model} nie zwrócił użytecznej odpowiedzi — jedna próba na zapasowym ${fallback}`,
+    );
+    return requestChatCompletion(apiKey, fallback, args);
   }
 
   return result;
