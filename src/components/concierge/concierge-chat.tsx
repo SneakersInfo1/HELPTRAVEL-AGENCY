@@ -436,9 +436,25 @@ export function ConciergeChat({
             maxLength={MAX_INPUT_LENGTH}
             disabled={pending}
             placeholder="Napisz, dokąd chcesz jechać…"
+            enterKeyHint="send"
             // placeholder na ink-muted (6,5:1), nie na neutral-400 — domyślna
             // jasna szarość placeholdera nie przechodzi progu 4.5:1.
-            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-surface-sunken px-4 text-ink outline-none transition-colors duration-200 ease-out placeholder:text-ink-muted focus-visible:border-brand/50 focus-visible:bg-surface-raised disabled:opacity-60 motion-reduce:transition-none"
+            //
+            // 16px OBOWIĄZKOWO: Safari na iOS automatycznie przybliża stronę,
+            // gdy fokusowane pole ma czcionkę mniejszą niż 16px, i po zamknięciu
+            // klawiatury NIE cofa zoomu. Pole liczyło 14px, a viewport nie ma
+            // maximum-scale (i mieć nie powinien — blokada zoomu łamie
+            // dostępność), więc każdy tap w czat na iPhonie rozjeżdżał układ.
+            // To jest 90% naszego ruchu.
+            //
+            // Dlaczego z „!": globals.css ma NIEWARSTWOWĄ regułę
+            // `button, input, select, textarea { font: inherit }`, a CSS bez
+            // warstwy bije @layer utilities Tailwinda — czyli zwykłe
+            // `text-base` na <input> jest w tym repo martwe (zmierzone:
+            // ta sama klasa na <div> daje 16px, na tym <input> 14px).
+            // Ważność to jedyny lokalny sposób, żeby wygrać z tą regułą bez
+            // ruszania globalnego resetu, który dotyczy całego serwisu.
+            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-surface-sunken px-4 text-base! text-ink outline-none transition-colors duration-200 ease-out placeholder:text-ink-muted focus-visible:border-brand/50 focus-visible:bg-surface-raised disabled:opacity-60 motion-reduce:transition-none"
           />
           <button
             type="submit"

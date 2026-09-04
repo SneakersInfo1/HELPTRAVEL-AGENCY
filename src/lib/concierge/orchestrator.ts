@@ -125,6 +125,8 @@ function addUsage(totals: UsageTotals, payload: unknown): void {
     }
   ).usage;
   if (!usage) return;
+  // uwaga: chatCalls liczone jest w chatWithRetry, nie tutaj — odpowiedz
+  // bledna nie ma pola `usage`, a wywolanie i tak sie odbylo i kosztowalo.
   totals.promptTokens += typeof usage.prompt_tokens === "number" ? usage.prompt_tokens : 0;
   totals.completionTokens +=
     typeof usage.completion_tokens === "number" ? usage.completion_tokens : 0;
@@ -132,7 +134,6 @@ function addUsage(totals: UsageTotals, payload: unknown): void {
     typeof usage.prompt_tokens_details?.cached_tokens === "number"
       ? usage.prompt_tokens_details.cached_tokens
       : 0;
-  totals.chatCalls += 1;
 }
 
 /** Echo modelu/dostawcy z odpowiedzi OpenRoutera (pola `model` i `provider`). */
@@ -196,12 +197,14 @@ async function chatWithRetry(
   usage: UsageTotals,
 ): Promise<unknown> {
   let response = await deps.chat(args);
+  usage.chatCalls += 1;
   addUsage(usage, response);
   noteModel(usage, response);
   if (isMalformedResponse(response) && !isHardApiError(response)) {
     console.warn("[concierge] zdeformowana odpowiedź modelu — jedna ponowna próba");
     usage.retries += 1;
     response = await deps.chat(args);
+    usage.chatCalls += 1;
     addUsage(usage, response);
     noteModel(usage, response);
   }
