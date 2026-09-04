@@ -896,8 +896,12 @@ export function createToolExecutors(deps: ToolDeps) {
       ? {
           hotelId: hotelData.hotelId,
           name: hotelData.name,
-          totalPln: hotelData.totalPln,
-          perNightPln: nights ? hotelData.totalPln / nights : null,
+          // PELNE zlote: model cytuje surowa liczbe z wyniku, a karta ja
+          // formatuje — bez zaokraglenia u zrodla na jednym ekranie widnialy
+          // DWIE rozne kwoty za to samo („9546,59 zl" w tekscie obok
+          // „9 547 zl" na karcie). W gore, zgodnie z zasada „nie zanizamy".
+          totalPln: Math.ceil(hotelData.totalPln),
+          perNightPln: nights ? Math.round(hotelData.totalPln / nights) : null,
           mainPhotoUrl: hotelData.mainPhotoUrl,
           photoUrls,
           rating: hotelData.rating,
@@ -918,7 +922,7 @@ export function createToolExecutors(deps: ToolDeps) {
 
     const flight: TripOffer["flight"] = flightData
       ? {
-          totalPln: flightData.totalPln,
+          totalPln: Math.ceil(flightData.totalPln),
           carrierName: flightData.carrierName,
           outboundDepartureTime: flightData.outboundDepartureTime,
           inboundDepartureTime: flightData.inboundDepartureTime,
@@ -949,7 +953,7 @@ export function createToolExecutors(deps: ToolDeps) {
     const allWantedPresent =
       (!a.wantsHotel || hotel !== null) && (!a.wantsFlight || flight !== null);
     const totalPln = allWantedPresent && (hotel || flight)
-      ? (hotel?.totalPln ?? 0) + (flight?.totalPln ?? 0)
+      ? Math.ceil((hotel?.totalPln ?? 0) + (flight?.totalPln ?? 0))
       : null;
     const totalPerPersonPln = totalPln !== null
       ? Math.ceil(totalPln / totalPax)

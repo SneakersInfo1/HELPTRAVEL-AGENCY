@@ -243,7 +243,9 @@ test("executeGetTripOffer: oba komponenty → realne kwoty z mocków, per-osobę
     "https://static.cupid.travel/gallery-2.jpg",
   ]);
   assert.equal(offer.nights, 7);
-  assert.equal(offer.hotel.perNightPln, 2400 / 7);
+  // PELNE zlote, nie surowy ulamek: model cytuje te liczbe w tekscie, a karta
+  // ja formatuje — 2400/7 = 342,857 dawalo na ekranie dwie rozne kwoty.
+  assert.equal(offer.hotel.perNightPln, Math.round(2400 / 7));
   // Handoff hotelu: kontrakt /hotele/[hotelId] (checkin/checkout/adults/rooms);
   // dzieci liczone jak dorośli downstream (decyzja produktowa mini-plannera) → adults=3.
   assert.ok(offer.hotel.url.startsWith("/hotele/lp19abc?"));
@@ -651,4 +653,29 @@ test("executeSearchTrips: country bez theme przechodzi walidację; nieznany kraj
   });
   assert.deepEqual(out.candidates, []);
   assert.ok(out.reason && out.reason.includes("Narnia"));
+});
+
+test("executeGetTripOffer: kwoty w PEŁNYCH złotych — tekst bota nie może różnić się od karty", () => {
+  // Realny zrzut z dev-servera: bot napisał „Całkowity koszt wyjazdu to
+  // 9546,59 zł", a karta obok pokazywała „9 547 zł". Model cytuje surową
+  // liczbę z wyniku narzędzia, karta ją formatuje — więc na jednym ekranie
+  // były DWIE różne kwoty za to samo. Zaokrąglamy u źródła (w górę, zgodnie
+  // z zasadą „nigdy nie zaniżamy"), żeby istniała jedna liczba.
+  return (async () => {
+    const exec = createToolExecutors(
+      makeDeps({
+        findCheapestHotel: async () => ({ ...HOTEL, totalPln: 4770.59 }),
+        findCheapestFlight: async () => ({ ...FLIGHT, totalPln: 4776.4 }),
+      }),
+    );
+    const offer = await exec.executeGetTripOffer({ ...offerArgs });
+    assert.equal(Number.isInteger(offer.hotel!.totalPln), true, "hotel.totalPln musi być całkowite");
+    assert.equal(Number.isInteger(offer.flight!.totalPln), true, "flight.totalPln musi być całkowite");
+    assert.equal(Number.isInteger(offer.totalPln!), true, "totalPln musi być całkowite");
+    assert.equal(
+      Number.isInteger(offer.hotel!.perNightPln!),
+      true,
+      "perNightPln musi być całkowite",
+    );
+  })();
 });
