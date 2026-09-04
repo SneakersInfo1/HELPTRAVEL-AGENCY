@@ -170,10 +170,15 @@ test("executeSearchTrips: pusty wynik → candidates:[] + niepusty reason", asyn
   assert.deepEqual(noSnap.candidates, []);
   assert.ok(typeof noSnap.reason === "string" && noSnap.reason.length > 0);
 
-  // Brak wymaganych pól (model nie dopytał) → pusto z powodem, bez rzucania.
-  const missing = await exec.executeSearchTrips({ theme: THEME });
-  assert.deepEqual(missing.candidates, []);
-  assert.ok(typeof missing.reason === "string" && missing.reason.length > 0);
+  // SAM motyw (bez miesiąca, budżetu i liczby osób) NIE jest już powodem do
+  // odmowy: klient niekonkretny ma dostać wyniki od najtańszego, a nie kolejne
+  // pytanie. Miesiąc zakłada system i mówi o tym w nocie, żeby bot nazwał
+  // założenie („zakładam październik") — patrz budget.ts/defaultMonth.
+  const minimal = await exec.executeSearchTrips({ theme: THEME });
+  assert.equal(minimal.candidates.length, 1);
+  assert.equal(minimal.candidates[0].cityEn, c0.cityEn);
+  assert.ok(minimal.note && /zakładam/i.test(minimal.note), "nota musi nazwać założony miesiąc");
+  assert.equal(minimal.reason, undefined);
 });
 
 // ── executeGetTripOffer ──────────────────────────────────────────────────────

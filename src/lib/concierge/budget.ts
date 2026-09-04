@@ -6,8 +6,15 @@ import type { ConciergeIntent, MissingField } from "./types";
  * - theme: wymagany
  * - budgetPln: wymagany
  * - budgetKind: wymagany GDY budgetPln jest obecny
- * - month: wymagany
  * - adults: wymagany
+ *
+ * month CELOWO NIE jest wymagany. Bateria ewaluacyjna (2026-09-04) pokazala,
+ * ze wymuszanie go bylo przymusem STRUKTURALNYM: „Lecimy z dwojka dzieci w
+ * wakacje, budzet 8000 zl lacznie" oblalo 8 z 9 modeli, bo kazdy musial
+ * zapytac „ktory miesiac?" — „wakacje" nie jest liczba. To stalo w
+ * sprzecznosci z system promptem, ktory przy niekonkretnym kliencie kaze
+ * PRZYJAC zalozenie i szukac. Brak miesiaca wypelnia defaultMonth, a
+ * egzekutor mowi modelowi, jaki miesiac zalozyl, zeby ten nazwal zalozenie.
  */
 export function missingFields(intent: ConciergeIntent): MissingField[] {
   const missing: MissingField[] = [];
@@ -22,10 +29,6 @@ export function missingFields(intent: ConciergeIntent): MissingField[] {
 
   if (intent.budgetPln !== undefined && intent.budgetPln !== null && !intent.budgetKind) {
     missing.push("budgetKind");
-  }
-
-  if (intent.month === undefined || intent.month === null) {
-    missing.push("month");
   }
 
   if (intent.adults === undefined || intent.adults === null) {
@@ -53,4 +56,14 @@ export function normalizeIntent(intent: ConciergeIntent): ConciergeIntent {
     wantsFlight: intent.wantsFlight ?? true,
     wantsHotel: intent.wantsHotel ?? true,
   };
+}
+
+/**
+ * Miesiac zakladany, gdy klient go nie poda: NASTEPNY pelny miesiac. Nigdy
+ * biezacy — w polowie miesiaca zostalo za malo terminow, a snapshot i tak
+ * wygrzewa okna z wyprzedzeniem.
+ */
+export function defaultMonth(now: number = Date.now()): number {
+  const d = new Date(now);
+  return (d.getUTCMonth() + 1) % 12 + 1;
 }

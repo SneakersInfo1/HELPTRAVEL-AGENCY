@@ -18,7 +18,7 @@ import {
   pickFreshPackage,
   type DestinationPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
-import { missingFields, normalizeIntent } from "./budget";
+import { defaultMonth, missingFields, normalizeIntent } from "./budget";
 import {
   rankTripCandidates,
   resolveThemeCities,
@@ -90,7 +90,12 @@ const searchTripsTool: ToolDef = {
           type: "integer",
           minimum: 1,
           maximum: 12,
-          description: "Miesiąc planowanego wyjazdu jako liczba 1–12 (1 = styczeń, 12 = grudzień).",
+          description:
+            "Miesiąc planowanego wyjazdu jako liczba 1–12 (1 = styczeń, 12 = grudzień). " +
+            "Polskie określenia pory roku przelicz SAM, nie pytaj o nie: wakacje/lato = 7, " +
+            "ferie/zima = 2, majówka = 5, święta/sylwester = 12, wczesna jesień = 9, " +
+            "po sezonie = 10. Pomiń pole tylko wtedy, gdy naprawdę nie ma żadnej wskazówki — " +
+            "system założy wtedy najbliższy pełny miesiąc i poda go w wyniku.",
         },
         origin: {
           type: "string",
@@ -125,7 +130,11 @@ const searchTripsTool: ToolDef = {
       // country (egzekutor wymaga theme ALBO country). budgetPln/budgetKind
       // POZA required: klient niekonkretny („najtaniej") ma dostać wyniki od
       // najtańszego zamiast kolejnej rundy dopytywania.
-      required: ["month", "adults", "wantsFlight", "wantsHotel"],
+      // month POZA required: „w wakacje", „po sezonie", „na dlugi weekend" to
+      // nie sa liczby, a wymuszanie ich kosztowalo cala runde dopytywania
+      // (8 z 9 modeli w baterii pytalo „ktory miesiac?"). Brak miesiaca
+      // wypelnia defaultMonth, a wynik mowi modelowi, co zalozono.
+      required: ["adults", "wantsFlight", "wantsHotel"],
     },
   },
 };
@@ -370,6 +379,12 @@ export interface SearchTripsResult {
   /** Instrukcja interpretacji dla modelu (dokleja się do wyniku). */
   note?: string;
 }
+
+/** Nazwy miesiecy po polsku (miejscownik) — do nazwania zalozenia w wyniku. */
+const MONTH_PL: Record<number, string> = {
+  1: "styczeń", 2: "luty", 3: "marzec", 4: "kwiecień", 5: "maj", 6: "czerwiec",
+  7: "lipiec", 8: "sierpień", 9: "wrzesień", 10: "październik", 11: "listopad", 12: "grudzień",
+};
 
 /** Maksymalna liczba kandydatów zwracanych modelowi (karty w czacie). */
 const MAX_TRIP_CANDIDATES = 5;
@@ -680,6 +695,9 @@ export function createToolExecutors(deps: ToolDeps) {
       : intent.budgetKind === "total_two"
         ? Math.floor(intent.budgetPln! / paxCount)
         : intent.budgetPln!;
+    // Klient nie podal miesiaca -> zakladamy najblizszy pelny i MOWIMY o tym
+    // modelowi, zeby nazwal zalozenie zamiast pytac (zasada „TY prowadzisz").
+    const assumedMonth = parsed.month === undefined ? defaultMonth(now()) : null;
     const snapshot = await deps.readSnapshot();
     const ranked = snapshot
       ? rankTripCandidates(
@@ -710,6 +728,9 @@ export function createToolExecutors(deps: ToolDeps) {
           "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę za `nights` nocy w oknie checkin–checkout. To NIE MUSI być miesiąc, o który pytał użytkownik — orientacyjne ceny mamy tylko na wygrzane terminy. Jeśli checkin wypada w INNYM miesiącu niż prosił, powiedz to wprost jednym zdaniem („orientacyjnie, dla terminu X”) i dodaj, że dokładną cenę na JEGO termin pokazuje karta oferty. Cytuj kwotę jako „od X zł/os. za N nocy”, a zapas/os. bierz z GOTOWEGO pola zapasPln — nie licz go sam. Nie rozbijaj na lot/hotel i nie sumuj." +
           (noBudget
             ? " Użytkownik NIE podał budżetu: kandydaci są posortowani od najtańszego. Przy prezentacji karty zapytaj krótko o budżet, żeby policzyć zapas."
+            : "") +
+          (assumedMonth !== null
+            ? ` Użytkownik NIE podał miesiąca — przyjęto ${assumedMonth} (najbliższy pełny). Nazwij to założenie JEDNYM zdaniem („zakładam ${MONTH_PL[assumedMonth]}") i pytaj o termin dopiero po pokazaniu karty.`
             : ""),
       };
     }
