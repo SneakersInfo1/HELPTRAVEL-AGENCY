@@ -16,6 +16,9 @@ export type MissingField = "theme" | "budgetPln" | "budgetKind" | "month" | "adu
 export interface TripCandidate {
   cityEn: string; countryEn: string; cityPl: string;
   perPersonPln: number;      // z pakietu snapshotu (lot RT + noce×hotel/2)
+  /** Liczba nocy, dla ktorej policzono perPersonPln — bez tego lista miesza
+   *  pobyty 4- i 7-nocne i sortuje je jak porownywalne. */
+  nights: number;
   checkin: string; checkout: string;
   hotelFromPlnPerNight: number | null;
   flightFromPln: number | null;

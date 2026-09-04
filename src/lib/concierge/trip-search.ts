@@ -6,6 +6,7 @@
 // (żadnego readPriceSnapshot/Redis/fetch).
 
 import {
+  computePackagePerPerson,
   pickFreshFlightPrice,
   pickFreshPackage,
   pickFreshPrice,
@@ -39,30 +40,72 @@ export function budgetPerPerson(budgetPln: number, kind: BudgetKind): number {
   return kind === "total_two" ? Math.floor(budgetPln / 2) : budgetPln;
 }
 
+function nightsOf(checkin: string, checkout: string): number {
+  const a = Date.parse(`${checkin}T00:00:00Z`);
+  const b = Date.parse(`${checkout}T00:00:00Z`);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
+  return Math.round((b - a) / 86_400_000);
+}
+
+/**
+ * @param opts.nights Liczba nocy, o którą prosi użytkownik. Bez niej ranking
+ * porównuje pakiety o RÓŻNEJ długości — a snapshot je miesza: pomiar na
+ * produkcji (2026-09-04) pokazał 31 kierunków wycenionych na 4 noce i 15 na
+ * 7 nocy w jednej liście, więc sześć „najtańszych" pozycji to były po prostu
+ * te najkrótsze. Mając nights przeliczamy pakiet ze SKŁADOWYCH snapshotu
+ * (lot RT + noce × hotel/2 — ta sama formuła co cron), dzięki czemu i ranking,
+ * i próg budżetu dotyczą pobytu, o który pyta klient.
+ */
 export function rankTripCandidates(
   cities: readonly TripSearchCity[],
   snapshot: DestinationPriceSnapshot,
   budget: { budgetPln: number; budgetKind: BudgetKind },
   now: number = Date.now(),
+  opts?: { nights?: number },
 ): TripCandidate[] {
   const threshold = budgetPerPerson(budget.budgetPln, budget.budgetKind);
+  const wantNights = opts?.nights !== undefined && opts.nights > 0 ? opts.nights : null;
   const candidates: TripCandidate[] = [];
 
   for (const city of cities) {
     const pkg = pickFreshPackage(snapshot, city.cityEn, city.countryEn, now);
     if (!pkg) continue; // brak świeżego pakietu → nie zgadujemy, pomijamy kierunek
 
-    if (pkg.perPersonPln > threshold) continue;
+    const hotelPerNight = pickFreshPrice(snapshot, city.cityEn, city.countryEn, now);
+    const flight = pickFreshFlightPrice(snapshot, city.cityEn, city.countryEn, now);
+
+    let perPersonPln = pkg.perPersonPln;
+    let nights = nightsOf(pkg.checkin, pkg.checkout);
+    let checkin = pkg.checkin;
+    let checkout = pkg.checkout;
+
+    if (wantNights !== null && hotelPerNight !== null && flight !== null) {
+      // Okno przesuwamy o żądaną długość od tej samej daty wyjazdu — cena
+      // pochodzi ze składowych, nie ze zgadywania.
+      const shifted = new Date(Date.parse(`${pkg.checkin}T00:00:00Z`) + wantNights * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const recomputed = computePackagePerPerson(flight, hotelPerNight, pkg.checkin, shifted);
+      if (recomputed !== null) {
+        perPersonPln = recomputed;
+        nights = wantNights;
+        checkin = pkg.checkin;
+        checkout = shifted;
+      }
+    }
+
+    if (perPersonPln > threshold) continue;
 
     candidates.push({
       cityEn: city.cityEn,
       countryEn: city.countryEn,
       cityPl: city.cityPl,
-      perPersonPln: pkg.perPersonPln,
-      checkin: pkg.checkin,
-      checkout: pkg.checkout,
-      hotelFromPlnPerNight: pickFreshPrice(snapshot, city.cityEn, city.countryEn, now),
-      flightFromPln: pickFreshFlightPrice(snapshot, city.cityEn, city.countryEn, now),
+      perPersonPln,
+      nights,
+      checkin,
+      checkout,
+      hotelFromPlnPerNight: hotelPerNight,
+      flightFromPln: flight,
     });
   }
 

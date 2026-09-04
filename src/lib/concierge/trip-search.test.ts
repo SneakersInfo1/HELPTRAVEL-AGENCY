@@ -92,3 +92,73 @@ test("resolveThemeCities: każdy pick z każdego motywu trafia w rekord seedu (k
     }
   }
 });
+
+// ── Długość pobytu: ranking musi porównywać porównywalne ──────────────────
+// Zmierzone na PRODUKCYJNYM snapshocie (2026-09-04): 31 kierunków wycenionych
+// na 4 noce (październik) i 15 na 7 nocy (listopad), w JEDNEJ liście. Sortowanie
+// po kwocie bezwzględnej stawiało więc krótsze pobyty na górze niezależnie od
+// tego, czy są tańsze — sześć najtańszych pozycji to były same pakiety 4-nocne.
+const nowT = Date.UTC(2026, 6, 7);
+function entryNights(hotelPerNight: number, flight: number, checkin: string, checkout: string) {
+  return {
+    hotelFromPlnPerNight: hotelPerNight,
+    checkin,
+    checkout,
+    computedAt: nowT,
+    flightFromPln: flight,
+    flightDepart: checkin,
+    flightReturn: checkout,
+    flightComputedAt: nowT,
+    pkgPerPersonPln:
+      flight + Math.ceil((hotelPerNight * Math.round((Date.parse(checkout) - Date.parse(checkin)) / 86400000)) / 2),
+    pkgCheckin: checkin,
+    pkgCheckout: checkout,
+    pkgComputedAt: nowT,
+  };
+}
+
+// Krótki: 4 noce, hotel 400/noc → 800/os. hotelu + 500 lotu = 1300/os.
+// Długi:  7 nocy, hotel 200/noc → 700/os. hotelu + 500 lotu = 1200/os.
+// Przy 7 nocach TANI jest ten drugi (1200 < 1650), mimo że w snapshocie
+// pakiet krótki wygląda na tańszy per capita tylko dzięki liczbie nocy.
+const snapNights: DestinationPriceSnapshot = {
+  [destinationPriceKey("Krotki", "X")]: entryNights(400, 500, "2026-10-19", "2026-10-23"),
+  [destinationPriceKey("Dlugi", "X")]: entryNights(200, 500, "2026-11-07", "2026-11-14"),
+};
+const citiesNights = [
+  { cityEn: "Krotki", countryEn: "X", cityPl: "Krotki" },
+  { cityEn: "Dlugi", countryEn: "X", cityPl: "Dlugi" },
+];
+
+test("rankTripCandidates: bez podanych nocy zachowuje dotychczasowe zachowanie", () => {
+  const out = rankTripCandidates(citiesNights, snapNights, { budgetPln: 9999, budgetKind: "per_person" }, nowT);
+  // Krotki = 1300/os. (4 noce), Dlugi = 1200/os. (7 nocy) — sort rosnaco.
+  assert.deepEqual(out.map((c) => c.cityEn), ["Dlugi", "Krotki"]);
+});
+
+test("rankTripCandidates: podane nights przelicza pakiet na ŻĄDANĄ długość pobytu", () => {
+  const out = rankTripCandidates(
+    citiesNights,
+    snapNights,
+    { budgetPln: 9999, budgetKind: "per_person" },
+    nowT,
+    { nights: 7 },
+  );
+  // Na 7 nocy: Krotki = 500 + 7*400/2 = 1900; Dlugi = 500 + 7*200/2 = 1200.
+  assert.deepEqual(out.map((c) => c.cityEn), ["Dlugi", "Krotki"]);
+  assert.deepEqual(out.map((c) => c.perPersonPln), [1200, 1900]);
+  assert.deepEqual(out.map((c) => c.nights), [7, 7]);
+});
+
+test("rankTripCandidates: nights filtruje budżet na przeliczonej cenie, nie snapshotowej", () => {
+  // Snapshotowy pakiet Krotkiego to 1300/os., ale na 7 nocy wychodzi 1900 —
+  // przy budżecie 1500 NIE MOŻE się zakwalifikować.
+  const out = rankTripCandidates(
+    citiesNights,
+    snapNights,
+    { budgetPln: 1500, budgetKind: "per_person" },
+    nowT,
+    { nights: 7 },
+  );
+  assert.deepEqual(out.map((c) => c.cityEn), ["Dlugi"]);
+});

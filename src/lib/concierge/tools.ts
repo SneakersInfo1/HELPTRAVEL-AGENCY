@@ -356,6 +356,9 @@ export interface ModelTripCandidate {
    * zapasy kandydatów sam i potrafił się mylić). null = brak budżetu.
    */
   zapasPln: number | null;
+  /** Liczba nocy, dla ktorej policzono perPersonPln — bez niej model
+   *  porownywal pobyty 4- i 7-nocne jako rownowazne „od X zl/os.". */
+  nights: number | null;
   checkin: string | null;
   checkout: string | null;
 }
@@ -456,15 +459,20 @@ function asInt(v: unknown): number | undefined {
  * pola stają się undefined i łapie je missingFields (odpowiedź z reason,
  * BEZ rzucania — model ma dopytać użytkownika, nie dostać wyjątek).
  */
-function readSearchTripsArgs(args: unknown): ConciergeIntent & { country?: string } {
+function readSearchTripsArgs(args: unknown): ConciergeIntent & { country?: string; nights?: number } {
   const a = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
   const budgetPln = asFiniteNumber(a.budgetPln);
   const month = asInt(a.month);
   const adults = asInt(a.adults);
   const children = asInt(a.children);
+  // nights BYLO deklarowane w schemacie i wymuszane promptem („weekend = 3"),
+  // ale egzekutor NIGDY go nie czytal — model wysylal dane donikad.
+  const nightsRaw = asInt(a.nights);
+  const nights = nightsRaw !== undefined && nightsRaw >= 1 ? Math.min(nightsRaw, 21) : undefined;
   return {
     theme: asTrimmedString(a.theme),
     country: asTrimmedString(a.country),
+    nights,
     budgetPln: budgetPln !== undefined && budgetPln > 0 ? budgetPln : undefined,
     budgetKind: a.budgetKind === "per_person" || a.budgetKind === "total_two" ? a.budgetKind : undefined,
     month: month !== undefined && month >= 1 && month <= 12 ? month : undefined,
@@ -679,6 +687,7 @@ export function createToolExecutors(deps: ToolDeps) {
           snapshot,
           { budgetPln: perPersonCap, budgetKind: "per_person" },
           now(),
+          { nights: parsed.nights },
         ).slice(0, MAX_TRIP_CANDIDATES)
       : [];
 
@@ -691,13 +700,14 @@ export function createToolExecutors(deps: ToolDeps) {
         cityPl: c.cityPl,
         perPersonPln: c.perPersonPln,
         zapasPln: noBudget ? null : perPersonCap - c.perPersonPln,
+        nights: c.nights,
         checkin: c.checkin,
         checkout: c.checkout,
       }));
       return {
         candidates,
         note:
-          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę dla dat checkin–checkout (najbliższy dostępny termin). Cytuj ją jako „od X zł/os.”, a zapas/os. bierz z GOTOWEGO pola zapasPln — nie licz go sam. Nie rozbijaj na lot/hotel i nie sumuj — dokładną, aktualną cenę (także na inny miesiąc) zwraca get_trip_offer." +
+          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę za `nights` nocy w oknie checkin–checkout. To NIE MUSI być miesiąc, o który pytał użytkownik — orientacyjne ceny mamy tylko na wygrzane terminy. Jeśli checkin wypada w INNYM miesiącu niż prosił, powiedz to wprost jednym zdaniem („orientacyjnie, dla terminu X”) i dodaj, że dokładną cenę na JEGO termin pokazuje karta oferty. Cytuj kwotę jako „od X zł/os. za N nocy”, a zapas/os. bierz z GOTOWEGO pola zapasPln — nie licz go sam. Nie rozbijaj na lot/hotel i nie sumuj." +
           (noBudget
             ? " Użytkownik NIE podał budżetu: kandydaci są posortowani od najtańszego. Przy prezentacji karty zapytaj krótko o budżet, żeby policzyć zapas."
             : ""),
@@ -714,6 +724,7 @@ export function createToolExecutors(deps: ToolDeps) {
         cityPl: c.cityPl,
         perPersonPln: null,
         zapasPln: null,
+        nights: null,
         checkin: null,
         checkout: null,
       }));
