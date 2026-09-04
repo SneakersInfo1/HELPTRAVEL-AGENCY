@@ -77,3 +77,19 @@ test("SYSTEM_PROMPT: guardraile uczciwości (batch 1) — brak zmyślonego progu
   //  użytkownika SĄ honorowane, więc disclaimer byłby nieuczciwy.)
   assert.equal(SYSTEM_PROMPT.includes("AKTUALNEJ pogodzie"), true);
 });
+
+test("SYSTEM_PROMPT: pytanie o serwis to NIE jest zapytanie o wyjazd", () => {
+  // Zmierzone na baterii (2026-09-04): „Jak zarezerwować?" oblewało 6 z 9
+  // modeli, a model produkcyjny zamiast odpowiedzieć zaczynał zbierać
+  // kierunek, termin i budżet — sekcja PRZEPŁYW („karta od razu") wygrywała
+  // z faktami z PROCES ZAKUPU. Gałąź musi zostać w prompcie.
+  assert.equal(SYSTEM_PROMPT.includes("PYTANIE O SERWIS"), true);
+  assert.equal(SYSTEM_PROMPT.includes("NIE zbieraj wtedy kierunku"), true);
+});
+
+test("SYSTEM_PROMPT: miesiąc NIE jest warunkiem wyszukania", () => {
+  // Musi zgadzać się z budget.ts (missingFields nie wymaga month) — inaczej
+  // prompt każe pytać o coś, czego kod nie potrzebuje.
+  assert.equal(SYSTEM_PROMPT.includes("NIE blokują szukania"), true);
+  assert.equal(SYSTEM_PROMPT.includes("Do wyszukania wystarczy motyw"), true);
+});

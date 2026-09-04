@@ -108,19 +108,30 @@ export function makeBenchChat(
 
     let httpStatus = 0;
     try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + opts.apiKey,
-          "HTTP-Referer": "https://helptravel.pl",
-          "X-Title": "HelpTravel bench",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      httpStatus = res.status;
-      const json = (await res.json()) as Record<string, unknown>;
+      // PONOWIENIA na błędy PRZEJŚCIOWE (429 / 5xx). Bez tego jeden skok
+      // limitu u dostawcy wywracał CAŁY przebieg modelu: w pierwszym pełnym
+      // uruchomieniu trzy modele wyszły ze 113/113 błędów, kosztem $0,00 i
+      // czasem ~300 ms — czyli żądania nigdy nie doszły do modelu, a wynik
+      // wyglądał jak katastrofalna jakość. To był błąd POMIARU, nie modeli.
+      let res: Response | null = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + opts.apiKey,
+            "HTTP-Referer": "https://helptravel.pl",
+            "X-Title": "HelpTravel bench",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+        if (res.status !== 429 && res.status < 500) break;
+        const waitMs = 1500 * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+      httpStatus = res!.status;
+      const json = (await res!.json()) as Record<string, unknown>;
       const usage = (json.usage ?? {}) as {
         prompt_tokens?: number;
         completion_tokens?: number;

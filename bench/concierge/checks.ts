@@ -48,11 +48,33 @@ export function collectToolNumbers(toolResults: unknown[]): Set<number> {
   return seen;
 }
 
-/** Zdania — na potrzeby limitu długości (§26). */
+/**
+ * Zdania — na potrzeby limitu dlugosci (§26).
+ *
+ * Naiwne ciecie po kropce ZAWYZA wynik w polszczyznie: „np.", „ok.", „m.in."
+ * i „zl/os." zawieraja kropke, a system prompt WPROST kaze botowi ich uzywac
+ * („napisz np.: 2 osoby, wrzesien"). W pierwszym pelnym przebiegu baterii
+ * „too_long" bylo przez to najliczniejszym naruszeniem — czyli mierzylismy
+ * wlasny regex, nie gadatliwosc modelu.
+ *
+ * Zasada: granica zdania to znak konca + spacja + WIELKA litera (albo koniec
+ * tekstu). Po skrocie stoi cyfra albo mala litera, wiec nie jest liczony.
+ */
+// Maskujemy TYLKO skroty wielokropkowe, ktore praktycznie nigdy nie koncza
+// zdania. Reszte („np.", „ok.", „zl/os.") zalatwia regula wielkiej litery —
+// i musi zalatwiac, bo „zl/os." BYWA koncem zdania („...1200 zl/os. Termin
+// latwo zmienic"), wiec zamaskowanie go gubiloby prawdziwa granice.
+const ABBREVIATIONS = ["m.in.", "tzn.", "tj.", "ds.", "ww."];
+
 export function countSentences(text: string): number {
-  const t = text.trim();
+  let t = text.trim();
   if (!t) return 0;
-  return t.split(/[.!?…]+(?:\s|$)/u).filter((s) => s.trim().length > 1).length;
+  // Skroty maskujemy, zeby ich kropka nie mogla utworzyc granicy.
+  for (const abbr of ABBREVIATIONS) {
+    t = t.split(abbr).join(abbr.replace(/[.]/g, ""));
+  }
+  const parts = t.split(/[.!?…]+(?=\s+[\p{Lu}]|\s*$)/u);
+  return parts.filter((s) => s.replace(//g, ".").trim().length > 1).length;
 }
 
 export function countQuestions(text: string): number {

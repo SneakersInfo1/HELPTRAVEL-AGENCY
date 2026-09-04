@@ -172,3 +172,19 @@ test("kwota TWIERDZĄCA o ofercie nadal jest łapana", () => {
   assert.equal(fails.length, 1);
   assert.equal(fails[0].code, "invented_price");
 });
+
+test("countSentences: polskie skróty NIE kończą zdania", () => {
+  // Realny blad pomiaru: „np." i „zl/os." zawieraja kropke, a system prompt
+  // WPROST kaze botowi ich uzywac. Kazde wystapienie dokladalo zdanie-widmo,
+  // przez co „too_long" bylo najliczniejszym naruszeniem w calej baterii.
+  assert.equal(countSentences("Podaj budżet, np. 3000 zł na osobę."), 1);
+  assert.equal(countSentences("Walencja: 1713 zł/os. za 7 nocy, lot bezpośredni."), 1);
+  assert.equal(countSentences("Cena to ok. 1200 zł/os. Termin łatwo zmienić."), 2);
+  assert.equal(countSentences("Polecam m.in. Kretę i Rodos."), 1);
+});
+
+test("countSentences: prawdziwe granice zdań nadal liczone", () => {
+  assert.equal(countSentences("Mam ofertę. Chcesz zobaczyć?"), 2);
+  assert.equal(countSentences("Jedno. Drugie! Trzecie?"), 3);
+  assert.equal(countSentences("Sprawdzę to dla Ciebie."), 1);
+});

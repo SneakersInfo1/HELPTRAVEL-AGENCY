@@ -75,6 +75,15 @@ export interface CaseResult {
   cachedTokens: number;
   chatCalls: number;
   costUsd: number;
+  /** Statusy HTTP i tresci bledow — bez nich nie da sie odroznic slabego
+   *  modelu od zerwanego polaczenia (pierwszy pelny przebieg: 3 modele po
+   *  113/113 „bledow", w rzeczywistosci 429/5xx). */
+  httpStatuses: number[];
+  transportErrors: string[];
+  /** Wszystko, co model DOSTAL z narzedzi w tej rozmowie. Trzymane, zeby dalo
+   *  sie przeliczyc sprawdzenia po poprawce w checks.ts BEZ ponownego
+   *  (platnego) odpytywania modeli. */
+  toolResults: unknown[];
 }
 
 const TOOL_NAMES: ToolName[] = ["search_trips", "get_trip_offer", "list_themes"];
@@ -198,6 +207,11 @@ async function runCase(
     cachedTokens: chatRecords.reduce((a, c) => a + c.cachedTokens, 0),
     chatCalls: chatRecords.length,
     costUsd: costUsd(model, chatRecords),
+    toolResults,
+    httpStatuses: [...new Set(chatRecords.map((c) => c.httpStatus))],
+    transportErrors: [
+      ...new Set(chatRecords.map((c) => c.errorText).filter((e): e is string => !!e)),
+    ].slice(0, 3),
   };
 }
 
@@ -321,6 +335,10 @@ async function main(): Promise<number> {
       promptTokens: results.reduce((a, r) => a + r.promptTokens, 0),
       completionTokens: results.reduce((a, r) => a + r.completionTokens, 0),
       cachedTokens: results.reduce((a, r) => a + r.cachedTokens, 0),
+      httpStatusCounts: results
+        .flatMap((r) => r.httpStatuses)
+        .reduce<Record<string, number>>((a, c) => ((a[c] = (a[c] ?? 0) + 1), a), {}),
+      sampleTransportErrors: [...new Set(results.flatMap((r) => r.transportErrors))].slice(0, 3),
       wallClockMs: Date.now() - started,
       fixtureStats: { ...fixtureStats },
     };
