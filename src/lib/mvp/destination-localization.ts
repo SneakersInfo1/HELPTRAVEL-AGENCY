@@ -10,8 +10,8 @@ const monthLabels = {
 
 const categoryTitleMap: Record<string, { pl: string; en: string }> = {
   "city-breaki": { pl: "City breaki", en: "City breaks" },
-  "ciepłe-kierunki": { pl: "Ciepłe kierunki", en: "Warm escapes" },
-  "tanie-podróże": { pl: "Tanie podróże", en: "Budget travel" },
+  "cieple-kierunki": { pl: "Ciepłe kierunki", en: "Warm escapes" },
+  "tanie-podroze": { pl: "Tanie podróże", en: "Budget travel" },
   "weekendowe-wyjazdy": { pl: "Weekendowe wyjazdy", en: "Weekend trips" },
   "bez-wizy": { pl: "Bez wizy", en: "Visa-free" },
   przewodniki: { pl: "Przewodniki", en: "Guides" },
