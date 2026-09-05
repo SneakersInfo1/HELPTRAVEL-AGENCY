@@ -126,6 +126,10 @@ interface UsageTotals {
   retries: number;
   /** Ile wywołań narzędzi wykonano w tej turze (koszt i czas ogona). */
   toolCalls: number;
+  /** Czas spędzony W MODELU (suma wywołań OpenRoutera), ms. */
+  modelMs: number;
+  /** Czas spędzony W NARZĘDZIACH (LiteAPI + snapshot), ms. */
+  toolMs: number;
 }
 
 function addUsage(totals: UsageTotals, payload: unknown): void {
@@ -175,6 +179,12 @@ function logTurn(usage: UsageTotals, elapsedMs: number, outcome: string): void {
     elapsedMs,
     chatCalls: usage.chatCalls,
     toolCalls: usage.toolCalls,
+    // Rozbicie czasu na model vs narzędzia. Bez niego nie da się odpowiedzieć
+    // na pytanie „czy streaming cokolwiek da": strumieniowanie skraca
+    // oczekiwanie tylko na części MODELOWEJ, a jeśli dominują narzędzia,
+    // to jest niewłaściwa dźwignia.
+    modelMs: usage.modelMs,
+    toolMs: usage.toolMs,
     retries: usage.retries,
     promptTokens: usage.promptTokens,
     completionTokens: usage.completionTokens,
@@ -211,14 +221,18 @@ async function chatWithRetry(
   args: { messages: Record<string, unknown>[]; tools: Record<string, unknown>[]; timeoutMs?: number },
   usage: UsageTotals,
 ): Promise<unknown> {
+  const t0 = Date.now();
   let response = await deps.chat(args);
+  usage.modelMs += Date.now() - t0;
   usage.chatCalls += 1;
   addUsage(usage, response);
   noteModel(usage, response);
   if (isMalformedResponse(response) && !isHardApiError(response)) {
     console.warn("[concierge] zdeformowana odpowiedź modelu — jedna ponowna próba");
     usage.retries += 1;
+    const t1 = Date.now();
     response = await deps.chat(args);
+    usage.modelMs += Date.now() - t1;
     usage.chatCalls += 1;
     addUsage(usage, response);
     noteModel(usage, response);
@@ -414,6 +428,8 @@ export async function runConcierge(
     provider: null,
     retries: 0,
     toolCalls: 0,
+    modelMs: 0,
+    toolMs: 0,
   };
 
   const nowFn = deps.now ?? Date.now;
@@ -463,7 +479,9 @@ export async function runConcierge(
           continue;
         }
         usage.toolCalls += 1;
+        const tTool = Date.now();
         const { result, offer: callOffer } = await dispatchToolCall(call, deps.executors);
+        usage.toolMs += Date.now() - tTool;
         if (callOffer) offer = callOffer;
         messages.push({
           role: "tool",
