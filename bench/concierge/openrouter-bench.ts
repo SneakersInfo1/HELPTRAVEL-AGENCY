@@ -114,22 +114,37 @@ export function makeBenchChat(
       // czasem ~300 ms — czyli żądania nigdy nie doszły do modelu, a wynik
       // wyglądał jak katastrofalna jakość. To był błąd POMIARU, nie modeli.
       let res: Response | null = null;
+      let lastNetworkErr: unknown = null;
       for (let attempt = 0; attempt < 4; attempt++) {
-        res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: "Bearer " + opts.apiKey,
-            "HTTP-Referer": "https://helptravel.pl",
-            "X-Title": "HelpTravel bench",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        if (res.status !== 429 && res.status < 500) break;
+        try {
+          res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + opts.apiKey,
+              "HTTP-Referer": "https://helptravel.pl",
+              "X-Title": "HelpTravel bench",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          });
+          lastNetworkErr = null;
+          if (res.status !== 429 && res.status < 500) break;
+        } catch (err) {
+          // ZERWANE POŁĄCZENIE też jest przejściowe. Wcześniej ten wyjątek szedł
+          // prosto do catch na zewnątrz pętli i BEZ ponowienia — w efekcie
+          // gemini-3.1-flash-lite wyszedł ze 113/113 „błędów" przy statusie
+          // HTTP 0 i koszcie $0,00 („fetch failed"), co wyglądało jak zerowa
+          // jakość modelu, a było zerwaną siecią. Przerwania przez nasz własny
+          // timeout (AbortError) NIE ponawiamy — to świadoma decyzja o budżecie.
+          if (controller.signal.aborted) throw err;
+          lastNetworkErr = err;
+          res = null;
+        }
         const waitMs = 1500 * Math.pow(2, attempt);
         await new Promise((r) => setTimeout(r, waitMs));
       }
+      if (!res) throw lastNetworkErr ?? new Error("brak odpowiedzi po ponowieniach");
       httpStatus = res!.status;
       const json = (await res!.json()) as Record<string, unknown>;
       const usage = (json.usage ?? {}) as {
