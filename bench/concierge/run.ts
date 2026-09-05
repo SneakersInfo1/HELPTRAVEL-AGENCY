@@ -15,6 +15,7 @@ import { join } from "node:path";
 
 import { runConcierge, type OrchestratorDeps } from "../../src/lib/concierge/orchestrator";
 import { createToolExecutors } from "../../src/lib/concierge/tools";
+import { EVAL_CASES } from "./cases";
 import { SEED_CASES } from "./cases-seed";
 import { extractAmounts, runChecks, type CheckFailure } from "./checks";
 import { buildFixtureToolDeps, fixtureStats, resetFixtureStats } from "./fixture-deps";
@@ -258,22 +259,14 @@ function percentile(values: number[], p: number): number {
   return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))];
 }
 
-/** Pełny dataset (cases.ts) dokładany dynamicznie — zalążek działa i bez niego. */
+/** Pelny dataset + zalazek. Kolejnosc stala, wiec probka warstwowa jest
+ *  powtarzalna miedzy przebiegami i modelami. */
 function allCases(): EvalCase[] {
-  try {
-
-    const mod = require("./cases") as { EVAL_CASES?: EvalCase[] };
-    if (Array.isArray(mod.EVAL_CASES) && mod.EVAL_CASES.length > 0) {
-      return [...mod.EVAL_CASES, ...SEED_CASES];
-    }
-  } catch {
-    // brak cases.ts → lecimy na zalążku
-  }
-  return SEED_CASES;
+  return [...EVAL_CASES, ...SEED_CASES];
 }
 
 /**
- * Probka WARSTWOWA — bierze z kazdej kategorii udzial proporcjonalny do jej
+ * Probka WARSTWOWA — z kazdej kategorii udzial proporcjonalny do jej
  * wielkosci, ale NIGDY mniej niz 1. Zwykle `slice(0, N)` wzieloby same
  * pierwsze litery alfabetu kategorii (A=discovery, B=budget...) i caly
  * screening przeszedlby obok halucynacji, wsparcia i rozmow wielaturowych.

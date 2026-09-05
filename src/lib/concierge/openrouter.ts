@@ -13,14 +13,31 @@ export const MAX_INPUT_CHARS = 1500;
 export const MAX_TOKENS = 700;
 
 /**
- * Model wbudowany (zatwierdzony w planie). Env OPENROUTER_MODEL może go
- * nadpisać, ALE: nieaktualny slug w env dwukrotnie położył czat (lokalnie
- * i na Vercelu — `gemma-3-27b-it:free` z maja przestał istnieć). Dlatego na
- * błąd „model niedostępny" robimy JEDNĄ ponowną próbę na modelu domyślnym
- * i głośno logujemy — zła konfiguracja degraduje się do działania, nie do
- * martwego czatu.
+ * Model podstawowy. Env OPENROUTER_MODEL go nadpisuje, ALE: nieaktualny slug
+ * w env dwukrotnie polozyl czat (lokalnie i na Vercelu — `gemma-3-27b-it:free`
+ * z maja przestal istniec). Dlatego na blad „model niedostepny" robimy JEDNA
+ * ponowna probe na modelu domyslnym i glosno logujemy — zla konfiguracja
+ * degraduje sie do dzialania, nie do martwego czatu.
+ *
+ * WYBRANY POMIAREM (bateria 113 przypadkow, 2026-09-05 — docs/concierge-v2):
+ * poprzedni domyslny `gemini-2.5-flash-lite` przechodzil 57% sprawdzen
+ * deterministycznych, mial 17 przypadkow BEZ siegniecia po dane i pokazal
+ * karte oferty w 57/113 rozmow. `gemini-3.1-flash-lite`: 81%, ZERO braku
+ * narzedzia, 80/113 kart, zero twardych bledow i najnizszy odsetek zmyslonych
+ * kwot (8,8% vs 12,4%). W slepym sedziowaniu parami stary model przegrywal
+ * 26:72. Roznica kosztu przy naszym ruchu to okolo 50 gr/miesiac.
  */
-export const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
+export const DEFAULT_MODEL = "google/gemini-3.1-flash-lite";
+
+/**
+ * Model ZAPASOWY (uruchamiany tylko na awarie — patrz chatCompletion).
+ * `gpt-5.6-luna` celowo od INNEGO dostawcy niz podstawowy: awaria Google nie
+ * moze zabrac obu naraz. Jakosciowo to nr 1 w slepym sedziowaniu (79% wygranych,
+ * najlepsza polszczyzna), wiec zejscie na zapas nie jest degradacja tresci —
+ * placi sie za nie tylko wolniejszym p95 (10,0 s vs 6,1 s), co przy awarii
+ * jest w pelni akceptowalne. Env OPENROUTER_FALLBACK_MODEL nadpisuje.
+ */
+export const DEFAULT_FALLBACK_MODEL = "openai/gpt-5.6-luna";
 
 // Kontrakt czatu to POJEDYNCZY JSON (route → orkiestrator) — martwa obsługa
 // stream/ReadableStream usunięta w audycie czystości 2026-07-11 (nikt jej nie
@@ -130,7 +147,7 @@ export async function chatCompletion(args: ChatCompletionArgs): Promise<unknown>
   // tool_calls) → JEDNA próba na modelu zapasowym z env. Świadomie WEWNĄTRZ
   // chatCompletion: narzędzia wykonuje orkiestrator dopiero po powrocie, więc
   // zmiana modelu nie może wykonać żadnego tool-calla drugi raz.
-  const fallback = process.env.OPENROUTER_FALLBACK_MODEL?.trim();
+  const fallback = process.env.OPENROUTER_FALLBACK_MODEL?.trim() || DEFAULT_FALLBACK_MODEL;
   if (fallback && fallback !== model && isTransientModelFailure(result)) {
     console.warn(
       `[concierge] model ${model} nie zwrócił użytecznej odpowiedzi — jedna próba na zapasowym ${fallback}`,

@@ -51,17 +51,24 @@ test("openrouter: zły slug modelu z env → fallback na model domyślny (jedna 
   }
 });
 
-test("openrouter: model domyślny zwraca błąd 404 → BEZ ponowki (nie pętlimy)", async () => {
+test("openrouter: awaria modelu domyślnego → DOKŁADNIE jedna próba zapasowa (nie pętlimy)", async () => {
+  // Kontrakt zmieniony 2026-09-05 wraz z wprowadzeniem DEFAULT_FALLBACK_MODEL:
+  // wcześniej awaria modelu domyślnego wracała bez żadnej próby. Teraz jest
+  // wbudowany zapas, ale MUSI zostać przy jednej próbie — pętla ponowień na
+  // martwym kluczu czy braku środków spaliłaby budżet tury i limit route'a.
   const prevKey = process.env.OPENROUTER_API_KEY;
   const prevModel = process.env.OPENROUTER_MODEL;
+  const prevFb = process.env.OPENROUTER_FALLBACK_MODEL;
   const prevFetch = globalThis.fetch;
   process.env.OPENROUTER_API_KEY = "sk-or-test";
-  delete process.env.OPENROUTER_MODEL; // brak env → od razu model domyślny
+  delete process.env.OPENROUTER_MODEL;
+  delete process.env.OPENROUTER_FALLBACK_MODEL;
 
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
     return {
+      status: 200,
       body: null,
       json: async () => ({ error: { message: "model not found", code: 404 } }),
     } as unknown as Response;
@@ -70,13 +77,14 @@ test("openrouter: model domyślny zwraca błąd 404 → BEZ ponowki (nie pętlim
   try {
     const { chatCompletion } = await import("./openrouter");
     const result = (await chatCompletion({ messages: [], tools: [] })) as { error?: unknown };
-    assert.equal(calls, 1);
-    assert.ok(result.error); // błąd wraca do orkiestratora (łagodna ścieżka błędu)
+    assert.equal(calls, 2, "podstawowy + JEDEN zapas, nigdy więcej");
+    assert.ok(result.error); // błąd i tak wraca do orkiestratora (łagodna ścieżka)
   } finally {
     globalThis.fetch = prevFetch;
     if (prevKey) process.env.OPENROUTER_API_KEY = prevKey;
     else delete process.env.OPENROUTER_API_KEY;
     if (prevModel) process.env.OPENROUTER_MODEL = prevModel;
+    if (prevFb) process.env.OPENROUTER_FALLBACK_MODEL = prevFb;
   }
 });
 
@@ -158,33 +166,43 @@ test("openrouter: POPRAWNA odpowiedź NIE uruchamia modelu zapasowego", async ()
   }
 });
 
-test("openrouter: bez OPENROUTER_FALLBACK_MODEL awaria wraca do orkiestratora (bez drugiej próby)", async () => {
+test("openrouter: bez env zapas bierze się z DEFAULT_FALLBACK_MODEL (i jest INNY niż podstawowy)", async () => {
+  // Zapas ma działać „z pudełka", bez konfiguracji — bo awaria, przed którą
+  // chroni (MALFORMED_FUNCTION_CALL), zdarzała się na produkcji przy pustym env.
   const prevKey = process.env.OPENROUTER_API_KEY;
   const prevModel = process.env.OPENROUTER_MODEL;
   const prevFb = process.env.OPENROUTER_FALLBACK_MODEL;
   const prevFetch = globalThis.fetch;
   process.env.OPENROUTER_API_KEY = "sk-or-test";
-  process.env.OPENROUTER_MODEL = "primary/model";
+  delete process.env.OPENROUTER_MODEL;
   delete process.env.OPENROUTER_FALLBACK_MODEL;
 
-  let calls = 0;
-  globalThis.fetch = (async () => {
-    calls++;
-    return {
-      status: 200,
-      body: null,
-      json: async () => ({ choices: [{ finish_reason: "error", message: {} }] }),
-    } as unknown as Response;
+  const bodies: Array<Record<string, unknown>> = [];
+  globalThis.fetch = (async (_url: unknown, init?: { body?: string }) => {
+    bodies.push(JSON.parse(init?.body ?? "{}") as Record<string, unknown>);
+    const payload =
+      bodies.length === 1
+        ? { choices: [{ finish_reason: "error", message: {} }] }
+        : { choices: [{ message: { role: "assistant", content: "z zapasu" } }] };
+    return { status: 200, body: null, json: async () => payload } as unknown as Response;
   }) as typeof fetch;
 
   try {
-    const { chatCompletion } = await import("./openrouter");
+    const { chatCompletion, DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL } = await import("./openrouter");
     await chatCompletion({ messages: [], tools: [] });
-    assert.equal(calls, 1);
+    assert.equal(bodies.length, 2);
+    assert.equal(bodies[0].model, DEFAULT_MODEL);
+    assert.equal(bodies[1].model, DEFAULT_FALLBACK_MODEL);
+    assert.notEqual(
+      DEFAULT_FALLBACK_MODEL,
+      DEFAULT_MODEL,
+      "zapas u TEGO SAMEGO dostawcy nie chroni przed jego awaria",
+    );
   } finally {
     globalThis.fetch = prevFetch;
-    if (prevKey) process.env.OPENROUTER_API_KEY = prevKey; else delete process.env.OPENROUTER_API_KEY;
-    if (prevModel) process.env.OPENROUTER_MODEL = prevModel; else delete process.env.OPENROUTER_MODEL;
-    if (prevFb) process.env.OPENROUTER_FALLBACK_MODEL = prevFb; else delete process.env.OPENROUTER_FALLBACK_MODEL;
+    if (prevKey) process.env.OPENROUTER_API_KEY = prevKey;
+    else delete process.env.OPENROUTER_API_KEY;
+    if (prevModel) process.env.OPENROUTER_MODEL = prevModel;
+    if (prevFb) process.env.OPENROUTER_FALLBACK_MODEL = prevFb;
   }
 });
