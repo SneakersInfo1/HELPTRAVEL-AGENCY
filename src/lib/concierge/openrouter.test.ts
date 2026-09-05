@@ -206,3 +206,100 @@ test("openrouter: bez env zapas bierze się z DEFAULT_FALLBACK_MODEL (i jest INN
     if (prevFb) process.env.OPENROUTER_FALLBACK_MODEL = prevFb;
   }
 });
+
+// ── Idempotencja narzędzi przy zejściu na model zapasowy ──────────────────
+// Gwarancja, o którą pyta audyt (§15): zmiana modelu NIE MOŻE wykonać
+// tool-calla drugi raz. Ta własność jest ARCHITEKTONICZNA, nie przypadkowa:
+// zapas siedzi WEWNĄTRZ chatCompletion, a egzekutory woła dopiero orkiestrator
+// po powrocie z jednego `deps.chat`. Test przypina to na stałe.
+test("zapas modelu NIE powtarza wywołania narzędzia (idempotencja)", async () => {
+  const prevKey = process.env.OPENROUTER_API_KEY;
+  const prevModel = process.env.OPENROUTER_MODEL;
+  const prevFb = process.env.OPENROUTER_FALLBACK_MODEL;
+  const prevFetch = globalThis.fetch;
+  process.env.OPENROUTER_API_KEY = "sk-or-test";
+  process.env.OPENROUTER_MODEL = "primary/model";
+  process.env.OPENROUTER_FALLBACK_MODEL = "zapas/model";
+
+  let httpCalls = 0;
+  let fallbackCalls = 0;
+  globalThis.fetch = (async (_u: unknown, init?: { body?: string }) => {
+    httpCalls++;
+    const body = JSON.parse(init?.body ?? "{}") as { model?: string };
+    // Podstawowy pada (brak treści i brak tool_calls) -> chatCompletion schodzi
+    // na zapas. Zapas prosi o narzędzie RAZ, a po jego wyniku odpowiada tekstem
+    // (bez tego orkiestrator kręciłby kolejne rundy i policzyłby narzędzie
+    // wielokrotnie — co byłoby jego normalnym zachowaniem, nie duplikacją).
+    if (body.model === "primary/model") {
+      return { status: 200, body: null, json: async () => ({ choices: [{ finish_reason: "error", message: {} }] }) } as unknown as Response;
+    }
+    fallbackCalls++;
+    const payload =
+      fallbackCalls === 1
+        ? {
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  tool_calls: [
+                    { id: "c1", type: "function", function: { name: "list_themes", arguments: "{}" } },
+                  ],
+                },
+              },
+            ],
+          }
+        : { choices: [{ message: { role: "assistant", content: "Motywy: plaża, city break." } }] };
+    return { status: 200, body: null, json: async () => payload } as unknown as Response;
+  }) as typeof fetch;
+
+  try {
+    const { chatCompletion } = await import("./openrouter");
+    const { runConcierge } = await import("./orchestrator");
+
+    let listThemesCalls = 0;
+    const deps = {
+      chat: chatCompletion,
+      executors: {
+        executeSearchTrips: async () => ({ candidates: [] }),
+        executeGetTripOffer: async () => {
+          throw new Error("nieużywane");
+        },
+        executeListThemes: () => {
+          listThemesCalls++;
+          return { themes: [] };
+        },
+      },
+    };
+    await runConcierge([{ role: "user", content: "jakie motywy?" }], deps as never);
+
+    assert.equal(httpCalls >= 2, true, "zapas w ogóle się nie odpalił");
+    assert.equal(listThemesCalls, 1, "narzędzie wykonane WIĘCEJ NIŻ RAZ mimo zejścia na zapas");
+  } finally {
+    globalThis.fetch = prevFetch;
+    if (prevKey) process.env.OPENROUTER_API_KEY = prevKey; else delete process.env.OPENROUTER_API_KEY;
+    if (prevModel) process.env.OPENROUTER_MODEL = prevModel; else delete process.env.OPENROUTER_MODEL;
+    if (prevFb) process.env.OPENROUTER_FALLBACK_MODEL = prevFb; else delete process.env.OPENROUTER_FALLBACK_MODEL;
+  }
+});
+
+test("wyjatek transportu (5xx/timeout) NIE uruchamia zapasu — wraca lagodny blad", async () => {
+  // Uczciwe ograniczenie: zapas lapie odpowiedzi ZDEFORMOWANE i bledy w JSON-ie
+  // (429, 402, „model unavailable"), ale NIE rzucony wyjatek sieciowy — ten
+  // leci wyzej i konczy sie komunikatem „Chwilowo nie moge odpowiedziec".
+  const prevKey = process.env.OPENROUTER_API_KEY;
+  const prevFetch = globalThis.fetch;
+  process.env.OPENROUTER_API_KEY = "sk-or-test";
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    throw new Error("fetch failed");
+  }) as typeof fetch;
+  try {
+    const { chatCompletion } = await import("./openrouter");
+    await assert.rejects(() => chatCompletion({ messages: [], tools: [] }), /fetch failed/);
+    assert.equal(calls, 1, "wyjatek sieciowy nie powinien wywolywac zapasu");
+  } finally {
+    globalThis.fetch = prevFetch;
+    if (prevKey) process.env.OPENROUTER_API_KEY = prevKey; else delete process.env.OPENROUTER_API_KEY;
+  }
+});

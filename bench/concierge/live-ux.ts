@@ -16,9 +16,6 @@ import { join } from "node:path";
 const STRONA = "/cieple-kierunki";
 const MOBILE = { width: 390, height: 844 };
 
-/** Kategoria obciążenia — rozbicie wyników wymagane przez zamówienie. */
-type Load = "NO_TOOL" | "ONE_TOOL" | "MULTI_TOOL";
-
 interface Query {
   id: string;
   /** Kolejne wiadomości; >1 = rozmowa (follow-up mierzymy na OSTATNIEJ turze). */
