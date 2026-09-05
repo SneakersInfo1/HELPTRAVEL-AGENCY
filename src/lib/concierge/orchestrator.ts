@@ -49,11 +49,26 @@ const FALLBACK_ERROR_TEXT = "Chwilowo nie mogę odpowiedzieć — spróbuj za mo
  * mechanicznie: ** __ pogrubienia, nagłówki #, punktory "* " → "- ".
  */
 function stripMarkdownArtifacts(text: string): string {
-  return text
-    .replace(/\*\*([^*]*)\*\*/g, "$1")
-    .replace(/__([^_]*)__/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^\s*\*\s+/gm, "- ");
+  return (
+    text
+      .replace(/\*\*([^*]*)\*\*/g, "$1")
+      .replace(/__([^_]*)__/g, "$1")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/^\s*\*\s+/gm, "- ")
+      // LINKI: model nie ma prawa ich podawać — prawdziwe niesie karta oferty,
+      // budowana serwerowo. Zaobserwowane w baterii: „Zobacz hotel:
+      // /hotele/split-art-hotel?checkin=…" z WYMYŚLONYM identyfikatorem hotelu.
+      // UI renderuje czysty tekst, więc nic się nie klika i nie ma XSS-a, ale
+      // obok prawdziwej karty zostawał mylący śmieć. Etykietę („Zobacz hotel:")
+      // zdejmujemy razem z adresem, żeby nie zostały sieroty.
+      .replace(/(?:zobacz(?:\s+(?:hotel|lot))?\s*:\s*)?https?:\/\/[^\s)\]]+/gi, "")
+      .replace(/(?:zobacz(?:\s+(?:hotel|lot))?\s*:\s*)?\/(?:hotele|loty)\/[^\s)\]]*/gi, "")
+      // Po wycięciu adresu zostają podwójne spacje i osierocone separatory.
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\s+([.,;:!?])/g, "$1")
+      .replace(/(^|\n)[ \t]*[-–]\s*(?=\n|$)/g, "$1")
+      .trim()
+  );
 }
 
 /** Maks. liczba tool_calls obsłużonych w jednej rundzie — reszta ignorowana. */

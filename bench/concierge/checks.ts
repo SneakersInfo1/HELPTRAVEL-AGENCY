@@ -120,6 +120,8 @@ function isHypotheticalContext(sentence: string): boolean {
 export interface CheckContext {
   finalText: string;
   toolsCalled: ToolName[];
+  /** Narzedzia OSTATNIEJ tury — `mustNotCallTool` sprawdza wlasnie je. */
+  toolsCalledLastTurn?: ToolName[];
   toolResults: unknown[];
   offerShown: boolean;
   hadError: boolean;
@@ -161,8 +163,12 @@ export function runChecks(expect: DeterministicExpectations, ctx: CheckContext):
       fails.push({ code: "missing_tool", detail: t + " nie zostało wywołane" });
     }
   }
+  // Zakaz dotyczy OSTATNIEJ tury: w rozmowie wieloturowej wczesniejsze tury
+  // maja pelne prawo wolac search_trips, a zakaz opisuje reakcje na ostatnia
+  // wiadomosc („pokaz mi te oferte z Krety" -> get_trip_offer, nie szukanie).
+  const zakazane = ctx.toolsCalledLastTurn ?? ctx.toolsCalled;
   for (const t of expect.mustNotCallTool ?? []) {
-    if (ctx.toolsCalled.includes(t)) {
+    if (zakazane.includes(t)) {
       fails.push({ code: "forbidden_tool", detail: t + " nie powinno być wywołane" });
     }
   }

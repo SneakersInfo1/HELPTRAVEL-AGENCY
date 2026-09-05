@@ -878,3 +878,40 @@ test("runConcierge: niski budżet → narzędzie POMINIĘTE (z odpowiedzią tool
   assert.equal(calls[1].timeoutMs, 7_000);
   assert.equal(calls[0].timeoutMs, 30_000); // pełny budżet = pełny timeout
 });
+
+test("stripMarkdownArtifacts: model NIE MOŻE wypisywać własnych linków w tekście", async () => {
+  // Zaobserwowane w baterii: bot dopisywał do treści „Zobacz hotel:
+  // /hotele/split-art-hotel?checkin=..." — a taki identyfikator NIE ISTNIEJE,
+  // model go wymyślił. Prompt tego zabrania („nie musisz i nie możesz podawać
+  // linków"), ale zakaz w prompcie to za mało. UI renderuje czysty tekst, więc
+  // nic się nie klika i nie ma XSS-a — zostaje jednak mylący śmieć obok karty,
+  // która niesie PRAWDZIWE linki. Zdejmujemy go mechanicznie.
+  const deps = {
+    chat: async () => ({
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content:
+              "Mam ofertę na Kretę. Zobacz hotel: /hotele/split-art-hotel?checkin=2027-09-10&adults=2 albo wejdź na https://helptravel.pl/loty/wyniki?origin=WAW. Daj znać.",
+          },
+        },
+      ],
+    }),
+    executors: {
+      executeSearchTrips: async () => ({ candidates: [] }),
+      executeGetTripOffer: async () => {
+        throw new Error("nieużywane");
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  };
+  const out = await runConcierge([{ role: "user", content: "kreta" }], deps as never);
+  assert.equal(out.error, false);
+  assert.ok(!out.text.includes("/hotele/"), "sciezka /hotele/ zostala w tekscie");
+  assert.ok(!out.text.includes("/loty/"), "sciezka /loty/ zostala w tekscie");
+  assert.ok(!out.text.includes("https://"), "goly URL zostal w tekscie");
+  // Reszta zdania ma przetrwać — nie kasujemy treści, tylko link.
+  assert.ok(out.text.includes("Mam ofertę na Kretę"));
+  assert.ok(out.text.includes("Daj znać"));
+});

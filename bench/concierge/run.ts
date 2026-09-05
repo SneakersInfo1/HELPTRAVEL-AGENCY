@@ -71,6 +71,8 @@ export interface CaseResult {
   toolsCalledByModel: ToolName[];
   /** Wszystkie wywołania egzekutorów, w tym auto-oferta. */
   executorCalls: ToolName[];
+  /** Egzekutory wywołane w OSTATNIEJ turze (do mustNotCallTool). */
+  lastTurnTools: ToolName[];
   offerShown: boolean;
   hadError: boolean;
   failures: CheckFailure[];
@@ -168,11 +170,19 @@ async function runCase(
   const turnLatenciesMs: number[] = [];
   let offerShown = false;
   let hadError = false;
+  // Narzedzia OSTATNIEJ tury. `mustNotCallTool` dotyczy tego, co bot zrobil w
+  // odpowiedzi na OSTATNIA wiadomosc — w rozmowie „plaza we wrzesniu..." ->
+  // „...pokaz oferte z Krety" pierwsza tura ma PELNE prawo wolac search_trips.
+  // Sprawdzanie calej rozmowy oblewalo wszystkie przypadki wieloturowe u
+  // KAZDEGO modelu i wygladalo na wade modeli, a bylo wada pomiaru.
+  let lastTurnTools: ToolName[] = [];
 
   for (const userMsg of testCase.turns) {
     history.push({ role: "user", content: userMsg });
+    const before = executorCalls.length;
     const t0 = Date.now();
     const result = await runConcierge(history, { chat, executors });
+    lastTurnTools = executorCalls.slice(before);
     turnLatenciesMs.push(Date.now() - t0);
     replies.push(result.text);
     if (result.offer) offerShown = true;
@@ -187,7 +197,10 @@ async function runCase(
   const userStated = extractAmounts(testCase.turns.join(" "));
   const failures = runChecks(testCase.expect, {
     finalText,
+    // mustCallTool patrzy na CALA rozmowe (dane mogly przyjsc wczesniej),
+    // mustNotCallTool tylko na ostatnia ture (patrz komentarz przy lastTurnTools).
     toolsCalled: executorCalls,
+    toolsCalledLastTurn: lastTurnTools,
     toolResults: [...toolResults, { __userStated: userStated }],
     offerShown,
     hadError,
@@ -204,6 +217,7 @@ async function runCase(
     finalText,
     toolsCalledByModel,
     executorCalls,
+    lastTurnTools,
     offerShown,
     hadError,
     failures,
