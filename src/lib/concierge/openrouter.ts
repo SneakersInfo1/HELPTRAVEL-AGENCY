@@ -132,6 +132,35 @@ async function requestChatCompletion(
   }
 }
 
+/**
+ * Klasa bledu do logu — SAMA NAZWA, nigdy tresc. Komunikat wyjatku moglby
+ * teoretycznie niesc fragment zadania, a log jedzie do Vercela: logujemy
+ * wiec „TypeError", nie „fetch failed https://...".
+ */
+function errorClass(err: unknown): string {
+  if (err instanceof Error) return err.name || "Error";
+  return typeof err;
+}
+
+/**
+ * Awaria TRANSPORTU: wyjatek rzucony przez `requestChatCompletion`. Ta funkcja
+ * robi wylacznie fetch + parsowanie JSON-a, wiec KAZDY jej wyjatek to zerwane
+ * polaczenie, przekroczony czas albo odpowiedz, ktora nie jest JSON-em (np.
+ * strona 5xx dostawcy) — czyli dokladnie ta klasa awarii, na ktora zapas ma
+ * sens. Bledy deterministyczne (brak klucza) leca WCZESNIEJ i tu nie dochodza.
+ */
+async function tryRequest(
+  apiKey: string,
+  model: string,
+  args: ChatCompletionArgs,
+): Promise<{ ok: true; payload: unknown } | { ok: false; err: unknown }> {
+  try {
+    return { ok: true, payload: await requestChatCompletion(apiKey, model, args) };
+  } catch (err) {
+    return { ok: false, err };
+  }
+}
+
 export async function chatCompletion(args: ChatCompletionArgs): Promise<unknown> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -139,7 +168,31 @@ export async function chatCompletion(args: ChatCompletionArgs): Promise<unknown>
   }
 
   const model = process.env.OPENROUTER_MODEL?.trim() || DEFAULT_MODEL;
-  const result = await requestChatCompletion(apiKey, model, args);
+  const fallbackModel = process.env.OPENROUTER_FALLBACK_MODEL?.trim() || DEFAULT_FALLBACK_MODEL;
+
+  // Fallback 0 — TRANSPORT. Primary w ogóle nie odpowiedział (zerwane
+  // połączenie, przekroczony czas, strona 5xx zamiast JSON-a). Wcześniej taki
+  // wyjątek leciał wyżej i kończył się „Chwilowo nie mogę odpowiedzieć", mimo
+  // że drugi dostawca bywa zdrowy. Zmierzone: w przebiegu baterii jeden model
+  // wyszedł ze 113/113 „błędów" wyłącznie na „fetch failed".
+  const primary = await tryRequest(apiKey, model, args);
+  if (!primary.ok) {
+    if (fallbackModel && fallbackModel !== model) {
+      console.warn(
+        `[concierge] primary ${model} padł na transporcie (${errorClass(primary.err)}) — jedna próba na zapasowym ${fallbackModel}`,
+      );
+      const backup = await tryRequest(apiKey, fallbackModel, args);
+      if (backup.ok) return backup.payload;
+      console.error(
+        `[concierge] zapas ${fallbackModel} też padł na transporcie (${errorClass(backup.err)}) — oddaję łagodny błąd`,
+      );
+    }
+    // Kontrakt: transportu NIE rzucamy dalej — orkiestrator rozpoznaje pole
+    // `error` i zamienia je na łagodny komunikat PL. Błędy KONFIGURACJI nadal
+    // rzucają (wyżej, przed jakimkolwiek żądaniem).
+    return { error: { message: "transport", code: errorClass(primary.err) } };
+  }
+  const result = primary.payload;
 
   // Fallback 1: env wskazuje slug, którego OpenRouter nie zna → ponów raz na
   // modelu wbudowanym (chyba że to on właśnie zawiódł).
@@ -154,12 +207,16 @@ export async function chatCompletion(args: ChatCompletionArgs): Promise<unknown>
   // tool_calls) → JEDNA próba na modelu zapasowym z env. Świadomie WEWNĄTRZ
   // chatCompletion: narzędzia wykonuje orkiestrator dopiero po powrocie, więc
   // zmiana modelu nie może wykonać żadnego tool-calla drugi raz.
-  const fallback = process.env.OPENROUTER_FALLBACK_MODEL?.trim() || DEFAULT_FALLBACK_MODEL;
-  if (fallback && fallback !== model && isTransientModelFailure(result)) {
+  if (fallbackModel && fallbackModel !== model && isTransientModelFailure(result)) {
     console.warn(
-      `[concierge] model ${model} nie zwrócił użytecznej odpowiedzi — jedna próba na zapasowym ${fallback}`,
+      `[concierge] model ${model} nie zwrócił użytecznej odpowiedzi — jedna próba na zapasowym ${fallbackModel}`,
     );
-    return requestChatCompletion(apiKey, fallback, args);
+    const backup = await tryRequest(apiKey, fallbackModel, args);
+    if (backup.ok) return backup.payload;
+    console.error(
+      `[concierge] zapas ${fallbackModel} padł na transporcie (${errorClass(backup.err)}) — oddaję odpowiedź primary`,
+    );
+    return result;
   }
 
   return result;

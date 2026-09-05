@@ -21,6 +21,10 @@ import { ArrowRight, Building2, RotateCcw, Send, Sun, Umbrella } from "lucide-re
 import { TripOfferCard } from "./trip-offer-card";
 import { track } from "@/lib/analytics/track";
 import { CHAT_STORAGE_KEY } from "@/lib/concierge/chat-storage";
+import {
+  PENDING_STAGES,
+  schedulePendingStatus,
+} from "@/lib/concierge/pending-status";
 import type { TripOffer } from "@/lib/concierge/types";
 
 export interface ConciergeMessage {
@@ -268,6 +272,23 @@ export function ConciergeChat({
   // trafiła na cold start i użytkownik musiał przepisywać ją ręcznie).
   // try/finally: postChat z założenia nie rzuca, ale `pending` NIE MOŻE
   // utknąć na true — input byłby zablokowany na zawsze.
+  // Progresywny napis wskaznika. Czat NIE strumieniuje, wiec bez tego uzytkownik
+  // widzi ten sam tekst przez cale 8-16 s tury z narzedziem. Progi (4 s, 10 s)
+  // sa POWYZEJ zmierzonego p95 tur bez narzedzi (3,6 s), wiec szybka odpowiedz
+  // nie zdazy mrugnac napisem. Zero zmian w API i orkiestratorze.
+  const [pendingLabel, setPendingLabel] = useState(PENDING_STAGES[0].label);
+  useEffect(() => {
+    if (!pending) return;
+    setPendingLabel(PENDING_STAGES[0].label);
+    // Sprzatanie leci przy KAZDYM wyjsciu z oczekiwania: odpowiedz, blad,
+    // zamkniecie panelu i odmontowanie. Dzieki temu zaden timeout z poprzedniej
+    // tury nie moze odezwac sie w nastepnej.
+    return schedulePendingStatus(setPendingLabel, {
+      setTimer: (fn, ms) => window.setTimeout(fn, ms),
+      clearTimer: (id) => window.clearTimeout(id),
+    });
+  }, [pending]);
+
   const deliver = useCallback(async (next: ConciergeMessage[]) => {
     setPending(true);
     const startedAt = Date.now();
@@ -420,7 +441,12 @@ export function ConciergeChat({
         {pending && (
           <div className="flex items-start">
             <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-line bg-surface-raised px-3.5 py-2.5 shadow-[var(--shadow-sm)]">
-              <span className="text-xs font-medium text-ink-muted">Asystent pisze</span>
+              <span
+                aria-live="polite"
+                className="text-xs font-medium text-ink-muted"
+              >
+                {pendingLabel}
+              </span>
               <span className="flex gap-0.5" aria-hidden>
                 <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-brand/60 [animation-delay:-0.3s] motion-reduce:animate-none" />
                 <span className="h-1.5 w-1.5 animate-typing-dot rounded-full bg-brand/60 [animation-delay:-0.15s] motion-reduce:animate-none" />
