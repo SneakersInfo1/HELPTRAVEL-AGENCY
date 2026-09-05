@@ -47,6 +47,11 @@ async function main(): Promise<number> {
   // bledem pomiaru. Teraz: tani odczyt napisu, a geometria liczona z RODZICA
   // tego samego elementu, bez filtrowania po tresci.
   const etykieta = dialog.locator("span[aria-live='polite']").first();
+  // NAJPIERW poczekaj, az wskaznik sie wyrenderuje. Bez tego pierwsza probka
+  // trafia w moment przed renderem Reacta, dostaje pusty tekst i petla urywa
+  // sie natychmiast — na Preview wygladalo to jak „brak przejsc" przy turze
+  // trwajacej 1 s, a to byl wylacznie wyscig w skrypcie pomiarowym.
+  await etykieta.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined);
   let last = "";
   while (Date.now() - t0 < 40_000) {
     const label = await etykieta.innerText({ timeout: 1_000 }).catch(() => "");
