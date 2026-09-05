@@ -32,6 +32,18 @@ async function bezBaneraZgod(page: Page) {
   });
 }
 
+/**
+ * Preview na Vercelu jest chroniony logowaniem (SSO). `E2E_SHARE` przyjmuje
+ * jednorazowy link „share", ktory po wejsciu ustawia ciasteczko dostepu dla
+ * calego kontekstu. Kazdy test dostaje swiezy kontekst, wiec musi to zrobic
+ * sam. Bez tej zmiennej (dev lokalny) helper nic nie robi.
+ */
+async function autoryzujPreview(page: Page) {
+  const share = process.env.E2E_SHARE;
+  if (!share) return;
+  await page.goto(share, { waitUntil: "domcontentloaded" });
+}
+
 async function otworzCzat(page: Page) {
   await page.getByRole("button", { name: /Dobierz wyjazd/i }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -40,6 +52,7 @@ async function otworzCzat(page: Page) {
 test.describe("AI Concierge — układ", () => {
   test.beforeEach(async ({ page }) => {
     await bezBaneraZgod(page);
+    await autoryzujPreview(page);
   });
 
   test("mobile 390: panel otwiera się, pole ma ≥16 px i cele dotykowe ≥44 px", async ({ page }) => {
@@ -133,6 +146,7 @@ test.describe("AI Concierge — pełna pętla", () => {
   test("@model rozmowa zwraca odpowiedź albo uczciwy błąd z ponowieniem", async ({ page }) => {
     test.setTimeout(120_000);
     await bezBaneraZgod(page);
+    await autoryzujPreview(page);
     await page.setViewportSize(MOBILE);
     await page.goto(STRONA);
     await otworzCzat(page);

@@ -2,7 +2,14 @@
 
 Data: **2026-09-05**. Gałąź `feat/ai-concierge-v2`.
 Cennik zamrożony: `bench/concierge/fixtures/or-models.json` (OpenRouter, 2026-09-04 18:36 UTC, 427 modeli).
-Realny koszt całego benchmarku: **2,34 USD** z budżetu 4 USD.
+Realny koszt całego benchmarku: **2,68 USD** z budżetu 4 USD.
+
+> **UWAGA — CZYTAJ NAJPIERW SEKCJĘ „KOREKTA" NA KOŃCU.**
+> Etapy 1 i 2 poniżej porównywały kandydatów z `gemini-2.5-flash-lite`, bo tak
+> mówił lokalny `.env.local`. Produkcja jedzie na `claude-haiku-4.5` — wyszło to
+> dopiero po deployu na Preview, z nowego logu `[concierge] turn`. Liczby w
+> etapach 1–2 są prawdziwe, ale **wniosek końcowy zmieniła korekta**: model
+> produkcyjny ZOSTAJE.
 
 ---
 
@@ -165,3 +172,68 @@ Uczciwe granice, żeby nikt nie wyciągnął z tych liczb więcej, niż w nich j
 5. **Nie mierzono konwersji.** Żaden z tych wyników nie mówi, czy nowy model sprzeda więcej
    wyjazdów. To wymaga A/B na realnym ruchu — a przy 8 rozmowach dziennie taki test
    zbierałby istotność miesiącami.
+
+---
+
+## KOREKTA (2026-09-05, po deployu na Preview) — benchmark mierzyl ZLY baseline
+
+Nowy log `[concierge] turn` na Preview pokazal cos, czego nie dalo sie ustalic
+przed jego wprowadzeniem:
+
+```
+[concierge] turn { model: 'anthropic/claude-haiku-4.5', provider: 'Amazon Bedrock', ... }
+```
+
+**Produkcja NIE jedzie na `gemini-2.5-flash-lite`.** Jedzie na
+`anthropic/claude-haiku-4.5`, ustawionym w `OPENROUTER_MODEL` na poziomie
+projektu w Vercelu. Lokalny `.env.local` mial `gemini-2.5-flash-lite` i to
+wprowadzilo mnie w blad — caly benchmark powyzej porownywal kandydatow z
+modelem, ktorego na produkcji nie ma. To jest dokladnie ta niewiedza, ktora
+mial usunac §34 audytu; usunela ja dopiero wlasna zmiana.
+
+### Domiar prawdziwego baseline'u (40 przypadkow warstwowych, ten sam zestaw)
+
+| Model | przejścia | p50 | p95 | USD/1k | sędzia win% | **polszczyzna** |
+|---|---|---|---|---|---|---|
+| **anthropic/claude-haiku-4.5 (PRODUKCJA)** | 57% | 4690 | 7423 | **$21,61** | **69%** | **75%** |
+| google/gemini-3.1-flash-lite | **68%** | **3866** | **5157** | $6,49 | 62% | 64% |
+| openai/gpt-5.6-luna | **70%** | 5143 | 8026 | $4,14 | 56% | 46% |
+| google/gemini-2.5-flash-lite | 45% | 2266 | 4520 | $1,88 | 13% | 15% |
+
+Starcia bezposrednie (40 przypadkow):
+```
+haiku-4.5        32 :  4  gemini-2.5-flash-lite
+haiku-4.5        25 : 13  gemini-3.1-flash-lite
+haiku-4.5        17 : 16  gpt-5.6-luna            (remis)
+gemini-3.1       26 : 12  gpt-5.6-luna
+```
+
+### Zmieniona decyzja: PRODUKCYJNY MODEL ZOSTAJE
+
+`haiku-4.5` wygrywa slepe sedziowanie (69%) i ma **najlepsza polszczyzne w
+calej stawce (75%)** — a to jest produkt sprzedazowy po polsku. Jest za to
+najdrozszy i slabszy w sprawdzeniach deterministycznych (57% vs 68%), glownie
+przez zbyt dlugie odpowiedzi (8 przypadkow) i zmyslone kwoty (6).
+
+Argument kosztowy nie wystarcza, zeby go zdjac: przy ~240 rozmowach miesiecznie
+(8 tur/dobe z logow) roznica haiku vs gemini-3.1 to okolo **14 zl/mies.**
+Kupowanie za to spadku o 7 pkt proc. u sedziego i 11 pkt proc. na polszczyznie
+byloby zla transakcja.
+
+```
+PRIMARY   anthropic/claude-haiku-4.5      (bez zmian — potwierdzony pomiarem)
+FALLBACK  google/gemini-3.1-flash-lite    (nowy)
+```
+
+`DEFAULT_MODEL` w kodzie zostal zrownany z produkcja. Wczesniej mowil
+`gemini-2.5-flash-lite`, czyli model, ktory przegrywa z haiku **4:32** —
+usuniecie zmiennej srodowiskowej po cichu zdegradowaloby czat do najgorszego
+modelu w stawce. Teraz brak zmiennej niczego nie psuje.
+
+### Uwaga o wiarygodnosci sedziego
+Kolejnosc `luna` i `gemini-3.1` ODWROCILA sie miedzy przebiegiem na 113
+przypadkach (luna 67:31) a tym na 40 (gemini-3.1 26:12). Zgodnosc sedziego
+przy odwroconej kolejnosci wynosila 67% i 70%. Wniosek: te dwa modele sa
+w granicach szumu i nie nalezy ich rozstrzygac tym narzedziem. Przewaga
+haiku nad `gemini-2.5-flash-lite` (32:4) i obu kandydatow nad nim sa
+jednoznaczne.

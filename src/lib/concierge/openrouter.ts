@@ -14,30 +14,37 @@ export const MAX_TOKENS = 700;
 
 /**
  * Model podstawowy. Env OPENROUTER_MODEL go nadpisuje, ALE: nieaktualny slug
- * w env dwukrotnie polozyl czat (lokalnie i na Vercelu — `gemma-3-27b-it:free`
- * z maja przestal istniec). Dlatego na blad „model niedostepny" robimy JEDNA
- * ponowna probe na modelu domyslnym i glosno logujemy — zla konfiguracja
- * degraduje sie do dzialania, nie do martwego czatu.
+ * w env dwukrotnie polozyl czat (`gemma-3-27b-it:free` przestala istniec).
+ * Dlatego na blad „model niedostepny" robimy JEDNA ponowna probe na modelu
+ * domyslnym i glosno logujemy — zla konfiguracja degraduje sie do dzialania.
  *
- * WYBRANY POMIAREM (bateria 113 przypadkow, 2026-09-05 — docs/concierge-v2):
- * poprzedni domyslny `gemini-2.5-flash-lite` przechodzil 57% sprawdzen
- * deterministycznych, mial 17 przypadkow BEZ siegniecia po dane i pokazal
- * karte oferty w 57/113 rozmow. `gemini-3.1-flash-lite`: 81%, ZERO braku
- * narzedzia, 80/113 kart, zero twardych bledow i najnizszy odsetek zmyslonych
- * kwot (8,8% vs 12,4%). W slepym sedziowaniu parami stary model przegrywal
- * 26:72. Roznica kosztu przy naszym ruchu to okolo 50 gr/miesiac.
+ * DLACZEGO haiku-4.5 (zmiana 2026-09-05, pomiar w docs/concierge-v2):
+ * Ta stala mowila wczesniej `google/gemini-2.5-flash-lite`, ale PRODUKCJA i
+ * tak jedzie na haiku-4.5 z OPENROUTER_MODEL — wykazal to dopiero nowy log
+ * `[concierge] turn`, ktory podaje model i dostawce z ODPOWIEDZI. Rozjazd byl
+ * grozny: gdyby ktos kiedykolwiek usunal zmienna ze srodowiska, czat po cichu
+ * zszedlby na model, ktory w slepym sedziowaniu parami przegrywa z haiku 4:32
+ * i wygrywa tylko 13% wszystkich starc. Domyslna wartosc = to, co realnie
+ * jedzie, wiec brak zmiennej niczego juz nie psuje.
+ *
+ * Haiku obronilo sie tez merytorycznie: 69% wygranych i NAJLEPSZA polszczyzna
+ * (75%) w slepym sedziowaniu — wiecej niz gemini-3.1-flash-lite (62%/64%)
+ * i luna (56%/46%). Jest za to najdrozsze (21,61 USD/1k rozmow bez cache) i
+ * slabsze w sprawdzeniach deterministycznych (57% vs 68%). Przy naszym ruchu
+ * (~240 rozmow/mies.) cala roznica to ~14 zl/mies., wiec jakosc wygrywa.
  */
-export const DEFAULT_MODEL = "google/gemini-3.1-flash-lite";
+export const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
 
 /**
- * Model ZAPASOWY (uruchamiany tylko na awarie — patrz chatCompletion).
- * `gpt-5.6-luna` celowo od INNEGO dostawcy niz podstawowy: awaria Google nie
- * moze zabrac obu naraz. Jakosciowo to nr 1 w slepym sedziowaniu (79% wygranych,
- * najlepsza polszczyzna), wiec zejscie na zapas nie jest degradacja tresci —
- * placi sie za nie tylko wolniejszym p95 (10,0 s vs 6,1 s), co przy awarii
- * jest w pelni akceptowalne. Env OPENROUTER_FALLBACK_MODEL nadpisuje.
+ * Model ZAPASOWY (tylko na awarie — patrz chatCompletion).
+ * `gemini-3.1-flash-lite` celowo od INNEGO dostawcy niz podstawowy: awaria
+ * Anthropica/Bedrocka nie moze zabrac obu naraz. To drugi wynik u sedziego
+ * (62% wygranych), najlepsza dyscyplina narzedzi w calej stawce (ZERO
+ * przypadkow bez siegniecia po dane), najnizszy odsetek zmyslonych kwot
+ * i 3,3x nizszy koszt — czyli zejscie na zapas nie jest degradacja.
+ * Env OPENROUTER_FALLBACK_MODEL nadpisuje.
  */
-export const DEFAULT_FALLBACK_MODEL = "openai/gpt-5.6-luna";
+export const DEFAULT_FALLBACK_MODEL = "google/gemini-3.1-flash-lite";
 
 // Kontrakt czatu to POJEDYNCZY JSON (route → orkiestrator) — martwa obsługa
 // stream/ReadableStream usunięta w audycie czystości 2026-07-11 (nikt jej nie
