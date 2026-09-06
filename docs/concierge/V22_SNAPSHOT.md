@@ -138,7 +138,7 @@ dla homepage i `/wyjazdy` — awaria snapshotu konsjerża nie może zabrać cen
 │
 ├─ tiering kierunków   buildDestinationTiers(seed)      A 53 / B 86 / C 647
 ├─ macierz okien       buildWindowMatrix(dziś)          4 mies. × {4,7} nocy = 8
-├─ plan przebiegu      planRun(segment z zegara)        ~110 z 1020 zadań
+├─ plan przebiegu      planRun(segment z zegara)        68 z 1020 zadań
 │    dla każdego zadania (kierunek × wylot × okno):
 │      ├─ lot:   getCachedFlightOffers(`flrt:v2`) → miss: live + zapis "warm"
 │      └─ hotel: resolveSlimRates (metadane raz na kierunek)
@@ -198,10 +198,11 @@ czasu nie gubi doby.
   dostępny termin i niesie `dateNote`, który model MA wypowiedzieć.
 
 ### 11. Rotacja
-1020 zadań / 10 segmentów, segment liczony z zegara
-(`floor(now/1h) % 10`) — bez kursora w Redisie, więc nie ma stanu do zgubienia.
-Round-robin po liście posortowanej priorytetem, więc **każdy przebieg
-odświeża tier A** (w innych oknach), a pełny obieg zamyka się w ~10 h.
+1020 zadań / 15 segmentów, segment liczony z zegara
+(`floor(now/30min) % 15`) — bez kursora w Redisie, więc nie ma stanu do
+zgubienia. Round-robin po liście posortowanej priorytetem, więc **każdy
+przebieg odświeża tier A** (w innych oknach), a pełny obieg zamyka się
+w ~7,5 h.
 
 Priorytet (§29): tier kierunku → tier lotniska → bliższy miesiąc → dłuższy
 pobyt → popularność (remisy).
@@ -236,12 +237,41 @@ rekordów, gdy niesie rekord z przeszłym terminem, złą walutę, złą liczbę
 albo cenę NaN/ujemną/nieskończoną. Drogie, ale prawdziwe oferty **nie** są
 filtrowane — to byłoby kłamstwo o rynku.
 
+### 20b. Benchmark współbieżności (§27) — POMIAR, nie szacunek
+
+8 zimnych zadań na poziom, każdy poziom na innym (równie zimnym) segmencie,
+wszystko jako dry run, Preview 2026-09-06:
+
+| współbieżność | czas 8 zadań | na zadanie | przepustowość | błędy | timeouty | 429/5xx |
+|---|---|---|---|---|---|---|
+| 1 | 111,2 s | 13,9 s | 0,07 zad./s | 0 | 0 | 0 |
+| 2 | 56,2 s | 7,0 s | 0,14 zad./s | 0 | 0 | 0 |
+| 3 | 48,6 s | 6,1 s | 0,16 zad./s | 0 | 0 | 0 |
+| 4 | 20,3 s | 2,5 s | 0,39 zad./s | 0 | 0 | 0 |
+| **5** | **19,2 s** | **2,4 s** | **0,42 zad./s** | 0 | 0 | 0 |
+| 6 | 57,2 s | 7,2 s | 0,14 zad./s | 0 | 0 | 0 |
+
+**Sweet spot: 5.** Skalowanie jest ~liniowe do 4–5, powyżej nie ma zysku.
+Na żadnym poziomie nie było błędu, timeoutu ani 429 — nie ocieramy się
+o limiter (V2.1 zmierzył go dopiero przy 325 zapytaniach).
+
+Ważniejsza od sweet spotu jest **wariancja**: czas POJEDYNCZEGO zadania to
+2,4–13,9 s i zależy od trasy, nie od współbieżności. Dlatego budżet zadań
+liczony jest z gorszego, a nie ze średniego przypadku — pierwotne
+`TASK_BUDGET = 110` pochodziło ze średniej i przy wolniejszym dniu
+u dostawcy ucinałoby końcówkę planu.
+
+Efekt: **`TASK_BUDGET` 110 → 70**, **`SEGMENT_COUNT` 10 → 15**, cron co 30 min
+zamiast co godzinę (pełny obieg 7,5 h, wewnątrz progu FRESH = 12 h).
+1020 / 15 = 68 zadań na segment, więc `slice(0, 70)` niczego nie ucina —
+pełny obieg pokrywa całą listę.
+
 ### 21. Obciążenie API
-~110 lotów + ~110 stawek + ~40 metadanych = **~260 zapytań/przebieg**,
-× 24 przebiegi = **~6 200/dobę**. Baza (`warm-rates` co 30 min + trzy
-pozostałe crony) to ~16 000/dobę → **wzrost ~38%**, wyraźnie poniżej progu
-„2× baseline" z §57. Część zapytań lotniczych trafia w istniejący `flrt:v2`,
-więc realny wzrost jest niższy.
+~70 lotów + ~70 stawek + ~40 metadanych = **~180 zapytań/przebieg**,
+× 48 przebiegów = **~8 600/dobę**. Baza (`warm-rates` co 30 min + trzy
+pozostałe crony) to ~16 000/dobę → **wzrost ~53%**, poniżej progu
+„2× baseline" z §57. Część zapytań lotniczych trafia w istniejący `flrt:v2`
+(benchmark widział 0–3 trafienia na 8 zadań), więc realny wzrost jest niższy.
 
 ### 22. Obciążenie Redis
 ~1020 rekordów × ~200 B ≈ 200 kB JSON → po gzipie kilkadziesiąt kB.
@@ -268,8 +298,9 @@ kolumna AFTER-Preview zostanie uzupełniona po pełnym przebiegu na Preview.
 | rekordów w snapshocie | 46 | do 1020 |
 | liczba cronów | 4 | 5 |
 | runtime warm-rates | 178–280 s / 300 s (**93%**) | bez zmian |
-| runtime nowego crona | — | budżet 170 s / 300 s (**57%**) |
-| zapytań LiteAPI/dobę | ~16 000 | ~22 200 (**+38%**) |
+| runtime nowego crona | — | zmierzone ~19 s / 8 zadań przy c=5; budżet 170 s / 300 s (**57%**) |
+| współbieżność (sweet spot) | nie mierzone | **5** (0 błędów, 0 429 na wszystkich poziomach) |
+| zapytań LiteAPI/dobę | ~16 000 | ~24 600 (**+53%**) |
 | snapshot: publikacja | merge w miejscu | staging + atomowy promote |
 | snapshot: rollback | **niemożliwy** | jeden zapis |
 | **oferty z przeszłości** | możliwe (brak filtru) | **0** (filtr twardy) |
