@@ -679,3 +679,85 @@ test("executeGetTripOffer: kwoty w PEŁNYCH złotych — tekst bota nie może r�
     );
   })();
 });
+
+// ── V2.2 §8: JAWNY termin z przeszlosci ─────────────────────────────────────
+//
+// Bez roku miesiac rozwiazuje sie na najblizsze PRZYSZLE wystapienie, wiec
+// „sierpien" po sierpniu = sierpien nastepnego roku. Ale gdy uzytkownik
+// powiedzial „sierpien 2026", a jest wrzesien 2026, to jest termin, ktory
+// MINAL — i rozmowa ma to powiedziec, a nie po cichu podstawic kolejny rok.
+// Smoke na Preview (2026-09-06) pokazal dokladnie ten defekt: bot tlumaczyl,
+// ze „sierpien 2026 jest jeszcze zbyt daleko", bo narzedzie nie mialo jak
+// dostac roku.
+
+const NOW_SEP_2026 = Date.UTC(2026, 8, 6, 12);
+
+test("§8: jawny miesiac+rok z PRZESZLOSCI daje dateNote o minionym terminie", async () => {
+  const exec = createToolExecutors(
+    makeDeps({
+      now: () => NOW_SEP_2026,
+      resolveDest: () => ({ city: { en: "Malaga", pl: "Małaga" }, country: { en: "Spain" } }),
+      findCheapestHotel: async () => HOTEL,
+      findCheapestFlight: async () => FLIGHT,
+    }),
+  );
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Malaga",
+    countryEn: "Spain",
+    month: 8,
+    year: 2026,
+    nights: 7,
+    origin: "WAW",
+    adults: 2,
+    children: 0,
+  });
+  assert.match(offer.dateNote ?? "", /MINĄŁ/u, `dateNote: ${offer.dateNote}`);
+  assert.match(offer.dateNote ?? "", /sierpień 2026/u);
+  // I najwazniejsze: karta i tak NIE dostaje przeszlych dat.
+  assert.ok(offer.checkin > "2026-09-06", `checkin z przeszlosci: ${offer.checkin}`);
+});
+
+test("§8: ten sam miesiac BEZ roku to najblizszy przyszly, nie 'termin minal'", async () => {
+  const exec = createToolExecutors(
+    makeDeps({
+      now: () => NOW_SEP_2026,
+      resolveDest: () => ({ city: { en: "Malaga", pl: "Małaga" }, country: { en: "Spain" } }),
+      findCheapestHotel: async () => HOTEL,
+      findCheapestFlight: async () => FLIGHT,
+    }),
+  );
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Malaga",
+    countryEn: "Spain",
+    month: 8,
+    nights: 7,
+    origin: "WAW",
+    adults: 2,
+    children: 0,
+  });
+  assert.doesNotMatch(offer.dateNote ?? "", /MINĄŁ/u, `dateNote: ${offer.dateNote}`);
+  assert.ok(offer.checkin > "2026-09-06");
+});
+
+test("§8: jawny PRZYSZLY rok nie wywoluje komunikatu o minionym terminie", async () => {
+  const exec = createToolExecutors(
+    makeDeps({
+      now: () => NOW_SEP_2026,
+      resolveDest: () => ({ city: { en: "Malaga", pl: "Małaga" }, country: { en: "Spain" } }),
+      findCheapestHotel: async () => HOTEL,
+      findCheapestFlight: async () => FLIGHT,
+    }),
+  );
+  const offer = await exec.executeGetTripOffer({
+    cityEn: "Malaga",
+    countryEn: "Spain",
+    month: 11,
+    year: 2026,
+    nights: 7,
+    origin: "WAW",
+    adults: 2,
+    children: 0,
+  });
+  assert.doesNotMatch(offer.dateNote ?? "", /MINĄŁ/u);
+  assert.equal(offer.checkin.slice(0, 7), "2026-11");
+});

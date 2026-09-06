@@ -25,6 +25,7 @@ import { addDaysIso, travelToday } from "@/lib/time/travel-now";
 import {
   isBookableStart,
   isWithinSaleHorizon,
+  resolveExplicitMonthYear,
   resolveMonthWithoutYear,
   SALE_HORIZON_DAYS,
 } from "./travel-dates";
@@ -184,6 +185,13 @@ const getTripOfferTool: ToolDef = {
           maximum: 12,
           description:
             "OPCJONALNE. Miesiąc wyjazdu (1–12) wskazany przez użytkownika — system dobierze konkretne daty w tym miesiącu i wyszuka realne ceny.",
+        },
+        year: {
+          type: "integer",
+          minimum: 2020,
+          maximum: 2100,
+          description:
+            "OPCJONALNE, ale PODAJ ZAWSZE, gdy użytkownik wymienił ROK wprost („sierpień 2026”, „w 2027”). Bez roku system sam przyjmuje NAJBLIŻSZY PRZYSZŁY taki miesiąc, więc podanie roku jest jedynym sposobem, żeby rozpoznał termin, który już minął.",
         },
         nights: {
           type: "integer",
@@ -583,6 +591,9 @@ interface GetTripOfferArgs {
   checkout: string | undefined;
   /** Miesiąc wyjazdu wskazany przez użytkownika (1–12) — priorytet nad datami snapshotu. */
   month: number | undefined;
+  /** Rok, JEŚLI użytkownik wymienił go wprost. Bez niego miesiąc rozwiązuje się
+   *  na najbliższe przyszłe wystąpienie i nie da się rozpoznać terminu, który minął. */
+  year: number | undefined;
   /** Liczba nocy podana przez użytkownika (1–21). */
   nights: number | undefined;
   originIata: string;
@@ -662,6 +673,8 @@ function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
   const children = asInt(a.children) ?? 0;
   const monthRaw = asInt(a.month);
   const month = monthRaw !== undefined && monthRaw >= 1 && monthRaw <= 12 ? monthRaw : undefined;
+  const yearRaw = asInt(a.year);
+  const year = yearRaw !== undefined && yearRaw >= 2020 && yearRaw <= 2100 ? yearRaw : undefined;
   const nightsRaw = asInt(a.nights);
   const nights =
     nightsRaw !== undefined && nightsRaw >= 1 ? Math.min(nightsRaw, 21) : undefined;
@@ -702,6 +715,7 @@ function parseGetTripOfferArgs(args: unknown): GetTripOfferArgs {
     checkin,
     checkout,
     month,
+    year,
     nights,
     originIata: origin!,
     adults: adults!,
@@ -1008,7 +1022,26 @@ export function createToolExecutors(deps: ToolDeps) {
         `[concierge] get_trip_offer: data od modelu nie do sprzedania (checkin=${a.checkin}, dziś=${todayIso}) — dobieram daty systemowo`,
       );
     }
-    if ((!checkin || !checkout) && a.month) {
+    // JAWNY termin z przeszłości (§8). Użytkownik podał miesiąc I rok, a ten
+    // termin już minął — nie wolno go traktować jak aktywnego ani po cichu
+    // podstawiać kolejnego roku. Mówimy wprost, że minął, i pokazujemy kartę
+    // na najbliższy sensowny termin, żeby rozmowa miała czym iść dalej.
+    let explicitPast = false;
+    if (a.month && a.year) {
+      const explicit = resolveExplicitMonthYear(a.month, a.year, todayIso);
+      if (explicit && explicit.state === "PAST") {
+        explicitPast = true;
+        console.info(
+          `[concierge] get_trip_offer: jawny termin ${MONTH_PL[a.month] ?? a.month} ${a.year} już minął (dziś ${todayIso})`,
+        );
+        dateNote =
+          `Termin, o który prosił użytkownik (${MONTH_PL[a.month] ?? "ten miesiąc"} ${a.year}), JUŻ MINĄŁ — ` +
+          "nie da się go kupić. Powiedz to wprost jednym zdaniem i poproś o inny termin. " +
+          "Karta pokazuje najbliższy dostępny termin, więc możesz jej użyć jako punktu wyjścia, " +
+          "ale NIE udawaj, że to jest termin, o który pytał.";
+      }
+    }
+    if (!explicitPast && (!checkin || !checkout) && a.month) {
       const derived = datesForMonth(a.month, a.nights ?? 7, todayIso);
       if (derived.beyondSaleHorizon) {
         // Miesiac rozwiazal sie poprawnie (najblizszy przyszly), ale lezy poza
