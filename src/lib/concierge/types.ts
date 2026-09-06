@@ -36,6 +36,13 @@ export interface TripCandidate {
    * sprawdzić zamiast zakładać, i żeby telemetria widziała, co przeszło.
    */
   travelDateState: TravelDateState;
+  /**
+   * Czy termin kandydata odpowiada temu, o który pytał użytkownik (V2.2 §12).
+   * EXACT = miesiąc i długość pobytu się zgadzają. NEAREST = mamy tylko
+   * sąsiedni termin i model MA to powiedzieć, zamiast podawać cenę innego
+   * terminu jako odpowiedź. null = ścieżka bez rekordów okien (stary snapshot).
+   */
+  matchType?: "EXACT" | "NEAREST" | null;
 }
 
 /**

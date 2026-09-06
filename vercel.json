@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/warm-flight-deals",
       "schedule": "10,40 * * * *"
+    },
+    {
+      "path": "/api/cron/build-concierge-snapshot",
+      "schedule": "25 * * * *"
     }
   ]
 }

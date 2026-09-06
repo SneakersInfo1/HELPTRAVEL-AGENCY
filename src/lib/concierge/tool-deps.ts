@@ -13,6 +13,7 @@
 
 import { type DisplayOffer } from "@/lib/flights/display";
 import { iataForCity } from "@/lib/flights/airports";
+import { readActiveSnapshot } from "@/lib/snapshot/store";
 import {
   flightRatesCacheKey,
   getCachedFlightOffers,
@@ -273,6 +274,7 @@ function listDestinationsInCountryLive(country: string): TripSearchCity[] {
 export function buildProductionToolDeps(): ToolDeps {
   return {
     readSnapshot: readPriceSnapshot,
+    readConciergeSnapshot: readActiveSnapshot,
     resolveDest: getDestinationByCityCountry,
     listDestinationsInCountry: listDestinationsInCountryLive,
     findCheapestHotel: findCheapestHotelLive,

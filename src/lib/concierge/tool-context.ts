@@ -12,6 +12,7 @@
 //      zmieściła się w budżecie route'a zamiast oddać użytkownikowi 504.
 
 import type { DestinationPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import type { ConciergeSnapshot } from "@/lib/snapshot/types";
 
 import { createTurnTrace, NOOP_TRACE, type TurnTrace } from "./trace";
 
@@ -23,6 +24,8 @@ export interface ToolContext {
    * czekają jedno na drugie.
    */
   snapshot?: Promise<DestinationPriceSnapshot | null>;
+  /** To samo dla snapshotu V2.2 (`csnap:v1`) — patrz tools.ts. */
+  conciergeSnapshot?: Promise<ConciergeSnapshot | null>;
   /**
    * Epoch ms, po którym narzędzia mają się poddać. `null` = bez terminu
    * (testy, benchmark). Orkiestrator ustawia go z pozostałego budżetu tury.

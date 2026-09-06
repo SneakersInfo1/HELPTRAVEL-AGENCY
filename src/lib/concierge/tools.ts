@@ -19,6 +19,8 @@ import {
   type DestinationPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
 import { defaultMonth, missingFields, normalizeIntent } from "./budget";
+import { rankSnapshotCandidates } from "./snapshot-candidates";
+import type { ConciergeSnapshot } from "@/lib/snapshot/types";
 import { addDaysIso, travelToday } from "@/lib/time/travel-now";
 import {
   isBookableStart,
@@ -36,7 +38,7 @@ import {
   type SeedDestinationLookup,
   type TripSearchCity,
 } from "./trip-search";
-import type { ComponentStatus, ConciergeIntent, OfferResultState, TripOffer } from "./types";
+import type { ComponentStatus, ConciergeIntent, OfferResultState, TripCandidate, TripOffer } from "./types";
 
 /**
  * Wąski kształt narzędzia OpenAI/OpenRouter. Celowo `type` (nie `interface`):
@@ -340,6 +342,13 @@ export interface CheapestFlight {
 export interface ToolDeps {
   /** Prod: readPriceSnapshot z @/lib/prices/destination-price-snapshot. */
   readSnapshot: () => Promise<DestinationPriceSnapshot | null>;
+  /**
+   * Snapshot V2.2 (`csnap:v1`) — rekord na (kierunek × wylot × okno), więc
+   * pozwala odpowiedzieć na KONKRETNY termin. Opcjonalny z rozmysłem: dopóki
+   * pierwszy build się nie opublikuje (albo gdyby padł), narzędzie schodzi na
+   * `dstprice:v1` i zachowuje się dokładnie jak w V2.1.
+   */
+  readConciergeSnapshot?: () => Promise<ConciergeSnapshot | null>;
   /** Prod: getDestinationByCityCountry z @/lib/mvp/destinations-seed (server-only!). */
   resolveDest: SeedDestinationLookup;
   /**
@@ -405,6 +414,13 @@ export interface ModelTripCandidate {
    * dorzucamy jako alternatywę mimo innego charakteru.
    */
   themeMatch: boolean | null;
+  /**
+   * EXACT = termin zgadza się z prośbą użytkownika (miesiąc i długość pobytu).
+   * NEAREST = mamy tylko sąsiedni termin — model MA to powiedzieć, zamiast
+   * podawać cenę innego terminu jako odpowiedź na pytanie. null = ścieżka bez
+   * rekordów okien.
+   */
+  matchType: "EXACT" | "NEAREST" | null;
 }
 
 export interface SearchTripsResult {
@@ -736,6 +752,13 @@ export function createToolExecutors(deps: ToolDeps) {
     return ctx.snapshot;
   }
 
+  /** To samo dla snapshotu V2.2 — jeden lot do Redisa na całą turę. */
+  function readConciergeSnapshotOnce(ctx: ToolContext) {
+    if (!deps.readConciergeSnapshot) return Promise.resolve(null);
+    ctx.conciergeSnapshot ??= ctx.trace.measure("redis.csnap", () => deps.readConciergeSnapshot!());
+    return ctx.conciergeSnapshot;
+  }
+
   async function executeSearchTrips(
     args: unknown,
     ctx: ToolContext = noopToolContext(),
@@ -803,26 +826,55 @@ export function createToolExecutors(deps: ToolDeps) {
     // Klient nie podal miesiaca -> zakladamy najblizszy pelny i MOWIMY o tym
     // modelowi, zeby nazwal zalozenie zamiast pytac (zasada „TY prowadzisz").
     const assumedMonth = parsed.month === undefined ? defaultMonth(now()) : null;
-    const snapshot = await readSnapshotOnce(ctx);
-    const stopRank = trace.start("rank", { cities: cities.length });
+    // Miesiąc, którego SZUKAMY w oknach: podany przez użytkownika albo założony.
+    const searchMonth = parsed.month ?? assumedMonth ?? undefined;
+    // Picki motywu liczymy TYLKO wtedy, gdy pula NIE pochodzi z tego motywu
+    // (ścieżka „konkretny kraj"). Przy szukaniu po motywie pula JEST jego
+    // pickami, więc zbiór byłby zbędną pracą.
+    const pickKeysForRank = country ? themePickKeysFor(intent.theme, deps.resolveDest) : undefined;
+
+    // ── Źródło kandydatów: NAJPIERW csnap:v1 (rekord na okno, więc umie
+    // odpowiedzieć na konkretny miesiąc i długość pobytu), a gdy go nie ma —
+    // dstprice:v1 dokładnie jak w V2.1. Fallback jest świadomy: pierwszy build
+    // snapshotu musi się dopiero opublikować, a awaria nowej warstwy nie może
+    // zabrać konsjerżowi cen, które już działały.
+    const csnap = await readConciergeSnapshotOnce(ctx);
+    const csnapRecords = csnap ? Object.values(csnap.records) : [];
+    const stopRank = trace.start("rank", { cities: cities.length, source: csnapRecords.length > 0 ? "csnap" : "dstprice" });
     // NAJPIERW pełny ranking całej puli, DOPIERO POTEM przycięcie do listy
     // pokazywanej modelowi (§13).
-    const ranked = snapshot
-      ? rankTripCandidates(
-          cities,
-          snapshot,
-          { budgetPln: perPersonCap, budgetKind: "per_person" },
-          now(),
-          {
-            nights: parsed.nights,
-            themeSlug: intent.theme,
-            // Picki motywu liczymy TYLKO wtedy, gdy pula NIE pochodzi z tego
-            // motywu (ścieżka „konkretny kraj"). Przy szukaniu po motywie
-            // pula JEST jego pickami, więc zbiór byłby zbędną pracą.
-            themePickKeys: country ? themePickKeysFor(intent.theme, deps.resolveDest) : undefined,
-          },
-        ).slice(0, MAX_TRIP_CANDIDATES)
-      : [];
+    let ranked: TripCandidate[] = [];
+    let snapshot: DestinationPriceSnapshot | null = null;
+    if (csnapRecords.length > 0) {
+      ranked = rankSnapshotCandidates(
+        cities,
+        csnapRecords,
+        { budgetPln: perPersonCap, budgetKind: "per_person" },
+        now(),
+        {
+          month: searchMonth,
+          nights: parsed.nights,
+          origin: intent.origin,
+          themeSlug: intent.theme,
+          themePickKeys: pickKeysForRank ?? themePickKeysFor(intent.theme, deps.resolveDest),
+        },
+      ).slice(0, MAX_TRIP_CANDIDATES);
+    } else {
+      snapshot = await readSnapshotOnce(ctx);
+      ranked = snapshot
+        ? rankTripCandidates(
+            cities,
+            snapshot,
+            { budgetPln: perPersonCap, budgetKind: "per_person" },
+            now(),
+            {
+              nights: parsed.nights,
+              themeSlug: intent.theme,
+              themePickKeys: pickKeysForRank,
+            },
+          ).slice(0, MAX_TRIP_CANDIDATES)
+        : [];
+    }
     stopRank({ ranked: ranked.length });
 
     if (ranked.length > 0) {
@@ -844,12 +896,13 @@ export function createToolExecutors(deps: ToolDeps) {
         monthMatch: monthOfIso(c.checkin) === null || wantedMonth === null
           ? null
           : monthOfIso(c.checkin) === wantedMonth,
+        matchType: c.matchType ?? null,
       }));
       const themedFirst = candidates.some((c) => c.themeMatch === true);
       return {
         candidates,
         note:
-          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę za `nights` nocy w oknie checkin–checkout. Pole monthMatch=false znaczy, że to INNY miesiąc niż ten, o który pytał użytkownik — powiedz to wtedy wprost jednym zdaniem („orientacyjnie, dla terminu X”) i dodaj, że dokładną cenę na JEGO termin pokazuje karta oferty. Nie sprawdzaj tego sam z dat: cytuj monthMatch. Kwotę podawaj jako „od X zł/os. za N nocy”, a zapas/os. bierz z GOTOWEGO pola zapasPln — nie licz go sam. Nie rozbijaj na lot/hotel i nie sumuj." +
+          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę za `nights` nocy w oknie checkin–checkout. Pole matchType=\"NEAREST\" znaczy, że NIE mamy ceny na termin, o który pytał użytkownik, tylko na najbliższy inny — powiedz to jednym zdaniem. Pole monthMatch=false znaczy, że to INNY miesiąc niż ten, o który pytał użytkownik — powiedz to wtedy wprost jednym zdaniem („orientacyjnie, dla terminu X”) i dodaj, że dokładną cenę na JEGO termin pokazuje karta oferty. Nie sprawdzaj tego sam z dat: cytuj monthMatch. Kwotę podawaj jako „od X zł/os. za N nocy”, a zapas/os. bierz z GOTOWEGO pola zapasPln — nie licz go sam. Nie rozbijaj na lot/hotel i nie sumuj." +
           // KOLEJNOŚĆ musi być opisana zgodnie z prawdą: gdy motyw przestawił
           // listę, zdanie „posortowane od najtańszego" byłoby nieprawdą, a
           // model cytowałby najtańszą pozycję jako pierwszą wbrew wynikowi.
@@ -891,6 +944,7 @@ export function createToolExecutors(deps: ToolDeps) {
         checkout: null,
         themeMatch: intent.theme ? matchesTheme(c, vibeTag, pickKeys) : null,
         monthMatch: null,
+        matchType: null,
       }));
       return {
         candidates,
