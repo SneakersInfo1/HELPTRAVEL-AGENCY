@@ -1,0 +1,191 @@
+[
+  {
+    "scenario": "1-cieplo-pazdziernik",
+    "index": 1,
+    "prompt": 1,
+    "wallMs": 5699,
+    "ok": true,
+    "hasOffer": false,
+    "error": false
+  },
+  {
+    "scenario": "2-grecja-plaza",
+    "index": 2,
+    "prompt": 1,
+    "wallMs": 2227,
+    "ok": true,
+    "hasOffer": false,
+    "error": false
+  },
+  {
+    "scenario": "3-budzet-4000-7nocy",
+    "index": 3,
+    "prompt": 1,
+    "wallMs": 2524,
+    "ok": true,
+    "hasOffer": false,
+    "error": false
+  },
+  {
+    "scenario": "4-weekend-waw",
+    "index": 4,
+    "prompt": 1,
+    "wallMs": 2211,
+    "ok": true,
+    "hasOffer": false,
+    "error": false
+  },
+  {
+    "scenario": "5-konkretne-miasto",
+    "index": 5,
+    "prompt": 1,
+    "wallMs": 7244,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "6-brak-pelnej-oferty",
+    "index": 6,
+    "prompt": 1,
+    "wallMs": 1719,
+    "ok": true,
+    "hasOffer": false,
+    "error": false
+  },
+  {
+    "scenario": "7-followup-taniej",
+    "index": 7,
+    "prompt": 1,
+    "wallMs": 7055,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "7-followup-taniej",
+    "index": 8,
+    "prompt": 2,
+    "wallMs": 6053,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "8-kraj-wlochy",
+    "index": 9,
+    "prompt": 1,
+    "wallMs": 11816,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "9-rodzina",
+    "index": 10,
+    "prompt": 1,
+    "wallMs": 3859,
+    "ok": true,
+    "hasOffer": false,
+    "error": false
+  },
+  {
+    "scenario": "10-najtaniej",
+    "index": 11,
+    "prompt": 1,
+    "wallMs": 8627,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "11-sam-hotel",
+    "index": 12,
+    "prompt": 1,
+    "wallMs": 5032,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "12-wyspa",
+    "index": 13,
+    "prompt": 1,
+    "wallMs": 24650,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "13-hiszpania-gory",
+    "index": 14,
+    "prompt": 1,
+    "wallMs": 8963,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "14-bez-narzedzia-blik",
+    "index": 15,
+    "prompt": 1,
+    "wallMs": 3456,
+    "ok": true,
+    "hasOffer": false,
+    "error": false
+  },
+  {
+    "scenario": "15-bez-narzedzia-proces",
+    "index": 16,
+    "prompt": 1,
+    "wallMs": 4859,
+    "ok": true,
+    "hasOffer": false,
+    "error": false
+  },
+  {
+    "scenario": "16-kraj-cypr",
+    "index": 17,
+    "prompt": 1,
+    "wallMs": 7470,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "17-city-break",
+    "index": 18,
+    "prompt": 1,
+    "wallMs": 15455,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "18-turcja",
+    "index": 19,
+    "prompt": 1,
+    "wallMs": 7812,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "19-portugalia",
+    "index": 20,
+    "prompt": 1,
+    "wallMs": 16103,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  },
+  {
+    "scenario": "20-zmiana-terminu",
+    "index": 21,
+    "prompt": 1,
+    "wallMs": 7463,
+    "ok": true,
+    "hasOffer": true,
+    "error": false
+  }
+]

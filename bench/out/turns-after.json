@@ -1,0 +1,616 @@
+[
+  {
+    "scenario": "1-cieplo-pazdziernik",
+    "index": 1,
+    "prompt": 1,
+    "wallMs": 5447,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "28cd251dcf81",
+      "totalMs": 3601,
+      "modelMs": 3601,
+      "toolMs": 0,
+      "chatCalls": 1,
+      "toolCalls": 0,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {},
+      "counts": {}
+    }
+  },
+  {
+    "scenario": "2-grecja-plaza",
+    "index": 2,
+    "prompt": 1,
+    "wallMs": 2669,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "dafb375e678f",
+      "totalMs": 1982,
+      "modelMs": 1982,
+      "toolMs": 0,
+      "chatCalls": 1,
+      "toolCalls": 0,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {},
+      "counts": {}
+    }
+  },
+  {
+    "scenario": "3-budzet-4000-7nocy",
+    "index": 3,
+    "prompt": 1,
+    "wallMs": 2299,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "c4c376a7a758",
+      "totalMs": 1796,
+      "modelMs": 1796,
+      "toolMs": 0,
+      "chatCalls": 1,
+      "toolCalls": 0,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {},
+      "counts": {}
+    }
+  },
+  {
+    "scenario": "4-weekend-waw",
+    "index": 4,
+    "prompt": 1,
+    "wallMs": 2553,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "9bc401c5e10e",
+      "totalMs": 1896,
+      "modelMs": 1896,
+      "toolMs": 0,
+      "chatCalls": 1,
+      "toolCalls": 0,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {},
+      "counts": {}
+    }
+  },
+  {
+    "scenario": "5-konkretne-miasto",
+    "index": 5,
+    "prompt": 1,
+    "wallMs": 17329,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "c900ef97ffce",
+      "totalMs": 16846,
+      "modelMs": 5083,
+      "toolMs": 11762,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "liteapi.hotel": 3823,
+        "liteapi.gallery": 22,
+        "liteapi.flight": 11758,
+        "tool.get_trip_offer": 11762
+      },
+      "counts": {
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "liteapi.flight": 1,
+        "tool.get_trip_offer": 1
+      }
+    }
+  },
+  {
+    "scenario": "6-brak-pelnej-oferty",
+    "index": 6,
+    "prompt": 1,
+    "wallMs": 13000,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "f3d9707554f4",
+      "totalMs": 12422,
+      "modelMs": 6138,
+      "toolMs": 6284,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 98,
+        "liteapi.hotel": 3141,
+        "liteapi.gallery": 45,
+        "liteapi.flight": 6184,
+        "tool.get_trip_offer": 6284
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "liteapi.flight": 1,
+        "tool.get_trip_offer": 1
+      }
+    }
+  },
+  {
+    "scenario": "7-followup-taniej",
+    "index": 7,
+    "prompt": 1,
+    "wallMs": 6643,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "346479da5b5e",
+      "totalMs": 6079,
+      "modelMs": 5857,
+      "toolMs": 222,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 97,
+        "rank": 1,
+        "liteapi.flight": 104,
+        "liteapi.hotel": 114,
+        "liteapi.gallery": 9,
+        "tool.search_trips": 222
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "rank": 1,
+        "liteapi.flight": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "tool.search_trips": 1
+      }
+    }
+  },
+  {
+    "scenario": "7-followup-taniej",
+    "index": 8,
+    "prompt": 2,
+    "wallMs": 4919,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "010bf676cf1f",
+      "totalMs": 4386,
+      "modelMs": 4161,
+      "toolMs": 225,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 97,
+        "rank": 0,
+        "liteapi.flight": 106,
+        "liteapi.hotel": 118,
+        "liteapi.gallery": 9,
+        "tool.search_trips": 225
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "rank": 1,
+        "liteapi.flight": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "tool.search_trips": 1
+      }
+    }
+  },
+  {
+    "scenario": "8-kraj-wlochy",
+    "index": 9,
+    "prompt": 1,
+    "wallMs": 6988,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "d9dcb807d94b",
+      "totalMs": 6248,
+      "modelMs": 5922,
+      "toolMs": 326,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 98,
+        "rank": 0,
+        "liteapi.flight": 198,
+        "liteapi.hotel": 207,
+        "liteapi.gallery": 20,
+        "tool.search_trips": 326
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "rank": 1,
+        "liteapi.flight": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "tool.search_trips": 1
+      }
+    }
+  },
+  {
+    "scenario": "9-rodzina",
+    "index": 10,
+    "prompt": 1,
+    "wallMs": 4015,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "36a6cc130a55",
+      "totalMs": 3497,
+      "modelMs": 3497,
+      "toolMs": 0,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "tool.list_themes": 0
+      },
+      "counts": {
+        "tool.list_themes": 1
+      }
+    }
+  },
+  {
+    "scenario": "10-najtaniej",
+    "index": 11,
+    "prompt": 1,
+    "wallMs": 4491,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "6b53fd0a8fba",
+      "totalMs": 3976,
+      "modelMs": 3976,
+      "toolMs": 0,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "tool.search_trips": 0
+      },
+      "counts": {
+        "tool.search_trips": 1
+      }
+    }
+  },
+  {
+    "scenario": "11-sam-hotel",
+    "index": 12,
+    "prompt": 1,
+    "wallMs": 9702,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "ca3020807315",
+      "totalMs": 9166,
+      "modelMs": 5368,
+      "toolMs": 3798,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 98,
+        "liteapi.hotel": 3678,
+        "liteapi.gallery": 22,
+        "tool.get_trip_offer": 3798
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "tool.get_trip_offer": 1
+      }
+    }
+  },
+  {
+    "scenario": "12-wyspa",
+    "index": 13,
+    "prompt": 1,
+    "wallMs": 20912,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "cae608ba77a1",
+      "totalMs": 20384,
+      "modelMs": 8914,
+      "toolMs": 11470,
+      "chatCalls": 3,
+      "toolCalls": 2,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "tool.search_trips": 11470,
+        "redis.snapshot": 104,
+        "rank": 0,
+        "liteapi.hotel": 3234,
+        "liteapi.gallery": 46,
+        "liteapi.flight": 11363
+      },
+      "counts": {
+        "tool.search_trips": 2,
+        "redis.snapshot": 1,
+        "rank": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "liteapi.flight": 1
+      }
+    }
+  },
+  {
+    "scenario": "13-hiszpania-gory",
+    "index": 14,
+    "prompt": 1,
+    "wallMs": 14146,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "7941e76ab87f",
+      "totalMs": 13644,
+      "modelMs": 6112,
+      "toolMs": 7532,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 96,
+        "rank": 0,
+        "liteapi.hotel": 1534,
+        "liteapi.gallery": 49,
+        "liteapi.flight": 7435,
+        "tool.search_trips": 7532
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "rank": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "liteapi.flight": 1,
+        "tool.search_trips": 1
+      }
+    }
+  },
+  {
+    "scenario": "14-bez-narzedzia-blik",
+    "index": 15,
+    "prompt": 1,
+    "wallMs": 3151,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "ba7626a2ad06",
+      "totalMs": 2693,
+      "modelMs": 2693,
+      "toolMs": 0,
+      "chatCalls": 1,
+      "toolCalls": 0,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {},
+      "counts": {}
+    }
+  },
+  {
+    "scenario": "15-bez-narzedzia-proces",
+    "index": 16,
+    "prompt": 1,
+    "wallMs": 4044,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "9c9ac223868d",
+      "totalMs": 3524,
+      "modelMs": 3524,
+      "toolMs": 0,
+      "chatCalls": 1,
+      "toolCalls": 0,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {},
+      "counts": {}
+    }
+  },
+  {
+    "scenario": "16-kraj-cypr",
+    "index": 17,
+    "prompt": 1,
+    "wallMs": 11706,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "d91feef0ffc6",
+      "totalMs": 11151,
+      "modelMs": 5447,
+      "toolMs": 5704,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 98,
+        "rank": 0,
+        "liteapi.hotel": 2598,
+        "liteapi.gallery": 9,
+        "liteapi.flight": 5604,
+        "tool.search_trips": 5704
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "rank": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "liteapi.flight": 1,
+        "tool.search_trips": 1
+      }
+    }
+  },
+  {
+    "scenario": "17-city-break",
+    "index": 18,
+    "prompt": 1,
+    "wallMs": 1817,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "62384fbefdd1",
+      "totalMs": 1106,
+      "modelMs": 1106,
+      "toolMs": 0,
+      "chatCalls": 1,
+      "toolCalls": 0,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {},
+      "counts": {}
+    }
+  },
+  {
+    "scenario": "18-turcja",
+    "index": 19,
+    "prompt": 1,
+    "wallMs": 10901,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "fa902823f1a7",
+      "totalMs": 10399,
+      "modelMs": 5434,
+      "toolMs": 4965,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 97,
+        "rank": 1,
+        "liteapi.hotel": 3559,
+        "liteapi.gallery": 10,
+        "liteapi.flight": 4867,
+        "tool.search_trips": 4965
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "rank": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "liteapi.flight": 1,
+        "tool.search_trips": 1
+      }
+    }
+  },
+  {
+    "scenario": "19-portugalia",
+    "index": 20,
+    "prompt": 1,
+    "wallMs": 1733,
+    "ok": true,
+    "hasOffer": false,
+    "error": false,
+    "diag": {
+      "traceId": "a773cf265a35",
+      "totalMs": 1158,
+      "modelMs": 1158,
+      "toolMs": 0,
+      "chatCalls": 1,
+      "toolCalls": 0,
+      "outcome": "ok",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {},
+      "counts": {}
+    }
+  },
+  {
+    "scenario": "20-zmiana-terminu",
+    "index": 21,
+    "prompt": 1,
+    "wallMs": 10635,
+    "ok": true,
+    "hasOffer": true,
+    "error": false,
+    "diag": {
+      "traceId": "deb54d0f07d0",
+      "totalMs": 10131,
+      "modelMs": 6353,
+      "toolMs": 3778,
+      "chatCalls": 2,
+      "toolCalls": 1,
+      "outcome": "ok+offer",
+      "model": "anthropic/claude-haiku-4.5",
+      "provider": "Amazon Bedrock",
+      "spans": {
+        "redis.snapshot": 98,
+        "rank": 0,
+        "liteapi.hotel": 2957,
+        "liteapi.gallery": 46,
+        "liteapi.flight": 3678,
+        "tool.search_trips": 3778
+      },
+      "counts": {
+        "redis.snapshot": 1,
+        "rank": 1,
+        "liteapi.hotel": 1,
+        "liteapi.gallery": 1,
+        "liteapi.flight": 1,
+        "tool.search_trips": 1
+      }
+    }
+  }
+]
