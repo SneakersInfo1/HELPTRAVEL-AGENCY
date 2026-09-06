@@ -179,7 +179,19 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
 // ── Wywołania ────────────────────────────────────────────────────────────────
 
 /** POST /flights/rates — wyszukiwanie ofert. */
-export async function searchFlightRates(input: FlightSearchInput) {
+/**
+ * Nadpisania budżetu czasu dla WYSZUKIWANIA lotów. Domyślne 30 s × 3 próby są
+ * dobre dla lejka lotów (użytkownik czeka na jedynej treści strony), ale
+ * zabójcze dla czatu, gdzie cała tura ma 50 s: jedno wyszukiwanie mogło samo
+ * zjeść 90 s i wywalić route'a w 504. Wołający, który ma własny termin,
+ * podaje go tutaj.
+ */
+export interface FlightSearchOptions {
+  timeoutMs?: number;
+  retries?: number;
+}
+
+export async function searchFlightRates(input: FlightSearchInput, opts: FlightSearchOptions = {}) {
   const body = {
     legs: input.legs.map((l) => ({ origin: l.origin, destination: l.destination, date: l.date, direction: l.direction })),
     adults: input.adults,
@@ -195,7 +207,8 @@ export async function searchFlightRates(input: FlightSearchInput) {
     keyMode: "public",
     schema: FlightRatesResponseSchema,
     body,
-    timeoutMs: 30_000,
+    timeoutMs: opts.timeoutMs ?? 30_000,
+    ...(opts.retries !== undefined ? { retries: opts.retries } : {}),
   });
 }
 

@@ -5,6 +5,9 @@
 //   npx tsx --env-file=.env.local bench/concierge/tool-latency.ts \
 //     --base=https://<preview>.vercel.app --repeat=2 --out=bench/out/before.json
 //
+// Preview za ochrona Vercela: podaj --share=<token z _vercel_share>, klient sam
+// wymieni go na ciasteczko dostepowe (fetch nie trzyma ciasteczek sam).
+//
 //   npx tsx bench/concierge/tool-latency.ts --compare=before.json --with=after.json
 //
 // Sekret bierze z CRON_SECRET (ten sam, ktorym chodza crony). ZERO kosztu LLM.
@@ -139,10 +142,27 @@ async function main(): Promise<void> {
   if (concurrency) params.set("concurrency", concurrency);
   const url = `${base.replace(/\/$/, "")}/api/concierge/tool-bench${params.size ? `?${params}` : ""}`;
 
+  // Preview Vercela bywa za logowaniem (Deployment Protection). Token
+  // `_vercel_share` wymieniamy raz na ciasteczko i doklejamy je do pomiaru —
+  // inaczej dostajemy przekierowanie na SSO zamiast JSON-a.
+  const headers: Record<string, string> = { authorization: `Bearer ${secret}` };
+  const share = arg("share");
+  if (share) {
+    const gate = await fetch(`${base.replace(/\/$/, "")}/?_vercel_share=${encodeURIComponent(share)}`, {
+      redirect: "manual",
+    });
+    const cookie = gate.headers
+      .getSetCookie()
+      .map((c) => c.split(";")[0])
+      .join("; ");
+    if (!cookie) throw new Error("token --share nie zwrocil ciasteczka dostepowego");
+    headers.cookie = cookie;
+  }
+
   console.log(`BENCH NARZEDZI → ${url}`);
   const started = Date.now();
   const res = await fetch(url, {
-    headers: { authorization: `Bearer ${secret}` },
+    headers,
     signal: AbortSignal.timeout(300_000),
   });
   if (!res.ok) {

@@ -7,7 +7,7 @@
 // route (i pod tym samym kluczem `flightRatesCacheKey`), więc grzana trasa =
 // natychmiastowy cache-hit dla realnego użytkownika. Rozjazd = grzanie do kosza.
 
-import { searchFlightRates } from "./client";
+import { searchFlightRates, type FlightSearchOptions } from "./client";
 import { normalizeRatesResponse, type DisplayOffer } from "./display";
 import type { FlightSearchInput } from "./types";
 
@@ -19,9 +19,16 @@ export const FLIGHT_OFFERS_CAP = 500;
 
 /** Wyszukanie + normalizacja + sort po cenie rosnąco + cap. Bez cache (caller
  *  decyduje, czy i z jakim TTL zapisać). Sort po cenie gwarantuje, że po capie
- *  ZAWSZE zostają najtańsze oferty — kluczowe dla „jak najtańsze loty". */
-export async function searchFlightOffers(input: FlightSearchInput): Promise<DisplayOffer[]> {
-  const res = await searchFlightRates(input);
+ *  ZAWSZE zostają najtańsze oferty — kluczowe dla „jak najtańsze loty".
+ *
+ *  `opts` przepuszcza limit czasu i liczbę prób do klienta: konsjerż ma twardy
+ *  budżet tury (50 s na WSZYSTKO), więc nie może użyć domyślnych 30 s × 3
+ *  próby lejka lotów. Lejek nadal wywołuje bez `opts` i nic nie traci. */
+export async function searchFlightOffers(
+  input: FlightSearchInput,
+  opts?: FlightSearchOptions,
+): Promise<DisplayOffer[]> {
+  const res = await searchFlightRates(input, opts);
   return normalizeRatesResponse(res)
     .slice()
     .sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity))

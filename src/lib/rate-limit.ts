@@ -82,9 +82,29 @@ const LIMIT_OVERRIDES: Partial<Record<LimiterKey, number>> = {
   "destination-suggest": 120,
 };
 
+/**
+ * DOBOWY sufit na adres IP (§34 audytu V2.1). Limit minutowy chroni przed
+ * burstem, ale NIE przed powolnym, wytrwałym spalaniem budżetu: przy 10/min
+ * jeden adres mógł wysłać ~14 400 zapytań na dobę, a każde z nich kosztuje
+ * tokeny OpenRoutera.
+ *
+ * 200/doba dla czatu wzięte z realnej skali, nie z sufitu: cały serwis ma
+ * ~240 rozmów MIESIĘCZNIE (≈8 dziennie), a jedna rozmowa to kilkanaście tur.
+ * 200 zapytań z JEDNEGO adresu to więc ~25× dzienny ruch całego serwisu —
+ * normalny użytkownik (także kilku za wspólnym CGNAT-em operatora, a 90%
+ * ruchu to telefony) tego nie dotknie, a koszt nadużycia z jednego adresu
+ * spada z rzędu tysięcy złotych na dobę do kilku złotych.
+ *
+ * Klucze bez wpisu NIE mają dobowego sufitu — zachowanie bez zmian.
+ */
+const DAILY_LIMITS: Partial<Record<LimiterKey, number>> = {
+  concierge: 200,
+};
+
 let warnedMissingEnv = false;
 let redis: Redis | null | undefined;
 const limiters = new Map<LimiterKey, Ratelimit>();
+const dailyLimiters = new Map<LimiterKey, Ratelimit>();
 
 function getRedis(): Redis | null {
   if (redis !== undefined) return redis;
@@ -124,14 +144,44 @@ function getLimiter(key: LimiterKey): Ratelimit | null {
   return limiter;
 }
 
+/** Limiter dobowy — tylko dla kluczy wymienionych w DAILY_LIMITS. */
+function getDailyLimiter(key: LimiterKey): Ratelimit | null {
+  const perDay = DAILY_LIMITS[key];
+  if (perDay === undefined) return null;
+  const cached = dailyLimiters.get(key);
+  if (cached) return cached;
+
+  const client = getRedis();
+  if (!client) return null;
+
+  const limiter = new Ratelimit({
+    redis: client,
+    limiter: Ratelimit.slidingWindow(perDay, "24 h"),
+    analytics: false,
+    prefix: `helptravel:ratelimit-day:${key}`,
+  });
+  dailyLimiters.set(key, limiter);
+  return limiter;
+}
+
 // Test-only seam (additive, no runtime behavior change): pre-seed or clear a
 // limiter so route tests can assert 429 without a live Upstash instance.
 export function __setLimiterForTests(key: LimiterKey, limiter: Ratelimit | null): void {
   if (limiter === null) limiters.delete(key);
   else limiters.set(key, limiter);
 }
+export function __setDailyLimiterForTests(key: LimiterKey, limiter: Ratelimit | null): void {
+  if (limiter === null) dailyLimiters.delete(key);
+  else dailyLimiters.set(key, limiter);
+}
 export function __resetLimitersForTests(): void {
   limiters.clear();
+  dailyLimiters.clear();
+}
+
+/** Limity dobowe — do asercji w testach i do raportu. */
+export function dailyLimitFor(key: LimiterKey): number | undefined {
+  return DAILY_LIMITS[key];
 }
 
 function getClientIp(request: NextRequest): string {
@@ -155,7 +205,28 @@ export async function enforceRateLimit(
   const ip = getClientIp(request);
   const result = await limiter.limit(ip);
 
-  if (result.success) return null;
+  // Sufit minutowy przechodzi → sprawdzamy jeszcze dobowy (jeśli klucz go ma).
+  // Kolejność ma znaczenie: burst odcinamy TANIEJ, zanim dołożymy drugi
+  // round-trip do Redisa.
+  if (result.success) {
+    const daily = getDailyLimiter(key);
+    if (!daily) return null;
+    const dailyResult = await daily.limit(ip);
+    if (dailyResult.success) return null;
+    console.warn(`[rate-limit] dobowy sufit '${key}' wyczerpany dla jednego adresu`);
+    return NextResponse.json(
+      { error: "Daily limit reached. Please try again tomorrow." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil((dailyResult.reset - Date.now()) / 1000))),
+          "X-RateLimit-Limit": String(dailyResult.limit),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(dailyResult.reset / 1000)),
+        },
+      },
+    );
+  }
 
   const retryAfterSeconds = Math.max(
     1,

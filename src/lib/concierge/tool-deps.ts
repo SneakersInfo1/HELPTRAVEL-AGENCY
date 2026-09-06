@@ -11,9 +11,14 @@
 // waluta inna niż PLN → null, nigdy zgadywanie. Użycie LiteAPI wyłącznie
 // READ-ONLY (listy hoteli + rates) — zero prebook/book.
 
-import { searchFlightRates } from "@/lib/flights/client";
-import { normalizeRatesResponse, type DisplayOffer } from "@/lib/flights/display";
+import { type DisplayOffer } from "@/lib/flights/display";
 import { iataForCity } from "@/lib/flights/airports";
+import {
+  flightRatesCacheKey,
+  getCachedFlightOffers,
+  setCachedFlightOffers,
+} from "@/lib/flights/rates-cache";
+import { searchFlightOffers } from "@/lib/flights/search-offers";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import type { RateCacheContext, SlimRate } from "@/lib/hotels/rate-cache";
@@ -21,11 +26,26 @@ import { fetchHotelsForDestination, getHotelDetail } from "@/lib/liteapi";
 import { getDestinationByCityCountry, listAllDestinations } from "@/lib/mvp/destinations-seed";
 import { readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import type { CheapestFlight, CheapestFlightQuery, CheapestHotel, CheapestHotelQuery, ToolDeps } from "./tools";
+import type { TripSearchCity } from "./trip-search";
 
 // Głębokość listy hoteli: 50 = jeden chunk resolveSlimRates (limit LiteAPI na
 // call) i pierwsza strona wyników, którą widzi user po handoffie. Cron grzeje
 // te same klucze cache (keyFor w rate-cache), więc trafienia są tanie.
 const OFFER_HOTELS_LIMIT = 50;
+
+// ── Budżet czasu na wyszukanie lotu W CZACIE ────────────────────────────────
+// Lejek lotów woła z domyślnymi 30 s × 3 próby — tam użytkownik patrzy na
+// stronę, na której nie ma nic innego. W czacie CAŁA tura ma 50 s (razem
+// z rundami modelu), więc jedno takie wyszukiwanie mogło samo przekroczyć
+// maxDuration route'a; użytkownik dostawał wtedy gołe 504 zamiast odpowiedzi.
+//
+// Limit przychodzi z egzekutora (`q.budgetMs`) — liczony z tego, ile realnie
+// zostało w turze. Zapasowa wartość 20 s stoi powyżej zmierzonego p95 (14,4 s),
+// więc obcina ogon, a nie normalne zimne wyszukanie. JEDNA próba: powtórzenie
+// tego samego zapytania po 20 s i tak nie zmieściłoby się w budżecie tury,
+// a domyślne 3 próby dawały teoretyczne 90 s na jedno wywołanie narzędzia.
+const CONCIERGE_FLIGHT_TIMEOUT_MS = 20_000;
+const CONCIERGE_FLIGHT_RETRIES = 1;
 
 /**
  * Najtańszy hotel dla kierunku i dat — DOKŁADNIE ta sama ścieżka co strona
@@ -128,8 +148,9 @@ async function fetchHotelPhotoUrlsLive(hotelId: string): Promise<string[]> {
  * Najtańszy lot RT — ta sama ścieżka co cron warm-rates: mapowanie
  * miasto→IATA przez seed (airports[0], bywa kod metra jak ROM — LiteAPI
  * rozwija natywnie) z fallbackiem do słownika lotnisk (iataForCity), potem
- * searchFlightRates + normalizeRatesResponse i minimum po total. Miasto BEZ
- * mapowania IATA → null (uczciwie: żadnego zgadywania lotniska).
+ * searchFlightOffers (search → normalizacja → sort po cenie → cap) przez
+ * WSPÓLNY cache `flrt:v2` i minimum po total. Miasto BEZ mapowania IATA →
+ * null (uczciwie: żadnego zgadywania lotniska).
  */
 async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestFlight | null> {
   const dest = getDestinationByCityCountry(q.cityEn, q.countryEn);
@@ -144,8 +165,22 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
     adults: q.adults,
     children: q.children,
   });
-  const res = await searchFlightRates(input);
-  const offers = normalizeRatesResponse(res);
+
+  // CACHE OFERT LOTÓW (`flrt:v2`) — ten sam klucz i ten sam helper, którymi
+  // chodzi lejek lotów i cron prewarmingu. Konsjerż wołał wcześniej
+  // `searchFlightRates` WPROST, więc jako jedyny w serwisie nie korzystał
+  // z cache'a: każde zapytanie o ofertę było zimnym strzałem do LiteAPI,
+  // nawet gdy cron przed chwilą wygrzał dokładnie tę trasę i te daty,
+  // a powtórka w tej samej rozmowie („a coś tańszego?") płaciła drugi raz.
+  const cacheKey = flightRatesCacheKey(input);
+  let offers = await getCachedFlightOffers(cacheKey);
+  if (offers === null) {
+    offers = await searchFlightOffers(input, {
+      timeoutMs: Math.min(q.budgetMs ?? CONCIERGE_FLIGHT_TIMEOUT_MS, CONCIERGE_FLIGHT_TIMEOUT_MS),
+      retries: CONCIERGE_FLIGHT_RETRIES,
+    });
+    await setCachedFlightOffers(cacheKey, offers);
+  }
 
   let best: DisplayOffer | null = null;
   for (const offer of offers) {
@@ -183,7 +218,7 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
  * (case-insensitive). Seed jest uporządkowany popularnością, więc pierwsze
  * wpisy to główne kierunki kraju (np. Grecja: Ateny, Chania, Heraklion…).
  */
-function listDestinationsInCountryLive(country: string): Array<{ cityEn: string; countryEn: string; cityPl: string }> {
+function listDestinationsInCountryLive(country: string): TripSearchCity[] {
   const target = country.trim().toLowerCase();
   if (!target) return [];
   return listAllDestinations()
@@ -193,7 +228,16 @@ function listDestinationsInCountryLive(country: string): Array<{ cityEn: string;
         d.country.pl.toLowerCase() === target ||
         d.country.code?.toLowerCase() === target,
     )
-    .map((d) => ({ cityEn: d.city.en, countryEn: d.country.en, cityPl: d.city.pl }));
+    .map((d) => ({
+      cityEn: d.city.en,
+      countryEn: d.country.en,
+      cityPl: d.city.pl,
+      // Tagi i popularność są POTRZEBNE rankingowi (motyw + rozstrzyganie
+      // remisów). Bez nich ścieżka „konkretny kraj" nie miałaby czym
+      // odróżnić kierunku górskiego od miejskiego.
+      vibeTagsEn: d.vibeTagsEn,
+      popularity: d.popularity,
+    }));
 }
 
 /** Jedno wywołanie w API route: createToolExecutors(buildProductionToolDeps()). */

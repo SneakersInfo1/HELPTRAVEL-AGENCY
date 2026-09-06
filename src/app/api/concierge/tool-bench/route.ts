@@ -19,6 +19,7 @@ import { buildBenchCases, type BenchCase } from "@/lib/concierge/bench-cases";
 import { dispatchToolCall } from "@/lib/concierge/orchestrator";
 import { createToolExecutors } from "@/lib/concierge/tools";
 import { buildProductionToolDeps } from "@/lib/concierge/tool-deps";
+import { createToolContext } from "@/lib/concierge/tool-context";
 import { createTurnTrace } from "@/lib/concierge/trace";
 import type { TripOffer } from "@/lib/concierge/types";
 
@@ -84,6 +85,7 @@ function classify(tool: string, result: unknown, offer: TripOffer | null): strin
 
 async function runCase(c: BenchCase, pass: number): Promise<CaseResult> {
   const trace = createTurnTrace();
+  const ctx = createToolContext({ trace });
   const started = Date.now();
   const base = {
     id: c.id,
@@ -102,7 +104,7 @@ async function runCase(c: BenchCase, pass: number): Promise<CaseResult> {
         function: { name: c.tool, arguments: JSON.stringify(c.args) },
       },
       executors,
-      trace,
+      ctx,
     );
     const summary = trace.summary();
     const r = result as { candidates?: unknown[] } | null;

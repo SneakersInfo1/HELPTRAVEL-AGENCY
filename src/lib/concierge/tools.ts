@@ -19,14 +19,17 @@ import {
   type DestinationPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
 import { defaultMonth, missingFields, normalizeIntent } from "./budget";
-import { NOOP_TRACE, type TurnTrace } from "./trace";
+import { budgetFor, noopToolContext, type ToolContext } from "./tool-context";
 import {
+  matchesTheme,
   rankTripCandidates,
   resolveThemeCities,
+  themePickKeysFor,
+  vibeTagForTheme,
   type SeedDestinationLookup,
   type TripSearchCity,
 } from "./trip-search";
-import type { ConciergeIntent, TripOffer } from "./types";
+import type { ConciergeIntent, OfferResultState, TripOffer } from "./types";
 
 /**
  * Wąski kształt narzędzia OpenAI/OpenRouter. Celowo `type` (nie `interface`):
@@ -301,6 +304,12 @@ export interface CheapestFlightQuery {
   returnDate: string;
   adults: number;
   children: number;
+  /**
+   * Ile czasu wolno poświęcić na ŻYWE wyszukanie lotu (ms). Liczy egzekutor
+   * z terminu tury — to jedyny etap, który potrafi sam przekroczyć budżet
+   * całej odpowiedzi (pomiar Preview 2026-09-06: p95 14,4 s, max 28,6 s).
+   */
+  budgetMs?: number;
 }
 
 /** Najtańszy realny lot RT — wszystkie pola z odpowiedzi LiteAPI. */
@@ -371,6 +380,24 @@ export interface ModelTripCandidate {
   nights: number | null;
   checkin: string | null;
   checkout: string | null;
+  /**
+   * Czy `checkin` wypada w MIESIĄCU, o który pytał użytkownik.
+   * null = miesiąca nie da się porównać (brak dat albo brak miesiąca).
+   *
+   * Snapshot ma ceny wyłącznie na dwa wygrzane okna (pomiar produkcyjny
+   * 2026-09-06: 33 kierunki na 19–23 października i 12 na 7–14 listopada),
+   * więc pytanie „wakacje" prawie zawsze dostaje wycenę z innego miesiąca.
+   * Prompt każe wtedy powiedzieć „orientacyjnie, dla terminu X" — ale model
+   * musiał to WYWNIOSKOWAĆ z porównania dat. Teraz dostaje gotową flagę.
+   */
+  monthMatch: boolean | null;
+  /**
+   * Czy kierunek pasuje do motywu użytkownika (tagi kierunku z seedu).
+   * null = motywu nie podano. Model dostaje to WPROST, żeby przy zapytaniu
+   * „Grecja na plażę" umiał powiedzieć, który kierunek jest plażowy, a który
+   * dorzucamy jako alternatywę mimo innego charakteru.
+   */
+  themeMatch: boolean | null;
 }
 
 export interface SearchTripsResult {
@@ -418,7 +445,31 @@ const CITY_ALIASES: Record<string, { cityEn: string; countryEn: string }> = {
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_GALLERY_TIMEOUT_MS = 900;
+
+/**
+ * Widełki czasu na ŻYWE wyszukanie lotu — jedyna zależność, która potrafi
+ * sama zjeść całą turę.
+ *
+ * POMIAR (Preview, 39 przypadków × 2 przebiegi, 2026-09-06):
+ *   liteapi.flight  p50 2365 · p75 6738 · p95 14398 · max 28603 ms
+ *   liteapi.hotel   p50  195 · p75  275 · p95  3369 · max  3574 ms
+ *   redis.snapshot  p50  200 (suma dwóch odczytów w turze)
+ *
+ * Górna granica 20 s stoi POWYŻEJ zmierzonego p95, więc obcina wyłącznie
+ * ogon (28,6 s) i teoretyczny najgorszy przypadek 3 × 30 s = 90 s — nie
+ * zabiera szans normalnemu zimnemu wyszukaniu. Dolna granica 6 s: poniżej
+ * tego i tak nic sensownego nie zdąży wrócić, więc lepiej od razu oddać
+ * ofertę częściową niż udawać, że szukamy.
+ */
+const FLIGHT_BUDGET_BOUNDS = { min: 6_000, max: 20_000 } as const;
 const MAX_OFFER_PHOTOS = 12;
+
+/** Miesiąc (1–12) z daty ISO albo null dla braku/nonsensu. */
+function monthOfIso(iso: string | null): number | null {
+  if (!iso || !ISO_DATE_RE.test(iso)) return null;
+  const month = Number(iso.slice(5, 7));
+  return month >= 1 && month <= 12 ? month : null;
+}
 
 function exactNightsBetween(checkin: string, checkout: string): number | null {
   const start = Date.parse(`${checkin}T00:00:00Z`);
@@ -648,10 +699,21 @@ export function createToolExecutors(deps: ToolDeps) {
    * Każda kwota pochodzi 1:1 ze snapshotu (rankTripCandidates pomija kierunki
    * bez świeżego pakietu). Pusta lista zawsze niesie `reason` dla bota.
    */
+  /**
+   * Snapshot cen odczytany RAZ na turę (§21). Trzymamy PROMISE w kontekście,
+   * więc search_trips i auto-oferta dzielą JEDEN lot do Redisa zamiast robić
+   * dwa round-tripy po tę samą wartość.
+   */
+  function readSnapshotOnce(ctx: ToolContext) {
+    ctx.snapshot ??= ctx.trace.measure("redis.snapshot", () => deps.readSnapshot());
+    return ctx.snapshot;
+  }
+
   async function executeSearchTrips(
     args: unknown,
-    trace: TurnTrace = NOOP_TRACE,
+    ctx: ToolContext = noopToolContext(),
   ): Promise<SearchTripsResult> {
+    const trace = ctx.trace;
     const parsed = readSearchTripsArgs(args);
     const intent = normalizeIntent(parsed);
     const country = parsed.country;
@@ -673,9 +735,21 @@ export function createToolExecutors(deps: ToolDeps) {
       };
     }
 
+    // KRAJ = FILTR TWARDY, MOTYW = PREFERENCJA (§12). Wcześniej `country`
+    // WYPIERAŁO `theme`: „ciepło, plaża, Grecja" stawało się samą Grecją, a
+    // lista wracała w kolejności popularności seedu — więc na plażę wychodziły
+    // Ateny. Teraz kraj tylko ZAWĘŻA pulę, a motyw porządkuje ją w rankingu.
+    //
+    // Pulę kraju bierzemy W CAŁOŚCI: wcześniejsze `.slice(0, 6)` stało PRZED
+    // rankingiem, więc odcinało kierunki, których jedyną winą była pozycja
+    // w seedzie. Pomiar na produkcyjnym snapshocie (2026-09-06): 12 z 46
+    // wycenionych kierunków było w ten sposób NIEOSIĄGALNYCH — cała Grecja
+    // wyspiarska (Rodos, Kos, Zakynthos), południe Włoch (Bari, Katania,
+    // Palermo) i sześć hiszpańskich, w tym Teneryfa i Palma. Ranking jest
+    // czysty (odczyty z mapy, zero I/O), więc pełna pula nic nie kosztuje.
     let cities: TripSearchCity[];
     if (country) {
-      cities = deps.listDestinationsInCountry(country).slice(0, 6);
+      cities = deps.listDestinationsInCountry(country);
       if (cities.length === 0) {
         return {
           candidates: [],
@@ -702,17 +776,24 @@ export function createToolExecutors(deps: ToolDeps) {
     // Klient nie podal miesiaca -> zakladamy najblizszy pelny i MOWIMY o tym
     // modelowi, zeby nazwal zalozenie zamiast pytac (zasada „TY prowadzisz").
     const assumedMonth = parsed.month === undefined ? defaultMonth(now()) : null;
-    const snapshot = await trace.measure("redis.snapshot", () => deps.readSnapshot(), {
-      tool: "search_trips",
-    });
+    const snapshot = await readSnapshotOnce(ctx);
     const stopRank = trace.start("rank", { cities: cities.length });
+    // NAJPIERW pełny ranking całej puli, DOPIERO POTEM przycięcie do listy
+    // pokazywanej modelowi (§13).
     const ranked = snapshot
       ? rankTripCandidates(
           cities,
           snapshot,
           { budgetPln: perPersonCap, budgetKind: "per_person" },
           now(),
-          { nights: parsed.nights },
+          {
+            nights: parsed.nights,
+            themeSlug: intent.theme,
+            // Picki motywu liczymy TYLKO wtedy, gdy pula NIE pochodzi z tego
+            // motywu (ścieżka „konkretny kraj"). Przy szukaniu po motywie
+            // pula JEST jego pickami, więc zbiór byłby zbędną pracą.
+            themePickKeys: country ? themePickKeysFor(intent.theme, deps.resolveDest) : undefined,
+          },
         ).slice(0, MAX_TRIP_CANDIDATES)
       : [];
     stopRank({ ranked: ranked.length });
@@ -720,6 +801,9 @@ export function createToolExecutors(deps: ToolDeps) {
     if (ranked.length > 0) {
       // Kształt DLA MODELU: tylko cena pakietu/os. — bez cen jednostkowych,
       // których model nie umie poprawnie sumować (patrz ModelTripCandidate).
+      // Miesiąc, o który REALNIE pytał użytkownik (albo założony domyślny) —
+      // do porównania z oknem, z którego pochodzi cena.
+      const wantedMonth = parsed.month ?? assumedMonth;
       const candidates: ModelTripCandidate[] = ranked.map((c) => ({
         cityEn: c.cityEn,
         countryEn: c.countryEn,
@@ -729,13 +813,24 @@ export function createToolExecutors(deps: ToolDeps) {
         nights: c.nights,
         checkin: c.checkin,
         checkout: c.checkout,
+        themeMatch: c.themeMatch,
+        monthMatch: monthOfIso(c.checkin) === null || wantedMonth === null
+          ? null
+          : monthOfIso(c.checkin) === wantedMonth,
       }));
+      const themedFirst = candidates.some((c) => c.themeMatch === true);
       return {
         candidates,
         note:
-          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę za `nights` nocy w oknie checkin–checkout. To NIE MUSI być miesiąc, o który pytał użytkownik — orientacyjne ceny mamy tylko na wygrzane terminy. Jeśli checkin wypada w INNYM miesiącu niż prosił, powiedz to wprost jednym zdaniem („orientacyjnie, dla terminu X”) i dodaj, że dokładną cenę na JEGO termin pokazuje karta oferty. Cytuj kwotę jako „od X zł/os. za N nocy”, a zapas/os. bierz z GOTOWEGO pola zapasPln — nie licz go sam. Nie rozbijaj na lot/hotel i nie sumuj." +
+          "perPersonPln to ORIENTACYJNA cena pakietu lot+hotel na osobę za `nights` nocy w oknie checkin–checkout. Pole monthMatch=false znaczy, że to INNY miesiąc niż ten, o który pytał użytkownik — powiedz to wtedy wprost jednym zdaniem („orientacyjnie, dla terminu X”) i dodaj, że dokładną cenę na JEGO termin pokazuje karta oferty. Nie sprawdzaj tego sam z dat: cytuj monthMatch. Kwotę podawaj jako „od X zł/os. za N nocy”, a zapas/os. bierz z GOTOWEGO pola zapasPln — nie licz go sam. Nie rozbijaj na lot/hotel i nie sumuj." +
+          // KOLEJNOŚĆ musi być opisana zgodnie z prawdą: gdy motyw przestawił
+          // listę, zdanie „posortowane od najtańszego" byłoby nieprawdą, a
+          // model cytowałby najtańszą pozycję jako pierwszą wbrew wynikowi.
+          (themedFirst
+            ? " Lista zaczyna się od kierunków pasujących do motywu (themeMatch=true), a w każdej grupie idzie od najtańszego. Kierunek z themeMatch=false podawaj jako alternatywę i powiedz, że ma inny charakter."
+            : " Lista jest posortowana od najtańszego.") +
           (noBudget
-            ? " Użytkownik NIE podał budżetu: kandydaci są posortowani od najtańszego. Przy prezentacji karty zapytaj krótko o budżet, żeby policzyć zapas."
+            ? " Użytkownik NIE podał budżetu. Przy prezentacji karty zapytaj krótko o budżet, żeby policzyć zapas."
             : "") +
           (assumedMonth !== null
             ? ` Użytkownik NIE podał miesiąca — przyjęto ${assumedMonth} (najbliższy pełny). Nazwij to założenie JEDNYM zdaniem („zakładam ${MONTH_PL[assumedMonth]}") i pytaj o termin dopiero po pokazaniu karty.`
@@ -747,7 +842,18 @@ export function createToolExecutors(deps: ToolDeps) {
       // Seed zna kraj, ale snapshot nie ma świeżych pakietów w budżecie (kraj
       // spoza grzanych kierunków). NIE odmawiamy: zwracamy kierunki BEZ cen —
       // realną cenę na termin użytkownika pobierze auto-oferta (live LiteAPI).
-      const candidates: ModelTripCandidate[] = cities.slice(0, 3).map((c) => ({
+      // Bez cen nie ma czym rankować, ale kolejność wciąż ma znaczenie:
+      // najpierw kierunki pasujące do motywu, potem najpopularniejsze.
+      // (Wcześniej wchodziły po prostu trzy pierwsze wpisy seedu.)
+      const vibeTag = vibeTagForTheme(intent.theme);
+      const pickKeys = themePickKeysFor(intent.theme, deps.resolveDest);
+      const ordered = [...cities].sort((a, b) => {
+        const themeDelta =
+          Number(matchesTheme(b, vibeTag, pickKeys)) - Number(matchesTheme(a, vibeTag, pickKeys));
+        if (themeDelta !== 0) return themeDelta;
+        return (b.popularity ?? 0) - (a.popularity ?? 0);
+      });
+      const candidates: ModelTripCandidate[] = ordered.slice(0, 3).map((c) => ({
         cityEn: c.cityEn,
         countryEn: c.countryEn,
         cityPl: c.cityPl,
@@ -756,6 +862,8 @@ export function createToolExecutors(deps: ToolDeps) {
         nights: null,
         checkin: null,
         checkout: null,
+        themeMatch: intent.theme ? matchesTheme(c, vibeTag, pickKeys) : null,
+        monthMatch: null,
       }));
       return {
         candidates,
@@ -783,8 +891,9 @@ export function createToolExecutors(deps: ToolDeps) {
    */
   async function executeGetTripOffer(
     args: unknown,
-    trace: TurnTrace = NOOP_TRACE,
+    ctx: ToolContext = noopToolContext(),
   ): Promise<TripOffer> {
+    const trace = ctx.trace;
     const a = parseGetTripOfferArgs(args);
     // Wyspa/region od modelu → kanoniczne miasto seedu PRZED jakimkolwiek
     // lookupem (snapshot, LiteAPI, IATA — wszystko downstream dostaje
@@ -818,9 +927,7 @@ export function createToolExecutors(deps: ToolDeps) {
       checkout = derived.checkout;
     }
     if (!checkin || !checkout) {
-      const snapshot = await trace.measure("redis.snapshot", () => deps.readSnapshot(), {
-        tool: "get_trip_offer",
-      });
+      const snapshot = await readSnapshotOnce(ctx);
       const pkg = snapshot
         ? pickFreshPackage(
             snapshot,
@@ -873,6 +980,8 @@ export function createToolExecutors(deps: ToolDeps) {
             originIata: a.originIata, cityEn: a.cityEn, countryEn: a.countryEn,
             depart: checkin, returnDate: checkout,
             adults: a.adults, children: a.children,
+            // Ile czasu ZOSTAŁO w turze, przycięte do sensownego zakresu.
+            budgetMs: budgetFor(ctx, FLIGHT_BUDGET_BOUNDS, now()),
           }),
         )
       : Promise.resolve(null);
@@ -971,6 +1080,12 @@ export function createToolExecutors(deps: ToolDeps) {
     const totalPax = a.adults + a.children;
     const allWantedPresent =
       (!a.wantsHotel || hotel !== null) && (!a.wantsFlight || flight !== null);
+    // STAN WYNIKU (§16). „Brak hotelu i brak lotu" NIE jest ofertą częściową —
+    // to brak oferty. Rozróżnienie musi być tutaj, bo `partial:true` mówiło to
+    // samo o „mam hotel bez lotu" i o „nie mam nic", a orkiestrator na tej
+    // podstawie renderował użytkownikowi pustą kartę z samymi datami.
+    const resultState: OfferResultState =
+      hotel === null && flight === null ? "unavailable" : allWantedPresent ? "valid" : "partial";
     const totalPln = allWantedPresent && (hotel || flight)
       ? Math.ceil((hotel?.totalPln ?? 0) + (flight?.totalPln ?? 0))
       : null;
@@ -993,6 +1108,7 @@ export function createToolExecutors(deps: ToolDeps) {
       totalPln,
       totalPerPersonPln,
       partial: !allWantedPresent,
+      resultState,
       wantsFlight: a.wantsFlight,
       wantsHotel: a.wantsHotel,
     };

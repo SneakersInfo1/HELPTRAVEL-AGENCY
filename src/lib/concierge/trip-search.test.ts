@@ -4,7 +4,16 @@ import type { DestinationPriceSnapshot } from "@/lib/prices/destination-price-sn
 import { destinationPriceKey } from "@/lib/prices/destination-price-snapshot";
 import { getMoodBySlug, TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import seedJson from "../../../data/destinations.json";
-import { rankTripCandidates, resolveThemeCities, type SeedDestinationLike } from "./trip-search";
+import {
+  allThemeSlugs,
+  cityKey,
+  rankTripCandidates,
+  resolveThemeCities,
+  themeAffinity,
+  THEME_VIBE_TAG,
+  vibeTagForTheme,
+  type SeedDestinationLike,
+} from "./trip-search";
 
 // Lookup seedu do wstrzyknięcia: te same DANE (data/destinations.json) i ta
 // sama semantyka dopasowania co getDestinationByCityCountry z
@@ -161,4 +170,43 @@ test("rankTripCandidates: nights filtruje budżet na przeliczonej cenie, nie sna
     { nights: 7 },
   );
   assert.deepEqual(out.map((c) => c.cityEn), ["Dlugi"]);
+});
+
+// ── Mostek motyw → tag charakteru (V2.1 §12) ─────────────────────────────────
+// Dwa niezależne słowniki (TRAVEL_MOODS i vibeTagsEn w seedzie) łączy ręczna
+// mapa. Bez tych dwóch testów literówka albo nowy motyw po cichu WYŁĄCZYŁYBY
+// preferencję motywu w rankingu — kod nadal by działał, tylko gorzej.
+
+test("THEME_VIBE_TAG: każdy motyw ma mapowanie na tag charakteru", () => {
+  for (const slug of allThemeSlugs()) {
+    assert.ok(
+      vibeTagForTheme(slug) !== null,
+      `motyw "${slug}" nie ma tagu w THEME_VIBE_TAG — preferencja motywu byłaby martwa`,
+    );
+  }
+});
+
+test("THEME_VIBE_TAG: każdy tag realnie WYSTĘPUJE w seedzie", () => {
+  const tagsInSeed = new Set(
+    seedDestinations.flatMap((d) => (d.vibeTagsEn ?? []).map((t) => t.toLowerCase())),
+  );
+  for (const [slug, tag] of Object.entries(THEME_VIBE_TAG)) {
+    assert.ok(tagsInSeed.has(tag), `tag "${tag}" (motyw ${slug}) nie istnieje w data/destinations.json`);
+  }
+});
+
+test("themeAffinity: pick motywu (2) bije sam tag (1), a tag bije brak (0)", () => {
+  const picked = { cityEn: "Innsbruck", countryEn: "Austria", cityPl: "Innsbruck", vibeTagsEn: ["nature"] };
+  const tagged = { cityEn: "Gdzies", countryEn: "Austria", cityPl: "Gdzies", vibeTagsEn: ["nature"] };
+  const neither = { cityEn: "Vienna", countryEn: "Austria", cityPl: "Wiedeń", vibeTagsEn: ["city break"] };
+  const picks = new Set([cityKey(picked)]);
+  assert.equal(themeAffinity(picked, "nature", picks), 2);
+  assert.equal(themeAffinity(tagged, "nature", picks), 1);
+  assert.equal(themeAffinity(neither, "nature", picks), 0);
+});
+
+test("rankTripCandidates: BEZ motywu nie wymyśla dopasowania (themeMatch=null)", () => {
+  const out = rankTripCandidates(citiesNights, snapNights, { budgetPln: 9000, budgetKind: "per_person" }, nowT);
+  assert.ok(out.length > 0);
+  for (const c of out) assert.equal(c.themeMatch, null);
 });

@@ -22,7 +22,25 @@ export interface TripCandidate {
   checkin: string; checkout: string;
   hotelFromPlnPerNight: number | null;
   flightFromPln: number | null;
+  /** Czy kierunek pasuje do motywu użytkownika. null = motywu nie podano. */
+  themeMatch: boolean | null;
+  /** Czy `nights` odpowiada prośbie użytkownika. null = nocy nie podano. */
+  nightsMatch: boolean | null;
+  /** Popularność kierunku z seedu — WYŁĄCZNIE do rozstrzygania remisów. */
+  popularity: number | null;
 }
+
+/**
+ * Stan wyniku `get_trip_offer` (V2.1 §16). Rozróżnienie jest twarde, bo
+ * „brak hotelu i brak lotu" nie jest ofertą częściową — to BRAK OFERTY, a
+ * renderowanie takiej karty pokazywało użytkownikowi puste pudełko z datami
+ * i dwoma komunikatami o niepowodzeniu, jakby coś znaleziono.
+ *
+ *   valid       — wszystkie CHCIANE składniki są realne
+ *   partial     — część chcianych składników jest, część nie
+ *   unavailable — nie ma ŻADNEGO chcianego składnika (karta się nie pokazuje)
+ */
+export type OfferResultState = "valid" | "partial" | "unavailable";
 
 /**
  * Finalna oferta pakietu do karty w czacie (wynik get_trip_offer). Wszystkie
@@ -88,8 +106,13 @@ export interface TripOffer {
   totalPerPersonPln: number | null;
   /** Łączny realny koszt wszystkich chcianych i dostępnych komponentów. */
   totalPln?: number | null;
-  /** true gdy CHCIANY komponent się nie udał (bot mówi o tym wprost). */
+  /** true gdy CHCIANY komponent się nie udał (bot mówi o tym wprost).
+   *  Zachowane dla zgodności (UI + zdarzenie GA4); pełniejszy stan niesie
+   *  `resultState`, bo `partial:true` nie odróżniało „mam hotel bez lotu"
+   *  od „nie mam nic". */
   partial: boolean;
+  /** valid / partial / unavailable — patrz OfferResultState. */
+  resultState: OfferResultState;
   /** false = użytkownik jawnie NIE chce lotu (sam hotel) — karta nie renderuje
    *  sekcji lotu ani boksu „nie udało się potwierdzić". Brak pola = true. */
   wantsFlight?: boolean;

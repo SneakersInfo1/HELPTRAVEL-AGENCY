@@ -59,6 +59,7 @@ function fakeOffer(): TripOffer {
     },
     totalPerPersonPln: 2400,
     partial: false,
+    resultState: "valid",
   };
 }
 

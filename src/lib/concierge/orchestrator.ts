@@ -12,6 +12,7 @@
 import { MAX_HISTORY_MESSAGES, MAX_INPUT_CHARS, MAX_TOOL_ROUNDS } from "./openrouter";
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { TOOL_DEFS } from "./tools";
+import { createToolContext, type ToolContext } from "./tool-context";
 import { createTurnTrace, type TurnTrace, type TurnTraceSummary } from "./trace";
 import type { TripOffer } from "./types";
 
@@ -24,8 +25,8 @@ export interface OrchestratorDeps {
     timeoutMs?: number;
   }) => Promise<unknown>;
   executors: {
-    executeSearchTrips: (args: unknown, trace?: TurnTrace) => Promise<unknown>;
-    executeGetTripOffer: (args: unknown, trace?: TurnTrace) => Promise<TripOffer>;
+    executeSearchTrips: (args: unknown, ctx?: ToolContext) => Promise<unknown>;
+    executeGetTripOffer: (args: unknown, ctx?: ToolContext) => Promise<TripOffer>;
     executeListThemes: () => unknown;
   };
   /** Zegar (testy) — domyślnie Date.now. */
@@ -231,7 +232,31 @@ function logTurn(
     cachedTokens: usage.cachedTokens,
     cachePct,
   });
+
+  // WOLNA TURA (§33) — osobna linia z wyróżnikiem, żeby dało się na niej
+  // ustawić filtr/alert w logach Vercela. Świadomie BEZ webhooka: to nie jest
+  // incydent płatniczy, a wysyłanie Slacka z każdej wolnej tury byłoby spamem
+  // (i zależałoby od ALERT_WEBHOOK_URL, który nie musi być ustawiony).
+  // Progi z pomiaru: narzędzia ponad 10 s albo cała tura ponad 20 s to już
+  // ogon, którego użytkownik nie wybacza.
+  if (usage.toolMs > SLOW_TOOL_MS || elapsedMs > SLOW_TURN_MS) {
+    console.warn("[concierge] SLOW TURN", {
+      traceId: summary.traceId,
+      elapsedMs,
+      modelMs: usage.modelMs,
+      toolMs: usage.toolMs,
+      outcome,
+      worst: summary.spans.reduce<{ name: string; ms: number }>(
+        (max, span) => (span.ms > max.ms ? { name: span.name, ms: span.ms } : max),
+        { name: "-", ms: 0 },
+      ),
+    });
+  }
 }
+
+/** Progi „wolnej tury" z §33 audytu — patrz logTurn. */
+const SLOW_TOOL_MS = 10_000;
+const SLOW_TURN_MS = 20_000;
 
 /** Wąska walidacja kształtu odpowiedzi modelu — patrz nagłówek pliku. */
 function isMalformedResponse(payload: unknown): payload is Record<string, unknown> {
@@ -331,6 +356,21 @@ function computeBudgetFit(
 }
 
 /**
+ * Komunikaty stanu oferty DLA MODELU (§17). Świadomie mówią, czego NIE MA —
+ * bez tego tani model opisywał brak jako sukces („znalazłem wyjazd"), bo
+ * jedyny sygnał, jaki dostawał, to `partial:true` gdzieś w środku obiektu.
+ */
+const UNAVAILABLE_NOTE =
+  "NIE MA OFERTY dla tego kierunku i terminu: ani hotel, ani lot nie zostały potwierdzone, " +
+  "a karta NIE została pokazana. Powiedz to wprost jednym zdaniem, NIE podawaj żadnej ceny " +
+  "i zaproponuj konkretną zmianę: inny termin albo inny kierunek z listy.";
+
+const PARTIAL_NOTE =
+  "OFERTA NIEPEŁNA: potwierdził się tylko jeden składnik. Powiedz wprost, którego brakuje " +
+  "(np. „mam hotel, ale nie mam teraz potwierdzonego lotu”), NIE podawaj ceny całego pakietu " +
+  "ani nie doszacowuj brakującej części, i zaproponuj sprawdzenie innego terminu.";
+
+/**
  * Dispatch bezpieczny: nigdy nie rzuca — błąd egzekutora/parsowania staje się
  * wynikiem narzędzia.
  *
@@ -341,7 +381,7 @@ function computeBudgetFit(
 export async function dispatchToolCall(
   call: ToolCall,
   executors: OrchestratorDeps["executors"],
-  trace: TurnTrace,
+  ctx: ToolContext,
 ): Promise<{ result: unknown; offer: TripOffer | null }> {
   let args: unknown;
   try {
@@ -353,7 +393,7 @@ export async function dispatchToolCall(
   try {
     switch (call.function.name) {
       case "search_trips": {
-        const result = await executors.executeSearchTrips(args, trace);
+        const result = await executors.executeSearchTrips(args, ctx);
         // AUTO-OFERTA: tani model NIE łańcuchuje niezawodnie get_trip_offer po
         // search_trips (zweryfikowane na preview — user utknął bez karty mimo
         // instrukcji w prompcie). Dlatego kartę najlepszego kandydata pobiera
@@ -382,7 +422,26 @@ export async function dispatchToolCall(
               // (inaczej klient „bez lotu" dostawał kartę z lotem i ceną pakietu).
               wantsFlight: searchArgs.wantsFlight,
               wantsHotel: searchArgs.wantsHotel,
-            }, trace);
+            }, ctx);
+            // PUSTA OFERTA NIE JEST OFERTĄ (§16). Gdy ani hotel, ani lot się
+            // nie potwierdziły, karta pokazywała użytkownikowi samo pudełko
+            // z datami i dwa komunikaty „nie udało się" — wyglądało to jak
+            // znaleziony wyjazd. Zostawiamy wtedy SAMĄ listę kandydatów
+            // i mówimy modelowi wprost, czego brakuje.
+            if (offer.resultState === "unavailable") {
+              return {
+                result: {
+                  ...(result as Record<string, unknown>),
+                  autoOfferFailed: {
+                    cityEn: offer.cityEn,
+                    checkin: offer.checkin,
+                    checkout: offer.checkout,
+                  },
+                  autoOfferNote: UNAVAILABLE_NOTE,
+                },
+                offer: null,
+              };
+            }
             const budgetFit = computeBudgetFit(searchArgs, offer.totalPerPersonPln);
             return {
               result: {
@@ -394,6 +453,7 @@ export async function dispatchToolCall(
                 candidates: candidates!.slice(1),
                 autoOffer: budgetFit ? { ...offer, budgetFit } : offer,
                 autoOfferNote:
+                  (offer.resultState === "partial" ? PARTIAL_NOTE + " " : "") +
                   "Karta tej oferty (najlepszy kandydat) została JUŻ pokazana użytkownikowi, z linkami „Zobacz hotel” i „Zobacz lot”. Omów jej wartość (cena, daty z karty, zapas do budżetu wg budgetFit) i wymień 1–2 alternatywy z candidates (to już TYLKO inne kierunki).",
               },
               offer,
@@ -408,10 +468,31 @@ export async function dispatchToolCall(
         return { result, offer: null };
       }
       case "get_trip_offer": {
-        const offer = await executors.executeGetTripOffer(args, trace);
+        const offer = await executors.executeGetTripOffer(args, ctx);
+        // Brak obu składników = BRAK OFERTY: model dostaje jawną informację,
+        // a UI nie renderuje pustej karty (patrz komentarz przy auto-ofercie).
+        if (offer.resultState === "unavailable") {
+          return {
+            result: {
+              cityEn: offer.cityEn,
+              countryEn: offer.countryEn,
+              checkin: offer.checkin,
+              checkout: offer.checkout,
+              resultState: offer.resultState,
+              hotel: null,
+              flight: null,
+              note: UNAVAILABLE_NOTE,
+            },
+            offer: null,
+          };
+        }
         // budgetFit tylko w treści DLA MODELU — karta (offer) zostaje czysta.
         const budgetFit = computeBudgetFit(args, offer.totalPerPersonPln);
-        return { result: budgetFit ? { ...offer, budgetFit } : offer, offer };
+        const partialNote = offer.resultState === "partial" ? { note: PARTIAL_NOTE } : {};
+        return {
+          result: { ...offer, ...partialNote, ...(budgetFit ? { budgetFit } : {}) },
+          offer,
+        };
       }
       case "list_themes": {
         const result = executors.executeListThemes();
@@ -482,6 +563,10 @@ export async function runConcierge(
 
   const nowFn = deps.now ?? Date.now;
   const trace = deps.trace ?? createTurnTrace({ now: nowFn });
+  // JEDEN kontekst na całą turę — dzięki temu memo snapshotu obejmuje także
+  // dwa osobne wywołania narzędzi w tej samej turze (§21). Termin ustawiamy
+  // przed każdym wywołaniem, bo budżet topnieje w trakcie.
+  const toolCtx = createToolContext({ trace, deadlineAt: null });
   const startedAt = nowFn();
   const timeLeft = () => TURN_BUDGET_MS - (nowFn() - startedAt);
   const chatTimeout = () => Math.min(CHAT_TIMEOUT_CAP_MS, Math.max(MIN_CHAT_BUDGET_MS, timeLeft() - 2_000));
@@ -554,7 +639,12 @@ export async function runConcierge(
         usage.toolCalls += 1;
         const stopTool = trace.start(`tool.${call.function.name}`);
         const tTool = nowFn();
-        const { result, offer: callOffer } = await dispatchToolCall(call, deps.executors, trace);
+        // TERMIN dla narzędzia (§22/§23): tyle, ile zostało z budżetu tury,
+        // minus rezerwa na ostatnią rundę modelu. Bez tego pojedyncze
+        // zapytanie do LiteAPI (30 s limitu × 3 próby) mogło samo przekroczyć
+        // maxDuration route'a i użytkownik dostawał gołe 504.
+        toolCtx.deadlineAt = nowFn() + Math.max(0, timeLeft() - MIN_CHAT_BUDGET_MS);
+        const { result, offer: callOffer } = await dispatchToolCall(call, deps.executors, toolCtx);
         usage.toolMs += nowFn() - tTool;
         stopTool();
         if (callOffer) offer = callOffer;
