@@ -13,6 +13,7 @@
 
 import type { DestinationPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import type { ConciergeSnapshot } from "@/lib/snapshot/types";
+import type { UserDateHints } from "./user-date-hints";
 
 import { createTurnTrace, NOOP_TRACE, type TurnTrace } from "./trace";
 
@@ -31,14 +32,23 @@ export interface ToolContext {
    * (testy, benchmark). Orkiestrator ustawia go z pozostałego budżetu tury.
    */
   deadlineAt: number | null;
+  /**
+   * Podpowiedzi wyciągnięte MECHANICZNIE z ostatniej wiadomości użytkownika
+   * (V2.2). Dziś tylko rok: model, mimo jawnej instrukcji w schemacie
+   * narzędzia, nie przekazuje go — zmierzone na Preview, patrz
+   * `user-date-hints.ts`. Bez roku nie da się odróżnić „sierpień" (najbliższy
+   * przyszły) od „sierpień 2026" (termin, który minął).
+   */
+  dateHints?: UserDateHints;
 }
 
 export function createToolContext(
-  opts: { trace?: TurnTrace; deadlineAt?: number | null } = {},
+  opts: { trace?: TurnTrace; deadlineAt?: number | null; dateHints?: UserDateHints } = {},
 ): ToolContext {
   return {
     trace: opts.trace ?? createTurnTrace(),
     deadlineAt: opts.deadlineAt ?? null,
+    dateHints: opts.dateHints,
   };
 }
 

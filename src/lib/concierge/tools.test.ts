@@ -13,6 +13,7 @@ import { destinationPriceKey } from "@/lib/prices/destination-price-snapshot";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import seedJson from "../../../data/destinations.json";
 import { resolveThemeCities, type SeedDestinationLike } from "./trip-search";
+import { createToolContext } from "./tool-context";
 import { createToolExecutors, type CheapestFlight, type CheapestHotel, type ToolDeps } from "./tools";
 
 // Lookup seedu do wstrzyknięcia — ta sama semantyka co getDestinationByCityCountry
@@ -760,4 +761,41 @@ test("§8: jawny PRZYSZLY rok nie wywoluje komunikatu o minionym terminie", asyn
   });
   assert.doesNotMatch(offer.dateNote ?? "", /MINĄŁ/u);
   assert.equal(offer.checkin.slice(0, 7), "2026-11");
+});
+
+test("§8: rok z TEKSTU uzytkownika dziala, gdy model go nie podal", async () => {
+  // To jest realny przypadek z Preview: model przekazal `month: 8` i nic
+  // wiecej, mimo jawnej instrukcji w schemacie. Rok musi przyjsc z kontekstu.
+  const exec = createToolExecutors(
+    makeDeps({
+      now: () => NOW_SEP_2026,
+      resolveDest: () => ({ city: { en: "Malaga", pl: "Małaga" }, country: { en: "Spain" } }),
+      findCheapestHotel: async () => HOTEL,
+      findCheapestFlight: async () => FLIGHT,
+    }),
+  );
+  const ctx = createToolContext({ dateHints: { year: 2026 } });
+  const offer = await exec.executeGetTripOffer(
+    { cityEn: "Malaga", countryEn: "Spain", month: 8, nights: 7, origin: "WAW", adults: 2, children: 0 },
+    ctx,
+  );
+  assert.match(offer.dateNote ?? "", /MINĄŁ/u, `dateNote: ${offer.dateNote}`);
+  assert.match(offer.dateNote ?? "", /sierpień 2026/u);
+  assert.ok(offer.checkin > "2026-09-06");
+});
+
+test("§8: bez roku w tekscie i bez roku od modelu zostaje najblizszy przyszly", async () => {
+  const exec = createToolExecutors(
+    makeDeps({
+      now: () => NOW_SEP_2026,
+      resolveDest: () => ({ city: { en: "Malaga", pl: "Małaga" }, country: { en: "Spain" } }),
+      findCheapestHotel: async () => HOTEL,
+      findCheapestFlight: async () => FLIGHT,
+    }),
+  );
+  const offer = await exec.executeGetTripOffer(
+    { cityEn: "Malaga", countryEn: "Spain", month: 8, nights: 7, origin: "WAW", adults: 2, children: 0 },
+    createToolContext({ dateHints: {} }),
+  );
+  assert.doesNotMatch(offer.dateNote ?? "", /MINĄŁ/u);
 });

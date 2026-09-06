@@ -13,6 +13,7 @@ import { MAX_HISTORY_MESSAGES, MAX_INPUT_CHARS, MAX_TOOL_ROUNDS } from "./openro
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { TOOL_DEFS } from "./tools";
 import { createToolContext, type ToolContext } from "./tool-context";
+import { extractUserDateHints } from "./user-date-hints";
 import { createTurnTrace, type TurnTrace, type TurnTraceSummary } from "./trace";
 import type { TripOffer } from "./types";
 
@@ -623,7 +624,15 @@ export async function runConcierge(
   // JEDEN kontekst na całą turę — dzięki temu memo snapshotu obejmuje także
   // dwa osobne wywołania narzędzi w tej samej turze (§21). Termin ustawiamy
   // przed każdym wywołaniem, bo budżet topnieje w trakcie.
-  const toolCtx = createToolContext({ trace, deadlineAt: null });
+  // Rok z tekstu użytkownika liczymy SAMI — model go nie podaje (zmierzone
+  // na Preview 2026-09-06), a bez niego „sierpień 2026" we wrześniu 2026
+  // wygląda dla systemu jak prośba o sierpień 2027.
+  const lastUserText = [...history].reverse().find((m) => m.role === "user")?.content;
+  const toolCtx = createToolContext({
+    trace,
+    deadlineAt: null,
+    dateHints: extractUserDateHints(lastUserText),
+  });
   const startedAt = nowFn();
   const timeLeft = () => TURN_BUDGET_MS - (nowFn() - startedAt);
   const chatTimeout = () => Math.min(CHAT_TIMEOUT_CAP_MS, Math.max(MIN_CHAT_BUDGET_MS, timeLeft() - 2_000));

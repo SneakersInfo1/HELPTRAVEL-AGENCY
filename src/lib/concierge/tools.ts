@@ -1027,15 +1027,18 @@ export function createToolExecutors(deps: ToolDeps) {
     // podstawiać kolejnego roku. Mówimy wprost, że minął, i pokazujemy kartę
     // na najbliższy sensowny termin, żeby rozmowa miała czym iść dalej.
     let explicitPast = false;
-    if (a.month && a.year) {
-      const explicit = resolveExplicitMonthYear(a.month, a.year, todayIso);
+    // Rok bierzemy od modelu, a gdy go nie podał (a nie podaje — zmierzone) —
+    // z tekstu użytkownika, wyciągnięty mechanicznie przez orkiestrator.
+    const explicitYear = a.year ?? ctx.dateHints?.year;
+    if (a.month && explicitYear) {
+      const explicit = resolveExplicitMonthYear(a.month, explicitYear, todayIso);
       if (explicit && explicit.state === "PAST") {
         explicitPast = true;
         console.info(
-          `[concierge] get_trip_offer: jawny termin ${MONTH_PL[a.month] ?? a.month} ${a.year} już minął (dziś ${todayIso})`,
+          `[concierge] get_trip_offer: jawny termin ${MONTH_PL[a.month] ?? a.month} ${explicitYear} już minął (dziś ${todayIso}, źródło roku: ${a.year ? "model" : "tekst użytkownika"})`,
         );
         dateNote =
-          `Termin, o który prosił użytkownik (${MONTH_PL[a.month] ?? "ten miesiąc"} ${a.year}), JUŻ MINĄŁ — ` +
+          `Termin, o który prosił użytkownik (${MONTH_PL[a.month] ?? "ten miesiąc"} ${explicitYear}), JUŻ MINĄŁ — ` +
           "nie da się go kupić. Powiedz to wprost jednym zdaniem i poproś o inny termin. " +
           "Karta pokazuje najbliższy dostępny termin, więc możesz jej użyć jako punktu wyjścia, " +
           "ale NIE udawaj, że to jest termin, o który pytał.";
