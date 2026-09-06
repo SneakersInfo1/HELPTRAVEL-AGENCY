@@ -86,7 +86,16 @@ export async function POST(request: NextRequest) {
         setTimeout(() => resolve(FALLBACK_ERROR_BODY), 57_000),
       ),
     ]);
-    return NextResponse.json(result);
+    // Rozbicie czasu (traceId + etapy) idzie ZAWSZE do logu runtime, a do
+    // klienta wylacznie na jawne `?diag=1` — normalna odpowiedz czatu zostaje
+    // czysta. To sa gole metryki techniczne (nazwy etapow i milisekundy), zero
+    // PII; benchmark narzedzi V2.1 mierzy z nich BEFORE/AFTER.
+    const wantsDiag = new URL(request.url).searchParams.get("diag") === "1";
+    const diag = "diag" in result ? result.diag : undefined;
+    const body = wantsDiag ? result : { ...result, diag: undefined };
+    return NextResponse.json(body, {
+      headers: diag ? { "x-concierge-trace": diag.traceId } : undefined,
+    });
   } catch (err) {
     // runConcierge jest zaprojektowany, by nigdy nie rzucać — to jest siatka
     // bezpieczeństwa na nieprzewidziany wyjątek. Nigdy nie przeciekaj stack trace.

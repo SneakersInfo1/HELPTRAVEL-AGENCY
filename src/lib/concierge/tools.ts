@@ -19,6 +19,7 @@ import {
   type DestinationPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
 import { defaultMonth, missingFields, normalizeIntent } from "./budget";
+import { NOOP_TRACE, type TurnTrace } from "./trace";
 import {
   rankTripCandidates,
   resolveThemeCities,
@@ -647,7 +648,10 @@ export function createToolExecutors(deps: ToolDeps) {
    * Każda kwota pochodzi 1:1 ze snapshotu (rankTripCandidates pomija kierunki
    * bez świeżego pakietu). Pusta lista zawsze niesie `reason` dla bota.
    */
-  async function executeSearchTrips(args: unknown): Promise<SearchTripsResult> {
+  async function executeSearchTrips(
+    args: unknown,
+    trace: TurnTrace = NOOP_TRACE,
+  ): Promise<SearchTripsResult> {
     const parsed = readSearchTripsArgs(args);
     const intent = normalizeIntent(parsed);
     const country = parsed.country;
@@ -698,7 +702,10 @@ export function createToolExecutors(deps: ToolDeps) {
     // Klient nie podal miesiaca -> zakladamy najblizszy pelny i MOWIMY o tym
     // modelowi, zeby nazwal zalozenie zamiast pytac (zasada „TY prowadzisz").
     const assumedMonth = parsed.month === undefined ? defaultMonth(now()) : null;
-    const snapshot = await deps.readSnapshot();
+    const snapshot = await trace.measure("redis.snapshot", () => deps.readSnapshot(), {
+      tool: "search_trips",
+    });
+    const stopRank = trace.start("rank", { cities: cities.length });
     const ranked = snapshot
       ? rankTripCandidates(
           cities,
@@ -708,6 +715,7 @@ export function createToolExecutors(deps: ToolDeps) {
           { nights: parsed.nights },
         ).slice(0, MAX_TRIP_CANDIDATES)
       : [];
+    stopRank({ ranked: ranked.length });
 
     if (ranked.length > 0) {
       // Kształt DLA MODELU: tylko cena pakietu/os. — bez cen jednostkowych,
@@ -773,7 +781,10 @@ export function createToolExecutors(deps: ToolDeps) {
    * zabija drugiego; brakujący komponent = null + partial:true. Rzuca tylko
    * na naprawdę nieprawidłowe argumenty.
    */
-  async function executeGetTripOffer(args: unknown): Promise<TripOffer> {
+  async function executeGetTripOffer(
+    args: unknown,
+    trace: TurnTrace = NOOP_TRACE,
+  ): Promise<TripOffer> {
     const a = parseGetTripOfferArgs(args);
     // Wyspa/region od modelu → kanoniczne miasto seedu PRZED jakimkolwiek
     // lookupem (snapshot, LiteAPI, IATA — wszystko downstream dostaje
@@ -807,7 +818,9 @@ export function createToolExecutors(deps: ToolDeps) {
       checkout = derived.checkout;
     }
     if (!checkin || !checkout) {
-      const snapshot = await deps.readSnapshot();
+      const snapshot = await trace.measure("redis.snapshot", () => deps.readSnapshot(), {
+        tool: "get_trip_offer",
+      });
       const pkg = snapshot
         ? pickFreshPackage(
             snapshot,
@@ -846,27 +859,33 @@ export function createToolExecutors(deps: ToolDeps) {
     // szybciej, taniej (zero zbędnych wywołań LiteAPI) i uczciwie: karta oraz
     // cena/os. obejmują dokładnie to, o co prosił użytkownik.
     const hotelPromise = a.wantsHotel
-      ? deps.findCheapestHotel({
-          cityEn: a.cityEn, countryEn: a.countryEn,
-          checkin, checkout,
-          adults: a.adults, children: a.children,
-        })
+      ? trace.measure("liteapi.hotel", () =>
+          deps.findCheapestHotel({
+            cityEn: a.cityEn, countryEn: a.countryEn,
+            checkin, checkout,
+            adults: a.adults, children: a.children,
+          }),
+        )
       : Promise.resolve(null);
     const flightPromise = a.wantsFlight
-      ? deps.findCheapestFlight({
-          originIata: a.originIata, cityEn: a.cityEn, countryEn: a.countryEn,
-          depart: checkin, returnDate: checkout,
-          adults: a.adults, children: a.children,
-        })
+      ? trace.measure("liteapi.flight", () =>
+          deps.findCheapestFlight({
+            originIata: a.originIata, cityEn: a.cityEn, countryEn: a.countryEn,
+            depart: checkin, returnDate: checkout,
+            adults: a.adults, children: a.children,
+          }),
+        )
       : Promise.resolve(null);
     // Galeria startuje natychmiast po wybraniu hotelu, równolegle z lotem. Ma
     // własny krótki limit i nie zmienia globalnego budżetu tury orkiestratora.
     const galleryPromise = hotelPromise.then((hotelData) =>
       hotelData
-        ? resolveBeforeTimeout(
-            deps.fetchHotelPhotoUrls(hotelData.hotelId),
-            deps.galleryTimeoutMs ?? DEFAULT_GALLERY_TIMEOUT_MS,
-            [],
+        ? trace.measure("liteapi.gallery", () =>
+            resolveBeforeTimeout(
+              deps.fetchHotelPhotoUrls(hotelData.hotelId),
+              deps.galleryTimeoutMs ?? DEFAULT_GALLERY_TIMEOUT_MS,
+              [],
+            ),
           )
         : [],
     );

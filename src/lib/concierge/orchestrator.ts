@@ -12,6 +12,7 @@
 import { MAX_HISTORY_MESSAGES, MAX_INPUT_CHARS, MAX_TOOL_ROUNDS } from "./openrouter";
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { TOOL_DEFS } from "./tools";
+import { createTurnTrace, type TurnTrace, type TurnTraceSummary } from "./trace";
 import type { TripOffer } from "./types";
 
 /** Zależności wstrzykiwane do testów — route (Task 3.3) wiąże produkcyjne. */
@@ -23,12 +24,34 @@ export interface OrchestratorDeps {
     timeoutMs?: number;
   }) => Promise<unknown>;
   executors: {
-    executeSearchTrips: (args: unknown) => Promise<unknown>;
-    executeGetTripOffer: (args: unknown) => Promise<TripOffer>;
+    executeSearchTrips: (args: unknown, trace?: TurnTrace) => Promise<unknown>;
+    executeGetTripOffer: (args: unknown, trace?: TurnTrace) => Promise<TripOffer>;
     executeListThemes: () => unknown;
   };
   /** Zegar (testy) — domyślnie Date.now. */
   now?: () => number;
+  /** Slad tury (V2.1 §6) — testy podaja wlasny, prod tworzy nowy per tura. */
+  trace?: TurnTrace;
+}
+
+/**
+ * Rozbicie czasu tury BEZ PII (V2.1 §32) — dokladnie to, co idzie do logu
+ * runtime. Route oddaje je klientowi tylko na jawne zadanie `?diag=1`, zeby
+ * benchmark narzedzi mial czym mierzyc BEFORE/AFTER.
+ */
+export interface ConciergeDiagnostics {
+  traceId: string;
+  totalMs: number;
+  modelMs: number;
+  toolMs: number;
+  chatCalls: number;
+  toolCalls: number;
+  outcome: string;
+  model: string | null;
+  provider: string | null;
+  /** Suma czasu per etap (redis.snapshot, liteapi.hotel, liteapi.flight, rank…). */
+  spans: TurnTraceSummary["totals"];
+  counts: TurnTraceSummary["counts"];
 }
 
 export interface ConciergeResult {
@@ -38,6 +61,8 @@ export interface ConciergeResult {
   offer: TripOffer | null;
   /** true gdy wystąpił błąd transportu/modelu (UI może pokazać stan błędu). */
   error: boolean;
+  /** Metryki techniczne tury — patrz ConciergeDiagnostics. */
+  diag?: ConciergeDiagnostics;
 }
 
 const FALLBACK_ERROR_TEXT = "Chwilowo nie mogę odpowiedzieć — spróbuj za moment.";
@@ -169,16 +194,31 @@ function noteModel(totals: UsageTotals, payload: unknown): void {
  * rund modelu, ponowień i wywołań narzędzi. Bez PII — logujemy liczby i slugi,
  * nigdy treści rozmowy.
  */
-function logTurn(usage: UsageTotals, elapsedMs: number, outcome: string): void {
+function logTurn(
+  usage: UsageTotals,
+  elapsedMs: number,
+  outcome: string,
+  trace: TurnTrace,
+): void {
   const cachePct =
     usage.promptTokens > 0 ? Math.round((usage.cachedTokens / usage.promptTokens) * 100) : 0;
+  const summary = trace.summary();
   console.log("[concierge] turn", {
+    // Jeden identyfikator na cala ture (§6): po nim skleja sie w logach
+    // Vercela linia tury z ostrzezeniami narzedzi tej samej rozmowy.
+    traceId: summary.traceId,
     model: usage.model,
     provider: usage.provider,
     outcome,
     elapsedMs,
     chatCalls: usage.chatCalls,
     toolCalls: usage.toolCalls,
+    // ROZBICIE PER ZALEZNOSC (§5) — bez tego „18 sekund" nie ma wyjasnienia:
+    // {redis.snapshot, liteapi.hotel, liteapi.flight, liteapi.gallery, rank}.
+    spans: summary.totals,
+    spanCounts: summary.counts,
+    // Etapy przekraczajace 3 s wypisane z osobna — najczestszy powod ogona.
+    slowSpans: summary.spans.filter((s) => s.ms >= 3_000).map((s) => `${s.name}:${s.ms}`),
     // Rozbicie czasu na model vs narzędzia. Bez niego nie da się odpowiedzieć
     // na pytanie „czy streaming cokolwiek da": strumieniowanie skraca
     // oczekiwanie tylko na części MODELOWEJ, a jeśli dominują narzędzia,
@@ -290,10 +330,18 @@ function computeBudgetFit(
   return { budgetPerPersonPln: Math.round(perPerson), gapPln, note };
 }
 
-/** Dispatch bezpieczny: nigdy nie rzuca — błąd egzekutora/parsowania staje się wynikiem narzędzia. */
-async function dispatchToolCall(
+/**
+ * Dispatch bezpieczny: nigdy nie rzuca — błąd egzekutora/parsowania staje się
+ * wynikiem narzędzia.
+ *
+ * EKSPORTOWANY, bo benchmark narzędzi (V2.1 §26) musi mierzyć DOKŁADNIE tę
+ * ścieżkę, razem z auto-ofertą po search_trips. Mierzenie samych egzekutorów
+ * pokazywałoby czas, którego użytkownik nigdy nie doświadcza.
+ */
+export async function dispatchToolCall(
   call: ToolCall,
   executors: OrchestratorDeps["executors"],
+  trace: TurnTrace,
 ): Promise<{ result: unknown; offer: TripOffer | null }> {
   let args: unknown;
   try {
@@ -305,7 +353,7 @@ async function dispatchToolCall(
   try {
     switch (call.function.name) {
       case "search_trips": {
-        const result = await executors.executeSearchTrips(args);
+        const result = await executors.executeSearchTrips(args, trace);
         // AUTO-OFERTA: tani model NIE łańcuchuje niezawodnie get_trip_offer po
         // search_trips (zweryfikowane na preview — user utknął bez karty mimo
         // instrukcji w prompcie). Dlatego kartę najlepszego kandydata pobiera
@@ -334,7 +382,7 @@ async function dispatchToolCall(
               // (inaczej klient „bez lotu" dostawał kartę z lotem i ceną pakietu).
               wantsFlight: searchArgs.wantsFlight,
               wantsHotel: searchArgs.wantsHotel,
-            });
+            }, trace);
             const budgetFit = computeBudgetFit(searchArgs, offer.totalPerPersonPln);
             return {
               result: {
@@ -360,7 +408,7 @@ async function dispatchToolCall(
         return { result, offer: null };
       }
       case "get_trip_offer": {
-        const offer = await executors.executeGetTripOffer(args);
+        const offer = await executors.executeGetTripOffer(args, trace);
         // budgetFit tylko w treści DLA MODELU — karta (offer) zostaje czysta.
         const budgetFit = computeBudgetFit(args, offer.totalPerPersonPln);
         return { result: budgetFit ? { ...offer, budgetFit } : offer, offer };
@@ -433,15 +481,41 @@ export async function runConcierge(
   };
 
   const nowFn = deps.now ?? Date.now;
+  const trace = deps.trace ?? createTurnTrace({ now: nowFn });
   const startedAt = nowFn();
   const timeLeft = () => TURN_BUDGET_MS - (nowFn() - startedAt);
   const chatTimeout = () => Math.min(CHAT_TIMEOUT_CAP_MS, Math.max(MIN_CHAT_BUDGET_MS, timeLeft() - 2_000));
-  const outOfBudget = (): ConciergeResult => {
-    logTurn(usage, nowFn() - startedAt, offer ? "budget-exhausted+offer" : "budget-exhausted");
-    return offer
-      ? { text: OFFER_FALLBACK_TEXT, offer, error: false }
-      : { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
+
+  /** Jedno miejsce, w ktorym powstaje rozbicie czasu — kazde wyjscie je niesie. */
+  const finish = (
+    result: Omit<ConciergeResult, "diag">,
+    outcome: string,
+  ): ConciergeResult => {
+    const totalMs = nowFn() - startedAt;
+    logTurn(usage, totalMs, outcome, trace);
+    const summary = trace.summary();
+    return {
+      ...result,
+      diag: {
+        traceId: summary.traceId,
+        totalMs,
+        modelMs: usage.modelMs,
+        toolMs: usage.toolMs,
+        chatCalls: usage.chatCalls,
+        toolCalls: usage.toolCalls,
+        outcome,
+        model: usage.model,
+        provider: usage.provider,
+        spans: summary.totals,
+        counts: summary.counts,
+      },
+    };
   };
+
+  const outOfBudget = (): ConciergeResult =>
+    offer
+      ? finish({ text: OFFER_FALLBACK_TEXT, offer, error: false }, "budget-exhausted+offer")
+      : finish({ text: FALLBACK_ERROR_TEXT, offer: null, error: true }, "budget-exhausted");
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     if (timeLeft() < MIN_CHAT_BUDGET_MS) return outOfBudget();
@@ -449,8 +523,7 @@ export async function runConcierge(
 
     if (isMalformedResponse(response)) {
       console.error("concierge: OpenRouter error", response);
-      logTurn(usage, nowFn() - startedAt, "model-error");
-      return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
+      return finish({ text: FALLBACK_ERROR_TEXT, offer: null, error: true }, "model-error");
     }
 
     const message = (response as ChatCompletionResponse).choices![0]!.message!;
@@ -479,9 +552,11 @@ export async function runConcierge(
           continue;
         }
         usage.toolCalls += 1;
-        const tTool = Date.now();
-        const { result, offer: callOffer } = await dispatchToolCall(call, deps.executors);
-        usage.toolMs += Date.now() - tTool;
+        const stopTool = trace.start(`tool.${call.function.name}`);
+        const tTool = nowFn();
+        const { result, offer: callOffer } = await dispatchToolCall(call, deps.executors, trace);
+        usage.toolMs += nowFn() - tTool;
+        stopTool();
         if (callOffer) offer = callOffer;
         messages.push({
           role: "tool",
@@ -493,14 +568,15 @@ export async function runConcierge(
     }
 
     if (typeof message.content === "string") {
-      logTurn(usage, nowFn() - startedAt, offer ? "ok+offer" : "ok");
-      return { text: stripMarkdownArtifacts(message.content), offer, error: false };
+      return finish(
+        { text: stripMarkdownArtifacts(message.content), offer, error: false },
+        offer ? "ok+offer" : "ok",
+      );
     }
 
     // Ani content, ani tool_calls — traktujemy jak zdeformowaną odpowiedź.
     console.error("concierge: OpenRouter error", response);
-    logTurn(usage, nowFn() - startedAt, "empty-response");
-    return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
+    return finish({ text: FALLBACK_ERROR_TEXT, offer: null, error: true }, "empty-response");
   }
 
   // Limit rund osiągnięty — finalne wywołanie BEZ narzędzi, wymusza tekst.
@@ -508,13 +584,15 @@ export async function runConcierge(
   const finalResponse = await chatWithRetry(deps, { messages, tools: [], timeoutMs: chatTimeout() }, usage);
   if (isMalformedResponse(finalResponse)) {
     console.error("concierge: OpenRouter error", finalResponse);
-    return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
+    return finish({ text: FALLBACK_ERROR_TEXT, offer: null, error: true }, "model-error(max-rounds)");
   }
   const finalMessage = (finalResponse as ChatCompletionResponse).choices![0]!.message!;
   if (typeof finalMessage.content === "string") {
-    logTurn(usage, nowFn() - startedAt, offer ? "ok+offer(max-rounds)" : "ok(max-rounds)");
-    return { text: stripMarkdownArtifacts(finalMessage.content), offer, error: false };
+    return finish(
+      { text: stripMarkdownArtifacts(finalMessage.content), offer, error: false },
+      offer ? "ok+offer(max-rounds)" : "ok(max-rounds)",
+    );
   }
   console.error("concierge: OpenRouter error", finalResponse);
-  return { text: FALLBACK_ERROR_TEXT, offer: null, error: true };
+  return finish({ text: FALLBACK_ERROR_TEXT, offer: null, error: true }, "empty-response(max-rounds)");
 }
