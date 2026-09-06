@@ -93,3 +93,29 @@ test("miesiac w starterze plazowym jest zawsze PRZYSZLY wzgledem dzis", () => {
 test("startery sa deterministyczne dla tego samego dnia", () => {
   assert.deepEqual(buildConciergeStarters(NOW), buildConciergeStarters(NOW));
 });
+
+test("etykiety mieszcza sie w budzecie dlugosci dla ekranu 375 px", () => {
+  // To NIE jest dowod renderu — to budzet. Etykieta, ktora dzis jedzie na
+  // produkcji („Plaza do 3000 zl w sierpniu", 27 znakow), miesci sie w jednym
+  // wierszu przy 375 px. Najdluzszy wariant generowany („...w pazdzierniku")
+  // ma 31 znakow. Prog 36 zostawia zapas, ale wywali sie, gdyby ktos wstawil
+  // etykiete istotnie dluzsza niz cokolwiek, co bylo ogladane na telefonie.
+  const MAX_LABEL_CHARS = 36;
+  for (let m = 1; m <= 12; m += 1) {
+    for (const s of buildConciergeStarters(`2026-${String(m).padStart(2, "0")}-06`)) {
+      assert.ok(
+        s.label.length <= MAX_LABEL_CHARS,
+        `etykieta „${s.label}" ma ${s.label.length} znakow (budzet ${MAX_LABEL_CHARS})`,
+      );
+    }
+  }
+});
+
+test("przyimek pasuje do miesiaca — 'we wrzesniu', nie 'w wrzesniu'", () => {
+  // Zbitka „wrz" wymaga „we". Doklejanie stalego „w " dawalo „w wrzesniu".
+  const sierpien = buildConciergeStarters("2026-07-06").find((s) => s.intent === "beach");
+  assert.ok(sierpien?.label.includes("w sierpniu"), sierpien?.label);
+  const wrzesien = buildConciergeStarters("2026-08-06").find((s) => s.intent === "beach");
+  assert.ok(wrzesien?.label.includes("we wrześniu"), wrzesien?.label);
+  assert.ok(!wrzesien?.label.includes("w wrześniu"), `zla forma: ${wrzesien?.label}`);
+});

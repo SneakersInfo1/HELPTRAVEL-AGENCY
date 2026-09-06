@@ -16,7 +16,11 @@
 import { addDaysIso, monthOfIso } from "@/lib/time/travel-now";
 import { resolveMonthWithoutYear } from "./travel-dates";
 
-/** Miesiące w miejscowniku, z polskimi znakami — to jest COPY, nie slug. */
+/**
+ * Miesiące w miejscowniku RAZEM Z PRZYIMKIEM — bo przyimek zależy od miesiąca.
+ * „wrzesień" wymaga „we" (zbitka spółgłosek „wrz"), reszta bierze „w".
+ * Trzymanie samej nazwy i doklejanie „w " dawało „w wrześniu".
+ */
 export const MONTH_LOCATIVE_PL: Record<number, string> = {
   1: "styczniu",
   2: "lutym",
@@ -31,6 +35,11 @@ export const MONTH_LOCATIVE_PL: Record<number, string> = {
   11: "listopadzie",
   12: "grudniu",
 };
+
+/** Przyimek pasujący do miesiąca: „we wrześniu", ale „w sierpniu". */
+export function monthWithPreposition(month: number): string {
+  return `${month === 9 ? "we" : "w"} ${MONTH_LOCATIVE_PL[month]}`;
+}
 
 /**
  * Miesiące, w których „plaża” w europejskim zasięgu lotu jest uczciwą
@@ -78,7 +87,7 @@ export function buildConciergeStarters(todayIso: string): ConciergeStarter[] {
   const next = nextFullMonth(todayIso);
   const beachNamesMonth = BEACH_SEASON_MONTHS.has(next.month);
   const beachText = beachNamesMonth
-    ? `Plaża do 3000 zł w ${MONTH_LOCATIVE_PL[next.month]}`
+    ? `Plaża do 3000 zł ${monthWithPreposition(next.month)}`
     : "Plaża do 3000 zł";
 
   return [
