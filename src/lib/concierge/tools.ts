@@ -29,7 +29,7 @@ import {
   type SeedDestinationLookup,
   type TripSearchCity,
 } from "./trip-search";
-import type { ConciergeIntent, OfferResultState, TripOffer } from "./types";
+import type { ComponentStatus, ConciergeIntent, OfferResultState, TripOffer } from "./types";
 
 /**
  * Wąski kształt narzędzia OpenAI/OpenRouter. Celowo `type` (nie `interface`):
@@ -455,13 +455,14 @@ const DEFAULT_GALLERY_TIMEOUT_MS = 900;
  *   liteapi.hotel   p50  195 · p75  275 · p95  3369 · max  3574 ms
  *   redis.snapshot  p50  200 (suma dwóch odczytów w turze)
  *
- * Górna granica 20 s stoi POWYŻEJ zmierzonego p95, więc obcina wyłącznie
- * ogon (28,6 s) i teoretyczny najgorszy przypadek 3 × 30 s = 90 s — nie
- * zabiera szans normalnemu zimnemu wyszukaniu. Dolna granica 6 s: poniżej
- * tego i tak nic sensownego nie zdąży wrócić, więc lepiej od razu oddać
- * ofertę częściową niż udawać, że szukamy.
+ * Górna granica 23 s to GLOBALNY budżet obu prób razem (patrz
+ * ./flight-retry i stałe w tool-deps): pierwsza dostaje 15 s, druga tylko
+ * resztę. Podniesiona z 20 s po pomiarze produkcyjnym, w którym twardy limit
+ * 20 s bez ponowienia zamieniał 6 z 72 ofert VALID w PARTIAL. Dolna granica
+ * 6 s: poniżej tego i tak nic sensownego nie zdąży wrócić, więc lepiej od
+ * razu oddać ofertę częściową niż udawać, że szukamy.
  */
-const FLIGHT_BUDGET_BOUNDS = { min: 6_000, max: 20_000 } as const;
+const FLIGHT_BUDGET_BOUNDS = { min: 6_000, max: 23_000 } as const;
 const MAX_OFFER_PHOTOS = 12;
 
 /** Miesiąc (1–12) z daty ISO albo null dla braku/nonsensu. */
@@ -1086,6 +1087,13 @@ export function createToolExecutors(deps: ToolDeps) {
     // podstawie renderował użytkownikowi pustą kartę z samymi datami.
     const resultState: OfferResultState =
       hotel === null && flight === null ? "unavailable" : allWantedPresent ? "valid" : "partial";
+    // Stan KAŻDEGO składnika z osobna — po ZAKOŃCZONYM wyszukiwaniu, więc
+    // nigdy „w trakcie". Bez tego model musiał wnioskować z `hotel: null`
+    // i potrafił obiecać użytkownikowi, że lot „zaraz się doczyta".
+    const statusOf = (wanted: boolean, value: unknown): ComponentStatus =>
+      !wanted ? "not_requested" : value !== null ? "confirmed" : "unavailable";
+    const hotelStatus = statusOf(a.wantsHotel, hotel);
+    const flightStatus = statusOf(a.wantsFlight, flight);
     const totalPln = allWantedPresent && (hotel || flight)
       ? Math.ceil((hotel?.totalPln ?? 0) + (flight?.totalPln ?? 0))
       : null;
@@ -1109,6 +1117,8 @@ export function createToolExecutors(deps: ToolDeps) {
       totalPerPersonPln,
       partial: !allWantedPresent,
       resultState,
+      hotelStatus,
+      flightStatus,
       wantsFlight: a.wantsFlight,
       wantsHotel: a.wantsHotel,
     };

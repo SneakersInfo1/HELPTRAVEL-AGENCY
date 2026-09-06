@@ -362,13 +362,58 @@ function computeBudgetFit(
  */
 const UNAVAILABLE_NOTE =
   "NIE MA OFERTY dla tego kierunku i terminu: ani hotel, ani lot nie zostały potwierdzone, " +
-  "a karta NIE została pokazana. Powiedz to wprost jednym zdaniem, NIE podawaj żadnej ceny " +
+  "a karta NIE została pokazana. Wyszukiwanie SIĘ ZAKOŃCZYŁO — nic nie jest już wyszukiwane " +
+  "w tle i nic się samo nie pojawi. Powiedz to wprost jednym zdaniem, NIE podawaj żadnej ceny " +
   "i zaproponuj konkretną zmianę: inny termin albo inny kierunek z listy.";
 
-const PARTIAL_NOTE =
-  "OFERTA NIEPEŁNA: potwierdził się tylko jeden składnik. Powiedz wprost, którego brakuje " +
-  "(np. „mam hotel, ale nie mam teraz potwierdzonego lotu”), NIE podawaj ceny całego pakietu " +
-  "ani nie doszacowuj brakującej części, i zaproponuj sprawdzenie innego terminu.";
+/**
+ * Nota przy ofercie częściowej. Rozbudowana po incydencie 2026-09-06, w którym
+ * bot napisał „lot jeszcze się wczytuje — zaraz będzie dostępny w karcie"
+ * (nieprawda) i policzył zapas do budżetu od ceny SAMEGO hotelu, jakby to była
+ * kompletna oferta. Oba zdania poniżej zamykają dokładnie te dwie furtki.
+ */
+function partialNote(offer: TripOffer): string {
+  const missing = offer.flightStatus === "unavailable" ? "lotu" : "hotelu";
+  const present = offer.flightStatus === "unavailable" ? "hotel" : "lot";
+  return (
+    `OFERTA NIEPEŁNA: potwierdził się ${present}, ale ${missing} NIE UDAŁO SIĘ potwierdzić. ` +
+    `Wyszukiwanie ${missing} SIĘ ZAKOŃCZYŁO niepowodzeniem — NIE jest już wyszukiwany w tle, ` +
+    "karta NIE uzupełni się sama i nie wolno tego użytkownikowi obiecywać ani sugerować. " +
+    "Powiedz wprost jednym zdaniem, czego brakuje. " +
+    "ZAKAZ liczenia ceny całego wyjazdu, ceny za osobę za całość oraz zapasu/przekroczenia " +
+    `budżetu — nie masz ${missing}, więc żadna z tych liczb nie istnieje. Wolno Ci podać ` +
+    "wyłącznie ceny z pola priceFacts, dokładnie w opisanych tam jednostkach. " +
+    "Zaproponuj sprawdzenie innego terminu albo kierunku."
+  );
+}
+
+/**
+ * Jednoznaczne JEDNOSTKI ceny hotelu (§6 hotfixu). Model dostawał wyłącznie
+ * `totalPln` i sam dzielił — a potem mylił jednostkę: 1445 zł za 7 nocy dla
+ * 2 osób nazwał „722 zł na osobę za noc", podczas gdy 722 to połowa CAŁEGO
+ * pobytu. Każde pole ma tu nazwę mówiącą wprost, czego dotyczy, i powstaje
+ * tylko wtedy, gdy naprawdę da się je policzyć.
+ */
+function priceFactsFor(offer: TripOffer): Record<string, unknown> | null {
+  const hotel = offer.hotel;
+  if (!hotel) return null;
+  const pax = Math.max(1, offer.adults + offer.children);
+  const nights = typeof offer.nights === "number" && offer.nights > 0 ? offer.nights : null;
+  return {
+    hotelTotalPln: hotel.totalPln,
+    hotelPerPersonPln: Math.ceil(hotel.totalPln / pax),
+    // Bez znanej liczby nocy NIE zgadujemy ceny za noc — pole po prostu nie istnieje.
+    hotelPerNightPln: nights !== null ? Math.round(hotel.totalPln / nights) : null,
+    nights,
+    pax,
+    note:
+      "hotelTotalPln = cena za CAŁY pobyt dla WSZYSTKICH gości. " +
+      "hotelPerPersonPln = ta sama kwota podzielona na osoby, też za CAŁY pobyt (NIE za noc). " +
+      "hotelPerNightPln = średnia za jedną noc dla całego pokoju; null oznacza, że nie znamy " +
+      "liczby nocy i wtedy o cenie za noc NIE WOLNO mówić. " +
+      "Cytuj te liczby dosłownie razem z jednostką — nie przeliczaj ich samodzielnie.",
+  };
+}
 
 /**
  * Dispatch bezpieczny: nigdy nie rzuca — błąd egzekutora/parsowania staje się
@@ -451,9 +496,13 @@ export async function dispatchToolCall(
                 // (snapshotową) ceną jako „alternatywy" (realny incydent:
                 // karta Larnaka 1833 zł/os. + „alternatywa Larnaka od 1081").
                 candidates: candidates!.slice(1),
-                autoOffer: budgetFit ? { ...offer, budgetFit } : offer,
+                autoOffer: {
+                  ...offer,
+                  ...(budgetFit ? { budgetFit } : {}),
+                  ...(priceFactsFor(offer) ? { priceFacts: priceFactsFor(offer) } : {}),
+                },
                 autoOfferNote:
-                  (offer.resultState === "partial" ? PARTIAL_NOTE + " " : "") +
+                  (offer.resultState === "partial" ? partialNote(offer) + " " : "") +
                   "Karta tej oferty (najlepszy kandydat) została JUŻ pokazana użytkownikowi, z linkami „Zobacz hotel” i „Zobacz lot”. Omów jej wartość (cena, daty z karty, zapas do budżetu wg budgetFit) i wymień 1–2 alternatywy z candidates (to już TYLKO inne kierunki).",
               },
               offer,
@@ -486,11 +535,19 @@ export async function dispatchToolCall(
             offer: null,
           };
         }
-        // budgetFit tylko w treści DLA MODELU — karta (offer) zostaje czysta.
+        // budgetFit i priceFacts tylko w treści DLA MODELU — karta (offer)
+        // zostaje czysta. budgetFit i tak jest null przy ofercie częściowej
+        // (brak ceny/os.), więc zapas do budżetu nie ma z czego powstać.
         const budgetFit = computeBudgetFit(args, offer.totalPerPersonPln);
-        const partialNote = offer.resultState === "partial" ? { note: PARTIAL_NOTE } : {};
+        const priceFacts = priceFactsFor(offer);
+        const note = offer.resultState === "partial" ? { note: partialNote(offer) } : {};
         return {
-          result: { ...offer, ...partialNote, ...(budgetFit ? { budgetFit } : {}) },
+          result: {
+            ...offer,
+            ...note,
+            ...(budgetFit ? { budgetFit } : {}),
+            ...(priceFacts ? { priceFacts } : {}),
+          },
           offer,
         };
       }

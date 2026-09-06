@@ -469,7 +469,7 @@ test("§21: search_trips + auto-oferta czytają snapshot RAZ, nie dwa razy", asy
 
 // ── §22: budżet czasu lotu wynika z TERMINU TURY, nie ze stałej ──────────────
 
-test("§22: przy zdrowym budżecie lot dostaje pełny limit 20 s", async () => {
+test("§22: przy zdrowym budżecie lot dostaje pełny globalny budżet 23 s", async () => {
   let seenBudget: number | undefined;
   const { executeGetTripOffer } = createToolExecutors(
     makeDeps({
@@ -483,7 +483,7 @@ test("§22: przy zdrowym budżecie lot dostaje pełny limit 20 s", async () => {
     { cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2, checkin: "2026-08-10", checkout: "2026-08-17" },
     createToolContext({ deadlineAt: now + 40_000 }),
   );
-  assert.equal(seenBudget, 20_000);
+  assert.equal(seenBudget, 23_000);
 });
 
 test("§22: gdy tura się kończy, lot dostaje TYLE, ile zostało", async () => {
@@ -569,4 +569,115 @@ test("monthMatch=true gdy okno snapshotu trafia w miesiąc użytkownika", async 
   })) as { candidates: Array<{ monthMatch: boolean | null }> };
 
   assert.equal(res.candidates[0].monthMatch, true);
+});
+
+// ── HOTFIX V2.1a: stan składników, narracja częściowa, jednostki ceny ───────
+// Incydent produkcyjny 2026-09-06: przy ofercie bez lotu bot napisał „lot
+// jeszcze się wczytuje — zaraz będzie dostępny w karcie" (NIEPRAWDA — żądanie
+// padło na limicie i nikt go nie ponawia), nazwał 722 zł „na osobę za noc"
+// (to była cena za CAŁY pobyt na osobę) i policzył zapas do budżetu od ceny
+// samego hotelu, jakby to była kompletna oferta.
+
+test("§4: brak lotu → flightStatus 'unavailable', nigdy stan sugerujący ładowanie", async () => {
+  const { executeGetTripOffer } = createToolExecutors(makeDeps({ findCheapestHotel: async () => hotel }));
+  const offer = await executeGetTripOffer({
+    cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2,
+    checkin: "2026-08-10", checkout: "2026-08-17",
+  });
+  assert.equal(offer.flightStatus, "unavailable");
+  assert.equal(offer.hotelStatus, "confirmed");
+  assert.doesNotMatch(JSON.stringify(offer), /loading|wczytuj|ładuj|ladowan/i);
+});
+
+test("§4: oba składniki realne → oba 'confirmed'", async () => {
+  const { executeGetTripOffer } = createToolExecutors(
+    makeDeps({ findCheapestHotel: async () => hotel, findCheapestFlight: async () => flight }),
+  );
+  const offer = await executeGetTripOffer({
+    cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2,
+    checkin: "2026-08-10", checkout: "2026-08-17",
+  });
+  assert.equal(offer.flightStatus, "confirmed");
+  assert.equal(offer.hotelStatus, "confirmed");
+});
+
+test("§4: składnik, którego user NIE chciał → 'not_requested', nie 'unavailable'", async () => {
+  const { executeGetTripOffer } = createToolExecutors(makeDeps({ findCheapestHotel: async () => hotel }));
+  const offer = await executeGetTripOffer({
+    cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2,
+    checkin: "2026-08-10", checkout: "2026-08-17", wantsFlight: false,
+  });
+  assert.equal(offer.flightStatus, "not_requested");
+  assert.equal(offer.resultState, "valid");
+});
+
+test("§4: nota dla modelu przy braku lotu MÓWI, że nic się już nie doczyta", async () => {
+  const executors = createToolExecutors(makeDeps({ findCheapestHotel: async () => hotel }));
+  const { result } = await dispatchToolCall(
+    toolCall("get_trip_offer", {
+      cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2,
+      checkin: "2026-08-10", checkout: "2026-08-17", budgetPln: 3000, budgetKind: "per_person",
+    }),
+    executors,
+    createToolContext(),
+  );
+  const note = String((result as { note?: string }).note ?? "");
+  assert.match(note, /nie (jest|będzie) (już )?(wyszukiwan|szukan)/i, "nota musi zaprzeczyć ładowaniu w tle");
+  assert.match(note, /nie uzupełni się sama|nie dopisze się/i, "nota musi zaprzeczyć samouzupełnieniu karty");
+});
+
+test("§5: oferta częściowa NIE dostaje ceny pakietu ani zapasu budżetu", async () => {
+  const executors = createToolExecutors(makeDeps({ findCheapestHotel: async () => hotel }));
+  const { result } = await dispatchToolCall(
+    toolCall("get_trip_offer", {
+      cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2,
+      checkin: "2026-08-10", checkout: "2026-08-17", budgetPln: 3000, budgetKind: "per_person",
+    }),
+    executors,
+    createToolContext(),
+  );
+  const r = result as Record<string, unknown>;
+  assert.equal(r.totalPln, null, "brak lotu = brak ceny całego wyjazdu");
+  assert.equal(r.totalPerPersonPln, null);
+  assert.equal(r.budgetFit, undefined, "zapasu do budżetu NIE liczymy od samego hotelu");
+  assert.match(String(r.note), /zapas|budżet/i, "nota musi wprost zakazać liczenia zapasu");
+});
+
+test("§6: model dostaje JEDNOZNACZNE jednostki ceny hotelu, nie musi ich zgadywać", async () => {
+  // Dokładnie liczby z incydentu: 1445 zł, 7 nocy, 2 osoby.
+  const incydent: CheapestHotel = { ...hotel, totalPln: 1445 };
+  const executors = createToolExecutors(makeDeps({ findCheapestHotel: async () => incydent }));
+  const { result } = await dispatchToolCall(
+    toolCall("get_trip_offer", {
+      cityEn: "Larnaca", countryEn: "Cyprus", origin: "WAW", adults: 2,
+      checkin: "2026-10-19", checkout: "2026-10-26",
+    }),
+    executors,
+    createToolContext(),
+  );
+  const pf = (result as { priceFacts?: Record<string, unknown> }).priceFacts;
+  assert.ok(pf, "wynik musi nieść priceFacts");
+  assert.equal(pf.hotelTotalPln, 1445, "cena za CAŁY pobyt, wszyscy goście");
+  assert.equal(pf.hotelPerPersonPln, 723, "1445 / 2 osoby, w górę");
+  assert.equal(pf.hotelPerNightPln, 206, "1445 / 7 nocy");
+  assert.equal(pf.nights, 7);
+  assert.equal(pf.pax, 2);
+  assert.match(String(pf.note), /nie przeliczaj|nie licz/i, "nota musi zakazać własnych przeliczeń");
+});
+
+test("§6: bez znanej liczby nocy NIE podajemy ceny za noc (zamiast zgadywać)", async () => {
+  const executors = createToolExecutors(
+    makeDeps({ findCheapestHotel: async () => hotel, findCheapestFlight: async () => flight }),
+  );
+  const { result } = await dispatchToolCall(
+    toolCall("get_trip_offer", {
+      cityEn: "Malaga", countryEn: "Spain", origin: "WAW", adults: 2,
+      checkin: "2026-08-10", checkout: "2026-08-11",
+    }),
+    executors,
+    createToolContext(),
+  );
+  const pf = (result as { priceFacts?: Record<string, unknown> }).priceFacts!;
+  assert.equal(pf.nights, 1);
+  assert.equal(pf.hotelPerNightPln, 2800, "1 noc → cena za noc = cały pobyt");
 });

@@ -19,6 +19,7 @@ import {
   setCachedFlightOffers,
 } from "@/lib/flights/rates-cache";
 import { searchFlightOffers } from "@/lib/flights/search-offers";
+import { searchWithDeadline } from "./flight-retry";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import type { RateCacheContext, SlimRate } from "@/lib/hotels/rate-cache";
@@ -39,13 +40,21 @@ const OFFER_HOTELS_LIMIT = 50;
 // z rundami modelu), więc jedno takie wyszukiwanie mogło samo przekroczyć
 // maxDuration route'a; użytkownik dostawał wtedy gołe 504 zamiast odpowiedzi.
 //
-// Limit przychodzi z egzekutora (`q.budgetMs`) — liczony z tego, ile realnie
-// zostało w turze. Zapasowa wartość 20 s stoi powyżej zmierzonego p95 (14,4 s),
-// więc obcina ogon, a nie normalne zimne wyszukanie. JEDNA próba: powtórzenie
-// tego samego zapytania po 20 s i tak nie zmieściłoby się w budżecie tury,
-// a domyślne 3 próby dawały teoretyczne 90 s na jedno wywołanie narzędzia.
-const CONCIERGE_FLIGHT_TIMEOUT_MS = 20_000;
-const CONCIERGE_FLIGHT_RETRIES = 1;
+// HISTORIA TYCH LICZB — obie skrajności były zmierzone i obie były złe:
+//   • 30 s × 3 próby (przed V2.1): teoretyczne 90 s na JEDNO wywołanie;
+//   • 20 s × 1 próba (V2.1): ucięło ogon, ale na produkcji 6 z 72 wywołań
+//     padło DOKŁADNIE na limicie i zamieniło ofertę VALID w PARTIAL —
+//     mimo że kolejne żądanie tej samej trasy wracało w 1216–1845 ms.
+//
+// Stąd model z globalnym terminem (patrz ./flight-retry): pierwsza próba ma
+// 15 s — powyżej realnych poprawnych odpowiedzi, których na Preview mierzono
+// do 14,4 s (p95) — a jeśli padnie PRZEJŚCIOWO, druga dostaje wyłącznie
+// resztę z 23 s. Suma nigdy nie przekracza budżetu, a zablokowany pojedynczy
+// strzał ma szansę na odbicie.
+const FLIGHT_FIRST_ATTEMPT_MS = 15_000;
+const FLIGHT_GLOBAL_BUDGET_MS = 23_000;
+/** Poniżej tylu ms druga próba i tak nie zdąży — lepiej oddać ofertę częściową. */
+const FLIGHT_MIN_ATTEMPT_MS = 2_500;
 
 /**
  * Najtańszy hotel dla kierunku i dat — DOKŁADNIE ta sama ścieżka co strona
@@ -175,10 +184,30 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
   const cacheKey = flightRatesCacheKey(input);
   let offers = await getCachedFlightOffers(cacheKey);
   if (offers === null) {
-    offers = await searchFlightOffers(input, {
-      timeoutMs: Math.min(q.budgetMs ?? CONCIERGE_FLIGHT_TIMEOUT_MS, CONCIERGE_FLIGHT_TIMEOUT_MS),
-      retries: CONCIERGE_FLIGHT_RETRIES,
-    });
+    // `retries: 1` = JEDEN strzał na próbę; ponawianiem steruje searchWithDeadline,
+    // bo tylko ono zna globalny termin. Wewnętrzny retry klienta byłby ślepy
+    // na budżet tury i to on dawał teoretyczne 90 s.
+    const budgetMs = Math.min(q.budgetMs ?? FLIGHT_GLOBAL_BUDGET_MS, FLIGHT_GLOBAL_BUDGET_MS);
+    const result = await searchWithDeadline(
+      ({ timeoutMs }) => searchFlightOffers(input, { timeoutMs, retries: 1 }),
+      {
+        deadlineAt: Date.now() + budgetMs,
+        firstAttemptMs: FLIGHT_FIRST_ATTEMPT_MS,
+        minAttemptMs: FLIGHT_MIN_ATTEMPT_MS,
+      },
+    );
+    if (result.attempts > 1 || result.value === null) {
+      // Widoczne w logu tury obok `liteapi.flight` — bez tego nie da się
+      // odpowiedzieć, ile ofert uratowała druga próba.
+      console.warn(
+        `[concierge] lot: proby=${result.attempts} wynik=${result.outcome}` +
+          (result.value === null ? " → oferta bez lotu" : " → uratowane ponowieniem"),
+      );
+    }
+    // Brak wyniku = brak lotu. NIE zapisujemy tego do cache: pusta lista
+    // znaczy „trasa martwa", a tu chodzi o chwilową awarię.
+    if (result.value === null) return null;
+    offers = result.value;
     await setCachedFlightOffers(cacheKey, offers);
   }
 

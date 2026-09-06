@@ -43,6 +43,21 @@ export interface TripCandidate {
 export type OfferResultState = "valid" | "partial" | "unavailable";
 
 /**
+ * Stan POJEDYNCZEGO składnika oferty po ZAKOŃCZENIU wyszukiwania.
+ *
+ * Świadomie NIE MA tu wartości typu „loading". Incydent produkcyjny
+ * 2026-09-06: przy ofercie bez lotu bot napisał „lot jeszcze się wczytuje —
+ * zaraz będzie dostępny w karcie", co było nieprawdą (żądanie padło na
+ * limicie, nikt go już nie ponawia, karta się nie uzupełni). Model nie miał
+ * pola, które by to jednoznacznie rozstrzygało, więc zgadł — i zgadł źle.
+ *
+ *   confirmed     — mamy realny składnik z ceną od dostawcy
+ *   unavailable   — użytkownik go chciał, ale NIE UDAŁO SIĘ go potwierdzić
+ *   not_requested — użytkownik jawnie go nie chciał (sam hotel / sam lot)
+ */
+export type ComponentStatus = "confirmed" | "unavailable" | "not_requested";
+
+/**
  * Finalna oferta pakietu do karty w czacie (wynik get_trip_offer). Wszystkie
  * kwoty z REALNYCH źródeł (żywe LiteAPI przez wstrzyknięte deps) — nigdy nie
  * zgadujemy ani nie doszacowujemy. Brakujący komponent = null + partial:true
@@ -113,6 +128,10 @@ export interface TripOffer {
   partial: boolean;
   /** valid / partial / unavailable — patrz OfferResultState. */
   resultState: OfferResultState;
+  /** Stan składnika hotelowego po zakończeniu wyszukiwania. */
+  hotelStatus: ComponentStatus;
+  /** Stan składnika lotniczego po zakończeniu wyszukiwania. NIGDY „loading". */
+  flightStatus: ComponentStatus;
   /** false = użytkownik jawnie NIE chce lotu (sam hotel) — karta nie renderuje
    *  sekcji lotu ani boksu „nie udało się potwierdzić". Brak pola = true. */
   wantsFlight?: boolean;
