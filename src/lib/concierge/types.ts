@@ -1,3 +1,5 @@
+import type { TravelDateState } from "./travel-dates";
+
 export type BudgetKind = "per_person" | "total_two"; // na osobę | za dwoje
 export interface ConciergeIntent {
   theme?: string;          // slug motywu z TRAVEL_MOODS (np. "plaza")
@@ -28,6 +30,12 @@ export interface TripCandidate {
   nightsMatch: boolean | null;
   /** Popularność kierunku z seedu — WYŁĄCZNIE do rozstrzygania remisów. */
   popularity: number | null;
+  /**
+   * Stan czasowy terminu (V2.2 §10). Po filtrze twardym może tu być wyłącznie
+   * "FUTURE" — pole zostaje w kontrakcie, żeby warstwy wyżej mogły to
+   * sprawdzić zamiast zakładać, i żeby telemetria widziała, co przeszło.
+   */
+  travelDateState: TravelDateState;
 }
 
 /**
@@ -137,4 +145,12 @@ export interface TripOffer {
   wantsFlight?: boolean;
   /** false = użytkownik jawnie NIE chce hotelu (sam lot) — analogicznie. */
   wantsHotel?: boolean;
+  /**
+   * Wyjaśnienie, dlaczego termin karty RÓŻNI SIĘ od tego, o który prosił
+   * użytkownik (V2.2). Dziś jedyny powód: miesiąc rozwiązał się poprawnie na
+   * najbliższy przyszły, ale wypadł poza horyzont sprzedaży lotów, więc karta
+   * pokazuje najbliższy termin, który da się kupić. Model MA to powiedzieć —
+   * podmiana terminu bez słowa byłaby nieuczciwa.
+   */
+  dateNote?: string | null;
 }

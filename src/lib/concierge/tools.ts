@@ -19,6 +19,13 @@ import {
   type DestinationPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
 import { defaultMonth, missingFields, normalizeIntent } from "./budget";
+import { addDaysIso, travelToday } from "@/lib/time/travel-now";
+import {
+  isBookableStart,
+  isWithinSaleHorizon,
+  resolveMonthWithoutYear,
+  SALE_HORIZON_DAYS,
+} from "./travel-dates";
 import { budgetFor, noopToolContext, type ToolContext } from "./tool-context";
 import {
   matchesTheme,
@@ -570,34 +577,53 @@ interface GetTripOfferArgs {
   wantsHotel: boolean;
 }
 
+/** Minimalne wyprzedzenie oferty, ktora dobieramy sami (GDS ma pelna dostepnosc). */
+const OFFER_LEAD_DAYS = 7;
+
+interface MonthDates {
+  checkin: string;
+  checkout: string;
+  /**
+   * Termin jest poprawnie rozwiazany (najblizszy PRZYSZLY taki miesiac), ale
+   * lezy dalej niz horyzont sprzedazy lotow — nie da sie go kupic.
+   */
+  beyondSaleHorizon: boolean;
+}
+
 /**
- * Konkretne daty dla miesiąca wskazanego przez użytkownika: checkin 10. dnia
- * miesiąca (bezpiecznie w środku, GDS ma pełną dostępność), co najmniej 7 dni
- * w przyszłości. Gdy 10. dzień już minął, ale miesiąc użytkownika WCIĄŻ trwa
- * (realny incydent: 10 lipca użytkownik prosi o „lipiec" → skok na lipiec
- * NASTĘPNEGO roku = poza horyzontem sprzedaży lotów GDS → karta bez lotu),
- * bierzemy najbliższy możliwy termin w TYM miesiącu; dopiero gdy miesiąc się
- * kończy — kolejny rok. Czysta funkcja od `todayIso` — deterministyczna w testach.
+ * Konkretne daty dla miesiaca wskazanego przez uzytkownika: checkin 10. dnia
+ * miesiaca (bezpiecznie w srodku, GDS ma pelna dostepnosc), co najmniej
+ * OFFER_LEAD_DAYS w przyszlosc.
+ *
+ * ROK rozwiazuje `resolveMonthWithoutYear` (§8): zostajemy w biezacym roku,
+ * dopoki w tym miesiacu miesci sie jeszcze termin, i dopiero potem skaczemy
+ * na kolejny. Dzieki temu „lipiec" poproszony 10 lipca zostaje lipcem TEGO
+ * roku (realny incydent — skok o rok wypychal oferte poza horyzont sprzedazy),
+ * a „sierpien" poproszony 6 wrzesnia jest sierpniem NASTEPNEGO roku.
+ *
+ * Ten drugi przypadek jest formalnie poprawny, ale handlowo martwy: 338 dni
+ * naprzod GDS nie ma jeszcze rozkladow, wiec karta wracala bez lotu i
+ * wygladala na zepsuta. Dlatego funkcja nie tylko liczy daty, ale i MOWI,
+ * ze wyszly poza horyzont — decyzje, co z tym zrobic, podejmuje egzekutor.
+ *
+ * Czysta funkcja od `todayIso` — deterministyczna w testach.
  */
-function datesForMonth(
-  month: number,
-  nights: number,
-  todayIso: string,
-): { checkin: string; checkout: string } {
-  const today = new Date(`${todayIso}T00:00:00Z`);
-  let checkinDate = new Date(Date.UTC(today.getUTCFullYear(), month - 1, 10));
-  const minStart = new Date(today.getTime() + 7 * 86_400_000);
-  if (checkinDate < minStart) {
-    const minStartInUserMonth =
-      minStart.getUTCFullYear() === today.getUTCFullYear() &&
-      minStart.getUTCMonth() === month - 1;
-    checkinDate = minStartInUserMonth
-      ? minStart
-      : new Date(Date.UTC(today.getUTCFullYear() + 1, month - 1, 10));
-  }
-  const checkoutDate = new Date(checkinDate.getTime() + nights * 86_400_000);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  return { checkin: iso(checkinDate), checkout: iso(checkoutDate) };
+function datesForMonth(month: number, nights: number, todayIso: string): MonthDates {
+  const resolved = resolveMonthWithoutYear(month, todayIso, OFFER_LEAD_DAYS);
+  const minStart = addDaysIso(todayIso, OFFER_LEAD_DAYS);
+  // Nieznany miesiac nie powinien tu dojsc (parser tnie do 1-12), ale gdyby
+  // dotarl, dajemy bezpieczny termin zamiast NaN-ow w datach.
+  const checkin = resolved
+    ? (() => {
+        const tenth = `${resolved.year}-${String(month).padStart(2, "0")}-10`;
+        return tenth < minStart ? minStart : tenth;
+      })()
+    : minStart;
+  return {
+    checkin,
+    checkout: addDaysIso(checkin, nights),
+    beyondSaleHorizon: !isWithinSaleHorizon(checkin, todayIso),
+  };
 }
 
 /**
@@ -914,18 +940,38 @@ export function createToolExecutors(deps: ToolDeps) {
     // (3) świeże daty pakietu ze snapshotu. Nigdy daty wymyślone przez LLM:
     // data z przeszłości (halucynacja roku z tekstu) jest odrzucana.
     // Porównanie przez wstrzyknięty now() — deterministyczne w testach.
-    const todayIso = new Date(now()).toISOString().slice(0, 10);
-    let checkin = a.checkin && a.checkin >= todayIso ? a.checkin : undefined;
+    // Dzien odniesienia w strefie produktu (Europe/Warsaw), nie w UTC — przez
+    // dwie godziny kazdej doby UTC pokazuje dzien wczesniej, wiec granica
+    // „nie z przeszlosci" przepuszczalaby dzien, ktory w Polsce juz minal.
+    const todayIso = travelToday(now());
+    // Data od modelu musi byc SPRZEDAWALNA (≥ jutro), nie tylko „nie wczorajsza".
+    let checkin = a.checkin && isBookableStart(a.checkin, todayIso) ? a.checkin : undefined;
     let checkout = checkin ? a.checkout : undefined;
+    let dateNote: string | null = null;
     if (a.checkin && !checkin) {
       console.warn(
-        `[concierge] get_trip_offer: data od modelu z przeszłości (checkin=${a.checkin}, dziś=${todayIso}) — dobieram daty systemowo`,
+        `[concierge] get_trip_offer: data od modelu nie do sprzedania (checkin=${a.checkin}, dziś=${todayIso}) — dobieram daty systemowo`,
       );
     }
     if ((!checkin || !checkout) && a.month) {
       const derived = datesForMonth(a.month, a.nights ?? 7, todayIso);
-      checkin = derived.checkin;
-      checkout = derived.checkout;
+      if (derived.beyondSaleHorizon) {
+        // Miesiac rozwiazal sie poprawnie (najblizszy przyszly), ale lezy poza
+        // horyzontem sprzedazy — lot na ten termin NIE ISTNIEJE jeszcze
+        // w systemie dostawcy. Zamiast wystawiac karte bez lotu, bierzemy
+        // termin, ktory da sie kupic, i KAZEMY to powiedziec wprost.
+        console.info(
+          `[concierge] get_trip_offer: ${MONTH_PL[a.month] ?? a.month} wypada ${derived.checkin} — poza horyzontem sprzedaży (${SALE_HORIZON_DAYS} dni); dobieram najbliższy dostępny termin`,
+        );
+        dateNote =
+          `Termin, o który prosił użytkownik (${MONTH_PL[a.month] ?? "ten miesiąc"} ${derived.checkin.slice(0, 4)}), ` +
+          "jest tak daleko, że linie lotnicze nie wystawiły jeszcze na niego rozkładów. " +
+          "Karta pokazuje NAJBLIŻSZY dostępny termin — powiedz to jednym zdaniem i zaproponuj, " +
+          "żeby wrócił po ofertę na tamten miesiąc bliżej terminu.";
+      } else {
+        checkin = derived.checkin;
+        checkout = derived.checkout;
+      }
     }
     if (!checkin || !checkout) {
       const snapshot = await readSnapshotOnce(ctx);
@@ -937,7 +983,9 @@ export function createToolExecutors(deps: ToolDeps) {
             now(),
           )
         : null;
-      if (pkg) {
+      // Okno ze snapshotu tez przechodzi bramke czasowa — snapshot jest
+      // pisany merge'em, wiec teoretycznie moze przeniesc stare okno.
+      if (pkg && isBookableStart(pkg.checkin, todayIso)) {
         checkin = pkg.checkin;
         checkout = pkg.checkout;
         // Użytkownik określił DŁUGOŚĆ pobytu (np. „weekend" = 3 noce), ale nie
@@ -956,10 +1004,8 @@ export function createToolExecutors(deps: ToolDeps) {
         // +21 dni (pełna dostępność GDS, poza last-minute'owym szczytem cen),
         // noce z argumentów albo 7. Ceny na karcie i tak są LIVE.
         const fallbackNights = a.nights ?? 7;
-        const start = new Date(new Date(`${todayIso}T00:00:00Z`).getTime() + 21 * 86_400_000);
-        const iso = (d: Date) => d.toISOString().slice(0, 10);
-        checkin = iso(start);
-        checkout = iso(new Date(start.getTime() + fallbackNights * 86_400_000));
+        checkin = addDaysIso(todayIso, 21);
+        checkout = addDaysIso(checkin, fallbackNights);
       }
     }
 
@@ -1121,6 +1167,7 @@ export function createToolExecutors(deps: ToolDeps) {
       flightStatus,
       wantsFlight: a.wantsFlight,
       wantsHotel: a.wantsHotel,
+      dateNote,
     };
   }
 

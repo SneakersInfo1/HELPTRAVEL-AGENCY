@@ -22,32 +22,17 @@ import { track } from "@/lib/analytics/track";
 import type { TripOffer } from "@/lib/concierge/types";
 import { fmtDuration, fmtTime } from "@/lib/flights/display";
 import { formatPricePln, nightsLabel } from "@/lib/home/deal-card";
+import {
+  formatTravelDateRangePl,
+  isOfferDateRenderable,
+  withSafeDateParams,
+} from "@/lib/concierge/offer-date-guard";
+import { travelToday } from "@/lib/time/travel-now";
 import { ratingLabel } from "@/lib/hotels/rating";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
 
 type HotelOffer = NonNullable<TripOffer["hotel"]>;
-
-function formatDateRangePl(checkin: string, checkout: string): string {
-  const inDate = new Date(`${checkin}T00:00:00Z`);
-  const outDate = new Date(`${checkout}T00:00:00Z`);
-  if (Number.isNaN(inDate.getTime()) || Number.isNaN(outDate.getTime())) {
-    return `${checkin} – ${checkout}`;
-  }
-  const options = { timeZone: "UTC" } as const;
-  const sameMonth =
-    inDate.getUTCMonth() === outDate.getUTCMonth() &&
-    inDate.getUTCFullYear() === outDate.getUTCFullYear();
-  const day = new Intl.DateTimeFormat("pl-PL", { day: "numeric", ...options });
-  const dayMonth = new Intl.DateTimeFormat("pl-PL", {
-    day: "numeric",
-    month: "long",
-    ...options,
-  });
-  return sameMonth
-    ? `${day.format(inDate)}–${dayMonth.format(outDate)}`
-    : `${dayMonth.format(inDate)} – ${dayMonth.format(outDate)}`;
-}
 
 function pluralLabel(value: number, one: string, few: string, many: string): string {
   const last = value % 10;
@@ -219,7 +204,19 @@ export function TripOfferCard({
   onNavigate?: (href: string) => boolean | void;
 }) {
   const { hotel, flight } = offer;
-  const dateRange = formatDateRangePl(offer.checkin, offer.checkout);
+  // OSTATNIA LINIA OBRONY (§13). Karta jest jedyna rzecza, ktora uzytkownik
+  // realnie widzi i klika — jesli ktorakolwiek warstwa wyzej przepusci termin
+  // z przeszlosci, tutaj ma sie zatrzymac, zanim zamieni sie w cene i CTA.
+  const today = travelToday();
+  const datesOk = isOfferDateRenderable(offer, today);
+  // Linki walidujemy OSOBNO: URL niesie wlasne parametry dat i teoretycznie
+  // moze rozjechac sie z offer.checkin. Brak bezpiecznego linku dla istniejacego
+  // skladnika traktujemy jak zepsuta oferte (fail-closed), a nie jak karte
+  // z martwym przyciskiem.
+  const hotelHref = hotel ? withSafeDateParams(hotel.url, today) : null;
+  const flightHref = flight ? withSafeDateParams(flight.url, today) : null;
+  const linksOk = (!hotel || hotelHref !== null) && (!flight || flightHref !== null);
+  const dateRange = formatTravelDateRangePl(offer.checkin, offer.checkout, today);
   const occupancy = occupancyLabel(offer.adults, offer.children);
   const countryPl = localizeCountry(offer.countryEn);
   const cancellation = hotel ? formatCancellation(hotel) : null;
@@ -236,6 +233,28 @@ export function TripOfferCard({
         : flight
           ? "Lot"
           : null;
+
+  if (!datesOk || !linksOk) {
+    // Uczciwie i bez udawania oferty: zero ceny, zero CTA, jedno zdanie co dalej.
+    return (
+      <article
+        data-trip-offer-card
+        data-offer-expired
+        className="rounded-lg border border-line bg-surface-sunken px-4 py-3 text-left"
+      >
+        <h3 className="text-sm font-bold text-ink">
+          {offer.cityPl}
+          {localizeCountry(offer.countryEn) ? (
+            <span className="font-medium text-ink-muted">, {localizeCountry(offer.countryEn)}</span>
+          ) : null}
+        </h3>
+        <p className="mt-1 text-xs font-medium text-ink-muted">
+          Ten termin juz minal, wiec nie pokazuje ceny, ktorej nie da sie kupic. Napisz inny
+          termin, a przygotuje nowa oferte.
+        </p>
+      </article>
+    );
+  }
 
   return (
     <article
@@ -337,14 +356,14 @@ export function TripOfferCard({
             </div>
 
             <Link
-              href={hotel.url}
+              href={hotelHref as string}
               aria-label={`Zobacz hotel ${hotel.name}`}
               data-concierge-hotel-cta
               onClick={() => {
                 track("concierge_offer_click", { target: "hotel", city: offer.cityPl });
               }}
               onNavigate={(event) => {
-                if (onNavigate?.(hotel.url)) event.preventDefault();
+                if (onNavigate?.(hotelHref as string)) event.preventDefault();
               }}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-accent px-4 [--focus-ring:#fff] transition-[filter,transform] duration-200 ease-out hover:brightness-95 active:scale-[0.99] active:brightness-90 motion-reduce:transform-none motion-reduce:transition-none"
             >
@@ -427,13 +446,13 @@ export function TripOfferCard({
           </div>
 
           <Link
-            href={flight.url}
+            href={flightHref as string}
             aria-label="Zobacz lot"
             onClick={() => {
               track("concierge_offer_click", { target: "flight", city: offer.cityPl });
             }}
             onNavigate={(event) => {
-              if (onNavigate?.(flight.url)) event.preventDefault();
+              if (onNavigate?.(flightHref as string)) event.preventDefault();
             }}
             className={
               hotel

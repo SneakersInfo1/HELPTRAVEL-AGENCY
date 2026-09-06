@@ -210,3 +210,66 @@ test("rankTripCandidates: BEZ motywu nie wymyśla dopasowania (themeMatch=null)"
   assert.ok(out.length > 0);
   for (const c of out) assert.equal(c.themeMatch, null);
 });
+
+// ── V2.2 §11: FILTR TWARDY CZASU — expired nigdy nie wchodzi do rankingu ─────
+//
+// Do V2.1 jedynym sitem swiezosci byl wiek CENY (pkgComputedAt ≤ 48 h). Data
+// WYJAZDU nie byla sprawdzana nigdzie w rankingu: cron akurat produkowal okna
+// 40-60 dni naprzod, wiec problem nie byl widoczny — ale nic go nie pilnowalo.
+// Rekord z wczorajsza data wyjazdu i dzisiejsza cena przechodzil jako „swiezy".
+
+function entryWithWindow(pkg: number, checkin: string, checkout: string, computedAt: number) {
+  return {
+    hotelFromPlnPerNight: 200,
+    checkin,
+    checkout,
+    computedAt,
+    flightFromPln: 600,
+    flightDepart: checkin,
+    flightReturn: checkout,
+    flightComputedAt: computedAt,
+    pkgPerPersonPln: pkg,
+    pkgCheckin: checkin,
+    pkgCheckout: checkout,
+    pkgComputedAt: computedAt,
+  };
+}
+
+test("§11: pakiet ze SWIEZA cena, ale PRZESZLA data wyjazdu jest odrzucany", () => {
+  const nowMs = Date.UTC(2026, 8, 6, 12); // 2026-09-06
+  const snapMixed: DestinationPriceSnapshot = {
+    // Cena policzona minute temu — maksymalnie swieza. Wyjazd byl w sierpniu.
+    [destinationPriceKey("Larnaca", "Cyprus")]: entryWithWindow(900, "2026-08-10", "2026-08-17", nowMs - 60_000),
+    [destinationPriceKey("Malaga", "Spain")]: entryWithWindow(1800, "2026-10-19", "2026-10-23", nowMs - 60_000),
+  };
+  const cities = [
+    { cityEn: "Larnaca", countryEn: "Cyprus", cityPl: "Larnaka" },
+    { cityEn: "Malaga", countryEn: "Spain", cityPl: "Malaga" },
+  ];
+  const out = rankTripCandidates(cities, snapMixed, { budgetPln: 9999, budgetKind: "per_person" }, nowMs);
+  assert.deepEqual(
+    out.map((c) => c.cityEn),
+    ["Malaga"],
+    "Larnaka z sierpniowym oknem nie moze wejsc do rankingu, mimo ze jest NAJTANSZA",
+  );
+});
+
+test("§11: wyjazd DZIS tez odpada — nie sprzedajemy na dzis", () => {
+  const nowMs = Date.UTC(2026, 8, 6, 12);
+  const snapToday: DestinationPriceSnapshot = {
+    [destinationPriceKey("Malaga", "Spain")]: entryWithWindow(1000, "2026-09-06", "2026-09-10", nowMs),
+  };
+  const cities = [{ cityEn: "Malaga", countryEn: "Spain", cityPl: "Malaga" }];
+  assert.equal(rankTripCandidates(cities, snapToday, { budgetPln: 9999, budgetKind: "per_person" }, nowMs).length, 0);
+});
+
+test("§11: kandydat niesie stan czasowy i typ dopasowania", () => {
+  const nowMs = Date.UTC(2026, 8, 6, 12);
+  const snapOk: DestinationPriceSnapshot = {
+    [destinationPriceKey("Malaga", "Spain")]: entryWithWindow(1800, "2026-10-19", "2026-10-23", nowMs),
+  };
+  const cities = [{ cityEn: "Malaga", countryEn: "Spain", cityPl: "Malaga" }];
+  const out = rankTripCandidates(cities, snapOk, { budgetPln: 9999, budgetKind: "per_person" }, nowMs);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].travelDateState, "FUTURE");
+});

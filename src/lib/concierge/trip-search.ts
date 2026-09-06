@@ -11,6 +11,7 @@
 // seedu — więc na plażę dostawało się Ateny. Odtąd rozróżniamy jawnie:
 //
 //   FILTRY TWARDE (kandydat wypada z listy)
+//     • TERMIN Z PRZESZŁOŚCI (V2.2 §11)      → patrz niżej
 //     • brak świeżego pakietu w snapshocie  → nie mamy ceny, nie zgadujemy
 //     • cena/os. ponad próg budżetu         → użytkownik podał granicę
 //     • kraj, jeśli użytkownik go wskazał   → stosowany PRZED tym modułem
@@ -33,6 +34,8 @@ import {
   type DestinationPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
 import { getMoodBySlug, TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
+import { travelToday } from "@/lib/time/travel-now";
+import { classifyTravelDate, isBookableStart } from "./travel-dates";
 import type { BudgetKind, TripCandidate } from "./types";
 
 export interface TripSearchCity {
@@ -173,6 +176,9 @@ export function rankTripCandidates(
   opts?: RankOptions,
 ): TripCandidate[] {
   const threshold = budgetPerPerson(budget.budgetPln, budget.budgetKind);
+  // Dzień odniesienia dla WSZYSTKICH porównań czasowych w tym rankingu —
+  // jeden, wzięty z „teraz" wołającego, w strefie produktu (Europe/Warsaw).
+  const todayIso = travelToday(now);
   const wantNights = opts?.nights !== undefined && opts.nights > 0 ? opts.nights : null;
   const vibeTag = vibeTagForTheme(opts?.themeSlug);
   const themeGiven = Boolean(opts?.themeSlug);
@@ -182,9 +188,19 @@ export function rankTripCandidates(
   const affinityOf = new Map<TripCandidate, number>();
 
   for (const city of cities) {
-    // FILTR TWARDY 1: brak świeżego pakietu → nie zgadujemy, pomijamy kierunek.
+    // FILTR TWARDY 0 (V2.2 §11): TERMIN Z PRZESZŁOŚCI.
+    //
+    // Do V2.1 jedynym sitem świeżości był wiek CENY (pkgComputedAt ≤ 48 h).
+    // Data WYJAZDU nie była sprawdzana w rankingu nigdzie — pakiet z sierpniowym
+    // oknem i minutę temu policzoną ceną przechodził jako „świeży", a że był
+    // z definicji najtańszy (przeszłe terminy są tanie), lądował na szczycie
+    // listy. Że problem nie był widoczny na produkcji, wynikało wyłącznie
+    // z tego, że cron akurat grzeje okna 40–60 dni naprzód — nic tego nie
+    // pilnowało. Sprawdzenie stoi PRZED ceną, bo rzecz nie do kupienia nie ma
+    // czego szukać w rankingu sprzedażowym, choćby była najtańsza.
     const pkg = pickFreshPackage(snapshot, city.cityEn, city.countryEn, now);
     if (!pkg) continue;
+    if (!isBookableStart(pkg.checkin, todayIso)) continue;
 
     const hotelPerNight = pickFreshPrice(snapshot, city.cityEn, city.countryEn, now);
     const flight = pickFreshFlightPrice(snapshot, city.cityEn, city.countryEn, now);
@@ -226,6 +242,7 @@ export function rankTripCandidates(
       themeMatch: themeGiven ? affinity > 0 : null,
       nightsMatch: wantNights === null ? null : nights === wantNights,
       popularity: city.popularity ?? null,
+      travelDateState: classifyTravelDate(checkin, todayIso),
     };
     affinityOf.set(candidate, affinity);
     candidates.push(candidate);

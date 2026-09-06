@@ -15,12 +15,14 @@
 // localStorage, bo to osobna, trwała decyzja UX). Odczyt w LAZY initializerze
 // useState — NIGDY w efekcie + setState (React Compiler constraint z zadania).
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ArrowRight, Building2, RotateCcw, Send, Sun, Umbrella } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { ArrowRight, Building2, RotateCcw, Send, Sun, Umbrella, type LucideIcon } from "lucide-react";
 
 import { TripOfferCard } from "./trip-offer-card";
 import { track } from "@/lib/analytics/track";
 import { CHAT_STORAGE_KEY } from "@/lib/concierge/chat-storage";
+import { buildConciergeStarters, type ConciergeStarter } from "@/lib/concierge/starters";
+import { travelToday } from "@/lib/time/travel-now";
 import {
   PENDING_STAGES,
   schedulePendingStatus,
@@ -46,28 +48,33 @@ const HISTORY_WINDOW = 20;
 const WELCOME_MESSAGE: ConciergeMessage = {
   role: "assistant",
   content:
-    "Nie wiesz, dokąd polecieć? Od tego jestem. Napisz budżet, termin i liczbę osób — np. „plaża do 3000 zł w sierpniu, 2 osoby” — a znajdę Ci konkretny lot i hotel w realnych cenach.",
+    // Przykład CELOWO bez nazwy miesiąca. Wcześniej brzmiał „plaża do 3000 zł
+    // w sierpniu, 2 osoby” i starzał się razem z kalendarzem — we wrześniu
+    // produkt sam podpowiadał termin, którego nie da się kupić.
+    "Nie wiesz, dokąd polecieć? Od tego jestem. Napisz budżet, termin i liczbę osób — np. „plaża do 3000 zł za dwoje, tydzień” — a znajdę Ci konkretny lot i hotel w realnych cenach.",
 };
 
-// Startery jako dane strukturalne: ikona TYLKO do renderu (aria-hidden),
-// prompt wysyłany do API to osobny, czysty string.
+// Startery przychodza z `@/lib/concierge/starters` jako DANE (klucz ikony,
+// etykieta, prompt) — tutaj zostaje wylacznie mapowanie klucza na komponent
+// Lucide. Powod jest konkretny: poprzednia, wpisana na sztywno tablica miala
+// „Plaza do 3000 zl w sierpniu" i we wrzesniu zapraszala na termin, ktorego
+// nie da sie kupic. Miesiac musi byc funkcja kalendarza, a nie stala.
 //
-// Ikony Lucide, NIE emoji (zgłoszenie właściciela 2026-07-25: „paskudne
-// emoji"). Trzy powody, dla których to nie jest kwestia gustu:
-//   • Emoji renderuje font systemowy, więc ten sam znak wygląda inaczej na
-//     Androidzie, iOS i Windowsie — nie da się tego zaprojektować.
-//   • Reszta produktu mówi Lucide (Compass w trzech wejściach czatu, Building2
-//     i Plane w zakładkach hero). Emoji wyglądały jak wklejone z czatu.
-//   • Znikają całe klasy bugów ze stringami: poprzednia wersja wycinała emoji
-//     regexem /^\p{Emoji}\s*/u, a \p{Emoji} łapie JEDEN code point — „🏖️"/„☀️"
-//     to emoji + U+FE0F (variation selector), więc niewidzialny U+FE0F
-//     przeciekał do payloadu API i do historii rozmowy.
-// Building2 celowo to samo, co zakładka „Hotele" — ta sama rzecz, ta sama ikona.
-const STARTERS = [
-  { Icon: Umbrella, label: "Plaża do 3000 zł w sierpniu", prompt: "Plaża do 3000 zł w sierpniu" },
-  { Icon: Building2, label: "City break do 1500 zł", prompt: "City break do 1500 zł" },
-  { Icon: Sun, label: "Słońce zimą do 4000 zł", prompt: "Słońce zimą do 4000 zł" },
-] as const;
+// Ikony Lucide, NIE emoji (zgloszenie wlasciciela 2026-07-25: „paskudne
+// emoji"). Trzy powody, dla ktorych to nie jest kwestia gustu:
+//   - Emoji renderuje font systemowy, wiec ten sam znak wyglada inaczej na
+//     Androidzie, iOS i Windowsie — nie da sie tego zaprojektowac.
+//   - Reszta produktu mowi Lucide (Compass w trzech wejsciach czatu, Building2
+//     i Plane w zakladkach hero). Emoji wygladaly jak wklejone z czatu.
+//   - Znikaja cale klasy bugow ze stringami: poprzednia wersja wycinala emoji
+//     regexem, a \p{Emoji} lapie JEDEN code point — „plaza"/„slonce" to emoji
+//     + U+FE0F, wiec niewidzialny U+FE0F przeciekal do payloadu API.
+// Building2 celowo to samo, co zakladka „Hotele" — ta sama rzecz, ta sama ikona.
+const STARTER_ICONS: Record<ConciergeStarter["iconKey"], LucideIcon> = {
+  umbrella: Umbrella,
+  building: Building2,
+  sun: Sun,
+};
 
 // --- Walidacja rehydratacji z sessionStorage -------------------------------
 // Ślepy cast `as ConciergeMessage[]` był groźny: zmanipulowany albo stary
@@ -372,6 +379,10 @@ export function ConciergeChat({
   );
 
   const isEmptyState = messages.length <= 1 && messages[0]?.role === "assistant";
+  // Startery liczone RAZ na montaż panelu, z dnia w Europe/Warsaw. Stała
+  // tablica przy tym samym dniu, więc nic nie miga między renderami — a przy
+  // kolejnym otwarciu czatu po północy tekst po prostu jest już nowy.
+  const starters = useMemo(() => buildConciergeStarters(travelToday()), []);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -412,7 +423,9 @@ export function ConciergeChat({
 
         {isEmptyState && (
           <div className="flex flex-col gap-1.5 pt-1">
-            {STARTERS.map(({ Icon, label, prompt }) => (
+            {starters.map(({ iconKey, label, prompt }) => {
+              const Icon = STARTER_ICONS[iconKey];
+              return (
               <button
                 key={prompt}
                 type="button"
@@ -434,7 +447,8 @@ export function ConciergeChat({
                   className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5"
                 />
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
 

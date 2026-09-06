@@ -1,3 +1,4 @@
+import { monthOfIso, travelNowMs, travelToday } from "@/lib/time/travel-now";
 import type { ConciergeIntent, MissingField } from "./types";
 
 /**
@@ -63,7 +64,10 @@ export function normalizeIntent(intent: ConciergeIntent): ConciergeIntent {
  * biezacy — w polowie miesiaca zostalo za malo terminow, a snapshot i tak
  * wygrzewa okna z wyprzedzeniem.
  */
-export function defaultMonth(now: number = Date.now()): number {
-  const d = new Date(now);
-  return (d.getUTCMonth() + 1) % 12 + 1;
+export function defaultMonth(now: number = travelNowMs()): number {
+  // Miesiac liczony z dnia w Europe/Warsaw, nie z UTC — inaczej przez dwie
+  // godziny kazdej doby (a 31. dnia miesiaca takze przez zmiane miesiaca)
+  // zalozenie rozjezdzalo sie z tym, co produkt uwaza za „dzis".
+  const month = monthOfIso(travelToday(now)) ?? 1;
+  return (month % 12) + 1;
 }
