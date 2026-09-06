@@ -1,37 +1,53 @@
 // Parametry przebiegu budowy snapshotu — jedno miejsce, w którym stoi
 // arytmetyka kosztu i czasu (§25, §26).
 //
-// SKĄD TE LICZBY. Pełna lista zadań to 1020 pozycji (53 kierunki tieru A ×
-// 8 okien × 1–2 wyloty + 86 kierunków tieru B × 2 okna). Jedno zadanie to
-// zapytanie o lot (~6 s zimno) i o stawki hotelowe (~3,3 s), puszczane
-// równolegle, więc realnie ~6,5 s na zadanie.
+// LICZBY POCHODZĄ Z POMIARU NA PREVIEW (2026-09-06), nie z szacunku.
+// Benchmark współbieżności: 8 zimnych zadań na segment, każdy poziom na innym
+// (równie zimnym) segmencie, wszystko jako dry run:
 //
-// Budżet czasu 170 s przy współbieżności 5 daje ~130 zadań na przebieg:
-//   170 s / 6,5 s × 5 ≈ 130
-// Bierzemy 110 z zapasem na wolniejszy dzień u dostawcy — i to jest właśnie
-// ten margines, którego `warm-rates` nie ma (mierzone 178–280 s przy limicie
-// 300 s, czyli do 93% budżetu; §25 chce ≤70%).
+//   współbieżność │ czas 8 zadań │ na zadanie │ błędy │ 429/5xx
+//   ──────────────┼──────────────┼────────────┼───────┼────────
+//        1        │   111,2 s    │   13,9 s   │   0   │   0
+//        2        │    56,2 s    │    7,0 s   │   0   │   0
+//        3        │    48,6 s    │    6,1 s   │   0   │   0
+//        4        │    20,3 s    │    2,5 s   │   0   │   0
+//        5        │    19,2 s    │    2,4 s   │   0   │   0
+//        6        │    57,2 s    │    7,2 s   │   0   │   0
 //
-// 1020 zadań / 110 na przebieg ≈ 10 segmentów. Cron co godzinę → pełny obieg
-// zamyka się w ~10 h, co zgadza się z progiem FRESH (12 h) w coverage.ts.
+// Wnioski, które z tego biorę:
+//   • skalowanie jest ~liniowe do 4–5, powyżej nie ma zysku → SWEET SPOT 5;
+//   • na ŻADNYM poziomie nie było błędu, timeoutu ani 429 — nie ocieramy się
+//     o limiter (V2.1 zmierzył go dopiero przy 325 zapytaniach);
+//   • rozrzut czasu POJEDYNCZEGO zadania jest ogromny (2,4–13,9 s) i zależy od
+//     trasy, nie od współbieżności — dlatego budżet zadań liczę z gorszego,
+//     a nie ze średniego przypadku.
 //
-// KOSZT: ~110 lotów + ~110 stawek + ~40 metadanych = ~260 zapytań na przebieg,
-// × 24 przebiegi = ~6 200 zapytań na dobę. Obecna baza (`warm-rates` co 30 min
-// + trzy pozostałe crony) to ~16 000/dobę, więc wzrost to ~38% — wyraźnie
-// poniżej progu „2× baseline", przy którym §57 każe się zatrzymać i pytać.
+// BUDŻET ZADAŃ. Przy współbieżności 5 fala 5 zadań schodziła ~9,6 s
+// (19,2 s / 2 fale). 170 s / 9,6 s ≈ 17 fal ≈ 85 zadań. Biorę 70, żeby
+// wolniejszy dzień u dostawcy nie ucinał końcówki planu — to jest ten
+// margines, którego `warm-rates` nie ma (mierzone 178–280 s przy limicie
+// 300 s, czyli do 93%; §25 chce ≤70%).
+//
+// ROTACJA. Pełna lista to 1020 zadań (53 kierunki tieru A × 8 okien × 1–2
+// wyloty + 86 kierunków tieru B × 2 okna). 1020 / 70 ≈ 15 segmentów, cron co
+// 30 min → pełny obieg zamyka się w ~7,5 h, czyli WEWNĄTRZ progu FRESH (12 h)
+// z coverage.ts. Przy obiegu godzinnym część rekordów siedziałaby w
+// STALE_BUT_USABLE bez potrzeby.
+//
+// KOSZT: ~70 lotów + ~70 stawek + ~40 metadanych ≈ 180 zapytań na przebieg,
+// × 48 przebiegów = ~8 600 na dobę. Obecna baza (`warm-rates` co 30 min +
+// trzy pozostałe crony) to ~16 000/dobę, więc wzrost to ~+53% — poniżej progu
+// „2× baseline", przy którym §57 każe się zatrzymać i pytać. Część zapytań
+// lotniczych trafia w istniejący `flrt:v2` (benchmark widział 0–3 trafienia
+// na 8 zadań), więc realny wzrost jest niższy.
 
 /** Ile zadań maksymalnie bierze jeden przebieg. */
-export const TASK_BUDGET = 110;
+export const TASK_BUDGET = 70;
 /** Na ile segmentów dzielimy pełną listę zadań (= długość obiegu w przebiegach). */
-export const SEGMENT_COUNT = 10;
+export const SEGMENT_COUNT = 15;
 /** Odstęp crona — wchodzi do deterministycznego wyboru segmentu z zegara. */
-export const RUN_INTERVAL_MS = 3600 * 1000;
-/**
- * Współbieżność zapytań do dostawcy. 5, nie 10: pomiar V2.1 pokazał, że seria
- * zimnych wyszukań POGARSZA czasy LiteAPI, a limiter odpowiada 429 z
- * `Retry-After: 59` (zmierzone przy 325 zapytaniach). Tempo dobieramy tak,
- * żeby nigdy się o ten próg nie otrzeć.
- */
+export const RUN_INTERVAL_MS = 30 * 60 * 1000;
+/** Współbieżność zapytań do dostawcy — sweet spot z tabeli w nagłówku. */
 export const CONCURRENCY = 5;
 /** Twardy budżet czasu przebiegu — z dużym zapasem do maxDuration 300 s. */
 export const TIME_BUDGET_MS = 170_000;

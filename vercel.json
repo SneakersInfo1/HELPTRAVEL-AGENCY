@@ -19,7 +19,7 @@
     },
     {
       "path": "/api/cron/build-concierge-snapshot",
-      "schedule": "25 * * * *"
+      "schedule": "25,55 * * * *"
     }
   ]
 }
