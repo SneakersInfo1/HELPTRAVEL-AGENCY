@@ -345,15 +345,26 @@ Dwie rzeczy warte odnotowania:
 |---|---|---|
 | 1 | „Plaża do 3000 zł, 2 osoby" | Faro 7–14 XI 2026, 1918 zł/os. — **uczciwie mówi, że przekracza budżet**, proponuje dwa wyjścia |
 | 2 | „Chcę lecieć w sierpniu…" (miesiąc bez roku) | „Sierpień 2027 jest jeszcze daleko — linie nie wystawiły rozkładów", karta: **Larnaka 19–23 X 2026**, realny lot Wizz Air. To jest DOKŁADNIE ten kierunek i ta sytuacja ze zrzutu właściciela |
-| 3 | „10–17 sierpnia 2026" (jawnie przeszły) | karta na przyszły termin, zero przeszłych CTA — ale uzasadnienie było odwrotne do prawdy → **naprawione** (patrz niżej) |
+| 3 | „10–17 sierpnia 2026" (jawnie przeszły) | **po fixie:** „Przepraszam — sierpień 2026, o który pytaliście, **już minął**", karta: Saloniki 19–26 X 2026, oba CTA z przyszłymi datami |
 | 4 | „Grecja, 7 nocy, listopad" | **Egina 10–17 listopada** — dokładnie żądany miesiąc I żądana długość. Stary snapshot nie umiał tego zwrócić |
 
-Punkt 3 był realnym znaleziskiem smoke'a: schemat narzędzia `get_trip_offer`
-miał `month`, ale nie miał `year`, więc model nie mógł przekazać, że użytkownik
-wymienił rok. System rozwiązywał „sierpień" na najbliższy przyszły (2027),
-widział termin poza horyzontem i mówił „za daleko" o terminie, który MINĄŁ.
-Karta była poprawna, uzasadnienie nie. Naprawione: `year` w schemacie +
-`resolveExplicitMonthYear` w egzekutorze + trzy testy.
+Punkt 3 był realnym znaleziskiem smoke'a i wymagał **dwóch** podejść:
+
+1. Schemat narzędzia `get_trip_offer` miał `month`, ale nie miał `year`, więc
+   model nie mógł przekazać, że użytkownik wymienił rok. System rozwiązywał
+   „sierpień" na najbliższy przyszły (2027), widział termin poza horyzontem
+   i mówił „za daleko" o terminie, który MINĄŁ. Dodanie `year` do schematu
+   **nie wystarczyło**: logi runtime pokazały, że haiku-4.5 mimo jawnej
+   instrukcji dalej wysyła `month: 8` i nic więcej.
+2. Dlatego rok wyciągamy MECHANICZNIE z tekstu użytkownika
+   (`user-date-hints.ts`), a orkiestrator wkłada go do `ToolContext`. Model
+   może podać rok, ale nie musi — i tak zadziała. To ta sama zasada, którą ten
+   projekt stosuje wszędzie indziej: taniemu modelowi nie ufamy w rzeczach,
+   które da się policzyć.
+
+Odsiew kwot jest tu istotny i wymuszony realnymi zdaniami: budżety w tym
+produkcie są czterocyfrowe i wpadają w zakres lat, więc „do 2000 zł" nie może
+zostać odczytane jako rok 2000.
 
 ---
 
