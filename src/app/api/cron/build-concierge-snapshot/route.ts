@@ -170,31 +170,32 @@ export async function GET(request: NextRequest) {
 
     // Metadane hoteli per kierunek — RAZ na przebieg, bo są niezależne od okna.
     // Bez tego ten sam kierunek w ośmiu oknach płaciłby osiem razy za tę samą listę.
-    const hotelIdsCache = new Map<string, string[]>();
-    async function hotelIdsFor(task: WarmTask): Promise<string[]> {
+    // Trzymamy PROMISE, nie wartość — dwa równoległe zadania na ten sam
+    // kierunek (różne okna) mają dzielić JEDNO zapytanie o metadane, a nie
+    // wyścigować się o pusty wpis w mapie.
+    const hotelIdsCache = new Map<string, Promise<string[]>>();
+    function hotelIdsFor(task: WarmTask): Promise<string[]> {
       const cached = hotelIdsCache.get(task.dest.id);
       if (cached) return cached;
-      try {
-        stats.metadataCalls += 1;
-        stats.liteApiCalls += 1;
-        const list = await fetchHotelsForDestination({
-          city: task.dest.cityEn,
-          country: task.dest.countryCode ?? task.dest.countryEn,
-          lat: task.dest.lat ?? undefined,
-          lng: task.dest.lng ?? undefined,
-          limit: HOTELS_PER_DEST,
+      stats.metadataCalls += 1;
+      stats.liteApiCalls += 1;
+      const promise = fetchHotelsForDestination({
+        city: task.dest.cityEn,
+        country: task.dest.countryCode ?? task.dest.countryEn,
+        lat: task.dest.lat ?? undefined,
+        lng: task.dest.lng ?? undefined,
+        limit: HOTELS_PER_DEST,
+      })
+        .then((list) => (list.data ?? []).map((h) => h.id).slice(0, HOTELS_PER_DEST))
+        .catch((err: unknown) => {
+          console.warn(
+            `[cron/build-concierge-snapshot] metadane '${task.dest.id}' nieudane:`,
+            err instanceof Error ? err.message : err,
+          );
+          return [] as string[];
         });
-        const ids = (list.data ?? []).map((h) => h.id).slice(0, HOTELS_PER_DEST);
-        hotelIdsCache.set(task.dest.id, ids);
-        return ids;
-      } catch (err) {
-        console.warn(
-          `[cron/build-concierge-snapshot] metadane '${task.dest.id}' nieudane:`,
-          err instanceof Error ? err.message : err,
-        );
-        hotelIdsCache.set(task.dest.id, []);
-        return [];
-      }
+      hotelIdsCache.set(task.dest.id, promise);
+      return promise;
     }
 
     const freshRecords = new Map<string, SnapshotRecord>();
@@ -209,36 +210,37 @@ export async function GET(request: NextRequest) {
       try {
         stats.processed += 1;
 
-        // ── Lot. Najpierw cache `flrt:v2` (ten sam klucz co ścieżka
-        // użytkownika), na miss live + zapis z kind="warm". Dzięki temu build
-        // snapshotu PRZY OKAZJI grzeje cache realnych wyszukań (§41, §49).
-        const input = FlightSearchInputSchema.parse({
-          legs: [
-            { origin, destination: dest.iata, date: window.checkin, direction: "OUTBOUND" },
-            { origin: dest.iata, destination: origin, date: window.checkout, direction: "INBOUND" },
-          ],
-          adults: FLIGHT_ADULTS,
-        });
-        const cacheKey = flightRatesCacheKey(input);
-        let offers = await getCachedFlightOffers(cacheKey);
-        if (offers) {
-          stats.flightCacheHit += 1;
-        } else {
+        // Lot i hotel lecą RÓWNOLEGLE. Pomiar na Preview (2026-09-06):
+        // szeregowo 6 zadań przy współbieżności 5 zajmowało 25,2 s, bo jedno
+        // zadanie to było ~6 s lotu + ~3 s metadanych + ~3,3 s stawek jedno po
+        // drugim. Te trzy rzeczy nie zależą od siebie — czekanie na nie po kolei
+        // podwajało czas przebiegu i zjadałoby budżet przy pełnych 110 zadaniach.
+        const flightPromise = (async () => {
+          // Najpierw cache `flrt:v2` (ten sam klucz co ścieżka użytkownika),
+          // na miss live + zapis z kind="warm". Dzięki temu build snapshotu
+          // PRZY OKAZJI grzeje cache realnych wyszukań (§41, §49).
+          const input = FlightSearchInputSchema.parse({
+            legs: [
+              { origin, destination: dest.iata as string, date: window.checkin, direction: "OUTBOUND" },
+              { origin: dest.iata as string, destination: origin, date: window.checkout, direction: "INBOUND" },
+            ],
+            adults: FLIGHT_ADULTS,
+          });
+          const cacheKey = flightRatesCacheKey(input);
+          const cached = await getCachedFlightOffers(cacheKey);
+          if (cached) {
+            stats.flightCacheHit += 1;
+            return cached;
+          }
           stats.liteApiCalls += 1;
-          offers = normalizeRatesResponse(await searchFlightRates(input));
+          const offers = normalizeRatesResponse(await searchFlightRates(input));
           await setCachedFlightOffers(cacheKey, offers, "warm");
-        }
-        const flightTotal = minTotalFromOffers(offers);
-        // Cena za osobę: `total` to kwota za CAŁĄ rezerwację (tak liczy
-        // warm-rates), a pytamy o dwoje — więc dzielimy.
-        const flightPln = flightTotal === null ? null : Math.floor(flightTotal / FLIGHT_ADULTS);
-        if (flightPln === null) stats.flightMiss += 1;
-        else stats.flightOk += 1;
+          return offers;
+        })();
 
-        // ── Hotel. Ten sam helper co lista wyników → identyczny klucz cache.
-        const ids = await hotelIdsFor(task);
-        let hotelPlnPerNight: number | null = null;
-        if (ids.length > 0) {
+        const hotelPromise = (async () => {
+          const ids = await hotelIdsFor(task);
+          if (ids.length === 0) return null;
           stats.liteApiCalls += 1;
           const res = await resolveSlimRates(ids, {
             checkin: window.checkin,
@@ -248,8 +250,31 @@ export async function GET(request: NextRequest) {
             rooms: 1,
             currency: "PLN",
           });
-          hotelPlnPerNight = minPerNightFromRates(res.rates, window.checkin, window.checkout);
+          return minPerNightFromRates(res.rates, window.checkin, window.checkout);
+        })();
+
+        // allSettled: nieudany lot nie może zabrać hotelu i odwrotnie —
+        // rekord częściowy wciąż niesie wartość dla pokrycia.
+        const [flightRes, hotelRes] = await Promise.allSettled([flightPromise, hotelPromise]);
+        if (flightRes.status === "rejected") {
+          console.warn(
+            `[cron/build-concierge-snapshot] lot '${dest.id}/${origin}/${window.label}' nieudany:`,
+            flightRes.reason instanceof Error ? flightRes.reason.message : flightRes.reason,
+          );
         }
+        if (hotelRes.status === "rejected") {
+          console.warn(
+            `[cron/build-concierge-snapshot] hotel '${dest.id}/${origin}/${window.label}' nieudany:`,
+            hotelRes.reason instanceof Error ? hotelRes.reason.message : hotelRes.reason,
+          );
+        }
+        const flightTotal = flightRes.status === "fulfilled" ? minTotalFromOffers(flightRes.value) : null;
+        // Cena za osobę: `total` to kwota za CAŁĄ rezerwację (tak liczy
+        // warm-rates), a pytamy o dwoje — więc dzielimy.
+        const flightPln = flightTotal === null ? null : Math.floor(flightTotal / FLIGHT_ADULTS);
+        if (flightPln === null) stats.flightMiss += 1;
+        else stats.flightOk += 1;
+        const hotelPlnPerNight = hotelRes.status === "fulfilled" ? hotelRes.value : null;
         if (hotelPlnPerNight === null) stats.hotelMiss += 1;
         else stats.hotelOk += 1;
 
