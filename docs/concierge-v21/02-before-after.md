@@ -102,32 +102,108 @@ Trzy z czterech różnic w liczbie kart to tury, w których model AFTER **w ogó
 nie wywołał `search_trips`**. Kodu narzędzi to nie dotyczy. Przy n=21 i takiej
 zmienności czas ściany mierzy losowość modelu, nie zmianę.
 
-### Co z tego pomiaru jest użyteczne: rozbicie serwerowe (tylko AFTER)
+### Rozbicie serwerowe PROD vs PREVIEW — apples-to-apples
 
-`?diag=1` daje rozbicie prosto z odpowiedzi. Dla 13 tur Z NARZĘDZIEM:
+Produkcja też loguje `modelMs`/`toolMs` (commit `0fbbb27` jest na `main`), więc
+rozbicie dla strony BEFORE dało się dociągnąć z logów runtime BEZ ponownego
+płatnego przebiegu. Dwadzieścia jeden linii `[concierge] turn` z 14:51:37–
+14:56:30 UTC odpowiada **1:1** dwudziestu jeden pomiarom klienta (elapsed
+serwera vs czas ściany różnią się wyłącznie o narzut sieci, 0–2,5 s, 21/21).
 
-| | p50 | p75 | p95 | max |
-|---|---|---|---|---|
-| cała tura (ściana) | 10 635 | 13 000 | 20 912 | 20 912 |
-| czas MODELU | 5447 | 6112 | 8914 | 8914 |
-| czas NARZĘDZI | 3798 | 6284 | 11 762 | 11 762 |
+| | PROD V2 | PREVIEW V2.1 | delta |
+|---|---|---|---|
+| **cała tura — wszystkie** | | | |
+| n | 21 | 21 | — |
+| p50 | 7055 | 5447 | −23% |
+| p75 | 8627 | 10 901 | +26% |
+| p95 | 16 103 | 17 329 | +8% |
+| max | 24 650 | 20 912 | −15% |
+| **cała tura — z narzędziem** | | | |
+| n | 14 | 13 | — |
+| p50 | 7812 | 10 635 | +36% |
+| p75 | 11 816 | 13 000 | +10% |
+| p95 | 24 650 | 20 912 | −15% |
+| max | 24 650 | 20 912 | −15% |
+| **model** | | | |
+| MODEL p50 (wszystkie) | 5380 | 4161 | −23% |
+| MODEL p95 (wszystkie) | 7233 | 6353 | −12% |
+| MODEL p50 (z narzędziem) | 5787 | 5447 | −6% |
+| MODEL p95 (z narzędziem) | 7449 | 8914 | +20% |
+| **narzędzia** | | | |
+| TOOL p50 (wszystkie) | 1038 | 222 | −79% |
+| TOOL p95 (wszystkie) | 9613 | 11 470 | +19% |
+| TOOL p50 (z narzędziem) | 1607 | 3798 | +136% |
+| TOOL p95 (z narzędziem) | 16 790 | 11 762 | −30% |
+| TOOL max | 16 790 | 11 762 | −30% |
+| **jakość** | | | |
+| error rate | **0/21** | **0/21** | bez zmian |
+| zapas modelu odpalony | 1 (Haiku → Gemini) | 0 | lepiej |
+| outcome | ok 8 · ok+offer 13 | ok 10 · ok+offer 11 | patrz niżej |
+| karta oferty | 13/21 | 11/21 | patrz niżej |
+| tury bez narzędzia | 7 | 8 | patrz niżej |
 
-Porównanie z bazą produkcyjną podaną w zleceniu (23 tury, inny zestaw pytań —
-więc orientacyjnie, nie jako dowód):
+### TA TABELA NIE POKAZUJE POPRAWY CZASU NARZĘDZI — I NIE POWINNA
 
-| | baza produkcyjna | AFTER (Preview) |
+`TOOL p50 (z narzędziem)` rośnie z 1607 do 3798 ms. Nie jest to regresja
+kodu; są dwa powody, oba widoczne w danych per pytanie.
+
+**1. V2.1 celowo zmienia, KTÓRY kierunek jest wyszukiwany.** To jest poprawka
+§12/§13, a koszt `/flights/rates` różni się o rząd wielkości między trasami.
+
+| pytanie | PROD: narzędzia | PREVIEW: narzędzia | co wybrał ranking |
+|---|---|---|---|
+| „Hiszpania, ale w góry" | 1956 ms | 7532 ms | PREVIEW wybrał **Teneryfę** (ręczny pick motywu `gory`) zamiast bliskiego taniego miasta — czyli poprawną odpowiedź na pytanie o góry, ale drozszą w wyszukaniu |
+| „Pokaż ofertę do Barcelony" | 1504 ms | 11 762 ms | inne daty listopadowe, trasa zimna |
+| „Cypr na tydzień" | 1354 ms | 5704 ms | jw. |
+
+**2. Model wywołał narzędzia na INNYM podzbiorze pytań** (14 vs 13 tur):
+
+| pytanie | PROD | PREVIEW |
 |---|---|---|
-| tura z 1 narzędziem p50 | 14 826 | 10 635 |
-| tura z 1 narzędziem p95 | 25 318 | 20 912 |
-| MODEL p50 (tury z narzędziem) | 5776 | 5447 |
-| **NARZĘDZIA p50** | **7760** | **3798** |
+| „City break na 3 noce…" | narzędzia 7793 ms, karta | **0 narzędzi** — model zadał pytanie |
+| „Portugalia, 7 nocy…" | narzędzia 9613 ms, karta | **0 narzędzi** — jw. |
+| „Najtaniej jak się da…" | narzędzia 1791 ms, karta | narzędzie bez I/O (brak motywu → `reason`) |
+| „Chcę wyjazd do Sliemy…" | **0 narzędzi**, bez karty | narzędzia 6284 ms, **karta** |
+
+Dwa najdroższe wywołania produkcji (7793 i 9613 ms) wypadły z próby PREVIEW,
+bo model tam po prostu nie sięgnął po `search_trips`. Przy n=13/14 to
+przesuwa medianę bardziej niż cokolwiek, co zrobił kod.
+
+**Wniosek: różnica 13 kart vs 11 to w 3 z 4 przypadków decyzja modelu, a nie
+zmiana narzędzi. Czasu narzędzi z tego przebiegu NIE da się przypisać
+zmianie i tego nie robię.** Wniosek o czasie opieram wyłącznie na pomiarze
+kontrolowanym z sekcji A, gdzie wejście jest identyczne, a modelu nie ma.
+
+### Dlaczego pomiar kontrolowany NIE jest tak samo skażony
+
+Naturalny zarzut: BEFORE biegł pierwszy (16:12), AFTER drugi (16:44) — może
+AFTER korzystał z rozgrzanego LiteAPI, a nie z naszego cache'a. Dane to
+obalają. Gdyby chodziło o rozgrzanie po stronie dostawcy, POWTÓRKA tego
+samego zapytania w przebiegu BEFORE byłaby tania. Nie jest:
+
+| przypadek (czas `liteapi.flight`) | BEFORE 1. | BEFORE 2. | AFTER 1. | AFTER 2. |
+|---|---|---|---|---|
+| `offer.warm.Barcelona` | 13 582 | 3572 | 195 | 197 |
+| `offer.warm.Malaga` | 6644 | 1250 | 199 | 196 |
+| `offer.island-alias` | 10 850 | **28 603** | 102 | 106 |
+| `offer.warm.cheap-window` | 6738 | **23 449** | 7824 | 103 |
+| `offer.cold.window` | 14 398 | 1489 | 11 788 | 116 |
+
+Mediana całego wywołania w przebiegu 2: **BEFORE 1494 ms · AFTER 202 ms**.
+Powyżej 2 s: **BEFORE 14/39 · AFTER 0/39**. Powtórka po stronie BEFORE
+potrafiła być WOLNIEJSZA od pierwszego strzału (island-alias 10 850 →
+28 603 ms), czego rozgrzewaniem wytłumaczyć się nie da. Płaskie 100–200 ms
+po stronie AFTER to czas round-tripu do Upstasha — jedyne, co może go dać,
+to odczyt `flrt:v2`, którego stary kod nie wykonywał.
 
 ---
 
 ## C. CEL Z §43 — NIEOSIĄGNIĘTY, I DLACZEGO
 
 Cel: tura z narzędziem p50 < 9 s, p95 < 15 s.
-Zmierzone: **p50 10,6 s, p95 20,9 s.** Cel nie został osiągnięty.
+Zmierzone na PREVIEW: **p50 10 635 ms, p95 20 912 ms.** Cel nie został
+osiągnięty (na produkcji te same pytania dały p50 7812 / p95 24 650 ms —
+przy zastrzeżeniach z sekcji B).
 
 Co go blokuje — rozbicie z `?diag=1`, nie domysł:
 
@@ -193,5 +269,13 @@ Wszystkie trzy to kwestie promptu/modelu, obu zamkniętych w tym zleceniu.
 | pełny przebieg benchmarku | 195,6 s | 84,7 s | −57% |
 | stany wyniku | 36/34/4/2/2 | 36/34/4/2/2 | bez zmian |
 | pusta karta przy braku oferty | tak | **nie** | naprawione |
-| tura z narzędziem p50 (żywa) | 14 826 ms (baza prod.) | 10 635 ms | −28% (orientacyjnie) |
-| tura z narzędziem p95 (żywa) | 25 318 ms (baza prod.) | 20 912 ms | −17% (orientacyjnie) |
+| **żywa tura z narzędziem, ten sam zestaw pytań** | | | |
+| p50 | 7812 ms | 10 635 ms | +36% — patrz zastrzeżenie w B |
+| p95 | 24 650 ms | 20 912 ms | −15% |
+| max | 24 650 ms | 20 912 ms | −15% |
+| error rate | 0/21 | 0/21 | bez zmian |
+| zapas modelu | 1× | 0× | lepiej |
+
+Baza produkcyjna podana w zleceniu (p50 14 826 / p95 25 318 ms) dotyczyła
+INNEGO zestawu pytań i nie jest z tym porównaniem zestawialna — wiersze wyżej
+pochodzą z jednego przebiegu tych samych 21 pytań.
