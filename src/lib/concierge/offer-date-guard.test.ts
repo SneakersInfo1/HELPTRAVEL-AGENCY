@@ -90,3 +90,47 @@ test("J. link z data w zlym formacie jest odrzucany (fail-closed)", () => {
 test("J. bezsensowny URL nie wywraca guardu", () => {
   assert.equal(withSafeDateParams("", NOW), null);
 });
+
+// ── Guard musi znac REALNE nazwy parametrow, nie wymyslone ──────────────────
+//
+// `withSafeDateParams` sprawdza date tylko w parametrach, ktore zna z nazwy.
+// Gdyby ktos przemianowal parametr w builderze URL-i, guard przestalby cokolwiek
+// walidowac — po cichu, bo nadal zwracalby link. Ten test wiaze guard z
+// PRAWDZIWYMI builderami, wiec taka zmiana wywala sie tutaj.
+
+test("guard lapie przeszla date w linku zbudowanym przez buildResultsUrl", async () => {
+  const { buildResultsUrl } = await import("@/lib/flights/recovery");
+  const url = buildResultsUrl({
+    origin: "WAW",
+    destination: "LCA",
+    depart: "2026-08-10",
+    ret: "2026-08-17",
+    adults: 2,
+    children: 0,
+    infants: 0,
+  });
+  assert.ok(url.includes("depart=2026-08-10"), url);
+  assert.equal(withSafeDateParams(url, NOW), null, `guard przepuscil przeszly link: ${url}`);
+});
+
+test("guard przepuszcza przyszly link z buildResultsUrl", async () => {
+  const { buildResultsUrl } = await import("@/lib/flights/recovery");
+  const url = buildResultsUrl({
+    origin: "WAW",
+    destination: "LCA",
+    depart: "2026-10-19",
+    ret: "2026-10-23",
+    adults: 2,
+    children: 0,
+    infants: 0,
+  });
+  assert.equal(withSafeDateParams(url, NOW), url);
+});
+
+test("guard zna KAZDY parametr daty, ktory produkuje link hotelowy", () => {
+  // Ksztalt 1:1 z buildHotelHandoffUrl (tools.ts): checkin, checkout, adults, rooms.
+  const past = "/hotele/lp1?checkin=2026-08-10&checkout=2026-08-17&adults=2&rooms=1";
+  const future = "/hotele/lp1?checkin=2026-10-19&checkout=2026-10-23&adults=2&rooms=1";
+  assert.equal(withSafeDateParams(past, NOW), null);
+  assert.equal(withSafeDateParams(future, NOW), future);
+});

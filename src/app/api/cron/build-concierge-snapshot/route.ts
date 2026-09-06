@@ -155,6 +155,16 @@ export async function GET(request: NextRequest) {
       tierBWindows: TIER_B_WINDOWS,
     });
 
+    // Sygnal cichego obciecia planu. Przy obecnej konfiguracji segment ma 68
+    // zadan, a budzet 70 — jesli macierz okien albo tiery kiedys urosna,
+    // `slice` zaczalby po cichu gubic ogon segmentu i pelny obieg przestalby
+    // pokrywac cala liste. Wtedy trzeba podniesc SEGMENT_COUNT, nie budzet.
+    if (tasks.length >= taskBudget) {
+      console.warn(
+        `[cron/build-concierge-snapshot] segment ${segment} wypelnil budzet (${tasks.length}/${taskBudget}) — plan mogl zostac obciety; rozwaz wiecej segmentow`,
+      );
+    }
+
     const stats: RunStats = {
       processed: 0,
       flightOk: 0,
