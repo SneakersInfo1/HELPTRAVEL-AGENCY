@@ -918,3 +918,112 @@ test("stripMarkdownArtifacts: model NIE MOŻE wypisywać własnych linków w tek
   assert.ok(out.text.includes("Mam ofertę na Kretę"));
   assert.ok(out.text.includes("Daj znać"));
 });
+
+// ── V2.2 §8: rok z tekstu uzytkownika dociera do egzekutora ─────────────────
+//
+// Test na poziomie ORKIESTRATORA, bo tu wlasnie bylo pekniecie: egzekutor
+// umial obsluzyc rok, ale nikt mu go nie dawal. Pomiar na Preview pokazal,
+// ze model przekazuje `month: 8` i nic wiecej, wiec rok musi przyjsc
+// z tekstu — mechanicznie, bez udzialu modelu.
+
+test("§8: rok z wiadomosci uzytkownika trafia do ToolContext egzekutora", async () => {
+  let widzianeHints: unknown;
+  const deps = makeDeps({
+    chat: async (args) => {
+      const a = args as ChatArgs;
+      // Pierwsza runda: model wola get_trip_offer BEZ roku (tak robi naprawde).
+      const juzWolal = a.messages.some((m) => m.role === "tool");
+      if (juzWolal) return { choices: [{ message: { role: "assistant", content: "Gotowe" } }] };
+      return {
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              tool_calls: [
+                {
+                  id: "c1",
+                  type: "function",
+                  function: {
+                    name: "get_trip_offer",
+                    arguments: JSON.stringify({
+                      cityEn: "Thessaloniki",
+                      countryEn: "Greece",
+                      month: 8,
+                      nights: 7,
+                      origin: "WAW",
+                      adults: 2,
+                      children: 0,
+                    }),
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+    },
+    executors: {
+      executeSearchTrips: async () => ({ candidates: [] }),
+      executeGetTripOffer: async (_args, ctx) => {
+        widzianeHints = (ctx as { dateHints?: unknown } | undefined)?.dateHints;
+        return fakeOffer();
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  await runConcierge(
+    [{ role: "user", content: "Chcemy lecieć 10-17 sierpnia 2026 do Grecji, budżet 5000 zł na osobę" }],
+    deps,
+  );
+  assert.deepEqual(widzianeHints, { year: 2026 }, `dateHints w kontekscie: ${JSON.stringify(widzianeHints)}`);
+});
+
+test("§8: bez roku w wiadomosci kontekst nie niesie zadnej podpowiedzi", async () => {
+  let widzianeHints: unknown = "nie-ustawione";
+  const deps = makeDeps({
+    chat: async (args) => {
+      const a = args as ChatArgs;
+      if (a.messages.some((m) => m.role === "tool")) {
+        return { choices: [{ message: { role: "assistant", content: "Gotowe" } }] };
+      }
+      return {
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              tool_calls: [
+                {
+                  id: "c1",
+                  type: "function",
+                  function: {
+                    name: "get_trip_offer",
+                    arguments: JSON.stringify({
+                      cityEn: "Thessaloniki",
+                      countryEn: "Greece",
+                      month: 8,
+                      origin: "WAW",
+                      adults: 2,
+                      children: 0,
+                    }),
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+    },
+    executors: {
+      executeSearchTrips: async () => ({ candidates: [] }),
+      executeGetTripOffer: async (_args, ctx) => {
+        widzianeHints = (ctx as { dateHints?: unknown } | undefined)?.dateHints;
+        return fakeOffer();
+      },
+      executeListThemes: () => ({ themes: [] }),
+    },
+  });
+
+  await runConcierge([{ role: "user", content: "Chcemy lecieć w sierpniu do Grecji" }], deps);
+  assert.deepEqual(widzianeHints, {});
+});
