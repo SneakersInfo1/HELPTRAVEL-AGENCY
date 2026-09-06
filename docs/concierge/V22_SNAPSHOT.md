@@ -281,31 +281,79 @@ Trzy klucze (`active`, `previous`, przejściowy `build:<runId>`).
 
 ## 23. Tabela BEFORE / AFTER
 
-Kolumna AFTER-konfiguracja to sufit wynikający z kodu (zmierzony sondą);
-kolumna AFTER-Preview zostanie uzupełniona po pełnym przebiegu na Preview.
+**BEFORE** = produkcja, sonda z 2026-09-06.
+**AFTER** = Preview po **5 z 15 segmentów** rotacji (czyli ok. 1/3 obiegu),
+sonda z 2026-09-07. Kolumna „sufit" to maksimum wynikające z konfiguracji.
 
-| METRYKA | BEFORE (prod) | AFTER (konfiguracja) |
+| METRYKA | BEFORE (prod) | AFTER (5/15 segmentów) | sufit |
+|---|---|---|---|
+| kierunków w seedzie | 796 (786 unikalnych) | 786 unikalnych | — |
+| kierunków z jakąkolwiek ceną | 46 | 85 | 139 |
+| destination coverage | 5,8% | 10,81% | 17,7% |
+| **future usable destinations** | **nie mierzone** | **85** | 139 |
+| **future usable coverage** | **nie mierzone** | **10,81%** | **17,7%** |
+| **pokrycie tieru A (HOT)** | nie mierzone | **100%** | 100% |
+| pokrycie tieru B | nie mierzone | 23,3% → rośnie | 100% |
+| pokrycie WAŻONE tierami | nie mierzone | **33,6%** | 100% |
+| rekordów w snapshocie | 46 | **278** | 1020 |
+| przeterminowanych rekordów | — | **0** | 0 |
+| FRESH / STALE / EXPIRED | — | **100% / 0% / 0%** | — |
+| miesięcy pokrytych | **2** | **4** | 4 |
+| długości pobytu | 2 (rozłącznie!) | **2 × każdy miesiąc** | 2 |
+| lotnisk wylotu | **1** (WAW) | **5** (WAW/KRK/GDN/KTW/WRO) | 5 |
+| krajów pokrytych | ~15 | **24** | — |
+| wiek ceny p50 / p95 | 0,1 h / 0,1 h | 0,1 h / 0,2 h | — |
+| liczba cronów | 4 | 5 | — |
+| runtime `warm-rates` | 178–280 s / 300 s (**93%**) | bez zmian | — |
+| runtime nowego crona | — | **140–190 s / 300 s (47–63%)** | ≤70% |
+| zadań na przebieg | — | 68/68 (raz 54/68 przy wolniejszym dostawcy) | — |
+| błędy / 429 / 5xx w przebiegu | — | **0 / 0 / 0** | 0 |
+| zapytań LiteAPI / przebieg | ~342 | **~192** | — |
+| zapytań LiteAPI / dobę | ~16 000 | ~25 200 (**+53%**) | <2× |
+| snapshot: publikacja | merge w miejscu | **staging + atomowy promote** | — |
+| snapshot: rollback | **niemożliwy** | **zweryfikowany na realnych danych** | — |
+| **oferty z przeszłości** | możliwe (brak filtru) | **0** | 0 |
+| **CTA z przeszłą datą** | możliwe (brak walidacji) | **0** | 0 |
+| **startery z minionym miesiącem** | **1** | **0** | 0 |
+
+### Trajektoria pokrycia (kolejne przebiegi na Preview)
+
+| segment | rekordów | future usable | tier A | ważone | czas | zadania |
+|---|---|---|---|---|---|---|
+| 0 (limit 25) | 25 | 24 (3,05%) | 45,3% | 12,7% | 68 s | 25/25 |
+| 1 | 92 | 60 (7,63%) | 94,3% | 28,1% | 180 s | 68/68 |
+| 2 | 154 | 72 (9,16%) | 98,1% | 31,0% | 140 s | 68/68 |
+| 3 | 204 | 72 (9,16%) | 98,1% | 31,0% | 190 s | 54/68 |
+| 5 (po rollbacku) | 278 | 85 (10,81%) | **100%** | 33,6% | 149 s | 68/68 |
+
+Dwie rzeczy warte odnotowania:
+
+1. **Tier A dochodzi do 100% po ~5 przebiegach**, a nie po pełnym obiegu —
+   bo round-robin po liście priorytetowej wkłada kierunki tieru A do KAŻDEGO
+   segmentu. To był cel projektowy: kierunki, o które ludzie pytają najczęściej,
+   nie czekają na swoją kolej.
+2. **Segment 3 przetworzył 54 z 68 zadań** — budżet czasu uciął końcówkę przy
+   wolniejszym dniu u dostawcy. Zachowanie jest zamierzone i samonaprawialne:
+   licznik `timedOut` to pokazuje, rekordy i tak są publikowane, a pominięte
+   zadania wracają w kolejnym obiegu. Gdyby zdarzało się to regularnie
+   (widać po `timedOut` w logach), właściwą reakcją jest **podniesienie
+   `SEGMENT_COUNT`**, nie budżetu czasu.
+
+### Smoke konwersacyjny na Preview (§70)
+
+| # | zapytanie | wynik |
 |---|---|---|
-| kierunków w seedzie | 796 (786 unikalnych) | 786 unikalnych |
-| kierunków z jakąkolwiek ceną | 46 | — |
-| destination coverage | **5,8%** | — |
-| future usable destinations | **nie mierzone** | mierzone (KPI) |
-| future usable coverage | **nie mierzone** | sufit **17,7%** |
-| HOT (tier A) weighted coverage | nie mierzone | mierzone |
-| miesięcy pokrytych | **2** | **4** |
-| długości pobytu | **2** (rozłącznie!) | **2 × każdy miesiąc** |
-| lotnisk wylotu | **1** (WAW) | **1 + rotacja 4** |
-| rekordów w snapshocie | 46 | do 1020 |
-| liczba cronów | 4 | 5 |
-| runtime warm-rates | 178–280 s / 300 s (**93%**) | bez zmian |
-| runtime nowego crona | — | zmierzone ~19 s / 8 zadań przy c=5; budżet 170 s / 300 s (**57%**) |
-| współbieżność (sweet spot) | nie mierzone | **5** (0 błędów, 0 429 na wszystkich poziomach) |
-| zapytań LiteAPI/dobę | ~16 000 | ~24 600 (**+53%**) |
-| snapshot: publikacja | merge w miejscu | staging + atomowy promote |
-| snapshot: rollback | **niemożliwy** | jeden zapis |
-| **oferty z przeszłości** | możliwe (brak filtru) | **0** (filtr twardy) |
-| **CTA z przeszłą datą** | możliwe (brak walidacji) | **0** (walidacja w karcie) |
-| **startery z minionym miesiącem** | **1** | **0** (test na 12 miesięcy) |
+| 1 | „Plaża do 3000 zł, 2 osoby" | Faro 7–14 XI 2026, 1918 zł/os. — **uczciwie mówi, że przekracza budżet**, proponuje dwa wyjścia |
+| 2 | „Chcę lecieć w sierpniu…" (miesiąc bez roku) | „Sierpień 2027 jest jeszcze daleko — linie nie wystawiły rozkładów", karta: **Larnaka 19–23 X 2026**, realny lot Wizz Air. To jest DOKŁADNIE ten kierunek i ta sytuacja ze zrzutu właściciela |
+| 3 | „10–17 sierpnia 2026" (jawnie przeszły) | karta na przyszły termin, zero przeszłych CTA — ale uzasadnienie było odwrotne do prawdy → **naprawione** (patrz niżej) |
+| 4 | „Grecja, 7 nocy, listopad" | **Egina 10–17 listopada** — dokładnie żądany miesiąc I żądana długość. Stary snapshot nie umiał tego zwrócić |
+
+Punkt 3 był realnym znaleziskiem smoke'a: schemat narzędzia `get_trip_offer`
+miał `month`, ale nie miał `year`, więc model nie mógł przekazać, że użytkownik
+wymienił rok. System rozwiązywał „sierpień" na najbliższy przyszły (2027),
+widział termin poza horyzontem i mówił „za daleko" o terminie, który MINĄŁ.
+Karta była poprawna, uzasadnienie nie. Naprawione: `year` w schemacie +
+`resolveExplicitMonthYear` w egzekutorze + trzy testy.
 
 ---
 
