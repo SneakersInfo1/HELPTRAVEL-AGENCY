@@ -3,6 +3,9 @@
 // z konsjerzem i czyta to, co widzi uzytkownik.
 //
 //   npx tsx bench/concierge/prod-smoke.ts --base=https://helptravel.pl [--desktop]
+//
+// Preview za ochrona Vercela: dopisz --share=<token z _vercel_share>; skrypt
+// odwiedza nim strone raz, zeby przegladarka dostala ciasteczko dostepowe.
 
 import { chromium } from "@playwright/test";
 
@@ -47,6 +50,9 @@ async function main(): Promise<number> {
       content: `try{localStorage.setItem("helptravel-cookie-consent-v1",JSON.stringify({version:1,decidedAt:1767225600000,decision:{necessary:true,analytics:false,marketing:false}}))}catch(e){}`,
     });
     const page = await ctx.newPage();
+    // Bramka Preview — jedno wejscie z tokenem ustawia ciasteczko w kontekscie.
+    const share = arg("share");
+    if (share) await page.goto(`${base}/?_vercel_share=${encodeURIComponent(share)}`, { waitUntil: "domcontentloaded" });
     const konsolaBledy: string[] = [];
     page.on("pageerror", (e) => konsolaBledy.push(String(e.message).slice(0, 120)));
     try {
