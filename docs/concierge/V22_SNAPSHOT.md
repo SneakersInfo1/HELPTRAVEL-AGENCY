@@ -368,3 +368,74 @@ Karta była poprawna, uzasadnienie nie. Naprawione: `year` w schemacie +
 | „sierpień" po sierpniu = przeszłość | ✅ | `resolveMonthWithoutYear` |
 | cron grzeje przeszłe okna | ✅ | `buildWindowMatrix` + test na 12 miesięcy |
 | future usable coverage nie mierzone | ✅ | `coverage.ts` + sonda |
+
+---
+
+## 25. Raport testowy (§67)
+
+| sprawdzenie | wynik |
+|---|---|
+| `pnpm test` | **1144 / 1144** |
+| `tsc --noEmit` | czysto |
+| `eslint` (zmienione obszary) | czysto |
+| `next build` | przechodzi, nowa trasa `ƒ /api/cron/build-concierge-snapshot` zarejestrowana |
+
+Nowe pliki testowe (łącznie ~90 przypadków):
+
+| plik | co przybija |
+|---|---|
+| `time/travel-now.test.ts` | strefa Europe/Warsaw, granica doby, zmiana czasu, arytmetyka dat |
+| `concierge/travel-dates.test.ts` | §9 A–J: PAST/TODAY/FUTURE, miesiąc bez roku, rollover roku, horyzont, EXACT/NEAREST |
+| `concierge/starters.test.ts` | przejście przez **wszystkie 12 miesięcy**, sezon plażowy, przyimek, budżet długości |
+| `concierge/offer-date-guard.test.ts` | rok w tekście, brak renderu przeszłej oferty, walidacja CTA związana z **realnymi** builderami URL-i |
+| `concierge/snapshot-candidates.test.ts` | EXACT/NEAREST, filtr twardy czasu, założony vs podany miesiąc |
+| `concierge/user-date-hints.test.ts` | rok z tekstu, odsiew kwot („do 2000 zł" to budżet, nie rok) |
+| `snapshot/windows.test.ts` | okna zawsze przyszłe (12 miesięcy × 3 dni), cross-coverage, rollover |
+| `snapshot/tiers.test.ts` | determinizm, dedup id, dywersyfikacja krajowa tieru B |
+| `snapshot/rotation.test.ts` | segmenty rozłączne i pokrywające całość, tier A w każdym segmencie |
+| `snapshot/store.test.ts` | staging, walidacja, atomowy promote, PREVIOUS, rollback, awarie Redisa |
+| `snapshot/coverage.test.ts` | przeszłe rekordy NIE podnoszą pokrycia, pokrycie ważone |
+
+## 26. Preview (§68)
+
+| | |
+|---|---|
+| gałąź | `feat/concierge-snapshot-v22` |
+| SHA | `209a27d` |
+| deployment | `dpl_3bQqd6f6Ja7J6K2uZFPoFR9rMSxA` |
+| Preview URL | https://helptravel-agency-git-feat-conci-854555-sneakersinfo1s-projects.vercel.app |
+
+Produkcja **nietknięta**: zero zmian w zmiennych środowiskowych, zero merge'a
+do `main`, `warm-rates` i `dstprice:v1` bez zmian. Nowy cron jest w
+`vercel.json`, więc uruchomi się dopiero po merge'u.
+
+## 27. Czego NIE zweryfikowano
+
+Uczciwie, żeby nie sprawiać wrażenia pełnego pokrycia:
+
+1. **Wizualny przegląd mobilny (§61)** — narzędzie przeglądarki zwracało przez
+   całą sesję „Policy check temporarily unavailable". Zmiana w warstwie
+   wizualnej to WYŁĄCZNIE dłuższy tekst etykiety (27 → 31 znaków) w
+   niezmienionym, zawijającym kontenerze; przybite testem budżetu długości,
+   ale nie obejrzane na ekranie.
+2. **Pełny obieg rotacji** — przejechano 5 z 15 segmentów. Sufit 17,7% jest
+   policzony z konfiguracji, nie zmierzony do końca.
+3. **Zachowanie przy realnej awarii dostawcy** — testy awarii są jednostkowe
+   (fake Redis, odrzucone Promise'y). Na Preview nie wystąpił ani jeden błąd
+   ani 429, więc ścieżki degradacji nie zostały wywołane naturalnie.
+4. **`trustpilot: failed`** — poza zakresem (§53), nie dotykane.
+
+## 28. Rekomendacja (§72)
+
+**MERGE — po akceptacji właściciela.** Warunki z §72 spełnione:
+
+- future usable coverage realnie wzrosło (5,8% → 10,81% po 1/3 obiegu, sufit 17,7%),
+- tier A: **100%**,
+- cron ma zapas (47–63% maxDuration wobec 93% u `warm-rates`),
+- obciążenie LiteAPI +53%, poniżej progu 2×,
+- atomowa publikacja działa, PREVIOUS działa, rollback zweryfikowany na realnych danych,
+- brak regresji: 1144/1144, homepage nietknięta,
+- **past offers = 0, past CTAs = 0, stale starters = 0.**
+
+Do obserwacji po wdrożeniu: licznik `timedOut` w logach crona. Jeśli regularnie
+> 0, właściwą reakcją jest **podniesienie `SEGMENT_COUNT`**, nie budżetu czasu.
