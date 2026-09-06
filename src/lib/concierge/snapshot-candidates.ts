@@ -23,6 +23,13 @@ import type { BudgetKind, TripCandidate } from "./types";
 export interface SnapshotRankOptions {
   /** Miesiąc, o który pyta użytkownik (1–12). */
   month?: number;
+  /**
+   * true = `month` NIE pochodzi od użytkownika, tylko z założenia („najbliższy
+   * pełny miesiąc"). Wtedy miesiąc dalej PORZĄDKUJE wybór okna, ale jego
+   * niezgodność NIE degraduje dopasowania do NEAREST — bo użytkownik o żaden
+   * konkretny miesiąc nie pytał, więc nie ma czego nie trafić.
+   */
+  monthAssumed?: boolean;
   /** Liczba nocy, o którą pyta użytkownik. */
   nights?: number;
   /** Lotnisko wylotu użytkownika — preferencja, nie filtr twardy. */
@@ -75,7 +82,8 @@ export function pickBestRecord(
   // EXACT znaczy: dostaliśmy to, o co pytano. Wylot jest preferencją, więc
   // jego niezgodność NIE degraduje dopasowania do NEAREST — ale niezgodność
   // miesiąca albo długości pobytu owszem, bo to jest odpowiedź na inne pytanie.
-  const exact = best.monthOk && best.nightsOk;
+  // Miesiąc ZAŁOŻONY nie liczy się do tej oceny (patrz `monthAssumed`).
+  const exact = (best.monthOk || opts.monthAssumed === true) && best.nightsOk;
   return { record: best.record, matchType: exact ? "EXACT" : "NEAREST" };
 }
 

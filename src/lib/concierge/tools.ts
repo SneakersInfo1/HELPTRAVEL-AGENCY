@@ -853,6 +853,7 @@ export function createToolExecutors(deps: ToolDeps) {
         now(),
         {
           month: searchMonth,
+          monthAssumed: parsed.month === undefined,
           nights: parsed.nights,
           origin: intent.origin,
           themeSlug: intent.theme,

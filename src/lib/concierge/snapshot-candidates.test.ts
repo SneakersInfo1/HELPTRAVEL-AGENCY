@@ -150,3 +150,26 @@ test("nightsMatch odzwierciedla prosbe uzytkownika", () => {
   const none = rankSnapshotCandidates([RHODES], [rec()], NO_LIMIT, NOW);
   assert.equal(none[0].nightsMatch, null);
 });
+
+test("zalozony miesiac PORZADKUJE, ale nie oznacza wyniku jako NEAREST", () => {
+  // Uzytkownik nie podal miesiaca — system zalozyl pazdziernik. Kierunek ma
+  // tylko listopad. To NIE jest „nie trafilismy w termin", bo o termin nikt
+  // nie pytal; oznaczenie NEAREST kazaloby modelowi tlumaczyc sie z niczego.
+  const records = [rec({ month: 11, nights: 7, checkin: "2026-11-07", checkout: "2026-11-14" })];
+  const assumed = rankSnapshotCandidates([RHODES], records, NO_LIMIT, NOW, { month: 10, monthAssumed: true });
+  assert.equal(assumed[0].matchType, "EXACT");
+
+  // Ten sam uklad, ale miesiac OD UZYTKOWNIKA — teraz to realne niedopasowanie.
+  const asked = rankSnapshotCandidates([RHODES], records, NO_LIMIT, NOW, { month: 10 });
+  assert.equal(asked[0].matchType, "NEAREST");
+});
+
+test("zalozony miesiac wciaz decyduje o WYBORZE okna", () => {
+  const records = [
+    rec({ month: 11, nights: 7, checkin: "2026-11-07", checkout: "2026-11-14", perPersonPln: 900 }),
+    rec({ month: 10, nights: 7, perPersonPln: 1500 }),
+  ];
+  // Mimo ze listopad jest TANSZY, zalozony pazdziernik ma wygrac wybor okna.
+  const out = rankSnapshotCandidates([RHODES], records, NO_LIMIT, NOW, { month: 10, monthAssumed: true });
+  assert.equal(out[0].checkin, "2026-10-03");
+});
