@@ -131,11 +131,23 @@ export async function GET(request: NextRequest) {
     const limitParam = Number(url.searchParams.get("limit"));
     const taskBudget = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, TASK_BUDGET) : TASK_BUDGET;
     const dryRun = url.searchParams.get("dryRun") === "1";
+    // Współbieżność da się nadpisać WYŁĄCZNIE parametrem — do pomiaru sweet
+    // spotu (§27) na Preview. Produkcyjny harmonogram zawsze używa CONCURRENCY.
+    const concurrencyParam = Number(url.searchParams.get("concurrency"));
+    const concurrency =
+      Number.isFinite(concurrencyParam) && concurrencyParam >= 1 && concurrencyParam <= 10
+        ? Math.floor(concurrencyParam)
+        : CONCURRENCY;
+    // Segment też, żeby pomiar dało się powtórzyć na TYCH SAMYCH zadaniach —
+    // inaczej porównywalibyśmy różne trasy i różny stan cache'u.
+    const segmentParam = Number(url.searchParams.get("segment"));
 
     const seed = listAllDestinations() as unknown as TierSeedRecord[];
     const tiered = buildDestinationTiers(seed);
     const windows = buildWindowMatrix(todayIso);
-    const segment = segmentForNow(nowMs, RUN_INTERVAL_MS, SEGMENT_COUNT);
+    const segment = Number.isFinite(segmentParam) && segmentParam >= 0
+      ? Math.floor(segmentParam) % SEGMENT_COUNT
+      : segmentForNow(nowMs, RUN_INTERVAL_MS, SEGMENT_COUNT);
     const tasks = planRun(tiered, windows, { tierA: ORIGIN_TIER_A, tierB: ORIGIN_TIER_B }, {
       segment,
       segmentCount: SEGMENT_COUNT,
@@ -187,7 +199,7 @@ export async function GET(request: NextRequest) {
 
     const freshRecords = new Map<string, SnapshotRecord>();
 
-    await runPool(tasks, CONCURRENCY, async (task) => {
+    await runPool(tasks, concurrency, async (task) => {
       if (Date.now() - startedAt > TIME_BUDGET_MS) {
         stats.timedOut += 1;
         return;
@@ -356,6 +368,7 @@ export async function GET(request: NextRequest) {
       segment,
       segmentCount: SEGMENT_COUNT,
       plannedTasks: tasks.length,
+      concurrency,
       ...stats,
       carried,
       replaced,
