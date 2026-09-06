@@ -1,0 +1,189 @@
+{
+  "ok": true,
+  "cases": 5,
+  "ran": 5,
+  "skipped": 0,
+  "repeat": 1,
+  "concurrency": 1,
+  "durationMs": 28609,
+  "all": {
+    "n": 5,
+    "p50": 5310,
+    "p75": 9335,
+    "p95": 11570,
+    "max": 11570
+  },
+  "firstPass": {
+    "n": 5,
+    "p50": 5310,
+    "p75": 9335,
+    "p95": 11570,
+    "max": 11570
+  },
+  "laterPasses": null,
+  "expectedWarm": {
+    "n": 2,
+    "p50": 9335,
+    "p75": 9335,
+    "p95": 9335,
+    "max": 9335
+  },
+  "expectedCold": {
+    "n": 3,
+    "p50": 1270,
+    "p75": 11570,
+    "p95": 11570,
+    "max": 11570
+  },
+  "byTool": {
+    "search_trips": {
+      "n": 1,
+      "p50": 5310,
+      "p75": 5310,
+      "p95": 5310,
+      "max": 5310
+    },
+    "get_trip_offer": {
+      "n": 4,
+      "p50": 9335,
+      "p75": 11570,
+      "p95": 11570,
+      "max": 11570
+    }
+  },
+  "spans": {
+    "redis.snapshot": {
+      "n": 1,
+      "p50": 106,
+      "p75": 106,
+      "p95": 106,
+      "max": 106
+    },
+    "rank": {
+      "n": 1,
+      "p50": 0,
+      "p75": 0,
+      "p95": 0,
+      "max": 0
+    },
+    "liteapi.hotel": {
+      "n": 5,
+      "p50": 1528,
+      "p75": 3216,
+      "p95": 3272,
+      "max": 3272
+    },
+    "liteapi.gallery": {
+      "n": 5,
+      "p50": 11,
+      "p75": 11,
+      "p95": 12,
+      "max": 12
+    },
+    "liteapi.flight": {
+      "n": 5,
+      "p50": 5203,
+      "p75": 9333,
+      "p95": 11570,
+      "max": 11570
+    }
+  },
+  "states": {
+    "AUTO_VALID": 1,
+    "VALID": 4
+  },
+  "results": [
+    {
+      "id": "offer.cold.window",
+      "tool": "get_trip_offer",
+      "what": "Barcelona, okno +33 dni / 5 nocy — nikt tego nie grzeje",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 11570,
+      "spans": {
+        "liteapi.hotel": 3216,
+        "liteapi.gallery": 11,
+        "liteapi.flight": 11570
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.cheap-window",
+      "tool": "get_trip_offer",
+      "what": "Ateny, tanie okno snapshotu (grzane tylko dla hoteli, lot zimny)",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 9335,
+      "spans": {
+        "liteapi.hotel": 3272,
+        "liteapi.gallery": 11,
+        "liteapi.flight": 9333
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.budzet",
+      "tool": "search_trips",
+      "what": "motyw budzet, budżet 3000/os., pełna auto-oferta",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 5310,
+      "spans": {
+        "redis.snapshot": 106,
+        "rank": 0,
+        "liteapi.hotel": 1528,
+        "liteapi.gallery": 12,
+        "liteapi.flight": 5203
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.cold.month-only",
+      "tool": "get_trip_offer",
+      "what": "Sam miesiąc od użytkownika — daty liczone mechanicznie",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 1270,
+      "spans": {
+        "liteapi.hotel": 213,
+        "liteapi.gallery": 7,
+        "liteapi.flight": 1269
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.partial.no-airport",
+      "tool": "get_trip_offer",
+      "what": "Kierunek bez lotniska w seedzie → lot null, oczekiwany stan PARTIAL",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 1123,
+      "spans": {
+        "liteapi.hotel": 210,
+        "liteapi.gallery": 11,
+        "liteapi.flight": 1123
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    }
+  ]
+}

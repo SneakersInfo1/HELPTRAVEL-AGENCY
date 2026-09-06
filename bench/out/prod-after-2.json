@@ -1,0 +1,829 @@
+{
+  "ok": true,
+  "cases": 39,
+  "ran": 39,
+  "skipped": 0,
+  "repeat": 1,
+  "concurrency": 2,
+  "durationMs": 4280,
+  "all": {
+    "n": 39,
+    "p50": 209,
+    "p75": 303,
+    "p95": 410,
+    "max": 466
+  },
+  "firstPass": {
+    "n": 39,
+    "p50": 209,
+    "p75": 303,
+    "p95": 410,
+    "max": 466
+  },
+  "laterPasses": null,
+  "expectedWarm": {
+    "n": 27,
+    "p50": 240,
+    "p75": 308,
+    "p95": 410,
+    "max": 466
+  },
+  "expectedCold": {
+    "n": 12,
+    "p50": 196,
+    "p75": 208,
+    "p95": 319,
+    "max": 319
+  },
+  "byTool": {
+    "search_trips": {
+      "n": 20,
+      "p50": 302,
+      "p75": 324,
+      "p95": 466,
+      "max": 466
+    },
+    "get_trip_offer": {
+      "n": 19,
+      "p50": 125,
+      "p75": 202,
+      "p95": 303,
+      "max": 303
+    }
+  },
+  "spans": {
+    "redis.snapshot": {
+      "n": 20,
+      "p50": 98,
+      "p75": 101,
+      "p95": 188,
+      "max": 188
+    },
+    "rank": {
+      "n": 19,
+      "p50": 0,
+      "p75": 0,
+      "p95": 1,
+      "max": 1
+    },
+    "liteapi.hotel": {
+      "n": 36,
+      "p50": 124,
+      "p75": 199,
+      "p95": 258,
+      "max": 287
+    },
+    "liteapi.gallery": {
+      "n": 34,
+      "p50": 9,
+      "p75": 15,
+      "p95": 23,
+      "max": 32
+    },
+    "liteapi.flight": {
+      "n": 36,
+      "p50": 109,
+      "p75": 196,
+      "p95": 216,
+      "max": 218
+    }
+  },
+  "states": {
+    "AUTO_VALID": 18,
+    "EMPTY": 2,
+    "VALID": 17,
+    "UNAVAILABLE": 1,
+    "PARTIAL": 1
+  },
+  "results": [
+    {
+      "id": "search.theme.city-break",
+      "tool": "search_trips",
+      "what": "motyw city-break, budżet 3000/os., pełna auto-oferta",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 466,
+      "spans": {
+        "redis.snapshot": 186,
+        "rank": 0,
+        "liteapi.flight": 216,
+        "liteapi.hotel": 258,
+        "liteapi.gallery": 17
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.plaza",
+      "tool": "search_trips",
+      "what": "motyw plaza, budżet 3000/os., pełna auto-oferta",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 410,
+      "spans": {
+        "redis.snapshot": 188,
+        "rank": 0,
+        "liteapi.hotel": 132,
+        "liteapi.gallery": 14,
+        "liteapi.flight": 218
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.gory",
+      "tool": "search_trips",
+      "what": "motyw gory, budżet 3000/os., pełna auto-oferta",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 324,
+      "spans": {
+        "redis.snapshot": 99,
+        "rank": 0,
+        "liteapi.flight": 207,
+        "liteapi.hotel": 209,
+        "liteapi.gallery": 15
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country.Portugalia",
+      "tool": "search_trips",
+      "what": "kraj Portugalia (ścieżka slice-przed-rankingiem)",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 324,
+      "spans": {
+        "redis.snapshot": 101,
+        "rank": 1,
+        "liteapi.flight": 204,
+        "liteapi.hotel": 210,
+        "liteapi.gallery": 11
+      },
+      "state": "AUTO_VALID",
+      "candidates": 3,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country+theme.spain-city",
+      "tool": "search_trips",
+      "what": "Hiszpania + city break — oba sygnały muszą przeżyć",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 324,
+      "spans": {
+        "redis.snapshot": 99,
+        "rank": 0,
+        "liteapi.hotel": 193,
+        "liteapi.flight": 207,
+        "liteapi.gallery": 32
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country.no-data",
+      "tool": "search_trips",
+      "what": "kraj bez grzanych kierunków (Norwegia) — kandydaci bez cen",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 319,
+      "spans": {
+        "redis.snapshot": 97,
+        "rank": 0,
+        "liteapi.flight": 111,
+        "liteapi.hotel": 199,
+        "liteapi.gallery": 21
+      },
+      "state": "AUTO_VALID",
+      "candidates": 0,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country.Grecja",
+      "tool": "search_trips",
+      "what": "kraj Grecja (ścieżka slice-przed-rankingiem)",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 310,
+      "spans": {
+        "redis.snapshot": 98,
+        "rank": 0,
+        "liteapi.flight": 102,
+        "liteapi.hotel": 201,
+        "liteapi.gallery": 10
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country.Hiszpania",
+      "tool": "search_trips",
+      "what": "kraj Hiszpania (ścieżka slice-przed-rankingiem)",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 308,
+      "spans": {
+        "redis.snapshot": 97,
+        "rank": 0,
+        "liteapi.flight": 195,
+        "liteapi.hotel": 202,
+        "liteapi.gallery": 8
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country+theme.greece-beach",
+      "tool": "search_trips",
+      "what": "Grecja + plaża — oba sygnały muszą przeżyć",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 308,
+      "spans": {
+        "redis.snapshot": 103,
+        "rank": 0,
+        "liteapi.flight": 110,
+        "liteapi.hotel": 197,
+        "liteapi.gallery": 6
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.cold.window",
+      "tool": "get_trip_offer",
+      "what": "Barcelona, okno +33 dni / 5 nocy — nikt tego nie grzeje",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 303,
+      "spans": {
+        "liteapi.flight": 196,
+        "liteapi.hotel": 287,
+        "liteapi.gallery": 16
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.budzet",
+      "tool": "search_trips",
+      "what": "motyw budzet, budżet 3000/os., pełna auto-oferta",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 302,
+      "spans": {
+        "redis.snapshot": 95,
+        "rank": 0,
+        "liteapi.flight": 104,
+        "liteapi.hotel": 198,
+        "liteapi.gallery": 9
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.kultura",
+      "tool": "search_trips",
+      "what": "motyw kultura, budżet 3000/os., pełna auto-oferta",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 296,
+      "spans": {
+        "redis.snapshot": 97,
+        "rank": 0,
+        "liteapi.hotel": 109,
+        "liteapi.gallery": 11,
+        "liteapi.flight": 197
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country.Włochy",
+      "tool": "search_trips",
+      "what": "kraj Włochy (ścieżka slice-przed-rankingiem)",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 296,
+      "spans": {
+        "redis.snapshot": 97,
+        "rank": 1,
+        "liteapi.hotel": 106,
+        "liteapi.gallery": 8,
+        "liteapi.flight": 198
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.nights-3",
+      "tool": "search_trips",
+      "what": "motyw + 3 noce (weekend) — przeliczenie pakietu ze składowych",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 295,
+      "spans": {
+        "redis.snapshot": 100,
+        "rank": 0,
+        "liteapi.flight": 112,
+        "liteapi.hotel": 191,
+        "liteapi.gallery": 4
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country.Turcja",
+      "tool": "search_trips",
+      "what": "kraj Turcja (ścieżka slice-przed-rankingiem)",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 286,
+      "spans": {
+        "redis.snapshot": 96,
+        "rank": 0,
+        "liteapi.flight": 102,
+        "liteapi.hotel": 180,
+        "liteapi.gallery": 10
+      },
+      "state": "AUTO_VALID",
+      "candidates": 1,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.Barcelona",
+      "tool": "get_trip_offer",
+      "what": "Barcelona, okno tydzien-1 grzane przez cron, 2 dorosłych",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 240,
+      "spans": {
+        "liteapi.flight": 198,
+        "liteapi.hotel": 224,
+        "liteapi.gallery": 16
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.no-budget",
+      "tool": "search_trips",
+      "what": "motyw bez budżetu (klient niekonkretny) — od najtańszego",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 221,
+      "spans": {
+        "redis.snapshot": 98,
+        "rank": 0,
+        "liteapi.flight": 104,
+        "liteapi.hotel": 120,
+        "liteapi.gallery": 2
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.slonce-zima",
+      "tool": "search_trips",
+      "what": "motyw slonce-zima, budżet 3000/os., pełna auto-oferta",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 220,
+      "spans": {
+        "redis.snapshot": 100,
+        "rank": 0,
+        "liteapi.flight": 105,
+        "liteapi.hotel": 118,
+        "liteapi.gallery": 1
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.country.Cypr",
+      "tool": "search_trips",
+      "what": "kraj Cypr (ścieżka slice-przed-rankingiem)",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 214,
+      "spans": {
+        "redis.snapshot": 102,
+        "rank": 0,
+        "liteapi.hotel": 100,
+        "liteapi.gallery": 2,
+        "liteapi.flight": 109
+      },
+      "state": "AUTO_VALID",
+      "candidates": 1,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.cheap-window",
+      "tool": "get_trip_offer",
+      "what": "Ateny, tanie okno snapshotu (grzane tylko dla hoteli, lot zimny)",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 209,
+      "spans": {
+        "liteapi.flight": 100,
+        "liteapi.hotel": 199,
+        "liteapi.gallery": 10
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.cold.no-dates",
+      "tool": "get_trip_offer",
+      "what": "Bez dat — termin dobiera snapshot (dodatkowy odczyt Redis)",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 208,
+      "spans": {
+        "redis.snapshot": 96,
+        "liteapi.flight": 101,
+        "liteapi.hotel": 103,
+        "liteapi.gallery": 8
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "search.theme.family",
+      "tool": "search_trips",
+      "what": "rodzina 2+2, budżet łączny 12000 — próg dzielony przez 4 osoby",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 203,
+      "spans": {
+        "redis.snapshot": 96,
+        "rank": 0,
+        "liteapi.flight": 102,
+        "liteapi.hotel": 105,
+        "liteapi.gallery": 2
+      },
+      "state": "AUTO_VALID",
+      "candidates": 4,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.hotel-only",
+      "tool": "get_trip_offer",
+      "what": "Sam hotel (wantsFlight=false) — zero wywołań lotów",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 202,
+      "spans": {
+        "liteapi.hotel": 198,
+        "liteapi.gallery": 4
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": false
+    },
+    {
+      "id": "offer.cold.origin",
+      "tool": "get_trip_offer",
+      "what": "Wylot z Gdańska — trasa spoza prewarmingu lotów",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 196,
+      "spans": {
+        "liteapi.hotel": 103,
+        "liteapi.gallery": 2,
+        "liteapi.flight": 195
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.island-alias",
+      "tool": "get_trip_offer",
+      "what": "Wyspa od modelu (Majorka) → kanoniczne miasto seedu",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 196,
+      "spans": {
+        "liteapi.hotel": 102,
+        "liteapi.flight": 195
+      },
+      "state": "PARTIAL",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": false,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.Antalya",
+      "tool": "get_trip_offer",
+      "what": "Antalya, okno tydzien-1 grzane przez cron, 2 dorosłych",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 195,
+      "spans": {
+        "liteapi.flight": 113,
+        "liteapi.hotel": 193,
+        "liteapi.gallery": 2
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.partial.no-airport",
+      "tool": "get_trip_offer",
+      "what": "Kierunek bez lotniska w seedzie → lot null, oczekiwany stan PARTIAL",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 126,
+      "spans": {
+        "liteapi.flight": 109,
+        "liteapi.hotel": 115,
+        "liteapi.gallery": 10
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.cold.destination",
+      "tool": "get_trip_offer",
+      "what": "Sofia — kierunek spoza listy grzanych tras lotniczych",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 125,
+      "spans": {
+        "liteapi.flight": 108,
+        "liteapi.hotel": 124,
+        "liteapi.gallery": 1
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.Malaga",
+      "tool": "get_trip_offer",
+      "what": "Malaga, okno tydzien-1 grzane przez cron, 2 dorosłych",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 123,
+      "spans": {
+        "liteapi.flight": 106,
+        "liteapi.hotel": 117,
+        "liteapi.gallery": 6
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.Lisbon",
+      "tool": "get_trip_offer",
+      "what": "Lisbon, okno tydzien-1 grzane przez cron, 2 dorosłych",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 122,
+      "spans": {
+        "liteapi.flight": 103,
+        "liteapi.hotel": 107,
+        "liteapi.gallery": 15
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.cold.occupancy",
+      "tool": "get_trip_offer",
+      "what": "Barcelona, okno grzane ale 2+2 (inne occupancy = inny klucz cache)",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 121,
+      "spans": {
+        "liteapi.hotel": 97,
+        "liteapi.flight": 108,
+        "liteapi.gallery": 23
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.weekend",
+      "tool": "get_trip_offer",
+      "what": "Barcelona, okno weekend-1 (2 noce) grzane przez cron",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 117,
+      "spans": {
+        "liteapi.flight": 111,
+        "liteapi.hotel": 113,
+        "liteapi.gallery": 4
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.Heraklion",
+      "tool": "get_trip_offer",
+      "what": "Heraklion, okno tydzien-1 grzane przez cron, 2 dorosłych",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 112,
+      "spans": {
+        "liteapi.flight": 101,
+        "liteapi.hotel": 104,
+        "liteapi.gallery": 8
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.warm.Rhodes",
+      "tool": "get_trip_offer",
+      "what": "Rhodes, okno tydzien-1 grzane przez cron, 2 dorosłych",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 112,
+      "spans": {
+        "liteapi.hotel": 96,
+        "liteapi.flight": 102,
+        "liteapi.gallery": 15
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.cold.month-only",
+      "tool": "get_trip_offer",
+      "what": "Sam miesiąc od użytkownika — daty liczone mechanicznie",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 104,
+      "spans": {
+        "liteapi.flight": 102,
+        "liteapi.hotel": 103,
+        "liteapi.gallery": 1
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": true,
+      "flight": true
+    },
+    {
+      "id": "offer.flight-only",
+      "tool": "get_trip_offer",
+      "what": "Sam lot (wantsHotel=false) — zero wywołań hoteli",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 101,
+      "spans": {
+        "liteapi.flight": 101
+      },
+      "state": "VALID",
+      "candidates": null,
+      "hasOffer": true,
+      "hotel": false,
+      "flight": true
+    },
+    {
+      "id": "search.theme.tight-budget",
+      "tool": "search_trips",
+      "what": "budżet 800/os. — brak wyników jest POPRAWNYM wynikiem",
+      "expectWarm": true,
+      "pass": 1,
+      "totalMs": 97,
+      "spans": {
+        "redis.snapshot": 95,
+        "rank": 1
+      },
+      "state": "EMPTY",
+      "candidates": 0,
+      "hasOffer": false,
+      "hotel": false,
+      "flight": false
+    },
+    {
+      "id": "offer.unavailable.nonsense-city",
+      "tool": "get_trip_offer",
+      "what": "Miasto, którego nie ma → hotel i lot null, oczekiwany stan UNAVAILABLE",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 21,
+      "spans": {
+        "liteapi.flight": 1,
+        "liteapi.hotel": 21
+      },
+      "state": "UNAVAILABLE",
+      "candidates": null,
+      "hasOffer": false,
+      "hotel": false,
+      "flight": false
+    },
+    {
+      "id": "search.country.unknown",
+      "tool": "search_trips",
+      "what": "kraj spoza seedu — czysta odmowa, zero I/O",
+      "expectWarm": false,
+      "pass": 1,
+      "totalMs": 0,
+      "spans": {},
+      "state": "EMPTY",
+      "candidates": 0,
+      "hasOffer": false,
+      "hotel": false,
+      "flight": false
+    }
+  ]
+}
