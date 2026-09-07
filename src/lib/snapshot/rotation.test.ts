@@ -6,6 +6,7 @@ import { test } from "node:test";
 import seedJson from "../../../data/destinations.json";
 import { buildDestinationTiers, ORIGIN_TIER_A, ORIGIN_TIER_B, type TierSeedRecord } from "./tiers";
 import { buildTaskList, planRun, segmentForNow } from "./rotation";
+import { SEGMENT_COUNT as SEGMENT_COUNT_PROD, TASK_BUDGET as TASK_BUDGET_PROD } from "./config";
 import { buildWindowMatrix } from "./windows";
 
 const SEED = (seedJson as { destinations: TierSeedRecord[] }).destinations;
@@ -101,5 +102,32 @@ test("kazde zadanie ma komplet danych do odpytania dostawcy", () => {
     assert.match(t.origin, /^[A-Z]{3}$/);
     assert.match(t.dest.iata ?? "", /^[A-Z]{3}$/);
     assert.ok(t.window.checkin < t.window.checkout);
+  }
+});
+
+test("segment miesci sie w zmierzonym najgorszym tempie zimnego przebiegu", () => {
+  // Pomiar na Preview: segment 3 na zimno startowal 54 zadania w budzecie 170 s
+  // = 3,15 s/zadanie. Segment wiekszy niz ~54 zadania ryzykuje, ze budzet
+  // utnie ZAWSZE TEN SAM ogon (kolejnosc zadan jest stala), wiec te zadania
+  // nigdy sie nie odswieza. Ten test pilnuje, ze konfiguracja nie wroci
+  // po cichu do rozmiaru, ktory to powoduje.
+  const NAJGORSZE_TEMPO_S = 3.15;
+  const BUDZET_S = 170;
+  const maxZadanWBudzecie = Math.floor(BUDZET_S / NAJGORSZE_TEMPO_S);
+  const all = buildTaskList(TIERS, WINDOWS, ORIGINS, { tierBWindows: 2 });
+  for (let s = 0; s < SEGMENT_COUNT_PROD; s += 1) {
+    const size = all.filter((_, i) => i % SEGMENT_COUNT_PROD === s).length;
+    assert.ok(
+      size <= maxZadanWBudzecie,
+      `segment ${s} ma ${size} zadan, a w najgorszym zmierzonym tempie budzet starcza na ${maxZadanWBudzecie}`,
+    );
+  }
+});
+
+test("budzet zadan nie ucina zadnego segmentu przy produkcyjnej konfiguracji", () => {
+  const all = buildTaskList(TIERS, WINDOWS, ORIGINS, { tierBWindows: 2 });
+  for (let s = 0; s < SEGMENT_COUNT_PROD; s += 1) {
+    const size = all.filter((_, i) => i % SEGMENT_COUNT_PROD === s).length;
+    assert.ok(size <= TASK_BUDGET_PROD, `segment ${s}: ${size} > budzet ${TASK_BUDGET_PROD}`);
   }
 });

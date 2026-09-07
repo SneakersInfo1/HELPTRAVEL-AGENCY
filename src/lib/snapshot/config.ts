@@ -29,13 +29,34 @@
 // 300 s, czyli do 93%; §25 chce ≤70%).
 //
 // ROTACJA. Pełna lista to 1020 zadań (53 kierunki tieru A × 8 okien × 1–2
-// wyloty + 86 kierunków tieru B × 2 okna). 1020 / 70 ≈ 15 segmentów, cron co
-// 30 min → pełny obieg zamyka się w ~7,5 h, czyli WEWNĄTRZ progu FRESH (12 h)
-// z coverage.ts. Przy obiegu godzinnym część rekordów siedziałaby w
-// STALE_BUT_USABLE bez potrzeby.
+// wyloty + 86 kierunków tieru B × 2 okna).
 //
-// KOSZT: ~70 lotów + ~70 stawek + ~40 metadanych ≈ 180 zapytań na przebieg,
-// × 48 przebiegów = ~8 600 na dobę. Obecna baza (`warm-rates` co 30 min +
+// SEGMENT_COUNT = 20, a nie 15 — i to jest wniosek Z POMIARU, nie z ostrożności.
+// Pełny obieg 15/15 na Preview zamknął się czysto (segmenty 6–14: 68/68 zadań,
+// zero timeoutów, 95–174 s), ALE segment 3 przekroczył budżet czasu na OBU
+// zimnych przebiegach: 54/68 i 59/68. To nie był szum — ten sam segment,
+// dwa razy, przy dwóch różnych stanach cache'u.
+//
+// Dlaczego to groźne: `planRun` zwraca zadania w STAŁEJ kolejności priorytetu,
+// a budżet czasu ucina KONIEC listy. Segment, który regularnie się nie mieści,
+// gubi więc ZA KAŻDYM RAZEM ten sam ogon — a nie losowe zadania. Samonaprawa
+// istnieje, ale tylko w oknie cache'u lotów: powtórka segmentu 3 zaraz po
+// nieudanej zrobiła 68/68 w 33 s przy 61 trafieniach w `flrt:v2` (TTL 40 min).
+// Produkcyjny harmonogram wraca do segmentu dopiero po pełnym obiegu, czyli
+// z zimnym cache'em — więc w praktyce ten ogon nigdy by się nie odświeżył.
+//
+// Arytmetyka doboru: najgorsze zmierzone tempo startu zadań (segment 3, zimno)
+// to 54 zadania w 170 s = 3,15 s/zadanie. 1020 / 20 = 51 zadań na segment,
+// czyli 51 × 3,15 ≈ 161 s — mieści się w budżecie 170 s z zapasem. Podniesienie
+// samego deadline'u byłoby leczeniem objawu: zjadłoby margines do maxDuration,
+// którego brak jest właśnie chorobą `warm-rates` (178–280 s przy limicie 300 s).
+//
+// Koszt: pełny obieg to 20 przebiegów × 30 min = 10 h, wciąż WEWNĄTRZ progu
+// FRESH (12 h) z coverage.ts. Suma zadań w obiegu się nie zmienia — zmienia się
+// tylko ich rozłożenie w czasie, więc pokrycie po pełnym obiegu jest identyczne.
+//
+// KOSZT: ~51 lotów + ~51 stawek + ~35 metadanych ≈ 140 zapytań na przebieg,
+// × 48 przebiegów = ~6 700 na dobę. Obecna baza (`warm-rates` co 30 min +
 // trzy pozostałe crony) to ~16 000/dobę, więc wzrost to ~+53% — poniżej progu
 // „2× baseline", przy którym §57 każe się zatrzymać i pytać. Część zapytań
 // lotniczych trafia w istniejący `flrt:v2` (benchmark widział 0–3 trafienia
@@ -44,7 +65,7 @@
 /** Ile zadań maksymalnie bierze jeden przebieg. */
 export const TASK_BUDGET = 70;
 /** Na ile segmentów dzielimy pełną listę zadań (= długość obiegu w przebiegach). */
-export const SEGMENT_COUNT = 15;
+export const SEGMENT_COUNT = 20;
 /** Odstęp crona — wchodzi do deterministycznego wyboru segmentu z zegara. */
 export const RUN_INTERVAL_MS = 30 * 60 * 1000;
 /** Współbieżność zapytań do dostawcy — sweet spot z tabeli w nagłówku. */
