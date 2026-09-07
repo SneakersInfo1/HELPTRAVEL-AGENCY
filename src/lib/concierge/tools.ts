@@ -429,6 +429,8 @@ export interface ModelTripCandidate {
    * rekordów okien.
    */
   matchType: "EXACT" | "NEAREST" | null;
+  /** true = kwota PRZEKRACZA budżet użytkownika (ratunek przed pustką, §3). */
+  overBudget?: boolean;
 }
 
 export interface SearchTripsResult {
@@ -811,6 +813,33 @@ export function createToolExecutors(deps: ToolDeps) {
     // wyspiarska (Rodos, Kos, Zakynthos), południe Włoch (Bari, Katania,
     // Palermo) i sześć hiszpańskich, w tym Teneryfa i Palma. Ranking jest
     // czysty (odczyty z mapy, zero I/O), więc pełna pula nic nie kosztuje.
+    const csnap = await readConciergeSnapshotOnce(ctx);
+    const csnapRecords = csnap ? Object.values(csnap.records) : [];
+
+    /**
+     * Pula kierunków zbudowana z SAMEGO SNAPSHOTU — rekordy niosą już nazwy
+     * miasta i kraju, więc nie potrzeba nowej zależności. Dane z seedu
+     * (tagi charakteru, popularność) dokładamy przez `resolveDest`, bo to one
+     * decydują o kolejności przy motywie.
+     */
+    const citiesFromSnapshot = (): TripSearchCity[] => {
+      const seen = new Set<string>();
+      const out: TripSearchCity[] = [];
+      for (const r of csnapRecords) {
+        if (seen.has(r.destId)) continue;
+        seen.add(r.destId);
+        const dest = deps.resolveDest(r.cityEn, r.countryEn);
+        out.push({
+          cityEn: r.cityEn,
+          countryEn: r.countryEn,
+          cityPl: dest?.city.pl ?? r.cityPl,
+          vibeTagsEn: dest?.vibeTagsEn,
+          popularity: dest?.popularity,
+        });
+      }
+      return out;
+    };
+
     let cities: TripSearchCity[];
     if (country) {
       cities = deps.listDestinationsInCountry(country);
@@ -820,11 +849,24 @@ export function createToolExecutors(deps: ToolDeps) {
           reason: `Nie znam kierunków w kraju „${country}” — upewnij się co do nazwy kraju albo zaproponuj motyw z list_themes.`,
         };
       }
+    } else if (resolveThemeCities(intent.theme!, deps.resolveDest).length === 0) {
+      return { candidates: [], reason: `Nieznany motyw "${intent.theme}" — pobierz dostępne motywy przez list_themes.` };
     } else {
-      cities = resolveThemeCities(intent.theme!, deps.resolveDest);
-      if (cities.length === 0) {
-        return { candidates: [], reason: `Nieznany motyw "${intent.theme}" — pobierz dostępne motywy przez list_themes.` };
-      }
+      // PULA MOTYWU = CAŁY SNAPSHOT, nie sześć ręcznych picków.
+      //
+      // Zgłoszenie 2026-09-07: kliknięcie startera „Plaża do 3000 zł w
+      // październiku" kończyło się „nie mamy świeżych cen". Pomiar pokazał
+      // dlaczego: `resolveThemeCities` zwraca dokładnie `mood.picks`, czyli
+      // SZEŚĆ kierunków, podczas gdy snapshot miał 133. Przy 3000 zł/os. na
+      // październik z całego snapshotu kwalifikowało się 121 kierunków — z tych
+      // sześciu pięć, a przy chudszym snapshocie zero. Cała praca nad pokryciem
+      // omijała tę ścieżkę.
+      //
+      // To także przywraca kontrakt z V2.1 §12, który motyw opisuje jako
+      // PREFERENCJĘ porządkującą, a nie filtr twardy — sześć picków czyniło
+      // z niego filtr. Kolejność pilnuje `themeAffinity`: pick > tag > nic.
+      const fromSnapshot = citiesFromSnapshot();
+      cities = fromSnapshot.length > 0 ? fromSnapshot : resolveThemeCities(intent.theme!, deps.resolveDest);
     }
 
     // Budżet „łącznie" dzielimy przez REALNĄ liczbę podróżnych, nie sztywno
@@ -852,8 +894,6 @@ export function createToolExecutors(deps: ToolDeps) {
     // dstprice:v1 dokładnie jak w V2.1. Fallback jest świadomy: pierwszy build
     // snapshotu musi się dopiero opublikować, a awaria nowej warstwy nie może
     // zabrać konsjerżowi cen, które już działały.
-    const csnap = await readConciergeSnapshotOnce(ctx);
-    const csnapRecords = csnap ? Object.values(csnap.records) : [];
     const stopRank = trace.start("rank", { cities: cities.length, source: csnapRecords.length > 0 ? "csnap" : "dstprice" });
     // NAJPIERW pełny ranking całej puli, DOPIERO POTEM przycięcie do listy
     // pokazywanej modelowi (§13).
@@ -874,6 +914,28 @@ export function createToolExecutors(deps: ToolDeps) {
           themePickKeys: pickKeysForRank ?? themePickKeysFor(intent.theme, deps.resolveDest),
         },
       ).slice(0, MAX_TRIP_CANDIDATES);
+      // §3: nic w budżecie NIE znaczy „nic nie ma". Drugie podejście dopuszcza
+      // kierunki ponad budżet, żeby powiedzieć „najbliższa opcja to X zł"
+      // zamiast odesłać użytkownika z pustą ręką. Uczciwość pilnuje `overBudget`
+      // i ujemny `zapasPln` — model dostaje jawny sygnał, że to NIE mieści się
+      // w kwocie, o której mówił klient.
+      if (ranked.length === 0 && !noBudget) {
+        ranked = rankSnapshotCandidates(
+          cities,
+          csnapRecords,
+          { budgetPln: perPersonCap, budgetKind: "per_person" },
+          now(),
+          {
+            month: searchMonth,
+            monthAssumed: parsed.month === undefined,
+            nights: parsed.nights,
+            origin: intent.origin,
+            themeSlug: intent.theme,
+            themePickKeys: pickKeysForRank ?? themePickKeysFor(intent.theme, deps.resolveDest),
+            allowOverBudget: true,
+          },
+        ).slice(0, 3);
+      }
     } else {
       snapshot = await readSnapshotOnce(ctx);
       ranked = snapshot
@@ -912,6 +974,7 @@ export function createToolExecutors(deps: ToolDeps) {
           ? null
           : monthOfIso(c.checkin) === wantedMonth,
         matchType: c.matchType ?? null,
+        overBudget: c.overBudget === true,
       }));
       const themedFirst = candidates.some((c) => c.themeMatch === true);
       return {
@@ -924,6 +987,11 @@ export function createToolExecutors(deps: ToolDeps) {
           (themedFirst
             ? " Lista zaczyna się od kierunków pasujących do motywu (themeMatch=true), a w każdej grupie idzie od najtańszego. Kierunek z themeMatch=false podawaj jako alternatywę i powiedz, że ma inny charakter."
             : " Lista jest posortowana od najtańszego.") +
+          (candidates.some((c) => c.overBudget === true)
+            ? " UWAGA: pozycje z overBudget=true PRZEKRACZAJĄ budżet użytkownika — weszły na listę tylko dlatego, " +
+              "że w jego kwocie nie było nic. Powiedz to WPROST („do X zł nie znalazłem, najbliższa opcja to Y zł/os.”) " +
+              "i nie udawaj, że się mieszczą. Pole zapasPln jest wtedy ujemne."
+            : "") +
           (noBudget
             ? " Użytkownik NIE podał budżetu. Przy prezentacji karty zapytaj krótko o budżet, żeby policzyć zapas."
             : "") +
@@ -960,6 +1028,7 @@ export function createToolExecutors(deps: ToolDeps) {
         themeMatch: intent.theme ? matchesTheme(c, vibeTag, pickKeys) : null,
         monthMatch: null,
         matchType: null,
+        overBudget: false,
       }));
       return {
         candidates,
@@ -969,13 +1038,26 @@ export function createToolExecutors(deps: ToolDeps) {
     }
 
     if (!snapshot) {
-      return { candidates: [], reason: "Snapshot cen niedostępny — nie mamy w tej chwili świeżych cen, spróbuj później." };
+      // ZERO OBIETNIC OPERACYJNYCH (§8). Wcześniej stało tu „spróbuj później",
+      // co model rozwijał w „system właśnie się aktualizuje" — zdanie, którego
+      // backend nie ma jak potwierdzić, bo nie istnieje żaden sygnał o trwającym
+      // odświeżaniu. Mówimy tylko to, co wiemy: nie mamy indeksu cen, więc
+      // trzeba policzyć ofertę na żywo.
+      return {
+        candidates: [],
+        reason:
+          "Brak indeksu cen orientacyjnych. Nie komentuj stanu systemu ani nie odsyłaj użytkownika w czasie — " +
+          "od razu policz konkretną ofertę przez get_trip_offer dla kierunku pasującego do prośby i pokaż JĄ.",
+      };
     }
     return {
       candidates: [],
       reason: noBudget
-        ? "Brak świeżych pakietów dla tego motywu — zaproponuj inny motyw lub miesiąc."
-        : "Brak kierunków w tym budżecie/motywie — zaproponuj większy budżet lub inny motyw.",
+        ? "Brak cen orientacyjnych dla tego motywu. Nie komentuj stanu systemu i nie odsyłaj użytkownika " +
+          "z niczym — policz konkretną ofertę przez get_trip_offer i pokaż ją."
+        : "Żaden kierunek nie zmieścił się w tym budżecie ani nie znaleźliśmy sensownej opcji powyżej niego. " +
+          "Powiedz wprost, ile realnie kosztuje najtańszy wyjazd tego typu, i zapytaj, czy podnieść kwotę " +
+          "albo zmienić termin. Nie komentuj stanu systemu.",
     };
   }
 

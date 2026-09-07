@@ -16,7 +16,7 @@
 import { travelToday } from "@/lib/time/travel-now";
 import { isUsableRecord } from "@/lib/snapshot/coverage";
 import type { SnapshotRecord } from "@/lib/snapshot/types";
-import { budgetPerPerson, type TripSearchCity } from "./trip-search";
+import { budgetPerPerson, themeAffinity, vibeTagForTheme, type TripSearchCity } from "./trip-search";
 import { classifyTravelDate } from "./travel-dates";
 import type { BudgetKind, TripCandidate } from "./types";
 
@@ -36,6 +36,14 @@ export interface SnapshotRankOptions {
   origin?: string;
   themeSlug?: string;
   themePickKeys?: ReadonlySet<string>;
+  /**
+   * true = NIE odrzucaj kierunków ponad budżet, tylko ustaw je ZA tymi, które
+   * się mieszczą. Używane wyłącznie w drugim podejściu, gdy pierwsze (twarde)
+   * nie znalazło nic — lepiej powiedzieć „najbliższa opcja to 3180 zł" niż
+   * odesłać użytkownika z niczym (§3). Wołający MUSI wtedy powiedzieć wprost,
+   * że to jest ponad budżet.
+   */
+  allowOverBudget?: boolean;
 }
 
 /** Klucz kierunku wspólny dla puli miast i rekordów snapshotu. */
@@ -120,12 +128,16 @@ export function rankSnapshotCandidates(
     const best = pickBestRecord(forCity, opts);
     if (!best) continue;
     const perPersonPln = best.record.perPersonPln;
-    if (perPersonPln === null || perPersonPln > threshold) continue;
+    if (perPersonPln === null) continue;
+    const overBudget = perPersonPln > threshold;
+    if (overBudget && !opts.allowOverBudget) continue;
 
+    // Siła dopasowania do motywu: ręczny pick (2) > tag charakteru (1) > nic (0).
+    // Wcześniej liczyły się TYLKO picki, więc kierunek z tagiem `beach` był dla
+    // motywu „plaża" nierozróżnialny od miasta w górach — a przy szerokiej puli
+    // to właśnie tagi decydują, czy lista wygląda sensownie.
     const affinity = opts.themeSlug
-      ? opts.themePickKeys?.has(keyOf(city.cityEn, city.countryEn))
-        ? 2
-        : 0
+      ? themeAffinity(city, vibeTagForTheme(opts.themeSlug), opts.themePickKeys)
       : 0;
     const candidate: TripCandidate = {
       cityEn: city.cityEn,
@@ -142,12 +154,18 @@ export function rankSnapshotCandidates(
       popularity: city.popularity ?? null,
       travelDateState: classifyTravelDate(best.record.checkin, todayIso),
       matchType: best.matchType,
+      overBudget,
     };
     affinityOf.set(candidate, affinity);
     out.push(candidate);
   }
 
   out.sort((a, b) => {
+    // Mieszczące się w budżecie ZAWSZE przed tymi ponad — to jest odpowiedź
+    // na pytanie użytkownika, reszta jest tylko ratunkiem przed pustką.
+    const overA = a.overBudget === true ? 1 : 0;
+    const overB = b.overBudget === true ? 1 : 0;
+    if (overA !== overB) return overA - overB;
     const affA = affinityOf.get(a) ?? 0;
     const affB = affinityOf.get(b) ?? 0;
     if (affA !== affB) return affB - affA;

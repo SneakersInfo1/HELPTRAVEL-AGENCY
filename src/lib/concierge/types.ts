@@ -43,6 +43,11 @@ export interface TripCandidate {
    * terminu jako odpowiedź. null = ścieżka bez rekordów okien (stary snapshot).
    */
   matchType?: "EXACT" | "NEAREST" | null;
+  /**
+   * true = kierunek PRZEKRACZA budżet użytkownika i wszedł na listę wyłącznie
+   * jako ratunek przed pustą odpowiedzią (§3). Model MA to powiedzieć wprost.
+   */
+  overBudget?: boolean;
 }
 
 /**
