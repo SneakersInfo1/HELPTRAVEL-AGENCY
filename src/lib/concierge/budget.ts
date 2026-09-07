@@ -6,7 +6,7 @@ import type { ConciergeIntent, MissingField } from "./types";
  * Reguły:
  * - theme: wymagany
  * - budgetPln: wymagany
- * - budgetKind: wymagany GDY budgetPln jest obecny
+ * - budgetKind: NIE wymagany (zakładany, patrz niżej)
  * - adults: wymagany
  *
  * month CELOWO NIE jest wymagany. Bateria ewaluacyjna (2026-09-04) pokazala,
@@ -28,9 +28,13 @@ export function missingFields(intent: ConciergeIntent): MissingField[] {
     missing.push("budgetPln");
   }
 
-  if (intent.budgetPln !== undefined && intent.budgetPln !== null && !intent.budgetKind) {
-    missing.push("budgetKind");
-  }
+  // budgetKind CELOWO NIE jest wymagany — tak samo jak month (patrz wyżej).
+  // Pomiar na Preview 2026-09-08: startery „City break do 1500 zł" i „Słońce
+  // zimą do 4000 zł" kończyły się pytaniem „czy to kwota na osobę, czy
+  // łącznie?", bo kwota bez interpretacji blokowała wyszukiwanie. To jest ten
+  // sam przymus strukturalny co przy miesiącu: użytkownik kliknął starter,
+  // KTÓRY MY MU ZAPROPONOWALIŚMY, i w odpowiedzi dostawał ankietę.
+  // Egzekutor przyjmuje `per_person` i MÓWI o tym założeniu, zamiast pytać.
 
   if (intent.adults === undefined || intent.adults === null) {
     missing.push("adults");

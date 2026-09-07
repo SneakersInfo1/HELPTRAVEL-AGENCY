@@ -874,6 +874,10 @@ export function createToolExecutors(deps: ToolDeps) {
     // 3000 zł/os. zamiast 2000 → bot ogłosił „mieści się" przy 6726 zł).
     // Przeliczenie na per_person robimy TUTAJ — rank dostaje gotowy próg.
     const paxCount = Math.max(1, (intent.adults ?? 2) + (intent.children ?? 0));
+    // Kwota BEZ interpretacji: zakładamy „na osobę" i mówimy o tym (§10).
+    // Wcześniej brak `budgetKind` blokował wyszukiwanie i zamieniał kliknięcie
+    // startera w ankietę.
+    const assumedBudgetKind = !noBudget && !intent.budgetKind;
     const perPersonCap = noBudget
       ? Number.MAX_SAFE_INTEGER
       : intent.budgetKind === "total_two"
@@ -991,6 +995,10 @@ export function createToolExecutors(deps: ToolDeps) {
             ? " UWAGA: pozycje z overBudget=true PRZEKRACZAJĄ budżet użytkownika — weszły na listę tylko dlatego, " +
               "że w jego kwocie nie było nic. Powiedz to WPROST („do X zł nie znalazłem, najbliższa opcja to Y zł/os.”) " +
               "i nie udawaj, że się mieszczą. Pole zapasPln jest wtedy ujemne."
+            : "") +
+          (assumedBudgetKind
+            ? ` Użytkownik podał kwotę, ale NIE powiedział, czy jest NA OSOBĘ, czy łącznie — przyjęto ${intent.budgetPln} zł NA OSOBĘ. ` +
+              "Nazwij to założenie jednym zdaniem i dodaj, że jeśli to kwota łączna, przeliczysz od nowa."
             : "") +
           (noBudget
             ? " Użytkownik NIE podał budżetu. Przy prezentacji karty zapytaj krótko o budżet, żeby policzyć zapas."

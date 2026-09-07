@@ -120,11 +120,15 @@ test("executeSearchTrips: BEZ budżetu → szuka bez limitu, od najtańszego + n
   assert.equal(out.candidates[0].perPersonPln, 1900); // od najtańszego
   assert.ok(out.note!.includes("NIE podał budżetu"));
 
-  // Kwota BEZ interpretacji (budgetKind) → nadal dopytanie (niejednoznaczne),
-  // z anty-ankietową instrukcją formy.
+  // Kwota BEZ interpretacji (budgetKind) → od 2026-09-08 NIE dopytujemy, tylko
+  // zakładamy „na osobę" i nazywamy założenie. Powód: startery, które sami
+  // proponujemy („City break do 1500 zł"), kończyły się ankietą „czy to na
+  // osobę, czy łącznie?" zamiast wynikiem. To ten sam przymus strukturalny,
+  // który wcześniej zdjęliśmy z miesiąca.
   const ambiguous = await exec.executeSearchTrips({ ...noBudgetArgs, budgetPln: 3000 });
-  assert.ok(ambiguous.reason && ambiguous.reason.includes("budgetKind"));
-  assert.ok(ambiguous.reason.includes("Nigdy listą numerowaną"));
+  assert.equal(ambiguous.reason, undefined, `nie powinno byc dopytania: ${ambiguous.reason}`);
+  assert.ok(ambiguous.candidates.length > 0, "kwota bez interpretacji ma dawac wyniki");
+  assert.match(ambiguous.note ?? "", /NA OSOBĘ/u, "zalozenie o kwocie musi byc nazwane");
 });
 
 test("executeSearchTrips: budżet „łącznie” dzielony przez WSZYSTKICH (rodzina 2+1), nie przez 2", async () => {

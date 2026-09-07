@@ -3,9 +3,19 @@ import { test } from "node:test";
 import { defaultMonth, missingFields, normalizeIntent } from "./budget";
 import type { ConciergeIntent } from "./types";
 
-test("missingFields: sam motyw+budżet → brakuje interpretacji budżetu i liczby osób", () => {
-  assert.deepEqual(missingFields({ theme: "plaza", budgetPln: 3000, wantsFlight: true, wantsHotel: true }).sort(),
-    ["adults", "budgetKind"].sort());
+test("missingFields: sam motyw+budżet → brakuje TYLKO liczby osób", () => {
+  // budgetKind CELOWO nie jest już wymagany (zmiana 2026-09-08). Kwota bez
+  // interpretacji („do 1500 zł") blokowała wyszukiwanie i zamieniała kliknięcie
+  // NASZEGO startera w ankietę „czy to na osobę, czy łącznie?". Egzekutor
+  // zakłada „na osobę" i nazywa to założenie — tak samo jak robi z miesiącem.
+  assert.deepEqual(missingFields({ theme: "plaza", budgetPln: 3000, wantsFlight: true, wantsHotel: true }), ["adults"]);
+});
+
+test("missingFields: kwota z interpretacją nadal nie zgłasza braku", () => {
+  assert.deepEqual(
+    missingFields({ theme: "plaza", budgetPln: 3000, budgetKind: "total_two", adults: 2, wantsFlight: true, wantsHotel: true }),
+    [],
+  );
 });
 test("normalizeIntent: brak origin → WAW; brak adults gdy podane → bez zmian", () => {
   const i = normalizeIntent({ theme: "plaza", budgetPln: 3000, budgetKind: "per_person", month: 8, adults: 2, wantsFlight: true, wantsHotel: true });

@@ -177,3 +177,46 @@ test("§3: nic w budzecie → pokazuje NAJBLIZSZE realne opcje z uczciwa cena", 
   // I nie wolno udawac, ze sie miesci.
   assert.ok((res.candidates[0].zapasPln ?? 0) <= 0, "zapas nie moze byc dodatni ponad budzetem");
 });
+
+// ── §2/§10: KAZDY starter ma dawac wynik, nie ankiete ───────────────────────
+//
+// Pomiar na Preview: „Plaza do 3000 zl w pazdzierniku" dawalo karte, ale
+// „City break do 1500 zl" i „Slonce zima do 4000 zl" konczyly sie pytaniem
+// „ile osob i czy kwota na osobe czy lacznie?". Przyczyna: `budgetKind` byl
+// bramka twarda, wiec kwota bez interpretacji blokowala wyszukiwanie.
+// Produkt ma zasade „zalozenia zamiast ankiet" i stosuje ja juz do miesiaca
+// (`assumedMonth`) — kwota musi dzialac tak samo.
+
+const SNAP_SZEROKI = snapshotOf([
+  rec({ destId: "sofia-bulgaria", perPersonPln: 552 }),
+  rec({ destId: "tirana-albania", perPersonPln: 706 }),
+  rec({ destId: "budapest-hungary", perPersonPln: 734 }),
+  rec({ destId: "malaga-spain", perPersonPln: 1061 }),
+  rec({ destId: "larnaca-cyprus", perPersonPln: 1092 }),
+]);
+
+test("§10: kwota BEZ interpretacji nie blokuje wyszukiwania — zakladamy i mowimy", async () => {
+  const exec = createToolExecutors(deps({ readConciergeSnapshot: async () => SNAP_SZEROKI }));
+  // Dokladnie to, co niesie starter „City break do 1500 zl": motyw + kwota,
+  // ZERO informacji o liczbie osob i o tym, czy kwota jest na osobe.
+  const res = await exec.executeSearchTrips(
+    { theme: "city-break", budgetPln: 1500, month: 10 },
+    createToolContext(),
+  );
+  assert.ok(res.candidates.length > 0, `starter konczy sie ankieta zamiast wynikiem: ${res.reason}`);
+  // Zalozenie MUSI byc nazwane, inaczej bot udaje, ze wiedzial.
+  assert.match(`${res.note ?? ""}`, /na osobę/iu, `brak nazwanego zalozenia o kwocie: ${res.note}`);
+});
+
+test("§10: podana interpretacja kwoty ma pierwszenstwo nad zalozeniem", async () => {
+  const exec = createToolExecutors(deps({ readConciergeSnapshot: async () => SNAP_SZEROKI }));
+  const res = await exec.executeSearchTrips(
+    { theme: "city-break", budgetPln: 1500, budgetKind: "total_two", adults: 2, month: 10 },
+    createToolContext(),
+  );
+  // 1500 lacznie za dwoje = 750 zl/os. → Sofia (552) i Tirana (706) sie mieszcza.
+  for (const c of res.candidates.filter((x) => x.overBudget !== true)) {
+    assert.ok((c.perPersonPln ?? 0) <= 750, `${c.cityPl} ${c.perPersonPln} zl > 750 zl/os.`);
+  }
+  assert.doesNotMatch(`${res.note ?? ""}`, /zakładam.*na osobę/iu, "nie wolno zakladac, gdy klient podal interpretacje");
+});
