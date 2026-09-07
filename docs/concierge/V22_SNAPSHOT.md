@@ -450,3 +450,122 @@ Uczciwie, żeby nie sprawiać wrażenia pełnego pokrycia:
 
 Do obserwacji po wdrożeniu: licznik `timedOut` w logach crona. Jeśli regularnie
 > 0, właściwą reakcją jest **podniesienie `SEGMENT_COUNT`**, nie budżetu czasu.
+
+
+---
+
+## 29. PEŁNY OBIEG ROTACJI 15/15 — wynik zmierzony (2026-09-07)
+
+Segmenty 6–14 puszczone jednym ciągiem, bez resetu danych między nimi.
+
+| seg | plan | wykonane | odroczone | timedOut | błędy | czas | %maxDur | nowe | przeniesione | publikacja | FU kier. | FU % | tier A |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 6 | 68 | 68 | 0 | 0 | 0 | 157 s | 52% | 68 | 274 | tak | 90 | 11,45% | 100% |
+| 7 | 68 | 68 | 0 | 0 | 0 | 122 s | 41% | 68 | 338 | tak | 100 | 12,72% | 100% |
+| 8 | 68 | 68 | 0 | 0 | 0 | 116 s | 39% | 68 | 401 | tak | 110 | 13,99% | 100% |
+| 9 | 68 | 68 | 0 | 0 | 0 | 153 s | 51% | 68 | 468 | tak | 115 | 14,63% | 100% |
+| 10 | 68 | 68 | 0 | 0 | 0 | 165 s | 55% | 68 | 533 | tak | 120 | 15,27% | 100% |
+| 11 | 68 | 68 | 0 | 0 | 0 | 174 s | 58% | 68 | 596 | tak | 126 | 16,03% | 100% |
+| 12 | 68 | 68 | 0 | 0 | 0 | 110 s | 37% | 68 | 658 | tak | 127 | 16,16% | 100% |
+| 13 | 68 | 68 | 0 | 0 | 0 | 95 s | 32% | 68 | 725 | tak | 127 | 16,16% | 100% |
+| 14 | 68 | 68 | 0 | 0 | 0 | 114 s | 38% | 68 | 787 | tak | 133 | 16,92% | 100% |
+
+**Suma:** 612 zadań przetworzonych, **0 timedOut, 0 błędów, 0 odpowiedzi 429/5xx**,
+1753 zapytania LiteAPI, 53 trafienia w cache lotów.
+**Czas: p50 122 s · p95 174 s · max 174 s** (maxDuration 300 s → 58%).
+
+### Timeouty segmentów — wynik dochodzenia
+
+Segmenty 6–14 zamknęły się czysto, ale **segment 3 przekroczył budżet na OBU
+zimnych przebiegach: 54/68 i 59/68**. Ten sam segment, dwa razy, przy dwóch
+różnych stanach cache'u — to nie był szum.
+
+Trzy rzeczy, które to rozstrzygnęły:
+
+1. **Ogon nie jest losowy.** `planRun` zwraca zadania w stałej kolejności
+   priorytetu, a budżet czasu ucina KONIEC listy. Segment, który regularnie się
+   nie mieści, gubi za każdym razem TE SAME zadania.
+2. **Samonaprawa istnieje, ale tylko w oknie cache'u.** Powtórka segmentu 3 zaraz
+   po nieudanej zrobiła **68/68 w 33 s** przy 61 trafieniach w `flrt:v2`
+   (TTL 40 min). Produkcyjny harmonogram wraca do segmentu dopiero po pełnym
+   obiegu — czyli z zimnym cache'em.
+3. **Wniosek:** bez zmiany te ~9 zadań nigdy by się nie odświeżyło.
+
+Zgodnie z ustaleniem NIE podniesiono deadline'u (to zjadłoby margines do
+maxDuration — dokładnie chorobę `warm-rates`), tylko **`SEGMENT_COUNT` 15 → 20**:
+1020 / 20 = 51 zadań na segment, przy najgorszym zmierzonym tempie 3,15 s/zadanie
+to 161 s, czyli wewnątrz budżetu 170 s. Pełny obieg 10 h, wciąż wewnątrz progu
+FRESH (12 h). Suma zadań się nie zmienia, więc pokrycie po obiegu jest identyczne.
+
+### Braki w domknięciu listy (`pnpm probe:rotation`)
+
+Po pełnym obiegu: **855 z 1020 zadań** miało rekord. Braki rozłożyły się tak:
+
+| źródło braku | zadań | czy problem |
+|---|---|---|
+| segment 3 — rekordy skasowane moim **testem rollbacku** | 68 | nie, artefakt testu |
+| segment 0 — uruchomiony przeze mnie z `limit=25` | 44 | nie, artefakt testu |
+| rozproszone po segmentach — dostawca nie miał lotu ALBO hotelu, więc nie ma pakietu | ~53 | nie, uczciwe odrzucenie |
+
+Oba artefakty potwierdzone eksperymentalnie: **ponowne uruchomienie segmentu 0
+dało 68/68**, a segmentu 3 — 59/68 na zimno i 68/68 na ciepło. Rotacja nie gubi
+rekordów; gubił je mój rollback i mój limit.
+
+## 30. FINALNE POKRYCIE PO PEŁNYM OBIEGU
+
+| METRYKA | BEFORE (prod) | **AFTER (pełny obieg)** |
+|---|---|---|
+| unikalnych kierunków w seedzie | 786 | 786 |
+| **future usable destinations** | **nie mierzone** (46 z ceną) | **133** |
+| **future usable coverage** | **5,8%** | **16,92%** |
+| pokrycie tieru A | — | **100%** |
+| pokrycie tieru B | — | **93,02%** |
+| pokrycie tieru C | — | 0% (świadomie — on-demand) |
+| pokrycie WAŻONE tierami | — | **42,04%** |
+| rekordów w snapshocie | 46 | **956** |
+| przeterminowanych rekordów | — | **0** |
+| FRESH / STALE / EXPIRED | — | **956 / 0 / 0** |
+| trafienia EXACT (kanoniczne zapytania) | — | 532 (50,0%) |
+| trafienia NEAREST | — | 532 (50,0%) |
+| kierunków z KOMPLETEM 8 okien | 0 | **45** |
+| okien na kierunek (min/med/max) | 1/1/1 | **1 / 2 / 8** |
+| miesięcy | **2** | **4** |
+| długości pobytu | 2 (rozłącznie) | **2 × każdy miesiąc** |
+| lotnisk wylotu | **1** | **5** (WAW 554, WRO 106, GDN 103, KRK 100, KTW 88) |
+| krajów | ~15 | **33** |
+| wiek ceny p50 / p95 | — | 0,4 h / 8,3 h |
+
+EXACT 50% to uczciwy obraz: kierunki tieru A mają komplet okien (EXACT zawsze),
+tier B dostaje 2 okna z 8, więc na dalsze miesiące odpowiada NEAREST — i mówi
+o tym wprost.
+
+## 31. REGRESJA BEZPIECZEŃSTWA DAT (2026-09-07, Preview)
+
+22 daty sprawdzone w 4 rozmowach (checkin, checkout oraz parametry w linkach
+hotelu i lotu). **Przeszłych dat: 0. Przeszłych CTA: 0.**
+
+| # | scenariusz | wynik |
+|---|---|---|
+| B | „10–17 sierpnia 2026" (jawnie przeszły) | „sierpień 2026 … **już minął**", karta Egina 28 IX → 5 X, 0 przeszłych dat |
+| C | „w sierpniu" (bez roku) | rozwiązane na sierpień **2027**, powiedziane wprost że za daleko, karta Larnaka 19–23 X |
+| E/F | „Plaża do 3000 zł/os." | Antalya 19–23 X, 6 dat sprawdzonych, 0 przeszłych |
+| G | „Grecja, 7 nocy, listopad" | Egina **10–17 listopada** — dokładnie żądany miesiąc i długość |
+
+Startery (A) i rok na karcie (D) pokryte testami: przejście przez wszystkie
+12 miesięcy oraz `formatTravelDateRangePl`. Wizualnie nie potwierdzone — patrz §32.
+
+## 32. MOBILE VISUAL — **NOT VERIFIED**
+
+Narzędzia przeglądarki czytające zawartość strony (`screenshot`, `read_page`,
+`get_page_text`, `find`, `javascript_tool`, `read_console_messages`) przez całą
+sesję zwracają „Policy check temporarily unavailable". Próbowane kilkanaście
+razy, na dwóch świeżych kartach, po przeładowaniu strony i po wyfrontowaniu
+panelu. `navigate`, `resize_window` i `tabs_*` działają — blokada jest na
+poziomie konkretnych narzędzi. Druga powierzchnia (Claude in Chrome) zgłasza
+brak podłączonego rozszerzenia.
+
+Próba obejścia bez przeglądarki: pobrany HTML Preview i przeskanowane wszystkie
+18 chunków JS — komponent czatu jest ładowany LENIWIE, więc jego kod pojawia się
+dopiero po otwarciu panelu, czego bez przeglądarki nie da się wywołać.
+
+**375 / 390 / 412: NIE ZWERYFIKOWANE. Brak screenshotów.**
