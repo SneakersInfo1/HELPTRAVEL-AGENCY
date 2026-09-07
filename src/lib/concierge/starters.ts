@@ -51,11 +51,29 @@ const BEACH_SEASON_MONTHS = new Set([4, 5, 6, 7, 8, 9, 10]);
 
 export type StarterIntent = "beach" | "city-break" | "winter-sun";
 
+/**
+ * Domyślne założenia doklejane do PROMPTU startera (nie do etykiety).
+ *
+ * Pomiar na Preview 2026-09-08: „City break do 1500 zł" kończyło się pytaniem
+ * „ile osób i czy kwota na osobę, czy łącznie?" przy `toolCalls: 0` — model
+ * nie wywoływał żadnego narzędzia, tylko pytał. Użytkownik klikał starter,
+ * KTÓRY MY MU ZAPROPONOWALIŚMY, i dostawał ankietę.
+ *
+ * Backend już tego nie wymaga (kwota bez interpretacji jest zakładana), ale
+ * model pyta z własnej inicjatywy. Zamiast ruszać prompt systemowy, czynimy
+ * starter SAMOWYSTARCZALNYM: prompt niesie komplet, więc nie ma o co pytać.
+ * Etykieta zostaje krótka, bo to ona jedzie na ekran telefonu.
+ */
+const PER_PERSON = " na osobę";
+const PAX = ", 2 osoby";
+
 export interface ConciergeStarter {
   intent: StarterIntent;
   /** Klucz ikony — komponent mapuje go na komponent Lucide (dane bez JSX). */
   iconKey: "umbrella" | "building" | "sun";
+  /** Tekst na przycisku — krótki, bo renderuje się na 375 px. */
   label: string;
+  /** Tekst WYSYŁANY do czatu — etykieta plus jawne założenia. */
   prompt: string;
   /** Miesiąc (1–12) nazwany w tekście albo null, gdy starter jest bezterminowy. */
   namedMonth: number | null;
@@ -86,16 +104,18 @@ function nextFullMonth(todayIso: string): { month: number; firstDayIso: string }
 export function buildConciergeStarters(todayIso: string): ConciergeStarter[] {
   const next = nextFullMonth(todayIso);
   const beachNamesMonth = BEACH_SEASON_MONTHS.has(next.month);
-  const beachText = beachNamesMonth
-    ? `Plaża do 3000 zł ${monthWithPreposition(next.month)}`
-    : "Plaża do 3000 zł";
+  // Kwalifikator kwoty idzie zaraz ZA kwotą, a miesiąc po nim — inaczej
+  // wychodzi „do 3000 zł w październiku na osobę", co czyta się jak bełkot.
+  const beachMonth = beachNamesMonth ? ` ${monthWithPreposition(next.month)}` : "";
+  const beachText = `Plaża do 3000 zł${beachMonth}`;
+  const beachPrompt = `Plaża do 3000 zł${PER_PERSON}${beachMonth}${PAX}`;
 
   return [
     {
       intent: "beach",
       iconKey: "umbrella",
       label: beachText,
-      prompt: beachText,
+      prompt: beachPrompt,
       namedMonth: beachNamesMonth ? next.month : null,
       namedMonthFirstDayIso: beachNamesMonth ? next.firstDayIso : null,
     },
@@ -105,7 +125,7 @@ export function buildConciergeStarters(todayIso: string): ConciergeStarter[] {
       // Bezterminowy z wyboru: city break robi się „kiedyś w najbliższym
       // czasie”, a konkretny miesiąc niczego tu nie dodaje.
       label: "City break do 1500 zł",
-      prompt: "City break do 1500 zł",
+      prompt: `City break do 1500 zł${PER_PERSON}${PAX}`,
       namedMonth: null,
       namedMonthFirstDayIso: null,
     },
@@ -114,7 +134,7 @@ export function buildConciergeStarters(todayIso: string): ConciergeStarter[] {
       iconKey: "sun",
       // „Zimą” to pora roku — wraca co rok, więc nie ma jak się zestarzeć.
       label: "Słońce zimą do 4000 zł",
-      prompt: "Słońce zimą do 4000 zł",
+      prompt: `Słońce zimą do 4000 zł${PER_PERSON}${PAX}`,
       namedMonth: null,
       namedMonthFirstDayIso: null,
     },

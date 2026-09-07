@@ -119,3 +119,32 @@ test("przyimek pasuje do miesiaca — 'we wrzesniu', nie 'w wrzesniu'", () => {
   assert.ok(wrzesien?.label.includes("we wrześniu"), wrzesien?.label);
   assert.ok(!wrzesien?.label.includes("w wrześniu"), `zla forma: ${wrzesien?.label}`);
 });
+
+// ── Starter musi byc SAMOWYSTARCZALNY (pomiar na Preview 2026-09-08) ────────
+//
+// Trace pokazal, ze „City break do 1500 zl" konczylo sie pytaniem przy
+// toolCalls=0 — model NIE wywolal zadnego narzedzia, tylko zapytal o liczbe
+// osob i o to, czy kwota jest na osobe. Backend juz tego nie wymaga, ale model
+// pyta sam z siebie. Rozwiazanie bez ruszania prompta: prompt startera niesie
+// komplet informacji, wiec nie ma o co pytac. Etykieta zostaje krotka.
+
+test("prompt startera niesie liczbe osob i interpretacje kwoty", () => {
+  for (const s of buildConciergeStarters("2026-09-08")) {
+    assert.match(s.prompt, /\d+\s*os/u, `prompt bez liczby osob: ${s.prompt}`);
+    assert.match(s.prompt, /na osobę/u, `prompt bez interpretacji kwoty: ${s.prompt}`);
+  }
+});
+
+test("ETYKIETA zostaje krotka — komplet informacji idzie tylko w prompcie", () => {
+  for (const s of buildConciergeStarters("2026-09-08")) {
+    assert.ok(s.label.length <= 36, `etykieta za dluga: ${s.label} (${s.label.length})`);
+    assert.ok(s.prompt.length > s.label.length, `prompt nie jest bogatszy: ${s.prompt}`);
+    // Prompt niesie to samo co etykieta plus zalozenia — sprawdzamy przez
+    // kwote i (jesli etykieta go nazywa) miesiac, bo kolejnosc slow jest inna.
+    const kwota = s.label.match(/\d+ zł/u)?.[0] ?? "";
+    assert.ok(s.prompt.includes(kwota), `prompt gubi kwote: ${s.prompt}`);
+    if (s.namedMonth !== null) {
+      assert.ok(s.prompt.includes(MONTH_LOCATIVE_PL[s.namedMonth]), `prompt gubi miesiac: ${s.prompt}`);
+    }
+  }
+});
