@@ -26,6 +26,7 @@ import { Redis } from "@upstash/redis";
 
 import { travelToday } from "@/lib/time/travel-now";
 import { isBookableStart } from "@/lib/concierge/travel-dates";
+import { isUsableRecord } from "./coverage";
 import { SNAPSHOT_VERSION, type ConciergeSnapshot } from "./types";
 
 const KEY_ACTIVE = "csnap:v1:active";
@@ -197,12 +198,29 @@ export function validateSnapshot(
   if (badPrices > 1) problems.push(`łącznie nonsensownych cen: ${badPrices}`);
   if (badShape > 1) problems.push(`łącznie rekordów o złym kształcie: ${badShape}`);
 
-  // §37: zapaść pokrycia względem tego, co już działa.
-  const activeCount = Object.keys(active?.records ?? {}).length;
-  if (activeCount > 0 && entries.length < activeCount * (1 - MAX_COVERAGE_DROP)) {
+  // §37: zapaść pokrycia względem tego, co JUŻ DZIAŁA — i słowo „działa" jest
+  // tu dosłowne: liczymy wyłącznie rekordy UŻYWALNE (przyszły termin + cena,
+  // której nie odrzuciliśmy jako przeterminowanej).
+  //
+  // INCYDENT zmierzony na Preview 2026-09-12. Po 116 h bez crona wszystkie 953
+  // rekordy w ACTIVE miały wygasłą cenę. Carry-forward je wyrzucił (poprawnie),
+  // więc pierwszy build po przestoju miał 51 świeżych rekordów — i bramka
+  // odrzucała publikację: „51 vs 953, próg 572". ACTIVE zostawał z 953 martwymi
+  // wpisami, każdy kolejny segment dostawał ten sam werdykt i snapshot NIGDY
+  // się nie odbudowywał. Bramka chroniąca przed zapaścią zamieniała się
+  // w zakleszczenie, z którego wychodziło się tylko ręcznym skasowaniem klucza.
+  //
+  // Porównanie „używalne do używalnych" usuwa ten stan bez osłabiania ochrony:
+  // gdy ACTIVE żyje, próg działa dokładnie jak wcześniej; gdy jest martwy, nie
+  // ma czego bronić — 51 żywych rekordów jest ściśle lepsze niż 953 martwych.
+  const activeUsable = Object.values(active?.records ?? {}).filter(
+    (r) => r && typeof r === "object" && isUsableRecord(r, todayIso, nowMs),
+  ).length;
+  const candidateUsable = entries.filter(([, r]) => r && typeof r === "object" && isUsableRecord(r, todayIso, nowMs)).length;
+  if (activeUsable > 0 && candidateUsable < activeUsable * (1 - MAX_COVERAGE_DROP)) {
     problems.push(
-      `pokrycie spadło zbyt mocno: ${entries.length} rekordów vs ${activeCount} w ACTIVE ` +
-        `(próg: ${Math.ceil(activeCount * (1 - MAX_COVERAGE_DROP))})`,
+      `pokrycie spadło zbyt mocno: ${candidateUsable} używalnych rekordów vs ${activeUsable} w ACTIVE ` +
+        `(próg: ${Math.ceil(activeUsable * (1 - MAX_COVERAGE_DROP))})`,
     );
   }
 

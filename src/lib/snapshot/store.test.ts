@@ -271,3 +271,48 @@ test("zapis i odczyt zachowuja rekordy 1:1 (gzip round-trip)", async () => {
     __resetSnapshotRedisForTests();
   }
 });
+
+// ── §37 vs ODBUDOWA: bramka nie moze blokowac wyzdrowienia ──────────────────
+//
+// INCYDENT ZMIERZONY NA PREVIEW 2026-09-12. Po 116 h bez crona wszystkie 953
+// rekordy w ACTIVE mialy wygasla cene. Carry-forward je wyrzucil (poprawnie),
+// wiec pierwszy build mial 51 swiezych rekordow — i bramka zapasci odrzucila
+// publikacje: „pokrycie spadlo zbyt mocno: 51 vs 953 (prog: 572)".
+//
+// Efekt: ACTIVE zostawal z 953 martwymi rekordami, kazdy kolejny segment
+// dostawal ten sam werdykt i snapshot NIGDY sie nie odbudowywal. Bramka
+// chroniaca przed zapascia zamieniala sie w zakleszczenie.
+//
+// Regula, ktora to naprawia: porownujemy UZYWALNE do UZYWALNYCH. Rekordy,
+// ktorych i tak nikomu nie pokazemy, nie sa pokryciem, wiec nie ma czego
+// bronic — 51 zywych rekordow jest scisle lepsze niz 953 martwych.
+
+test("§37: build po dlugim przestoju NIE jest blokowany przez martwe ACTIVE", () => {
+  const martwe = manyRecords(953).map((r) => ({ ...r, pricedAt: NOW - 116 * 3600 * 1000 }));
+  const active = snap(martwe, "run-stary");
+  const odbudowa = snap(manyRecords(51), "run-odbudowa");
+  const v = validateSnapshot(odbudowa, active, NOW);
+  assert.equal(v.ok, true, `odbudowa zablokowana: ${v.problems.join(" | ")}`);
+});
+
+test("§37: bramka NADAL lapie zapasc, gdy ACTIVE jest zywy", () => {
+  const active = snap(manyRecords(953), "run-zywy"); // pricedAt = NOW, wiec uzywalne
+  const zapasc = snap(manyRecords(51), "run-zapasc");
+  const v = validateSnapshot(zapasc, active, NOW);
+  assert.equal(v.ok, false, "zapasc przy zywym ACTIVE musi byc odrzucona");
+  assert.ok(v.problems.some((p) => p.includes("pokrycie")), v.problems.join(" | "));
+});
+
+test("§37: czesciowo martwe ACTIVE liczy sie tylko zywa czescia", () => {
+  // 900 martwych + 100 zywych. Nowy build ma 80 — to 80% ze 100 zywych,
+  // wiec MIESCI sie w progu, choc wobec 1000 wszystkich wygladalby na zapasc.
+  const active = snap(
+    [
+      ...manyRecords(900).map((r) => ({ ...r, pricedAt: NOW - 116 * 3600 * 1000 })),
+      ...manyRecords(100),
+    ],
+    "run-mieszany",
+  );
+  const v = validateSnapshot(snap(manyRecords(80), "run-nowy"), active, NOW);
+  assert.equal(v.ok, true, `zablokowane mimo zywych 100: ${v.problems.join(" | ")}`);
+});
