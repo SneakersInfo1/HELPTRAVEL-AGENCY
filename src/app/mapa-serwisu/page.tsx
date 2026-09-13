@@ -6,6 +6,7 @@ import {
   getEditorialCategories,
   getPublishedDestinations,
 } from "@/lib/mvp/publisher-content";
+import { categoryPath } from "@/lib/mvp/category-slug";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
@@ -55,7 +56,7 @@ export default function SiteMapPage() {
           <h2 className="text-2xl font-bold text-ink">Kategorie</h2>
           <div className="mt-4 flex flex-col gap-3 text-sm text-ink-muted">
             {categories.map((category) => (
-              <Link key={category.slug} href={`/${category.slug}`} className="group">
+              <Link key={category.slug} href={categoryPath(category.slug)} className="group">
                 <span className="transition group-hover:text-brand">{category.title}</span>
               </Link>
             ))}

@@ -26,6 +26,15 @@ export function foldCategorySlug(slug: string): string {
   return slug.toLowerCase().replace(/[ąćęłńóśźż]/g, (ch) => SLUG_DIACRITICS[ch] ?? ch);
 }
 
+/**
+ * Adres strony kategorii. Strony żyją pod slugami ASCII (src/app/tanie-podroze),
+ * a link zbudowany wprost z danych ("/tanie-podróże") kończył się 404 — tak
+ * trafił do sitemapy i do linków na przewodnikach.
+ */
+export function categoryPath(slug: string): string {
+  return `/${foldCategorySlug(slug)}`;
+}
+
 // Polskie nazwy kategorii, kluczowane po ZWINIĘTYM slugu, żeby obie formy
 // ("tanie-podróże" i "tanie-podroze") trafiały w ten sam wpis.
 //

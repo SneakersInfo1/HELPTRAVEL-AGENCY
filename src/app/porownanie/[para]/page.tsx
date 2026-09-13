@@ -15,6 +15,7 @@ import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import type { DestinationProfile } from "@/lib/mvp/types";
+import { comparisonPageText } from "@/lib/seo/page-titles";
 import type { EditorialArticle } from "@/lib/mvp/publisher-content";
 
 export const revalidate = 86400;
@@ -210,14 +211,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const nameA = pair.labelA ?? getStoryBySlug(pair.a)?.name ?? localizeCity(ga.destination.city);
   const nameB = pair.labelB ?? getStoryBySlug(pair.b)?.name ?? localizeCity(gb.destination.city);
-  const year = new Date().getFullYear();
+  // Tytuł i opis: lib/seo/page-titles.ts — bez roku liczonego z zegara.
+  const text = comparisonPageText({ pair, nameA, nameB });
 
   return {
-    // Ulepszony szablon (świeżość = rok + konkretne korzyści) podbija CTR vs
-    // stary "pod krótki wyjazd". Top strony mają ręcznie dopracowany override
-    // (pair.metaTitle) — wariant „B" do zmierzenia w GSC.
-    title: pair.metaTitle ?? `${nameA} czy ${nameB}? Porównanie ${year} (pogoda, ceny)`,
-    description: `${nameA} czy ${nameB} ${year}: pogoda miesiąc po miesiącu, orientacyjny budżet na 4 dni, plaże i dolot z Polski. Sprawdź, który kierunek wybrać. ${pair.intent}.`,
+    title: text.title,
+    description: text.description,
     alternates: { canonical: `/porownanie/${pair.slug}` },
     openGraph: {
       title: `${nameA} vs ${nameB} — porównanie HelpTravel`,

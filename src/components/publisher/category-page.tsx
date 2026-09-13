@@ -10,6 +10,7 @@ import {
   getEditorialCategoryBySlug,
   getEditorialCategories,
 } from "@/lib/mvp/publisher-content";
+import { categoryPath, foldCategorySlug } from "@/lib/mvp/category-slug";
 import { curatedDestinations } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -22,7 +23,11 @@ export async function CategoryPage({ slug }: { slug: string }) {
   }
 
   const articles = getArticlesForCategory(slug);
-  const allCategories = getEditorialCategories().filter((item) => item.slug !== slug);
+  // Porównanie po zwiniętym slugu: strona /tanie-podroze dostaje "tanie-podroze",
+  // a w danych kategoria ma "tanie-podróże" — bez tego linkowała sama do siebie.
+  const allCategories = getEditorialCategories().filter(
+    (item) => foldCategorySlug(item.slug) !== foldCategorySlug(slug),
+  );
   const destinations = await Promise.all(
     category.destinationSlugs.map(async (destinationSlug) => {
       const destination = curatedDestinations.find((item) => item.slug === destinationSlug);
@@ -167,7 +172,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
           {allCategories.map((item) => (
             <Link
               key={item.slug}
-              href={`/${item.slug}`}
+              href={categoryPath(item.slug)}
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1.5 transition duration-150 ease-out hover:border-brand hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-ink">{item.title}</span>

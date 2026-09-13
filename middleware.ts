@@ -1,6 +1,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { stripLangParam } from "@/lib/seo/lang-param";
+import { legacyRedirectTarget } from "@/lib/seo/legacy-redirects";
+
 function stripEnPrefix(pathname: string) {
   if (pathname === "/en") {
     return "/";
@@ -102,6 +105,21 @@ function requireAdminAuth(request: NextRequest): NextResponse | null {
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
+  // Serwis nie ma wersji językowych, więc `?lang=` to tylko duplikat adresu
+  // (w Google wisiał `/?lang=en`). 301 na ten sam adres bez parametru.
+  const withoutLang = stripLangParam(request.nextUrl.href);
+  if (withoutLang) {
+    return NextResponse.redirect(withoutLang, 301);
+  }
+
+  // Historyczne adresy z odpowiednikiem 1:1 — lista w lib/seo/legacy-redirects.ts.
+  const legacyTarget = legacyRedirectTarget(pathname);
+  if (legacyTarget) {
+    const nextUrl = request.nextUrl.clone();
+    nextUrl.pathname = legacyTarget;
+    return NextResponse.redirect(nextUrl, 301);
+  }
+
   if (isPlannerPath(pathname)) {
     const nextUrl = request.nextUrl.clone();
     nextUrl.pathname = "/hotele/szukaj";
@@ -152,5 +170,15 @@ export const config = {
     "/admin",
     "/admin/:path*",
     "/api/admin/:path*",
+    // Historyczne adresy. `(.*)` zamiast dosłownego „/tanie-podróże", bo ścieżka
+    // może dojść zakodowana (%C3%B3…) albo nie. Decyzję podejmuje
+    // legacyRedirectTarget(), więc /tanie-podroze przechodzi dalej bez zmian.
+    "/porownanie/malaga-vs-valencia",
+    "/tanie-podr(.*)",
+    // Każdy adres z parametrem `lang`, poza API i zasobami Next.
+    {
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      has: [{ type: "query", key: "lang" }],
+    },
   ],
 };

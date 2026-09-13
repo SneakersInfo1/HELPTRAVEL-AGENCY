@@ -55,7 +55,7 @@ export default async function OgImage({ params }: { params: { sezon: string } })
             Ranking na {seasonInflected[sezon]}
           </div>
           <div style={{ fontSize: 96, fontWeight: 800, lineHeight: 0.95 }}>
-            Najlepsze kierunki na {seasonInflected[sezon]} 2026
+            Najlepsze kierunki na {seasonInflected[sezon]}
           </div>
           <div style={{ fontSize: 28, opacity: 0.92, marginTop: 12 }}>{seasonHeroes[sezon]}</div>
         </div>

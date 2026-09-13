@@ -16,10 +16,17 @@ export interface EditorialSection {
 
 export interface EditorialArticle {
   slug: string;
+  /**
+   * Szkic: zostaje w danych, ale nie ma strony i nie trafia do list, sitemapy
+   * ani RSS. Dziś szkicami są cztery teksty ze slugami z polskimi znakami —
+   * pod takim adresem strona zwracała 404 (audyt SEO Growth V1).
+   */
+  draft?: boolean;
   title: string;
   description: string;
   excerpt: string;
-  hero: string;
+  /** Akapit pod tytułem. Opcjonalny: tam, gdzie był notatką redakcyjną, usunięty. */
+  hero?: string;
   plannerPrompt: string;
   categorySlugs: string[];
   destinationSlugs: string[];
@@ -182,11 +189,10 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
   {
     slug: "rome-italy",
     overview:
-      "Rzym to klasyk, ale nadal bardzo mocny contentowo i komercyjnie. Dobrze sprawdza się dla osób, które chcą dużego nazwiska, ikon miasta i bardzo czytelnego powodu wyjazdu.",
+      "Rzym to klasyk. Dobrze sprawdza się dla osób, które chcą dużego nazwiska, ikon miasta i bardzo czytelnego powodu wyjazdu.",
     whyGo: [
-      "To kierunek, który jest zrozumialy dla kazdego i łatwo go sprzedac treściowo.",
       "Najważniejsze atrakcje są mocne już przy pierwszym wyjeździe.",
-      "Rzym bardzo dobrze sprawdza się na 3-4 dni i ma silny potencjał na SEO.",
+      "Rzym bardzo dobrze sprawdza się na 3-4 dni.",
     ],
     bestTime:
       "Najwygodniejsze terminy to marzec-maj i październik-listopad. W wakacje bywa bardzo gorąco i bardziej tloczno, dlatego wiele osób woli poza sezonem.",
@@ -383,7 +389,6 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "Stambul jest dla osób, które chcą bardzo mocnego miejskiego kierunku z jedzeniem, historia i energia dużego miasta. To nie jest spokojny city break, ale świetny kierunek dla tych, którzy lubia intensywny klimat.",
     whyGo: [
       "To jedno z najbardziej charakterystycznych miast w zasiegu krótkiego lotu.",
-      "Daje ogrom treści pod przewodniki, foodie content i city break.",
       "Dobrze łączy wartosc historyczna z życiem codzieńnym i lokalnym rytmem.",
     ],
     bestTime:
@@ -417,7 +422,6 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
     whyGo: [
       "To prosty model: słońce, plaże i hotelowy komfort.",
       "Dobrze wypada dla wyjazdów 5-7 dni i wyższego nacisku na relaks.",
-      "Można go sprzedac treściowo jako ciepły kierunek z Polski.",
     ],
     bestTime:
       "Najlepiej sprawdza się od mają do października. Wysoki sezon daje najwięcej opcji plażowych, a poza szczytem łatwiej złapać lepszy balans ceny do pogody.",
@@ -449,7 +453,6 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "Marrakesz jest dla osób, które szukają mocno innego klimatu, ciepła i intensywnego miejskiego doswiadczenia. To bardzo dobry kandydat do scenariuszy typu ciepło, bez wizy, cos innego niż Europa.",
     whyGo: [
       "Daje wyraźny kontrast wobec klasycznych europejskich city breakow.",
-      "Dobrze wygląda w contentach o ciepłych kierunkach i wyjazdach bez wizy.",
       "Łatwo zbudować z niego mocna historie: kolory, jedzenie, medyna, targi i riady.",
     ],
     bestTime:
@@ -512,10 +515,9 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
   {
     slug: "las-palmas-spain",
     overview:
-      "Las Palmas gra role kanaryjskiego kierunku dla osób, które szukają ciepła wtedy, gdy Europa kontynentalna nie daje już takiej pogody. To dobry temat pod content o zimowych i poza sezonowych wyjazdach.",
+      "Las Palmas gra role kanaryjskiego kierunku dla osób, które szukają ciepła wtedy, gdy Europa kontynentalna nie daje już takiej pogody.",
     whyGo: [
       "To jeden z mocniejszych kierunków na słońce zima.",
-      "Łatwo sprzedac go treściowo jako ucieczke od polskiej pogody.",
       "Dobrze łączy miejski klimat wyspy z plażąmi i bardziej urlopowym rytmem.",
     ],
     bestTime:
@@ -545,11 +547,10 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
   {
     slug: "funchal-portugal",
     overview:
-      "Funchal i Madera pasują do osób, które szukają krajobrazow, natury i spokojniejszego rytmu. To świetny kierunek do contentów o krótkim urlopie, aktywnym wypoczynku i ciepłych wyjazdach poza sezonem.",
+      "Funchal i Madera pasują do osób, które szukają krajobrazow, natury i spokojniejszego rytmu.",
     whyGo: [
       "To mocny kierunek dla natury, widoków i aktywnego odpoczynku.",
       "Dobrze odroznia się od klasycznych city breakow z Europy.",
-      "Ma silny potencjał pod przewodniki i treści o krótkim urlopie.",
     ],
     bestTime:
       "Madera jest atrakcyjna przez duża część roku, ale najwięcej sensu ma zwykle wiosna, jesienią i zima, gdy szukasz łagodnej pogody oraz zielonego otoczenia.",
@@ -681,7 +682,6 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
     whyGo: [
       "Daje ogrom treści: muzea, architekturę, dzielnice i bardzo mocny klimat miejski.",
       "Dobrze pasuje do wyjazdów 3-4 dni i do odbiorcy, który lubi odkrywac miasto warstwami.",
-      "To mocny kierunek pod publiczny travel content, bo dobrze łączy praktyke z wyraźna tozsamoscia miejsca.",
     ],
     bestTime:
       "Berlin najlepiej sprawdza się od kwietnia do czerwca oraz we wrzesniu i październiku. To miesiące, w których spacery i tempo miasta są najbardziej komfortowe.",
@@ -714,7 +714,6 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
     whyGo: [
       "Miasto jest kompaktowe i bardzo dobrze nadaje się do zwiedzania bez rozbudowanej logistyki.",
       "To mocny kierunek dla par, weekendowych wypadów i scenariuszy z naciskiem na klimat miejsca.",
-      "Bardzo dobrze wygląda treściowo: kanały, muzea, dzielnice i spokojniejszy rytm dnia.",
     ],
     bestTime:
       "Najbardziej komfortowe są wiosna oraz wczesna jesień. To czas, w którym Amsterdam daje najlepszy balans pogody, spaceru i klimatu miasta.",
@@ -816,8 +815,6 @@ const editorialArticles: EditorialArticle[] = [
       "Praktyczny przewodnik po ciepłych kierunkach, które dobrze sprawdzają się z Polski i nie wymagają skomplikowanej logistyki.",
     excerpt:
       "Scenariusz dla osób, które chcą słońca, prostszych formalnosci i sensownego budżetu na 4-7 dni.",
-    hero:
-      "To jeden z najmocniejszych tematow dla polskiego odbiorcy: ciepło, bez zbednych formalnosci i kierunki, które da się ogarnac w rozsądnym budżecie.",
     plannerPrompt:
       "Chce do ciepłego kraju bez wizy, 5 dni, budżet do 2500 zl, najlepiej z Polski, plaża i cos do zwiedzania.",
     categorySlugs: ["ciepłe-kierunki", "bez-wizy", "przewodniki"],
@@ -844,12 +841,6 @@ const editorialArticles: EditorialArticle[] = [
           "pogoda w konkretnym miesiącu, nie tylko ogólna średnia roczna",
           "czas lotu i liczba przesiadek",
           "czy kierunek jest bardziej plażowy czy bardziej miejski",
-        ],
-      },
-      {
-        title: "Jak korzystac z planera",
-        paragraphs: [
-          "W plannerze warto wpisać konkret: budżet, liczbę dni, czy zależy Ci na plaży, oraz czy wolisz spokojny wyjazd czy łączenie plaży ze zwiedzaniem. To od razu poprawia ranking i powoduje, ze wynik nie jest generyczny.",
         ],
       },
     ],
@@ -901,7 +892,7 @@ const editorialArticles: EditorialArticle[] = [
       {
         title: "Dla kogo taki scenariusz działa najlepiej",
         paragraphs: [
-          "To idealna opcja dla par, znajomych i osób, które chcą wyjechac bez brania długiego urlopu. Wlasnie dlatego ten temat dobrze pracuje pod afiliacje i ruch z SEO.",
+          "To idealna opcja dla par, znajomych i osób, które chcą wyjechac bez brania długiego urlopu.",
         ],
       },
     ],
@@ -999,7 +990,7 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy 2000 zl to budżet na osóbe czy za cały wyjazd?",
         answer:
-          "Najczęściej takie frazy są rozumiane jako cały budżet scenariusza planowania. W praktyce zawsze warto doprecyzować to w plannerze, bo mocno zmienia ranking.",
+          "Najczęściej takie frazy są rozumiane jako cały budżet scenariusza planowania.",
       },
       {
         question: "Czy w tym budżecie lepiej wybierać Europe Srodkowa?",
@@ -1055,6 +1046,7 @@ const editorialArticles: EditorialArticle[] = [
   },
   {
     slug: "najlepsze-kierunki-na-krótki-urlop",
+    draft: true,
     title: "Najlepsze kierunki na krótki urlop",
     description:
       "Wybór kierunków na 4-7 dni, gdy chcesz czegos więcej niż weekend, ale bez planowania dużych wakacji.",
@@ -1136,15 +1128,11 @@ const editorialArticles: EditorialArticle[] = [
         answer:
           "Nie zawsze, ale często tak bywa przy bardzo ograniczonych budżetach. W praktyce wiele zależy od terminu i aktualnych lotów z Polski.",
       },
-      {
-        question: "Czy warto wpisywac w plannerze konkretny budżet?",
-        answer:
-          "Tak. To jedna z najważniejszych informacji dla silnika dopasowania i pomaga od razu odciac kierunki, które są po prostu za drogie.",
-      },
     ],
   },
   {
     slug: "kierunki-z-plaża-i-zwiedzaniem",
+    draft: true,
     title: "Kierunki z plażą i zwiedzaniem",
     description:
       "Najlepsze miejsca dla osób, które nie chcą wybierać miedzy relaksem a miejskim klimatem.",
@@ -1190,6 +1178,7 @@ const editorialArticles: EditorialArticle[] = [
   },
   {
     slug: "pomysły-na-city-break-w-europie",
+    draft: true,
     title: "Pomysly na city break w Europie",
     description:
       "Lista najmocniejszych kierunków w Europie dla osób szukających konkretu: co wybrać, dlaczego i dla jakiego stylu wyjazdu.",
@@ -1240,8 +1229,6 @@ const editorialArticles: EditorialArticle[] = [
       "Jesieńne kierunki z Polski z naciskiem na pogodę, balans ceny do komfortu i praktyczny format 4-7 dni.",
     excerpt:
       "Jesień to jeden z najlepszych momentow na wyjazdy: mniej tłoku, często lepsze ceny i bardziej komfortowa pogoda w wielu kierunkach.",
-    hero:
-      "To dobry moment, by pokazać sile serwisu jako wydawniczego przewodnika i narzedzia jednocześnie. Jesieńne kierunki dobrze łączą ruch SEO z intencja zakupowa.",
     plannerPrompt:
       "Gdzie poleciec jesienią z Polski, 5 dni, najlepiej ciepło i bez bardzo wysokiego budżetu.",
     categorySlugs: ["ciepłe-kierunki", "przewodniki"],
@@ -1256,12 +1243,6 @@ const editorialArticles: EditorialArticle[] = [
         title: "Dlaczego jesień daje przewage",
         paragraphs: [
           "Po wakacjach wiele kierunków nadal ma bardzo dobra pogodę, ale mniejszy tłok i lepsze warunki do spokojnego zwiedzania. To bardzo mocny argument dla polskiego odbiorcy.",
-        ],
-      },
-      {
-        title: "Jak ustawic wyszukiwanie",
-        paragraphs: [
-          "Najlepiej wpisać miesiąc, budżet i oczekiwany styl wyjazdu. Wtedy planner może mocniej premiować kierunki, które w tym konkretnym okresie wypadają najlepiej.",
         ],
       },
     ],
@@ -1285,8 +1266,6 @@ const editorialArticles: EditorialArticle[] = [
       "Najciekawsze kierunki na zimowy wyjazd z Polski, od słonecznych opcji po klimatyczne miasta na krótki urlop.",
     excerpt:
       "Zima nie musi oznaczac tylko jarmarkow i grubyćh kurtek. Dla wielu użytkowników to moment szukania słońca i prostego resetu.",
-    hero:
-      "Zimowe kierunki bardzo dobrze łączą się z afiliacja, bo stoi za nimi konkretna potrzeba: słońce, reset i sensowny plan na 4-7 dni bez czekania do lata.",
     plannerPrompt:
       "Gdzie poleciec zima z Polski, najlepiej ciepło, 5 dni, budżet do 3000 zl, bez komplikacji.",
     categorySlugs: ["ciepłe-kierunki", "przewodniki"],
@@ -1306,7 +1285,7 @@ const editorialArticles: EditorialArticle[] = [
       {
         title: "Jak porownywac zimowe opcje",
         paragraphs: [
-          "Warto uczciwie pokazać, ze niektóre miejsca mają lepsza pogodę, ale są dalej lub drozsze. Inne są bliżej, ale dają tylko łagodniejszy klimat, a nie pełne lato. Taki balans buduje wiarygodnosc strony.",
+          "Warto uczciwie pokazać, ze niektóre miejsca mają lepsza pogodę, ale są dalej lub drozsze. Inne są bliżej, ale dają tylko łagodniejszy klimat, a nie pełne lato.",
         ],
       },
     ],
@@ -1325,6 +1304,7 @@ const editorialArticles: EditorialArticle[] = [
   },
   {
     slug: "krótkie-wakacje-w-europie",
+    draft: true,
     title: "Krotkie wakacje w Europie",
     description:
       "Pomysly na 4-7 dni w Europie dla osób, które chcą wyjechac na lekki urlop bez skomplikowanej organizacji.",
@@ -1375,8 +1355,6 @@ const editorialArticles: EditorialArticle[] = [
       "Przewodnik po miastach, które najlepiej nadają się na pierwszy zagraniczny city break z Polski: proste, czytelne i bez zbędnej logistyki.",
     excerpt:
       "Pierwszy city break powinien być latwy do ogarniecia. Najlepiej wygrywają miasta z mocnym centrum, prostym dojazdem i scenariuszem, który nie wymaga eksperckiej wiedzy.",
-    hero:
-      "To jeden z najbardziej praktycznych tematow dla serwisu travelowego. Dobrze dobrany pierwszy city break buduje zaufanie do marki, bo pomaga czytelnikowi podjac decyzje bez chaosu.",
     plannerPrompt:
       "Szukam pierwszego city breaku z Polski, 3-4 dni, bez skomplikowanej logistyki, budżet do 2500 zl.",
     categorySlugs: ["city-breaki", "przewodniki", "weekendowe-wyjazdy"],
@@ -1405,12 +1383,6 @@ const editorialArticles: EditorialArticle[] = [
           "planu, który probuje zmiescic cale miasto w 48 godzin",
         ],
       },
-      {
-        title: "Jak korzystac z tego scenariusza w plannerze",
-        paragraphs: [
-          "Wpisz w plannerze, ze to Twój pierwszy city break, dodaj liczbę dni i budżet. To pozwoli silnikowi mocniej premiować kierunki, które są proste, sprawdzone i dobrze pracuja dla polskiego odbiorcy.",
-        ],
-      },
     ],
     faq: [
       {
@@ -1432,8 +1404,6 @@ const editorialArticles: EditorialArticle[] = [
       "Najlepsze kierunki na majowy wyjazd z Polski, kiedy pogoda zaczyna już mocno sprzyjac city breakom i krótkim wakacjom.",
     excerpt:
       "Maj to jeden z najlepszych miesiecy na wyjazdy. W wielu kierunkach jest już ciepło, ale nadal bez największego sezonowego tłoku.",
-    hero:
-      "To bardzo mocny temat dla serwisu travelowego, bo łączy wysoką intencje, dobra pogodę i praktyczne pytanie o to, gdzie najlepiej wykorzystac kilka dni wolnego.",
     plannerPrompt:
       "Gdzie poleciec w maju z Polski, 4-5 dni, najlepiej ciepło i cos do zwiedzania, budżet do 3000 zl.",
     categorySlugs: ["ciepłe-kierunki", "przewodniki"],
@@ -1461,12 +1431,6 @@ const editorialArticles: EditorialArticle[] = [
           "szukaj miast, które dobrze działaja już od pierwszego popołudnia",
         ],
       },
-      {
-        title: "Jak wpisać taka potrzebę do planera",
-        paragraphs: [
-          "Najlepiej wpisać miesiąc, liczbę dni, budżet i to, czy wolisz miejski klimat czy bardziej wakacyjny układ dnia. Taki opis bardzo dobrze przeklada się na sensowny ranking kierunków.",
-        ],
-      },
     ],
     faq: [
       {
@@ -1488,8 +1452,6 @@ const editorialArticles: EditorialArticle[] = [
       "Najlepsze kierunki w Europie na 5-dniowy wyjazd z Polski: ani za krotko, ani jeszcze nie pełne wakacje, ale idealnie pod praktyczny reset.",
     excerpt:
       "Pieciodniowy wyjazd to bardzo wdzieczny format. Daje więcej swobody niż weekend, ale nadal wymaga dobrego doboru miasta lub kierunku.",
-    hero:
-      "To temat o wysokiej intencji, bo wiele osób ma właśnie 5 dni i chce wybrać miejsce, które wykorzysta ten czas najlepiej: bez chaosu, ale z realnym efektem wyjazdu.",
     plannerPrompt:
       "Szukam kierunku w Europie na 5 dni, z Polski, budżet do 3200 zl, zwiedzanie albo plaża plus miasto.",
     categorySlugs: ["przewodniki", "ciepłe-kierunki", "city-breaki"],
@@ -1517,12 +1479,6 @@ const editorialArticles: EditorialArticle[] = [
           "dla spokoju i natury dobrze wygląda też Madera",
         ],
       },
-      {
-        title: "Jak ustawic wyszukiwanie ofert",
-        paragraphs: [
-          "Przy 5 dniach warto jasno wpisać, czy to ma być bardziej city break czy bardziej krótki urlop. To jedna z tych informacji, które bardzo mocno poprawiaja jakość wynikow.",
-        ],
-      },
     ],
     faq: [
       {
@@ -1544,8 +1500,6 @@ const editorialArticles: EditorialArticle[] = [
       "Kierunki na 3-5 dni latem, kiedy chcesz wykorzystac pogodę, ale nie budowac od razu pełnych wakacji.",
     excerpt:
       "Latem wiele osób szuka nie tylko dużego urlopu, ale też krotszego wyjazdu, który daje szybki reset i poczucie prawdziwego lata.",
-    hero:
-      "To scenariusz bardzo komercyjny i bardzo praktyczny jednocześnie: kilka dni, słońce, dobra logistyka i kierunek, który nie rozczarowuje po przylocie.",
     plannerPrompt:
       "Gdzie poleciec latem na krotko z Polski, 3-5 dni, słońce, plaża albo ladne miasto, budżet do 3000 zl.",
     categorySlugs: ["ciepłe-kierunki", "weekendowe-wyjazdy", "przewodniki"],
@@ -1571,12 +1525,6 @@ const editorialArticles: EditorialArticle[] = [
           "Walencja i Malaga dla plaży plus miasta",
           "Malta i Cypr dla bardziej wakacyjnego klimatu",
           "Kanary wtedy, gdy priorytetem jest mocna pogoda niezaleznie od sezonu",
-        ],
-      },
-      {
-        title: "Jak opisywać taka potrzebę w plannerze",
-        paragraphs: [
-          "Najlepiej wpisać, ze chodzi o lato, 3-5 dni i konkretny budżet. Warto też dodac, czy celem ma być głównie plaża, czy jednak po równo plaża i zwiedzanie.",
         ],
       },
     ],
@@ -1857,7 +1805,7 @@ function buildGenericDestinationGuide(destination: DestinationProfile): Destinat
       },
       {
         question: `Co zrobić, jeśli ${destination.city} nie pasuje do mojego briefu?`,
-        answer: `Sprawdź porównania na HelpTravel dla podobnych kierunków albo otwórz planner — pomoże dobrac alternatywe na bazie budżetu, długośći wyjazdu i stylu, którego szukasz.`,
+        answer: `Sprawdź porównania na HelpTravel dla podobnych kierunków.`,
       },
     ],
   };
@@ -1890,16 +1838,19 @@ export function getDestinationGuideBySlug(slug: string): DestinationGuideContent
   };
 }
 
+// Szkice zostają w danych, ale żaden getter ich nie zwraca — patrz `EditorialArticle.draft`.
+const publishedArticles = editorialArticles.filter((article) => !article.draft);
+
 export function getEditorialArticles(): EditorialArticle[] {
-  return editorialArticles;
+  return publishedArticles;
 }
 
 export function getLatestEditorialArticles(limit = 6): EditorialArticle[] {
-  return [...editorialArticles].slice(-limit).reverse();
+  return [...publishedArticles].slice(-limit).reverse();
 }
 
 export function getEditorialArticleBySlug(slug: string): EditorialArticle | undefined {
-  return editorialArticles.find((article) => article.slug === slug);
+  return publishedArticles.find((article) => article.slug === slug);
 }
 
 export function getEditorialCategories(): EditorialCategory[] {
@@ -1923,11 +1874,11 @@ export function getCategoriesForDestination(slug: string): EditorialCategory[] {
 
 export function getArticlesForCategory(slug: string): EditorialArticle[] {
   const key = foldCategorySlug(slug);
-  return editorialArticles.filter((article) => article.categorySlugs.some((c) => foldCategorySlug(c) === key));
+  return publishedArticles.filter((article) => article.categorySlugs.some((c) => foldCategorySlug(c) === key));
 }
 
 export function getArticlesForDestination(slug: string): EditorialArticle[] {
-  const direct = editorialArticles.filter((article) => article.destinationSlugs.includes(slug));
+  const direct = publishedArticles.filter((article) => article.destinationSlugs.includes(slug));
   if (direct.length > 0) {
     return direct;
   }
@@ -1938,13 +1889,13 @@ export function getArticlesForDestination(slug: string): EditorialArticle[] {
   }
 
   const inferredCategories = inferDestinationCategorySlugs(destination);
-  return editorialArticles.filter((article) =>
+  return publishedArticles.filter((article) =>
     article.categorySlugs.some((categorySlug) => inferredCategories.includes(categorySlug)),
   );
 }
 
 export function getRelatedArticles(article: EditorialArticle, limit = 3): EditorialArticle[] {
-  return editorialArticles
+  return publishedArticles
     .filter((candidate) => candidate.slug !== article.slug)
     .map((candidate) => {
       const sharedCategories = candidate.categorySlugs.filter((slug) => article.categorySlugs.includes(slug)).length;

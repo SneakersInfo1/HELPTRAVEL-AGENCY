@@ -15,21 +15,24 @@ export const polishMonthSlugs = [
 
 export type PolishMonthSlug = (typeof polishMonthSlugs)[number];
 
+// Nazwy do wyświetlania. Slugi wyżej zostają ASCII (są adresami), ale tekst
+// widoczny i tytuły mają polskie znaki — do 2026-09 stało tu „pazdziernik".
 export const polishMonthLabels: Record<PolishMonthSlug, string> = {
-  styczen: "styczen",
+  styczen: "styczeń",
   luty: "luty",
   marzec: "marzec",
-  kwiecien: "kwiecien",
+  kwiecien: "kwiecień",
   maj: "maj",
   czerwiec: "czerwiec",
   lipiec: "lipiec",
-  sierpien: "sierpien",
-  wrzesien: "wrzesien",
-  pazdziernik: "pazdziernik",
+  sierpien: "sierpień",
+  wrzesien: "wrzesień",
+  pazdziernik: "październik",
   listopad: "listopad",
-  grudzien: "grudzien",
+  grudzien: "grudzień",
 };
 
+/** Miejscownik: „(w) styczniu", „(we) wrześniu". Z przyimkiem — inMonthPhrase(). */
 export const polishMonthInflected: Record<PolishMonthSlug, string> = {
   styczen: "styczniu",
   luty: "lutym",
@@ -39,11 +42,16 @@ export const polishMonthInflected: Record<PolishMonthSlug, string> = {
   czerwiec: "czerwcu",
   lipiec: "lipcu",
   sierpien: "sierpniu",
-  wrzesien: "wrzesniu",
-  pazdziernik: "pazdzierniku",
+  wrzesien: "wrześniu",
+  pazdziernik: "październiku",
   listopad: "listopadzie",
   grudzien: "grudniu",
 };
+
+/** „w październiku", „we wrześniu" — przed „wrz-" przyimek przyjmuje formę „we". */
+export function inMonthPhrase(slug: PolishMonthSlug): string {
+  return `${slug === "wrzesien" ? "we" : "w"} ${polishMonthInflected[slug]}`;
+}
 
 export function getMonthIndex(slug: PolishMonthSlug): number {
   return polishMonthSlugs.indexOf(slug);
@@ -71,9 +79,10 @@ export const seasonLabels: Record<Season, string> = {
   zima: "zima",
 };
 
+/** Biernik po „na": „na wiosnę", „na lato". Do 2026-09 dawało „na latem" i „na zima". */
 export const seasonInflected: Record<Season, string> = {
-  wiosna: "wiosna",
-  lato: "latem",
-  jesien: "jesienia",
-  zima: "zima",
+  wiosna: "wiosnę",
+  lato: "lato",
+  jesien: "jesień",
+  zima: "zimę",
 };

@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
 
+import { HTML_LIMITED_BOTS } from "./src/lib/seo/html-limited-bots";
+
 const csp = [
   "default-src 'self'",
   // ZAWĘŻONE 2026-08-07. Poprzednia wersja wpuszczała siedem hostów wyłącznie
@@ -75,6 +77,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // Googlebot i crawlery AI dostają canonical, title i robots w <head>, a nie
+  // strumieniowane do <body> — uzasadnienie w src/lib/seo/html-limited-bots.ts.
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   async redirects() {
     return [
       {
