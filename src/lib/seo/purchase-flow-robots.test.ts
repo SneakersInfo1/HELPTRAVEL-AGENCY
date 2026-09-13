@@ -32,7 +32,7 @@ const PURCHASE_FLOW_ROUTES = [
 ];
 
 const PURCHASE_SEGMENT =
-  /rezerwacj|platnos|płatnoś|pasazer|pasażer|dodatk|potwierdz|zamowien|zamówien|koszyk|checkout|payment|booking|return|callback|success|sukces|cancel|anulow|failure|niepowodz/i;
+  /rezerwacj|platnos|płatnoś|pasazer|pasażer|passenger|dodatk|extras|fare|potwierdz|finaliz|sesj|session|zamowien|zamówien|koszyk|checkout|payment|booking|return|callback|success|sukces|cancel|anulow|failure|niepowodz/i;
 
 // Disallow sprzed PR #1 (src/app/robots.ts). Noindex tych stron jest dla
 // Googlebota niewidoczny; zdjęcie blokady wymaga danych z GSC i nie należy do PR #1.
@@ -115,6 +115,21 @@ describe("techniczne strony zakupu (test K)", () => {
       return /\bnoindex\b|\bindex:\s*false\b/.test(declared) ? [] : [`${route} ← ${declared}`];
     });
     assert.deepEqual(indexable, []);
+  });
+
+  it("layouty stron zakupu nie ustawiają tytułu-napisu, bo kasuje on szablon „%s | HelpTravel” podstron", () => {
+    // Zmierzone na Preview a3721a1: `title: "Płatność"` w layoucie /loty/platnosc
+    // zdjął markę z tytułu /loty/platnosc/return.
+    const rootLayout = path.join(APP_DIR, "layout.tsx");
+    const withTitle = PURCHASE_FLOW_ROUTES.flatMap((route) => {
+      const dir = dirOf.get(route);
+      if (!dir) return [];
+      return metadataFiles(dir)
+        .filter((file) => file.endsWith("layout.tsx") && file !== rootLayout && existsSync(file))
+        .filter((file) => /\btitle:\s*["'`]/.test(codeOf(file)))
+        .map((file) => path.relative(ROOT, file));
+    });
+    assert.deepEqual([...new Set(withTitle)], []);
   });
 
   it("strony zakupu nie mają canonicala", () => {

@@ -241,7 +241,13 @@ test.describe("K — techniczne strony zakupu: noindex dla Googlebota, bez canon
       const headEnd = html.indexOf("</head>");
       expect(headEnd, "K: brak </head>").toBeGreaterThan(0);
 
-      expect(html.slice(0, headEnd), "K: noindex w <head>").toMatch(/<meta name="robots" content="noindex, nofollow"/);
+      const robots = html.slice(0, headEnd).match(/<meta name="robots" content="([^"]*)"/)?.[1] ?? "";
+      expect(
+        robots.split(",").map((token) => token.trim()),
+        "K: noindex w <head>",
+      ).toContain("noindex");
+      // Tytuł-napis w layoucie kasował szablon „%s | HelpTravel” podstron (/loty/platnosc/return na Preview a3721a1).
+      expect(html.slice(0, headEnd).match(/<title>([^<]*)<\/title>/)?.[1] ?? "", "K: tytuł bez marki").toContain("HelpTravel");
       expect(html.slice(headEnd), "K: meta robots w <body>").not.toMatch(/<meta name="robots"/);
       expect(html, "K: canonical na stronie zakupu").not.toMatch(/<link rel="canonical"/);
     });
