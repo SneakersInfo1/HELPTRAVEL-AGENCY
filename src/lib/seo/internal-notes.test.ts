@@ -78,6 +78,11 @@ function report(hits: string[]): string {
   return `${hits.length} trafień, pierwsze:\n${hits.slice(0, 12).join("\n")}`;
 }
 
+/** Źródło szablonu bez komentarzy — komentarze opisują historię („SEO master plan") i nie trafiają na stronę. */
+function withoutComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
 describe("notatki wewnętrzne nie trafiają na strony (test I)", () => {
   it("opublikowane artykuły", () => {
     const hits = getEditorialArticles().flatMap((article) =>
@@ -101,9 +106,13 @@ describe("notatki wewnętrzne nie trafiają na strony (test I)", () => {
     assert.equal(hits.length, 0, report(hits));
   });
 
-  it("szablon artykułu i pasek redakcyjny", () => {
-    for (const file of ["src/app/inspiracje/[slug]/page.tsx", "src/components/publisher/editorial-meta-bar.tsx"]) {
-      const source = readFileSync(path.join(process.cwd(), file), "utf8");
+  it("szablony artykułu i przewodnika oraz pasek redakcyjny", () => {
+    for (const file of [
+      "src/app/inspiracje/[slug]/page.tsx",
+      "src/app/kierunki/[slug]/page.tsx",
+      "src/components/publisher/editorial-meta-bar.tsx",
+    ]) {
+      const source = withoutComments(readFileSync(path.join(process.cwd(), file), "utf8"));
       const hits = findNotes(file, [source]);
       assert.equal(hits.length, 0, report(hits));
       // Data „aktualizacji" wpisana na sztywno — nie wynikała z żadnej zmiany treści.

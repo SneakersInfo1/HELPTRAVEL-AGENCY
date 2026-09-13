@@ -546,10 +546,6 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <p>
               Ta strona ma pomoc zdecydować, czy kierunek pasuje do stylu wyjazdu, budżetu i realnej logistyki z Polski.
             </p>
-            <p>
-              Jeśli miasto wygląda dobrze, przechodzisz dalej do planera i gotowych przejść do pobytu, lotu, atrakcji
-              i kolejnych kroków dla tego samego terminu.
-            </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <LocalizedLink
