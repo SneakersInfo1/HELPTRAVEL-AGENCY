@@ -101,6 +101,10 @@ export default async function SeasonRankingPage({ params }: PageProps) {
         description: seasonIntro[sezon],
         url: `${baseUrl}/najlepsze-kierunki/${sezon}`,
         inLanguage: "pl-PL",
+        // Ranking liczony z danych serwisu, więc autorem jest serwis, a nie osoba
+        // (tak jak na /inspiracje/[slug]). Bez tych pól węzeł był niekompletny.
+        author: { "@type": "Organization", "@id": `${baseUrl}/#organization`, name: "HelpTravel" },
+        publisher: { "@id": `${baseUrl}/#organization` },
       },
       {
         "@type": "BreadcrumbList",

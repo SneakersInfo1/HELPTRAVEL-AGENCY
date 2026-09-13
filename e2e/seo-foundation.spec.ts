@@ -197,12 +197,17 @@ test.describe("J — metadane w <head> dla Googlebota", () => {
       expect(headEnd, "J: brak </head>").toBeGreaterThan(0);
       const head = html.slice(0, headEnd);
 
+      const body = html.slice(headEnd);
+
       expect(head, "J: <title> poza <head>").toMatch(/<title>[^<]+<\/title>/);
-      expect(head, "J: meta robots poza <head>").toMatch(/<meta name="robots"/);
+      // Strona indeksowalna może nie mieć meta robots wcale (brak = index, follow).
+      // Błędem jest tag robots albo canonical wyrenderowany dopiero w <body>.
+      expect(body, "J: meta robots w <body>").not.toMatch(/<meta name="robots"/);
+      expect(body, "J: canonical w <body>").not.toMatch(/<link rel="canonical"/);
       if (canonical) {
         expect(head, "J: canonical poza <head>").toMatch(/<link rel="canonical"/);
       } else {
-        expect(head, "J: wyniki wyszukiwania mają noindex").toMatch(/<meta name="robots" content="noindex/);
+        expect(head, "J: wyniki wyszukiwania mają noindex w <head>").toMatch(/<meta name="robots" content="noindex/);
       }
     });
   }
