@@ -8,6 +8,7 @@
  *   G — historyczne adresy: 301 na odpowiednik, który odpowiada 200
  *   H — sitemap: zero adresów 404, tylko ASCII, bez feed.xml
  *   J — dla UA Googlebota title, canonical i robots są w <head> także na stronach dynamicznych
+ *   K — techniczne strony zakupu: noindex w <head> dla Googlebota, bez canonicala, poza sitemapą
  *
  * Uruchamiane na Preview, nie na produkcji:
  *
@@ -211,4 +212,59 @@ test.describe("J — metadane w <head> dla Googlebota", () => {
       }
     });
   }
+});
+
+test.describe("K — techniczne strony zakupu: noindex dla Googlebota, bez canonicala, poza sitemapą", () => {
+  // Same GET-y HTML bez parametrów i bez wykonywania JS. Bez `sid` strony powrotu
+  // kończą na komunikacie o braku sesji, a /hotele/rezerwacja bez oferty — na
+  // komunikacie o brakujących danych. Nic nie woła prebooka, płatności ani finalizacji.
+  const PURCHASE_PAGES = [
+    "/hotele/rezerwacja",
+    "/hotele/rezerwacja/return",
+    "/loty/dodatki",
+    "/loty/pasazerowie",
+    "/loty/platnosc",
+    "/loty/platnosc/return",
+    "/loty/potwierdzenie/test-seo-noindex",
+  ];
+
+  for (const path of PURCHASE_PAGES) {
+    test(`${path}: noindex w <head>, bez canonicala`, async ({ page }) => {
+      await authorize(page);
+      const response = await page.request.get(path, {
+        headers: { "user-agent": GOOGLEBOT_SMARTPHONE },
+        maxRedirects: 0,
+      });
+      expect(response.status(), "K: status").toBe(200);
+
+      const html = await response.text();
+      const headEnd = html.indexOf("</head>");
+      expect(headEnd, "K: brak </head>").toBeGreaterThan(0);
+
+      expect(html.slice(0, headEnd), "K: noindex w <head>").toMatch(/<meta name="robots" content="noindex, nofollow"/);
+      expect(html.slice(headEnd), "K: meta robots w <body>").not.toMatch(/<meta name="robots"/);
+      expect(html, "K: canonical na stronie zakupu").not.toMatch(/<link rel="canonical"/);
+    });
+  }
+
+  test("sitemap.xml bez stron zakupu, robots.txt nie blokuje kroków lotu", async ({ page }) => {
+    await authorize(page);
+    const xml = await (await page.request.get("/sitemap.xml")).text();
+    const paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => new URL(match[1]).pathname);
+    expect(paths.length).toBeGreaterThan(100);
+    expect(
+      paths.filter((path) => /^\/(hotele\/rezerwacja|loty\/(dodatki|pasazerowie|platnosc|potwierdzenie))(\/|$)/.test(path)),
+      "K: strony zakupu w sitemapie",
+    ).toEqual([]);
+
+    // Zablokowanej strony Googlebot nie pobierze i nie zobaczy noindex.
+    const robotsTxt = await (await page.request.get("/robots.txt")).text();
+    const disallow = [...robotsTxt.matchAll(/^Disallow:\s*(\S+)/gim)].map((match) => match[1]);
+    for (const path of PURCHASE_PAGES.filter((path) => path.startsWith("/loty/"))) {
+      expect(
+        disallow.filter((rule) => path.startsWith(rule)),
+        `K: Disallow blokuje ${path}`,
+      ).toEqual([]);
+    }
+  });
 });
