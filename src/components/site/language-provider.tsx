@@ -1,115 +1,27 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  startTransition,
-  useState,
-  type ReactNode,
-} from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { createContext, useContext, type ReactNode } from "react";
 
-import {
-  DEFAULT_SITE_LOCALE,
-  LOCALE_COOKIE_KEY,
-  LOCALE_STORAGE_KEY,
-  getDocumentLang,
-  localizeHref,
-  localeFromPathname,
-  resolveSiteLocale,
-  type SiteLocale,
-} from "@/lib/mvp/locale";
+import { DEFAULT_SITE_LOCALE, type SiteLocale } from "@/lib/mvp/locale";
 
 interface LanguageContextValue {
   locale: SiteLocale;
-  setLocale: (locale: SiteLocale) => void;
 }
+
+// Serwis jest wyłącznie polski i nie ma przełącznika języka.
+//
+// Do 2026-09 provider wybierał język z ustawień przeglądarki, zapisanej
+// preferencji i parametru adresu. Renderer Google działa w en-US, więc po
+// hydratacji Googlebot dostawał `lang="en"`, linki `/en/*` i `?lang=en` — a do
+// tego błąd hydratacji #418, bo serwer renderował po polsku. Stąd `/?lang=en`
+// w wynikach wyszukiwania (audyt SEO Growth V1, pkt 4). Język nie zależy już od
+// klienta; parametr `lang` na wejściu przekierowuje middleware.
+const SITE_LANGUAGE: LanguageContextValue = { locale: DEFAULT_SITE_LOCALE };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-function getPreferredLocale(): SiteLocale {
-  if (typeof window === "undefined") {
-    return DEFAULT_SITE_LOCALE;
-  }
-
-  const pathLocale = localeFromPathname(window.location.pathname);
-  if (pathLocale) {
-    return pathLocale;
-  }
-
-  const urlLocale = new URLSearchParams(window.location.search).get("lang");
-  if (urlLocale) {
-    return resolveSiteLocale(urlLocale);
-  }
-
-  const storedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-  if (storedLocale) {
-    return resolveSiteLocale(storedLocale);
-  }
-
-  return resolveSiteLocale(window.navigator.language);
-}
-
-function persistLocale(locale: SiteLocale) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  document.documentElement.lang = getDocumentLang(locale);
-  window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-  document.cookie = `${LOCALE_COOKIE_KEY}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
-}
-
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [locale, setLocaleState] = useState<SiteLocale>(() => getPreferredLocale());
-
-  useEffect(() => {
-    persistLocale(locale);
-  }, [locale]);
-
-  useEffect(() => {
-    const syncFromEnvironment = () => {
-      const nextLocale = getPreferredLocale();
-      setLocaleState((current) => (current === nextLocale ? current : nextLocale));
-    };
-
-    window.addEventListener("popstate", syncFromEnvironment);
-    window.addEventListener("storage", syncFromEnvironment);
-
-    return () => {
-      window.removeEventListener("popstate", syncFromEnvironment);
-      window.removeEventListener("storage", syncFromEnvironment);
-    };
-  }, []);
-
-  const value = useMemo<LanguageContextValue>(
-    () => ({
-      locale,
-      setLocale: (nextLocale) => {
-        setLocaleState(nextLocale);
-        persistLocale(nextLocale);
-
-        const currentPath = pathname ?? (typeof window === "undefined" ? "/" : window.location.pathname);
-        const currentSearch = typeof window === "undefined" ? "" : window.location.search.replace(/^\?/, "");
-        const currentHash = typeof window === "undefined" ? "" : window.location.hash;
-        const currentHref = `${currentPath}${currentSearch ? `?${currentSearch}` : ""}${currentHash}`;
-        const nextHref = localizeHref(currentHref, nextLocale);
-
-        if (typeof window !== "undefined" && nextHref !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
-          startTransition(() => {
-            router.replace(nextHref, { scroll: false });
-          });
-        }
-      },
-    }),
-    [locale, pathname, router],
-  );
-
-  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+  return <LanguageContext.Provider value={SITE_LANGUAGE}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage() {

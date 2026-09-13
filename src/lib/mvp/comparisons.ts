@@ -42,7 +42,7 @@ export const comparisonPairs: ComparisonPair[] = [
   // Hiszpania - city break
   makePair("barcelona-spain", "valencia-spain", "Drugie miasto Hiszpanii — porównańie pod city break"),
 makePair("barcelona-spain", "malaga-spain", "Plaża i miasto: kierunki katalońskie kontra Andaluzja"),
-makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat plażowo-miejski", undefined, "Malaga czy Walencja? Porównanie 2026 (plaża, ceny, pogoda)"),
+makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat plażowo-miejski", undefined, "Malaga czy Walencja? Porównanie (plaża, ceny, pogoda)"),
 
   // Iberia: Portugalia + Hiszpania
   makePair("lisbon-portugal", "barcelona-spain", "Dwie ikony Iberii — co lepiej pod 4 dni"),

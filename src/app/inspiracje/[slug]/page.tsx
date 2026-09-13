@@ -143,14 +143,16 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
               ]}
             />
             <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">{article.title}</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-white/86">{article.hero}</p>
+            {article.hero ? (
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/86">{article.hero}</p>
+            ) : null}
           </div>
         </div>
       </section>
 
       <EditorialMetaBar
         eyebrow="Artykuł redakcyjny"
-        title="Scenariusz wyjazdu przygotowany jako treść wydawnicza i punkt wejscia do planera"
+        title="Scenariusz wyjazdu przygotowany jako treść wydawnicza"
         items={[...categoryLabels, `${article.destinationSlugs.length} powiazanych kierunków`]}
       />
 
@@ -243,7 +245,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
           <h2 className="mt-3 font-display text-4xl">Przejdź z artykułu do konkretnego wyszukiwania.</h2>
           <p className="mt-4 text-sm leading-7 text-white/82">
             Artykuł daje kontekst i porzadkuje scenariusz, ale finalnie najważniejsze jest przejście do realnego planu:
-            wybranych kierunków, lotów, noclegów i linkow partnerskich.
+            wybranych kierunków, lotów i noclegów.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link

@@ -15,6 +15,7 @@ import { nightsBetween } from "@/lib/hotels/normalize";
 import { getRegionById, isInRegion, type RegionRecord } from "@/lib/hotels/regions";
 import { resolveDestinationFromQuery } from "@/lib/mvp/destinations-seed";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
+import { hotelSearchMetadata } from "@/lib/seo/hotel-search-metadata";
 
 import { CollapsibleSearchBar } from "./_components/collapsible-search-bar";
 import { HeaderOffsetProbe } from "./_components/header-offset";
@@ -74,35 +75,15 @@ interface SP {
   directOnly?: string;
 }
 
+// Wyniki wyszukiwania: zawsze noindex i bez canonicala — uzasadnienie
+// w lib/seo/hotel-search-metadata.ts (Disallow w robots.txt zostaje).
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
   const sp = await searchParams;
-  const region = sp.region ? getRegionById(sp.region) : null;
-  if (region) {
-    return {
-      title: `Hotele ${region.namePl}, ${region.countryPl} — ceny w PLN`,
-      description: `Znajdź hotel na wyspie ${region.namePl}. Prawdziwe ceny w PLN, bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`,
-      alternates: {
-        canonical: `/hotele/szukaj?${new URLSearchParams({ region: region.id }).toString()}`,
-      },
-      robots: "index, follow",
-    };
-  }
-  const dest = sp.destination ?? "";
-  const ctry = sp.country ?? "";
-  const title = dest
-    ? `Hotele ${dest}${ctry ? `, ${ctry}` : ""} — ceny w PLN`
-    : "Wyszukiwarka hoteli";
-  const canonical = dest
-    ? `/hotele/szukaj?${new URLSearchParams({ destination: dest, ...(ctry ? { country: ctry } : {}) }).toString()}`
-    : "/hotele/szukaj";
-  return {
-    title,
-    description: dest
-      ? `Znajdź hotel w ${dest}. Prawdziwe ceny w PLN, bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`
-      : "Wyszukaj hotel z prawdziwymi cenami w PLN.",
-    alternates: { canonical },
-    robots: dest ? "index, follow" : "noindex, follow",
-  };
+  return hotelSearchMetadata({
+    destination: sp.destination,
+    country: sp.country,
+    region: sp.region ? getRegionById(sp.region) : null,
+  });
 }
 
 export default async function HotelResultsPage({

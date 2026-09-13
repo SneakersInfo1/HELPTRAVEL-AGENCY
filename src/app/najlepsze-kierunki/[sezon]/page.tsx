@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import {
-  polishMonthInflected,
+  inMonthPhrase,
   polishMonthSlugs,
   seasonInflected,
   seasonMonthIndexes,
@@ -13,6 +13,7 @@ import {
   type Season,
 } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { seasonPageHeading } from "@/lib/seo/page-titles";
 
 export const revalidate = 86400;
 
@@ -43,22 +44,18 @@ const seasonIntro: Record<Season, string> = {
     "Zima to czas na ucieczki w ciepło (południowa Hiszpania, Wyspy Kanaryjskie) lub atmosferyczne city breaki w Europie.",
 };
 
-const seasonHeading: Record<Season, string> = {
-  wiosna: "Najlepsze kierunki na wiosnę 2026 — ranking pod krótki wyjazd",
-  lato: "Najlepsze kierunki na lato 2026 — gdzie ciepło i sensownie",
-  jesien: "Najlepsze kierunki na jesień 2026 — ciepła pogoda, mniej tłumów",
-  zima: "Najlepsze kierunki na zimę 2026 — ciepłe ucieczki i city break",
-};
+// Nagłówek i tytuł: seasonPageHeading() z lib/seo/page-titles.ts. Do 2026-09
+// stał tu rok wpisany na sztywno — „na wiosnę 2026" także we wrześniu 2026.
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { sezon } = await params;
   if (!isSeason(sezon)) return { title: "Najlepsze kierunki" };
   return {
-    title: seasonHeading[sezon],
+    title: seasonPageHeading(sezon),
     description: `Ranking kierunków na ${seasonInflected[sezon]} — pogoda, koszty i charakter wyjazdu. Praktyczna lista pod decyzję city break i krótki urlop z Polski.`,
     alternates: { canonical: `/najlepsze-kierunki/${sezon}` },
     openGraph: {
-      title: seasonHeading[sezon],
+      title: seasonPageHeading(sezon),
       description: `Praktyczny ranking destynacji na ${seasonInflected[sezon]} oparty o realne dane pogodowe i kosztowe.`,
       url: `${getSiteUrl()}/najlepsze-kierunki/${sezon}`,
       type: "article",
@@ -100,7 +97,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
     "@graph": [
       {
         "@type": "Article",
-        headline: seasonHeading[sezon],
+        headline: seasonPageHeading(sezon),
         description: seasonIntro[sezon],
         url: `${baseUrl}/najlepsze-kierunki/${sezon}`,
         inLanguage: "pl-PL",
@@ -119,7 +116,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       },
       {
         "@type": "ItemList",
-        name: seasonHeading[sezon],
+        name: seasonPageHeading(sezon),
         itemListElement: ranked.map((entry, index) => ({
           "@type": "ListItem",
           position: index + 1,
@@ -142,7 +139,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
           ]}
         />
         <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
-          {seasonHeading[sezon]}
+          {seasonPageHeading(sezon)}
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">{seasonIntro[sezon]}</p>
         <div className="mt-5 flex flex-wrap gap-3">
@@ -201,7 +198,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
                     className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                   >
                     <span className="text-xs font-semibold text-ink">
-                      {entry.destination.city} w {polishMonthInflected[monthSlug]} ({entry.destination.avgTempByMonth[monthIdx]}°C)
+                      {entry.destination.city} {inMonthPhrase(monthSlug)} ({entry.destination.avgTempByMonth[monthIdx]}°C)
                     </span>
                   </Link>
                 );

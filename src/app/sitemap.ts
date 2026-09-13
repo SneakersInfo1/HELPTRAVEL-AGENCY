@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { categoryPath } from "@/lib/mvp/category-slug";
 import { comparisonPairs } from "@/lib/mvp/comparisons";
 import { commercialCitySlugs } from "@/lib/mvp/commercial-cities";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
@@ -48,10 +49,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/o-nas",
     "/polityka-prywatnosci",
     "/regulamin",
-    "/feed.xml",
+    // "/feed.xml" usunięty 2026-09: to kanał RSS, nie strona do indeksu —
+    // ogłasza go <link rel="alternate"> w głównym layoucie.
   ];
 
-  const categoryRoutes = getEditorialCategories().map((category) => `/${category.slug}`);
+  // Adres kategorii zawsze w wersji ASCII: slug z danych "tanie-podróże"
+  // wpisany wprost dawał w sitemapie URL zwracający 404.
+  const categoryRoutes = getEditorialCategories().map((category) => categoryPath(category.slug));
   const destinationProfiles = getAllDestinationProfiles();
   const destinationRoutes = destinationProfiles.map((destination) => `/kierunki/${destination.slug}`);
   const articleRoutes = getEditorialArticles().map((article) => `/inspiracje/${article.slug}`);

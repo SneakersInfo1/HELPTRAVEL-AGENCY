@@ -25,7 +25,7 @@ export const revalidate = 86400;
 
 const pageCopy = {
   pl: {
-    title: "Kierunki na wakacje i city break 2026 — przewodniki, hotele, loty",
+    title: "Kierunki na wakacje i city break — przewodniki, hotele, loty",
     description:
       "Ponad 235 kierunków na city break, wakacje nad morzem i ciepłe wyjazdy z Polski. Realne ceny hoteli w PLN, czas lotu, pogoda i przejście prosto do rezerwacji.",
     ogDescription:
@@ -34,7 +34,7 @@ const pageCopy = {
     metaDescription: "Katalog kierunków HelpTravel",
   },
   en: {
-    title: "Destinations for city breaks & holidays 2026 — guides, hotels, flights",
+    title: "Destinations for city breaks & holidays — guides, hotels, flights",
     description:
       "200+ destinations for city breaks, beach holidays and warm escapes from Poland: real hotel prices in PLN, flight time, weather and a one-click path to booking.",
     ogDescription:

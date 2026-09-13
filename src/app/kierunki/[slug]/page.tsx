@@ -10,6 +10,7 @@ import { EditorialArticleCard } from "@/components/publisher/editorial-article-c
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
+import { categoryPath } from "@/lib/mvp/category-slug";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
@@ -32,6 +33,7 @@ import {
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib/mvp/travel-dates";
+import { guidePageText } from "@/lib/seo/page-titles";
 import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 interface DestinationGuidePageProps {
@@ -100,19 +102,11 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
   if (!guide) {
     return {
       title: "Kierunek",
-      description: "Praktyczny przewodnik po kierunku i przejście do planera.",
+      description: "Praktyczny przewodnik po kierunku.",
     };
   }
 
-  const budget = estimateBudget(guide.destination.costIndex, guide.destination.typicalFlightHoursFromPL);
   const tripLength = idealTripLength(guide.destination.typicalFlightHoursFromPL);
-  // SEO title: commercial intent ("hotele od X zł") + freshness ("2026") +
-  // brand tail. Replaces the old informational-only "kiedy lecieć, gdzie
-  // spać" which lost SERP CTR to competitors with concrete prices.
-  // Length budget: city + " 2026: hotele od X zł, loty od Y h i przewodnik" ≈ 60 chars.
-  const hotelFromPln = Math.round(budget.min / (4 * 2)); // budget is per 2 osoby / 4 dni
-  const year = new Date().getFullYear();
-  const flightHoursFmt = guide.destination.typicalFlightHoursFromPL.toFixed(1);
   // Polish display name for title/meta/SEO. Prefer the curated editorial name
   // (so island guides read "Kreta"/"Majorka", not the airport city
   // "Heraklion"/"Palma"); otherwise fall back to the city exonym (Athens
@@ -120,12 +114,20 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
   const cityPl = getStoryBySlug(guide.destination.slug)?.name ?? localizeCity(guide.destination.city);
   const countryPl = localizeCountry(guide.destination.country);
 
+  // Tytuł, opis, OG i Twitter: lib/seo/page-titles.ts — bez roku i bez ceny
+  // modelowanej. Do 2026-09 stało tu „{miasto} {rok}: hotele od X zł" z kwotą
+  // policzoną ze wzoru (estimateBudget), a nie z oferty.
+  const text = guidePageText({
+    cityPl,
+    flightHours: guide.destination.typicalFlightHoursFromPL,
+    tripLength,
+  });
+
   return {
-    title: `${cityPl} ${year}: hotele od ${hotelFromPln} zł, lot ${flightHoursFmt} h, przewodnik`,
-    description: `${cityPl} ${year}: najlepsze terminy, hotele od ${hotelFromPln} zł, lot z Polski ${flightHoursFmt} h. Orientacyjny budżet dla 2 osób na ${tripLength}: ${budget.min}-${budget.max} zł. Praktyczny przewodnik + przejście do oferty w PLN.`,
+    title: text.title,
+    description: text.description,
     keywords: [
       `${cityPl}`,
-      `${cityPl} ${year}`,
       `hotele ${cityPl}`,
       `wakacje ${cityPl}`,
       `${cityPl} przewodnik`,
@@ -136,16 +138,16 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
       canonical: `/kierunki/${guide.destination.slug}`,
     },
     openGraph: {
-      title: `${cityPl} ${year} — hotele od ${hotelFromPln} zł, lot ${flightHoursFmt} h`,
-      description: `${cityPl}: najlepsze terminy, ceny w PLN, lot ${flightHoursFmt} h z Polski. Hotele, loty, przewodnik.`,
+      title: text.ogTitle,
+      description: text.ogDescription,
       url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
       type: "article",
       locale: "pl_PL",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${cityPl} ${year}: hotele od ${hotelFromPln} zł`,
-      description: `Lot ${flightHoursFmt} h, budżet od ${budget.min} zł. Sprawdź konkretne oferty w PLN.`,
+      title: text.twitterTitle,
+      description: text.twitterDescription,
     },
   };
 }
@@ -286,7 +288,6 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           "@type": "TouristAttraction",
           name: tag,
         })),
-        availableLanguage: ["pl", "en"],
       },
     ],
   };
@@ -533,7 +534,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               {relatedCategories.map((category) => (
                 <LocalizedLink
                   key={category.slug}
-                  href={`/${category.slug}`}
+                  href={categoryPath(category.slug)}
                   className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
                   <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink">{category.title}</span>

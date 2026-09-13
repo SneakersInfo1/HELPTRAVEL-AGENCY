@@ -10,7 +10,6 @@ export function EditorialMetaBar({ eyebrow, title, items }: EditorialMetaBarProp
       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{eyebrow}</p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-bold text-emerald-950">{title}</h2>
-        <span className="text-xs text-emerald-900/52">aktualizacja: marzec 2026</span>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {items.map((item) => (

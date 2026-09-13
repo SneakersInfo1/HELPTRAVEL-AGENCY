@@ -32,10 +32,12 @@ import { commercialCities, findCommercialCityBySlug, type CommercialCity } from 
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { fetchHotelsList } from "@/lib/liteapi/search";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
-import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
+import { inMonthPhrase, polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { addDaysToIsoDate, defaultTravelStartDate } from "@/lib/mvp/travel-dates";
+import { buildCityHotelsFaq, buildCityHotelsStructuredData } from "@/lib/seo/city-hotels-schema";
+import { cityHotelsPageText } from "@/lib/seo/page-titles";
 import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 export const revalidate = 86400; // 24h ISR
@@ -75,44 +77,36 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const city = findCommercialCityBySlug(miasto);
   if (!city) return { title: "Hotele" };
 
-  const budget = buildBudgetEstimate(city);
-  const year = new Date().getFullYear();
-  // "w Barcelonie" / "na Teneryfie" — preposition lives on the city record
-  // so island H1s stay grammatical when that batch lands.
+  // Tytuł, opis, OG i Twitter: lib/seo/page-titles.ts. Do 2026-09 tytuł miał
+  // rok z zegara i „od X zł/noc" z buildBudgetEstimate — kwotę ze wzoru, a nie
+  // z oferty.
+  const text = cityHotelsPageText({ city });
+  // "w Barcelonie" / "na Teneryfie" — preposition lives on the city record.
   const inLoc = `${city.preposition} ${city.cityLocative}`;
-  // Omit the country parens for island-countries (Malta/Cypr) where city ===
-  // country, to avoid a redundant "Hotele na Malcie (na Malcie)".
-  const countrySuffix =
-    city.cityNominative === city.countryNominative ? "" : ` (${city.countryLocative})`;
-  // Title: matches the head query ("hotele {city}") + commercial hook
-  // (od X zł) + year freshness. ~58 chars before brand tail.
-  const title = `Hotele ${inLoc} ${year}: od ${budget.perNight} zł/noc, sprawdź ${commercialCities.length > 1 ? "oferty" : "ofertę"}`;
-  const description = `Hotele ${inLoc}${countrySuffix} — ceny w PLN od ${budget.perNight} zł za noc. Bezpłatna anulacja w wybranych ofertach, prawdziwe ceny dostępne online, polskie wsparcie. Sprawdź dostępność i zarezerwuj w 2 minuty.`;
 
   return {
-    title,
-    description,
+    title: text.title,
+    description: text.description,
     keywords: [
       `hotele ${city.cityNominative}`,
       `hotele ${inLoc}`,
       `noclegi ${city.cityNominative}`,
       `wakacje ${city.cityNominative}`,
       `tanie hotele ${city.cityNominative}`,
-      `${city.cityNominative} ${year}`,
       ...city.aliasQueries,
     ].join(", "),
     alternates: { canonical: `/hotele/w/${city.slug}` },
     openGraph: {
-      title: `Hotele ${inLoc} ${year} od ${budget.perNight} zł/noc`,
-      description,
+      title: text.ogTitle,
+      description: text.description,
       url: `${getSiteUrl()}/hotele/w/${city.slug}`,
       type: "website",
       locale: "pl_PL",
     },
     twitter: {
       card: "summary_large_image",
-      title: `Hotele ${inLoc} ${year} od ${budget.perNight} zł/noc`,
-      description: `Hotele ${inLoc}: od ${budget.perNight} zł. Ceny w PLN, bezpłatna anulacja, polskie wsparcie.`,
+      title: text.twitterTitle,
+      description: text.twitterDescription,
     },
   };
 }
@@ -147,14 +141,12 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
 
   const profile = getAllDestinationProfiles().find((d) => d.slug === city.destinationId);
   const budget = buildBudgetEstimate(city);
-  const year = new Date().getFullYear();
+  const text = cityHotelsPageText({ city });
   const inLoc = `${city.preposition} ${city.cityLocative}`;
   // Direction phrase: mainland "do {dopełniacz}" (do Barcelony) vs island
   // "na {biernik}" (na Kretę). Keeps every "wyjazd/lot do X" grammatical.
   const dirPrep = city.preposition === "na" ? "na" : "do";
   const dirForm = city.preposition === "na" ? city.cityAccusative ?? city.cityNominative : city.cityGenitive;
-  const countrySuffix =
-    city.cityNominative === city.countryNominative ? "" : ` (${city.countryLocative})`;
   const media = profile
     ? await resolveDestinationMedia({
         ...profile,
@@ -208,145 +200,32 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
   const monthLinks = profile
     ? [
         {
-          label: `${city.cityNominative} w ${polishMonthLabels[polishMonthSlugs[currentMonthIdx]]}`,
+          label: `${city.cityNominative} ${inMonthPhrase(polishMonthSlugs[currentMonthIdx])}`,
           href: `/kierunki/${profile.slug}/${polishMonthSlugs[currentMonthIdx]}`,
         },
         {
-          label: `${city.cityNominative} w ${polishMonthLabels[polishMonthSlugs[nextMonthIdx]]}`,
+          label: `${city.cityNominative} ${inMonthPhrase(polishMonthSlugs[nextMonthIdx])}`,
           href: `/kierunki/${profile.slug}/${polishMonthSlugs[nextMonthIdx]}`,
         },
       ]
     : [];
 
-  // Structured data — Article + Breadcrumbs + Offer + FAQPage + ItemList.
-  // The Offer's `priceRange` triggers Google's "od X zł" badge in SERP.
-  // FAQ enables expandable answers below the snippet.
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        headline: `Hotele ${inLoc} ${year} — sprawdź ceny w PLN`,
-        description: `Hotele ${inLoc}${countrySuffix} od ${budget.perNight} zł/noc. Bezpłatna anulacja w wybranych ofertach, polskie wsparcie.`,
-        url: `${baseUrl}/hotele/w/${city.slug}`,
-        inLanguage: "pl-PL",
-        datePublished: "2026-01-01T00:00:00.000Z",
-        dateModified: new Date().toISOString(),
-        author: personSchema(EDITOR_IN_CHIEF),
-        publisher: { "@id": `${baseUrl}/#organization` },
-        image: media?.heroImage,
-        about: {
-          "@type": "TouristDestination",
-          name: `${city.cityNominative}, ${city.countryNominative}`,
-        },
-      },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Start", item: `${baseUrl}/` },
-          { "@type": "ListItem", position: 2, name: "Kierunki", item: `${baseUrl}/kierunki` },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: `Hotele ${inLoc}`,
-            item: `${baseUrl}/hotele/w/${city.slug}`,
-          },
-        ],
-      },
-      {
-        "@type": "Offer",
-        url: `${baseUrl}/hotele/w/${city.slug}`,
-        priceCurrency: "PLN",
-        price: budget.perNight,
-        priceValidUntil: `${year + 1}-12-31`,
-        availability: "https://schema.org/InStock",
-        itemOffered: {
-          "@type": "LodgingReservation",
-          name: `Hotel ${inLoc}`,
-        },
-        seller: { "@id": `${baseUrl}/#organization` },
-      },
-      {
-        "@type": "FAQPage",
-        mainEntity: [
-          {
-            "@type": "Question",
-            name: `Ile kosztują hotele ${inLoc}?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: `Ceny hoteli ${inLoc} zaczynają się od około ${budget.perNight} zł za noc dla 2 osób. Orientacyjny całkowity budżet wyjazdu na 4 dni: ${budget.min}-${budget.max} zł (loty, nocleg, jedzenie, transport lokalny).`,
-            },
-          },
-          {
-            "@type": "Question",
-            name: `Kiedy najlepiej jechać ${dirPrep} ${dirForm}?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: bestMonths.length > 0
-                ? `Najprzyjemniejsze miesiące na wyjazd ${dirPrep} ${dirForm} to ${bestMonths.slice(0, 6).join(", ")} — temperatury 18-30°C komfortowe na zwiedzanie.`
-                : `Sprawdź sezony i temperatury w naszym przewodniku po ${city.cityLocative}.`,
-            },
-          },
-          {
-            "@type": "Question",
-            name: `Czy ceny w HelpTravel są w PLN?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: "Tak — wszystkie ceny hoteli pokazujemy w PLN, bez ukrytych przeliczników. Płatność końcowa również w PLN (lub w walucie wyboru — bez zaskoczeń przy karcie).",
-            },
-          },
-          {
-            "@type": "Question",
-            name: `Czy mogę anulować rezerwację bezpłatnie?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: "Tak — większość ofert ma opcję bezpłatnej anulacji do określonego terminu (zazwyczaj 24-48 h przed przyjazdem). Anulacja jest oznaczona ikoną przy każdej cenie.",
-            },
-          },
-          {
-            "@type": "Question",
-            name: `Jak długi jest lot z Polski ${dirPrep} ${dirForm}?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: profile
-                ? `Lot z Polski ${dirPrep} ${dirForm} zajmuje około ${profile.typicalFlightHoursFromPL.toFixed(1)} h.`
-                : `Sprawdź dostępne loty z Polski w wyszukiwarce.`,
-            },
-          },
-          {
-            "@type": "Question",
-            name: `W której okolicy ${inLoc} najlepiej szukać hotelu?`,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: `Popularne okolice na nocleg ${inLoc}: ${city.neighborhoods
-                .map((n) => n.name)
-                .join(", ")}. Najwygodniej zatrzymać się blisko centrum — wtedy większość atrakcji obejdziesz pieszo lub komunikacją miejską.`,
-            },
-          },
-        ],
-      },
-      ...(featuredHotels.length > 0
-        ? [
-            {
-              "@type": "ItemList",
-              numberOfItems: featuredHotels.length,
-              itemListElement: featuredHotels.slice(0, 6).map((hotel, idx) => ({
-                "@type": "ListItem",
-                position: idx + 1,
-                item: {
-                  "@type": "Hotel",
-                  name: hotel.name,
-                  ...(hotel.address ? { address: { "@type": "PostalAddress", streetAddress: hotel.address, addressLocality: hotel.city } } : {}),
-                  ...(hotel.stars ? { starRating: { "@type": "Rating", ratingValue: hotel.stars } } : {}),
-                  ...(hotel.main_photo ? { image: hotel.main_photo } : {}),
-                  url: `${baseUrl}/hotele/${encodeURIComponent(hotel.id)}`,
-                },
-              })),
-            },
-          ]
-        : []),
-    ],
+  // Dane strukturalne i FAQ: lib/seo/city-hotels-schema.ts — Article, okruszki,
+  // FAQ i lista hoteli. Bez Offer i bez kwot z buildBudgetEstimate.
+  const faqInput = {
+    city,
+    flightHours: profile ? profile.typicalFlightHoursFromPL : null,
+    bestMonths,
   };
+  const faq = buildCityHotelsFaq(faqInput);
+  const structuredData = buildCityHotelsStructuredData({
+    ...faqInput,
+    baseUrl,
+    featuredHotels,
+    heroImage: media?.heroImage,
+    author: personSchema(EDITOR_IN_CHIEF),
+    nowIso: new Date().toISOString(),
+  });
 
   return (
     <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
@@ -386,7 +265,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               ]}
             />
             <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">
-              Hotele {inLoc} {year}
+              {text.heading}
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-white/86">
               {city.intro}
@@ -620,15 +499,15 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <h2 className="font-display text-3xl text-ink">Najczęściej zadawane pytania</h2>
         <div className="mt-5 space-y-4">
-          {(structuredData["@graph"].find((g) => g["@type"] === "FAQPage") as { mainEntity: Array<{ name: string; acceptedAnswer: { text: string } }> } | undefined)?.mainEntity.map((q) => (
+          {faq.map((item) => (
             <details
-              key={q.name}
+              key={item.question}
               className="rounded-2xl bg-surface-sunken px-5 py-4 transition hover:bg-surface-sunken"
             >
               <summary className="cursor-pointer text-base font-bold text-ink">
-                {q.name}
+                {item.question}
               </summary>
-              <p className="mt-3 text-sm leading-7 text-ink-muted">{q.acceptedAnswer.text}</p>
+              <p className="mt-3 text-sm leading-7 text-ink-muted">{item.answer}</p>
             </details>
           ))}
         </div>
