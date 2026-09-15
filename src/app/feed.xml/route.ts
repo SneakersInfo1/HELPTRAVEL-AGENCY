@@ -12,7 +12,8 @@ function escapeXml(value: string) {
 
 export async function GET() {
   const siteUrl = getSiteUrl();
-  const now = new Date("2026-03-29T00:00:00.000Z").toUTCString();
+  // Bez <lastBuildDate>: do 2026-09 stała tu data wpisana na sztywno (29.03.2026),
+  // a model treści nie ma dat artykułów, więc nie ma z czego jej policzyć (PR #1.5).
   const articles = getEditorialArticles();
 
   const items = articles
@@ -34,7 +35,6 @@ export async function GET() {
   <link>${escapeXml(siteUrl)}</link>
   <description>Praktyczne inspiracje i przewodniki podróżnicze dla polskiego odbiorcy.</description>
   <language>pl-PL</language>
-  <lastBuildDate>${now}</lastBuildDate>
 ${items}
 </channel>
 </rss>`;
