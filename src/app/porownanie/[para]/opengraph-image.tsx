@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 
 import { getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
+import { getDestinationSeoFacts } from "@/lib/seo/destination-facts";
 
 export const runtime = "nodejs";
 export const alt = "Porównanie kierunków - HelpTravel";
@@ -13,6 +14,11 @@ export default async function OgImage({ params }: { params: { para: string } }) 
   const destinations = getAllDestinationProfiles();
   const a = pair ? destinations.find((d) => d.slug === pair.a) : undefined;
   const b = pair ? destinations.find((d) => d.slug === pair.b) : undefined;
+  // Polskie nazwy (etykieta pary albo nazwa z bramki faktów) zamiast angielskich z katalogu.
+  const factsA = a ? getDestinationSeoFacts(a) : null;
+  const factsB = b ? getDestinationSeoFacts(b) : null;
+  const nameA = pair?.labelA ?? factsA?.name ?? "Kierunek A";
+  const nameB = pair?.labelB ?? factsB?.name ?? "Kierunek B";
 
   return new ImageResponse(
     (
@@ -47,10 +53,10 @@ export default async function OgImage({ params }: { params: { para: string } }) 
             }}
           >
             <div style={{ fontSize: 22, opacity: 0.8, textTransform: "uppercase", letterSpacing: 3 }}>
-              {a?.country ?? ""}
+              {factsA?.countryName ?? ""}
             </div>
             <div style={{ fontSize: 64, fontWeight: 800, marginTop: 12, textAlign: "center", lineHeight: 1 }}>
-              {a?.city ?? "Kierunek A"}
+              {nameA}
             </div>
           </div>
 
@@ -79,10 +85,10 @@ export default async function OgImage({ params }: { params: { para: string } }) 
             }}
           >
             <div style={{ fontSize: 22, opacity: 0.8, textTransform: "uppercase", letterSpacing: 3 }}>
-              {b?.country ?? ""}
+              {factsB?.countryName ?? ""}
             </div>
             <div style={{ fontSize: 64, fontWeight: 800, marginTop: 12, textAlign: "center", lineHeight: 1 }}>
-              {b?.city ?? "Kierunek B"}
+              {nameB}
             </div>
           </div>
         </div>
