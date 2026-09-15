@@ -24,7 +24,6 @@ import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = getSiteUrl();
-  const baseLastModified = new Date();
   const staticRoutes = [
     "",
     // "/hotele" intentionally omitted — it 308-redirects to "/" (the homepage
@@ -173,9 +172,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority = 0.6;
     }
 
+    // Bez lastModified: do 2026-09 był tu zegar generowania sitemapy — ta sama data
+    // dla 1401 adresów, zmieniana przy każdym renderze, a nie przy zmianie treści.
+    // Serwis nie ma dziś źródła prawdy dat zmian, więc `lastmod` nie podajemy wcale.
     entries.push({
       url: `${siteUrl}${route}`,
-      lastModified: baseLastModified,
       changeFrequency,
       priority,
     });

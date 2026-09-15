@@ -31,7 +31,8 @@ export interface CityHotelsSchemaInput extends CityHotelsFaqInput {
   featuredHotels: FeaturedHotelForSchema[];
   heroImage?: string | null;
   author: Record<string, unknown>;
-  nowIso: string;
+  /** Nieużywane od PR #1.5 (bez dat bez źródła prawdy). Do usunięcia razem z wywołaniami. */
+  nowIso?: string;
 }
 
 export function buildCityHotelsFaq({ city, flightHours, bestMonths }: CityHotelsFaqInput) {
@@ -46,7 +47,7 @@ export function buildCityHotelsFaq({ city, flightHours, bestMonths }: CityHotels
       answer:
         bestMonths.length > 0
           ? `Najprzyjemniejsze miesiące na wyjazd ${dirPrep} ${dirForm} to ${bestMonths.slice(0, 6).join(", ")} — temperatury 18-30°C komfortowe na zwiedzanie.`
-          : `Sprawdź sezony i temperatury w naszym przewodniku po ${city.cityLocative}.`,
+          : `Termin najlepiej dobrać do planu wyjazdu — sprawdź przewodnik po ${city.cityLocative} i dostępność hoteli w wybranych datach.`,
     },
     {
       question: "Czy ceny w HelpTravel są w PLN?",
@@ -89,8 +90,8 @@ export function buildCityHotelsStructuredData(input: CityHotelsSchemaInput) {
         description: text.articleDescription,
         url: pageUrl,
         inLanguage: "pl-PL",
-        datePublished: "2026-01-01T00:00:00.000Z",
-        dateModified: input.nowIso,
+        // Bez datePublished i dateModified: do 2026-09 stała tu data wymyślona
+        // („2026-01-01") i zegar renderu udający zmianę treści (PR #1.5).
         author: input.author,
         publisher: { "@id": `${baseUrl}/#organization` },
         ...(heroImage ? { image: heroImage } : {}),

@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { sendClientEvent } from "@/lib/mvp/client-events";
+import { isFactGrade, provenanceOf } from "@/lib/mvp/data-provenance";
+import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import type { DestinationProfile } from "@/lib/mvp/types";
 import type { DestinationMedia } from "@/lib/mvp/visuals";
@@ -59,6 +61,12 @@ export function DestinationGuideCard({
           planner: "Sprawdź hotele",
         };
 
+  // Czas lotu tylko z danych kuratorowanych: przy 212 kierunkach to stała regionu
+  // („3,1 h" dla całej Europy Płd.), a karta trafia też do „podobnych kierunków".
+  const showFlightHours = isFactGrade(provenanceOf(destination, "flightDuration"));
+  const cityLabel = locale === "en" ? destination.city : localizeCity(destination.city);
+  const countryLabel = locale === "en" ? destination.country : localizeCountry(destination.country);
+
   return (
     <article className="group overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <LocalizedLink
@@ -99,8 +107,8 @@ export function DestinationGuideCard({
             className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-[linear-gradient(to_top,rgba(5,18,11,0.72),rgba(5,18,11,0))]"
           />
           <div className="relative bg-[linear-gradient(180deg,rgba(5,18,11,0.72)_0%,rgba(5,18,11,0.93)_45%,rgba(5,18,11,0.96)_100%)] p-4 text-white">
-            <p className="text-xs text-white/85">{destination.country}</p>
-            <h3 className="mt-0.5 font-display text-2xl leading-tight text-white">{destination.city}</h3>
+            <p className="text-xs text-white/85">{countryLabel}</p>
+            <h3 className="mt-0.5 font-display text-2xl leading-tight text-white">{cityLabel}</h3>
           </div>
         </div>
       </LocalizedLink>
@@ -108,10 +116,12 @@ export function DestinationGuideCard({
       <div className="p-5">
         <p className="line-clamp-3 text-sm leading-6 text-ink-muted">{summary}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-sm bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-ink">
-            {/* Przecinek: liczba dla polskiego użytkownika. */}
-            {copy.flight} {destination.typicalFlightHoursFromPL.toFixed(1).replace(".", ",")} h
-          </span>
+          {showFlightHours ? (
+            <span className="rounded-sm bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-ink">
+              {/* Przecinek: liczba dla polskiego użytkownika. */}
+              {copy.flight} {destination.typicalFlightHoursFromPL.toFixed(1).replace(".", ",")} h
+            </span>
+          ) : null}
           <span className="rounded-sm bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-ink">
             {copy.style} {destination.beachScore >= 0.7 ? copy.beach : copy.city}
           </span>
