@@ -25,18 +25,18 @@ const monthInput = {
   baseUrl: SITE,
   destinationSlug: "malaga-spain",
   month: "wrzesien" as const,
-  city: "Malaga",
-  country: "Spain",
-  tempC: 27,
-  weather: "ciepło, komfortowo na zwiedzanie i plażę",
-  verdict: "Tak — to jeden z lepszych terminów na ten kierunek.",
-  seaTempC: 24,
-  warmestMonth: "sierpien" as const,
-  coldestMonth: "styczen" as const,
-  season: { label: "Sezon przejściowy", crowd: "umiarkowany ruch", price: "ceny umiarkowane" },
-  flightHours: 4.1,
+  name: "Malaga",
+  countryName: "Hiszpania",
+  weather: {
+    tempC: 27,
+    description: "ciepło, komfortowo na zwiedzanie i plażę",
+    verdict: "Tak — to jeden z lepszych terminów na ten kierunek.",
+    warmestMonth: "sierpien" as const,
+    coldestMonth: "styczen" as const,
+    season: { label: "Sezon przejściowy", crowd: "umiarkowany ruch", price: "ceny umiarkowane" },
+  },
+  exactFlightHours: 4.1,
   author: AUTHOR,
-  nowIso: NOW_ISO,
 };
 
 describe("dane strukturalne szablonów (test E i walidacja JSON-LD)", () => {
@@ -49,14 +49,24 @@ describe("dane strukturalne szablonów (test E i walidacja JSON-LD)", () => {
     assert.deepEqual(nodesWithPrice(data), []);
   });
 
-  it("strona miesiąca: bez Offer i bez kwot, nagłówek bez roku", () => {
+  it("strona miesiąca: bez Offer, kwot i dat, nagłówek bez roku", () => {
     const data = buildMonthPageStructuredData(monthInput);
     assert.deepEqual(validateJsonLd(data, { todayIso: TODAY }), []);
     assert.equal(nodeTypes(data).includes("Offer"), false);
     assert.deepEqual(nodesWithPrice(data), []);
     assert.doesNotMatch(JSON.stringify(data), /zł/);
     assert.doesNotMatch(JSON.stringify(data), /\b20\d{2}\b(?!-)/);
+    assert.doesNotMatch(JSON.stringify(data), /datePublished|dateModified/);
+    assert.doesNotMatch(JSON.stringify(data), /morza/i);
     assert.match(JSON.stringify(data), /Malaga we wrześniu/);
+  });
+
+  it("strona miesiąca bez pogody i dokładnego lotu nie emituje FAQPage", () => {
+    const data = buildMonthPageStructuredData({ ...monthInput, weather: null, exactFlightHours: null });
+    assert.deepEqual(validateJsonLd(data, { todayIso: TODAY }), []);
+    assert.equal(nodeTypes(data).includes("FAQPage"), false);
+    assert.doesNotMatch(JSON.stringify(data), /°C/);
+    assert.doesNotMatch(JSON.stringify(data), /datePublished|dateModified/);
   });
 
   it("hotele w mieście: bez Offer i bez kwot, dla każdego miasta", () => {

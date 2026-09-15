@@ -47,24 +47,33 @@ export function guidePageText({ cityPl, flightHours, tripLength, price }: GuideP
 }
 
 export interface MonthPageTextInput {
-  /** Nazwa miasta z profilu kierunku. */
-  city: string;
+  /** Polska nazwa kierunku z bramki faktów SEO. */
+  name: string;
   month: PolishMonthSlug;
-  tempC: number;
+  tempC: number | null;
   price?: VerifiedTitlePrice | null;
 }
 
-export function monthPageText({ city, month, tempC, price }: MonthPageTextInput) {
+export function monthPageText({ name, month, tempC, price }: MonthPageTextInput) {
   const inMonth = inMonthPhrase(month);
+  if (tempC === null) {
+    return {
+      title: price ? `${name} ${inMonth}: ${hotelsFromPhrase(price)}` : `${name} ${inMonth}: hotele i kiedy lecieć`,
+      description: `${name} ${inMonth}: hotele z cenami w PLN i loty na ten termin. Sprawdź dostępność w wyszukiwarce.`,
+      ogTitle: `${name} ${inMonth} — hotele i loty`,
+      headline: `${name} ${inMonth} — hotele i kiedy lecieć`,
+    };
+  }
+
   return {
     title: price
-      ? `${city} ${inMonth}: pogoda ${tempC}°C, ${hotelsFromPhrase(price)}`
-      : `${city} ${inMonth}: pogoda ${tempC}°C, hotele i kiedy lecieć`,
-    description: `Jaka jest pogoda w ${city} ${inMonth}? Średnia temperatura ${tempC}°C. Sprawdź, czy to dobry termin, i przejdź do hoteli i lotów z cenami w PLN.`,
+      ? `${name} ${inMonth}: pogoda ${tempC}°C, ${hotelsFromPhrase(price)}`
+      : `${name} ${inMonth}: pogoda ${tempC}°C, hotele i kiedy lecieć`,
+    description: `${name} ${inMonth}: średnia temperatura ${tempC}°C. Sprawdź, czy to dobry termin, i przejdź do hoteli i lotów z cenami w PLN.`,
     ogTitle: price
-      ? `${city} ${inMonth} — pogoda ${tempC}°C i ${hotelsFromPhrase(price)}`
-      : `${city} ${inMonth} — pogoda ${tempC}°C i hotele`,
-    headline: `${city} ${inMonth} — pogoda, hotele i kiedy lecieć`,
+      ? `${name} ${inMonth} — pogoda ${tempC}°C i ${hotelsFromPhrase(price)}`
+      : `${name} ${inMonth} — pogoda ${tempC}°C i hotele`,
+    headline: `${name} ${inMonth} — pogoda, hotele i kiedy lecieć`,
   };
 }
 

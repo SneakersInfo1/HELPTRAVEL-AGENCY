@@ -34,12 +34,24 @@ describe("tytuły i opisy bez roku i bez ceny modelowanej (testy C i F)", () => 
 
   it("strona kierunku w miesiącu, dla każdego miesiąca", () => {
     for (const month of polishMonthSlugs) {
-      assertNoYearNoAmount(`miesiąc ${month}`, monthPageText({ city: "Malaga", month, tempC: 23 }));
+      assertNoYearNoAmount(`miesiąc ${month}`, monthPageText({ name: "Malaga", month, tempC: 23 }));
     }
     assert.equal(
-      monthPageText({ city: "Malaga", month: "wrzesien", tempC: 27 }).title,
+      monthPageText({ name: "Malaga", month: "wrzesien", tempC: 27 }).title,
       "Malaga we wrześniu: pogoda 27°C, hotele i kiedy lecieć",
     );
+  });
+
+  it("strona miesiąca bez temperatury nie sugeruje danych pogodowych", () => {
+    const text = monthPageText({ name: "Miami", month: "grudzien", tempC: null });
+    assert.equal(text.title, "Miami w grudniu: hotele i kiedy lecieć");
+    assert.equal(
+      text.description,
+      "Miami w grudniu: hotele z cenami w PLN i loty na ten termin. Sprawdź dostępność w wyszukiwarce.",
+    );
+    assert.equal(text.ogTitle, "Miami w grudniu — hotele i loty");
+    assert.equal(text.headline, "Miami w grudniu — hotele i kiedy lecieć");
+    assert.doesNotMatch(JSON.stringify(text), /°C/);
   });
 
   it("hotele w mieście, dla każdego miasta", () => {
@@ -68,7 +80,7 @@ describe("tytuły i opisy bez roku i bez ceny modelowanej (testy C i F)", () => 
     assert.ok(price);
 
     assert.equal(
-      monthPageText({ city: "Malaga", month: "pazdziernik", tempC: 23, price }).title,
+      monthPageText({ name: "Malaga", month: "pazdziernik", tempC: 23, price }).title,
       "Malaga w październiku: pogoda 23°C, hotele od 312 zł/noc",
     );
     assert.match(guidePageText({ cityPl: "Malaga", flightHours: 4.1, tripLength: "4-5 dni", price }).title, /hotele od 312 zł\/noc/);
