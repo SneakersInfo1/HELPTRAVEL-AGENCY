@@ -32,7 +32,6 @@ export interface MonthWeather {
   yearTemps: readonly number[];
   warmestMonth: PolishMonthSlug;
   coldestMonth: PolishMonthSlug;
-  season: { label: string; crowd: string; price: string };
   /** Tylko dla `beachScore >= 0.6`; model z temperatur powietrza. */
   seaTempEstimate: number | null;
 }
@@ -92,27 +91,11 @@ function estimateSeaTemperature(avgTempByMonth: readonly number[], monthIndex: n
   return Math.min(29, Math.max(10, Math.round(modeled)));
 }
 
-type SeasonTier = "peak" | "shoulder" | "low";
-
-function classifySeason(temp: number, monthIndex: number, beachScore: number): SeasonTier {
-  const highSummer = monthIndex >= 5 && monthIndex <= 8;
-  if (beachScore >= 0.6) {
-    if (temp >= 24 && highSummer) return "peak";
-    if (temp >= 20) return "shoulder";
-    return "low";
-  }
-  if ((monthIndex >= 4 && monthIndex <= 8) || monthIndex === 11) {
-    return temp >= 18 ? "peak" : "shoulder";
-  }
-  return temp >= 14 ? "shoulder" : "low";
-}
-
-const seasonCopy: Record<SeasonTier, { label: string; crowd: string; price: string }> = {
-  peak: { label: "Wysoki sezon", crowd: "najwięcej turystów", price: "ceny w szczycie" },
-  shoulder: { label: "Sezon przejściowy", crowd: "umiarkowany ruch", price: "ceny umiarkowane" },
-  low: { label: "Poza sezonem", crowd: "najspokojniej", price: "ceny najniższe" },
-};
-
+// Bez „sezonu", tłumów i cen. Klasyfikacja sezonu z samej temperatury
+// („Styczeń to poza sezonem — najspokojniej, ceny najniższe") nie ma źródła
+// o ruchu ani cenach i myli się dla kierunków zimowego słońca: na Teneryfie
+// styczeń to szczyt sezonu. Temperatura z danych kuratorowanych zostaje
+// faktem; sezon i ceny wrócą dopiero z własnym źródłem.
 function buildWeather(profile: DestinationProfile, facts: DestinationSeoFacts, monthIndex: number): MonthWeather | null {
   const tempC = monthTemperature(facts, monthIndex);
   const yearTemps = facts.temperature?.byMonth;
@@ -120,7 +103,6 @@ function buildWeather(profile: DestinationProfile, facts: DestinationSeoFacts, m
 
   const yearMin = Math.min(...yearTemps);
   const yearMax = Math.max(...yearTemps);
-  const season = seasonCopy[classifySeason(tempC, monthIndex, profile.beachScore)];
 
   return {
     tempC,
@@ -132,7 +114,6 @@ function buildWeather(profile: DestinationProfile, facts: DestinationSeoFacts, m
     yearTemps,
     warmestMonth: polishMonthSlugs[yearTemps.indexOf(yearMax)],
     coldestMonth: polishMonthSlugs[yearTemps.indexOf(yearMin)],
-    season,
     seaTempEstimate: profile.beachScore >= 0.6 ? estimateSeaTemperature(yearTemps, monthIndex) : null,
   };
 }
@@ -151,7 +132,7 @@ export function buildMonthPageModel(input: MonthPageModelInput): MonthPageModel 
     ? `${facts.name} ${inMonth} — pogoda ${weather.tempC}°C, hotele i kiedy lecieć`
     : `${facts.name} ${inMonth} — hotele i kiedy lecieć`;
   const lead = weather
-    ? `${facts.name} ${inMonth}: ${weather.description} (śr. ${weather.tempC}°C${weather.seaTempEstimate !== null ? `, morze szacunkowo ~${weather.seaTempEstimate}°C` : ""}). To ${weather.season.label.toLowerCase()} — ${weather.season.crowd}, ${weather.season.price}.${budgetEstimate ? " Poniżej orientacyjny budżet, najlepszy termin i przejście do hoteli z cenami w PLN." : " Poniżej najlepszy termin i przejście do hoteli z cenami w PLN."}`
+    ? `${facts.name} ${inMonth}: ${weather.description} (śr. ${weather.tempC}°C${weather.seaTempEstimate !== null ? `, morze szacunkowo ~${weather.seaTempEstimate}°C` : ""}).${budgetEstimate ? " Poniżej orientacyjny budżet, temperatury w ciągu roku i przejście do hoteli z cenami w PLN." : " Poniżej temperatury w ciągu roku i przejście do hoteli z cenami w PLN."}`
     : `${facts.name} ${inMonth}: przejdź do hoteli z cenami w PLN na ten termin i sprawdź dostępność.`;
   const structuredData = buildMonthPageStructuredData({
     baseUrl,
@@ -164,9 +145,6 @@ export function buildMonthPageModel(input: MonthPageModelInput): MonthPageModel 
           tempC: weather.tempC,
           description: weather.description,
           verdict: weather.verdict,
-          season: weather.season,
-          warmestMonth: weather.warmestMonth,
-          coldestMonth: weather.coldestMonth,
         }
       : null,
     exactFlightHours: exactFlightHours(facts),

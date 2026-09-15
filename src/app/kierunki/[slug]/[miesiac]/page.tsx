@@ -187,16 +187,11 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
       {weather && (
         <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <h2 className="font-display text-3xl text-ink">
-            {facts.name} {inMonth}: sezon i morze
+            {weather.seaTempEstimate !== null
+              ? `${facts.name} ${inMonth}: morze i najcieplejszy miesiąc`
+              : `${facts.name}: najcieplejszy miesiąc`}
           </h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-surface-sunken p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Sezon</p>
-              <p className="mt-1 text-xl font-bold text-ink">{weather.season.label}</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                {weather.season.crowd}, {weather.season.price}
-              </p>
-            </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {weather.seaTempEstimate !== null && (
               <div className="rounded-2xl bg-surface-sunken p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Temperatura morza</p>
@@ -217,22 +212,21 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
             </div>
           </div>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-ink-muted">
-            {facts.name} {inMonth}: {weather.season.label.toLowerCase()} ({weather.season.crowd},{" "}
-            {weather.season.price}). Najcieplej jest{" "}
+            {facts.name}: najcieplej jest{" "}
             <Link
               href={`/kierunki/${slug}/${weather.warmestMonth}`}
               className="font-semibold underline-offset-2 hover:underline"
             >
               <span className="text-brand">{inMonthPhrase(weather.warmestMonth)}</span>
             </Link>
-            , a najspokojniej i zwykle najtaniej{" "}
+            , a najchłodniej{" "}
             <Link
               href={`/kierunki/${slug}/${weather.coldestMonth}`}
               className="font-semibold underline-offset-2 hover:underline"
             >
               <span className="text-brand">{inMonthPhrase(weather.coldestMonth)}</span>
             </Link>
-            . Jeśli zależy Ci na niższej cenie, rozważ termin poza szczytem sezonu.
+            .
           </p>
         </section>
       )}

@@ -68,6 +68,12 @@ describe("model strony kierunku w miesiącu", () => {
         assert.doesNotMatch(jsonLd, /"Offer"|"price"|zł/i, `${profile.slug}/${month}`);
         assert.doesNotMatch(jsonLd, /\d(?:[\d\s.,]*\d)?\s*PLN/i, `${profile.slug}/${month}`);
         assert.doesNotMatch(jsonLd, /morza/i, `${profile.slug}/${month}`);
+        // Sezon, tłumy i ceny z heurystyki temperatury nie mają źródła (Teneryfa: styczeń to szczyt sezonu).
+        assert.doesNotMatch(
+          `${jsonLd} ${model.text.lead}`,
+          /najtaniej|najdrożej|ceny najniższe|najwyższe ceny|ceny w szczycie|ceny umiarkowane|turystów|najspokojniej|wysoki sezon|sezon przejściowy/i,
+          `${profile.slug}/${month}`,
+        );
 
         const faq = collectJsonLdNodes(model.structuredData).find((node) => node["@type"] === "FAQPage");
         if (faq) {
