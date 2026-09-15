@@ -1189,7 +1189,8 @@ function genericStory(destination: DestinationProfile): DestinationStory {
     bestFor: [
       destination.beachScore > 0.7 ? "plażą" : "zwiedzanie",
       destination.cityScore > 0.8 ? "city break" : "spokojniejszy pobyt",
-      destination.safetyScore > 0.8 ? "komfortowy wyjazd" : "bardziej budżetowy scenariusz",
+      // Bez „bardziej budżetowy scenariusz": tag wynikał z progu `safetyScore`, a nie z kosztów.
+      ...(destination.safetyScore > 0.8 ? ["komfortowy wyjazd"] : []),
     ],
   };
 }

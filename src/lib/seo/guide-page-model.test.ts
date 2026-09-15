@@ -2,11 +2,20 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { getDestinationStory } from "@/lib/mvp/destination-content";
-import { getLocalizedDestinationGuide } from "@/lib/mvp/destination-localization";
+import {
+  buildLocalizedAvoidNotes,
+  buildLocalizedComparisonSignals,
+  buildLocalizedWinningScenarios,
+  getLocalizedDestinationGuide,
+} from "@/lib/mvp/destination-localization";
 import { curatedDestinations, getAllDestinationProfiles } from "@/lib/mvp/destinations";
-import { getCategoriesForDestination, getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
+import {
+  getCategoriesForDestination,
+  getDestinationGuideBySlug,
+  getSimilarDestinations,
+} from "@/lib/mvp/publisher-content";
 
-import { ENTRY_REQUIREMENTS_NOTE } from "./destination-facts";
+import { destinationDisplayName, ENTRY_REQUIREMENTS_NOTE } from "./destination-facts";
 import { buildGuidePageModel } from "./guide-page-model";
 import { collectJsonLdNodes, validateJsonLd } from "./jsonld-validate";
 
@@ -22,6 +31,9 @@ const TODAY = "2026-09-15";
 const HERO = "https://images.pexels.com/photos/1/pexels-photo-1.jpeg";
 const AUTHOR = { "@type": "Person", name: "Jakub Ogrodniczuk", url: `${SITE}/redakcja` };
 const HOURS = /\d[.,]\d\s?h\b/;
+// Oceny kosztów z `costIndex`: w profilu z szablonu to stała kraju albo regionu (deriveCostIndex).
+const COST_CLAIMS =
+  /indeks\w* kosztów|taniej|(?:pułapie|pulapie) cenowym|średni budżet|rozsądnym budżecie|z mysla o budżecie|budżet warto|broni budżet|droga destynacja/i;
 
 const profiles = getAllDestinationProfiles();
 const curatedSlugs = new Set(curatedDestinations.map((destination) => destination.slug));
@@ -74,6 +86,18 @@ describe("model przewodnika po kierunku", () => {
     }
   });
 
+  it("dolot bez dokładnego czasu lotu: bez etykiety i scenariusza z oceny dostępności (stała regionu)", () => {
+    for (const profile of profiles) {
+      const { guide, localizedGuide, model } = build(profile.slug);
+      if (model.facts.flight?.kind === "exact") continue;
+      assert.equal(localizedGuide.routeComfort, "", profile.slug);
+      assert.ok(
+        !buildLocalizedWinningScenarios(guide, "pl").some((scenario) => scenario.title === "Wygrywa, gdy liczysz na sprawny wyjazd"),
+        profile.slug,
+      );
+    }
+  });
+
   it("temperatura spoza danych kuratorowanych: bez °C w JSON-LD i bez najlepszych miesięcy (test B)", () => {
     for (const profile of profiles) {
       if (curatedSlugs.has(profile.slug)) continue;
@@ -88,6 +112,43 @@ describe("model przewodnika po kierunku", () => {
     for (const profile of profiles) {
       const { model } = build(profile.slug);
       assert.equal(model.budgetEstimate !== null, curatedSlugs.has(profile.slug), profile.slug);
+    }
+  });
+
+  it("koszty z szablonu regionu: bez indeksu kosztów, pasm budżetu i porównań cen (FAQ, treść, kategorie)", () => {
+    for (const profile of profiles) {
+      const { guide, localizedGuide, model } = build(profile.slug);
+      // Liczba `costIndex` nie trafia do FAQPage w żadnym przewodniku — także przy danych kuratorowanych.
+      assert.doesNotMatch(faqAnswers(model.structuredData), /indeks\w* kosztów/i, profile.slug);
+      assert.doesNotMatch(JSON.stringify(localizedGuide.faq), /najwyższe ceny|najdrożej|najtłumniej|sezon czy poza sezonem/i, profile.slug);
+      if (curatedSlugs.has(profile.slug)) continue;
+
+      assert.equal(localizedGuide.budgetNote, "", profile.slug);
+      assert.doesNotMatch(
+        JSON.stringify({ whyGo: localizedGuide.whyGo, whoFor: localizedGuide.whoFor, faq: localizedGuide.faq, tags: localizedGuide.bestForTags }),
+        COST_CLAIMS,
+        profile.slug,
+      );
+      assert.doesNotMatch(JSON.stringify(localizedGuide.bestForTags), /budżet/i, profile.slug);
+      assert.ok(!getCategoriesForDestination(profile.slug).some((category) => category.slug === "tanie-podróże"), profile.slug);
+      assert.ok(!buildLocalizedAvoidNotes(guide, "pl").some((note) => /budżec/i.test(note)), profile.slug);
+      assert.ok(!buildLocalizedWinningScenarios(guide, "pl").some((scenario) => /budżet/i.test(scenario.title)), profile.slug);
+      for (const signal of buildLocalizedComparisonSignals(profile, getSimilarDestinations(profile.slug, 4), "pl")) {
+        assert.doesNotMatch(`${signal.summary} ${signal.bestFor ?? ""}`, COST_CLAIMS, `${profile.slug} → ${signal.slug}`);
+      }
+    }
+  });
+
+  it("porównanie z podobnymi kierunkami podaje polskie nazwy", () => {
+    const palma = profiles.find((profile) => profile.slug === "palma-spain");
+    assert.ok(palma);
+    const signals = buildLocalizedComparisonSignals(palma, getSimilarDestinations("palma-spain", 4), "pl");
+    assert.ok(signals.length > 0);
+    for (const signal of signals) {
+      const alternative = profiles.find((profile) => profile.slug === signal.slug);
+      assert.ok(alternative, signal.slug);
+      assert.equal(signal.city, destinationDisplayName(alternative));
+      assert.doesNotMatch(`${signal.summary} ${signal.bestFor ?? ""}`, /\bPalma jest\b|Ibiza Town|Arrecife/, signal.slug);
     }
   });
 
@@ -113,7 +174,10 @@ describe("model przewodnika po kierunku", () => {
   });
 
   it("dane kuratorowane zostają faktem (test D), kierunek w Polsce bez lotu", () => {
-    assert.equal(build("malaga-spain").model.text.title, "Malaga: przewodnik, kiedy lecieć i gdzie spać, lot 3.4 h");
+    const malaga = build("malaga-spain");
+    assert.equal(malaga.model.text.title, "Malaga: przewodnik, kiedy lecieć i gdzie spać, lot 3.4 h");
+    assert.notEqual(malaga.localizedGuide.routeComfort, "");
+    assert.equal(buildLocalizedWinningScenarios(malaga.guide, "pl").length, 3);
     const warsaw = build("warsaw-poland").model;
     assert.doesNotMatch(warsaw.text.title, HOURS);
     assert.equal(warsaw.flightChip, null);

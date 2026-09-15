@@ -149,6 +149,17 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     "pl",
   );
   const winningScenarios = buildLocalizedWinningScenarios(guide, "pl");
+  const scenarioHeading =
+    winningScenarios.length >= 3
+      ? "Trzy sytuacje, w których"
+      : winningScenarios.length === 2
+        ? "Dwie sytuacje, w których"
+        : "Sytuacja, w której";
+  // Karty planowania tylko z danymi, które mają pokrycie; bez żadnej z nich kolumna znika.
+  const showTimingCard = Boolean(localizedGuide.bestTime.trim() || model.tripLength);
+  const showBudgetCard = Boolean(model.budgetEstimate || localizedGuide.budgetNote);
+  const showLogisticsCard = Boolean(model.flightSentence || model.bestMonths.length > 0);
+  const showPlanningColumn = showTimingCard || showBudgetCard || showLogisticsCard;
   // Internal links to this destination's 1:1 comparison pages (/porownanie/…).
   // Passes equity from the ~235 guide pages into the high-CTR comparison pages
   // and gives "X czy Y" searchers a direct entry. SEO master plan D6 (extended).
@@ -261,7 +272,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         items={model.metaBarItems}
       />
 
-      <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className={showPlanningColumn ? "grid gap-5 lg:grid-cols-[1.1fr_0.9fr]" : "grid gap-5"}>
         <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <h2 className="mt-3 font-display text-4xl text-ink">Mocne strony kierunku</h2>
           <div className="mt-5 space-y-3">
@@ -273,49 +284,55 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
         </article>
 
-        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(225,243,231,0.9))] p-6 shadow-sm">
-          <div className="mt-4 grid gap-3">
-            {localizedGuide.bestTime.trim() || model.tripLength ? (
-              <div className="rounded-2xl bg-surface-raised px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepszy czas i tempo</p>
-                {localizedGuide.bestTime.trim() ? (
-                  <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.bestTime}</p>
-                ) : null}
-                {model.tripLength ? (
-                  <p className="mt-2 text-sm leading-7 text-ink-muted">
-                    Najczęściej najlepiej sprawdza się tu wyjazd na {model.tripLength}, bez przesadnego rozciągania pobytu.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            <div className="rounded-2xl bg-surface-raised px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-                {model.budgetEstimate ? "Orientacyjny budżet" : "Budżet"}
-              </p>
-              {model.budgetEstimate ? (
-                <p className="mt-2 text-sm leading-7 text-ink-muted">
-                  Dla 2 osób na 4 dni zwykle warto liczyć okolice {model.budgetEstimate.min}-{model.budgetEstimate.max} PLN.
-                  To orientacyjny zakres planistyczny, a nie cena gwarantowana.
-                </p>
+        {showPlanningColumn ? (
+          <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(225,243,231,0.9))] p-6 shadow-sm">
+            <div className="mt-4 grid gap-3">
+              {showTimingCard ? (
+                <div className="rounded-2xl bg-surface-raised px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepszy czas i tempo</p>
+                  {localizedGuide.bestTime.trim() ? (
+                    <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.bestTime}</p>
+                  ) : null}
+                  {model.tripLength ? (
+                    <p className="mt-2 text-sm leading-7 text-ink-muted">
+                      Najczęściej najlepiej sprawdza się tu wyjazd na {model.tripLength}, bez przesadnego rozciągania pobytu.
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
-              <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
-            </div>
-            {model.flightSentence || model.bestMonths.length > 0 ? (
-              <div className="rounded-2xl bg-surface-raised px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd i logistyka</p>
-                {model.flightSentence ? (
-                  <p className="mt-2 text-sm leading-7 text-ink-muted">{model.flightSentence}</p>
-                ) : null}
-                {model.bestMonths.length > 0 ? (
-                  <p className="mt-2 text-sm leading-7 text-ink-muted">
-                    Kierunek najlepiej wygląda zwykle w miesiącach:{" "}
-                    {model.bestMonths.slice(0, 4).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+              {showBudgetCard ? (
+                <div className="rounded-2xl bg-surface-raised px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+                    {model.budgetEstimate ? "Orientacyjny budżet" : "Budżet"}
                   </p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </article>
+                  {model.budgetEstimate ? (
+                    <p className="mt-2 text-sm leading-7 text-ink-muted">
+                      Dla 2 osób na 4 dni zwykle warto liczyć okolice {model.budgetEstimate.min}-{model.budgetEstimate.max} PLN.
+                      To orientacyjny zakres planistyczny, a nie cena gwarantowana.
+                    </p>
+                  ) : null}
+                  {localizedGuide.budgetNote ? (
+                    <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              {showLogisticsCard ? (
+                <div className="rounded-2xl bg-surface-raised px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd i logistyka</p>
+                  {model.flightSentence ? (
+                    <p className="mt-2 text-sm leading-7 text-ink-muted">{model.flightSentence}</p>
+                  ) : null}
+                  {model.bestMonths.length > 0 ? (
+                    <p className="mt-2 text-sm leading-7 text-ink-muted">
+                      Kierunek najlepiej wygląda zwykle w miesiącach:{" "}
+                      {model.bestMonths.slice(0, 4).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </article>
+        ) : null}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-3">
@@ -356,7 +373,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               </span>
             ))}
           </div>
-          <p className="mt-5 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
+          {localizedGuide.budgetNote ? (
+            <p className="mt-5 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
+          ) : null}
         </article>
       </section>
 
@@ -414,10 +433,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                 </p>
               ) : null}
             </div>
-            {!model.facts.isDomestic ? (
+            {!model.facts.isDomestic && (routeComfort || model.flightSentence) ? (
               <div className="rounded-2xl bg-surface-sunken px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd z Polski</p>
-                <p className="mt-2 text-lg font-bold text-ink">{routeComfort}</p>
+                {routeComfort ? <p className="mt-2 text-lg font-bold text-ink">{routeComfort}</p> : null}
                 {model.flightSentence ? (
                   <p className="mt-2 text-sm leading-6 text-ink-muted">{model.flightSentence}</p>
                 ) : null}
@@ -488,7 +507,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="max-w-3xl">
-            <h2 className="mt-2 font-display text-4xl text-ink">Trzy sytuacje, w których {model.name} najczęściej okazuje się dobrym wyborem.</h2>
+            <h2 className="mt-2 font-display text-4xl text-ink">{scenarioHeading} {model.name} najczęściej okazuje się dobrym wyborem.</h2>
             <p className="mt-3 text-sm leading-7 text-ink-muted">
               Ten blok ma pomoc ocenić, czy brief pasuje do kierunku zanim klikniesz w hotel albo lot.
             </p>
@@ -500,7 +519,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <span className="text-sm font-semibold text-ink">Porównaj z innym kierunkiem</span>
           </LocalizedLink>
         </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div
+          className={`mt-6 grid gap-4 ${winningScenarios.length >= 3 ? "lg:grid-cols-3" : winningScenarios.length === 2 ? "lg:grid-cols-2" : ""}`}
+        >
           {winningScenarios.map((scenario) => (
             <article key={scenario.title} className="rounded-2xl border border-line bg-surface-sunken p-5">
               <h3 className="text-xl font-bold text-ink">{scenario.title}</h3>
@@ -583,7 +604,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               <article key={item.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{item.city}</p>
                 <p className="mt-3 text-sm leading-7 text-ink-muted">{item.summary}</p>
-                <p className="mt-3 text-sm leading-7 text-ink-muted">{item.bestFor}</p>
+                {item.bestFor ? <p className="mt-3 text-sm leading-7 text-ink-muted">{item.bestFor}</p> : null}
                 <LocalizedLink
                   href={`/kierunki/${item.slug}`}
                   className="group mt-4 inline-flex text-sm font-semibold"
