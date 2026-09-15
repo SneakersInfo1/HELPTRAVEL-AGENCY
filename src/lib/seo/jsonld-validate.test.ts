@@ -98,6 +98,47 @@ describe("validateJsonLd — Organization, WebSite, BreadcrumbList, Article, Ite
     assert.equal(messages(graph({ "@type": "ItemList", itemListElement: [] })).length, 1);
   });
 
+  it("FAQPage bez pytań albo z pustą odpowiedzią jest błędem", () => {
+    assert.equal(messages(graph({ "@type": "FAQPage", mainEntity: [] })).length, 1);
+    assert.equal(
+      messages(
+        graph({
+          "@type": "FAQPage",
+          mainEntity: [{ "@type": "Question", name: "Czy warto?", acceptedAnswer: { "@type": "Answer", text: "" } }],
+        }),
+      ).length,
+      1,
+    );
+    assert.deepEqual(
+      messages(
+        graph({
+          "@type": "FAQPage",
+          mainEntity: [{ "@type": "Question", name: "Czy warto?", acceptedAnswer: { "@type": "Answer", text: "Tak." } }],
+        }),
+      ),
+      [],
+    );
+  });
+
+  it("TouristAttraction z samego tagu jest błędem, konkretne miejsce przechodzi (test F)", () => {
+    const fromTag = graph({
+      "@type": "TouristDestination",
+      name: "Alicante",
+      includesAttraction: [{ "@type": "TouristAttraction", name: "spokojniejszy pobyt" }],
+    });
+    assert.equal(messages(fromTag).length, 1);
+    assert.deepEqual(
+      messages(
+        graph({
+          "@type": "TouristAttraction",
+          name: "Alcazaba",
+          address: { "@type": "PostalAddress", addressLocality: "Malaga", addressCountry: "ES" },
+        }),
+      ),
+      [],
+    );
+  });
+
   it("Offer bez ceny, waluty, dostępności albo adresu jest błędem", () => {
     assert.equal(messages(graph(hotelOffer({ price: undefined }))).length, 1);
     assert.equal(messages(graph(hotelOffer({ price: 0 }))).length, 1);

@@ -1,5 +1,6 @@
 // Walidacja JSON-LD dla typów, które serwis faktycznie emituje: Organization,
-// WebSite, BreadcrumbList, Article/BlogPosting, ItemList i Offer.
+// WebSite, BreadcrumbList, Article/BlogPosting, ItemList, FAQPage i Offer
+// oraz TouristAttraction, żeby pseudo-encje z tagów nie wróciły (PR #1.5).
 //
 // To nie jest pełny walidator schema.org — sprawdza warunki, które audyt
 // SEO Growth V1 zastał złamane albo które Google wymaga do wyników
@@ -123,6 +124,37 @@ function validateItemList(node: JsonLdNode, issues: JsonLdIssue[]) {
   checkPositions("ItemList", elements, issues);
 }
 
+function validateFaqPage(node: JsonLdNode, issues: JsonLdIssue[]) {
+  const questions = Array.isArray(node.mainEntity) ? node.mainEntity : [];
+  if (questions.length === 0) {
+    issues.push({ type: "FAQPage", message: "pusta lista pytań" });
+    return;
+  }
+  questions.forEach((entry, index) => {
+    const question = entry as JsonLdNode | null;
+    const answer = question?.acceptedAnswer as JsonLdNode | undefined;
+    if (!isNonEmptyString(question?.name) || !isNonEmptyString(answer?.text)) {
+      issues.push({ type: "FAQPage", message: `pytanie ${index + 1} bez treści albo bez odpowiedzi` });
+    }
+  });
+}
+
+/**
+ * TouristAttraction to konkretne miejsce. Sama nazwa bez adresu, współrzędnych
+ * albo odnośnika to tag udający encję — audyt Faza 2.2 zastał 726 takich węzłów
+ * („spokojniejszy pobyt", „zwiedzanie") na 235 przewodnikach.
+ */
+function validateTouristAttraction(node: JsonLdNode, issues: JsonLdIssue[]) {
+  if (!isNonEmptyString(node.name)) issues.push({ type: "TouristAttraction", message: "brak name" });
+  const hasLocator = Boolean(node.address || node.geo || node.sameAs) || isAbsoluteUrl(node.url);
+  if (!hasLocator) {
+    issues.push({
+      type: "TouristAttraction",
+      message: `${JSON.stringify(node.name)} bez adresu, współrzędnych ani odnośnika — to nie jest konkretne miejsce`,
+    });
+  }
+}
+
 function validateOffer(node: JsonLdNode, todayIso: string, issues: JsonLdIssue[]) {
   const price = typeof node.price === "string" ? Number(node.price) : node.price;
   if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
@@ -165,6 +197,12 @@ export function validateJsonLd(data: unknown, options: { todayIso: string }): Js
           break;
         case "ItemList":
           validateItemList(node, issues);
+          break;
+        case "FAQPage":
+          validateFaqPage(node, issues);
+          break;
+        case "TouristAttraction":
+          validateTouristAttraction(node, issues);
           break;
         case "Offer":
           validateOffer(node, options.todayIso, issues);
