@@ -426,4 +426,32 @@ test.describe("O — szacunek nie udaje ceny, bez deklaracji bez pokrycia", () =
       expect(JSON.stringify(jsonLdBlocks(html))).not.toContain("TouristAttraction");
     });
   }
+
+  // costIndex i accessScore profilu z szablonu to przeliczone stałe regionu (deriveCostIndex, deriveAccessScore).
+  test("/kierunki/alicante-spain: bez indeksu kosztów, porównań cen i oceny dolotu z szablonu regionu", async ({ page }) => {
+    await authorize(page);
+    const html = await (await page.request.get("/kierunki/alicante-spain")).text();
+    const main = textOf(mainHtml(html));
+    const ld = JSON.stringify(jsonLdBlocks(html));
+    expect(`${main} ${ld}`, "O: indeks kosztów").not.toMatch(/indeks\w* kosztów/i);
+    expect(main, "O: porównanie cen z szablonu").not.toMatch(/zwykle taniej|(?:pułapie|pulapie) cenowym|średni budżet/);
+    expect(main, "O: ocena dolotu z szablonu").not.toMatch(/łatwy dolot z Polski|warto dobrze ustawić tras|Dolot z Polski jest relatywnie prosty/);
+  });
+
+  test("/porownanie/heraklion-greece-vs-palma-spain: bez werdyktu budżetu i dolotu z szablonu", async ({ page }) => {
+    await authorize(page);
+    const html = await (await page.request.get("/porownanie/heraklion-greece-vs-palma-spain")).text();
+    const main = textOf(mainHtml(html));
+    expect(main, "O: budżet z szablonu").not.toMatch(/zwykle taniej|(?:pułapie|pulapie) cenowym/);
+    expect(main, "O: dolot z szablonu").not.toMatch(/Dolot\/dostępność|łatwiejszy dolot|łatwiejszą i bardziej regularną logistykę/);
+    expect(JSON.stringify(jsonLdBlocks(html)), "O: pytanie o ciepło bez danych o klimacie").not.toMatch(/cieplej/);
+  });
+
+  test("/kierunki/santa-cruz-de-tenerife-spain/styczen: temperatura bez cen i tłumów z heurystyki sezonu", async ({ page }) => {
+    await authorize(page);
+    const html = await (await page.request.get("/kierunki/santa-cruz-de-tenerife-spain/styczen")).text();
+    const text = `${textOf(mainHtml(html))} ${JSON.stringify(jsonLdBlocks(html))}`;
+    expect(text, "O: ceny i tłumy z heurystyki sezonu").not.toMatch(/najtaniej|ceny najniższe|najwyższe ceny|najwięcej turystów|najspokojniej/);
+    expect(faqAnswers(jsonLdBlocks(html)), "D: temperatura z danych kuratorowanych").toMatch(/°C/);
+  });
 });
