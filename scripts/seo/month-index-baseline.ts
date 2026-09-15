@@ -126,10 +126,10 @@ async function sitemapMonthPaths(sitemapUrl: string, token?: string): Promise<st
 
 async function loadCommittedBaseline() {
   if (!existsSync(BASELINE_FILE)) throw new Error(`brak ${BASELINE_FILE} — najpierw tryb freeze`);
-  const module = await import(pathToFileURL(BASELINE_FILE).href);
+  const baselineModule = await import(pathToFileURL(BASELINE_FILE).href);
   return {
-    baseline: module.CURRENT_INDEX_BASELINE as Readonly<Record<string, readonly string[]>>,
-    meta: module.MONTH_INDEX_BASELINE_META as { count: number; sha256: string },
+    baseline: baselineModule.CURRENT_INDEX_BASELINE as Readonly<Record<string, readonly string[]>>,
+    meta: baselineModule.MONTH_INDEX_BASELINE_META as { count: number; sha256: string },
   };
 }
 
