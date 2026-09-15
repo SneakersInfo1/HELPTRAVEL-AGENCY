@@ -251,18 +251,20 @@ export default async function ComparisonPage({ params }: PageProps) {
         <p className="mt-3 text-xs leading-6 text-ink-muted">{model.scoreNote}</p>
       </section>
 
-      {/* W CZYM WYGRYWA KTÓRY KIERUNEK */}
-      <section>
-        <h2 className="mb-4 font-display text-2xl text-ink sm:text-3xl">W czym wygrywa który kierunek</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {model.verdicts.map((v) => (
-            <article key={v.title} className="rounded-2xl border border-line bg-surface-sunken p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{v.title}</p>
-              <p className="mt-2 text-sm leading-7 text-ink-muted">{v.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      {/* W CZYM WYGRYWA KTÓRY KIERUNEK — przy remisie bez danych kuratorowanych werdyktów nie ma */}
+      {model.verdicts.length > 0 ? (
+        <section>
+          <h2 className="mb-4 font-display text-2xl text-ink sm:text-3xl">W czym wygrywa który kierunek</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {model.verdicts.map((v) => (
+              <article key={v.title} className="rounded-2xl border border-line bg-surface-sunken p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{v.title}</p>
+                <p className="mt-2 text-sm leading-7 text-ink-muted">{v.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* DLA KOGO */}
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">

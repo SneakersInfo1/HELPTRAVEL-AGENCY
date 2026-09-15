@@ -4,7 +4,12 @@ import { describe, it } from "node:test";
 import { comparisonPairs } from "@/lib/mvp/comparisons";
 import { curatedDestinations, getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 
-import { buildComparisonModel, comparisonCoverage, PROFILE_SCORE_NOTE } from "./comparison-model";
+import {
+  buildComparisonModel,
+  comparisonCoverage,
+  PROFILE_SCORE_NOTE,
+  PROFILE_SCORE_NOTE_WITH_ACCESS,
+} from "./comparison-model";
 import { collectJsonLdNodes, validateJsonLd } from "./jsonld-validate";
 
 // Porównania kierunków bez faktów z fallbacku (PR #1.5, brief §17).
@@ -42,10 +47,11 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
       const ld = JSON.stringify(model.structuredData);
       assert.deepEqual(validateJsonLd(model.structuredData, { todayIso: TODAY }), [], pair.slug);
       assert.doesNotMatch(ld, /zł|PLN|"Offer"|"price"|datePublished|dateModified/, pair.slug);
-      assert.ok(model.rows.length >= 4, `${pair.slug}: ${model.rows.length} wierszy`);
+      assert.ok(model.rows.length >= 3, `${pair.slug}: ${model.rows.length} wierszy`);
       const faqPage = collectJsonLdNodes(model.structuredData).find((node) => node["@type"] === "FAQPage");
       assert.ok(faqPage && Array.isArray(faqPage.mainEntity) && faqPage.mainEntity.length >= 3, pair.slug);
-      assert.equal(model.scoreNote, PROFILE_SCORE_NOTE);
+      const hasAccessRow = model.rows.some((row) => row.label === "Dolot/dostępność");
+      assert.equal(model.scoreNote, hasAccessRow ? PROFILE_SCORE_NOTE_WITH_ACCESS : PROFILE_SCORE_NOTE, pair.slug);
     }
   });
 
@@ -95,6 +101,43 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
     }
   });
 
+  // costIndex i accessScore profilu z szablonu to przeliczone stałe regionu
+  // (deriveCostIndex, deriveAccessScore ← countryAccessHours).
+  it("koszty i dolot z profilu szablonu nie wracają jako werdykt, FAQ, szybka odpowiedź ani odbiorcy", () => {
+    for (const pair of comparisonPairs) {
+      const model = modelFor(pair.slug);
+      const bothCurated = curated.has(model.a.profile.slug) && curated.has(model.b.profile.slug);
+      const exactFlights = model.a.facts.flight?.kind === "exact" && model.b.facts.flight?.kind === "exact";
+
+      assert.equal(model.verdicts.some((verdict) => verdict.title === "Budżet"), bothCurated, pair.slug);
+      if (!bothCurated) {
+        assert.doesNotMatch(
+          JSON.stringify({ verdicts: model.verdicts, faq: model.faq, quick: model.quickAnswer }),
+          /taniej|pułap|budżet/i,
+          pair.slug,
+        );
+      }
+      if (!exactFlights) {
+        assert.ok(!model.verdicts.some((verdict) => verdict.title === "Dolot z Polski"), pair.slug);
+        assert.ok(!model.rows.some((row) => row.label === "Dolot/dostępność"), pair.slug);
+        assert.doesNotMatch(
+          JSON.stringify({ faq: model.faq, quick: model.quickAnswer }),
+          /dolot i logistyka|dolotu i logistyki|dolot z Polski/i,
+          pair.slug,
+        );
+      }
+      model.audience.forEach((tags, index) => {
+        const side = index === 0 ? model.a : model.b;
+        if (!curated.has(side.profile.slug)) {
+          assert.ok(!tags.includes("napiętego budżetu"), `${pair.slug}: ${side.profile.slug}`);
+        }
+      });
+
+      const climate = comparisonCoverage(model.a.profile, model.b.profile).climate;
+      assert.equal(model.faq.some((item) => /cieplej/.test(item.question)), climate, pair.slug);
+    }
+  });
+
   it("Kreta–Rodos i Kreta–Majorka: niepusta tabela bez liczb z szablonu i bez zwycięzcy wybranego przy remisie", () => {
     for (const slug of ["heraklion-greece-vs-rhodes-greece", "heraklion-greece-vs-palma-spain"]) {
       const model = modelFor(slug);
@@ -103,8 +146,10 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
       assert.doesNotMatch(text, /\d\s?(zł|PLN)/, slug);
       assert.equal(model.budget, null, slug);
       assert.equal(model.whenToGo.length, 0, slug);
-      assert.ok(model.rows.length >= 4, slug);
+      assert.ok(model.rows.length >= 3, slug);
       assert.doesNotMatch(model.quickAnswer, /lepszy jest|najprostszy dolot z Polski ma/, slug);
+      assert.ok(!model.verdicts.some((verdict) => verdict.title === "Budżet" || verdict.title === "Dolot z Polski"), slug);
+      assert.ok(!model.rows.some((row) => row.label === "Dolot/dostępność"), slug);
     }
   });
 
@@ -117,15 +162,25 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
     }
   });
 
-  it("Malaga–Walencja: dane kuratorowane nadal w tabeli, FAQ i sekcji terminów (test D)", () => {
+  it("Malaga–Walencja: dane kuratorowane nadal w tabeli, FAQ, werdyktach i sekcji terminów (test D)", () => {
     const model = modelFor("malaga-spain-vs-valencia-spain");
     const labels = model.rows.map((row) => row.label);
-    for (const label of ["Lot z Polski (h)", "Średnia roczna temperatura", "Lato (cze-sie)", "Zima (gru-lut)", "Budżet 2 os. / 4 dni"]) {
+    for (const label of [
+      "Lot z Polski (h)",
+      "Średnia roczna temperatura",
+      "Lato (cze-sie)",
+      "Zima (gru-lut)",
+      "Budżet 2 os. / 4 dni",
+      "Dolot/dostępność",
+    ]) {
       assert.ok(labels.includes(label), label);
     }
     assert.ok(model.budget);
+    assert.equal(model.scoreNote, PROFILE_SCORE_NOTE_WITH_ACCESS);
+    assert.ok(model.verdicts.some((verdict) => verdict.title === "Budżet"));
     assert.equal(model.whenToGo.length, 2);
     assert.ok(model.faq.some((item) => item.question === "Kiedy najlepiej jechać?"));
+    assert.ok(model.faq.some((item) => /cieplej/.test(item.question)));
     assert.match(model.rows.find((row) => row.label === "Lot z Polski (h)")?.av ?? "", /^~\d\.\d h$/);
   });
 });

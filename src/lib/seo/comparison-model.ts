@@ -10,6 +10,12 @@
 // tabeli, zdanie FAQ albo sekcja pojawia się tylko wtedy, gdy obie strony mają
 // wartość dozwoloną kontraktem. Wyniki profilu 0–100 zostają jako oznaczona
 // wewnętrzna ocena, więc tabela nigdy nie jest pusta. Remis = brak zwycięzcy.
+//
+// W profilu z szablonu `costIndex` i `accessScore` to przeliczone stałe regionu
+// (deriveCostIndex, deriveAccessScore ← countryAccessHours w destinations.ts).
+// „Taniej", „podobny pułap cenowy" i „łatwiejszy dolot" powtarzałyby szablon
+// innymi słowami, dlatego werdykt o budżecie wymaga kosztów z danych
+// kuratorowanych, a werdykt o dolocie — dokładnego czasu lotu po obu stronach.
 
 import type { ComparisonPair } from "@/lib/mvp/comparisons";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
@@ -73,6 +79,10 @@ export interface ComparisonModel {
 }
 
 export const PROFILE_SCORE_NOTE =
+  "Profil plażowy, city break i zwiedzanie to nasza wewnętrzna ocena w skali 0–100, a nie pomiar.";
+
+/** Nota, gdy tabela ma też wiersz dolotu (obie strony z dokładnym czasem lotu). */
+export const PROFILE_SCORE_NOTE_WITH_ACCESS =
   "Profil plażowy, city break, zwiedzanie i dolot to nasza wewnętrzna ocena w skali 0–100, a nie pomiar.";
 
 /** Różnica wyników poniżej progu to remis — nie ogłaszamy zwycięzcy. */
@@ -120,6 +130,11 @@ function winner(
   return av > bv ? a : b;
 }
 
+/** Ocena dolotu ma pokrycie tylko przy dokładnym czasie lotu po obu stronach. */
+function bothExactFlights(a: ComparisonSide, b: ComparisonSide): boolean {
+  return a.facts.flight?.kind === "exact" && b.facts.flight?.kind === "exact";
+}
+
 function flightCell(fact: FlightFact): string {
   const hours = `~${fact.hours.toFixed(1)} h`;
   return fact.kind === "exact" ? hours : `${hours} (szacunek)`;
@@ -140,28 +155,34 @@ function audienceTags(side: ComparisonSide): string[] {
   if (d.sightseeingScore >= 0.7) tags.push("zwiedzania i zabytków");
   if (d.nightlifeScore >= 0.72) tags.push("nocnego życia");
   if (d.natureScore >= 0.78) tags.push("natury i krajobrazów");
-  if (d.costIndex <= 1.0) tags.push("napiętego budżetu");
+  if (d.costIndex <= 1.0 && canShowBudgetEstimate(side.facts)) tags.push("napiętego budżetu");
   const hours = flightHoursForTripLength(side.facts);
   if (hours !== null && hours <= 3.3) tags.push("krótkiego wypadu (bliski lot)");
   if (tags.length === 0) tags.push("uniwersalnego wyjazdu na 3-5 dni");
   return tags.slice(0, 4);
 }
 
-function buildVerdicts(a: ComparisonSide, b: ComparisonSide): Array<{ title: string; body: string }> {
+function buildVerdicts(
+  a: ComparisonSide,
+  b: ComparisonSide,
+  budgets: { a: number; b: number } | null,
+): Array<{ title: string; body: string }> {
   const verdicts: Array<{ title: string; body: string }> = [];
 
-  const cheaper = winner(a, b, (d) => -d.costIndex);
-  verdicts.push(
-    cheaper
-      ? {
-          title: "Budżet",
-          body: `${cheaper.name} wypada zwykle taniej — przy podobnym planie łatwiej obronić tańszy kierunek.`,
-        }
-      : {
-          title: "Budżet",
-          body: `${a.name} i ${b.name} grają w podobnym pułapie cenowym, więc budżet rzadko jest decydujący.`,
-        },
-  );
+  if (budgets) {
+    const cheaper = winner(a, b, (d) => -d.costIndex);
+    verdicts.push(
+      cheaper
+        ? {
+            title: "Budżet",
+            body: `${cheaper.name} wypada zwykle taniej — przy podobnym planie łatwiej obronić tańszy kierunek.`,
+          }
+        : {
+            title: "Budżet",
+            body: `${a.name} i ${b.name} grają w podobnym pułapie cenowym, więc budżet rzadko jest decydujący.`,
+          },
+    );
+  }
 
   const beach = winner(a, b, (d) => d.beachScore);
   if (beach) {
@@ -179,7 +200,7 @@ function buildVerdicts(a: ComparisonSide, b: ComparisonSide): Array<{ title: str
     });
   }
 
-  const access = winner(a, b, (d) => d.accessScore);
+  const access = bothExactFlights(a, b) ? winner(a, b, (d) => d.accessScore) : null;
   if (access) {
     verdicts.push({
       title: "Dolot z Polski",
@@ -207,24 +228,27 @@ function buildFaq(
   b: ComparisonSide,
   budgets: { a: number; b: number } | null,
 ): Array<{ question: string; answer: string }> {
+  const exactFlights = bothExactFlights(a, b);
   const easier = winner(a, b, (d) => d.accessScore);
   const beach = winner(a, b, (d) => d.beachScore);
   const city = winner(a, b, (d) => d.cityScore + d.sightseeingScore);
   const summer = warmerInSummer(a, b);
+  const logistics = exactFlights
+    ? easier
+      ? `Na prosty pierwszy wyjazd zwykle wygodniej wypada ${easier.name} (łatwiejszy dolot i logistyka z Polski). `
+      : "Pod względem dolotu i logistyki z Polski oba kierunki wypadają podobnie. "
+    : "";
 
   const faq = [
     {
       question: `${a.name} czy ${b.name} — co wybrać na pierwszy raz?`,
-      answer: `${
-        easier
-          ? `Na prosty pierwszy wyjazd zwykle wygodniej wypada ${easier.name} (łatwiejszy dolot i logistyka z Polski).`
-          : "Pod względem dolotu i logistyki z Polski oba kierunki wypadają podobnie."
-      } ${beach ? `Jeśli zależy Ci głównie na plaży, lepszy będzie ${beach.name}` : "Pod plażę oba są porównywalne"}; ${
+      answer: `${logistics}${beach ? `Jeśli zależy Ci głównie na plaży, lepszy będzie ${beach.name}` : "Pod plażę oba są porównywalne"}; ${
         city ? `jeśli na zwiedzaniu i miejskim klimacie — ${city.name}.` : "pod zwiedzanie żaden nie ma wyraźnej przewagi."
       }`,
     },
     {
-      question: `Gdzie cieplej i lepsza plaża — ${a.name} czy ${b.name}?`,
+      // Bez danych o klimacie pytanie nie obiecuje odpowiedzi o temperaturze.
+      question: summer ? `Gdzie cieplej i lepsza plaża — ${a.name} czy ${b.name}?` : `Gdzie lepsza plaża — ${a.name} czy ${b.name}?`,
       answer:
         (beach ? `Pod kątem plaży mocniej wypada ${beach.name}.` : "Pod kątem plaży oba kierunki wypadają podobnie.") +
         (summer
@@ -274,13 +298,18 @@ function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide, budgets: { a: nu
     ? `Na plażę i wypoczynek nad morzem lepszy jest ${beach.name}`
     : "Pod plażę i wypoczynek nad morzem oba kierunki wypadają podobnie";
   const cityPart = city ? `a na zwiedzanie i miejski klimat — ${city.name}` : "a pod zwiedzanie żaden nie ma wyraźnej przewagi";
-  const accessPart = easier ? `najprostszy dolot z Polski ma ${easier.name}` : "dolot z Polski jest porównywalny";
+  const accessPart = bothExactFlights(a, b)
+    ? easier
+      ? `najprostszy dolot z Polski ma ${easier.name}`
+      : "dolot z Polski jest porównywalny"
+    : null;
 
   let answer = `${a.name} czy ${b.name}? ${beachPart}, ${cityPart}.`;
   if (budgets) {
     const cheaper = cheaperName(a, b, budgets);
-    answer += ` ${cheaper ? `Taniej zwykle wychodzi ${cheaper}` : "Budżetowo oba kierunki są podobne"}, a ${accessPart}.`;
-  } else {
+    const budgetPart = cheaper ? `Taniej zwykle wychodzi ${cheaper}` : "Budżetowo oba kierunki są podobne";
+    answer += accessPart ? ` ${budgetPart}, a ${accessPart}.` : ` ${budgetPart}.`;
+  } else if (accessPart) {
     answer += ` ${accessPart.charAt(0).toUpperCase()}${accessPart.slice(1)}.`;
   }
   if (summer?.warmer) answer += ` Latem cieplej bywa w kierunku ${summer.warmer}.`;
@@ -303,6 +332,7 @@ export function buildComparisonModel(input: ComparisonModelInput): ComparisonMod
   const factsB = getDestinationSeoFacts(input.b);
   const a: ComparisonSide = { profile: input.a, facts: factsA, name: pair.labelA ?? factsA.name };
   const b: ComparisonSide = { profile: input.b, facts: factsB, name: pair.labelB ?? factsB.name };
+  const exactFlights = bothExactFlights(a, b);
 
   const budgets =
     canShowBudgetEstimate(factsA) && canShowBudgetEstimate(factsB) ? { a: budget(input.a), b: budget(input.b) } : null;
@@ -335,12 +365,14 @@ export function buildComparisonModel(input: ComparisonModelInput): ComparisonMod
       av: `${Math.round(input.a.sightseeingScore * 100)}/100`,
       bv: `${Math.round(input.b.sightseeingScore * 100)}/100`,
     },
-    {
+  );
+  if (exactFlights) {
+    rows.push({
       label: "Dolot/dostępność",
       av: `${Math.round(input.a.accessScore * 100)}/100`,
       bv: `${Math.round(input.b.accessScore * 100)}/100`,
-    },
-  );
+    });
+  }
 
   const whenToGo: ComparisonWhenToGo[] = [];
   const missingClimate: ComparisonSide[] = [];
@@ -360,8 +392,8 @@ export function buildComparisonModel(input: ComparisonModelInput): ComparisonMod
     a,
     b,
     rows,
-    scoreNote: PROFILE_SCORE_NOTE,
-    verdicts: buildVerdicts(a, b),
+    scoreNote: exactFlights ? PROFILE_SCORE_NOTE_WITH_ACCESS : PROFILE_SCORE_NOTE,
+    verdicts: buildVerdicts(a, b, budgets),
     faq,
     quickAnswer: buildQuickAnswer(a, b, budgets),
     whenToGo,
