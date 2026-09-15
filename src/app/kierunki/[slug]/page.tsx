@@ -13,7 +13,7 @@ import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { categoryPath } from "@/lib/mvp/category-slug";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
-import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
+import { localizeCity } from "@/lib/mvp/i18n-geo";
 import { getDestinationStory, getStoryBySlug } from "@/lib/mvp/destination-content";
 import {
   buildLocalizedAvoidNotes,
@@ -33,50 +33,12 @@ import {
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib/mvp/travel-dates";
-import { guidePageText } from "@/lib/seo/page-titles";
+import { flightHoursForTripLength } from "@/lib/seo/destination-facts";
+import { buildGuidePageModel } from "@/lib/seo/guide-page-model";
 import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 interface DestinationGuidePageProps {
   params: Promise<{ slug: string }>;
-}
-
-function estimateBudget(costIndex: number, flightHours: number) {
-  const days = 4;
-  const travelers = 2;
-  const flightBasePerPerson = 380 + flightHours * 70;
-  const stayAndFoodPerDayPerPerson = 170 * costIndex;
-  const localTransportAndTickets = 65 * costIndex;
-  const total =
-    travelers * flightBasePerPerson +
-    travelers * days * stayAndFoodPerDayPerPerson +
-    days * localTransportAndTickets;
-
-  return {
-    min: Math.round(total * 0.9),
-    max: Math.round(total * 1.18),
-  };
-}
-
-function bestMonthsFromTemperatures(temperatures: number[]) {
-  const comfortableMonths = temperatures
-    .map((temp, index) => ({ temp, index }))
-    .filter((item) => item.temp >= 20 && item.temp <= 30)
-    .slice(0, 6)
-    .map((item) => item.index + 1);
-
-  return comfortableMonths;
-}
-
-function idealTripLength(flightHours: number) {
-  if (flightHours <= 3.5) {
-    return "3-4 dni";
-  }
-
-  if (flightHours <= 5.5) {
-    return "4-5 dni";
-  }
-
-  return "5-7 dni";
 }
 
 function recommendedNights(flightHours: number) {
@@ -106,48 +68,44 @@ export async function generateMetadata({ params }: DestinationGuidePageProps): P
     };
   }
 
-  const tripLength = idealTripLength(guide.destination.typicalFlightHoursFromPL);
-  // Polish display name for title/meta/SEO. Prefer the curated editorial name
-  // (so island guides read "Kreta"/"Majorka", not the airport city
-  // "Heraklion"/"Palma"); otherwise fall back to the city exonym (Athens
-  // Ateny). The canonical English city name stays as the LiteAPI search key.
-  const cityPl = getStoryBySlug(guide.destination.slug)?.name ?? localizeCity(guide.destination.city);
-  const countryPl = localizeCountry(guide.destination.country);
-
-  // Tytuł, opis, OG i Twitter: lib/seo/page-titles.ts — bez roku i bez ceny
-  // modelowanej. Do 2026-09 stało tu „{miasto} {rok}: hotele od X zł" z kwotą
-  // policzoną ze wzoru (estimateBudget), a nie z oferty.
-  const text = guidePageText({
-    cityPl,
-    flightHours: guide.destination.typicalFlightHoursFromPL,
-    tripLength,
+  // Metadane nie potrzebują zdjęcia z Pexels (używają tylko tekstów modelu),
+  // więc bez dodatkowego zapytania o media przy generowaniu <head>.
+  const story = getDestinationStory(guide.destination);
+  const localizedGuide = getLocalizedDestinationGuide(guide, story, "pl");
+  const baseUrl = getSiteUrl();
+  const model = buildGuidePageModel({
+    guide,
+    localizedGuide,
+    baseUrl,
+    heroImage: story.heroImage ?? "",
+    author: personSchema(EDITOR_IN_CHIEF),
   });
 
   return {
-    title: text.title,
-    description: text.description,
+    title: model.text.title,
+    description: model.text.description,
     keywords: [
-      `${cityPl}`,
-      `hotele ${cityPl}`,
-      `wakacje ${cityPl}`,
-      `${cityPl} przewodnik`,
-      `tanie loty ${cityPl}`,
-      `${countryPl}`,
+      model.name,
+      `hotele ${model.name}`,
+      `wakacje ${model.name}`,
+      `${model.name} przewodnik`,
+      `tanie loty ${model.name}`,
+      model.facts.countryName,
     ].join(", "),
     alternates: {
-      canonical: `/kierunki/${guide.destination.slug}`,
+      canonical: `/kierunki/${model.facts.slug}`,
     },
     openGraph: {
-      title: text.ogTitle,
-      description: text.ogDescription,
-      url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
+      title: model.text.ogTitle,
+      description: model.text.ogDescription,
+      url: `${baseUrl}/kierunki/${model.facts.slug}`,
       type: "article",
       locale: "pl_PL",
     },
     twitter: {
       card: "summary_large_image",
-      title: text.twitterTitle,
-      description: text.twitterDescription,
+      title: model.text.twitterTitle,
+      description: model.text.twitterDescription,
     },
   };
 }
@@ -160,11 +118,14 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
   const media = await resolveDestinationMedia(guide.destination);
   const story = getDestinationStory({ ...guide.destination, media });
   const localizedGuide = getLocalizedDestinationGuide(guide, story, "pl");
-  // Polish display name. Curated editorial name first (island guides
-  // "Kreta"/"Majorka", not "Heraklion"/"Palma"), else city exonym
-  // (Athens Ateny). English `guide.destination.city` stays only in the
-  // LiteAPI search hrefs below (the canonical search key).
-  const cityPl = getStoryBySlug(guide.destination.slug)?.name ?? localizeCity(guide.destination.city);
+  const baseUrl = getSiteUrl();
+  const model = buildGuidePageModel({
+    guide,
+    localizedGuide,
+    baseUrl,
+    heroImage: media.heroImage,
+    author: personSchema(EDITOR_IN_CHIEF),
+  });
   const relatedArticles = getArticlesForDestination(slug).slice(0, 4);
   const relatedCategories = getCategoriesForDestination(slug).slice(0, 4);
   const similarDestinations = await Promise.all(
@@ -174,14 +135,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       media: await resolveDestinationMedia(destination),
     })),
   );
-  const budget = estimateBudget(guide.destination.costIndex, guide.destination.typicalFlightHoursFromPL);
-  const bestMonths = bestMonthsFromTemperatures(guide.destination.avgTempByMonth);
-  const tripLength = idealTripLength(guide.destination.typicalFlightHoursFromPL);
   const defaultStartDate = defaultTravelStartDate();
-  const defaultNights = recommendedNights(guide.destination.typicalFlightHoursFromPL);
+  const defaultNights = recommendedNights(flightHoursForTripLength(model.facts) ?? 3.5);
   const defaultCheckOutDate = addDaysToIsoDate(defaultStartDate, defaultNights);
-  const tripProfile =
-    localizedGuide.tripProfile;
+  const tripProfile = localizedGuide.tripProfile;
   const routeComfort = localizedGuide.routeComfort;
   const visaNote = localizedGuide.visaNote;
   const avoidNotes = buildLocalizedAvoidNotes(guide, "pl");
@@ -200,7 +157,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       const otherSlug = pair.a === slug ? pair.b : pair.a;
       const otherGuide = getDestinationGuideBySlug(otherSlug);
       if (!otherGuide) return null;
-      const thisLabel = (pair.a === slug ? pair.labelA : pair.labelB) ?? cityPl;
+      const thisLabel = (pair.a === slug ? pair.labelA : pair.labelB) ?? model.name;
       const otherLabel =
         (pair.a === slug ? pair.labelB : pair.labelA) ??
         getStoryBySlug(otherSlug)?.name ??
@@ -231,74 +188,14 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
   // into the high-intent money page and gives the user a direct "hotele w X"
   // entry point. SEO master plan D6.
   const commercialCity = findCommercialCityByDestinationId(guide.destination.slug);
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Start", item: `${getSiteUrl()}/` },
-          { "@type": "ListItem", position: 2, name: "Kierunki", item: `${getSiteUrl()}/kierunki` },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: cityPl,
-            item: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
-          },
-        ],
-      },
-      {
-        "@type": "FAQPage",
-        mainEntity: localizedGuide.faq.map((item) => ({
-          "@type": "Question",
-          name: item.question,
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: item.answer,
-          },
-        })),
-      },
-      {
-        "@type": "Article",
-        headline: `${cityPl} - przewodnik`,
-        description: localizedGuide.overview,
-        inLanguage: "pl-PL",
-        mainEntityOfPage: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
-        image: media.heroImage,
-        datePublished: "2026-01-01T00:00:00.000Z",
-        dateModified: new Date().toISOString(),
-        author: personSchema(EDITOR_IN_CHIEF),
-        publisher: { "@id": `${getSiteUrl()}/#organization` },
-        about: [cityPl, localizeCountry(guide.destination.country), "city break", "planowanie podróży"],
-      },
-      {
-        "@type": "TouristDestination",
-        "@id": `${getSiteUrl()}/kierunki/${guide.destination.slug}#destination`,
-        name: cityPl,
-        description: localizedGuide.overview,
-        touristType: Array.isArray(localizedGuide.whoFor) ? localizedGuide.whoFor : [localizedGuide.whoFor],
-        url: `${getSiteUrl()}/kierunki/${guide.destination.slug}`,
-        image: media.heroImage,
-        address: {
-          "@type": "PostalAddress",
-          addressCountry: guide.destination.country,
-          addressLocality: cityPl,
-        },
-        includesAttraction: localizedGuide.bestForTags.slice(0, 6).map((tag) => ({
-          "@type": "TouristAttraction",
-          name: tag,
-        })),
-      },
-    ],
-  };
 
   return (
     <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(model.structuredData) }} />
 
       <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         <div className="relative flex min-h-[24rem] flex-col justify-end sm:min-h-[26rem]">
-          <Image src={media.heroImage} alt={`${cityPl}, ${localizeCountry(guide.destination.country)}`} fill priority className="object-cover" sizes="100vw" />
+          <Image src={media.heroImage} alt={`${model.name}, ${model.facts.countryName}`} fill priority className="object-cover" sizes="100vw" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.12)_0%,rgba(5,18,11,0.72)_100%)]" />
           <div className="relative z-10 p-6 text-white sm:p-8">
             <Breadcrumbs
@@ -306,21 +203,22 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               items={[
                 { label: "Start", href: "/" },
                 { label: "Kierunki", href: "/kierunki" },
-                { label: cityPl },
+                { label: model.name },
               ]}
             />
-            <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">{cityPl}</h1>
+            <h1 className="mt-3 max-w-4xl font-display text-3xl leading-[1.08] sm:text-5xl sm:leading-[0.95] md:text-6xl">{model.name}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/86">{localizedGuide.overview}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">
-                {tripLength}
-              </span>
-              <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">
-                lot ok. {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h
-              </span>
-              <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">
-                od {budget.min} PLN / 2 os.
-              </span>
+              {model.tripLength ? (
+                <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">
+                  {model.tripLength}
+                </span>
+              ) : null}
+              {model.flightChip ? (
+                <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">
+                  {model.flightChip}
+                </span>
+              ) : null}
               {localizedGuide.bestForTags.slice(0, 4).map((item) => (
                 <span key={item} className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">
                   {item}
@@ -354,19 +252,13 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-raised px-5 py-3 shadow-sm">
-        <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} />
-        <span className="text-xs text-ink-muted">Oparte na realnych danych o cenach, pogodzie i lotach</span>
+        <AuthorByline author={EDITOR_IN_CHIEF} />
       </div>
 
       <EditorialMetaBar
         eyebrow="Na start"
         title="Najważniejsze rzeczy przed decyzją o wyjeździe"
-        items={[
-          `${cityPl} z Polski`,
-          `${guide.destination.typicalFlightHoursFromPL.toFixed(1)} h lotu`,
-          localizedGuide.tripLength,
-          "noclegi, loty i dalsze kroki",
-        ]}
+        items={model.metaBarItems}
       />
 
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
@@ -383,26 +275,45 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
         <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(225,243,231,0.9))] p-6 shadow-sm">
           <div className="mt-4 grid gap-3">
+            {localizedGuide.bestTime.trim() || model.tripLength ? (
+              <div className="rounded-2xl bg-surface-raised px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepszy czas i tempo</p>
+                {localizedGuide.bestTime.trim() ? (
+                  <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.bestTime}</p>
+                ) : null}
+                {model.tripLength ? (
+                  <p className="mt-2 text-sm leading-7 text-ink-muted">
+                    Najczęściej najlepiej sprawdza się tu wyjazd na {model.tripLength}, bez przesadnego rozciągania pobytu.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="rounded-2xl bg-surface-raised px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepszy czas i tempo</p>
-              <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.bestTime}</p>
-              <p className="mt-2 text-sm leading-7 text-ink-muted">Najczęściej najlepiej sprawdza się tu wyjazd na {tripLength}, bez przesadnego rozciągania pobytu.</p>
-            </div>
-            <div className="rounded-2xl bg-surface-raised px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Orientacyjny budżet</p>
-              <p className="mt-2 text-sm leading-7 text-ink-muted">
-                Dla 2 osób na 4 dni zwykle warto liczyc okolice {budget.min}-{budget.max} PLN. To orientacyjny zakres
-                planistyczny, a nie cena gwarantowana.
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+                {model.budgetEstimate ? "Orientacyjny budżet" : "Budżet"}
               </p>
+              {model.budgetEstimate ? (
+                <p className="mt-2 text-sm leading-7 text-ink-muted">
+                  Dla 2 osób na 4 dni zwykle warto liczyć okolice {model.budgetEstimate.min}-{model.budgetEstimate.max} PLN.
+                  To orientacyjny zakres planistyczny, a nie cena gwarantowana.
+                </p>
+              ) : null}
               <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
             </div>
-            <div className="rounded-2xl bg-surface-raised px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd i logistyka</p>
-              <p className="mt-2 text-sm leading-7 text-ink-muted">
-                Lot z Polski zwykle zajmuje około {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h. Kierunek
-                najlepiej wygląda zwykle w miesiącach: {bestMonths.slice(0, 4).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
-              </p>
-            </div>
+            {model.flightSentence || model.bestMonths.length > 0 ? (
+              <div className="rounded-2xl bg-surface-raised px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd i logistyka</p>
+                {model.flightSentence ? (
+                  <p className="mt-2 text-sm leading-7 text-ink-muted">{model.flightSentence}</p>
+                ) : null}
+                {model.bestMonths.length > 0 ? (
+                  <p className="mt-2 text-sm leading-7 text-ink-muted">
+                    Kierunek najlepiej wygląda zwykle w miesiącach:{" "}
+                    {model.bestMonths.slice(0, 4).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </article>
       </section>
@@ -471,7 +382,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         <div className="mt-6 grid gap-4 xl:grid-cols-4">
           <LocalizedLink href={internalHotelsHref} className="rounded-2xl border border-brand bg-brand p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:col-span-2 xl:col-span-2">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Hotele</p>
-            <h3 className="mt-2 text-2xl font-bold text-white">Sprawdź hotele w {guide.destination.city}</h3>
+            <h3 className="mt-2 text-2xl font-bold text-white">Sprawdź hotele: {model.name}</h3>
             <p className="mt-3 text-sm leading-6 text-white/82">
               Konkretne ceny w PLN dla terminu {formatShortDate(defaultStartDate, "pl-PL")} – {formatShortDate(defaultCheckOutDate, "pl-PL")}. Bez wychodzenia ze strony.
             </p>
@@ -481,9 +392,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             className="rounded-2xl border border-brand-strong bg-brand-strong p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:col-span-2 xl:col-span-2"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Loty</p>
-            <h3 className="mt-2 text-2xl font-bold text-white">Sprawdź loty do {guide.destination.city}</h3>
+            <h3 className="mt-2 text-2xl font-bold text-white">Sprawdź loty: {model.name}</h3>
             <p className="mt-3 text-sm leading-6 text-white/78">
-              Wyszukaj loty z dowolnego lotniska w Polsce. Lot ok. {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h.
+              Wyszukaj loty z dowolnego lotniska w Polsce.{model.flightSentence ? ` ${model.flightSentence}` : ""}
             </p>
           </LocalizedLink>
           </div>
@@ -496,33 +407,43 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <div className="rounded-2xl bg-surface-sunken px-4 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepszy format</p>
               <p className="mt-2 text-lg font-bold text-ink">{tripProfile}</p>
-              <p className="mt-2 text-sm leading-6 text-ink-muted">
-                To kierunek, który najmocniej pracuje wtedy, gdy planujesz {tripLength} i chcesz sensownego balansu
-                wysiłku do efektu.
-              </p>
+              {model.tripLength ? (
+                <p className="mt-2 text-sm leading-6 text-ink-muted">
+                  To kierunek, który najmocniej pracuje wtedy, gdy planujesz {model.tripLength} i chcesz sensownego
+                  balansu wysiłku do efektu.
+                </p>
+              ) : null}
             </div>
+            {!model.facts.isDomestic ? (
+              <div className="rounded-2xl bg-surface-sunken px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd z Polski</p>
+                <p className="mt-2 text-lg font-bold text-ink">{routeComfort}</p>
+                {model.flightSentence ? (
+                  <p className="mt-2 text-sm leading-6 text-ink-muted">{model.flightSentence}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {model.tripLength ? (
+              <div className="rounded-2xl bg-surface-sunken px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepsza długość</p>
+                <p className="mt-2 text-lg font-bold text-ink">{model.tripLength}</p>
+                <p className="mt-2 text-sm leading-6 text-ink-muted">
+                  Ten scenariusz zwykle daje najlepszy stosunek kosztu do wygody, bez poczucia, ze wyjazd jest za krótki
+                  albo niepotrzebnie rozciagniety.
+                </p>
+              </div>
+            ) : null}
             <div className="rounded-2xl bg-surface-sunken px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd z Polski</p>
-              <p className="mt-2 text-lg font-bold text-ink">{routeComfort}</p>
-              <p className="mt-2 text-sm leading-6 text-ink-muted">
-                Lot zwykle zajmuje około {guide.destination.typicalFlightHoursFromPL.toFixed(1)} h, więc łatwiej ocenić
-                czy to kierunek na szybki wypad, czy na troche dłuższy pobyt.
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+                {model.bestMonths.length > 0 ? "Formalności i sezon" : "Formalności"}
               </p>
-            </div>
-            <div className="rounded-2xl bg-surface-sunken px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepsza długość</p>
-              <p className="mt-2 text-lg font-bold text-ink">{tripLength}</p>
-              <p className="mt-2 text-sm leading-6 text-ink-muted">
-                Ten scenariusz zwykle daje najlepszy stosunek kosztu do wygody, bez poczucia, ze wyjazd jest za krótki
-                albo niepotrzebnie rozciagniety.
-              </p>
-            </div>
-            <div className="rounded-2xl bg-surface-sunken px-4 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Formalności i sezon</p>
               <p className="mt-2 text-lg font-bold text-ink">{visaNote}</p>
-              <p className="mt-2 text-sm leading-6 text-ink-muted">
-                Najmocniejsze miesiące dla tego kierunku to zwykle {bestMonths.slice(0, 3).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
-              </p>
+              {model.bestMonths.length > 0 ? (
+                <p className="mt-2 text-sm leading-6 text-ink-muted">
+                  Najmocniejsze miesiące dla tego kierunku to zwykle{" "}
+                  {model.bestMonths.slice(0, 3).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+                </p>
+              ) : null}
             </div>
           </div>
         </article>
@@ -567,7 +488,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="max-w-3xl">
-            <h2 className="mt-2 font-display text-4xl text-ink">Trzy sytuacje, w których {cityPl} najczęściej okazuje się dobrym wyborem.</h2>
+            <h2 className="mt-2 font-display text-4xl text-ink">Trzy sytuacje, w których {model.name} najczęściej okazuje się dobrym wyborem.</h2>
             <p className="mt-3 text-sm leading-7 text-ink-muted">
               Ten blok ma pomoc ocenić, czy brief pasuje do kierunku zanim klikniesz w hotel albo lot.
             </p>
@@ -649,7 +570,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       {comparisonSignals.length > 0 ? (
         <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <h2 className="mt-2 font-display text-4xl text-ink">Jak {cityPl} wypada na tle podobnych opcji</h2>
+            <h2 className="mt-2 font-display text-4xl text-ink">Jak {model.name} wypada na tle podobnych opcji</h2>
             <LocalizedLink
               href="/kierunki"
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-4 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
@@ -679,9 +600,9 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="max-w-3xl">
-              <h2 className="mt-2 font-display text-4xl text-ink">Porównaj {cityPl} z innym kierunkiem</h2>
+              <h2 className="mt-2 font-display text-4xl text-ink">Porównaj {model.name} z innym kierunkiem</h2>
               <p className="mt-3 text-sm leading-7 text-ink-muted">
-                Wahasz się między dwoma kierunkami? Zobacz bezpośrednie porównanie obok siebie — pogoda miesiąc po miesiącu, orientacyjny budżet, plaże i dolot z Polski.
+                Wahasz się między dwoma kierunkami? Zobacz bezpośrednie porównanie obok siebie — plaże, zwiedzanie i dolot z Polski, a przy kierunkach z opracowanymi danymi także pogoda i orientacyjny budżet.
               </p>
             </div>
             <LocalizedLink
@@ -728,7 +649,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               href={destinationSearchHref}
               className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              <span className="text-sm font-bold text-ink">Sprawdź hotele w {guide.destination.city}</span>
+              <span className="text-sm font-bold text-ink">Sprawdź hotele: {model.name}</span>
             </LocalizedLink>
             <LocalizedLink
               href="/kierunki"

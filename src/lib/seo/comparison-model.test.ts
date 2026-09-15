@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { comparisonPairs } from "@/lib/mvp/comparisons";
 import { curatedDestinations, getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 
-import { buildComparisonModel, PROFILE_SCORE_NOTE } from "./comparison-model";
+import { buildComparisonModel, comparisonCoverage, PROFILE_SCORE_NOTE } from "./comparison-model";
 import { collectJsonLdNodes, validateJsonLd } from "./jsonld-validate";
 
 // Porównania kierunków bez faktów z fallbacku (PR #1.5, brief §17).
@@ -105,6 +105,15 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
       assert.equal(model.whenToGo.length, 0, slug);
       assert.ok(model.rows.length >= 4, slug);
       assert.doesNotMatch(model.quickAnswer, /lepszy jest|najprostszy dolot z Polski ma/, slug);
+    }
+  });
+
+  it("zakres danych dla tytułu i opisu zgadza się z tym, co model pokazuje", () => {
+    for (const pair of comparisonPairs) {
+      const model = modelFor(pair.slug);
+      const coverage = comparisonCoverage(model.a.profile, model.b.profile);
+      assert.equal(coverage.climate, model.rows.some((row) => row.label === "Średnia roczna temperatura"), pair.slug);
+      assert.equal(coverage.budget, model.budget !== null, pair.slug);
     }
   });
 

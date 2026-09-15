@@ -11,7 +11,7 @@ import { getCityHotelStats } from "@/lib/mvp/live-hotel-stats";
 import { getArticlesForDestination, getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
-import { buildComparisonModel } from "@/lib/seo/comparison-model";
+import { buildComparisonModel, comparisonCoverage } from "@/lib/seo/comparison-model";
 import { destinationDisplayName } from "@/lib/seo/destination-facts";
 import { comparisonPageText } from "@/lib/seo/page-titles";
 import type { EditorialArticle } from "@/lib/mvp/publisher-content";
@@ -41,8 +41,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const nameA = pair.labelA ?? destinationDisplayName(ga.destination);
   const nameB = pair.labelB ?? destinationDisplayName(gb.destination);
-  // Tytuł i opis: lib/seo/page-titles.ts — bez roku liczonego z zegara.
-  const text = comparisonPageText({ pair, nameA, nameB });
+  // Tytuł i opis: lib/seo/page-titles.ts — bez roku liczonego z zegara i bez
+  // obietnicy pogody albo budżetu, których strona nie pokaże.
+  const coverage = comparisonCoverage(ga.destination, gb.destination);
+  const text = comparisonPageText({ pair, nameA, nameB, hasClimate: coverage.climate, hasBudget: coverage.budget });
 
   return {
     title: text.title,

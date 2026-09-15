@@ -287,6 +287,16 @@ function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide, budgets: { a: nu
   return answer;
 }
 
+/** Które sekcje z liczbami strona porównania może pokazać (tytuł i opis obiecują tylko je). */
+export function comparisonCoverage(a: DestinationProfile, b: DestinationProfile): { climate: boolean; budget: boolean } {
+  const factsA = getDestinationSeoFacts(a);
+  const factsB = getDestinationSeoFacts(b);
+  return {
+    climate: Boolean(factsA.temperature && factsB.temperature),
+    budget: canShowBudgetEstimate(factsA) && canShowBudgetEstimate(factsB),
+  };
+}
+
 export function buildComparisonModel(input: ComparisonModelInput): ComparisonModel {
   const { pair, baseUrl } = input;
   const factsA = getDestinationSeoFacts(input.a);

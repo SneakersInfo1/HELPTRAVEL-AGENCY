@@ -3,6 +3,12 @@ import type { SiteLocale } from "./locale";
 import type { DestinationGuideContent, EditorialFaq } from "./publisher-content";
 import type { DestinationProfile } from "./types";
 
+import {
+  ENTRY_REQUIREMENTS_NOTE,
+  flightHoursForTripLength,
+  getDestinationSeoFacts,
+} from "../seo/destination-facts";
+
 const monthLabels = {
   pl: ["styczniu", "lutym", "marcu", "kwietniu", "maju", "czerwcu", "lipcu", "sierpniu", "wrzesniu", "październiku", "listopadzie", "grudniu"],
   en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
@@ -81,7 +87,7 @@ export function formatDestinationMonth(month: number, locale: SiteLocale) {
   return monthLabels[locale][month - 1] ?? (locale === "en" ? "season" : "sezon");
 }
 
-function tripLengthLabel(flightHours: number, locale: SiteLocale) {
+export function tripLengthLabel(flightHours: number, locale: SiteLocale) {
   if (locale === "en") {
     if (flightHours <= 3.5) {
       return "3-4 days";
@@ -127,14 +133,8 @@ function routeComfortLabel(destination: DestinationProfile, locale: SiteLocale) 
   return "najlepiej planować z wyprzedzeniem";
 }
 
-function visaNoteLabel(destination: DestinationProfile, locale: SiteLocale) {
-  return locale === "en"
-    ? destination.visaForPL
-      ? "visa-free for Polish passport holders"
-      : "check entry requirements before booking"
-    : destination.visaForPL
-      ? "bez wizy dla polskiego paszportu"
-      : "sprawdź formalności przed rezerwacja";
+function visaNoteLabel(locale: SiteLocale) {
+  return locale === "en" ? "check current entry requirements before booking" : ENTRY_REQUIREMENTS_NOTE;
 }
 
 function englishBestForTags(destination: DestinationProfile, story: DestinationStory) {
@@ -249,6 +249,9 @@ export function getLocalizedDestinationGuide(
   story: DestinationStory,
   locale: SiteLocale,
 ): LocalizedDestinationGuide {
+  const flightHours = flightHoursForTripLength(getDestinationSeoFacts(guide.destination));
+  const tripLength = flightHours === null ? "" : tripLengthLabel(flightHours, locale);
+
   if (locale === "pl") {
     const districts = sanitizeDistricts(guide.districts);
 
@@ -262,10 +265,10 @@ export function getLocalizedDestinationGuide(
       districts,
       faq: guide.faq,
       bestForTags: story.bestFor,
-      tripLength: tripLengthLabel(guide.destination.typicalFlightHoursFromPL, "pl"),
+      tripLength,
       tripProfile: tripProfileLabel(guide.destination, "pl"),
       routeComfort: routeComfortLabel(guide.destination, "pl"),
-      visaNote: visaNoteLabel(guide.destination, "pl"),
+      visaNote: visaNoteLabel("pl"),
       miniPlan: story.miniPlan,
     };
   }
@@ -282,18 +285,19 @@ export function getLocalizedDestinationGuide(
     districts,
     faq: englishFaq(guide),
     bestForTags: englishBestForTags(guide.destination, story),
-    tripLength: tripLengthLabel(guide.destination.typicalFlightHoursFromPL, "en"),
+    tripLength,
     tripProfile: tripProfileLabel(guide.destination, "en"),
     routeComfort: routeComfortLabel(guide.destination, "en"),
-    visaNote: visaNoteLabel(guide.destination, "en"),
+    visaNote: visaNoteLabel("en"),
     miniPlan: englishMiniPlan(guide, story),
   };
 }
 
 export function buildLocalizedAvoidNotes(guide: DestinationGuideContent, locale: SiteLocale) {
   const notes: string[] = [];
+  const flightHours = flightHoursForTripLength(getDestinationSeoFacts(guide.destination));
 
-  if (guide.destination.typicalFlightHoursFromPL > 5) {
+  if (flightHours !== null && flightHours > 5) {
     notes.push(
       locale === "en"
         ? "Less comfortable if the whole point is a very short, ultra-efficient weekend with minimal travel time."
