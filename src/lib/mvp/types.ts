@@ -1,3 +1,4 @@
+import type { DestinationDataProvenance } from "./data-provenance";
 import type { DestinationMedia } from "./visuals";
 
 export type DiscoveryMode = "discovery" | "standard";
@@ -67,6 +68,8 @@ export interface DestinationProfile {
   typicalFlightHoursFromPL: number;
   affiliateLinks: AffiliateLinks;
   media?: DestinationMedia;
+  /** Skąd pochodzą temperatura, czas lotu, budżet, wiza i sezon. Brak pola = `unknown`. */
+  provenance?: DestinationDataProvenance;
 }
 
 export interface ScoreBreakdown {
