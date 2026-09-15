@@ -31,8 +31,6 @@ export interface CityHotelsSchemaInput extends CityHotelsFaqInput {
   featuredHotels: FeaturedHotelForSchema[];
   heroImage?: string | null;
   author: Record<string, unknown>;
-  /** Nieużywane od PR #1.5 (bez dat bez źródła prawdy). Do usunięcia razem z wywołaniami. */
-  nowIso?: string;
 }
 
 export function buildCityHotelsFaq({ city, flightHours, bestMonths }: CityHotelsFaqInput) {

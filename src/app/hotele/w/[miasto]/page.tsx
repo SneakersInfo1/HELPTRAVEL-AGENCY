@@ -208,7 +208,6 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
     featuredHotels,
     heroImage: media?.heroImage,
     author: personSchema(EDITOR_IN_CHIEF),
-    nowIso: new Date().toISOString(),
   });
 
   return (

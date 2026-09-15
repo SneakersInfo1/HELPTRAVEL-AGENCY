@@ -96,7 +96,8 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
     author: personSchema(EDITOR_IN_CHIEF),
   });
   const { facts, weather, budgetEstimate } = model;
-  const overview = guide.overview.replaceAll(guide.destination.city, facts.name);
+  // Przewodniki generyczne mają już polskie nazwy (publisher-content), nadpisania są pisane po polsku.
+  const overview = guide.overview;
   const commercialCity = findCommercialCityByDestinationId(model.slug);
 
   // Klucze LiteAPI pozostają po angielsku: wyszukiwarka oczekuje nazw z profilu.

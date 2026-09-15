@@ -10,7 +10,6 @@ import { buildSiteStructuredData } from "./site-schema";
 
 const SITE = "https://helptravel.pl";
 const TODAY = "2026-09-13";
-const NOW_ISO = "2026-09-13T10:00:00.000Z";
 const AUTHOR = { "@type": "Person", name: "Jakub Ogrodniczuk", url: `${SITE}/redakcja` };
 
 function nodeTypes(data: unknown): unknown[] {
@@ -79,8 +78,8 @@ describe("dane strukturalne szablonów (test E i walidacja JSON-LD)", () => {
         featuredHotels: [{ id: "lp1", name: "Hotel testowy", city: city.cityNominative, stars: 4 }],
         heroImage: "https://images.pexels.com/photos/1/pexels-photo-1.jpeg",
         author: AUTHOR,
-        nowIso: NOW_ISO,
       });
+      assert.doesNotMatch(JSON.stringify(data), /datePublished|dateModified/, city.slug);
       assert.deepEqual(validateJsonLd(data, { todayIso: TODAY }), [], city.slug);
       assert.equal(nodeTypes(data).includes("Offer"), false, city.slug);
       assert.deepEqual(nodesWithPrice(data), [], city.slug);
