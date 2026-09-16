@@ -3,6 +3,14 @@ import type { SiteLocale } from "./locale";
 import type { DestinationGuideContent, EditorialFaq } from "./publisher-content";
 import type { DestinationProfile } from "./types";
 
+import {
+  canShowBudgetEstimate,
+  destinationDisplayName,
+  ENTRY_REQUIREMENTS_NOTE,
+  flightHoursForTripLength,
+  getDestinationSeoFacts,
+} from "../seo/destination-facts";
+
 const monthLabels = {
   pl: ["styczniu", "lutym", "marcu", "kwietniu", "maju", "czerwcu", "lipcu", "sierpniu", "wrzesniu", "październiku", "listopadzie", "grudniu"],
   en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
@@ -81,7 +89,7 @@ export function formatDestinationMonth(month: number, locale: SiteLocale) {
   return monthLabels[locale][month - 1] ?? (locale === "en" ? "season" : "sezon");
 }
 
-function tripLengthLabel(flightHours: number, locale: SiteLocale) {
+export function tripLengthLabel(flightHours: number, locale: SiteLocale) {
   if (locale === "en") {
     if (flightHours <= 3.5) {
       return "3-4 days";
@@ -127,14 +135,8 @@ function routeComfortLabel(destination: DestinationProfile, locale: SiteLocale) 
   return "najlepiej planować z wyprzedzeniem";
 }
 
-function visaNoteLabel(destination: DestinationProfile, locale: SiteLocale) {
-  return locale === "en"
-    ? destination.visaForPL
-      ? "visa-free for Polish passport holders"
-      : "check entry requirements before booking"
-    : destination.visaForPL
-      ? "bez wizy dla polskiego paszportu"
-      : "sprawdź formalności przed rezerwacja";
+function visaNoteLabel(locale: SiteLocale) {
+  return locale === "en" ? "check current entry requirements before booking" : ENTRY_REQUIREMENTS_NOTE;
 }
 
 function englishBestForTags(destination: DestinationProfile, story: DestinationStory) {
@@ -249,6 +251,13 @@ export function getLocalizedDestinationGuide(
   story: DestinationStory,
   locale: SiteLocale,
 ): LocalizedDestinationGuide {
+  const facts = getDestinationSeoFacts(guide.destination);
+  const flightHours = flightHoursForTripLength(facts);
+  const tripLength = flightHours === null ? "" : tripLengthLabel(flightHours, locale);
+  // `accessScore` profilu z szablonu to przeliczona stała regionu (deriveAccessScore ← countryAccessHours),
+  // więc etykieta dolotu pojawia się tylko przy dokładnym czasie lotu.
+  const routeComfort = facts.flight?.kind === "exact" ? routeComfortLabel(guide.destination, locale) : "";
+
   if (locale === "pl") {
     const districts = sanitizeDistricts(guide.districts);
 
@@ -262,10 +271,10 @@ export function getLocalizedDestinationGuide(
       districts,
       faq: guide.faq,
       bestForTags: story.bestFor,
-      tripLength: tripLengthLabel(guide.destination.typicalFlightHoursFromPL, "pl"),
+      tripLength,
       tripProfile: tripProfileLabel(guide.destination, "pl"),
-      routeComfort: routeComfortLabel(guide.destination, "pl"),
-      visaNote: visaNoteLabel(guide.destination, "pl"),
+      routeComfort,
+      visaNote: visaNoteLabel("pl"),
       miniPlan: story.miniPlan,
     };
   }
@@ -282,25 +291,28 @@ export function getLocalizedDestinationGuide(
     districts,
     faq: englishFaq(guide),
     bestForTags: englishBestForTags(guide.destination, story),
-    tripLength: tripLengthLabel(guide.destination.typicalFlightHoursFromPL, "en"),
+    tripLength,
     tripProfile: tripProfileLabel(guide.destination, "en"),
-    routeComfort: routeComfortLabel(guide.destination, "en"),
-    visaNote: visaNoteLabel(guide.destination, "en"),
+    routeComfort,
+    visaNote: visaNoteLabel("en"),
     miniPlan: englishMiniPlan(guide, story),
   };
 }
 
 export function buildLocalizedAvoidNotes(guide: DestinationGuideContent, locale: SiteLocale) {
   const notes: string[] = [];
+  const facts = getDestinationSeoFacts(guide.destination);
+  const flightHours = flightHoursForTripLength(facts);
 
-  if (guide.destination.typicalFlightHoursFromPL > 5) {
+  if (flightHours !== null && flightHours > 5) {
     notes.push(
       locale === "en"
         ? "Less comfortable if the whole point is a very short, ultra-efficient weekend with minimal travel time."
         : "Mniej wygodny wybór na bardzo szybki weekend, jeśli liczysz na minimalny czas w drodze.",
     );
   }
-  if (guide.destination.costIndex > 1.3) {
+  // Indeks kosztów profilu z szablonu to stała kraju albo regionu (deriveCostIndex).
+  if (guide.destination.costIndex > 1.3 && canShowBudgetEstimate(facts)) {
     notes.push(
       locale === "en"
         ? "Harder to defend when the budget is extremely tight and cheaper alternatives can deliver a similar climate or trip style."
@@ -363,58 +375,74 @@ export function buildLocalizedComparisonSignals(
   alternatives: DestinationProfile[],
   locale: SiteLocale,
 ) {
+  const currentName = locale === "en" ? current.city : destinationDisplayName(current);
+  const currentCostKnown = canShowBudgetEstimate(getDestinationSeoFacts(current));
+
   return alternatives.slice(0, 3).map((destination) => {
-    const priceAngle =
-      locale === "en"
+    const name = locale === "en" ? destination.city : destinationDisplayName(destination);
+    // Kąt cenowy tylko przy kosztach spoza szablonu regionu po obu stronach: dla dwóch kierunków
+    // z tego samego kraju „podobny pułap cenowy" to po prostu ta sama stała z deriveCostIndex.
+    const costKnown = currentCostKnown && canShowBudgetEstimate(getDestinationSeoFacts(destination));
+    const priceAngle = !costKnown
+      ? null
+      : locale === "en"
         ? destination.costIndex + 0.08 < current.costIndex
-          ? `${destination.city} usually lands as the cheaper option when total trip cost is the main constraint.`
+          ? `${name} usually lands as the cheaper option when total trip cost is the main constraint.`
           : destination.costIndex - 0.08 > current.costIndex
-            ? `${current.city} tends to protect the budget better if you do not want to pay more for a similar climate.`
-            : `${destination.city} plays in a similar price band, so the decision is driven more by vibe and logistics.`
+            ? `${currentName} tends to protect the budget better if you do not want to pay more for a similar climate.`
+            : `${name} plays in a similar price band, so the decision is driven more by vibe and logistics.`
         : destination.costIndex + 0.08 < current.costIndex
-          ? `${destination.city} wypada zwykle taniej, jeśli priorytetem jest koszt całośći wyjazdu.`
+          ? `${name} wypada zwykle taniej, jeśli priorytetem jest koszt całośći wyjazdu.`
           : destination.costIndex - 0.08 > current.costIndex
-            ? `${current.city} zwykle lepiej broni budżet, jeśli nie chcesz doplacac za podobny klimat.`
-            : `${destination.city} gra w podobnym pulapie cenowym, więc decyduje raczej klimat i logistyka.`;
+            ? `${currentName} zwykle lepiej broni budżet, jeśli nie chcesz doplacac za podobny klimat.`
+            : `${name} gra w podobnym pulapie cenowym, więc decyduje raczej klimat i logistyka.`;
 
     const styleAngle =
       locale === "en"
         ? destination.beachScore > current.beachScore + 0.12
-          ? `${destination.city} has a stronger beach profile and is easier to defend when the brief leans toward sea time and reset.`
+          ? `${name} has a stronger beach profile and is easier to defend when the brief leans toward sea time and reset.`
           : destination.cityScore > current.cityScore + 0.12
-            ? `${destination.city} behaves more like a classic city break with denser sightseeing.`
+            ? `${name} behaves more like a classic city break with denser sightseeing.`
             : destination.natureScore > current.natureScore + 0.12
-              ? `${destination.city} gives a calmer, more scenic rhythm than ${current.city}.`
-              : `${current.city} is the more balanced pick when you want to combine several needs without a hard compromise.`
+              ? `${name} gives a calmer, more scenic rhythm than ${currentName}.`
+              : `${currentName} is the more balanced pick when you want to combine several needs without a hard compromise.`
         : destination.beachScore > current.beachScore + 0.12
-          ? `${destination.city} ma mocniejszy profil plażowy i lepiej wypada przy briefie pod reset nad morzem.`
+          ? `${name} ma mocniejszy profil plażowy i lepiej wypada przy briefie pod reset nad morzem.`
           : destination.cityScore > current.cityScore + 0.12
-            ? `${destination.city} mocniej pracuje jako klasyczny city break z gestszym zwiedzaniem.`
+            ? `${name} mocniej pracuje jako klasyczny city break z gestszym zwiedzaniem.`
             : destination.natureScore > current.natureScore + 0.12
-              ? `${destination.city} daje spokojniejszy, bardziej widokówy rytm niż ${current.city}.`
-              : `${current.city} jest bardziej równym wyborem, gdy chcesz połączyć kilka potrzeb bez dużych kompromisów.`;
+              ? `${name} daje spokojniejszy, bardziej widokówy rytm niż ${currentName}.`
+              : `${currentName} jest bardziej równym wyborem, gdy chcesz połączyć kilka potrzeb bez dużych kompromisów.`;
 
     return {
       slug: destination.slug,
-      city: destination.city,
-      summary: priceAngle,
-      bestFor: styleAngle,
+      city: name,
+      summary: priceAngle ?? styleAngle,
+      bestFor: priceAngle ? styleAngle : null,
     };
   });
 }
 
 export function buildLocalizedWinningScenarios(guide: DestinationGuideContent, locale: SiteLocale) {
   const destination = guide.destination;
+  const facts = getDestinationSeoFacts(destination);
+  // `accessScore` i `costIndex` profilu z szablonu to przeliczone stałe regionu — bez scenariuszy na nich opartych.
+  const exactFlight = facts.flight?.kind === "exact";
+  const costKnown = canShowBudgetEstimate(facts);
 
   if (locale === "en") {
     return [
-      {
-        title: "It wins when you want a clean trip setup",
-        body:
-          destination.accessScore >= 0.8
-            ? "Access from Poland is relatively easy, which makes the destination easier to defend even when the trip window is short."
-            : "It works best when you can plan the route a bit earlier and you are not optimizing purely for the shortest possible travel effort.",
-      },
+      ...(exactFlight
+        ? [
+            {
+              title: "It wins when you want a clean trip setup",
+              body:
+                destination.accessScore >= 0.8
+                  ? "Access from Poland is relatively easy, which makes the destination easier to defend even when the trip window is short."
+                  : "It works best when you can plan the route a bit earlier and you are not optimizing purely for the shortest possible travel effort.",
+            },
+          ]
+        : []),
       {
         title: "It wins when the brief is properly framed",
         body:
@@ -424,24 +452,32 @@ export function buildLocalizedWinningScenarios(guide: DestinationGuideContent, l
               ? "It becomes strongest when the core brief is city time, sightseeing and a clear 3-5 day plan without unnecessary sprawl."
               : "It tends to win when the brief asks for a calmer rhythm, more views and a balanced short escape rather than an overpacked weekend.",
       },
-      {
-        title: "It wins when value still matters",
-        body:
-          destination.costIndex <= 1.05
-            ? "It is easier to hold a strong cost-to-experience ratio here than in many louder alternatives with a similar climate."
-            : "This is not an ultra-budget pick, but it can still make strong sense if you avoid wasting the budget on the wrong hotel area.",
-      },
+      ...(costKnown
+        ? [
+            {
+              title: "It wins when value still matters",
+              body:
+                destination.costIndex <= 1.05
+                  ? "It is easier to hold a strong cost-to-experience ratio here than in many louder alternatives with a similar climate."
+                  : "This is not an ultra-budget pick, but it can still make strong sense if you avoid wasting the budget on the wrong hotel area.",
+            },
+          ]
+        : []),
     ];
   }
 
   return [
-    {
-      title: "Wygrywa, gdy liczysz na sprawny wyjazd",
-      body:
-        destination.accessScore >= 0.8
-          ? "Dolot z Polski jest relatywnie prosty, więc łatwiej obronić ten kierunek nawet przy krótkim oknie wyjazdu."
-          : "Najlepiej broni się wtedy, gdy możesz zaplanować trase odrobine wcześniej i nie oczekujesz najkrotszej logistyki.",
-    },
+    ...(exactFlight
+      ? [
+          {
+            title: "Wygrywa, gdy liczysz na sprawny wyjazd",
+            body:
+              destination.accessScore >= 0.8
+                ? "Dolot z Polski jest relatywnie prosty, więc łatwiej obronić ten kierunek nawet przy krótkim oknie wyjazdu."
+                : "Najlepiej broni się wtedy, gdy możesz zaplanować trase odrobine wcześniej i nie oczekujesz najkrotszej logistyki.",
+          },
+        ]
+      : []),
     {
       title: "Wygrywa, gdy brief jest dobrze ustawiony",
       body:
@@ -451,13 +487,17 @@ export function buildLocalizedWinningScenarios(guide: DestinationGuideContent, l
             ? "Najmocniej pracuje, gdy priorytetem jest miasto, zwiedzanie i czytelny plan na 3-5 dni bez rozłewania wyjazdu."
             : "Najlepiej wypada przy spokojniejszym briefie, gdzie liczą się widoki, rytm miejsca i bardziej zbalansowany plan.",
     },
-    {
-      title: "Wygrywa, gdy budżet ma być sensowny",
-      body:
-        destination.costIndex <= 1.05
-          ? "Łatwiej utrzymać tu dobry stosunek kosztu do efektu niż w wielu glosniejszych kierunkach o podobnym klimacie."
-          : "To nie jest kierunek ultrabudżetowy, ale nadal może być bardzo sensowny, jeśli nie przepalasz budżetu na zła lokalizacje noclegu.",
-    },
+    ...(costKnown
+      ? [
+          {
+            title: "Wygrywa, gdy budżet ma być sensowny",
+            body:
+              destination.costIndex <= 1.05
+                ? "Łatwiej utrzymać tu dobry stosunek kosztu do efektu niż w wielu glosniejszych kierunkach o podobnym klimacie."
+                : "To nie jest kierunek ultrabudżetowy, ale nadal może być bardzo sensowny, jeśli nie przepalasz budżetu na zła lokalizacje noclegu.",
+          },
+        ]
+      : []),
   ];
 }
 

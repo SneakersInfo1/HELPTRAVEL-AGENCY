@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { LocalizedLink } from "@/components/site/localized-link";
+import { isFactGrade, provenanceOf } from "@/lib/mvp/data-provenance";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import { DEFAULT_ORIGIN_CITY } from "@/lib/mvp/origin-cities";
 import type { DestinationProfile } from "@/lib/mvp/types";
@@ -96,7 +97,11 @@ export function DestinationTile({
     rooms: "1",
   });
   const href = `/hotele/szukaj?${params.toString()}`;
-  const flightHoursLabel = `~${destination.typicalFlightHoursFromPL.toFixed(1)} h z PL`;
+  // Czas lotu tylko z danych kuratorowanych. Dla 212 kierunków to stała regionu
+  // (Kreta i Majorka na /kierunki pokazywały „~3.1 h" z szablonu Europy Płd.).
+  const flightHoursLabel = isFactGrade(provenanceOf(destination, "flightDuration"))
+    ? `~${destination.typicalFlightHoursFromPL.toFixed(1)} h z PL`
+    : null;
   const cityLabel = localizeCity(destination.city);
 
   return (
@@ -163,7 +168,7 @@ export function DestinationTile({
             {/* Brak świeżego pakietu → pokazujemy TYLKO to, co realnie mamy.
                 Nigdy nie sumujemy hotelu i lotu sami — składniki pochodzą
                 z różnych okien dat, więc suma byłaby zmyślona. */}
-            {typeof flightFromPln !== "number" && (
+            {typeof flightFromPln !== "number" && flightHoursLabel && (
               <p className="mt-1.5 text-[11px] text-white/80">{flightHoursLabel}</p>
             )}
             {typeof fromPricePerNight === "number" && (

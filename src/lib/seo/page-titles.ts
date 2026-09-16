@@ -26,19 +26,33 @@ function flightHoursLabel(hours: number): string {
 
 export interface GuidePageTextInput {
   cityPl: string;
-  flightHours: number;
-  /** Np. „4-5 dni" z idealTripLength(). */
-  tripLength: string;
+  /** Tylko dokładny czas lotu z bramki faktów SEO. */
+  flightHours: number | null;
+  /** Np. „4-5 dni" z tripLengthLabel(); null przy braku danych o locie. */
+  tripLength: string | null;
   price?: VerifiedTitlePrice | null;
 }
 
 export function guidePageText({ cityPl, flightHours, tripLength, price }: GuidePageTextInput) {
+  if (flightHours === null) {
+    return {
+      title: price
+        ? `${cityPl}: ${hotelsFromPhrase(price)}, przewodnik`
+        : `${cityPl}: przewodnik po kierunku, hotele i loty`,
+      description: `${cityPl}: praktyczny przewodnik po kierunku z przejściem do hoteli i lotów z cenami w PLN.`,
+      ogTitle: `${cityPl} — przewodnik`,
+      ogDescription: `${cityPl}: przewodnik, hotele i loty z cenami w PLN.`,
+      twitterTitle: `${cityPl}: przewodnik po kierunku`,
+      twitterDescription: "Sprawdź hotele i loty z cenami w PLN.",
+    };
+  }
+
   const hours = flightHoursLabel(flightHours);
   return {
     title: price
       ? `${cityPl}: ${hotelsFromPhrase(price)}, lot ${hours}, przewodnik`
       : `${cityPl}: przewodnik, kiedy lecieć i gdzie spać, lot ${hours}`,
-    description: `${cityPl}: najlepsze terminy, lot z Polski ${hours} i sensowna długość wyjazdu (${tripLength}). Praktyczny przewodnik z przejściem do hoteli i lotów z cenami w PLN.`,
+    description: `${cityPl}: najlepsze terminy, lot z Polski ${hours}${tripLength !== null ? ` i sensowna długość wyjazdu (${tripLength})` : ""}. Praktyczny przewodnik z przejściem do hoteli i lotów z cenami w PLN.`,
     ogTitle: price ? `${cityPl} — ${hotelsFromPhrase(price)}, lot ${hours}` : `${cityPl} — przewodnik, lot ${hours} z Polski`,
     ogDescription: `${cityPl}: najlepsze terminy, ceny w PLN, lot ${hours} z Polski. Hotele, loty, przewodnik.`,
     twitterTitle: price ? `${cityPl}: ${hotelsFromPhrase(price)}` : `${cityPl}: przewodnik po kierunku`,
@@ -47,24 +61,33 @@ export function guidePageText({ cityPl, flightHours, tripLength, price }: GuideP
 }
 
 export interface MonthPageTextInput {
-  /** Nazwa miasta z profilu kierunku. */
-  city: string;
+  /** Polska nazwa kierunku z bramki faktów SEO. */
+  name: string;
   month: PolishMonthSlug;
-  tempC: number;
+  tempC: number | null;
   price?: VerifiedTitlePrice | null;
 }
 
-export function monthPageText({ city, month, tempC, price }: MonthPageTextInput) {
+export function monthPageText({ name, month, tempC, price }: MonthPageTextInput) {
   const inMonth = inMonthPhrase(month);
+  if (tempC === null) {
+    return {
+      title: price ? `${name} ${inMonth}: ${hotelsFromPhrase(price)}` : `${name} ${inMonth}: hotele i kiedy lecieć`,
+      description: `${name} ${inMonth}: hotele z cenami w PLN i loty na ten termin. Sprawdź dostępność w wyszukiwarce.`,
+      ogTitle: `${name} ${inMonth} — hotele i loty`,
+      headline: `${name} ${inMonth} — hotele i kiedy lecieć`,
+    };
+  }
+
   return {
     title: price
-      ? `${city} ${inMonth}: pogoda ${tempC}°C, ${hotelsFromPhrase(price)}`
-      : `${city} ${inMonth}: pogoda ${tempC}°C, hotele i kiedy lecieć`,
-    description: `Jaka jest pogoda w ${city} ${inMonth}? Średnia temperatura ${tempC}°C. Sprawdź, czy to dobry termin, i przejdź do hoteli i lotów z cenami w PLN.`,
+      ? `${name} ${inMonth}: pogoda ${tempC}°C, ${hotelsFromPhrase(price)}`
+      : `${name} ${inMonth}: pogoda ${tempC}°C, hotele i kiedy lecieć`,
+    description: `${name} ${inMonth}: średnia temperatura ${tempC}°C. Sprawdź, czy to dobry termin, i przejdź do hoteli i lotów z cenami w PLN.`,
     ogTitle: price
-      ? `${city} ${inMonth} — pogoda ${tempC}°C i ${hotelsFromPhrase(price)}`
-      : `${city} ${inMonth} — pogoda ${tempC}°C i hotele`,
-    headline: `${city} ${inMonth} — pogoda, hotele i kiedy lecieć`,
+      ? `${name} ${inMonth} — pogoda ${tempC}°C i ${hotelsFromPhrase(price)}`
+      : `${name} ${inMonth} — pogoda ${tempC}°C i hotele`,
+    headline: `${name} ${inMonth} — pogoda, hotele i kiedy lecieć`,
   };
 }
 
@@ -111,12 +134,33 @@ export interface ComparisonPageTextInput {
   pair: ComparisonPair;
   nameA: string;
   nameB: string;
+  /** Obie strony mają temperaturę kuratorowaną — tylko wtedy strona pokazuje pogodę. */
+  hasClimate?: boolean;
+  /** Obie strony mają szacunek budżetu z danych kuratorowanych. */
+  hasBudget?: boolean;
 }
 
-export function comparisonPageText({ pair, nameA, nameB }: ComparisonPageTextInput) {
+// Tytuł i opis obiecują tylko to, co strona pokazuje. Po PR #1.5 porównanie bez
+// danych kuratorowanych (np. Kreta–Rodos) nie ma sekcji pogody ani budżetu.
+export function comparisonPageText({ pair, nameA, nameB, hasClimate = false, hasBudget = false }: ComparisonPageTextInput) {
+  const titleTopics =
+    hasClimate && hasBudget
+      ? "pogoda, budżet i dolot"
+      : hasClimate
+        ? "pogoda, plaże i dolot"
+        : hasBudget
+          ? "budżet, plaże i dolot"
+          : "plaże, zwiedzanie i dolot";
+  const descriptionTopics = [
+    hasClimate ? "pogoda w sezonie" : null,
+    hasBudget ? "orientacyjny budżet na 4 dni" : null,
+    "plaże i dolot z Polski",
+  ]
+    .filter((topic): topic is string => topic !== null)
+    .join(", ");
   return {
     // Top strony mają ręcznie dopracowany `metaTitle` (wariant do zmierzenia w GSC).
-    title: pair.metaTitle ?? `${nameA} czy ${nameB}? Porównanie: pogoda, budżet i dolot`,
-    description: `${nameA} czy ${nameB}: pogoda w sezonie, orientacyjny budżet na 4 dni, plaże i dolot z Polski. Sprawdź, który kierunek wybrać. ${pair.intent}.`,
+    title: pair.metaTitle ?? `${nameA} czy ${nameB}? Porównanie: ${titleTopics}`,
+    description: `${nameA} czy ${nameB}: ${descriptionTopics}. Sprawdź, który kierunek wybrać. ${pair.intent}.`,
   };
 }

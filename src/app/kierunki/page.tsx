@@ -12,6 +12,13 @@ import { getDestinationCatalogByRegion } from "@/lib/mvp/destination-catalog";
 import { getDestinationStory } from "@/lib/mvp/destination-content";
 import { getLocalizedCategoryTitle, getLocalizedDestinationGuide } from "@/lib/mvp/destination-localization";
 import { getAllDestinationProfiles, getDestinationProfileBySlug } from "@/lib/mvp/destinations";
+import { localizeCity, localizeRegion } from "@/lib/mvp/i18n-geo";
+import {
+  destinationDisplayName,
+  exactFlightHours,
+  getDestinationSeoFacts,
+  monthTemperature,
+} from "@/lib/seo/destination-facts";
 import { getDestinationGuideBySlug, getEditorialCategories, getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { commercialCities } from "@/lib/mvp/commercial-cities";
@@ -26,10 +33,12 @@ export const revalidate = 86400;
 const pageCopy = {
   pl: {
     title: "Kierunki na wakacje i city break — przewodniki, hotele, loty",
+    // Bez obietnicy „czas lotu i pogoda" przy każdym kierunku: dla większości
+    // kierunków nie mamy zweryfikowanych danych i ich nie pokazujemy (PR #1.5).
     description:
-      "Ponad 235 kierunków na city break, wakacje nad morzem i ciepłe wyjazdy z Polski. Realne ceny hoteli w PLN, czas lotu, pogoda i przejście prosto do rezerwacji.",
+      "Ponad 235 kierunków na city break, wakacje nad morzem i ciepłe wyjazdy z Polski. Przewodniki, hotele z cenami w PLN i przejście prosto do rezerwacji.",
     ogDescription:
-      "Ponad 235 kierunków na krótkie wyjazdy z Polski: realne ceny hoteli w PLN, czas lotu, pogoda i jeden klik do rezerwacji.",
+      "Ponad 235 kierunków na krótkie wyjazdy z Polski: przewodniki, hotele z cenami w PLN i jeden klik do rezerwacji.",
     eyebrow: "Katalog kierunków",
     metaDescription: "Katalog kierunków HelpTravel",
   },
@@ -120,8 +129,9 @@ function pluralDestinations(n: number): string {
   return `${n} kierunków`;
 }
 
-// Compact card for a COMMERCIAL money-page (/hotele/w/[slug]) — image + real
-// data (czas lotu, pogoda teraz). This is the SEO/conversion spine: it passes
+// Compact card for a COMMERCIAL money-page (/hotele/w/[slug]) — image + czas lotu
+// i pogoda teraz, ale tylko z danych kuratorowanych (lib/seo/destination-facts.ts;
+// szablon regionu nie trafia na kartę). This is the SEO/conversion spine: it passes
 // link equity from the hub to the head-term landing pages and pulls
 // commercial-intent users one click from booking. ("od X zł" removed
 // 2026-06-11 — the number came from a hash, not from any real offer.)
@@ -248,13 +258,14 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
     .slice(0, 12)
     .map((c) => {
       const profile = getDestinationProfileBySlug(c.destinationId);
+      const facts = profile ? getDestinationSeoFacts(profile) : null;
       return {
         slug: c.slug,
         city: c.cityNominative,
         country: c.countryNominative,
         image: imageBySlug.get(c.destinationId) ?? null,
-        flightHours: profile?.typicalFlightHoursFromPL,
-        tempNow: profile?.avgTempByMonth?.[monthIdx],
+        flightHours: (facts && exactFlightHours(facts)) ?? undefined,
+        tempNow: (facts && monthTemperature(facts, monthIdx)) ?? undefined,
       };
     });
 
@@ -324,7 +335,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
             "@type": "ListItem",
             position: commercialCards.length + index + 1,
             url: `${baseUrl}/kierunki/${item.destination.slug}`,
-            name: item.destination.city,
+            name: destinationDisplayName(item.destination),
           })),
         ],
       },
@@ -353,7 +364,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
            prawdziwa wartość — dwie różne liczby o tym samym w jednym hero.
            Usunięte przy okazji: „loty z ponad 80 lotnisk" (twierdzenie bez
            źródła w danych). */
-        intro={`${allDestinations.length} miast i wysp na city break, wakacje nad morzem i ciepłe ucieczki z Polski. Przy każdym kierunku znajdziesz czas lotu, pogodę i realne ceny hoteli w złotówkach.`}
+        intro={`${allDestinations.length} miast i wysp na city break, wakacje nad morzem i ciepłe ucieczki z Polski. Przy każdym kierunku znajdziesz przewodnik i przejście do hoteli z cenami w złotówkach.`}
       >
         <div className="flex flex-wrap gap-3">
           <Link
@@ -524,14 +535,17 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
           <h2 className="font-display text-2xl text-ink sm:text-3xl">Wszystkie kierunki według regionu</h2>
           <p className="max-w-xl text-sm leading-7 text-ink-muted">
             {allDestinations.length} miast i wysp pogrupowanych regionalnie — kliknij dowolne, by zobaczyć
-            przewodnik, pogodę i ceny.
+            przewodnik i hotele.
           </p>
         </div>
         <div className="mt-7 grid gap-x-10 gap-y-8 lg:grid-cols-2 3xl:grid-cols-4">
           {regionGroups.map((group) => (
             <div key={group.region} className="border-t border-line pt-5">
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-lg font-bold text-ink">{group.region}</h3>
+                {/* „Global" to w katalogu region Francji (brak w mapie krajów) — nie nazwa do pokazania. */}
+                <h3 className="text-lg font-bold text-ink">
+                  {group.region === "Global" ? "Inne kierunki" : localizeRegion(group.region)}
+                </h3>
                 <span className="text-sm text-ink-muted">{pluralDestinations(group.items.length)}</span>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -542,7 +556,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
                     locale={locale}
                     className="inline-flex min-h-11 items-center rounded-sm bg-surface-sunken px-3.5 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
                   >
-                    <span className="text-sm font-semibold text-ink">{item.city}</span>
+                    <span className="text-sm font-semibold text-ink">{localizeCity(item.city)}</span>
                   </LocalizedLink>
                 ))}
               </div>

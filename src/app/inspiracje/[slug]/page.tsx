@@ -93,11 +93,9 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
         mainEntityOfPage: articleUrl,
         image: articleImage,
         inLanguage: "pl-PL",
-        // Model treści nie ma per-artykuł daty: datePublished stałe (era startu
-        // serwisu, jak na commercial landingach), dateModified bieżące (ISR
-        // regeneruje stronę) — świeżość dla Google bez fabrykowania dat.
-        datePublished: "2026-01-01T00:00:00.000Z",
-        dateModified: new Date().toISOString(),
+        // Bez datePublished i dateModified: model treści nie ma dat artykułów.
+        // Do 2026-09 stała tu data wymyślona („2026-01-01") i data renderu ISR
+        // udająca modyfikację treści (SEO Data Integrity, PR #1.5).
         author: { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "HelpTravel" },
         publisher: { "@id": `${siteUrl}/#organization` },
         articleSection: categoryLabels,

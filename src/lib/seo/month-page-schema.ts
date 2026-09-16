@@ -1,4 +1,6 @@
-import { inMonthPhrase, polishMonthLabels, type PolishMonthSlug } from "@/lib/mvp/months";
+import { inMonthPhrase, type PolishMonthSlug } from "@/lib/mvp/months";
+
+import { monthPageText } from "./page-titles";
 
 // JSON-LD strony /kierunki/[slug]/[miesiac].
 //
@@ -7,23 +9,25 @@ import { inMonthPhrase, polishMonthLabels, type PolishMonthSlug } from "@/lib/mv
 // oferta: brak terminu, brak dostępności, kwota policzona ze wzoru. Bez kwot
 // także w opisie i FAQ — dane strukturalne mówią o cenie maszynie, która
 // pokazuje ją użytkownikowi przed kliknięciem.
+//
+// Bez sezonu, tłumów i cen w FAQ: pytanie „kiedy jest najmniej turystów?"
+// odpowiadało heurystyką z samej temperatury („najwyższe ceny", „ceny
+// najniższe") bez źródła o ruchu i cenach — na Teneryfie wskazywało styczeń
+// jako najtańszy, choć to szczyt sezonu zimowego słońca.
 
 export interface MonthPageSchemaInput {
   baseUrl: string;
   destinationSlug: string;
   month: PolishMonthSlug;
-  city: string;
-  country: string;
-  tempC: number;
-  weather: string;
-  verdict: string;
-  seaTempC: number | null;
-  warmestMonth: PolishMonthSlug;
-  coldestMonth: PolishMonthSlug;
-  season: { label: string; crowd: string; price: string };
-  flightHours: number;
+  name: string;
+  countryName: string;
+  weather: {
+    tempC: number;
+    description: string;
+    verdict: string;
+  } | null;
+  exactFlightHours: number | null;
   author: Record<string, unknown>;
-  nowIso: string;
 }
 
 function question(name: string, text: string) {
@@ -31,55 +35,53 @@ function question(name: string, text: string) {
 }
 
 export function buildMonthPageStructuredData(input: MonthPageSchemaInput) {
-  const { baseUrl, destinationSlug, month, city, country, tempC, weather, verdict, seaTempC, season, flightHours } = input;
+  const { baseUrl, destinationSlug, month, name, countryName, weather, exactFlightHours, author } = input;
   const inMonth = inMonthPhrase(month);
   const pageUrl = `${baseUrl}/kierunki/${destinationSlug}/${month}`;
-  const monthLabel = polishMonthLabels[month];
+  const headline = monthPageText({ name, month, tempC: weather?.tempC ?? null }).headline;
+  const questions = [];
+
+  if (weather) {
+    questions.push(
+      question(
+        `${name} ${inMonth} — jaka jest pogoda?`,
+        `Średnia temperatura: ${weather.tempC}°C — ${weather.description}. ${weather.verdict}`,
+      ),
+      question(`${name} ${inMonth} — czy warto lecieć?`, weather.verdict),
+    );
+  }
+
+  if (exactFlightHours !== null) {
+    questions.push(
+      question(`${name} — jak długo trwa lot z Polski?`, `Lot z Polski trwa około ${exactFlightHours.toFixed(1)} h.`),
+    );
+  }
 
   return {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "Article",
-        headline: `${city} ${inMonth} — pogoda, hotele i kiedy lecieć`,
-        description: `Pogoda w ${city} ${inMonth} (śr. ${tempC}°C), sezon i najlepszy termin. Bezpośrednie przejście do hoteli i lotów w PLN.`,
+        headline,
+        description: weather
+          ? `Pogoda: ${name} ${inMonth} (śr. ${weather.tempC}°C) i temperatury w ciągu roku. Bezpośrednie przejście do hoteli i lotów w PLN.`
+          : `${name} ${inMonth}: hotele i loty w PLN na ten termin.`,
         url: pageUrl,
         inLanguage: "pl-PL",
-        datePublished: "2026-01-01T00:00:00.000Z",
-        dateModified: input.nowIso,
-        author: input.author,
+        author,
         publisher: { "@id": `${baseUrl}/#organization` },
-        about: { "@type": "TouristDestination", name: `${city}, ${country}` },
+        about: { "@type": "TouristDestination", name: `${name}, ${countryName}` },
       },
       {
         "@type": "BreadcrumbList",
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "Start", item: `${baseUrl}/` },
           { "@type": "ListItem", position: 2, name: "Kierunki", item: `${baseUrl}/kierunki` },
-          { "@type": "ListItem", position: 3, name: city, item: `${baseUrl}/kierunki/${destinationSlug}` },
-          { "@type": "ListItem", position: 4, name: `${city} ${inMonth}`, item: pageUrl },
+          { "@type": "ListItem", position: 3, name, item: `${baseUrl}/kierunki/${destinationSlug}` },
+          { "@type": "ListItem", position: 4, name: `${name} ${inMonth}`, item: pageUrl },
         ],
       },
-      {
-        "@type": "FAQPage",
-        mainEntity: [
-          question(`Jaka pogoda jest w ${city} ${inMonth}?`, `W ${city} ${inMonth} średnia temperatura wynosi ${tempC}°C — ${weather}. ${verdict}`),
-          question(`Czy warto lecieć do ${city} ${inMonth}?`, verdict),
-          ...(seaTempC !== null
-            ? [
-                question(
-                  `Jaka jest temperatura morza w ${city} ${inMonth}?`,
-                  `Temperatura morza w ${city} ${inMonth} to orientacyjnie około ${seaTempC}°C (na podstawie wieloletnich średnich).`,
-                ),
-              ]
-            : []),
-          question(
-            `Kiedy jest najtaniej i najmniej turystów w ${city}?`,
-            `Najwięcej turystów i najwyższe ceny przypadają na najcieplejsze miesiące (${polishMonthLabels[input.warmestMonth]}). Najspokojniej i zwykle najtaniej jest ${inMonthPhrase(input.coldestMonth)}. ${monthLabel.charAt(0).toUpperCase()}${monthLabel.slice(1)} to ${season.label.toLowerCase()} — ${season.crowd}, ${season.price}.`,
-          ),
-          question(`Jak długo trwa lot z Polski do ${city}?`, `Lot z Polski do ${city} zajmuje około ${flightHours.toFixed(1)} h.`),
-        ],
-      },
+      ...(questions.length > 0 ? [{ "@type": "FAQPage", mainEntity: questions }] : []),
     ],
   };
 }

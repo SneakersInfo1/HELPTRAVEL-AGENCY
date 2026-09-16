@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
 import { curatedDestinations } from "@/lib/mvp/destinations";
+import { getDestinationSeoFacts } from "@/lib/seo/destination-facts";
 
 export const runtime = "nodejs";
 export const alt = "Kierunek - HelpTravel";
@@ -9,8 +10,10 @@ export const contentType = "image/png";
 
 export default async function OgImage({ params }: { params: { slug: string } }) {
   const destination = curatedDestinations.find((item) => item.slug === params.slug);
-  const city = destination?.city ?? "Kierunek";
-  const country = destination?.country ?? "";
+  // Polska nazwa i kraj z bramki faktów — do 2026-09 obraz pokazywał „Lisbon, Portugal".
+  const facts = destination ? getDestinationSeoFacts(destination) : null;
+  const city = facts?.name ?? "Kierunek";
+  const country = facts?.countryName ?? "";
 
   return new ImageResponse(
     (

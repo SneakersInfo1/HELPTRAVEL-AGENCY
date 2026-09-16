@@ -9,12 +9,10 @@ import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { comparisonPairs, getComparisonPairBySlug, isTopComparison } from "@/lib/mvp/comparisons";
 import { getCityHotelStats } from "@/lib/mvp/live-hotel-stats";
 import { getArticlesForDestination, getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
-import { getStoryBySlug } from "@/lib/mvp/destination-content";
-import { localizeCity } from "@/lib/mvp/i18n-geo";
-import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
-import type { DestinationProfile } from "@/lib/mvp/types";
+import { buildComparisonModel, comparisonCoverage } from "@/lib/seo/comparison-model";
+import { destinationDisplayName } from "@/lib/seo/destination-facts";
 import { comparisonPageText } from "@/lib/seo/page-titles";
 import type { EditorialArticle } from "@/lib/mvp/publisher-content";
 
@@ -24,178 +22,10 @@ interface PageProps {
   params: Promise<{ para: string }>;
 }
 
-function avgYear(temps: number[]) {
-  return Math.round(temps.reduce((a, b) => a + b, 0) / temps.length);
-}
-
-function summerAvg(temps: number[]) {
-  return Math.round((temps[5] + temps[6] + temps[7]) / 3);
-}
-
-function winterAvg(temps: number[]) {
-  return Math.round((temps[11] + temps[0] + temps[1]) / 3);
-}
-
-function budget(d: DestinationProfile) {
-  const days = 4;
-  const travelers = 2;
-  const flightBase = 380 + d.typicalFlightHoursFromPL * 70;
-  const stay = 170 * d.costIndex;
-  const local = 65 * d.costIndex;
-  const total = travelers * flightBase + travelers * days * stay + days * local;
-  return Math.round(total);
-}
-
-// Komfortowe miesiące (18-30°C) — ta sama heurystyka co na commercial landingach.
-function bestMonths(d: DestinationProfile): string[] {
-  return d.avgTempByMonth
-    .map((t, i) => ({ t, i }))
-    .filter(({ t }) => t >= 18 && t <= 30)
-    .map(({ i }) => polishMonthLabels[polishMonthSlugs[i]]);
-}
-
-// Dla kogo dany kierunek — czytane z profilu (score 0-1), bez fabrykacji.
-function audienceTags(d: DestinationProfile): string[] {
-  const tags: string[] = [];
-  if (d.beachScore >= 0.7) tags.push("plaży i wypoczynku nad morzem");
-  if (d.cityScore >= 0.7) tags.push("klasycznego city breaku");
-  if (d.sightseeingScore >= 0.7) tags.push("zwiedzania i zabytków");
-  if (d.nightlifeScore >= 0.72) tags.push("nocnego życia");
-  if (d.natureScore >= 0.78) tags.push("natury i krajobrazów");
-  if (d.costIndex <= 1.0) tags.push("napiętego budżetu");
-  if (d.typicalFlightHoursFromPL <= 3.3) tags.push("krótkiego wypadu (bliski lot)");
-  if (tags.length === 0) tags.push("uniwersalnego wyjazdu na 3-5 dni");
-  return tags.slice(0, 4);
-}
-
-function pickWinner(a: DestinationProfile, b: DestinationProfile, key: keyof DestinationProfile, higher = true) {
-  const av = a[key] as number;
-  const bv = b[key] as number;
-  if (Math.abs(av - bv) < 0.05) return null;
-  return (higher ? av > bv : av < bv) ? a : b;
-}
-
-// `nameA`/`nameB` to nazwy wyświetlane (etykieta wyspy lub miasto z profilu).
-function buildVerdict(
-  a: DestinationProfile,
-  b: DestinationProfile,
-  nameA: string,
-  nameB: string,
-): { title: string; body: string }[] {
-  const verdicts: { title: string; body: string }[] = [];
-  const nameOf = (d: DestinationProfile) => (d === a ? nameA : nameB);
-
-  const cheaper = a.costIndex < b.costIndex - 0.05 ? a : b.costIndex < a.costIndex - 0.05 ? b : null;
-  if (cheaper) {
-    verdicts.push({
-      title: "Budżet",
-      body: `${nameOf(cheaper)} wypada zwykle taniej — przy podobnym planie łatwiej obronić tańszy kierunek.`,
-    });
-  } else {
-    verdicts.push({
-      title: "Budżet",
-      body: `${nameA} i ${nameB} grają w podobnym pułapie cenowym, więc budżet rzadko jest decydujący.`,
-    });
-  }
-
-  const beach = pickWinner(a, b, "beachScore");
-  if (beach) {
-    verdicts.push({
-      title: "Plaża i klimat morski",
-      body: `${nameOf(beach)} ma mocniejszy profil plażowy — to lepszy wybór pod reset nad morzem.`,
-    });
-  }
-
-  const city = pickWinner(a, b, "cityScore");
-  if (city) {
-    verdicts.push({
-      title: "City break i tło miejskie",
-      body: `${nameOf(city)} jest mocniejszy jako klasyczny city break z gęstszym zwiedzaniem i klimatem ulicznym.`,
-    });
-  }
-
-  const access = pickWinner(a, b, "accessScore");
-  if (access) {
-    verdicts.push({
-      title: "Dolot z Polski",
-      body: `${nameOf(access)} ma łatwiejszą i bardziej regularną logistykę z Polski — sensowny wybór pod krótki wyjazd.`,
-    });
-  }
-
-  return verdicts;
-}
-
-function buildFaq(
-  a: DestinationProfile,
-  b: DestinationProfile,
-  nameA: string,
-  nameB: string,
-): { question: string; answer: string }[] {
-  const budgetA = budget(a);
-  const budgetB = budget(b);
-  const cheaper = budgetA === budgetB ? null : budgetA < budgetB ? nameA : nameB;
-  const beach = a.beachScore >= b.beachScore ? nameA : nameB;
-  const cityWin = a.cityScore + a.sightseeingScore >= b.cityScore + b.sightseeingScore ? nameA : nameB;
-  const easier = a.accessScore >= b.accessScore ? nameA : nameB;
-  const sumA = summerAvg(a.avgTempByMonth);
-  const sumB = summerAvg(b.avgTempByMonth);
-  const warmer = sumA === sumB ? null : sumA > sumB ? nameA : nameB;
-  const monthsA = bestMonths(a);
-  const monthsB = bestMonths(b);
-
-  return [
-    {
-      question: `${nameA} czy ${nameB} — co wybrać na pierwszy raz?`,
-      answer: `Na prosty pierwszy wyjazd zwykle wygodniej wypada ${easier} (łatwiejszy dolot i logistyka z Polski). Jeśli zależy Ci głównie na plaży, lepszy będzie ${beach}; jeśli na zwiedzaniu i miejskim klimacie — ${cityWin}.`,
-    },
-    {
-      question: `Gdzie cieplej i lepsza plaża — ${nameA} czy ${nameB}?`,
-      answer:
-        `Pod kątem plaży mocniej wypada ${beach}.` +
-        (warmer
-          ? ` Latem (czerwiec-sierpień) cieplej bywa w kierunku ${warmer} (${Math.max(sumA, sumB)}°C wobec ${Math.min(sumA, sumB)}°C).`
-          : ` Latem oba kierunki mają podobne temperatury (ok. ${sumA}°C).`),
-    },
-    {
-      question: `Co lepsze na zwiedzanie i city break — ${nameA} czy ${nameB}?`,
-      answer: `${cityWin} ma mocniejszy profil miejski i więcej do zwiedzania, więc lepiej sprawdzi się przy planie pełnym atrakcji i spacerów po mieście.`,
-    },
-    {
-      question: `Który wyjazd jest tańszy — ${nameA} czy ${nameB}?`,
-      answer: `Orientacyjny budżet dla 2 osób na 4 dni: ${nameA} ~${budgetA.toLocaleString("pl-PL")} zł, ${nameB} ~${budgetB.toLocaleString("pl-PL")} zł (lot, nocleg, jedzenie, transport).${cheaper ? ` Taniej zwykle wypada ${cheaper}.` : " Oba kierunki są w podobnym pułapie."}`,
-    },
-    {
-      question: "Kiedy najlepiej jechać?",
-      answer: `${nameA}: najprzyjemniej ${monthsA.slice(0, 6).join(", ") || "przez cały sezon"}. ${nameB}: ${monthsB.slice(0, 6).join(", ") || "przez cały sezon"}. To miesiące z temperaturą ok. 18-30°C.`,
-    },
-  ];
-}
-
-// Zwięzła, bezpośrednia odpowiedź na zapytanie „X czy Y" — pod featured
-// snippet i wysoki CTR. Składana z realnych danych profilu (bez fabrykacji).
-function buildQuickAnswer(
-  a: DestinationProfile,
-  b: DestinationProfile,
-  nameA: string,
-  nameB: string,
-): string {
-  const beach = a.beachScore >= b.beachScore ? nameA : nameB;
-  const city = a.cityScore + a.sightseeingScore >= b.cityScore + b.sightseeingScore ? nameA : nameB;
-  const budgetA = budget(a);
-  const budgetB = budget(b);
-  const cheaper = budgetA === budgetB ? null : budgetA < budgetB ? nameA : nameB;
-  const easier = a.accessScore >= b.accessScore ? nameA : nameB;
-  const sumA = summerAvg(a.avgTempByMonth);
-  const sumB = summerAvg(b.avgTempByMonth);
-  const warmer = sumA === sumB ? null : sumA > sumB ? nameA : nameB;
-
-  const budgetLine = cheaper
-    ? `Taniej zwykle wychodzi ${cheaper}`
-    : "Budżetowo oba kierunki są podobne";
-  const warmLine = warmer ? ` Latem cieplej bywa w kierunku ${warmer}.` : "";
-
-  return `${nameA} czy ${nameB}? Na plażę i wypoczynek nad morzem lepszy jest ${beach}, a na zwiedzanie i miejski klimat — ${city}. ${budgetLine}, a najprostszy dolot z Polski ma ${easier}.${warmLine}`;
-}
+// Tabela, FAQ, szybka odpowiedź i sekcje z liczbami: lib/seo/comparison-model.ts.
+// Liczby o kierunkach wyłącznie z bramki faktów — bez temperatur, czasu lotu
+// i budżetu z szablonu regionu (do 2026-09 Kreta–Rodos miała po obu stronach
+// identyczne 3.1 h, 20/29/12°C i ~2895 PLN).
 
 export async function generateStaticParams() {
   return comparisonPairs.map((pair) => ({ para: pair.slug }));
@@ -209,10 +39,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const gb = getDestinationGuideBySlug(pair.b);
   if (!ga || !gb) return { title: "Porównanie kierunków" };
 
-  const nameA = pair.labelA ?? getStoryBySlug(pair.a)?.name ?? localizeCity(ga.destination.city);
-  const nameB = pair.labelB ?? getStoryBySlug(pair.b)?.name ?? localizeCity(gb.destination.city);
-  // Tytuł i opis: lib/seo/page-titles.ts — bez roku liczonego z zegara.
-  const text = comparisonPageText({ pair, nameA, nameB });
+  const nameA = pair.labelA ?? destinationDisplayName(ga.destination);
+  const nameB = pair.labelB ?? destinationDisplayName(gb.destination);
+  // Tytuł i opis: lib/seo/page-titles.ts — bez roku liczonego z zegara i bez
+  // obietnicy pogody albo budżetu, których strona nie pokaże.
+  const coverage = comparisonCoverage(ga.destination, gb.destination);
+  const text = comparisonPageText({ pair, nameA, nameB, hasClimate: coverage.climate, hasBudget: coverage.budget });
 
   return {
     title: text.title,
@@ -235,13 +67,6 @@ export default async function ComparisonPage({ params }: PageProps) {
   const gb = getDestinationGuideBySlug(pair.b);
   if (!ga || !gb) notFound();
 
-  const a = ga.destination;
-  const b = gb.destination;
-  const nameA = pair.labelA ?? getStoryBySlug(pair.a)?.name ?? localizeCity(a.city);
-  const nameB = pair.labelB ?? getStoryBySlug(pair.b)?.name ?? localizeCity(b.city);
-  const verdicts = buildVerdict(a, b, nameA, nameB);
-  const faq = buildFaq(a, b, nameA, nameB);
-  const quickAnswer = buildQuickAnswer(a, b, nameA, nameB);
   const baseUrl = getSiteUrl();
 
   // Audit action C — flagship comparisons get REAL, current data from our
@@ -249,7 +74,10 @@ export default async function ComparisonPage({ params }: PageProps) {
   // a LiteAPI hiccup degrades to the modelled content, never breaks the page.
   const isTop = isTopComparison(pair.slug);
   const [statsA, statsB] = isTop
-    ? await Promise.all([getCityHotelStats(a.city, a.country), getCityHotelStats(b.city, b.country)])
+    ? await Promise.all([
+        getCityHotelStats(ga.destination.city, ga.destination.country),
+        getCityHotelStats(gb.destination.city, gb.destination.country),
+      ])
     : [null, null];
   const liveAsOf = statsA?.asOfISO ?? statsB?.asOfISO ?? null;
   const liveDateLabel = liveAsOf
@@ -258,8 +86,19 @@ export default async function ComparisonPage({ params }: PageProps) {
 
   // Hero "vs" + image dla schema — realne foto Pexels obu kierunków (cache + ISR).
   // Obrazy są widoczne na stronie (zgodnie z wytycznymi Google dla pola image).
-  const [mediaA, mediaB] = await Promise.all([resolveDestinationMedia(a), resolveDestinationMedia(b)]);
+  const [mediaA, mediaB] = await Promise.all([resolveDestinationMedia(ga.destination), resolveDestinationMedia(gb.destination)]);
   const images = [mediaA.heroImage, mediaB.heroImage].filter((u): u is string => Boolean(u));
+
+  const model = buildComparisonModel({
+    pair,
+    a: ga.destination,
+    b: gb.destination,
+    baseUrl,
+    images,
+    author: personSchema(EDITOR_IN_CHIEF),
+  });
+  const nameA = model.a.name;
+  const nameB = model.b.name;
 
   // Powiązane artykuły dla obu kierunków (dedup, do 3) — wewnętrzne linki.
   const relatedArticles: EditorialArticle[] = [];
@@ -273,84 +112,14 @@ export default async function ComparisonPage({ params }: PageProps) {
   }
   const articleLinks = relatedArticles.slice(0, 3);
 
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Article",
-        headline: `${nameA} czy ${nameB}? Porównanie pod krótki wyjazd`,
-        description: pair.intent,
-        url: `${baseUrl}/porownanie/${pair.slug}`,
-        mainEntityOfPage: `${baseUrl}/porownanie/${pair.slug}`,
-        image: images,
-        inLanguage: "pl-PL",
-        author: personSchema(EDITOR_IN_CHIEF),
-        publisher: { "@id": `${baseUrl}/#organization` },
-      },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Start", item: `${baseUrl}/` },
-          { "@type": "ListItem", position: 2, name: "Kierunki", item: `${baseUrl}/kierunki` },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: `${nameA} vs ${nameB}`,
-            item: `${baseUrl}/porownanie/${pair.slug}`,
-          },
-        ],
-      },
-      {
-        "@type": "FAQPage",
-        mainEntity: faq.map((q) => ({
-          "@type": "Question",
-          name: q.question,
-          acceptedAnswer: { "@type": "Answer", text: q.answer },
-        })),
-      },
-    ],
-  };
-
-  const compareRows = [
-    {
-      label: "Lot z Polski (h)",
-      av: `~${a.typicalFlightHoursFromPL.toFixed(1)} h`,
-      bv: `~${b.typicalFlightHoursFromPL.toFixed(1)} h`,
-    },
-    {
-      label: "Średnia roczna temperatura",
-      av: `${avgYear(a.avgTempByMonth)}°C`,
-      bv: `${avgYear(b.avgTempByMonth)}°C`,
-    },
-    { label: "Lato (cze-sie)", av: `${summerAvg(a.avgTempByMonth)}°C`, bv: `${summerAvg(b.avgTempByMonth)}°C` },
-    { label: "Zima (gru-lut)", av: `${winterAvg(a.avgTempByMonth)}°C`, bv: `${winterAvg(b.avgTempByMonth)}°C` },
-    {
-      label: "Budżet 2 os. / 4 dni",
-      av: `~${budget(a).toLocaleString("pl-PL")} PLN`,
-      bv: `~${budget(b).toLocaleString("pl-PL")} PLN`,
-    },
-    { label: "Profil plażowy", av: `${Math.round(a.beachScore * 100)}/100`, bv: `${Math.round(b.beachScore * 100)}/100` },
-    { label: "City break", av: `${Math.round(a.cityScore * 100)}/100`, bv: `${Math.round(b.cityScore * 100)}/100` },
-    {
-      label: "Zwiedzanie",
-      av: `${Math.round(a.sightseeingScore * 100)}/100`,
-      bv: `${Math.round(b.sightseeingScore * 100)}/100`,
-    },
-    {
-      label: "Dolot/dostępność",
-      av: `${Math.round(a.accessScore * 100)}/100`,
-      bv: `${Math.round(b.accessScore * 100)}/100`,
-    },
-  ];
-
   const destPanels = [
-    { dest: a, guide: ga, name: nameA },
-    { dest: b, guide: gb, name: nameB },
+    { side: model.a, guide: ga, audience: model.audience[0], flightSentence: model.flightSentences[0] },
+    { side: model.b, guide: gb, audience: model.audience[1], flightSentence: model.flightSentences[1] },
   ];
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(model.structuredData) }} />
 
       <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         {/* Split "vs" hero — realne foto obu kierunków (widoczne + w schema image). */}
@@ -389,13 +158,14 @@ export default async function ComparisonPage({ params }: PageProps) {
             {nameA} czy {nameB}? Porównanie pod realną decyzję wyjazdową.
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">{pair.intent}.</p>
-          <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} className="mt-5" />
+          {/* Bez „Zaktualizowano {data renderu}" — strona nie ma źródła prawdy dat zmian. */}
+          <AuthorByline author={EDITOR_IN_CHIEF} className="mt-5" />
         </div>
       </section>
 
       {/* SZYBKA ODPOWIEDŹ — bezpośredni werdykt pod featured snippet + wysoki CTR */}
       <section className="rounded-[2rem] border border-brand/50 bg-surface-sunken p-6 shadow-sm">
-        <p className="mt-2 max-w-3xl text-base leading-8 text-ink sm:text-lg">{quickAnswer}</p>
+        <p className="mt-2 max-w-3xl text-base leading-8 text-ink sm:text-lg">{model.quickAnswer}</p>
       </section>
 
       {/* NA ŻYWO Z NASZEJ BAZY — realne, aktualne dane (audit action C, top porównania).
@@ -469,7 +239,7 @@ export default async function ComparisonPage({ params }: PageProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {compareRows.map((row) => (
+            {model.rows.map((row) => (
               <tr key={row.label}>
                 <td className="py-2 pr-4 text-ink-muted">{row.label}</td>
                 <td className="py-2 px-3 font-semibold text-ink">{row.av}</td>
@@ -478,107 +248,130 @@ export default async function ComparisonPage({ params }: PageProps) {
             ))}
           </tbody>
         </table>
+        <p className="mt-3 text-xs leading-6 text-ink-muted">{model.scoreNote}</p>
       </section>
 
-      {/* W CZYM WYGRYWA KTÓRY KIERUNEK */}
-      <section>
-        <h2 className="mb-4 font-display text-2xl text-ink sm:text-3xl">W czym wygrywa który kierunek</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {verdicts.map((v) => (
-            <article key={v.title} className="rounded-2xl border border-line bg-surface-sunken p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{v.title}</p>
-              <p className="mt-2 text-sm leading-7 text-ink-muted">{v.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* DLA KOGO */}
-      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
-        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Dla kogo lepszy będzie każdy kierunek?</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {destPanels.map(({ dest, name }) => (
-            <article key={dest.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
-              <h3 className="font-display text-xl text-ink">{name}</h3>
-              <p className="mt-1 text-sm text-ink-muted">Najlepszy wybór dla miłośników:</p>
-              <ul className="mt-3 space-y-2">
-                {audienceTags(dest).map((tag) => (
-                  <li key={tag} className="flex gap-2 text-sm leading-6 text-ink-muted">{tag}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* KIEDY JECHAĆ */}
-      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
-        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Kiedy najlepiej jechać?</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {destPanels.map(({ dest, name }) => {
-            const months = bestMonths(dest);
-            return (
-              <article key={dest.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
-                <h3 className="font-display text-xl text-ink">{name}</h3>
-                <p className="mt-2 text-sm leading-6 text-ink-muted">
-                  Komfortowe miesiące (18-30°C). Lato ~{summerAvg(dest.avgTempByMonth)}°C, zima ~{winterAvg(dest.avgTempByMonth)}°C.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {months.length > 0 ? (
-                    months.map((m) => (
-                      <span key={m} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-ink">
-                        {m}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-ink-muted">Cały rok bywa chłodniejszy — sprawdź szczegóły w przewodniku.</span>
-                  )}
-                </div>
+      {/* W CZYM WYGRYWA KTÓRY KIERUNEK — przy remisie bez danych kuratorowanych werdyktów nie ma */}
+      {model.verdicts.length > 0 ? (
+        <section>
+          <h2 className="mb-4 font-display text-2xl text-ink sm:text-3xl">W czym wygrywa który kierunek</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {model.verdicts.map((v) => (
+              <article key={v.title} className="rounded-2xl border border-line bg-surface-sunken p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{v.title}</p>
+                <p className="mt-2 text-sm leading-7 text-ink-muted">{v.body}</p>
               </article>
-            );
-          })}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-      {/* BUDŻET */}
-      <section className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
-        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Ile kosztuje wyjazd?</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
-          Orientacyjny budżet dla 2 osób na 4 dni (lot z Polski, nocleg, jedzenie, transport lokalny):
-        </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {destPanels.map(({ dest, name }) => (
-            <div key={dest.slug} className="rounded-2xl bg-surface-raised px-5 py-4">
-              <p className="text-sm font-semibold text-ink-muted">{name}</p>
-              <p className="mt-1 font-display text-3xl text-ink">~{budget(dest).toLocaleString("pl-PL")} zł</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-xs leading-6 text-ink-muted">
-          To szacunek orientacyjny — realne ceny zależą od terminu i standardu. Sprawdź aktualne stawki w wyszukiwarce poniżej.
-        </p>
-      </section>
+      {/* DLA KOGO — tylko przy ocenach profilu z danych kuratorowanych po obu
+          stronach; w profilu z szablonu lista wychodzi ze stałych regionu. */}
+      {model.audience[0].length > 0 && model.audience[1].length > 0 ? (
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Dla kogo lepszy będzie każdy kierunek?</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {destPanels.map(({ side, audience }) => (
+              <article key={side.profile.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
+                <h3 className="font-display text-xl text-ink">{side.name}</h3>
+                <p className="mt-1 text-sm text-ink-muted">Najlepszy wybór dla miłośników:</p>
+                <ul className="mt-3 space-y-2">
+                  {audience.map((tag) => (
+                    <li key={tag} className="flex gap-2 text-sm leading-6 text-ink-muted">{tag}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* KIEDY JECHAĆ — tylko przy temperaturach kuratorowanych; bez nich sekcja
+          nie udaje wiedzy o klimacie. */}
+      {model.whenToGo.length > 0 && (
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Kiedy najlepiej jechać?</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {destPanels.map(({ side }) => {
+              const entry = model.whenToGo.find((item) => item.side === side);
+              return (
+                <article key={side.profile.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
+                  <h3 className="font-display text-xl text-ink">{side.name}</h3>
+                  {entry ? (
+                    <>
+                      <p className="mt-2 text-sm leading-6 text-ink-muted">
+                        Komfortowe miesiące (18-30°C). Lato ~{entry.summerAvg}°C, zima ~{entry.winterAvg}°C.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {entry.months.length > 0 ? (
+                          entry.months.map((m) => (
+                            <span key={m} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-ink">
+                              {m}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-ink-muted">Cały rok bywa chłodniejszy — sprawdź szczegóły w przewodniku.</span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-ink-muted">
+                      Temperatur dla tego kierunku jeszcze nie podajemy — nie mamy zweryfikowanych danych klimatycznych.
+                      Termin sprawdzisz w przewodniku i w wyszukiwarce.
+                    </p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* BUDŻET — szacunek ze wzoru tylko przy danych kuratorowanych po obu stronach */}
+      {model.budget && (
+        <section className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm">
+          <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Ile kosztuje wyjazd?</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
+            Orientacyjny budżet dla 2 osób na 4 dni (lot z Polski, nocleg, jedzenie, transport lokalny):
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {[
+              { side: model.a, amount: model.budget.a },
+              { side: model.b, amount: model.budget.b },
+            ].map(({ side, amount }) => (
+              <div key={side.profile.slug} className="rounded-2xl bg-surface-raised px-5 py-4">
+                <p className="text-sm font-semibold text-ink-muted">{side.name}</p>
+                <p className="mt-1 font-display text-3xl text-ink">~{amount.toLocaleString("pl-PL")} zł</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs leading-6 text-ink-muted">
+            To szacunek orientacyjny — realne ceny zależą od terminu i standardu. Sprawdź aktualne stawki w wyszukiwarce poniżej.
+          </p>
+        </section>
+      )}
 
       {/* PRZEWODNIKI + HOTELE */}
       <section className="grid gap-5 lg:grid-cols-2">
-        {destPanels.map(({ dest, guide, name }) => (
+        {destPanels.map(({ side, guide }) => (
           <article
-            key={dest.slug}
+            key={side.profile.slug}
             className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm"
           >
-            <h2 className="font-display text-2xl text-ink">{name}</h2>
+            <h2 className="font-display text-2xl text-ink">{side.name}</h2>
             <p className="mt-2 text-sm leading-7 text-ink-muted">{guide.overview}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
-                href={`/kierunki/${dest.slug}`}
+                href={`/kierunki/${side.profile.slug}`}
                 className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-4 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 <span className="text-xs font-bold text-white">Pełny przewodnik</span>
               </Link>
               <Link
                 href={`/hotele/szukaj?${new URLSearchParams({
-                  destination: dest.city,
-                  country: dest.country,
+                  destination: side.profile.city,
+                  country: side.profile.country,
                 }).toString()}`}
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-4 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
@@ -591,16 +384,16 @@ export default async function ComparisonPage({ params }: PageProps) {
 
       {/* 2 CTA per kierunek — wewnętrzne hotele + wewnętrzne loty */}
       <section className="grid gap-5 lg:grid-cols-2">
-        {destPanels.map(({ dest, name }) => {
+        {destPanels.map(({ side, flightSentence }) => {
           const hotelHref = `/hotele/szukaj?${new URLSearchParams({
-            destination: dest.city,
-            country: dest.country,
+            destination: side.profile.city,
+            country: side.profile.country,
           }).toString()}`;
           return (
-            <div key={dest.slug} className="flex flex-col gap-4">
+            <div key={side.profile.slug} className="flex flex-col gap-4">
               <article className="rounded-2xl border border-line bg-brand p-5 text-white">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white">Hotele</p>
-                <h3 className="mt-1 font-display text-2xl">Konkretne ceny — {name}</h3>
+                <h3 className="mt-1 font-display text-2xl">Konkretne ceny — {side.name}</h3>
                 <p className="mt-2 text-sm leading-7 text-white/85">
                   Sprawdź ceny noclegów w PLN dla swoich dat. Bez wychodzenia ze strony.
                 </p>
@@ -611,7 +404,7 @@ export default async function ComparisonPage({ params }: PageProps) {
                   {/* span: bg is white inside an emerald-700 (text-white) card,
                       so without it the global a{color:inherit} makes the label
                       white-on-white. */}
-                  <span className="text-sm font-bold text-ink">Zobacz hotele: {name}</span>
+                  <span className="text-sm font-bold text-ink">Zobacz hotele: {side.name}</span>
                 </Link>
               </article>
               <Link
@@ -619,9 +412,9 @@ export default async function ComparisonPage({ params }: PageProps) {
                 className="flex flex-col justify-center rounded-2xl border border-brand-strong bg-brand-strong p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Loty</p>
-                <h3 className="mt-2 text-xl font-bold text-white">Sprawdź loty do {dest.city}</h3>
+                <h3 className="mt-2 text-xl font-bold text-white">Sprawdź loty: {side.name}</h3>
                 <p className="mt-2 text-sm leading-6 text-white/78">
-                  Wyszukaj loty z dowolnego lotniska w Polsce. Lot ok. {dest.typicalFlightHoursFromPL.toFixed(1)} h.
+                  Wyszukaj loty z dowolnego lotniska w Polsce.{flightSentence ? ` ${flightSentence}` : ""}
                 </p>
               </Link>
             </div>
@@ -629,18 +422,21 @@ export default async function ComparisonPage({ params }: PageProps) {
         })}
       </section>
 
-      {/* FAQ — widoczny accordion + zgodny ze schema FAQPage */}
-      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
-        <h2 className="font-display text-2xl text-ink sm:text-3xl">Najczęściej zadawane pytania</h2>
-        <div className="mt-5 space-y-3">
-          {faq.map((item) => (
-            <details key={item.question} className="rounded-2xl bg-surface-sunken px-5 py-4 transition hover:bg-surface-sunken">
-              <summary className="cursor-pointer text-base font-bold text-ink">{item.question}</summary>
-              <p className="mt-3 text-sm leading-7 text-ink-muted">{item.answer}</p>
-            </details>
-          ))}
-        </div>
-      </section>
+      {/* FAQ — widoczny accordion + zgodny ze schema FAQPage; bez pytań
+          z pokryciem nie ma ani sekcji, ani węzła FAQPage. */}
+      {model.faq.length > 0 ? (
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">Najczęściej zadawane pytania</h2>
+          <div className="mt-5 space-y-3">
+            {model.faq.map((item) => (
+              <details key={item.question} className="rounded-2xl bg-surface-sunken px-5 py-4 transition hover:bg-surface-sunken">
+                <summary className="cursor-pointer text-base font-bold text-ink">{item.question}</summary>
+                <p className="mt-3 text-sm leading-7 text-ink-muted">{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* POWIĄZANE ARTYKUŁY */}
       {articleLinks.length > 0 ? (
@@ -676,8 +472,8 @@ export default async function ComparisonPage({ params }: PageProps) {
               const ag = getDestinationGuideBySlug(p.a);
               const bg = getDestinationGuideBySlug(p.b);
               if (!ag || !bg) return null;
-              const labelA = p.labelA ?? ag.destination.city;
-              const labelB = p.labelB ?? bg.destination.city;
+              const labelA = p.labelA ?? destinationDisplayName(ag.destination);
+              const labelB = p.labelB ?? destinationDisplayName(bg.destination);
               return (
                 <Link
                   key={p.slug}

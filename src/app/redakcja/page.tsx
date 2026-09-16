@@ -27,19 +27,21 @@ const dataSources = [
       "Dostępność, oceny gości i ceny w PLN pochodzą na żywo od globalnego dostawcy rezerwacyjnego (LiteAPI). Nie wpisujemy cen ręcznie — pokazujemy to, co faktycznie jest dostępne.",
   },
   {
-    title: "Wieloletnie średnie pogodowe",
+    // Do 2026-09 stało tu „wieloletnie średnie dla każdego kierunku", podczas gdy
+    // 212 z 235 kierunków miało jedną tablicę temperatur na cały region (audyt Faza 2.2).
+    title: "Pogoda i sezon",
     body:
-      "Temperatury, sezonowość i temperatura morza opieramy na wieloletnich średnich miesięcznych dla każdego kierunku — nie na prognozie z jednego dnia.",
+      "Temperatury i sezon podajemy tylko dla kierunków, dla których mamy ręcznie opracowane średnie miesięczne. Gdzie takich danych jeszcze nie ma, nie pokazujemy ani temperatury, ani sezonu. Temperatura morza to szacunek liczony z temperatur powietrza.",
   },
   {
     title: "Czasy lotów z Polski",
     body:
-      "Orientacyjne czasy bezpośrednich przelotów liczymy z polskich i europejskich lotnisk, żeby realnie ocenić, jak blisko jest dany kierunek.",
+      "Czas lotu podajemy wprost tylko przy kierunkach z opracowanymi danymi. Przy pozostałych pokazujemy szacunek liczony z odległości od najbliższego lotniska w Polsce — zawsze oznaczony jako szacunek, bez uwzględnienia przesiadek i rozkładów.",
   },
   {
     title: "Indeks kosztów i profile kierunków",
     body:
-      "Modelowany poziom cen na miejscu, profil plażowy i miejski oraz sezonowość pozwalają porównywać kierunki spójną metodą, a nie na wyczucie.",
+      "Indeks kosztów oraz profil plażowy i miejski to nasza wewnętrzna, modelowana ocena. Pomaga porównywać kierunki jedną metodą, ale nie jest ceną ani pomiarem.",
   },
 ];
 
@@ -134,7 +136,7 @@ export default function RedakcjaPage() {
       <section className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(226,244,232,0.92))] p-6 shadow-sm sm:p-8">
         <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Skąd biorą się nasze dane</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
-          Każdy przewodnik, porównanie i raport opieramy na realnych, sprawdzalnych źródłach. Oto one:
+          Poniżej opisujemy, skąd pochodzą dane na stronach kierunków i gdzie kończy się sprawdzona informacja, a zaczyna szacunek:
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {dataSources.map((source) => (

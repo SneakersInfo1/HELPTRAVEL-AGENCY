@@ -13,6 +13,13 @@ import {
   type Season,
 } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
+import type { DestinationProfile } from "@/lib/mvp/types";
+import {
+  exactFlightHours,
+  getDestinationSeoFacts,
+  type DestinationSeoFacts,
+  type TemperatureFact,
+} from "@/lib/seo/destination-facts";
 import { seasonPageHeading } from "@/lib/seo/page-titles";
 
 export const revalidate = 86400;
@@ -29,8 +36,23 @@ function isSeason(value: string): value is Season {
   return (seasonSlugs as readonly string[]).includes(value);
 }
 
-function avgSeasonalTemp(temps: number[], months: number[]) {
+function avgSeasonalTemp(temps: readonly number[], months: number[]) {
   return months.reduce((sum, m) => sum + temps[m], 0) / months.length;
+}
+
+type RankingCandidate = {
+  destination: DestinationProfile;
+  facts: DestinationSeoFacts & { temperature: TemperatureFact };
+};
+
+// Ranking liczony wyłącznie z temperatur kuratorowanych. 212 z 235 kierunków ma
+// jedną tablicę temperatur na cały region, a ranking z niej stawiał Gdańsk,
+// Warszawę i Kraków na miejscach 5–7 „na lato" (audyt Faza 2.2). Kierunki
+// w Polsce nie są ucieczką „z Polski", więc też poza rankingiem.
+function rankingCandidates(): RankingCandidate[] {
+  return getAllDestinationProfiles()
+    .map((destination) => ({ destination, facts: getDestinationSeoFacts(destination) }))
+    .filter((entry): entry is RankingCandidate => entry.facts.temperature !== null && !entry.facts.isDomestic);
 }
 
 const seasonIntro: Record<Season, string> = {
@@ -56,7 +78,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: { canonical: `/najlepsze-kierunki/${sezon}` },
     openGraph: {
       title: seasonPageHeading(sezon),
-      description: `Praktyczny ranking destynacji na ${seasonInflected[sezon]} oparty o realne dane pogodowe i kosztowe.`,
+      // Do 2026-09: „oparty o realne dane pogodowe i kosztowe" — przy temperaturach z szablonu regionu.
+      description: `Ranking kierunków na ${seasonInflected[sezon]}: ręcznie opracowane średnie temperatur, dostępność lotów z Polski i indeks kosztów.`,
       url: `${getSiteUrl()}/najlepsze-kierunki/${sezon}`,
       type: "article",
     },
@@ -68,10 +91,9 @@ export default async function SeasonRankingPage({ params }: PageProps) {
   if (!isSeason(sezon)) notFound();
 
   const months = seasonMonthIndexes[sezon];
-  const all = getAllDestinationProfiles();
-  const ranked = all
-    .map((destination) => {
-      const temp = avgSeasonalTemp(destination.avgTempByMonth, months);
+  const ranked = rankingCandidates()
+    .map(({ destination, facts }) => {
+      const temp = avgSeasonalTemp(facts.temperature.byMonth, months);
       // Score: temperatura w komfortowym przedziale 18-28 + access + value
       const tempScore =
         temp >= 22 && temp <= 28
@@ -86,7 +108,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       const accessScore = destination.accessScore ?? 0.7;
       const valueScore = 1 / Math.max(0.6, destination.costIndex);
       const composite = tempScore * 0.6 + accessScore * 0.25 + valueScore * 0.15;
-      return { destination, temp: Math.round(temp), composite };
+      return { destination, facts, temp: Math.round(temp), composite };
     })
     .sort((a, b) => b.composite - a.composite)
     .slice(0, 12);
@@ -125,7 +147,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
           "@type": "ListItem",
           position: index + 1,
           url: `${baseUrl}/kierunki/${entry.destination.slug}`,
-          name: `${entry.destination.city}, ${entry.destination.country}`,
+          name: `${entry.facts.name}, ${entry.facts.countryName}`,
         })),
       },
     ],
@@ -170,54 +192,58 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       </section>
 
       <section className="flex flex-col gap-3">
-        {ranked.map((entry, index) => (
-          <article
-            key={entry.destination.slug}
-            className="rounded-2xl border border-line bg-surface-raised p-5 shadow-sm"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-baseline gap-3">
-                <span className="text-2xl font-bold text-brand">#{index + 1}</span>
-                <h2 className="font-display text-2xl text-ink">
-                  <Link href={`/kierunki/${entry.destination.slug}`}>
-                    <span className="transition hover:text-brand">{entry.destination.city}</span>
-                  </Link>
-                  <span className="ml-2 text-sm font-normal text-ink-muted">{entry.destination.country}</span>
-                </h2>
+        {ranked.map((entry, index) => {
+          const flightHours = exactFlightHours(entry.facts);
+          return (
+            <article
+              key={entry.destination.slug}
+              className="rounded-2xl border border-line bg-surface-raised p-5 shadow-sm"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-2xl font-bold text-brand">#{index + 1}</span>
+                  <h2 className="font-display text-2xl text-ink">
+                    <Link href={`/kierunki/${entry.destination.slug}`}>
+                      <span className="transition hover:text-brand">{entry.facts.name}</span>
+                    </Link>
+                    <span className="ml-2 text-sm font-normal text-ink-muted">{entry.facts.countryName}</span>
+                  </h2>
+                </div>
+                <div className="flex gap-3 text-sm text-ink-muted">
+                  <span className="rounded-full bg-surface-sunken px-3 py-1.5">{entry.temp}°C średnio</span>
+                  {flightHours !== null && (
+                    <span className="rounded-full bg-surface-sunken px-3 py-1.5">Lot ~{flightHours}h</span>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-3 text-sm text-ink-muted">
-                <span className="rounded-full bg-surface-sunken px-3 py-1.5">{entry.temp}°C średnio</span>
-                <span className="rounded-full bg-surface-sunken px-3 py-1.5">
-                  Lot ~{entry.destination.typicalFlightHoursFromPL}h
-                </span>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {months.map((monthIdx) => {
+                  const monthSlug = polishMonthSlugs[monthIdx];
+                  return (
+                    <Link
+                      key={monthIdx}
+                      href={`/kierunki/${entry.destination.slug}/${monthSlug}`}
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+                    >
+                      <span className="text-xs font-semibold text-ink">
+                        {entry.facts.name} {inMonthPhrase(monthSlug)} ({entry.facts.temperature.byMonth[monthIdx]}°C)
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {months.map((monthIdx) => {
-                const monthSlug = polishMonthSlugs[monthIdx];
-                return (
-                  <Link
-                    key={monthIdx}
-                    href={`/kierunki/${entry.destination.slug}/${monthSlug}`}
-                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
-                  >
-                    <span className="text-xs font-semibold text-ink">
-                      {entry.destination.city} {inMonthPhrase(monthSlug)} ({entry.destination.avgTempByMonth[monthIdx]}°C)
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </section>
 
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <h2 className="font-display text-3xl text-ink">Jak czytać ten ranking</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
           Pozycja w rankingu liczy się z trzech rzeczy: średnia temperatura w sezonie (komfort 22-28°C dostaje najwięcej punktów),
-          dostępność lotów z Polski oraz indeks kosztów. Ranking ma orientować szybko, a finalną decyzję warto sprawdzić
-          w wyszukiwarce hoteli i lotów — uwzględnia ona długość wyjazdu, budżet i preferencje stylu.
+          dostępność lotów z Polski oraz indeks kosztów. Ranking obejmuje wyłącznie kierunki z ręcznie opracowanymi średnimi
+          temperatur — bez nich pozycja byłaby zgadywaniem. Finalną decyzję warto sprawdzić w wyszukiwarce hoteli i lotów —
+          uwzględnia ona długość wyjazdu, budżet i preferencje stylu.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link

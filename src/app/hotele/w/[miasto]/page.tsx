@@ -37,6 +37,7 @@ import { getSiteUrl } from "@/lib/mvp/site";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { addDaysToIsoDate, defaultTravelStartDate } from "@/lib/mvp/travel-dates";
 import { buildCityHotelsFaq, buildCityHotelsStructuredData } from "@/lib/seo/city-hotels-schema";
+import { exactFlightHours, formatFlightFact, getDestinationSeoFacts } from "@/lib/seo/destination-facts";
 import { cityHotelsPageText } from "@/lib/seo/page-titles";
 import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
@@ -48,28 +49,6 @@ interface PageProps {
 
 export async function generateStaticParams() {
   return commercialCities.map((c) => ({ miasto: c.slug }));
-}
-
-function buildBudgetEstimate(city: CommercialCity): { min: number; max: number; perNight: number } {
-  // Estimate per 2 osoby / 4 dni based on the destinations.ts costIndex
-  // and flight hours. Same model as /kierunki/[slug]/page.tsx so the
-  // landing-page "od X zł" matches the destination guide for the same city.
-  const profile = getAllDestinationProfiles().find((d) => d.slug === city.destinationId);
-  const costIndex = profile?.costIndex ?? 1;
-  const flightHours = profile?.typicalFlightHoursFromPL ?? 3.5;
-  const days = 4;
-  const travelers = 2;
-  const flightBasePerPerson = 380 + flightHours * 70;
-  const stayAndFoodPerDayPerPerson = 170 * costIndex;
-  const localTransportAndTickets = 65 * costIndex;
-  const total =
-    travelers * flightBasePerPerson +
-    travelers * days * stayAndFoodPerDayPerPerson +
-    days * localTransportAndTickets;
-  const min = Math.round(total * 0.9);
-  const max = Math.round(total * 1.18);
-  const perNight = Math.round(min / (4 * 2));
-  return { min, max, perNight };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -140,7 +119,11 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
   if (!city) notFound();
 
   const profile = getAllDestinationProfiles().find((d) => d.slug === city.destinationId);
-  const budget = buildBudgetEstimate(city);
+  // Liczby o kierunku wyłącznie z bramki faktów (SEO Data Integrity, PR #1.5):
+  // temperatura tylko kuratorowana, czas lotu kuratorowany albo oznaczony szacunek.
+  // Do 2026-09 stał tu też „od X zł/noc" liczony wzorem (buildBudgetEstimate) i
+  // pokazywany w hero obok „ceny w PLN" jak aktualna cena — usunięty bez zamiennika.
+  const facts = profile ? getDestinationSeoFacts(profile) : null;
   const text = cityHotelsPageText({ city });
   const inLoc = `${city.preposition} ${city.cityLocative}`;
   // Direction phrase: mainland "do {dopełniacz}" (do Barcelony) vs island
@@ -173,13 +156,14 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
     rooms: "1",
   }).toString()}`;
 
-  // Best months to visit (temp 18-30°C from destinations.ts climate).
-  const bestMonths = profile
-    ? profile.avgTempByMonth
+  // Komfortowe miesiące (18-30°C) — tylko z temperatur kuratorowanych.
+  const bestMonths = facts?.temperature
+    ? facts.temperature.byMonth
         .map((t, i) => ({ t, i }))
         .filter(({ t }) => t >= 18 && t <= 30)
         .map(({ i }) => polishMonthLabels[polishMonthSlugs[i]])
     : [];
+  const flightText = facts?.flight ? formatFlightFact(facts.flight) : null;
 
   // Cross-link cluster — other commercial cities + 2 month pages for THIS
   // city (current month + 1 ahead). Internal linking distributes equity
@@ -214,7 +198,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
   // FAQ i lista hoteli. Bez Offer i bez kwot z buildBudgetEstimate.
   const faqInput = {
     city,
-    flightHours: profile ? profile.typicalFlightHoursFromPL : null,
+    flightHours: facts ? exactFlightHours(facts) : null,
     bestMonths,
   };
   const faq = buildCityHotelsFaq(faqInput);
@@ -224,7 +208,6 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
     featuredHotels,
     heroImage: media?.heroImage,
     author: personSchema(EDITOR_IN_CHIEF),
-    nowIso: new Date().toISOString(),
   });
 
   return (
@@ -285,10 +268,11 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               </Link>
             </div>
             <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-white/90">
-              <span className="rounded-full bg-white/12 px-3 py-1">od {budget.perNight} zł/noc</span>
-              {profile && (
+              {facts?.flight && (
                 <span className="rounded-full bg-white/12 px-3 py-1">
-                  lot ok. {profile.typicalFlightHoursFromPL.toFixed(1)} h
+                  {facts.flight.kind === "exact"
+                    ? `lot ok. ${facts.flight.hours.toFixed(1)} h`
+                    : `lot ~${facts.flight.hours.toFixed(1)} h (szacunek)`}
                 </span>
               )}
               <span className="rounded-full bg-white/12 px-3 py-1">ceny w PLN</span>
@@ -299,8 +283,8 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
       </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-raised px-5 py-3 shadow-sm">
-        <AuthorByline author={EDITOR_IN_CHIEF} updatedISO={new Date().toISOString()} />
-        <span className="text-xs text-ink-muted">Ceny i dostępność hoteli na żywo z naszej bazy</span>
+        <AuthorByline author={EDITOR_IN_CHIEF} />
+        <span className="text-xs text-ink-muted">Ceny i dostępność sprawdzisz na żywo w wyszukiwarce</span>
       </div>
 
       {/* WHY US */}
@@ -320,7 +304,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           },
           {
             title: "Sprawdzone hotele",
-            body: "Oferty od globalnego dostawcy LiteAPI z prawdziwymi opiniami gości i aktualnymi cenami.",
+            body: "Oferty od globalnego dostawcy LiteAPI z prawdziwymi opiniami gości — aktualne ceny sprawdzisz w wyszukiwarce.",
           },
         ].map((item) => (
           <article
@@ -410,28 +394,33 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
         <section className="grid gap-5 lg:grid-cols-2">
           <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
             <h2 className="mt-2 font-display text-3xl text-ink">
-              Najlepszy termin na wyjazd {dirPrep} {dirForm}
+              {bestMonths.length > 0 ? `Najlepszy termin na wyjazd ${dirPrep} ${dirForm}` : `Planowanie wyjazdu ${dirPrep} ${dirForm}`}
             </h2>
-            <p className="mt-3 text-sm leading-7 text-ink-muted">
-              Najbardziej komfortowe miesiące (temperatury 18-30°C):
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {bestMonths.length > 0 ? (
-                bestMonths.slice(0, 8).map((m) => (
-                  <span
-                    key={m}
-                    className="rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-semibold text-ink"
-                  >
-                    {m}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-ink-muted">Cały rok</span>
-              )}
-            </div>
+            {/* Bez temperatur kuratorowanych nie ma listy miesięcy — do 2026-09 stał
+                tu wtedy napis „Cały rok", czyli twierdzenie bez danych. */}
+            {bestMonths.length > 0 && (
+              <>
+                <p className="mt-3 text-sm leading-7 text-ink-muted">
+                  Najbardziej komfortowe miesiące (temperatury 18-30°C):
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {bestMonths.slice(0, 8).map((m) => (
+                    <span
+                      key={m}
+                      className="rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-semibold text-ink"
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
             <p className="mt-4 text-sm leading-7 text-ink-muted">
-              Lot z Polski zajmuje około{" "}
-              <strong className="text-ink">{profile.typicalFlightHoursFromPL.toFixed(1)} h</strong>.
+              {flightText && (
+                <>
+                  Lot z Polski: <strong className="text-ink">{flightText}</strong>.{" "}
+                </>
+              )}
               Idealna długość wyjazdu zależy od dystansu — sprawdź planowanie w przewodniku.
             </p>
             <Link
@@ -447,7 +436,9 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               {city.cityNominative} miesiąc po miesiącu
             </h2>
             <p className="mt-3 text-sm leading-7 text-ink-muted">
-              Pogoda, budżet i porady na konkretny miesiąc — wybierz termin wyjazdu.
+              {facts?.temperature
+                ? "Pogoda, budżet i porady na konkretny miesiąc — wybierz termin wyjazdu."
+                : "Hotele i porady na konkretny miesiąc — wybierz termin wyjazdu."}
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {polishMonthSlugs.slice(0, 12).map((m) => (

@@ -1,11 +1,12 @@
 import type { DestinationProfile } from "./types";
 import { buildAffiliateLinks } from "./affiliate-links";
+import { CURATED_PROFILE_PROVENANCE, GENERATED_PROFILE_PROVENANCE } from "./data-provenance";
 import { destinationCatalog, getDestinationCatalogEntryBySlug } from "./destination-catalog";
 import { normalizeLookup } from "./location";
 
 const links = buildAffiliateLinks;
 
-export const curatedDestinations: DestinationProfile[] = [
+const curatedDestinationRecords: DestinationProfile[] = [
   {
     id: "dest_lisbon",
     slug: "lisbon-portugal",
@@ -426,6 +427,15 @@ export const curatedDestinations: DestinationProfile[] = [
   },
 ];
 
+// Pochodzenie nadaje lista, na której profil stoi — nie wartości liczb.
+export const curatedDestinations: DestinationProfile[] = curatedDestinationRecords.map((destination) => ({
+  ...destination,
+  provenance: CURATED_PROFILE_PROVENANCE,
+}));
+
+// Tablice regionu podstawiane za brak danych kierunku (regional_fallback).
+// Wartości zostają dla scoringu, planera i konsjerża; strony SEO czytają je
+// wyłącznie przez lib/seo/destination-facts.ts, które ich nie przepuszcza.
 const regionalTemperatureProfiles: Record<string, number[]> = {
   "Southern Europe": [11, 12, 15, 18, 22, 27, 30, 30, 26, 21, 16, 12],
   Balkans: [8, 10, 13, 17, 22, 27, 31, 31, 25, 19, 13, 9],
@@ -810,6 +820,7 @@ function buildGeneratedDestinationProfile(entry: (typeof destinationCatalog)[num
     accessScore: deriveAccessScore(entry.region, entry.city),
     typicalFlightHoursFromPL: flightHours,
     affiliateLinks: links(entry.city, entry.country),
+    provenance: GENERATED_PROFILE_PROVENANCE,
   };
 }
 

@@ -1,7 +1,17 @@
 import { foldCategorySlug } from "./category-slug";
-import { getDestinationStory } from "./destination-content";
+import { getDestinationStory, getStoryBySlug } from "./destination-content";
+import { tripLengthLabel } from "./destination-localization";
 import { allDestinationProfiles, getDestinationProfileBySlug } from "./destinations";
 import type { DestinationProfile } from "./types";
+
+import {
+  canClaimFromProfileScores,
+  canShowBudgetEstimate,
+  destinationDisplayName,
+  flightHoursForTripLength,
+  getDestinationSeoFacts,
+  monthTemperature,
+} from "../seo/destination-facts";
 
 export interface EditorialFaq {
   question: string;
@@ -1635,21 +1645,22 @@ const editorialCategories: EditorialCategory[] = [
 
 function inferDestinationCategorySlugs(destination: DestinationProfile): string[] {
   const categories = new Set<string>(["przewodniki"]);
+  const facts = getDestinationSeoFacts(destination);
+  const mayTemperature = monthTemperature(facts, 4);
+  const flightHours = flightHoursForTripLength(facts);
 
   if (destination.cityScore >= 0.76 || destination.sightseeingScore >= 0.76) {
     categories.add("city-breaki");
   }
-  if (destination.beachScore >= 0.62 || (destination.avgTempByMonth[4] ?? 0) >= 22) {
+  if (destination.beachScore >= 0.62 || (mayTemperature !== null && mayTemperature >= 22)) {
     categories.add("ciepłe-kierunki");
   }
-  if (destination.costIndex <= 1.02) {
+  // Indeks kosztów profilu z szablonu to stała kraju albo regionu (deriveCostIndex).
+  if (destination.costIndex <= 1.02 && canShowBudgetEstimate(facts)) {
     categories.add("tanie-podróże");
   }
-  if (destination.typicalFlightHoursFromPL <= 3.3) {
+  if (flightHours !== null && flightHours <= 3.3) {
     categories.add("weekendowe-wyjazdy");
-  }
-  if (destination.visaForPL) {
-    categories.add("bez-wizy");
   }
 
   return [...categories];
@@ -1659,8 +1670,8 @@ function monthLabel(month: number): string {
   return ["styczniu", "lutym", "marcu", "kwietniu", "maju", "czerwcu", "lipcu", "sierpniu", "wrzesniu", "październiku", "listopadzie", "grudniu"][month - 1] ?? "sezonie";
 }
 
-function describeBestMonths(destination: DestinationProfile): string {
-  const comfortableMonths = destination.avgTempByMonth
+function describeBestMonths(temperatures: readonly number[]): string {
+  const comfortableMonths = temperatures
     .map((temp, index) => ({ temp, index: index + 1 }))
     .filter((item) => item.temp >= 18 && item.temp <= 30)
     .slice(0, 4)
@@ -1685,9 +1696,9 @@ function describeBudget(destination: DestinationProfile): string {
   return "Najlepiej planować go jako średni budżet: z dobra baza noclegowa, sensowna logistyka i marginesem na jedzenie oraz 1-2 płatne punkty programu.";
 }
 
-function describeWorstMonths(destination: DestinationProfile): string {
-  const monthNames = ["styczen", "luty", "marzec", "kwiecień", "maj", "czerwięc", "lipiec", "sierpien", "wrzesień", "październik", "listopad", "grudzień"];
-  const ranked = destination.avgTempByMonth
+function describeWorstMonths(name: string, temperatures: readonly number[]): string {
+  const monthNames = ["styczen", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpien", "wrzesień", "październik", "listopad", "grudzień"];
+  const ranked = temperatures
     .map((temp, idx) => ({ temp, name: monthNames[idx] }))
     .sort((a, b) => {
       const aDist = a.temp < 12 ? 12 - a.temp : a.temp > 32 ? a.temp - 32 : 0;
@@ -1696,118 +1707,114 @@ function describeWorstMonths(destination: DestinationProfile): string {
     });
   const worst = ranked.slice(0, 2).filter((m) => m.temp < 12 || m.temp > 32);
   if (worst.length === 0) {
-    return `${destination.city} działa całorocznie — nie ma tu jednego miesiąca, który zdecydowanie odpada. Decyzje warto opierać na cenach lotów i własnych preferencjach pogodowych.`;
+    return `${name} działa całorocznie — nie ma tu jednego miesiąca, który zdecydowanie odpada. Decyzje warto opierać na cenach lotów i własnych preferencjach pogodowych.`;
   }
   return `Najslabiej broni się zwykle w miesiącach takich jak ${worst.map((m) => m.name).join(" i ")}, gdy temperatura odbiega od komfortowego okna na chodzenie po mieście. Jeśli pogoda ma być kluczowa, lepiej wybrać inny termin.`;
 }
 
-function describePeakAndOffSeason(destination: DestinationProfile): string {
-  const summerAvg = (destination.avgTempByMonth[5] + destination.avgTempByMonth[6] + destination.avgTempByMonth[7]) / 3;
-  if (summerAvg > 27 && destination.beachScore >= 0.7) {
-    return "Lato to peak sezonu — najwięcej tłumów i najwyższe ceny. Wczesna jesień i późna wiosna dają podobne wrażenia za znacznie mniej pieniędzy i bez kolejek.";
-  }
-  if (summerAvg > 25) {
-    return "W lipcu i sierpniu jest najdrożej i najtłumniej. Czerwięc i wrzesień często wygrywają stosunkiem ceny do pogody.";
-  }
-  if (summerAvg < 18) {
-    return "Sezonowosc nie jest tu dramatyczna — wybór terminu zależy bardziej od cen biletow niż od pogody. Off-season nie istnieje w klasycznym sensie.";
-  }
-  return "Klasyczny sezon przypada na ciepliejsza polowe roku, ale nie ma tu bardzo gwaltownych skokow cenowych — wystarczy unikac dwoch szczytowych tygodni urlopu szkolnego.";
-}
-
-function describeWhoForExtra(destination: DestinationProfile): string[] {
+function describeWhoForExtra(destination: DestinationProfile, flightHours: number | null, costKnown: boolean): string[] {
   const extras: string[] = [];
   if (destination.beachScore >= 0.75) extras.push("plażowicze szukający resetu nad morzem");
   if (destination.cityScore >= 0.8 && destination.sightseeingScore >= 0.7) extras.push("fani klasycznych city breakow");
-  if (destination.nightlifeScore >= 0.75) extras.push("ekipy szukające zycia więczórnego");
+  if (destination.nightlifeScore >= 0.75) extras.push("ekipy szukające zycia wieczornego");
   if (destination.natureScore >= 0.7) extras.push("osóby ceniace bliskosc natury");
-  if (destination.costIndex <= 1) extras.push("planujacy z mysla o budżecie");
-  if (destination.typicalFlightHoursFromPL <= 3) extras.push("wybierajacy się na wyjazd 3-4 dniowy");
+  if (costKnown && destination.costIndex <= 1) extras.push("planujacy z mysla o budżecie");
+  if (flightHours !== null && flightHours <= 3) extras.push("wybierajacy się na wyjazd 3-4 dniowy");
   if (destination.safetyScore >= 0.78) extras.push("rodziny z dziecmi");
   return extras.slice(0, 4);
 }
 
 function buildGenericDestinationGuide(destination: DestinationProfile): DestinationGuideContent {
   const story = getDestinationStory(destination);
-  const lengthHint =
-    destination.typicalFlightHoursFromPL <= 2.5 ? "3-4 dni" : destination.typicalFlightHoursFromPL <= 4.5 ? "4-5 dni" : "5-7 dni";
-  const flightHint = `lot z Polski to około ${destination.typicalFlightHoursFromPL.toFixed(1)} h`;
-  const whoForExtra = describeWhoForExtra(destination);
-  const whoFor = whoForExtra.length > 0 ? whoForExtra : story.bestFor.slice(0, 4);
+  const facts = getDestinationSeoFacts(destination);
+  const name = destinationDisplayName(destination);
+  const flightHours = flightHoursForTripLength(facts);
+  const lengthHint = flightHours === null ? null : tripLengthLabel(flightHours, "pl");
+  const temperatures = facts.temperature?.byMonth ?? null;
+  // Indeks kosztów profilu z szablonu to stała kraju albo regionu (deriveCostIndex) — bez oceny kosztów.
+  const costKnown = canShowBudgetEstimate(facts);
+  // Odbiorcy i oceny profilu („mocny pod plażą", „rodziny z dziećmi", 88/100)
+  // wychodzą z deriveScores, czyli z list miast i regionu. Dla profilu
+  // z szablonu to ta sama wartość dla całych grup kierunków, więc nie budujemy
+  // na niej twierdzeń. Ręcznie pisana historia kierunku jest osobnym źródłem.
+  const traitsKnown = canClaimFromProfileScores(facts);
+  const handwrittenStory = Boolean(getStoryBySlug(destination.slug));
+  const whoForExtra = traitsKnown ? describeWhoForExtra(destination, flightHours, costKnown) : [];
+  const whoFor = whoForExtra.length > 0 ? whoForExtra : handwrittenStory ? story.bestFor.slice(0, 4) : [];
 
-  const whyGo: string[] = [
-    `${destination.city} daje wyjazdówy scenariusz mocny pod ${story.bestFor.slice(0, 2).join(" i ")}.`,
-    `Skaluje się od szybkiego city breaku do bardziej dopracowanego pobytu ${lengthHint} (${flightHint}).`,
-  ];
-  if (destination.cityScore >= 0.75) {
+  const whyGo: string[] = [];
+  if (traitsKnown || handwrittenStory) {
+    whyGo.push(`${name} daje wyjazdowy scenariusz mocny pod ${story.bestFor.slice(0, 2).join(" i ")}.`);
+  }
+  if (lengthHint !== null) {
+    whyGo.push(`Skaluje się od szybkiego city breaku do bardziej dopracowanego pobytu na ${lengthHint}.`);
+  }
+  if (traitsKnown && destination.cityScore >= 0.75) {
     whyGo.push(`Mocne tlo miejskie i zwiedzanie — ${Math.round(destination.cityScore * 100)}/100 w naszym wewnętrznym scoringu.`);
   }
-  if (destination.beachScore >= 0.7) {
+  if (traitsKnown && destination.beachScore >= 0.7) {
     whyGo.push(`Solidny profil plażowy (${Math.round(destination.beachScore * 100)}/100), więc można połączyć miasto z resetem nad morzem.`);
   }
-  if (destination.costIndex <= 1.05) {
+  if (costKnown && destination.costIndex <= 1.05) {
     whyGo.push("Rozsadny indeks kosztów — łatwo obronić kierunek przy normalnym budżecie wakacyjnym.");
-  } else if (destination.costIndex >= 1.3) {
+  } else if (costKnown && destination.costIndex >= 1.3) {
     whyGo.push("Wyzszy indeks kosztów oznacza, ze warto mieć przemyslane decyzje noclegówe i logistyczne, ale produkt obrania się jakościa.");
   }
   whyGo.push("Po stronie produktu łatwo przejść od inspiracji do konkretu: noclegu, lotu i dalszych decyzji wyjazdówych.");
 
   const dataDrivenHighlights: string[] = [];
-  if (destination.sightseeingScore >= 0.75) {
+  if (traitsKnown && destination.sightseeingScore >= 0.75) {
     dataDrivenHighlights.push(`Gesta siatka miejsc do zobaczenia — scoring zwiedzania ${Math.round(destination.sightseeingScore * 100)}/100.`);
   }
-  if (destination.nightlifeScore >= 0.75) {
+  if (traitsKnown && destination.nightlifeScore >= 0.75) {
     dataDrivenHighlights.push("Aktywne życie więczórne, dobrze pasujące pod wyjazdy w grupie.");
   }
-  if (destination.natureScore >= 0.7) {
+  if (traitsKnown && destination.natureScore >= 0.7) {
     dataDrivenHighlights.push("Bliskosc natury — krajobrazy i widoki w zasiegu krótkiego wyjazdu z miasta.");
   }
   const highlights = [...story.attractions.slice(0, 5), ...dataDrivenHighlights].slice(0, 7);
 
+  const faq: EditorialFaq[] = [];
+  if (lengthHint !== null) {
+    faq.push({
+      question: `${name}: na ile dni planować wyjazd?`,
+      answer: `Najczęściej najlepiej sprawdza się scenariusz ${lengthHint}. Taki zakres dobrze równowazy dojazd, budżet i liczbę rzeczy, które da się zrobić bez przepalania energii.`,
+    });
+  }
+  faq.push({
+    question: `${name}: city break czy pełny wypoczynek?`,
+    answer:
+      destination.beachScore >= 0.7
+        ? "To kierunek, który dobrze łączy pobyt miejski z oddechem i wypoczynkiem, więc można zbudować go jako hybryde — 2 dni miasto, 2 dni morze."
+        : "Najlepiej wypada jako kierunek decyzyjny pod konkretne zwiedzanie, jedzenie i rytm miasta, a nie tylko bierny wypoczynek nad woda.",
+  });
+  if (temperatures !== null) {
+    faq.push({
+      question: `${name}: kiedy NIE warto lecieć?`,
+      answer: describeWorstMonths(name, temperatures),
+    });
+  }
+  // Bez „czy to droga destynacja?" (liczba `costIndex` w FAQPage) i „sezon czy poza sezonem?"
+  // (tłumy i ceny z heurystyki temperatury) — żadne z nich nie ma źródła.
+  faq.push({
+    question: `Co zrobić, jeśli ${name} nie pasuje do mojego briefu?`,
+    answer: "Sprawdź porównania na HelpTravel dla podobnych kierunków.",
+  });
+
   return {
     slug: destination.slug,
     destination,
-    overview: `${destination.city} to kierunek, który HelpTravel traktuje jako praktyczny wybór pod ${lengthHint}, z naciskiem na realne decyzje: czy pasuje do budżetu, jaki ma rytm pobytu i czy daje dobry kolejny krok do hoteli, lotów i atrakcji.`,
+    overview:
+      lengthHint !== null
+        ? `${name} to kierunek, który HelpTravel traktuje jako praktyczny wybór pod ${lengthHint}, z naciskiem na realne decyzje: czy pasuje do budżetu, jaki ma rytm pobytu i czy daje dobry kolejny krok do hoteli, lotów i atrakcji.`
+        : `${name} to kierunek, który HelpTravel traktuje jako praktyczny wybór na krótki wyjazd, z naciskiem na realne decyzje: czy pasuje do budżetu, jaki ma rytm pobytu i czy daje dobry kolejny krok do hoteli, lotów i atrakcji.`,
     whyGo,
-    bestTime: describeBestMonths(destination),
-    budgetNote: describeBudget(destination),
+    bestTime: temperatures === null ? "" : describeBestMonths(temperatures),
+    budgetNote: costKnown ? describeBudget(destination) : "",
     whoFor,
     highlights,
     districts: story.districts.slice(0, 4),
-    faq: [
-      {
-        question: `Na ile dni najlepiej planować ${destination.city}?`,
-        answer: `Najczęściej najlepiej sprawdza się scenariusz ${lengthHint}. Taki zakres dobrze równowazy dojazd, budżet i liczbę rzeczy, które da się zrobić bez przepalania energii. ${flightHint.charAt(0).toUpperCase() + flightHint.slice(1)}, więc do dnia w celu nie trzeba doliczać całodniowej podróży.`,
-      },
-      {
-        question: `Czy ${destination.city} lepiej traktowac jako city break czy pełny wypoczynek?`,
-        answer:
-          destination.beachScore >= 0.7
-            ? "To kierunek, który dobrze łączy pobyt miejski z oddechem i wypoczynkiem, więc można zbudować go jako hybryde — 2 dni miasto, 2 dni morze."
-            : "Najlepiej wypada jako kierunek decyzyjny pod konkretne zwiedzanie, jedzenie i rytm miasta, a nie tylko bierny wypoczynek nad woda.",
-      },
-      {
-        question: `Kiedy NIE warto lecieć do ${destination.city}?`,
-        answer: describeWorstMonths(destination),
-      },
-      {
-        question: `Czy ${destination.city} jest droga destynacja?`,
-        answer:
-          destination.costIndex <= 1
-            ? `Nie — indeks kosztów ${destination.costIndex.toFixed(2)} oznacza, ze noclegi i jedzenie wypadają zwykle tanio jak na standard europejski. Można obronić ten kierunek przy realnym budżecie wakacyjnym.`
-            : destination.costIndex >= 1.3
-              ? `Tak — indeks kosztów ${destination.costIndex.toFixed(2)} jest powyżej średniej europejskiej. Główne wydatki to noclegi w centrum i restauracje turystyczne. Da się zoptymalizować decyzjami logistycznymi.`
-              : `Średni budżet w skali europejskiej — indeks kosztów około ${destination.costIndex.toFixed(2)}. Warto trzymać rezerwę na 1-2 płatne punkty programu i sensowne miejsce do spania.`,
-      },
-      {
-        question: `Czy lepiej lecieć w sezonie czy poza sezonem?`,
-        answer: describePeakAndOffSeason(destination),
-      },
-      {
-        question: `Co zrobić, jeśli ${destination.city} nie pasuje do mojego briefu?`,
-        answer: `Sprawdź porównania na HelpTravel dla podobnych kierunków.`,
-      },
-    ],
+    faq,
   };
 }
 
