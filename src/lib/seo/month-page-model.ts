@@ -74,11 +74,14 @@ function describeWeather(temp: number) {
   return "zimno, często wymaga kurtki zimowej";
 }
 
+// Werdykt mówi wyłącznie o pogodzie z danych kuratorowanych. Sama temperatura
+// nie niesie informacji o sezonie turystycznym, tłumach ani cenach, więc nie ma
+// tu „poza sezonem" ani „wysokiego sezonu".
 function suitabilityVerdict(temp: number, beachScore: number) {
-  if (temp >= 22 && beachScore >= 0.7) return "Tak — to jeden z lepszych terminów na ten kierunek.";
-  if (temp >= 18) return "Tak — komfortowy termin na city break i sensowne zwiedzanie.";
+  if (temp >= 22 && beachScore >= 0.7) return "Tak — to jeden z cieplejszych terminów na tym kierunku.";
+  if (temp >= 18) return "Tak — komfortowa temperatura na city break i sensowne zwiedzanie.";
   if (temp >= 12) return "Warto, jeśli akceptujesz chłodniejszą pogodę i nie liczysz na plażę.";
-  return "Możliwe, ale to nie najmocniejszy termin — lepiej traktować jako city break poza sezonem.";
+  return "Możliwe, ale trzeba liczyć się z chłodem — to termin raczej na miasto i wnętrza niż na plażę.";
 }
 
 // Morze reaguje na temperaturę powietrza z opóźnieniem, dlatego model waży

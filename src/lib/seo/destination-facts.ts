@@ -63,6 +63,8 @@ export interface DestinationSeoFacts {
   flight: FlightFact | null;
   /** Pochodzenie budżetów ze wzoru (costIndex × czas lotu) dla tego kierunku. */
   budgetEstimate: DataProvenance;
+  /** Pochodzenie ocen profilu (plaża, miasto, zwiedzanie, natura, bezpieczeństwo). */
+  profileScores: DataProvenance;
   entryRequirementsNote: string;
 }
 
@@ -149,8 +151,19 @@ export function getDestinationSeoFacts(profile: DestinationProfile): Destination
     temperature,
     flight: isDomestic ? null : resolveFlight(profile),
     budgetEstimate: derivedProvenance(provenanceOf(profile, "price")),
+    profileScores: provenanceOf(profile, "scores"),
     entryRequirementsNote: ENTRY_REQUIREMENTS_NOTE,
   };
+}
+
+/**
+ * Czy wolno budować twierdzenie o kierunku na ocenach profilu: odbiorców
+ * („dla rodzin"), werdykt porównania („mocniejszy profil plażowy"), rekomendację.
+ * W profilu z szablonu oceny wychodzą z list miast i regionu (deriveScores),
+ * więc są takie same dla całych grup kierunków.
+ */
+export function canClaimFromProfileScores(facts: DestinationSeoFacts): boolean {
+  return isFactGrade(facts.profileScores);
 }
 
 export function monthTemperature(facts: DestinationSeoFacts, monthIndex: number): number | null {

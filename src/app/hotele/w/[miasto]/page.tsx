@@ -304,7 +304,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
           },
           {
             title: "Sprawdzone hotele",
-            body: "Oferty od globalnego dostawcy LiteAPI z prawdziwymi opiniami gości i aktualnymi cenami.",
+            body: "Oferty od globalnego dostawcy LiteAPI z prawdziwymi opiniami gości — aktualne ceny sprawdzisz w wyszukiwarce.",
           },
         ].map((item) => (
           <article

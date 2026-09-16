@@ -1,10 +1,11 @@
 import { foldCategorySlug } from "./category-slug";
-import { getDestinationStory } from "./destination-content";
+import { getDestinationStory, getStoryBySlug } from "./destination-content";
 import { tripLengthLabel } from "./destination-localization";
 import { allDestinationProfiles, getDestinationProfileBySlug } from "./destinations";
 import type { DestinationProfile } from "./types";
 
 import {
+  canClaimFromProfileScores,
   canShowBudgetEstimate,
   destinationDisplayName,
   flightHoursForTripLength,
@@ -1732,17 +1733,26 @@ function buildGenericDestinationGuide(destination: DestinationProfile): Destinat
   const temperatures = facts.temperature?.byMonth ?? null;
   // Indeks kosztów profilu z szablonu to stała kraju albo regionu (deriveCostIndex) — bez oceny kosztów.
   const costKnown = canShowBudgetEstimate(facts);
-  const whoForExtra = describeWhoForExtra(destination, flightHours, costKnown);
-  const whoFor = whoForExtra.length > 0 ? whoForExtra : story.bestFor.slice(0, 4);
+  // Odbiorcy i oceny profilu („mocny pod plażą", „rodziny z dziećmi", 88/100)
+  // wychodzą z deriveScores, czyli z list miast i regionu. Dla profilu
+  // z szablonu to ta sama wartość dla całych grup kierunków, więc nie budujemy
+  // na niej twierdzeń. Ręcznie pisana historia kierunku jest osobnym źródłem.
+  const traitsKnown = canClaimFromProfileScores(facts);
+  const handwrittenStory = Boolean(getStoryBySlug(destination.slug));
+  const whoForExtra = traitsKnown ? describeWhoForExtra(destination, flightHours, costKnown) : [];
+  const whoFor = whoForExtra.length > 0 ? whoForExtra : handwrittenStory ? story.bestFor.slice(0, 4) : [];
 
-  const whyGo: string[] = [`${name} daje wyjazdowy scenariusz mocny pod ${story.bestFor.slice(0, 2).join(" i ")}.`];
+  const whyGo: string[] = [];
+  if (traitsKnown || handwrittenStory) {
+    whyGo.push(`${name} daje wyjazdowy scenariusz mocny pod ${story.bestFor.slice(0, 2).join(" i ")}.`);
+  }
   if (lengthHint !== null) {
     whyGo.push(`Skaluje się od szybkiego city breaku do bardziej dopracowanego pobytu na ${lengthHint}.`);
   }
-  if (destination.cityScore >= 0.75) {
+  if (traitsKnown && destination.cityScore >= 0.75) {
     whyGo.push(`Mocne tlo miejskie i zwiedzanie — ${Math.round(destination.cityScore * 100)}/100 w naszym wewnętrznym scoringu.`);
   }
-  if (destination.beachScore >= 0.7) {
+  if (traitsKnown && destination.beachScore >= 0.7) {
     whyGo.push(`Solidny profil plażowy (${Math.round(destination.beachScore * 100)}/100), więc można połączyć miasto z resetem nad morzem.`);
   }
   if (costKnown && destination.costIndex <= 1.05) {
@@ -1753,13 +1763,13 @@ function buildGenericDestinationGuide(destination: DestinationProfile): Destinat
   whyGo.push("Po stronie produktu łatwo przejść od inspiracji do konkretu: noclegu, lotu i dalszych decyzji wyjazdówych.");
 
   const dataDrivenHighlights: string[] = [];
-  if (destination.sightseeingScore >= 0.75) {
+  if (traitsKnown && destination.sightseeingScore >= 0.75) {
     dataDrivenHighlights.push(`Gesta siatka miejsc do zobaczenia — scoring zwiedzania ${Math.round(destination.sightseeingScore * 100)}/100.`);
   }
-  if (destination.nightlifeScore >= 0.75) {
+  if (traitsKnown && destination.nightlifeScore >= 0.75) {
     dataDrivenHighlights.push("Aktywne życie więczórne, dobrze pasujące pod wyjazdy w grupie.");
   }
-  if (destination.natureScore >= 0.7) {
+  if (traitsKnown && destination.natureScore >= 0.7) {
     dataDrivenHighlights.push("Bliskosc natury — krajobrazy i widoki w zasiegu krótkiego wyjazdu z miasta.");
   }
   const highlights = [...story.attractions.slice(0, 5), ...dataDrivenHighlights].slice(0, 7);

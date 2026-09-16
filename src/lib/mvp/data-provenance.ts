@@ -21,7 +21,16 @@ export type DataProvenance =
   /** Brak znanego źródła albo domyślne założenie. */
   | "unknown";
 
-export const PROVENANCED_FIELDS = ["temperature", "flightDuration", "price", "visa", "weather", "seasonality"] as const;
+export const PROVENANCED_FIELDS = [
+  "temperature",
+  "flightDuration",
+  "price",
+  "visa",
+  "weather",
+  "seasonality",
+  /** Oceny profilu 0–1: plaża, miasto, zwiedzanie, nocne życie, natura, bezpieczeństwo. */
+  "scores",
+] as const;
 
 export type ProvenancedField = (typeof PROVENANCED_FIELDS)[number];
 
@@ -39,6 +48,8 @@ export const CURATED_PROFILE_PROVENANCE: DestinationDataProvenance = Object.free
   visa: "curated",
   weather: "derived",
   seasonality: "derived",
+  // Oceny wpisane ręcznie razem z resztą profilu.
+  scores: "curated",
 });
 
 /** 212 profili z `buildGeneratedDestinationProfile`. */
@@ -50,6 +61,10 @@ export const GENERATED_PROFILE_PROVENANCE: DestinationDataProvenance = Object.fr
   visa: "unknown",
   weather: "regional_fallback",
   seasonality: "regional_fallback",
+  // deriveScores: przynależność miasta do list i region, ta sama wartość dla
+  // całych grup kierunków (Kreta i Rodos: 88/66). Nie wolno na tym budować
+  // twierdzeń o kierunku — ani odbiorców, ani werdyktów w porównaniu.
+  scores: "regional_fallback",
 });
 
 export function provenanceOf(

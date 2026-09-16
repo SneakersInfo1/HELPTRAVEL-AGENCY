@@ -335,7 +335,13 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         ) : null}
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-3">
+      <section
+        className={
+          localizedGuide.whoFor.length > 0 || localizedGuide.budgetNote
+            ? "grid gap-5 lg:grid-cols-3"
+            : "grid gap-5 lg:grid-cols-2"
+        }
+      >
         <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <ul className="mt-4 space-y-2 text-sm leading-7 text-ink-muted">
             {localizedGuide.highlights.map((item) => (
@@ -362,21 +368,25 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           )}
         </article>
 
-        <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
-          <div className="mt-4 flex flex-wrap gap-2">
-            {localizedGuide.whoFor.map((item) => (
-              <span
-                key={item}
-                className="rounded-full border border-line bg-surface-sunken px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-          {localizedGuide.budgetNote ? (
-            <p className="mt-5 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
-          ) : null}
-        </article>
+        {/* Odbiorcy tylko z ocen profilu, które mają pokrycie; w profilu
+            z szablonu lista wychodzi ze stałych list miast i regionu. */}
+        {localizedGuide.whoFor.length > 0 || localizedGuide.budgetNote ? (
+          <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+            <div className="mt-4 flex flex-wrap gap-2">
+              {localizedGuide.whoFor.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-line bg-surface-sunken px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+            {localizedGuide.budgetNote ? (
+              <p className="mt-5 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
+            ) : null}
+          </article>
+        ) : null}
       </section>
 
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">

@@ -90,4 +90,21 @@ describe("strażnicy integralności danych SEO", () => {
   it("renderery SEO nie czytają temperatury ani czasu lotu z profilu z pominięciem bramki", () => {
     assert.deepEqual(hits(/avgTempByMonth|typicalFlightHoursFromPL/, SEO_RENDERERS), []);
   });
+
+  // Metodologia na /redakcja obiecywała „realne dane dostawców i wieloletnie średnie
+  // klimatyczne" dla każdego przewodnika, a 212 z 235 kierunków nie ma opracowanych
+  // średnich. Strona ma opisywać stan faktyczny (test E).
+  it("metodologia nie twierdzi, że każdy przewodnik stoi na realnych danych i średnich klimatycznych", () => {
+    const methodology = ["src/lib/mvp/authors.ts", "src/app/redakcja/page.tsx"].map((file) => path.join(ROOT, file));
+    assert.deepEqual(hits(/opiera na realnych danych|wieloletnich średnich klimatycznych|wieloletnie średnie pogodowe/i, methodology), []);
+  });
+
+  // Landing hoteli nie zawiera cen: konkretna kwota pojawia się dopiero po
+  // wyszukaniu terminu, więc strona nie może obiecywać „aktualnych cen" (test F).
+  it("landing hoteli w mieście nie twierdzi, że sam zawiera aktualne ceny", () => {
+    const cityLanding = ["src/app/hotele/w/[miasto]/page.tsx", "src/lib/seo/city-hotels-schema.ts"].map((file) =>
+      path.join(ROOT, file),
+    );
+    assert.deepEqual(hits(/z aktualnymi cenami|aktualnymi cenami|zawiera aktualne ceny/i, cityLanding), []);
+  });
 });

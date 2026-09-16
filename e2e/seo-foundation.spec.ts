@@ -455,3 +455,48 @@ test.describe("O — szacunek nie udaje ceny, bez deklaracji bez pokrycia", () =
     expect(faqAnswers(jsonLdBlocks(html)), "D: temperatura z danych kuratorowanych").toMatch(/°C/);
   });
 });
+
+// P — twierdzenia jakościowe z ocen profilu (deriveScores = listy miast i region),
+// metodologia redakcji i obietnica cen na landingu hoteli.
+test.describe("P — oceny profilu z szablonu nie stają się twierdzeniem", () => {
+  test("/kierunki/alicante-spain: bez odbiorców i touristType z ocen szablonu", async ({ page }) => {
+    await authorize(page);
+    const html = await (await page.request.get("/kierunki/alicante-spain")).text();
+    const main = textOf(mainHtml(html));
+    expect(JSON.stringify(jsonLdBlocks(html)), "P: touristType").not.toContain("touristType");
+    expect(main, "P: odbiorcy z ocen").not.toMatch(
+      /plażowicze szukający resetu|rodziny z dziecmi|fani klasycznych city breakow|planujacy z mysla o budżecie/,
+    );
+    expect(main, "P: oceny profilu w treści").not.toMatch(/profil plażowy \(\d|wewnętrznym scoringu|scoring zwiedzania/);
+  });
+
+  test("/porownanie/heraklion-greece-vs-rhodes-greece: bez werdyktu, odbiorców i FAQPage bez pokrycia", async ({ page }) => {
+    await authorize(page);
+    const html = await (await page.request.get("/porownanie/heraklion-greece-vs-rhodes-greece")).text();
+    const main = textOf(mainHtml(html));
+    expect(JSON.stringify(jsonLdBlocks(html)), "P: FAQPage bez pokrycia").not.toContain("FAQPage");
+    expect(main, "P: sekcja dla kogo").not.toContain("Dla kogo lepszy będzie");
+    expect(main, "P: werdykt z ocen").not.toMatch(/mocniejszy profil|mocniej wypada|lepszy będzie/);
+  });
+
+  test("/kierunki/naples-italy/styczen: chłodny miesiąc bez werdyktu o sezonie", async ({ page }) => {
+    await authorize(page);
+    const html = await (await page.request.get("/kierunki/naples-italy/styczen")).text();
+    const text = `${textOf(mainHtml(html))} ${JSON.stringify(jsonLdBlocks(html))}`;
+    expect(text, "P: poza sezonem").not.toContain("poza sezonem");
+  });
+
+  test("/redakcja: metodologia bez obietnicy realnych danych dla każdego przewodnika", async ({ page }) => {
+    await authorize(page);
+    const main = textOf(mainHtml(await (await page.request.get("/redakcja")).text()));
+    expect(main, "P: claim metodologiczny").not.toMatch(
+      /opiera na realnych danych|wieloletnich średnich klimatycznych|wieloletnie średnie pogodowe/,
+    );
+  });
+
+  test("/hotele/w/kreta: bez obietnicy aktualnych cen na stronie", async ({ page }) => {
+    await authorize(page);
+    const main = textOf(mainHtml(await (await page.request.get("/hotele/w/kreta")).text()));
+    expect(main, "P: aktualne ceny").not.toContain("aktualnymi cenami");
+  });
+});

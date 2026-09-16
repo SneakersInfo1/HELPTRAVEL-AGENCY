@@ -122,7 +122,9 @@ export function buildGuidePageModel(input: GuidePageModelInput): GuidePageModel 
         "@id": `${pageUrl}#destination`,
         name,
         description: localizedGuide.overview,
-        touristType: localizedGuide.whoFor,
+        // `touristType` tylko z odbiorcami, którzy mają pokrycie: w profilu
+        // z szablonu lista wychodzi z ocen regionu (patrz publisher-content).
+        ...(localizedGuide.whoFor.length > 0 ? { touristType: localizedGuide.whoFor } : {}),
         url: pageUrl,
         image: heroImage,
         address: {

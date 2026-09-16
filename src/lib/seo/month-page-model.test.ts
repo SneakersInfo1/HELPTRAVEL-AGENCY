@@ -71,7 +71,7 @@ describe("model strony kierunku w miesiącu", () => {
         // Sezon, tłumy i ceny z heurystyki temperatury nie mają źródła (Teneryfa: styczeń to szczyt sezonu).
         assert.doesNotMatch(
           `${jsonLd} ${model.text.lead}`,
-          /najtaniej|najdrożej|ceny najniższe|najwyższe ceny|ceny w szczycie|ceny umiarkowane|turystów|najspokojniej|wysoki sezon|sezon przejściowy/i,
+          /najtaniej|najdrożej|ceny najniższe|najwyższe ceny|ceny w szczycie|ceny umiarkowane|turystów|najspokojniej|wysoki sezon|sezon przejściowy|poza sezonem|szczyt sezonu/i,
           `${profile.slug}/${month}`,
         );
 

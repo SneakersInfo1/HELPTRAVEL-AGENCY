@@ -35,14 +35,14 @@ export const EDITOR_IN_CHIEF: Author = {
   name: "Jakub Ogrodniczuk",
   role: "Założyciel i redaktor HelpTravel",
   bio:
-    "Pasjonat branży turystycznej z wieloletnim doświadczeniem. W HelpTravel łączy realne ceny hoteli, " +
-    "czasy lotów z polskich lotnisk i wieloletnie średnie pogodowe w jedną, prostą decyzję wyjazdową — " +
+    "Pasjonat branży turystycznej z wieloletnim doświadczeniem. W HelpTravel łączy ceny hoteli i lotów od dostawcy, " +
+    "opracowane dane o kierunkach i prostą decyzję wyjazdową — " +
     "bez marketingowego lania wody.",
   url: "/redakcja",
   sameAs: ["https://www.facebook.com/jakub.ogrodniczuk.9"],
   experience: [
     "Analizuje ceny hoteli i lotów dla ponad 235 kierunków osiągalnych z Polski.",
-    "Każdy przewodnik i porównanie opiera na realnych danych dostawców (LiteAPI) i wieloletnich średnich klimatycznych — nie na ogólnikach.",
+    "Ceny i dostępność bierze wprost od dostawcy (LiteAPI). Temperatury i czasy lotów podaje tylko tam, gdzie są opracowane ręcznie — przy pozostałych kierunkach nie publikuje ich jako faktu.",
     "Tworzy serwis zgodnie z jawnym modelem afiliacyjnym: planowanie jest darmowe, płacisz wyłącznie u partnera rezerwacyjnego.",
   ],
 };

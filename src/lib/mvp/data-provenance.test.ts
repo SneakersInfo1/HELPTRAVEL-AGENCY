@@ -59,6 +59,24 @@ describe("pochodzenie danych profilu kierunku", () => {
     }
   });
 
+  // Oceny profilu (plaża, miasto, zwiedzanie, bezpieczeństwo) w profilu z szablonu
+  // wychodzą z list miast i regionu — nie wolno na nich budować twierdzeń.
+  it("oceny profilu: kuratorowane są faktem, z szablonu nie", () => {
+    const bySlug = new Map(getAllDestinationProfiles().map((profile) => [profile.slug, profile]));
+    for (const slug of ["malaga-spain", "london-uk"]) {
+      const profile = bySlug.get(slug);
+      assert.ok(profile, slug);
+      assert.equal(provenanceOf(profile, "scores"), "curated", slug);
+      assert.equal(isFactGrade(provenanceOf(profile, "scores")), true, slug);
+    }
+    for (const slug of ["alicante-spain", "heraklion-greece", "miami-united-states-of-america"]) {
+      const profile = bySlug.get(slug);
+      assert.ok(profile, slug);
+      assert.equal(provenanceOf(profile, "scores"), "regional_fallback", slug);
+      assert.equal(isFactGrade(provenanceOf(profile, "scores")), false, slug);
+    }
+  });
+
   it("profil bez pola pochodzenia jest nieznany dla każdego pola", () => {
     for (const field of PROVENANCED_FIELDS) {
       assert.equal(provenanceOf({}, field), "unknown", field);

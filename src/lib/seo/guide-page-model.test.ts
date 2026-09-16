@@ -15,7 +15,9 @@ import {
   getSimilarDestinations,
 } from "@/lib/mvp/publisher-content";
 
-import { destinationDisplayName, ENTRY_REQUIREMENTS_NOTE } from "./destination-facts";
+import { getStoryBySlug } from "@/lib/mvp/destination-content";
+
+import { canClaimFromProfileScores, destinationDisplayName, ENTRY_REQUIREMENTS_NOTE } from "./destination-facts";
 import { buildGuidePageModel } from "./guide-page-model";
 import { collectJsonLdNodes, validateJsonLd } from "./jsonld-validate";
 
@@ -149,6 +151,45 @@ describe("model przewodnika po kierunku", () => {
       assert.ok(alternative, signal.slug);
       assert.equal(signal.city, destinationDisplayName(alternative));
       assert.doesNotMatch(`${signal.summary} ${signal.bestFor ?? ""}`, /\bPalma jest\b|Ibiza Town|Arrecife/, signal.slug);
+    }
+  });
+
+  // Oceny profilu z szablonu (deriveScores) to stałe list miast i regionu, więc
+  // nie wolno z nich robić odbiorców ani ocen kierunku (test A).
+  it("odbiorcy i oceny profilu z szablonu nie wracają jako claim ani jako touristType", () => {
+    let withoutClaims = 0;
+    for (const profile of profiles) {
+      const { localizedGuide, model } = build(profile.slug);
+      if (canClaimFromProfileScores(model.facts)) continue;
+
+      // Liczby z deriveScores nie trafiają do treści żadnego kierunku z szablonu.
+      assert.doesNotMatch(
+        JSON.stringify(localizedGuide.whyGo),
+        /profil plażowy \(|w naszym wewnętrznym scoringu|scoring zwiedzania/i,
+        profile.slug,
+      );
+      assert.doesNotMatch(
+        JSON.stringify(localizedGuide.highlights),
+        /scoring zwiedzania|Aktywne życie więczórne|Bliskosc natury/i,
+        profile.slug,
+      );
+
+      // Ręcznie pisana historia kierunku to osobne źródło — jej tagi zostają.
+      if (getStoryBySlug(profile.slug)) continue;
+      withoutClaims += 1;
+      assert.deepEqual(localizedGuide.whoFor, [], profile.slug);
+      assert.doesNotMatch(JSON.stringify(localizedGuide.whyGo), /wyjazdowy scenariusz mocny pod/i, profile.slug);
+      assert.doesNotMatch(JSON.stringify(model.structuredData), /touristType/, profile.slug);
+    }
+    assert.equal(withoutClaims, 202, "kierunki bez odbiorców i ocen z profilu szablonu");
+  });
+
+  it("dane kuratorowane zachowują odbiorców i touristType (test B)", () => {
+    for (const slug of ["malaga-spain", "london-uk"]) {
+      const { localizedGuide, model } = build(slug);
+      assert.ok(canClaimFromProfileScores(model.facts), slug);
+      assert.ok(localizedGuide.whoFor.length > 0, slug);
+      assert.match(JSON.stringify(model.structuredData), /touristType/, slug);
     }
   });
 

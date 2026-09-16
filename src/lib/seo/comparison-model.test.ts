@@ -49,7 +49,13 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
       assert.doesNotMatch(ld, /zł|PLN|"Offer"|"price"|datePublished|dateModified/, pair.slug);
       assert.ok(model.rows.length >= 3, `${pair.slug}: ${model.rows.length} wierszy`);
       const faqPage = collectJsonLdNodes(model.structuredData).find((node) => node["@type"] === "FAQPage");
-      assert.ok(faqPage && Array.isArray(faqPage.mainEntity) && faqPage.mainEntity.length >= 3, pair.slug);
+      if (model.faq.length > 0) {
+        assert.ok(faqPage && Array.isArray(faqPage.mainEntity), pair.slug);
+        assert.equal(faqPage.mainEntity.length, model.faq.length, pair.slug);
+      } else {
+        // Brak pytań z pokryciem = brak węzła FAQPage.
+        assert.equal(faqPage, undefined, pair.slug);
+      }
       const hasAccessRow = model.rows.some((row) => row.label === "Dolot/dostępność");
       assert.equal(model.scoreNote, hasAccessRow ? PROFILE_SCORE_NOTE_WITH_ACCESS : PROFILE_SCORE_NOTE, pair.slug);
     }
@@ -138,7 +144,39 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
     }
   });
 
-  it("Kreta–Rodos i Kreta–Majorka: niepusta tabela bez liczb z szablonu i bez zwycięzcy wybranego przy remisie", () => {
+  // Werdykt o profilu („mocniejszy profil plażowy") wychodzi z deriveScores, czyli
+  // z list miast i regionu. Bez ocen kuratorowanych po obu stronach strona nie
+  // wskazuje zwycięzcy i nie publikuje odbiorców (test C).
+  it("oceny profilu z szablonu nie dają werdyktu, odbiorców ani pytań w FAQ", () => {
+    for (const pair of comparisonPairs) {
+      const model = modelFor(pair.slug);
+      const scoresKnown = curated.has(model.a.profile.slug) && curated.has(model.b.profile.slug);
+      const claims = /mocniejszy profil|mocniej wypada|lepszy będzie|więcej do zwiedzania|lepszy jest|wypadają podobnie|porównywalne/i;
+
+      if (scoresKnown) {
+        assert.ok(model.audience[0].length > 0 && model.audience[1].length > 0, pair.slug);
+        assert.ok(model.faq.length >= 3, pair.slug);
+        continue;
+      }
+
+      // Odbiorcy liczą się per strona: kierunek z szablonu nie dostaje żadnych.
+      model.audience.forEach((tags, index) => {
+        const side = index === 0 ? model.a : model.b;
+        if (!curated.has(side.profile.slug)) assert.deepEqual(tags, [], `${pair.slug}: ${side.profile.slug}`);
+      });
+      assert.ok(
+        !model.verdicts.some((verdict) => verdict.title === "Plaża i klimat morski" || verdict.title === "City break i tło miejskie"),
+        pair.slug,
+      );
+      assert.doesNotMatch(
+        JSON.stringify({ verdicts: model.verdicts, faq: model.faq, quick: model.quickAnswer, ld: model.structuredData }),
+        claims,
+        pair.slug,
+      );
+    }
+  });
+
+  it("Kreta–Rodos i Kreta–Majorka: niepusta tabela bez liczb z szablonu, bez werdyktu i bez FAQ bez pokrycia", () => {
     for (const slug of ["heraklion-greece-vs-rhodes-greece", "heraklion-greece-vs-palma-spain"]) {
       const model = modelFor(slug);
       const text = JSON.stringify(model);
@@ -148,7 +186,14 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
       assert.equal(model.whenToGo.length, 0, slug);
       assert.ok(model.rows.length >= 3, slug);
       assert.doesNotMatch(model.quickAnswer, /lepszy jest|najprostszy dolot z Polski ma/, slug);
-      assert.ok(!model.verdicts.some((verdict) => verdict.title === "Budżet" || verdict.title === "Dolot z Polski"), slug);
+      assert.deepEqual(model.verdicts, [], slug);
+      assert.deepEqual(model.faq, [], slug);
+      assert.deepEqual(model.audience, [[], []], slug);
+      assert.equal(
+        collectJsonLdNodes(model.structuredData).find((node) => node["@type"] === "FAQPage"),
+        undefined,
+        slug,
+      );
       assert.ok(!model.rows.some((row) => row.label === "Dolot/dostępność"), slug);
     }
   });

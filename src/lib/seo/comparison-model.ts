@@ -11,17 +11,19 @@
 // wartość dozwoloną kontraktem. Wyniki profilu 0–100 zostają jako oznaczona
 // wewnętrzna ocena, więc tabela nigdy nie jest pusta. Remis = brak zwycięzcy.
 //
-// W profilu z szablonu `costIndex` i `accessScore` to przeliczone stałe regionu
-// (deriveCostIndex, deriveAccessScore ← countryAccessHours w destinations.ts).
-// „Taniej", „podobny pułap cenowy" i „łatwiejszy dolot" powtarzałyby szablon
-// innymi słowami, dlatego werdykt o budżecie wymaga kosztów z danych
-// kuratorowanych, a werdykt o dolocie — dokładnego czasu lotu po obu stronach.
+// W profilu z szablonu `costIndex`, `accessScore` i oceny profilu (`deriveScores`)
+// to przeliczone stałe kraju, regionu i list miast. „Taniej", „łatwiejszy dolot",
+// „mocniejszy profil plażowy" i „dla kogo" powtarzałyby więc szablon innymi
+// słowami. Werdykt budżetowy wymaga kosztów kuratorowanych, werdykt o dolocie —
+// dokładnego czasu lotu, a werdykty o profilu i lista odbiorców — ocen
+// kuratorowanych po obu stronach. Bez nich strona nie wskazuje zwycięzcy.
 
 import type { ComparisonPair } from "@/lib/mvp/comparisons";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 import {
+  canClaimFromProfileScores,
   canShowBudgetEstimate,
   flightHoursForTripLength,
   formatFlightFact,
@@ -135,6 +137,11 @@ function bothExactFlights(a: ComparisonSide, b: ComparisonSide): boolean {
   return a.facts.flight?.kind === "exact" && b.facts.flight?.kind === "exact";
 }
 
+/** Werdykt o profilu wymaga ocen kuratorowanych po obu stronach. */
+function bothScoresKnown(a: ComparisonSide, b: ComparisonSide): boolean {
+  return canClaimFromProfileScores(a.facts) && canClaimFromProfileScores(b.facts);
+}
+
 function flightCell(fact: FlightFact): string {
   const hours = `~${fact.hours.toFixed(1)} h`;
   return fact.kind === "exact" ? hours : `${hours} (szacunek)`;
@@ -146,8 +153,9 @@ function flightSentence(facts: DestinationSeoFacts): string | null {
   return fact.kind === "exact" ? `Lot ok. ${fact.hours.toFixed(1)} h.` : `Lot ${formatFlightFact(fact)}.`;
 }
 
-// Dla kogo dany kierunek — czytane z profilu (score 0-1), bez fabrykacji.
+// Dla kogo dany kierunek — z ocen profilu, więc tylko przy ocenach kuratorowanych.
 function audienceTags(side: ComparisonSide): string[] {
+  if (!canClaimFromProfileScores(side.facts)) return [];
   const d = side.profile;
   const tags: string[] = [];
   if (d.beachScore >= 0.7) tags.push("plaży i wypoczynku nad morzem");
@@ -184,20 +192,22 @@ function buildVerdicts(
     );
   }
 
-  const beach = winner(a, b, (d) => d.beachScore);
-  if (beach) {
-    verdicts.push({
-      title: "Plaża i klimat morski",
-      body: `${beach.name} ma mocniejszy profil plażowy — to lepszy wybór pod reset nad morzem.`,
-    });
-  }
+  if (bothScoresKnown(a, b)) {
+    const beach = winner(a, b, (d) => d.beachScore);
+    if (beach) {
+      verdicts.push({
+        title: "Plaża i klimat morski",
+        body: `${beach.name} ma mocniejszy profil plażowy — to lepszy wybór pod reset nad morzem.`,
+      });
+    }
 
-  const city = winner(a, b, (d) => d.cityScore);
-  if (city) {
-    verdicts.push({
-      title: "City break i tło miejskie",
-      body: `${city.name} jest mocniejszy jako klasyczny city break z gęstszym zwiedzaniem i klimatem ulicznym.`,
-    });
+    const city = winner(a, b, (d) => d.cityScore);
+    if (city) {
+      verdicts.push({
+        title: "City break i tło miejskie",
+        body: `${city.name} jest mocniejszy jako klasyczny city break z gęstszym zwiedzaniem i klimatem ulicznym.`,
+      });
+    }
   }
 
   const access = bothExactFlights(a, b) ? winner(a, b, (d) => d.accessScore) : null;
@@ -228,10 +238,11 @@ function buildFaq(
   b: ComparisonSide,
   budgets: { a: number; b: number } | null,
 ): Array<{ question: string; answer: string }> {
+  const scoresKnown = bothScoresKnown(a, b);
   const exactFlights = bothExactFlights(a, b);
   const easier = winner(a, b, (d) => d.accessScore);
-  const beach = winner(a, b, (d) => d.beachScore);
-  const city = winner(a, b, (d) => d.cityScore + d.sightseeingScore);
+  const beach = scoresKnown ? winner(a, b, (d) => d.beachScore) : null;
+  const city = scoresKnown ? winner(a, b, (d) => d.cityScore + d.sightseeingScore) : null;
   const summer = warmerInSummer(a, b);
   const logistics = exactFlights
     ? easier
@@ -239,31 +250,43 @@ function buildFaq(
       : "Pod względem dolotu i logistyki z Polski oba kierunki wypadają podobnie. "
     : "";
 
-  const faq = [
-    {
-      question: `${a.name} czy ${b.name} — co wybrać na pierwszy raz?`,
-      answer: `${logistics}${beach ? `Jeśli zależy Ci głównie na plaży, lepszy będzie ${beach.name}` : "Pod plażę oba są porównywalne"}; ${
-        city ? `jeśli na zwiedzaniu i miejskim klimacie — ${city.name}.` : "pod zwiedzanie żaden nie ma wyraźnej przewagi."
-      }`,
-    },
-    {
-      // Bez danych o klimacie pytanie nie obiecuje odpowiedzi o temperaturze.
-      question: summer ? `Gdzie cieplej i lepsza plaża — ${a.name} czy ${b.name}?` : `Gdzie lepsza plaża — ${a.name} czy ${b.name}?`,
-      answer:
-        (beach ? `Pod kątem plaży mocniej wypada ${beach.name}.` : "Pod kątem plaży oba kierunki wypadają podobnie.") +
-        (summer
-          ? summer.warmer
-            ? ` Latem (czerwiec-sierpień) cieplej bywa w kierunku ${summer.warmer} (${Math.max(summer.sumA, summer.sumB)}°C wobec ${Math.min(summer.sumA, summer.sumB)}°C).`
-            : ` Latem oba kierunki mają podobne temperatury (ok. ${summer.sumA}°C).`
-          : ""),
-    },
-    {
-      question: `Co lepsze na zwiedzanie i city break — ${a.name} czy ${b.name}?`,
-      answer: city
-        ? `${city.name} ma mocniejszy profil miejski i więcej do zwiedzania, więc lepiej sprawdzi się przy planie pełnym atrakcji i spacerów po mieście.`
-        : "Oba kierunki mają podobny profil miejski — o wyborze zdecydują raczej konkretne atrakcje i termin.",
-    },
-  ];
+  const faq: Array<{ question: string; answer: string }> = [];
+
+  // Werdykty o profilu tylko przy ocenach kuratorowanych po obu stronach.
+  if (scoresKnown) {
+    faq.push(
+      {
+        question: `${a.name} czy ${b.name} — co wybrać na pierwszy raz?`,
+        answer: `${logistics}${beach ? `Jeśli zależy Ci głównie na plaży, lepszy będzie ${beach.name}` : "Pod plażę oba są porównywalne"}; ${
+          city ? `jeśli na zwiedzaniu i miejskim klimacie — ${city.name}.` : "pod zwiedzanie żaden nie ma wyraźnej przewagi."
+        }`,
+      },
+      {
+        // Bez danych o klimacie pytanie nie obiecuje odpowiedzi o temperaturze.
+        question: summer ? `Gdzie cieplej i lepsza plaża — ${a.name} czy ${b.name}?` : `Gdzie lepsza plaża — ${a.name} czy ${b.name}?`,
+        answer:
+          (beach ? `Pod kątem plaży mocniej wypada ${beach.name}.` : "Pod kątem plaży oba kierunki wypadają podobnie.") +
+          (summer
+            ? summer.warmer
+              ? ` Latem (czerwiec-sierpień) cieplej bywa w kierunku ${summer.warmer} (${Math.max(summer.sumA, summer.sumB)}°C wobec ${Math.min(summer.sumA, summer.sumB)}°C).`
+              : ` Latem oba kierunki mają podobne temperatury (ok. ${summer.sumA}°C).`
+            : ""),
+      },
+      {
+        question: `Co lepsze na zwiedzanie i city break — ${a.name} czy ${b.name}?`,
+        answer: city
+          ? `${city.name} ma mocniejszy profil miejski i więcej do zwiedzania, więc lepiej sprawdzi się przy planie pełnym atrakcji i spacerów po mieście.`
+          : "Oba kierunki mają podobny profil miejski — o wyborze zdecydują raczej konkretne atrakcje i termin.",
+      },
+    );
+  } else if (summer) {
+    faq.push({
+      question: `Gdzie cieplej — ${a.name} czy ${b.name}?`,
+      answer: summer.warmer
+        ? `Latem (czerwiec-sierpień) cieplej bywa w kierunku ${summer.warmer} (${Math.max(summer.sumA, summer.sumB)}°C wobec ${Math.min(summer.sumA, summer.sumB)}°C).`
+        : `Latem oba kierunki mają podobne temperatury (ok. ${summer.sumA}°C).`,
+    });
+  }
 
   if (budgets) {
     const cheaper = cheaperName(a, b, budgets);
@@ -289,10 +312,21 @@ function buildFaq(
 
 // Zwięzła, bezpośrednia odpowiedź na zapytanie „X czy Y" — pod featured snippet.
 function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide, budgets: { a: number; b: number } | null): string {
+  const summer = warmerInSummer(a, b);
+
+  // Bez ocen kuratorowanych po obu stronach strona nie wskazuje zwycięzcy.
+  if (!bothScoresKnown(a, b)) {
+    const parts = [
+      `${a.name} czy ${b.name}? Dla tej pary nie mamy jeszcze opracowanych danych o obu kierunkach, więc nie wskazujemy lepszego.`,
+    ];
+    if (summer?.warmer) parts.push(`Latem cieplej bywa w kierunku ${summer.warmer}.`);
+    parts.push("Poniżej porównanie tego, co mamy sprawdzone.");
+    return parts.join(" ");
+  }
+
   const beach = winner(a, b, (d) => d.beachScore);
   const city = winner(a, b, (d) => d.cityScore + d.sightseeingScore);
   const easier = winner(a, b, (d) => d.accessScore);
-  const summer = warmerInSummer(a, b);
 
   const beachPart = beach
     ? `Na plażę i wypoczynek nad morzem lepszy jest ${beach.name}`
@@ -423,14 +457,19 @@ export function buildComparisonModel(input: ComparisonModelInput): ComparisonMod
             { "@type": "ListItem", position: 3, name: `${a.name} vs ${b.name}`, item: pageUrl },
           ],
         },
-        {
-          "@type": "FAQPage",
-          mainEntity: faq.map((item) => ({
-            "@type": "Question",
-            name: item.question,
-            acceptedAnswer: { "@type": "Answer", text: item.answer },
-          })),
-        },
+        // Brak pytań z pokryciem = brak węzła FAQPage.
+        ...(faq.length > 0
+          ? [
+              {
+                "@type": "FAQPage",
+                mainEntity: faq.map((item) => ({
+                  "@type": "Question",
+                  name: item.question,
+                  acceptedAnswer: { "@type": "Answer", text: item.answer },
+                })),
+              },
+            ]
+          : []),
       ],
     },
   };

@@ -266,23 +266,26 @@ export default async function ComparisonPage({ params }: PageProps) {
         </section>
       ) : null}
 
-      {/* DLA KOGO */}
-      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
-        <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Dla kogo lepszy będzie każdy kierunek?</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {destPanels.map(({ side, audience }) => (
-            <article key={side.profile.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
-              <h3 className="font-display text-xl text-ink">{side.name}</h3>
-              <p className="mt-1 text-sm text-ink-muted">Najlepszy wybór dla miłośników:</p>
-              <ul className="mt-3 space-y-2">
-                {audience.map((tag) => (
-                  <li key={tag} className="flex gap-2 text-sm leading-6 text-ink-muted">{tag}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
+      {/* DLA KOGO — tylko przy ocenach profilu z danych kuratorowanych po obu
+          stronach; w profilu z szablonu lista wychodzi ze stałych regionu. */}
+      {model.audience[0].length > 0 && model.audience[1].length > 0 ? (
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="mt-2 font-display text-2xl text-ink sm:text-3xl">Dla kogo lepszy będzie każdy kierunek?</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {destPanels.map(({ side, audience }) => (
+              <article key={side.profile.slug} className="rounded-2xl border border-line bg-surface-sunken p-5">
+                <h3 className="font-display text-xl text-ink">{side.name}</h3>
+                <p className="mt-1 text-sm text-ink-muted">Najlepszy wybór dla miłośników:</p>
+                <ul className="mt-3 space-y-2">
+                  {audience.map((tag) => (
+                    <li key={tag} className="flex gap-2 text-sm leading-6 text-ink-muted">{tag}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* KIEDY JECHAĆ — tylko przy temperaturach kuratorowanych; bez nich sekcja
           nie udaje wiedzy o klimacie. */}
@@ -419,18 +422,21 @@ export default async function ComparisonPage({ params }: PageProps) {
         })}
       </section>
 
-      {/* FAQ — widoczny accordion + zgodny ze schema FAQPage */}
-      <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
-        <h2 className="font-display text-2xl text-ink sm:text-3xl">Najczęściej zadawane pytania</h2>
-        <div className="mt-5 space-y-3">
-          {model.faq.map((item) => (
-            <details key={item.question} className="rounded-2xl bg-surface-sunken px-5 py-4 transition hover:bg-surface-sunken">
-              <summary className="cursor-pointer text-base font-bold text-ink">{item.question}</summary>
-              <p className="mt-3 text-sm leading-7 text-ink-muted">{item.answer}</p>
-            </details>
-          ))}
-        </div>
-      </section>
+      {/* FAQ — widoczny accordion + zgodny ze schema FAQPage; bez pytań
+          z pokryciem nie ma ani sekcji, ani węzła FAQPage. */}
+      {model.faq.length > 0 ? (
+        <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">Najczęściej zadawane pytania</h2>
+          <div className="mt-5 space-y-3">
+            {model.faq.map((item) => (
+              <details key={item.question} className="rounded-2xl bg-surface-sunken px-5 py-4 transition hover:bg-surface-sunken">
+                <summary className="cursor-pointer text-base font-bold text-ink">{item.question}</summary>
+                <p className="mt-3 text-sm leading-7 text-ink-muted">{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* POWIĄZANE ARTYKUŁY */}
       {articleLinks.length > 0 ? (
