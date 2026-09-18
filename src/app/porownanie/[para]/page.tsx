@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+
+import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
 import { notFound } from "next/navigation";
 
 import { AuthorByline } from "@/components/publisher/author-byline";
@@ -397,18 +399,24 @@ export default async function ComparisonPage({ params }: PageProps) {
                 <p className="mt-2 text-sm leading-7 text-white/85">
                   Sprawdź ceny noclegów w PLN dla swoich dat. Bez wychodzenia ze strony.
                 </p>
-                <Link
+                <SeoCtaLink
                   href={hotelHref}
+                  typTresci="comparison"
+                  ctaType="inline_search"
+                  destinationSlug={side.profile.slug}
                   className="mt-4 inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-white px-5 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
                   {/* span: bg is white inside an emerald-700 (text-white) card,
                       so without it the global a{color:inherit} makes the label
                       white-on-white. */}
                   <span className="text-sm font-bold text-ink">Zobacz hotele: {side.name}</span>
-                </Link>
+                </SeoCtaLink>
               </article>
-              <Link
+              <SeoCtaLink
                 href="/?tab=loty"
+                typTresci="comparison"
+                ctaType="flight_search"
+                destinationSlug={side.profile.slug}
                 className="flex flex-col justify-center rounded-2xl border border-brand-strong bg-brand-strong p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Loty</p>
@@ -416,7 +424,7 @@ export default async function ComparisonPage({ params }: PageProps) {
                 <p className="mt-2 text-sm leading-6 text-white/78">
                   Wyszukaj loty z dowolnego lotniska w Polsce.{flightSentence ? ` ${flightSentence}` : ""}
                 </p>
-              </Link>
+              </SeoCtaLink>
             </div>
           );
         })}

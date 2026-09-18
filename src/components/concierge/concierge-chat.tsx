@@ -356,7 +356,8 @@ export function ConciergeChat({
     const next = messages.slice(0, cut);
     if (next.length === 0 || next[next.length - 1].role !== "user") return;
     setMessages(next);
-    track("concierge_retry", { page_path: window.location.pathname });
+    // page_path dokleja track() — patrz lib/analytics/track.ts.
+    track("concierge_retry", {});
     await deliver(next);
   }, [pending, messages, deliver]);
 

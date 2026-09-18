@@ -17,11 +17,48 @@
 // Required environment:
 //   • NEXT_PUBLIC_GA_MEASUREMENT_ID — your GA4 property ID (G-XXXXXXXXXX).
 //     If unset, the component renders nothing — no errors, no calls.
+//
+// ─── Co naprawił PR #2A (audyt integralności analityki, 2026-09-18) ───────
+//
+// 1. ŚCIEŻKA STRONY. `page_path` i `page_location` idą przez
+//    `analyticsPagePath()`, czyli jedno źródło prawdy (lib/analytics/page-path.ts).
+//    Wcześniej `page_path` był sklejany ręcznie (`pathname + "?" + query`),
+//    a `page_location` szedł SUROWYM `window.location.href`. To drugie było
+//    ważniejsze, niż wygląda: wymiar „Page path and query string" w GA4 jest
+//    wyprowadzany z `page_location`, więc poprawianie samego `page_path` nie
+//    zmieniłoby ANI JEDNEGO wiersza raportu.
+//
+// 2. POŚWIADCZENIA. Surowy `href` na stronie powrotu z płatności niósł do
+//    Google `payment_intent_client_secret` (sekret Stripe’a) oraz `sid`
+//    (klucz sesji rezerwacji w Redisie). Teraz `page_location` jest SKŁADANY
+//    z `origin` + ścieżka kanoniczna, a nie przepisywany z adresu, więc do
+//    GA4 nie ma jak trafić nic poza tym, co świadomie przepuścimy.
+//    `gtag("set")` domyka to od drugiej strony: bez tego gtag dokleiłby
+//    surowy `document.location` (parametr `dl`) do KAŻDEGO zdarzenia sam,
+//    z pominięciem naszego `page_view`.
+//
+// 3. ZGUBIONA ODSŁONA WEJŚCIA. `gtag` był definiowany przez osobny
+//    `<Script id="ga-init">`, a efekt wysyłający `page_view` sprawdzał
+//    `typeof window.gtag !== "function"` i po cichu rezygnował. Kolejność
+//    była wyścigiem: kto pierwszy — efekt Reacta czy skrypt Next/Script.
+//    Gdy wygrywał efekt, PIERWSZA odsłona po udzieleniu zgody przepadała,
+//    czyli gubiła się dokładnie ta, która wyznacza stronę wejścia.
+//    Teraz zaślepka `gtag` (ta sama, którą zaleca Google: `dataLayer.push`)
+//    powstaje w efekcie tego komponentu, więc `window.gtag` istnieje od
+//    momentu montażu i KOLEJKUJE polecenia. Zewnętrzny gtag.js tylko
+//    opróżnia kolejkę, kiedy się doładuje. Zniknął przy tym skrypt inline —
+//    jeden nawias mniej w polityce CSP.
 
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 
+import {
+  analyticsPagePath,
+  currentAnalyticsPagePath,
+  getLandingPath,
+  rememberLandingPath,
+} from "@/lib/analytics/page-path";
 import { useConsent } from "@/lib/consent/context";
 
 declare global {
@@ -32,18 +69,46 @@ declare global {
   }
 }
 
+/**
+ * Zaślepka `gtag` kolejkująca polecenia do `dataLayer`.
+ *
+ * Idempotentna: druga próba nic nie robi, więc przemontowanie komponentu nie
+ * resetuje kolejki ani nie duplikuje konfiguracji.
+ */
+function zapewnijGtag(): void {
+  if (typeof window === "undefined") return;
+  window.dataLayer = window.dataLayer || [];
+  if (typeof window.gtag === "function") return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  window.gtag = function gtag(...args: any[]) {
+    window.dataLayer?.push(args);
+  };
+}
+
 function PageViewTracker({ measurementId }: { measurementId: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.gtag !== "function") return;
-    const query = searchParams?.toString();
-    const path = query ? `${pathname}?${query}` : pathname;
+
+    // Źródłem są hooki Nexta, nie `window.location`: ich wartości są zgodne
+    // z TYM renderem, więc nie ma pytania „czy historia już się zaktualizowała".
+    // `analyticsPagePath` jest tu i tak, jako zabezpieczenie przed ścieżką
+    // niosącą własne query — i to ona gwarantuje jeden znak `?` w wyniku.
+    const path = analyticsPagePath(pathname, searchParams?.toString());
+    const location = `${window.location.origin}${path}`;
+
+    // Wartości globalne — nadpisują AUTOMATYCZNY `dl` gtag-a, czyli ten
+    // parametr, którym Google dokleja surowy adres do każdego zdarzenia.
+    window.gtag("set", { page_path: path, page_location: location });
+
+    const landing = getLandingPath();
     window.gtag("event", "page_view", {
       page_path: path,
-      page_location: window.location.href,
+      page_location: location,
       page_title: document.title,
+      ...(landing ? { landing_path: landing } : {}),
       send_to: measurementId,
     });
   }, [pathname, searchParams, measurementId]);
@@ -60,8 +125,22 @@ export function GoogleAnalytics() {
   // (Next.js Script doesn't tear it down), but we can call gtag('consent',
   // 'update', { analytics_storage: 'denied' }) so no further events fire.
   const wasEverEnabledRef = useRef(false);
+  const skonfigurowanoRef = useRef(false);
 
   const analyticsAllowed = Boolean(measurementId) && decision.analytics;
+
+  // STRONA WEJŚCIA — zapamiętana PRZED zgodą, w pamięci ulotnej.
+  //
+  // Ten efekt odpala się niezależnie od decyzji o zgodzie, bo komponent jest
+  // montowany zawsze (wcześniejsze wyjście przez `return null` jest PO
+  // hookach). Nic nie zapisuje na urządzeniu i nic nie wysyła — to zwykła
+  // zmienna modułowa, więc nie jest „przechowywaniem informacji w urządzeniu
+  // końcowym" i nie wymaga zgody. Ratuje przypadek, który w audycie wyszedł
+  // jako realny: zgoda udzielona z opóźnieniem, po przejściu na drugą stronę,
+  // przez co GA4 brał za stronę wejścia tę drugą.
+  useEffect(() => {
+    rememberLandingPath(currentAnalyticsPagePath());
+  }, []);
 
   // Zapis do refa przeniesiony z ciała renderu do efektu.
   //
@@ -74,6 +153,37 @@ export function GoogleAnalytics() {
   useEffect(() => {
     if (analyticsAllowed) wasEverEnabledRef.current = true;
   }, [analyticsAllowed]);
+
+  // Inicjalizacja gtag-a — zaślepka + Consent Mode v2 + config.
+  //
+  // Wykonywana dokładnie raz, w momencie, w którym zgoda na analitykę jest
+  // udzielona. Wcześniej to samo robił skrypt inline; przeniesienie do efektu
+  // usuwa wyścig z `Next/Script` (patrz punkt 3 w nagłówku pliku).
+  useEffect(() => {
+    if (!analyticsAllowed || !measurementId) return;
+    if (skonfigurowanoRef.current) return;
+    skonfigurowanoRef.current = true;
+
+    zapewnijGtag();
+    const gtag = window.gtag;
+    if (typeof gtag !== "function") return;
+
+    gtag("js", new Date());
+    gtag("consent", "default", {
+      analytics_storage: "granted",
+      ad_storage: decision.marketing ? "granted" : "denied",
+      ad_user_data: decision.marketing ? "granted" : "denied",
+      ad_personalization: decision.marketing ? "granted" : "denied",
+      wait_for_update: 500,
+    });
+    gtag("config", measurementId, {
+      anonymize_ip: true,
+      send_page_view: false,
+    });
+    // `decision.marketing` świadomie POZA zależnościami: ten efekt konfiguruje
+    // raz, a późniejsze zmiany zgody obsługuje efekt `consent update` niżej.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyticsAllowed, measurementId]);
 
   // If user withdraws consent after gtag loaded, signal denial to GA.
   useEffect(() => {
@@ -99,31 +209,13 @@ export function GoogleAnalytics() {
 
   return (
     <>
-      {/* Loader — afterInteractive so it doesn't block paint. */}
+      {/* Loader — afterInteractive so it doesn't block paint. Konfigurację
+          wykonał już efekt wyżej, więc gtag.js tylko opróżnia kolejkę
+          `dataLayer` i od tej chwili wysyła zdarzenia na bieżąco. */}
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
         strategy="afterInteractive"
       />
-      {/* Init — Consent Mode v2 with analytics granted (since we only render
-          this component when consent is granted) and ads denied by default
-          (unless user also opted in to marketing). IP anonymisation on. */}
-      <Script id="ga-init" strategy="afterInteractive">{`
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){window.dataLayer.push(arguments);}
-        window.gtag = gtag;
-        gtag('js', new Date());
-        gtag('consent', 'default', {
-          'analytics_storage': 'granted',
-          'ad_storage': '${decision.marketing ? "granted" : "denied"}',
-          'ad_user_data': '${decision.marketing ? "granted" : "denied"}',
-          'ad_personalization': '${decision.marketing ? "granted" : "denied"}',
-          'wait_for_update': 500
-        });
-        gtag('config', '${measurementId}', {
-          anonymize_ip: true,
-          send_page_view: false
-        });
-      `}</Script>
       {/* Page-view tracker. Wrapped in <Suspense> because useSearchParams()
           requires it in App Router. */}
       <Suspense fallback={null}>

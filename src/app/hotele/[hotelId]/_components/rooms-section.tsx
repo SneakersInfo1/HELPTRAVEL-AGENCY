@@ -19,6 +19,8 @@ import Link from "next/link";
 import { BedDouble, CalendarX2, ImageOff, Ruler, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { currentAnalyticsPagePath } from "@/lib/analytics/page-path";
+import { track } from "@/lib/analytics/track";
 import type { RoomProfile } from "@/lib/hotels/domain/types";
 import type { LiteApiRoomType } from "@/lib/liteapi";
 import { guestsLabel, optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
@@ -518,6 +520,25 @@ function OptionRow({
   }
   const reservationHref = `/hotele/rezerwacja?${params.toString()}`;
 
+  // ZAMIAR REZERWACJI — mierzony z KLIKNIĘCIA, nie z renderu strony kasy.
+  //
+  // `checkout_view` odpala się przy renderze /hotele/rezerwacja, więc łapie
+  // też powroty z historii i wejścia z zakładki zostawionej na później.
+  // Tutaj liczy się wyłącznie świadomy wybór konkretnej taryfy, a różnica
+  // między tymi dwiema liczbami to ruch, który wszedł do kasy bez intencji.
+  //
+  // Zdarzenie NIC NIE REZERWUJE: to wyłącznie pomiar, nawigację robi `Link`.
+  const onReservationClick = () => {
+    track("booking_intent", {
+      product: "hotel",
+      source_path: currentAnalyticsPagePath(),
+      hotel_id: hotelId,
+      offer_id: option.offerId,
+      ...(total !== null ? { price: Math.round(total) } : {}),
+      currency: rateCurrency,
+    });
+  };
+
   return (
     // TRZY SEKCJE (brief §25): oferta | cena | akcja.
     //
@@ -592,6 +613,7 @@ function OptionRow({
         {bookingLive ? (
           <Link
             href={reservationHref}
+            onClick={onReservationClick}
             // prefetch OFF (incydent 2026-07-19): każdy widok strony hotelu
             // prefetchował N linków taryf → N SSR-ów /hotele/rezerwacja
             // (26,7k renderów w 2 dni = top ścieżka serwisu) + wywołania

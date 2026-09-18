@@ -22,6 +22,8 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
@@ -254,12 +256,15 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
               {city.intro}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link
+              <SeoCtaLink
                 href={searchHref}
+                typTresci="landing_city"
+                ctaType="hero_search"
+                destinationSlug={city.slug}
                 className="inline-flex min-h-11 h-12 items-center justify-center rounded-full bg-white px-6 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 <span className="text-sm font-bold text-ink">Sprawdź dostępne hotele</span>
-              </Link>
+              </SeoCtaLink>
               <Link
                 href={profile ? `/kierunki/${profile.slug}` : "/kierunki"}
                 className="inline-flex min-h-11 h-12 items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 transition duration-150 ease-out hover:bg-white/20 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
@@ -478,12 +483,15 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
             </article>
           ))}
         </div>
-        <Link
+        <SeoCtaLink
           href={searchHref}
+          typTresci="landing_city"
+          ctaType="hotel_list"
+          destinationSlug={city.slug}
           className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
         >
           <span className="text-sm font-bold text-white">Zobacz hotele {inLoc}</span>
-        </Link>
+        </SeoCtaLink>
       </section>
 
       {/* FAQ */}

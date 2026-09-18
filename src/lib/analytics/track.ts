@@ -18,10 +18,29 @@
 //   import { track } from "@/lib/analytics/track";
 //   track("hotel_card_click", { hotel_id, position, destination });
 //
-// To register conversions in GA4: mark `booking_complete` and
-// `affiliate_click` as key events (Admin → Events → mark as key event).
+// To register conversions in GA4: mark `booking_complete` and `purchase` as
+// key events (Admin → Events → mark as key event). Zdarzeniem POŚREDNIM wartym
+// obserwacji jest `booking_intent` — patrz jego opis niżej.
+//
+// KAŻDE zdarzenie dostaje automatycznie `page_path` i `landing_path` — składa
+// je `track()` z jednego źródła (lib/analytics/page-path.ts). Call site NIE
+// buduje ścieżki sam: ręcznie sklejane `window.location.pathname` w pięciu
+// miejscach było właśnie tym, co dało zduplikowany query string w 47% wierszy
+// raportu GA4. Nazwy własnych parametrów NIE MOGĄ się pokrywać z tymi dwoma.
+
+import { currentAnalyticsPagePath, getLandingPath } from "./page-path";
 
 type GtagFn = (command: "event", eventName: string, params?: Record<string, unknown>) => void;
+
+/**
+ * Zdarzenie bez własnych parametrów.
+ *
+ * Alias zamiast wpisywania `Record<string, never>` w pięciu miejscach: trzyma
+ * intencję („to zdarzenie nie ma własnych parametrów") w jednej nazwie i
+ * pozwala wołać `track("x", {})`. Goły `{}` nie nadaje się na to miejsce,
+ * bo w TS przyjmuje DOWOLNY obiekt, czyli nie sprawdza niczego.
+ */
+type EmptyParams = Record<string, never>;
 
 interface WindowWithGtag {
   gtag?: GtagFn;
@@ -132,27 +151,18 @@ export interface TrackEventMap {
     city_slug: string;
     monthly_volume?: number;
   };
-  landing_cta_click: {
-    city_slug: string;
-    /** Which CTA on the page. */
-    cta: "hero_search" | "hero_guide" | "featured_hotel" | "final_cta" | "month_picker";
-    hotel_id?: string;
-  };
-
-  // ── Affiliate (legacy — outbound loty usunięte w Fazie 4; zostaje typ na
-  //    wypadek pozostałych linków afiliacyjnych hotelowych) ──
-  affiliate_click: {
-    /** Used as a key event / conversion. */
-    provider: "hotellook" | "other";
-    destination?: string;
-    campaign?: string;
-  };
+  // USUNIĘTE 2026-09-18 (PR #2A, audyt integralności analityki):
+  //
+  //   • landing_cta_click — ZDEFINIOWANY, NIGDY NIE WYSŁANY. Zastąpiony przez
+  //     `seo_cta_click`, które obsługuje wszystkie typy stron treściowych
+  //     jednym eventem (brief §6: „no duplicate parallel events").
+  //   • affiliate_click — ZDEFINIOWANY, NIGDY NIE WYSŁANY. Linki wychodzące
+  //     zniknęły razem z Travelpayouts, więc nie ma już czego mierzyć.
+  //   • destination_save — ZDEFINIOWANY, NIGDY NIE WYSŁANY. Polubienia
+  //     obsługuje `favorites-store` i tylko dla HOTELI (`FavoriteHotel`);
+  //     kierunku nie da się zapisać, więc event opisywał nieistniejącą funkcję.
 
   // ── Engagement ──
-  destination_save: {
-    slug: string;
-    city?: string;
-  };
   hotel_save: {
     hotel_id: string;
     destination?: string;
@@ -249,8 +259,6 @@ export interface TrackEventMap {
   };
   // ── AI Concierge (czat doboru wyjazdu) ──
   concierge_open: {
-    /** Ścieżka strony, na której otwarto czat. */
-    page_path?: string;
     /** Którym wejściem użytkownik trafił do czatu. Redesign 2026-07 dał trzy
      *  wejścia zamiast jednego dymka — bez tego parametru nie wiadomo, które
      *  z nich faktycznie działa i czy warto utrzymywać pozostałe. */
@@ -272,9 +280,7 @@ export interface TrackEventMap {
     city?: string;
   };
   /** Klik „Spróbuj ponownie" po błędzie odpowiedzi — mierzy tarcie transportu (cold start/timeout). */
-  concierge_retry: {
-    page_path?: string;
-  };
+  concierge_retry: EmptyParams;
   /**
    * Tura zakończona błędem. `concierge_retry` mierzy tylko te błędy, po których
    * użytkownik KLIKNĄŁ ponowienie — czyli wierzchołek góry lodowej. Bez tego
@@ -351,9 +357,7 @@ export interface TrackEventMap {
   };
   /** Użycie zwiniętego paska wyszukiwania w sticky navie — czy wzorzec
    *  „szukaj z dowolnego miejsca strony" jest w ogóle używany. */
-  sticky_search_used: {
-    page_path?: string;
-  };
+  sticky_search_used: EmptyParams;
 
   // ── Sekcje ofertowe strony głównej — schemat ecommerce GA4 ──
   // Powód użycia `view_item_list`/`select_item` zamiast własnych nazw: GA4 ma
@@ -411,7 +415,6 @@ export interface TrackEventMap {
    * albo „nikt tu nie doscrollował", a to dwa przeciwne wnioski.
    */
   quiz_view: {
-    page_path?: string;
     /** Ile ofert widget mógł zaoferować w chwili pokazania — sekcja z pustą
      *  pulą nie jest tym samym co sekcja zignorowana. */
     available_count?: number;
@@ -419,9 +422,7 @@ export interface TrackEventMap {
   };
 
   /** Pierwsza interakcja z dobieraczem w tej wizycie. */
-  quiz_start: {
-    page_path?: string;
-  };
+  quiz_start: EmptyParams;
   quiz_step_complete: {
     /** 1 = budżet, 2 = typ wyjazdu. */
     step: number;
@@ -436,6 +437,71 @@ export interface TrackEventMap {
     results_count: number;
     cheapest_price?: number;
     copy_variant?: string;
+  };
+
+  // ── Strony treściowe (SEO) → produkt ────────────────────────────────
+  //
+  // JEDEN kanoniczny event na klik ze strony treściowej w lejek produktowy.
+  // Powód, dla którego to nie jest pięć osobnych eventów per typ strony:
+  // pytanie biznesowe brzmi „który TYP treści dowozi ruch do wyszukiwarki",
+  // a na to odpowiada jeden event z wymiarem `content_type`. Pięć nazw
+  // wymagałoby pięciu raportów i nie dałoby się ich porównać w jednej tabeli.
+  //
+  // To także jedyny pomiar odcinka treść → wyszukiwanie (brief §5): strony
+  // treściowe linkują do /hotele/szukaj zwykłym linkiem, więc NIE przechodzą
+  // przez formularz i `hotel_search_submit` się tam nigdy nie odpala. Żadnego
+  // drugiego eventu „search start" nie dodajemy — ten pokrywa start, a dojazd
+  // pokrywa `hotel_results_loaded` na stronie wyników.
+  seo_cta_click: {
+    /** Kanoniczna ścieżka strony treściowej, z której wyszedł klik. */
+    source_path: string;
+    /** Ścieżka docelowa (bez hosta) — mówi, DO KTÓREGO lejka prowadzi CTA. */
+    destination_path: string;
+    /** Typ treści — główny wymiar analizy: który format dowozi ruch. */
+    content_type:
+      | "month_page"
+      | "guide"
+      | "comparison"
+      | "inspiration"
+      | "trip_hub"
+      | "landing_city"
+      | "season_hub";
+    /** Rola CTA na stronie — rozróżnia „hero" od „na końcu tekstu". */
+    cta_type:
+      | "hero_search"
+      | "inline_search"
+      | "final_cta"
+      | "hotel_list"
+      | "flight_search"
+      | "month_picker"
+      | "related_link";
+    /** Slug kierunku, jeśli strona go dotyczy (np. "kreta-greece"). */
+    destination_slug?: string;
+    /** Miesiąc, jeśli strona go dotyczy (np. "lipiec"). */
+    month?: string;
+  };
+
+  /**
+   * ZAMIAR REZERWACJI — świadome wejście w lejek zakupowy z konkretnej oferty.
+   *
+   * Dlaczego OSOBNO od `checkout_view`: `checkout_view` odpala się przy
+   * RENDERZE /hotele/rezerwacja, więc liczy też wejścia z historii, z zakładki
+   * zostawionej na później i z przekierowania po błędzie. `booking_intent`
+   * odpala się WYŁĄCZNIE z kliknięcia użytkownika w konkretną ofertę, więc
+   * różnica między tymi dwiema liczbami to ruch, który wszedł do kasy bez
+   * intencji — i dopiero to da się sensownie optymalizować.
+   *
+   * Zdarzenie jest MIARĄ, nie akcją: nic nie rezerwuje i nie dotyka płatności.
+   */
+  booking_intent: {
+    /** Hotel czy lot — dwa różne lejki, jeden wymiar. */
+    product: "hotel" | "flight";
+    /** Ścieżka, z której wyszedł klik (strona hotelu, wyniki lotów…). */
+    source_path: string;
+    hotel_id?: string;
+    offer_id?: string;
+    price?: number;
+    currency?: string;
   };
 
   /** Zakup lotu — GA4 ecommerce. `item_category:"flight"` ODRÓŻNIA od hoteli. */
@@ -461,8 +527,84 @@ export function track<E extends TrackEventName>(
     if (typeof window === "undefined") return;
     const gtag = (window as WindowWithGtag).gtag;
     if (typeof gtag !== "function") return; // consent denied / not loaded
-    gtag("event", event, params as Record<string, unknown>);
+
+    // Kontekst doklejany CENTRALNIE — żeby nie dało się go zapomnieć ani
+    // zbudować po swojemu. Własne parametry zdarzenia mają pierwszeństwo:
+    // gdyby ktoś przekazał `page_path` jawnie, nie nadpisujemy go po cichu,
+    // bo cicha podmiana danych jest gorsza niż widoczna kolizja nazw.
+    const kontekst: Record<string, unknown> = { page_path: currentAnalyticsPagePath() };
+    const landing = getLandingPath();
+    if (landing) kontekst.landing_path = landing;
+
+    gtag("event", event, { ...kontekst, ...(params as Record<string, unknown>) });
   } catch {
     // Analytics must NEVER break the UX. Swallow everything.
   }
 }
+
+// ─── Klasyfikacja prywatności (brief §10) ────────────────────────────────
+//
+// Każde zdarzenie z katalogu MUSI mieć wpis — pilnuje tego test. Nowy event
+// bez klasyfikacji nie przejdzie `pnpm test`, więc decyzja o danych osobowych
+// jest podejmowana świadomie w chwili dodawania eventu, a nie odkrywana pół
+// roku później w eksploracji GA4.
+//
+//   "anonimowe"  — wyłącznie dane nieosobowe: agregaty, slugi, ceny, ścieżki.
+//   "techniczne" — zawiera identyfikator techniczny (hotel_id, offer_id,
+//                  booking_id). Sam z siebie nie jest daną osobową, ale
+//                  pozwala połączyć zdarzenie z rezerwacją w naszej bazie.
+//
+// Klasy „osobowe" NIE MA i nie wolno jej dodać: dane osobowe nie mają prawa
+// trafić do GA4. Test sprawdza dodatkowo, że żaden parametr w katalogu nie
+// nazywa się jak nośnik danych osobowych.
+export type KlasaPrywatnosci = "anonimowe" | "techniczne";
+
+export const KLASYFIKACJA_PRYWATNOSCI: Record<TrackEventName, KlasaPrywatnosci> = {
+  hotel_search_submit: "anonimowe",
+  hotel_results_loaded: "anonimowe",
+  hotel_card_click: "techniczne",
+  hotel_detail_view: "techniczne",
+  booking_intent: "techniczne",
+  booking_prebook_start: "techniczne",
+  checkout_view: "techniczne",
+  booking_prebook_error: "techniczne",
+  booking_payment_shown: "anonimowe",
+  checkout_webview_detected: "anonimowe",
+  booking_complete: "techniczne",
+  landing_view: "anonimowe",
+  hotel_save: "techniczne",
+  seo_cta_click: "anonimowe",
+  flight_search: "anonimowe",
+  flight_results_view: "anonimowe",
+  flight_select: "techniczne",
+  flight_verify_price_change: "techniczne",
+  fare_selected: "techniczne",
+  flight_passenger_form_start: "techniczne",
+  passenger_step_completed: "techniczne",
+  flight_offer_recovery: "techniczne",
+  flight_prebook: "techniczne",
+  flight_prebook_price_change: "techniczne",
+  flight_payment_start: "anonimowe",
+  flight_payment_error: "anonimowe",
+  concierge_open: "anonimowe",
+  concierge_message: "anonimowe",
+  concierge_offer_shown: "anonimowe",
+  concierge_offer_click: "anonimowe",
+  concierge_retry: "anonimowe",
+  concierge_error: "anonimowe",
+  concierge_close: "anonimowe",
+  search_started: "anonimowe",
+  hero_tab_changed: "anonimowe",
+  category_tile_clicked: "anonimowe",
+  destination_card_clicked: "anonimowe",
+  featured_hotel_card_clicked: "techniczne",
+  flight_deal_card_clicked: "anonimowe",
+  sticky_search_used: "anonimowe",
+  view_item_list: "techniczne",
+  select_item: "techniczne",
+  quiz_view: "anonimowe",
+  quiz_start: "anonimowe",
+  quiz_step_complete: "anonimowe",
+  quiz_submit: "anonimowe",
+  purchase: "techniczne",
+};
