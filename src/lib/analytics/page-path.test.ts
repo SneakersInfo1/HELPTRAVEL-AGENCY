@@ -139,6 +139,24 @@ describe("analyticsPagePath — utajnia poświadczenia i dane osobowe (test G)",
     assert.equal(wynik.length < 120, true, `ścieżka kasy wciąż długa: ${wynik.length} znaków`);
   });
 
+  it("PRZEPUSZCZA parametry atrybucji — GA4 czyta źródło ruchu z page_location", () => {
+    // To jest gwarancja, którą łatwo zepsuć przy okazji utajniania: GA4 czyta
+    // utm_*, gclid i fbclid z `page_location`, a to pole składamy teraz sami.
+    // Gdyby któryś z nich wpadł pod utajnienie albo zginął przy składaniu,
+    // cały ruch płatny i kampanijny wylądowałby jako „direct" — czyli zamiast
+    // naprawić atrybucję, zniszczylibyśmy tę, która działała.
+    const wynik = analyticsPagePath(
+      "/kierunki/malaga-spain",
+      "utm_source=tiktok&utm_medium=social&utm_campaign=lato 2026&gclid=EAIaIQ&fbclid=IwAR",
+    );
+    assert.equal(wynik.includes("utm_source=tiktok"), true);
+    assert.equal(wynik.includes("utm_medium=social"), true);
+    assert.equal(wynik.includes("gclid=EAIaIQ"), true);
+    assert.equal(wynik.includes("fbclid=IwAR"), true);
+    // Spacja w wartości wraca zakodowana — składnia URL-a, ta sama wartość.
+    assert.equal(wynik.includes("utm_campaign=lato%202026"), true);
+  });
+
   it("nie rusza parametrów produktowych — one są potrzebne do analizy lejka", () => {
     assert.equal(
       analyticsPagePath("/hotele/szukaj", "destination=Kreta&checkin=2026-10-01&adults=2&rooms=1"),
