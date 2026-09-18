@@ -88,6 +88,8 @@ export interface TrackEventMap {
     scan_ms?: number;
   };
   hotel_card_click: {
+    /** Hotel czy lot — ten sam wymiar co w `booking_intent`. */
+    product: "hotel";
     hotel_id: string;
     destination?: string;
     /**

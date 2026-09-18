@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { stripPaymentSecrets } from "@/lib/analytics/payment-url";
 import { stripLangParam } from "@/lib/seo/lang-param";
 import { legacyRedirectTarget } from "@/lib/seo/legacy-redirects";
 
@@ -105,6 +106,33 @@ function requireAdminAuth(request: NextRequest): NextResponse | null {
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
+  // ── Poświadczenia płatności wycinane U ŹRÓDŁA ──────────────────────────
+  //
+  // Stripe wraca na nasz adres, doklejając `payment_intent_client_secret` —
+  // poświadczenie pozwalające operować na tym PaymentIntent z przeglądarki.
+  //
+  // Czyszczenie adresu po stronie klienta NIE WYSTARCZA i to jest zmierzone:
+  // przy renderze serwerowym Next wkleja `searchParams` do payloadu RSC, więc
+  // sekret zostawał w ŹRÓDLE STRONY (3 wystąpienia w HTML) nawet po
+  // wyczyszczeniu paska adresu. Przekierowanie tutaj sprawia, że komponent
+  // serwerowy NIGDY go nie widzi — nie ma go więc ani w adresie, ani w HTML,
+  // ani w nagłówku `Referer`, ani w żadnym narzędziu analitycznym.
+  //
+  // 307, nie 301: to jest jednorazowy adres powrotu z płatności, a nie
+  // kanoniczny adres strony — trwałe przekierowanie zostałoby zapamiętane
+  // przez przeglądarkę. `no-store` z tego samego powodu.
+  //
+  // Bez ryzyka pętli: `stripPaymentSecrets` zwraca `null`, gdy nie ma czego
+  // usunąć, więc po przekierowaniu warunek już nie zachodzi. Parametry, które
+  // czyta finalizacja rezerwacji (`sid`, `payment_intent`, `redirect_status`),
+  // zostają nietknięte.
+  const bezSekretu = stripPaymentSecrets(request.nextUrl.href);
+  if (bezSekretu) {
+    const res = NextResponse.redirect(bezSekretu, 307);
+    res.headers.set("Cache-Control", "no-store");
+    return res;
+  }
+
   // Serwis nie ma wersji językowych, więc `?lang=` to tylko duplikat adresu
   // (w Google wisiał `/?lang=en`). 301 na ten sam adres bez parametru.
   const withoutLang = stripLangParam(request.nextUrl.href);
@@ -179,6 +207,21 @@ export const config = {
     {
       source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
       has: [{ type: "query", key: "lang" }],
+    },
+    // Każdy adres niosący poświadczenie płatności — patrz blok w `middleware`.
+    // API świadomie wyłączone: trasy `/api/*` mogą takich parametrów
+    // potrzebować, a i tak nie renderują HTML-a ani nie ładują analityki.
+    {
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      has: [{ type: "query", key: "payment_intent_client_secret" }],
+    },
+    {
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      has: [{ type: "query", key: "setup_intent_client_secret" }],
+    },
+    {
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      has: [{ type: "query", key: "client_secret" }],
     },
   ],
 };
