@@ -8,6 +8,7 @@ import { WebVitalsReporter } from "@/components/site/web-vitals-reporter";
 import { CookieConsentBanner } from "@/components/site/cookie-consent-banner";
 import { GoogleAnalytics } from "@/components/site/google-analytics";
 import { MicrosoftClarity } from "@/components/site/microsoft-clarity";
+import { StripPaymentSecrets } from "@/components/site/strip-payment-secrets";
 import { QuickSearchLauncher } from "@/components/site/quick-search-launcher";
 import { ConciergeLauncher } from "@/components/concierge/concierge-launcher";
 import { ConsentProvider } from "@/lib/consent/context";
@@ -155,6 +156,10 @@ export default function RootLayout({
         <ConsentProvider>
           <LanguageProvider>
             <GoogleAnalytics />
+            {/* Wycina sekret Stripe'a z paska adresu. Montowany GLOBALNIE,
+                nie na stronach powrotu: dzięki temu obejmuje też każdą przyszłą
+                trasę, na której dostawca płatności dokleiłby poświadczenie. */}
+            <StripPaymentSecrets />
             <MicrosoftClarity />
             <WebVitalsReporter />
             <SiteShell>{children}</SiteShell>

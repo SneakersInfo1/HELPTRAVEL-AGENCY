@@ -214,6 +214,9 @@ export function ResultCard({
 
   const onCardClick = () => {
     track("hotel_card_click", {
+      // Ten sam wymiar co w `booking_intent` — pozwala zestawić klik w kartę
+      // z zamiarem rezerwacji w jednym raporcie, zamiast utrzymywać dwa.
+      product: "hotel",
       hotel_id: offer.hotelId,
       ...(destination ? { destination } : {}),
       ...(position !== undefined ? { position } : {}),
