@@ -11,10 +11,26 @@
 // gubił połowę. Poprawka musi siedzieć U ŹRÓDŁA generowania ścieżki, nie
 // w raportach — stąd ten moduł.
 //
-// Mechanizm duplikacji: emiter `page_view` składał ścieżkę ręcznie jako
-// `pathname + "?" + searchParams`. Wystarczy, że `pathname` sam nosi już query
-// (a niesie: patrz `window.history.replaceState` w home-search-tabs.tsx, które
-// od Next 14.1 wpływa na wynik `usePathname()`), i dostajemy dwa znaki `?`.
+// MECHANIZM — ustalony, nie zgadnięty. Pierwsza hipoteza brzmiała: „usePathname()
+// zwraca ścieżkę z query, bo home-search-tabs.tsx woła window.history.replaceState,
+// a Next od 14.1 wpina się w natywne replaceState". Hipoteza jest FAŁSZYWA i to
+// widać w źródle Nexta 16.2.9: app-router.js liczy
+//
+//   pathname: new URL(canonicalUrl, …).pathname
+//
+// a `URL.pathname` z definicji nie zawiera query. Tą drogą podwojenie powstać
+// nie mogło.
+//
+// Prawdziwa droga do raportu prowadzi przez `page_location`. Emiter wysyłał tam
+// surowy `window.location.href`, a GA4 wyprowadza wymiar „Page path and query
+// string" właśnie z `page_location`, nie z przestarzałego pola `page_path`.
+// Adres z dwoma `?` jest składniowo poprawny (drugi `?` to zwykły znak wewnątrz
+// query), więc trafiał do Google dokładnie w takiej postaci, w jakiej wyszedł
+// z przeglądarki. Dlatego poprawka musi objąć OBA pola — i obejmuje.
+//
+// Normalizacja `pathname` zostaje mimo obalenia pierwszej hipotezy: kosztuje
+// jedno przejście po stringu, a zamienia „w tej wersji Nexta to niemożliwe"
+// na sprawdzany testem niezmiennik.
 //
 // DRUGA funkcja tego modułu to higiena danych. Do GA4 leciał komplet parametrów
 // URL-a powrotu z płatności:
@@ -44,6 +60,17 @@ const PARAMETRY_DO_UTAJNIENIA: ReadonlySet<string> = new Set([
   "client_secret",
   // Nasza sesja rezerwacji (klucz w Redisie).
   "sid",
+  // Nieprzezroczysta oferta dostawcy. Powód jest podwójny i oba są twarde:
+  //   • KARDYNALNOŚĆ — wartość jest unikalna dla każdej taryfy, więc każde
+  //     wejście do kasy byłoby w GA4 osobnym wierszem. Raport „ile osób
+  //     doszło do kasy" rozsypałby się na tysiąc jednostkowych ścieżek.
+  //   • LIMITY GA4 — zmierzone na realnym adresie: sam `offerId` ma ~1500
+  //     znaków. GA4 przycina `page_location` do 1000 znaków, a wartość
+  //     parametru zdarzenia do 100, więc `page_path` kasy i tak docierałby
+  //     UCIĘTY, czyli bezużyteczny. Hotel i cena jadą osobnymi parametrami
+  //     (`hotel_id`, `price`), więc nic analitycznie ważnego nie ginie.
+  "offerid",
+  "offer_id",
   // Dane osobowe — nie powinny się pojawić w URL-u, ale jeśli się pojawią,
   // analityka ma być ostatnim miejscem, które je utrwali.
   "email",

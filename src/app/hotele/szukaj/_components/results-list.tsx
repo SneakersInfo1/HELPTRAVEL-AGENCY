@@ -1165,6 +1165,12 @@ export function ResultsList(props: ResultsListProps) {
             searchQuery={childParams}
             nights={nights}
             imagePriority={index < 6}
+            // Pozycja GLOBALNA, nie w obrębie strony. „Trzeci wynik" na
+            // stronie 4. to w rzeczywistości 64. oferta, którą gość zobaczył;
+            // bez doliczenia strony obie zlałyby się w raporcie w jedną
+            // pozycję nr 3 i wykres głębokości klikania kłamałby.
+            position={(view.safePage - 1) * pageSize + index + 1}
+            destination={destinationName}
             priceSlot={
               isPriced(entry) ? undefined : <PriceView entry={entry as "loading" | "error" | null | undefined} />
             }

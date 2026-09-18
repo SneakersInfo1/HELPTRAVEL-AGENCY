@@ -90,7 +90,14 @@ export interface TrackEventMap {
   hotel_card_click: {
     hotel_id: string;
     destination?: string;
-    /** 1-based position in the visible list. */
+    /**
+     * Pozycja oferty na liście, licząc od 1 i GLOBALNIE — z doliczeniem
+     * numeru strony. Bez tego „pozycja 3" ze strony 1. i ze strony 4. byłyby
+     * w raporcie tą samą liczbą, a to właśnie różnica między ofertą, którą
+     * widać od razu, a taką, do której trzeba się doklikać.
+     *
+     * Nieobecna, gdy pojęcie pozycji nie ma sensu (podgląd znacznika na mapie).
+     */
     position?: number;
     price?: number;
     currency?: string;

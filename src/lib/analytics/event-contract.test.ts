@@ -266,6 +266,35 @@ describe("jeden klik daje jedno zdarzenie (test H)", () => {
     assert.equal((tresc.match(/onClick=\{onClick\}/g) ?? []).length, 1);
   });
 
+  it("KAŻDE miejsce renderujące kartę przekazuje wymiary zdarzenia", () => {
+    // Ten test istnieje, bo dokładnie tu popełniono błąd przy pisaniu PR #2A:
+    // `ResultCard` renderuje się w TRZECH miejscach (lista stronicowana, lista
+    // w widoku dzielonym z mapą, podgląd zaznaczonego znacznika), a podłączone
+    // zostały tylko dwa. Zdarzenie leciało — bez `position` i `destination`,
+    // czyli bez obu wymiarów, dla których je dodano. Sam typ tego nie złapie:
+    // oba propsy są opcjonalne z premedytacją (w podglądzie mapy pozycja nie
+    // istnieje), więc kompilator milczy.
+    const tresc = czytaj("src/app/hotele/szukaj/_components/results-list.tsx");
+    const bloki = tresc.split("<ResultCard").slice(1);
+    assert.equal(bloki.length >= 3, true, `oczekiwano ≥3 miejsc renderowania, jest ${bloki.length}`);
+    bloki.forEach((blok, i) => {
+      const atrybuty = blok.slice(0, blok.indexOf("/>"));
+      assert.equal(
+        atrybuty.includes("destination={"),
+        true,
+        `ResultCard #${i + 1}: brak propsa destination`,
+      );
+      // Pozycji nie ma tylko podgląd na mapie — on jest jawnie `compact`.
+      if (!atrybuty.includes("compact")) {
+        assert.equal(
+          atrybuty.includes("position={"),
+          true,
+          `ResultCard #${i + 1}: brak propsa position (a nie jest compact)`,
+        );
+      }
+    });
+  });
+
   it("karta wyniku wysyła hotel_card_click raz, z linku obejmującego całą kartę (test E)", () => {
     const tresc = czytaj("src/app/hotele/szukaj/_components/result-card.tsx");
     assert.equal((tresc.match(/track\("hotel_card_click"/g) ?? []).length, 1);

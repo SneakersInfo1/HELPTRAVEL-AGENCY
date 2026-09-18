@@ -129,6 +129,16 @@ describe("analyticsPagePath — utajnia poświadczenia i dane osobowe (test G)",
     assert.equal(analyticsPagePath("/przewodniki", "source=newsletter"), "/przewodniki?source=newsletter");
   });
 
+  it("utajnia offerId — inaczej każde wejście do kasy to osobny wiersz w GA4", () => {
+    // Zmierzone na realnym adresie: `offerId` LiteAPI ma ~1500 znaków, a GA4
+    // przycina wartość parametru zdarzenia do 100. Bez utajnienia `page_path`
+    // strony kasy docierał UCIĘTY i nie dawał się z niczym zestawić.
+    const dlugiOffer = "3gAWonJzkd4AEaRzcmlk" + "A".repeat(1400);
+    const wynik = analyticsPagePath("/hotele/rezerwacja", `hotelId=lp50b05&offerId=${dlugiOffer}&price=2554&cur=PLN`);
+    assert.equal(wynik, `/hotele/rezerwacja?hotelId=lp50b05&offerId=${UTAJNIONE}&price=2554&cur=PLN`);
+    assert.equal(wynik.length < 120, true, `ścieżka kasy wciąż długa: ${wynik.length} znaków`);
+  });
+
   it("nie rusza parametrów produktowych — one są potrzebne do analizy lejka", () => {
     assert.equal(
       analyticsPagePath("/hotele/szukaj", "destination=Kreta&checkin=2026-10-01&adults=2&rooms=1"),

@@ -92,11 +92,23 @@ function PageViewTracker({ measurementId }: { measurementId: string }) {
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.gtag !== "function") return;
 
-    // Źródłem są hooki Nexta, nie `window.location`: ich wartości są zgodne
-    // z TYM renderem, więc nie ma pytania „czy historia już się zaktualizowała".
-    // `analyticsPagePath` jest tu i tak, jako zabezpieczenie przed ścieżką
-    // niosącą własne query — i to ona gwarantuje jeden znak `?` w wyniku.
-    const path = analyticsPagePath(pathname, searchParams?.toString());
+    // ŹRÓDŁEM JEST `window.location`, a hooki Nexta tylko WYZWALAJĄ efekt.
+    //
+    // Kusiło, żeby wziąć wprost `searchParams.toString()` — wartość zgodną
+    // z tym renderem, bez pytania „czy historia już się zaktualizowała".
+    // Pomiar pokazał, dlaczego to gorszy wybór. Dla realnego adresu
+    // `/?tab=loty?tab=loty` `URLSearchParams` czyta JEDEN parametr o wartości
+    // `loty?tab=loty` i zwraca go już zakodowanego: `tab=loty%3Ftab%3Dloty`.
+    // Nadmiarowy `?` nie jest wtedy widoczny jako separator, więc normalizator
+    // nie ma czego skleić i adres ZOSTAJE osobnym wierszem raportu — czyli
+    // dokładnie tym, co mieliśmy naprawić.
+    //
+    // Surowy `location.search` niesie ten `?` dosłownie, więc normalizator
+    // scala zdublowaną parę i obie wersje adresu lądują w JEDNYM wierszu.
+    // Kolejność jest bezpieczna: Next aktualizuje historię w efekcie
+    // wstawiania (HistoryUpdater), a ten biegnie przed efektami pasywnymi.
+    // To także jedno źródło wspólne z `track()`, który czyta tak samo.
+    const path = currentAnalyticsPagePath() || analyticsPagePath(pathname, searchParams?.toString());
     const location = `${window.location.origin}${path}`;
 
     // Wartości globalne — nadpisują AUTOMATYCZNY `dl` gtag-a, czyli ten
