@@ -307,8 +307,8 @@ export function ConciergeLauncher() {
         historyPushedRef.current = true;
       }
       setPanel("expanded");
+      // page_path dokleja track() — patrz lib/analytics/track.ts.
       track("concierge_open", {
-        page_path: window.location.pathname,
         source: source === "hero" ? "hero_tab" : source,
       });
     },

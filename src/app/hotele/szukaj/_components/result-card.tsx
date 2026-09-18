@@ -75,6 +75,7 @@ import { localizeBoard } from "@/lib/liteapi/translations";
 import { localizeCountry } from "@/lib/mvp/i18n-geo";
 import { formatPLN } from "@/lib/money";
 import { FavoriteButton } from "@/components/hotels/favorite-button";
+import { track } from "@/lib/analytics/track";
 import { HotelCardImage } from "./hotel-card-image";
 
 interface OfferCard {
@@ -179,6 +180,8 @@ export function ResultCard({
   imagePriority = false,
   priceSlot,
   compact = false,
+  position,
+  destination,
 }: {
   offer: OfferCard;
   searchQuery: string;
@@ -186,6 +189,15 @@ export function ResultCard({
   badges?: BadgeKind;
   imagePriority?: boolean;
   priceSlot?: ReactNode;
+  /**
+   * Pozycja karty na liście, licząc od 1 — wymiar „jak głęboko ludzie klikają".
+   *
+   * Nieobecna w podglądzie na mapie: tam karta jest wybranym znacznikiem,
+   * a nie n-tym wynikiem, więc każda liczba byłaby zmyślona.
+   */
+  position?: number;
+  /** Kierunek z zapytania — pozwala porównywać CTR listy między kierunkami. */
+  destination?: string;
   /**
    * Wariant PODGLĄDU na mapie mobilnej — karta ma zajmować pas u dołu, nie pół
    * telefonu.
@@ -199,6 +211,18 @@ export function ResultCard({
   compact?: boolean;
 }) {
   const rate = offer.cheapestRate;
+
+  const onCardClick = () => {
+    track("hotel_card_click", {
+      hotel_id: offer.hotelId,
+      ...(destination ? { destination } : {}),
+      ...(position !== undefined ? { position } : {}),
+      ...(offer.cheapestRate
+        ? { price: Math.round(offer.cheapestRate.totalAmount), currency: offer.cheapestRate.currency }
+        : {}),
+    });
+  };
+
   const total = rate ? formatPLN(rate.totalAmount, rate.currency) : null;
   const perNight = rate
     ? formatPLN(Math.round(rate.totalAmount / Math.max(1, nights)), rate.currency)
@@ -237,6 +261,13 @@ export function ResultCard({
       <Link
         href={`/hotele/${encodeURIComponent(offer.hotelId)}?${searchQuery}`}
         aria-label={`Zobacz ofertę: ${offer.name}, ${offer.city}`}
+        // KLIK W OFERTĘ — jedno zdarzenie na jedno kliknięcie.
+        //
+        // Handler siedzi na linku obejmującym CAŁĄ kartę, więc klik w zdjęcie,
+        // nazwę, chip czy cenę liczy się raz i tak samo. Serce „zapisz obiekt"
+        // jest w środku, ale zatrzymuje zdarzenie u siebie (`stopPropagation`
+        // w FavoriteButton), więc polubienie NIE udaje kliknięcia w ofertę.
+        onClick={onCardClick}
         // `sm:min-h-*` — karta ma WYSOKOŚĆ, nie tylko treść. Bez tego wysokość
         // dyktowała najkrótsza możliwa kolumna tekstu (~130 px na 1920 px) i rząd
         // kart czytał się jak tabela, a nie jak oferty (zgłoszenie 2026-08-08:

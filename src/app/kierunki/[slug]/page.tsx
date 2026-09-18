@@ -9,6 +9,7 @@ import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
+import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { categoryPath } from "@/lib/mvp/category-slug";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
@@ -400,24 +401,39 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               wyjścia, który potem zmienisz w wyszukiwarce jednym kliknięciem.
             </p>
           </div>
-          <LocalizedLink
+          <SeoCtaLink
             href={destinationSearchHref}
+            localized
+            typTresci="guide"
+            ctaType="hero_search"
+            destinationSlug={slug}
             className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 py-3 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             <span className="text-sm font-bold text-white">Otwórz hotele i loty</span>
-          </LocalizedLink>
+          </SeoCtaLink>
         </div>
 
         <div className="mt-6 grid gap-4 xl:grid-cols-4">
-          <LocalizedLink href={internalHotelsHref} className="rounded-2xl border border-brand bg-brand p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:col-span-2 xl:col-span-2">
+          <SeoCtaLink
+            href={internalHotelsHref}
+            localized
+            typTresci="guide"
+            ctaType="inline_search"
+            destinationSlug={slug}
+            className="rounded-2xl border border-brand bg-brand p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:col-span-2 xl:col-span-2"
+          >
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Hotele</p>
             <h3 className="mt-2 text-2xl font-bold text-white">Sprawdź hotele: {model.name}</h3>
             <p className="mt-3 text-sm leading-6 text-white/82">
               Konkretne ceny w PLN dla terminu {formatShortDate(defaultStartDate, "pl-PL")} – {formatShortDate(defaultCheckOutDate, "pl-PL")}. Bez wychodzenia ze strony.
             </p>
-          </LocalizedLink>
-          <LocalizedLink
+          </SeoCtaLink>
+          <SeoCtaLink
             href="/?tab=loty"
+            localized
+            typTresci="guide"
+            ctaType="flight_search"
+            destinationSlug={slug}
             className="rounded-2xl border border-brand-strong bg-brand-strong p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:col-span-2 xl:col-span-2"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Loty</p>
@@ -425,7 +441,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <p className="mt-3 text-sm leading-6 text-white/78">
               Wyszukaj loty z dowolnego lotniska w Polsce.{model.flightSentence ? ` ${model.flightSentence}` : ""}
             </p>
-          </LocalizedLink>
+          </SeoCtaLink>
           </div>
         </section>
 

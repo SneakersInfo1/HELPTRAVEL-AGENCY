@@ -43,7 +43,7 @@ export function HeaderSearchTrigger({
   }, [isHome]);
 
   const onClick = useCallback(() => {
-    track("sticky_search_used", { page_path: window.location.pathname });
+    track("sticky_search_used", {});
     const hero = document.getElementById("hero");
     hero?.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches

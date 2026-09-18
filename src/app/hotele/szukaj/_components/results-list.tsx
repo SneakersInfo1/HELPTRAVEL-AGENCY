@@ -16,6 +16,7 @@ import {
   type PriceEntry,
 } from "@/lib/hotels/price-store";
 
+import { track } from "@/lib/analytics/track";
 import { ResultCard } from "./result-card";
 import { PriceView } from "./card-price";
 import { HotelPagination } from "./hotel-pagination";
@@ -684,6 +685,31 @@ export function ResultsList(props: ResultsListProps) {
   const expansionPending = Boolean(poolSource && poolHasMore) && !(stanPuli?.done ?? false);
   const scanComplete = view.scanning === 0 && !expansionPending;
 
+  // WYNIKI ZOBACZONE — domyka odcinek „treść → wyszukiwarka → wyniki".
+  //
+  // Warunkiem jest KONIEC skanowania, nie pierwszy render: lista montuje się
+  // z pustą pulą i dosypuje ceny strumieniem, więc zdarzenie wysłane od razu
+  // raportowałoby zero dostępnych obiektów przy każdym wyszukiwaniu.
+  //
+  // Raz na jedno wyszukiwanie: ref jest keyowany kontekstem zapytania, więc
+  // zmiana filtrów czy dat liczy się jako nowe wyszukiwanie, a samo przewijanie
+  // listy albo przełączenie Lista/Mapa — nie.
+  const resultsSentRef = useRef<string | null>(null);
+  const destinationName = useMemo(
+    () => new URLSearchParams(childParams).get("destination") ?? "",
+    [childParams],
+  );
+  useEffect(() => {
+    if (!scanComplete) return;
+    const klucz = `${destinationName}|${ctxSig}`;
+    if (resultsSentRef.current === klucz) return;
+    resultsSentRef.current = klucz;
+    track("hotel_results_loaded", {
+      destination: destinationName,
+      available_count: view.availableCount,
+    });
+  }, [scanComplete, destinationName, ctxSig, view.availableCount]);
+
   // ── Jawny stan całego lejka cen (§20 briefu) ─────────────────────────────
   //
   // „Skan skończony" NIE ZNACZY „udało się". Ten sam warunek był prawdziwy
@@ -865,6 +891,7 @@ export function ResultsList(props: ResultsListProps) {
       offer={isPriced(selectedRow.entry) ? { ...selectedRow.offer, cheapestRate: selectedRow.entry } : selectedRow.offer}
       searchQuery={childParams}
       nights={nights}
+      destination={destinationName}
       compact
       priceSlot={
         isPriced(selectedRow.entry) ? undefined : (
@@ -1008,7 +1035,7 @@ export function ResultsList(props: ResultsListProps) {
               // na nią wyłącznie stałe w pikselach CSS.
               style={{ maxHeight: "calc(100vh - var(--ht-header-h, 84px) - 9rem)" }}
             >
-              {view.allRows.slice(0, 60).map(({ offer, entry }) => (
+              {view.allRows.slice(0, 60).map(({ offer, entry }, indeks) => (
                 <div
                   key={offer.hotelId}
                   onMouseEnter={() => setHoveredId(offer.hotelId)}
@@ -1021,6 +1048,8 @@ export function ResultsList(props: ResultsListProps) {
                     offer={isPriced(entry) ? { ...offer, cheapestRate: entry } : offer}
                     searchQuery={childParams}
                     nights={nights}
+                    position={indeks + 1}
+                    destination={destinationName}
                     priceSlot={
                       isPriced(entry) ? undefined : (
                         <PriceView entry={entry as "loading" | "error" | null | undefined} />
@@ -1136,6 +1165,12 @@ export function ResultsList(props: ResultsListProps) {
             searchQuery={childParams}
             nights={nights}
             imagePriority={index < 6}
+            // Pozycja GLOBALNA, nie w obrębie strony. „Trzeci wynik" na
+            // stronie 4. to w rzeczywistości 64. oferta, którą gość zobaczył;
+            // bez doliczenia strony obie zlałyby się w raporcie w jedną
+            // pozycję nr 3 i wykres głębokości klikania kłamałby.
+            position={(view.safePage - 1) * pageSize + index + 1}
+            destination={destinationName}
             priceSlot={
               isPriced(entry) ? undefined : <PriceView entry={entry as "loading" | "error" | null | undefined} />
             }

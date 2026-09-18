@@ -159,8 +159,8 @@ export function TripPicker({
   useViewOnce(
     rootRef,
     useCallback(() => {
+      // page_path dokleja track() — patrz lib/analytics/track.ts.
       track("quiz_view", {
-        page_path: window.location.pathname,
         available_count: deals.length,
         copy_variant: COPY_VARIANT,
       });
@@ -170,7 +170,7 @@ export function TripPicker({
   const markStarted = useCallback(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    track("quiz_start", { page_path: window.location.pathname });
+    track("quiz_start", {});
   }, []);
 
   const matching = useMemo(

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
 import { notFound } from "next/navigation";
 
 import { AuthorByline } from "@/components/publisher/author-byline";
@@ -290,12 +292,16 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
             </p>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link
+            <SeoCtaLink
               href={internalHotelHref}
+              typTresci="month_page"
+              ctaType="hero_search"
+              destinationSlug={slug}
+              month={miesiac}
               className="inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-white px-6 py-3 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               <span className="text-sm font-bold text-ink">Sprawdź hotele {inMonth}</span>
-            </Link>
+            </SeoCtaLink>
             {commercialCity && (
               <Link
                 href={`/hotele/w/${commercialCity.slug}`}
@@ -308,8 +314,12 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
             )}
           </div>
         </article>
-        <Link
+        <SeoCtaLink
           href="/?tab=loty"
+          typTresci="month_page"
+          ctaType="flight_search"
+          destinationSlug={slug}
+          month={miesiac}
           className="flex flex-col justify-center rounded-2xl border border-brand-strong bg-brand-strong p-5 shadow-sm transition hover:-translate-y-1 hover:bg-brand-strong motion-reduce:transition-none motion-reduce:hover:translate-y-0"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Loty</p>
@@ -318,7 +328,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
             Wyszukaj loty z dowolnego lotniska w Polsce.
             {model.flightText ? ` Lot ${model.flightText}.` : ""}
           </p>
-        </Link>
+        </SeoCtaLink>
       </section>
 
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
@@ -330,12 +340,16 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
           >
             <span className="text-sm font-semibold text-ink">Pełny przewodnik: {facts.name}</span>
           </Link>
-          <Link
+          <SeoCtaLink
             href={internalHotelHref}
+            typTresci="month_page"
+            ctaType="final_cta"
+            destinationSlug={slug}
+            month={miesiac}
             className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 py-3 transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             <span className="text-sm font-bold text-white">Sprawdź hotele i loty</span>
-          </Link>
+          </SeoCtaLink>
           <Link
             href="/kierunki"
             className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 py-3 transition duration-150 ease-out hover:bg-surface-sunken active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
