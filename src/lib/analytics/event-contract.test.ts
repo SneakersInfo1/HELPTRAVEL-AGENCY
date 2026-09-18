@@ -198,6 +198,38 @@ describe("page_path ma jedno źródło (test A, warstwa strukturalna)", () => {
     assert.deepEqual(winne, [], `ręcznie budowany page_path: ${winne.join(", ")}`);
   });
 
+  it("page_view czeka na flagę gotowości, a nie na samą obecność window.gtag", () => {
+    // INCYDENT PRODUKCYJNY 2026-09-18. `PageViewTracker` sprawdzał tylko
+    // `typeof window.gtag !== "function"` i po cichu rezygnował. React
+    // uruchamia efekty DZIECI PRZED efektami RODZICA, a zaślepkę `gtag`
+    // tworzy efekt rodzica — więc na produkcji PIERWSZA odsłona (ta, która
+    // wyznacza stronę wejścia) nie leciała NIGDY. Preview tego nie pokazał,
+    // bo dev-owy StrictMode uruchamia efekty dwa razy i drugie przejście
+    // zastawało gotowego `gtag`.
+    //
+    // Flaga niesie więcej niż „gtag istnieje": niesie „config już poszedł",
+    // czyli właściwą kolejność js → consent → config → page_view.
+    const ga = czytaj("src/components/site/google-analytics.tsx");
+    assert.equal(ga.includes("if (!gotowy) return;"), true, "brak bramki gotowości w PageViewTracker");
+    assert.equal(
+      ga.includes("gotowy={gtagGotowy}"),
+      true,
+      "rodzic nie przekazuje flagi gotowości do PageViewTracker",
+    );
+    assert.equal(
+      /measurementId, gotowy\]/.test(ga),
+      true,
+      "flaga gotowości nie jest w zależnościach efektu — nie odpali ponownie",
+    );
+    // Flaga MUSI być podnoszona po config, inaczej page_view wyprzedzi konfigurację.
+    const poConfig = ga.slice(ga.indexOf('gtag("config", measurementId'));
+    assert.equal(
+      poConfig.includes("setGtagGotowy(true)"),
+      true,
+      "flaga gotowości nie jest podnoszona po gtag(\"config\")",
+    );
+  });
+
   it("emiter page_view przepuszcza ścieżkę i adres przez analyticsPagePath", () => {
     const ga = czytaj("src/components/site/google-analytics.tsx");
     assert.equal(ga.includes("analyticsPagePath("), true, "brak normalizacji ścieżki");

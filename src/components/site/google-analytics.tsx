@@ -51,7 +51,7 @@
 
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import {
   analyticsPagePath,
@@ -85,11 +85,31 @@ function zapewnijGtag(): void {
   };
 }
 
-function PageViewTracker({ measurementId }: { measurementId: string }) {
+function PageViewTracker({ measurementId, gotowy }: { measurementId: string; gotowy: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // BRAMKA GOTOWOŚCI, nie sprawdzenie `typeof window.gtag`.
+    //
+    // INCYDENT PRODUKCYJNY 2026-09-18, wprowadzony przez PR #2A i złapany
+    // dopiero na produkcji. React uruchamia efekty DZIECI PRZED efektami
+    // RODZICA, a zaślepkę `gtag` tworzy efekt rodzica. Ten efekt biegł więc
+    // pierwszy, zastawał `window.gtag === undefined`, po cichu rezygnował —
+    // i nigdy nie wracał, bo `pathname` się nie zmieniał. Skutkiem była
+    // utrata PIERWSZEJ odsłony, czyli dokładnie tej, która wyznacza stronę
+    // wejścia. Kolejne nawigacje działały, więc w raporcie wyglądało to na
+    // „mało wejść", a nie na awarię.
+    //
+    // DLACZEGO NIE ZŁAPAŁ TEGO PREVIEW: w trybie deweloperskim React
+    // (StrictMode) uruchamia efekty DWA RAZY. Drugie przejście zastawało już
+    // gotowego `gtag` i odsłona leciała. Produkcyjny build nie dubluje
+    // efektów, więc błąd ujawnia się wyłącznie tam.
+    //
+    // Flaga jest podnoszona przez rodzica PO `config`, więc gwarantuje nie
+    // tylko istnienie `gtag`, ale i właściwą KOLEJNOŚĆ: js → consent →
+    // config → page_view. Samo utworzenie zaślepki wcześniej tego nie daje.
+    if (!gotowy) return;
     if (typeof window === "undefined" || typeof window.gtag !== "function") return;
 
     // ŹRÓDŁEM JEST `window.location`, a hooki Nexta tylko WYZWALAJĄ efekt.
@@ -123,7 +143,7 @@ function PageViewTracker({ measurementId }: { measurementId: string }) {
       ...(landing ? { landing_path: landing } : {}),
       send_to: measurementId,
     });
-  }, [pathname, searchParams, measurementId]);
+  }, [pathname, searchParams, measurementId, gotowy]);
 
   return null;
 }
@@ -138,6 +158,8 @@ export function GoogleAnalytics() {
   // 'update', { analytics_storage: 'denied' }) so no further events fire.
   const wasEverEnabledRef = useRef(false);
   const skonfigurowanoRef = useRef(false);
+  /** Podniesiona PO `gtag("config")` — dopiero wtedy wolno wysłać page_view. */
+  const [gtagGotowy, setGtagGotowy] = useState(false);
 
   const analyticsAllowed = Boolean(measurementId) && decision.analytics;
 
@@ -173,7 +195,10 @@ export function GoogleAnalytics() {
   // usuwa wyścig z `Next/Script` (patrz punkt 3 w nagłówku pliku).
   useEffect(() => {
     if (!analyticsAllowed || !measurementId) return;
-    if (skonfigurowanoRef.current) return;
+    if (skonfigurowanoRef.current) {
+      setGtagGotowy(true);
+      return;
+    }
     skonfigurowanoRef.current = true;
 
     zapewnijGtag();
@@ -192,6 +217,9 @@ export function GoogleAnalytics() {
       anonymize_ip: true,
       send_page_view: false,
     });
+    // Dopiero teraz wolno liczyć odsłony — kolejność js → consent → config
+    // → page_view jest tym, czego pilnuje ta flaga.
+    setGtagGotowy(true);
     // `decision.marketing` świadomie POZA zależnościami: ten efekt konfiguruje
     // raz, a późniejsze zmiany zgody obsługuje efekt `consent update` niżej.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -231,7 +259,7 @@ export function GoogleAnalytics() {
       {/* Page-view tracker. Wrapped in <Suspense> because useSearchParams()
           requires it in App Router. */}
       <Suspense fallback={null}>
-        <PageViewTracker measurementId={measurementId} />
+        <PageViewTracker measurementId={measurementId} gotowy={gtagGotowy} />
       </Suspense>
     </>
   );
