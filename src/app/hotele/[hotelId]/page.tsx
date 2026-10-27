@@ -9,6 +9,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 
 import { fromMinor } from "@/lib/money";
 import { getHotelDetail, getRates, isHotelNotFoundError, LiteApiError, type LiteApiRoomType } from "@/lib/liteapi";
@@ -20,7 +21,7 @@ import { reviewCategories, reviewHighlights, sentimentUpdatedAt } from "@/lib/ho
 import { buildRoomIdByRateName, indexRoomsById } from "@/lib/hotels/domain/room";
 import { HOTEL_SHELL } from "@/lib/hotels/layout";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
-import { lowest30dNotice, lowestPrice30d, recordPrice } from "@/lib/hotels/price-history";
+import { lowest30dNotice, lowestPrice30dAndRecord } from "@/lib/hotels/price-history";
 import { ratingLabel } from "@/lib/hotels/rating";
 import { sanitizeHotelDescription } from "@/lib/html/sanitize";
 import { normalizeFacilities, groupFacilities, coerceImportantInfo } from "@/lib/liteapi/facilities";
@@ -270,13 +271,17 @@ export default async function HotelDetailPage({
   // że dostawca obniżył taryfę. Dlatego prowadzimy własną historię.
   //
   // Zapis i odczyt są best-effort i NIGDY nie blokują renderu: `catch` w środku
-  // modułu zamienia każdy błąd Redisa w „nie wiemy", a `void` przy zapisie
-  // znaczy, że strona nie czeka na jego zakończenie.
+  // modułu zamienia każdy błąd Redisa w „nie wiemy", a zapis dzisiejszej ceny
+  // idzie w tle. Jedno wywołanie = jeden HGETALL (wcześniej HGET + HGETALL
+  // + osobne HSET i EXPIRE na każde wejście, także botów).
   const historyCtx = { checkin, checkout, adults, children, rooms, currency };
   let lowest30d: number | null = null;
   if (cheapestTotal !== undefined) {
-    void recordPrice(hotelId, historyCtx, cheapestTotal);
-    lowest30d = lowest30dNotice(await lowestPrice30d(hotelId, historyCtx), cheapestTotal);
+    lowest30d = lowest30dNotice(
+      // `after` — zapis dzisiejszej ceny dokończony po wysłaniu strony.
+      await lowestPrice30dAndRecord(hotelId, historyCtx, cheapestTotal, new Date(), (task) => after(task)),
+      cheapestTotal,
+    );
   }
 
   // Profile pokoi (zdjęcia, metraż, łóżka) z /data/hotel, zaindeksowane po id.

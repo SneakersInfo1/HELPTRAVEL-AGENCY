@@ -148,3 +148,29 @@ export function segmentForNow(nowMs: number, intervalMs: number, segmentCount: n
   if (segmentCount <= 0 || intervalMs <= 0) return 0;
   return Math.floor(nowMs / intervalMs) % segmentCount;
 }
+
+/**
+ * Segment przebiegu: jawny parametr `?segment=N` (pomiar ręczny z sekretem
+ * crona) ALBO segment z zegara.
+ *
+ * BŁĄD naprawiony 2026-10-27: trasa liczyła `Number(searchParams.get("segment"))`,
+ * a `get` przy braku parametru zwraca `null`, czyli `Number(null) === 0` —
+ * poprawna, skończona liczba. Harmonogram Vercela wywołuje crona BEZ
+ * parametru, więc KAŻDY produkcyjny przebieg od wdrożenia V2.2 brał segment 0:
+ * te same 51 zadań co 30 minut, pokrycie zamrożone na 6,11% (zmierzone w logach
+ * 2026-10-24: `"segment":0` w kolejnych przebiegach, `coverageBefore` =
+ * `coverageAfter`). Teraz brak parametru, pusty albo nieliczbowy = zegar.
+ */
+export function resolveSegment(
+  raw: string | null,
+  nowMs: number,
+  intervalMs: number,
+  segmentCount: number,
+): number {
+  const trimmed = raw?.trim() ?? "";
+  if (/^\d+$/.test(trimmed)) {
+    const n = Number(trimmed);
+    if (Number.isSafeInteger(n) && segmentCount > 0) return n % segmentCount;
+  }
+  return segmentForNow(nowMs, intervalMs, segmentCount);
+}

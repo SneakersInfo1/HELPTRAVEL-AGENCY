@@ -14,10 +14,13 @@
 // Vercel dołącza nagłówek automatycznie do wywołań crona.
 
 import { NextRequest, NextResponse } from "next/server";
-import { zajmijBlokade } from "@/lib/cron/lock";
+import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
 
+import { createProviderGate } from "@/lib/flights/provider-gate";
 import { searchFlightOffers } from "@/lib/flights/search-offers";
 import { flightRatesCacheKey, setCachedFlightOffers } from "@/lib/flights/rates-cache";
+import { redisMayBeAvailable } from "@/lib/redis/client";
+import { checkCronRedisBudget, flushRedisMetrics, usageMark, usageSince } from "@/lib/redis/metrics";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
 import {
   computeWarmDateWindows,
@@ -68,12 +71,12 @@ export async function GET(request: NextRequest) {
   // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
   // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
   const blokada = await zajmijBlokade("warm-flights", 360);
-  if (!blokada.zdobyta) {
-    console.info("[cron/warm-flights] poprzedni przebieg wciaz trwa — pomijam");
-    return NextResponse.json({ ok: true, status: "skipped_locked" });
-  }
+  if (!blokada.zdobyta) return NextResponse.json(odpowiedzBezBlokady("warm-flights", blokada));
 
   const startedAt = Date.now();
+  const redisMark = usageMark();
+  // Bramka dostawcy — patrz src/lib/flights/provider-gate.ts (403/429 z rzędu).
+  const gate = createProviderGate();
   // Grzejemy dwa dominujące wzorce leisure: najbliższy weekend (2 noce) i
   // tydzień wakacji (7 nocy). weekend-2 pomijamy, by trzymać wolumen calli.
   const allWindows = computeWarmDateWindows();
@@ -108,6 +111,13 @@ export async function GET(request: NextRequest) {
       skipped++;
       return;
     }
+    // Jedynym wynikiem tego crona jest zapis do Redisa — bez magazynu (wyłącznik
+    // otwarty) albo przy odmowach dostawcy dalsze wyszukiwania to czysta strata.
+    if (!redisMayBeAvailable() || !gate.open) {
+      gate.noteSkip();
+      skipped++;
+      return;
+    }
     try {
       // Ten sam kształt wejścia co żądanie użytkownika (round trip, 2 dorosłych,
       // ECONOMY/PLN z domyślnych schematu) → identyczny klucz cache.
@@ -118,16 +128,20 @@ export async function GET(request: NextRequest) {
         ],
         adults: WARM_FLIGHT_ADULTS,
       });
-      const offers = await searchFlightOffers(input);
+      // `retries: 1` — jeden strzał (domyślne 3 próby ponawiały też 429).
+      const offers = await searchFlightOffers(input, { retries: 1 });
+      gate.onSuccess();
       await setCachedFlightOffers(flightRatesCacheKey(input), offers, "warm");
       if (offers.length > 0) warmed++;
       else empty++;
     } catch (err) {
+      gate.onFailure(err);
       failed++;
       console.warn(`[cron/warm-flights] '${t.label}' nieudany:`, err instanceof Error ? err.message : err);
     }
   });
 
+  await blokada.zwolnij();
   const summary = {
     ok: true,
     origins: WARM_FLIGHT_ORIGINS.length,
@@ -137,9 +151,13 @@ export async function GET(request: NextRequest) {
     empty,
     failed,
     skipped,
+    gateSkipped: gate.skipped,
+    providerRefusal: gate.lastRefusalStatus,
+    redis: usageSince(redisMark),
     durationMs: Date.now() - startedAt,
   };
   console.log("[cron/warm-flights]", JSON.stringify(summary));
-  await blokada.zwolnij();
+  checkCronRedisBudget("warm-flights", summary.redis);
+  flushRedisMetrics("cron:warm-flights");
   return NextResponse.json(summary);
 }

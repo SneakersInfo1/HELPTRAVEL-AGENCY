@@ -13,7 +13,9 @@
 
 import { type DisplayOffer } from "@/lib/flights/display";
 import { iataForCity } from "@/lib/flights/airports";
-import { readActiveSnapshot } from "@/lib/snapshot/store";
+// Snapshoty czytane przez cache danych Nexta (5–10 min): rozmowa to kilkanaście
+// tur, a każda czytała oba snapshoty z Redisa od nowa.
+import { readActiveSnapshotCached, readPriceSnapshotCached } from "@/lib/redis/cached-reads";
 import {
   flightRatesCacheKey,
   getCachedFlightOffers,
@@ -26,7 +28,6 @@ import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import type { RateCacheContext, SlimRate } from "@/lib/hotels/rate-cache";
 import { fetchHotelsForDestination, getHotelDetail } from "@/lib/liteapi";
 import { getDestinationByCityCountry, listAllDestinations } from "@/lib/mvp/destinations-seed";
-import { readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
 import type { CheapestFlight, CheapestFlightQuery, CheapestHotel, CheapestHotelQuery, ToolDeps } from "./tools";
 import type { TripSearchCity } from "./trip-search";
 
@@ -273,8 +274,8 @@ function listDestinationsInCountryLive(country: string): TripSearchCity[] {
 /** Jedno wywołanie w API route: createToolExecutors(buildProductionToolDeps()). */
 export function buildProductionToolDeps(): ToolDeps {
   return {
-    readSnapshot: readPriceSnapshot,
-    readConciergeSnapshot: readActiveSnapshot,
+    readSnapshot: readPriceSnapshotCached,
+    readConciergeSnapshot: readActiveSnapshotCached,
     resolveDest: getDestinationByCityCountry,
     listDestinationsInCountry: listDestinationsInCountryLive,
     findCheapestHotel: findCheapestHotelLive,

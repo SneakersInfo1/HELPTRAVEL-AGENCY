@@ -22,8 +22,7 @@
 
 import { gunzipSync, gzipSync } from "node:zlib";
 
-import { Redis } from "@upstash/redis";
-
+import { getSharedRedis, warnRedisFallback } from "@/lib/redis/client";
 import { travelToday } from "@/lib/time/travel-now";
 import { isBookableStart } from "@/lib/concierge/travel-dates";
 import { isUsableRecord } from "./coverage";
@@ -53,25 +52,12 @@ interface RedisLike {
   del(key: string): Promise<unknown>;
 }
 
-let redis: RedisLike | null | undefined;
 let injected: RedisLike | null | undefined;
-let warnedMissingEnv = false;
 
+// Wspólny klient (src/lib/redis/client.ts): timeout, wyłącznik obwodu, pomiar.
 function getRedis(): RedisLike | null {
   if (injected !== undefined) return injected;
-  if (redis !== undefined) return redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    if (!warnedMissingEnv) {
-      console.warn("[csnap] UPSTASH env brak — snapshot konsjerża WYŁĄCZONY (wyszukiwanie na żywo).");
-      warnedMissingEnv = true;
-    }
-    redis = null;
-    return null;
-  }
-  redis = new Redis({ url, token }) as unknown as RedisLike;
-  return redis;
+  return getSharedRedis() as unknown as RedisLike | null;
 }
 
 export function __setSnapshotRedisForTests(client: RedisLike | null): void {
@@ -79,7 +65,6 @@ export function __setSnapshotRedisForTests(client: RedisLike | null): void {
 }
 export function __resetSnapshotRedisForTests(): void {
   injected = undefined;
-  redis = undefined;
 }
 
 // ── Serializacja ────────────────────────────────────────────────────────────
@@ -108,13 +93,17 @@ function decode(raw: unknown): ConciergeSnapshot | null {
   }
 }
 
-async function readKey(key: string): Promise<ConciergeSnapshot | null> {
+async function readKeyStrict(key: string): Promise<ConciergeSnapshot | null> {
   const client = getRedis();
   if (!client) return null;
+  return decode(await client.get<string>(key));
+}
+
+async function readKey(key: string): Promise<ConciergeSnapshot | null> {
   try {
-    return decode(await client.get<string>(key));
+    return await readKeyStrict(key);
   } catch (err) {
-    console.warn(`[csnap] odczyt '${key}' nieudany:`, err instanceof Error ? err.message : err);
+    warnRedisFallback("csnap", err);
     return null;
   }
 }
@@ -122,6 +111,11 @@ async function readKey(key: string): Promise<ConciergeSnapshot | null> {
 /** Aktualnie opublikowany snapshot. null = brak / błąd / zła wersja (miss). */
 export function readActiveSnapshot(): Promise<ConciergeSnapshot | null> {
   return readKey(KEY_ACTIVE);
+}
+
+/** Jak wyżej, ale RZUCA przy awarii Redisa — dla cache danych Nexta (czat). */
+export function readActiveSnapshotStrict(): Promise<ConciergeSnapshot | null> {
+  return readKeyStrict(KEY_ACTIVE);
 }
 
 /** Poprzednia opublikowana wersja — do natychmiastowego wycofania (§32). */
@@ -237,7 +231,7 @@ export async function writeStaging(snapshot: ConciergeSnapshot): Promise<boolean
     await client.set(keyStaging(snapshot.meta.runId), encode(snapshot), { ex: TTL_STAGING_SECONDS });
     return true;
   } catch (err) {
-    console.warn("[csnap] zapis stagingu nieudany:", err instanceof Error ? err.message : err);
+    warnRedisFallback("csnap", err);
     return false;
   }
 }
@@ -259,11 +253,28 @@ export interface PublishResult {
 export async function publishSnapshot(
   snapshot: ConciergeSnapshot,
   nowMs: number,
+  // ACTIVE, który wołający JUŻ przeczytał (cron czyta go do carry-forward).
+  // Bez tego parametru publikacja czytała ten sam klucz drugi raz — pełny
+  // snapshot (gzip) przez sieć tylko po to, żeby dostać identyczną wartość.
+  // `undefined` = przeczytaj sam (np. narzędzie operatorskie).
+  knownActive?: ConciergeSnapshot | null,
 ): Promise<PublishResult> {
   const client = getRedis();
   if (!client) return { published: false, problems: ["brak Redisa"] };
 
-  const active = await readActiveSnapshot();
+  // Odczyt STRICT: błąd odczytu ACTIVE ≠ brak ACTIVE. Przy błędzie bramka
+  // pokrycia nie miałaby z czym porównać i przepuściłaby zapaść (1 000 → 51).
+  let active: ConciergeSnapshot | null;
+  if (knownActive !== undefined) {
+    active = knownActive;
+  } else {
+    try {
+      active = await readActiveSnapshotStrict();
+    } catch (err) {
+      warnRedisFallback("csnap", err);
+      return { published: false, problems: ["nie udało się odczytać ACTIVE — publikacja wstrzymana"] };
+    }
+  }
   const validation = validateSnapshot(snapshot, active, nowMs);
   if (!validation.ok) {
     console.warn(`[csnap] publikacja ODRZUCONA (${snapshot.meta.runId}):`, validation.problems.join(" | "));

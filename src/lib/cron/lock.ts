@@ -19,12 +19,20 @@
 // Ryzyko rośnie po skróceniu harmonogramu lotów do 30 minut: przebieg, który
 // wcześniej miał dwie godziny luzu, ma teraz pół godziny.
 //
-// KONTRAKT: blokada NIGDY nie wywraca zadania. Brak Redisa albo błąd sieci =
-// zgoda na wykonanie (tak jak reszta warstwy cache w tym projekcie degraduje
-// się do „miss"), bo wstrzymanie aktualizacji ofert byłoby gorsze niż
-// sporadyczne podwójne wykonanie.
+// KONTRAKT: blokada NIGDY nie wywraca zadania. Brak konfiguracji Redisa albo
+// chwilowy błąd sieci = zgoda na wykonanie (tak jak reszta warstwy cache
+// degraduje się do „miss"), bo wstrzymanie aktualizacji ofert byłoby gorsze
+// niż sporadyczne podwójne wykonanie.
+//
+// WYJĄTEK (incydent 2026-10-25): TRWAŁA niedostępność magazynu — limit planu
+// Upstash, błąd autoryzacji albo otwarty wyłącznik obwodu. Wszystkie crony
+// tego projektu piszą WYŁĄCZNIE do Redisa, więc przebieg bez magazynu to
+// czysta strata: `warm-rates` dalej pobierał 12 500 stawek z LiteAPI co
+// 30 minut i wyrzucał je do kosza, a crony lotów dokładały wyszukiwania,
+// na które dostawca odpowiadał już 429/403. Wtedy `zdobyta: false`
+// z `powod: "magazyn_niedostepny"` — cron kończy się 200 bez pracy.
 
-import { Redis } from "@upstash/redis";
+import { getSharedRedis, isPersistentRedisOutage, redisMayBeAvailable } from "@/lib/redis/client";
 
 /** Czas życia blokady. Musi przekraczać najdłuższy realny przebieg joba. */
 const DOMYSLNY_TTL_S = 15 * 60;
@@ -38,25 +46,12 @@ interface RedisLike {
   eval(script: string, keys: string[], args: string[]): Promise<unknown>;
 }
 
-let klient: RedisLike | null | undefined;
 let wstrzyniety: RedisLike | null | undefined;
-let ostrzezonoOBrakuEnv = false;
 
+// Wspólny klient (src/lib/redis/client.ts): timeout, wyłącznik obwodu, pomiar.
 function getRedis(): RedisLike | null {
   if (wstrzyniety !== undefined) return wstrzyniety;
-  if (klient !== undefined) return klient;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    if (!ostrzezonoOBrakuEnv) {
-      console.warn("[cron-lock] brak konfiguracji Upstash — blokady wyłączone");
-      ostrzezonoOBrakuEnv = true;
-    }
-    klient = null;
-    return null;
-  }
-  klient = new Redis({ url, token }) as unknown as RedisLike;
-  return klient;
+  return getSharedRedis() as unknown as RedisLike | null;
 }
 
 /** Zwolnienie blokady TYLKO gdy nadal należy do tego przebiegu. */
@@ -70,6 +65,12 @@ return 0
 export interface UchwytBlokady {
   /** Czy ten przebieg faktycznie zdobył blokadę. */
   zdobyta: boolean;
+  /**
+   * Dlaczego NIE zdobyta: `zajeta` — trwa inny przebieg; `magazyn_niedostepny`
+   * — Redis trwale niedostępny (limit planu / autoryzacja / otwarty wyłącznik),
+   * więc wyniku i tak nie dałoby się zapisać.
+   */
+  powod?: "zajeta" | "magazyn_niedostepny";
   /** Zwalnia blokadę. Bezpieczne do wywołania także gdy `zdobyta === false`. */
   zwolnij: () => Promise<void>;
 }
@@ -89,6 +90,12 @@ export async function zajmijBlokade(
   const redis = getRedis();
   if (!redis) return { zdobyta: true, zwolnij: async () => {} };
 
+  // Wyłącznik już wie, że magazyn leży — nie wysyłamy nawet próby blokady.
+  if (wstrzyniety === undefined && !redisMayBeAvailable()) {
+    console.warn(`[cron-lock] '${nazwa}' pominięty: magazyn Redis niedostępny (wyłącznik otwarty)`);
+    return { zdobyta: false, powod: "magazyn_niedostepny", zwolnij: async () => {} };
+  }
+
   const klucz = `lock:${nazwa}`;
   // Identyfikator przebiegu — losowy, żeby dwa równoległe przebiegi nie mogły
   // uznać cudzej blokady za własną.
@@ -96,10 +103,18 @@ export async function zajmijBlokade(
 
   try {
     const wynik = await redis.set(klucz, wlasciciel, { nx: true, ex: ttlSekund });
-    if (wynik !== "OK") return { zdobyta: false, zwolnij: async () => {} };
+    if (wynik !== "OK") return { zdobyta: false, powod: "zajeta", zwolnij: async () => {} };
   } catch (error) {
-    // Awaria Redisa nie może zablokować odświeżania ofert — patrz kontrakt
-    // w nagłówku pliku.
+    if (isPersistentRedisOutage(error)) {
+      // Limit planu / autoryzacja: przebieg nie ma gdzie zapisać wyniku.
+      console.warn(
+        `[cron-lock] '${nazwa}' pominięty: magazyn Redis trwale niedostępny —`,
+        error instanceof Error ? error.message : error,
+      );
+      return { zdobyta: false, powod: "magazyn_niedostepny", zwolnij: async () => {} };
+    }
+    // Chwilowa awaria Redisa nie może zablokować odświeżania ofert — patrz
+    // kontrakt w nagłówku pliku.
     console.warn(
       `[cron-lock] '${nazwa}' nie udało się sprawdzić blokady, przepuszczam:`,
       error instanceof Error ? error.message : error,
@@ -129,4 +144,16 @@ export function __setCronLockRedisForTests(fake: RedisLike | null): void {
 }
 export function __resetCronLockRedisForTests(): void {
   wstrzyniety = undefined;
+}
+
+/**
+ * Odpowiedź crona, który NIE zdobył blokady. 200 w obu przypadkach: 5xx
+ * wywołałoby ponowienie po stronie harmonogramu i pogorszyło sprawę.
+ */
+export function odpowiedzBezBlokady(nazwa: string, blokada: UchwytBlokady): { ok: true; status: string } {
+  if (blokada.powod === "magazyn_niedostepny") {
+    return { ok: true, status: "skipped_store_unavailable" };
+  }
+  console.info(`[cron/${nazwa}] poprzedni przebieg wciąż trwa — pomijam`);
+  return { ok: true, status: "skipped_locked" };
 }

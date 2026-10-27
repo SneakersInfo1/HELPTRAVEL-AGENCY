@@ -12,8 +12,12 @@ export interface SlimRate {
   boardName?: string;
   refundableTag?: string;
   cancellationDeadline?: string;
-  offerId: string;
-  rateId: string;
+  // Od 2026-10-27 trasa paczek ich NIE zwraca (ani cache, ani świeży wynik):
+  // lista wyników ich nie używa, a wożenie ~1,6 KB identyfikatorów na hotel
+  // było główną przyczyną incydentu z limitem transferu Upstash. Pola zostają
+  // opcjonalne wyłącznie dla zgodności typu z kartą wyniku.
+  offerId?: string;
+  rateId?: string;
   /** Patrz komentarz przy SlimRate w rate-cache.ts — `undefined` = brak danych. */
   taxesIncluded?: boolean;
   taxExtraAmount?: number;

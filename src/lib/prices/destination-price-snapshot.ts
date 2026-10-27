@@ -10,10 +10,9 @@
 // LiteAPI (najtańsza taryfa z grzanych okien dat), a wpis starszy niż 48 h
 // jest traktowany jak brak ceny.
 
-import { Redis } from "@upstash/redis";
-
 import { foldText } from "@/lib/flights/airports";
 import type { SlimRate } from "@/lib/hotels/rate-cache";
+import { getSharedRedis, warnRedisFallback } from "@/lib/redis/client";
 
 export interface DestinationPriceEntry {
   /** Najtańsza cena hotelu za noc (PLN, pełne złote — floor). */
@@ -54,25 +53,12 @@ interface RedisLike {
   set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
 }
 
-let redis: RedisLike | null | undefined;
 let injected: RedisLike | null | undefined;
-let warnedMissingEnv = false;
 
+// Wspólny klient (src/lib/redis/client.ts): timeout, wyłącznik obwodu, pomiar.
 function getRedis(): RedisLike | null {
   if (injected !== undefined) return injected;
-  if (redis !== undefined) return redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    if (!warnedMissingEnv) {
-      console.warn("[dst-price] UPSTASH env brak — snapshot cen WYŁĄCZONY (strony bez linii cen).");
-      warnedMissingEnv = true;
-    }
-    redis = null;
-    return null;
-  }
-  redis = new Redis({ url, token }) as unknown as RedisLike;
-  return redis;
+  return getSharedRedis() as unknown as RedisLike | null;
 }
 
 // Seam testowy (wzorzec flights/rates-cache).
@@ -81,7 +67,6 @@ export function __setDestinationPriceRedisForTests(client: RedisLike | null): vo
 }
 export function __resetDestinationPriceRedisForTests(): void {
   injected = undefined;
-  redis = undefined;
 }
 
 /** Klucz kierunku: foldowane „miasto|kraj" (EN) — wspólny dla crona, homepage i /wyjazdy. */
@@ -124,15 +109,23 @@ export function minPerNightFromRates(
   return min;
 }
 
-/** Odczyt snapshotu. null = brak env / błąd / brak klucza (miss). */
-export async function readPriceSnapshot(): Promise<DestinationPriceSnapshot | null> {
+/**
+ * Odczyt, który RZUCA przy awarii Redisa (null = brak env albo brak/zły klucz).
+ * Dla `cached-reads.ts`: porażka nie może trafić do cache danych Nexta.
+ */
+export async function readPriceSnapshotStrict(): Promise<DestinationPriceSnapshot | null> {
   const client = getRedis();
   if (!client) return null;
+  const v = await client.get<DestinationPriceSnapshot>(KEY);
+  return v && typeof v === "object" ? v : null;
+}
+
+/** Odczyt snapshotu. null = brak env / błąd / brak klucza (miss). */
+export async function readPriceSnapshot(): Promise<DestinationPriceSnapshot | null> {
   try {
-    const v = await client.get<DestinationPriceSnapshot>(KEY);
-    return v && typeof v === "object" ? v : null;
+    return await readPriceSnapshotStrict();
   } catch (err) {
-    console.warn("[dst-price] read miss:", err instanceof Error ? err.message : err);
+    warnRedisFallback("dst-price", err);
     return null;
   }
 }
@@ -145,7 +138,7 @@ export async function mergePriceSnapshot(entries: DestinationPriceSnapshot): Pro
     const existing = (await client.get<DestinationPriceSnapshot>(KEY)) ?? {};
     await client.set(KEY, { ...existing, ...entries }, { ex: TTL_SECONDS });
   } catch (err) {
-    console.warn("[dst-price] merge skip:", err instanceof Error ? err.message : err);
+    warnRedisFallback("dst-price", err);
   }
 }
 

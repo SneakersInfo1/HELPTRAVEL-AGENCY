@@ -49,13 +49,27 @@ export interface ResolveSlimRatesResult {
   misses: number;
 }
 
+export interface ResolveSlimRatesOptions {
+  guestNationality?: string;
+  /** Pomiń odczyt cache i zawsze pobierz świeże stawki (cron prewarmingu). */
+  forceRefresh?: boolean;
+  /**
+   * Czy zapisać wynik do cache (domyślnie TAK). `false` dla wywołań, których
+   * wyniku nikt potem nie przeczyta z cache: tanie, odległe okna crona
+   * (liczymy z nich wyłącznie minimum „od X zł") i zadania snapshotu
+   * konsjerża (terminy miesiące naprzód, każdy wraca dopiero po ~10 h).
+   * Zmierzone 2026-10-24: te dwa tory pisały ~9 200 + ~2 500 wpisów co 30 min.
+   */
+  writeCache?: boolean;
+}
+
 // Pojedyncze wywołanie LiteAPI obsługuje do 50 hotelId (cap zgodny z batch
 // route i BATCH_SIZE w price-batcher). Dłuższe listy trzeba pociąć po stronie
 // wołającego (cron) — tu zakładamy ≤50.
 export async function resolveSlimRates(
   hotelIds: string[],
   ctx: RateCacheContext,
-  opts: { guestNationality?: string; forceRefresh?: boolean } = {},
+  opts: ResolveSlimRatesOptions = {},
 ): Promise<ResolveSlimRatesResult> {
   const out: Record<string, SlimRate | null> = {};
   const missIds: string[] = [];
@@ -112,8 +126,7 @@ export async function resolveSlimRates(
           freeCancellationDeadline: cheapest.rate.cancellationPolicies?.cancelPolicyInfos?.find(
             (policy) => policy.amount === 0 && policy.cancelTime,
           )?.cancelTime,
-          offerId: cheapest.offerId,
-          rateId: cheapest.rate.rateId,
+          // Bez offerId/rateId — patrz komentarz przy SlimRate (rate-cache.ts).
           ...slimTaxes(cheapest.rate),
           ...slimDiscount(cheapest.rate),
         };
@@ -124,6 +137,6 @@ export async function resolveSlimRates(
   }
 
   // 3) Zapis do cache dla następnego odwiedzającego (best-effort).
-  await setCachedRates(fresh, ctx);
+  if (opts.writeCache !== false) await setCachedRates(fresh, ctx);
   return { rates: out, cacheHits, misses: missIds.length };
 }

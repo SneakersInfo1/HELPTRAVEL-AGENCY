@@ -22,10 +22,9 @@
 // pozorny rabat — ryzyko z dyrektywy Omnibus i wprost zakazany wzorzec
 // w PRODUCT.md.
 
-import { Redis } from "@upstash/redis";
-
 import { DEAL_MAX_PRICE_PLN, LEISURE_DESTINATIONS } from "@/lib/flights/deals-config";
 import { rotateSlice, rotationBucket } from "@/lib/home/rotation";
+import { getSharedRedis, warnRedisFallback } from "@/lib/redis/client";
 
 export interface FlightDeal {
   routeKey: string;
@@ -115,25 +114,12 @@ interface RedisLike {
   set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
 }
 
-let redis: RedisLike | null | undefined;
 let injected: RedisLike | null | undefined;
-let warnedMissingEnv = false;
 
+// Wspólny klient (src/lib/redis/client.ts): timeout, wyłącznik obwodu, pomiar.
 function getRedis(): RedisLike | null {
   if (injected !== undefined) return injected;
-  if (redis !== undefined) return redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    if (!warnedMissingEnv) {
-      console.warn("[flight-deals] UPSTASH env brak — sekcja okazji lotniczych WYŁĄCZONA.");
-      warnedMissingEnv = true;
-    }
-    redis = null;
-    return null;
-  }
-  redis = new Redis({ url, token }) as unknown as RedisLike;
-  return redis;
+  return getSharedRedis() as unknown as RedisLike | null;
 }
 
 /** Seam testowy zgodny z pozostałymi snapshotami Upstash. */
@@ -143,7 +129,6 @@ export function __setFlightDealsRedisForTests(client: RedisLike | null): void {
 
 export function __resetFlightDealsRedisForTests(): void {
   injected = undefined;
-  redis = undefined;
 }
 
 export function median(values: readonly number[]): number | null {
@@ -355,15 +340,20 @@ function rotujGrupe(grupa: FlightDeal[], slots: number, bucket: number): FlightD
   return rotateSlice(kandydaci, slots, bucket);
 }
 
-/** Odczyt best-effort: awaria sekcji marketingowej nie może wywrócić strony. */
-export async function readFlightDeals(): Promise<FlightDealsSnapshot | null> {
+/** Odczyt, który RZUCA przy awarii Redisa (dla cache danych Nexta). null = brak. */
+export async function readFlightDealsStrict(): Promise<FlightDealsSnapshot | null> {
   const client = getRedis();
   if (!client) return null;
+  const value = await client.get<FlightDealsSnapshot>(KEY);
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+
+/** Odczyt best-effort: awaria sekcji marketingowej nie może wywrócić strony. */
+export async function readFlightDeals(): Promise<FlightDealsSnapshot | null> {
   try {
-    const value = await client.get<FlightDealsSnapshot>(KEY);
-    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+    return await readFlightDealsStrict();
   } catch (error) {
-    console.warn("[flight-deals] read miss:", error instanceof Error ? error.message : error);
+    warnRedisFallback("flight-deals", error);
     return null;
   }
 }
@@ -421,6 +411,6 @@ export async function mergeFlightDeals(
     }
     await client.set(KEY, merged, { ex: TTL_SECONDS });
   } catch (error) {
-    console.warn("[flight-deals] merge skip:", error instanceof Error ? error.message : error);
+    warnRedisFallback("flight-deals", error);
   }
 }

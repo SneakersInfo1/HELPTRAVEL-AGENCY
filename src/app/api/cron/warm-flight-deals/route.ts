@@ -5,7 +5,10 @@
 // karty jest uczciwszy niż liczba zastępcza.
 
 import { NextRequest, NextResponse } from "next/server";
-import { zajmijBlokade } from "@/lib/cron/lock";
+import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
+import { createProviderGate } from "@/lib/flights/provider-gate";
+import { redisMayBeAvailable } from "@/lib/redis/client";
+import { checkCronRedisBudget, flushRedisMetrics, usageMark, usageSince } from "@/lib/redis/metrics";
 
 import seedJson from "../../../../../data/destinations.json";
 import {
@@ -144,12 +147,11 @@ export async function GET(request: NextRequest) {
   // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
   // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
   const blokada = await zajmijBlokade("warm-flight-deals", 360);
-  if (!blokada.zdobyta) {
-    console.info("[cron/warm-flight-deals] poprzedni przebieg wciaz trwa — pomijam");
-    return NextResponse.json({ ok: true, status: "skipped_locked" });
-  }
+  if (!blokada.zdobyta) return NextResponse.json(odpowiedzBezBlokady("warm-flight-deals", blokada));
 
   const startedAt = Date.now();
+  const redisMark = usageMark();
+  const gate = createProviderGate();
   // `?offset=N` — furtka OPERACYJNA, nie funkcja produktu. Normalnie o wyborze
   // tras decyduje okno rotacji, więc pełna pula rozgrzewa się przez sześć
   // godzin. Po zmianie składu puli (albo sufitu ceny) to za długo, żeby
@@ -196,6 +198,11 @@ export async function GET(request: NextRequest) {
   // udanych, pustych wyszukań wyglądałoby jak sześć błędów i stara, nieaktualna
   // cena zostawałaby na stronie do wygaśnięcia świeżości.
   const completedByRoute = new Map<string, number>(routes.map((route) => [routeKey(route), 0]));
+  // Pełna lista ofert NAJTAŃSZEJ próbki każdej trasy — tylko ją zapisujemy do
+  // cache `flrt:v2`, bo dokładnie na te daty prowadzi karta okazji. Wcześniej
+  // każde z ~48 wyszukiwań zapisywało swoją listę (gzip ~200 KB), choć pięciu
+  // z sześciu terminów trasy nikt nigdy nie otwiera.
+  const bestOffersByRoute = new Map<string, { total: number; cacheKey: string; offers: DisplayOffer[] }>();
 
   let priced = 0;
   let skipped = 0;
@@ -205,6 +212,13 @@ export async function GET(request: NextRequest) {
     const label = `${routeKey(route)}/${window.label}`;
     try {
       if (Date.now() - startedAt > DEAL_TIME_BUDGET_MS) {
+        skipped++;
+        return;
+      }
+      // Bez magazynu wynik przebiegu nie ma gdzie trafić; przy kolejnych
+      // odmowach dostawcy (403/429) dalsze zapytania tylko pogarszają sprawę.
+      if (!redisMayBeAvailable() || !gate.open) {
+        gate.noteSkip();
         skipped++;
         return;
       }
@@ -225,17 +239,23 @@ export async function GET(request: NextRequest) {
         ],
         adults: DEAL_ADULTS,
       });
-      const offers = await searchFlightOffers(input);
-      // To dokładnie ten sam cache i klucz co wyszukiwanie użytkownika, więc
-      // koszt pomiaru mediany jednocześnie ogrzewa właściwy wynik.
-      await setCachedFlightOffers(flightRatesCacheKey(input), offers, "warm");
+      // `retries: 1` — jeden strzał (domyślne 3 próby ponawiały też 429).
+      const offers = await searchFlightOffers(input, { retries: 1 });
+      gate.onSuccess();
       // Wyszukanie się udało — niezależnie od tego, czy coś z niego wyszło.
       completedByRoute.set(routeKey(route), (completedByRoute.get(routeKey(route)) ?? 0) + 1);
       const cheapest = cheapestSaneOffer(offers);
       if (!cheapest) return;
       samplesByRoute.get(routeKey(route))?.push({ ...cheapest, window });
+      // Ta sama reguła co wybór karty niżej (pierwsze ŚCIŚLE tańsze wygrywa),
+      // więc zapisana lista dotyczy dokładnie terminu, na który linkuje karta.
+      const best = bestOffersByRoute.get(routeKey(route));
+      if (!best || cheapest.total < best.total) {
+        bestOffersByRoute.set(routeKey(route), { total: cheapest.total, cacheKey: flightRatesCacheKey(input), offers });
+      }
       priced++;
     } catch (error) {
+      gate.onFailure(error);
       failed++;
       console.warn(
         `[cron/warm-flight-deals] '${label}' nieudany:`,
@@ -335,6 +355,18 @@ export async function GET(request: NextRequest) {
   }
 
   await mergeFlightDeals(collected, checkedWithoutDeal);
+
+  // Cache wyników TYLKO dla tras, które dostały kartę — klik w kartę otwiera
+  // /loty/wyniki na tych datach i trafia w ciepły wpis (jak dotąd).
+  let cachedOfferLists = 0;
+  for (const key of Object.keys(collected)) {
+    const best = bestOffersByRoute.get(key);
+    if (!best) continue;
+    await setCachedFlightOffers(best.cacheKey, best.offers, "warm");
+    cachedOfferLists++;
+  }
+
+  await blokada.zwolnij();
   const summary = {
     ok: true,
     routes: routes.length,
@@ -348,9 +380,14 @@ export async function GET(request: NextRequest) {
     undermeasured,
     skipped,
     failed,
+    gateSkipped: gate.skipped,
+    providerRefusal: gate.lastRefusalStatus,
+    cachedOfferLists,
+    redis: usageSince(redisMark),
     durationMs: Date.now() - startedAt,
   };
   console.log("[cron/warm-flight-deals]", JSON.stringify(summary));
-  await blokada.zwolnij();
+  checkCronRedisBudget("warm-flight-deals", summary.redis);
+  flushRedisMetrics("cron:warm-flight-deals");
   return NextResponse.json(summary);
 }

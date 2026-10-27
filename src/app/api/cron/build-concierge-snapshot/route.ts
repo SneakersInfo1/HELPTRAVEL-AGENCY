@@ -19,17 +19,15 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { zajmijBlokade } from "@/lib/cron/lock";
+import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
 import { fetchHotelsForDestination } from "@/lib/liteapi";
-import { searchFlightRates } from "@/lib/flights/client";
-import { normalizeRatesResponse } from "@/lib/flights/display";
+import { createProviderGate } from "@/lib/flights/provider-gate";
+import { searchFlightOffers } from "@/lib/flights/search-offers";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
-import {
-  flightRatesCacheKey,
-  getCachedFlightOffers,
-  setCachedFlightOffers,
-} from "@/lib/flights/rates-cache";
+import { flightRatesCacheKey, getCachedFlightSummary } from "@/lib/flights/rates-cache";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
+import { redisMayBeAvailable, warnRedisFallback } from "@/lib/redis/client";
+import { checkCronRedisBudget, flushRedisMetrics, usageMark, usageSince } from "@/lib/redis/metrics";
 import {
   computePackagePerPerson,
   minPerNightFromRates,
@@ -50,10 +48,10 @@ import {
   TIER_B_WINDOWS,
   TIME_BUDGET_MS,
 } from "@/lib/snapshot/config";
-import { planRun, segmentForNow, type WarmTask } from "@/lib/snapshot/rotation";
+import { planRun, resolveSegment, type WarmTask } from "@/lib/snapshot/rotation";
 import {
   publishSnapshot,
-  readActiveSnapshot,
+  readActiveSnapshotStrict,
   writeStaging,
 } from "@/lib/snapshot/store";
 import {
@@ -114,12 +112,10 @@ export async function GET(request: NextRequest) {
   // §34: blokada z runId. Zajęte = 200 „skipped_locked" (sytuacja normalna;
   // 5xx wywołałoby ponawianie i pogorszyło sprawę).
   const blokada = await zajmijBlokade("build-concierge-snapshot", LOCK_TTL_SECONDS);
-  if (!blokada.zdobyta) {
-    console.info("[cron/build-concierge-snapshot] poprzedni przebieg wciąż trwa — pomijam");
-    return NextResponse.json({ ok: true, status: "skipped_locked" });
-  }
+  if (!blokada.zdobyta) return NextResponse.json(odpowiedzBezBlokady("build-concierge-snapshot", blokada));
 
   const startedAt = Date.now();
+  const redisMark = usageMark();
   const nowMs = travelNowMs();
   const todayIso = travelToday(nowMs);
   const runId = `${todayIso}-${startedAt.toString(36)}`;
@@ -139,15 +135,13 @@ export async function GET(request: NextRequest) {
         ? Math.floor(concurrencyParam)
         : CONCURRENCY;
     // Segment też, żeby pomiar dało się powtórzyć na TYCH SAMYCH zadaniach —
-    // inaczej porównywalibyśmy różne trasy i różny stan cache'u.
-    const segmentParam = Number(url.searchParams.get("segment"));
-
+    // inaczej porównywalibyśmy różne trasy i różny stan cache'u. BEZ parametru
+    // (harmonogram Vercela) = segment z zegara — patrz `resolveSegment`
+    // (wcześniej `Number(null) === 0` przypinało produkcję do segmentu 0).
     const seed = listAllDestinations() as unknown as TierSeedRecord[];
     const tiered = buildDestinationTiers(seed);
     const windows = buildWindowMatrix(todayIso);
-    const segment = Number.isFinite(segmentParam) && segmentParam >= 0
-      ? Math.floor(segmentParam) % SEGMENT_COUNT
-      : segmentForNow(nowMs, RUN_INTERVAL_MS, SEGMENT_COUNT);
+    const segment = resolveSegment(url.searchParams.get("segment"), nowMs, RUN_INTERVAL_MS, SEGMENT_COUNT);
     const tasks = planRun(tiered, windows, { tierA: ORIGIN_TIER_A, tierB: ORIGIN_TIER_B }, {
       segment,
       segmentCount: SEGMENT_COUNT,
@@ -209,10 +203,18 @@ export async function GET(request: NextRequest) {
     }
 
     const freshRecords = new Map<string, SnapshotRecord>();
+    // Bramka dostawcy lotów — patrz src/lib/flights/provider-gate.ts.
+    const flightGate = createProviderGate();
+    let storeLost = 0;
 
     await runPool(tasks, concurrency, async (task) => {
       if (Date.now() - startedAt > TIME_BUDGET_MS) {
         stats.timedOut += 1;
+        return;
+      }
+      // Bez magazynu snapshotu nie da się opublikować — nie palimy LiteAPI.
+      if (!redisMayBeAvailable()) {
+        storeLost += 1;
         return;
       }
       const { dest, window, origin } = task;
@@ -225,10 +227,9 @@ export async function GET(request: NextRequest) {
         // zadanie to było ~6 s lotu + ~3 s metadanych + ~3,3 s stawek jedno po
         // drugim. Te trzy rzeczy nie zależą od siebie — czekanie na nie po kolei
         // podwajało czas przebiegu i zjadałoby budżet przy pełnych 110 zadaniach.
-        const flightPromise = (async () => {
-          // Najpierw cache `flrt:v2` (ten sam klucz co ścieżka użytkownika),
-          // na miss live + zapis z kind="warm". Dzięki temu build snapshotu
-          // PRZY OKAZJI grzeje cache realnych wyszukań (§41, §49).
+        //
+        // Wynik lotu to SAMO minimum ceny (więcej snapshot nie potrzebuje).
+        const flightPromise = (async (): Promise<number | null> => {
           const input = FlightSearchInputSchema.parse({
             legs: [
               { origin, destination: dest.iata as string, date: window.checkin, direction: "OUTBOUND" },
@@ -236,30 +237,55 @@ export async function GET(request: NextRequest) {
             ],
             adults: FLIGHT_ADULTS,
           });
+          // Najpierw SKRÓT ceny `flmin:v1` (~100 B) zapisywany obok każdej
+          // listy `flrt:v2` przez wyszukiwania użytkowników i crony lotów.
+          // Do 2026-10-27 czytaliśmy tu całą listę (gzip ~200–270 KB) po jedną
+          // liczbę, a przy pudle zapisywaliśmy pełną, nieprzyciętą listę —
+          // dla terminów miesiące naprzód, do których ten sam przebieg wraca
+          // dopiero po ~10 h (TTL wpisu: 40 min). Teraz: odczyt skrótu, przy
+          // pudle wyszukanie bez zapisu.
           const cacheKey = flightRatesCacheKey(input);
-          const cached = await getCachedFlightOffers(cacheKey);
-          if (cached) {
+          const summary = await getCachedFlightSummary(cacheKey);
+          if (summary) {
             stats.flightCacheHit += 1;
-            return cached;
+            return summary.min;
+          }
+          if (!flightGate.open) {
+            flightGate.noteSkip();
+            return null;
           }
           stats.liteApiCalls += 1;
-          const offers = normalizeRatesResponse(await searchFlightRates(input));
-          await setCachedFlightOffers(cacheKey, offers, "warm");
-          return offers;
+          try {
+            // Ten sam helper co lejek lotów (sort + cap), jeden strzał.
+            const offers = await searchFlightOffers(input, { retries: 1 });
+            flightGate.onSuccess();
+            return minTotalFromOffers(offers);
+          } catch (err) {
+            flightGate.onFailure(err);
+            throw err;
+          }
         })();
 
         const hotelPromise = (async () => {
           const ids = await hotelIdsFor(task);
           if (ids.length === 0) return null;
           stats.liteApiCalls += 1;
-          const res = await resolveSlimRates(ids, {
-            checkin: window.checkin,
-            checkout: window.checkout,
-            adults: 2,
-            children: [],
-            rooms: 1,
-            currency: "PLN",
-          });
+          // `forceRefresh` + bez zapisu: terminy snapshotu (miesiące naprzód)
+          // nie pokrywają się z tym, co grzeją inne crony, więc odczyt cache
+          // dawał same pudła, a zapis — wpisy, których nikt nie przeczyta
+          // przed wygaśnięciem (zmierzone: ~2 500 zapisów na przebieg).
+          const res = await resolveSlimRates(
+            ids,
+            {
+              checkin: window.checkin,
+              checkout: window.checkout,
+              adults: 2,
+              children: [],
+              rooms: 1,
+              currency: "PLN",
+            },
+            { forceRefresh: true, writeCache: false },
+          );
           return minPerNightFromRates(res.rates, window.checkin, window.checkout);
         })();
 
@@ -278,7 +304,7 @@ export async function GET(request: NextRequest) {
             hotelRes.reason instanceof Error ? hotelRes.reason.message : hotelRes.reason,
           );
         }
-        const flightTotal = flightRes.status === "fulfilled" ? minTotalFromOffers(flightRes.value) : null;
+        const flightTotal = flightRes.status === "fulfilled" ? flightRes.value : null;
         // Cena za osobę: `total` to kwota za CAŁĄ rezerwację (tak liczy
         // warm-rates), a pytamy o dwoje — więc dzielimy.
         const flightPln = flightTotal === null ? null : Math.floor(flightTotal / FLIGHT_ADULTS);
@@ -327,7 +353,20 @@ export async function GET(request: NextRequest) {
     });
 
     // ── Złożenie snapshotu: carry-forward + świeże rekordy (§40).
-    const active = await readActiveSnapshot();
+    //
+    // Odczyt STRICT: „brak ACTIVE" (null) i „nie udało się przeczytać ACTIVE"
+    // (wyjątek) to dwie różne sytuacje. Przy pierwszej publikujemy od zera.
+    // Przy drugiej NIE publikujemy wcale — snapshot złożony bez carry-forward
+    // miałby tylko świeże rekordy tego segmentu, a bramka pokrycia porównuje
+    // z ACTIVE, którego nie znamy, więc przepuściłaby zapaść 1000 → 51.
+    let active: ConciergeSnapshot | null = null;
+    let activeReadFailed = false;
+    try {
+      active = await readActiveSnapshotStrict();
+    } catch (err) {
+      activeReadFailed = true;
+      warnRedisFallback("cron/build-concierge-snapshot", err);
+    }
     const merged = new Map<string, SnapshotRecord>();
     let carried = 0;
     let droppedExpired = 0;
@@ -387,9 +426,13 @@ export async function GET(request: NextRequest) {
 
     let published = false;
     let problems: string[] = [];
-    if (!dryRun) {
+    if (!dryRun && activeReadFailed) {
+      problems = ["nie udało się odczytać ACTIVE — publikacja wstrzymana (carry-forward nieznany)"];
+    } else if (!dryRun) {
       await writeStaging(snapshot);
-      const result = await publishSnapshot(snapshot, nowMs);
+      // `active` przeczytany wyżej do carry-forward — publikacja nie czyta
+      // go drugi raz (pełny snapshot przez sieć po identyczną wartość).
+      const result = await publishSnapshot(snapshot, nowMs, active);
       published = result.published;
       problems = result.problems;
     }
@@ -421,10 +464,16 @@ export async function GET(request: NextRequest) {
       published,
       problems,
       dryRun,
+      storeLost,
+      flightGateSkipped: flightGate.skipped,
+      flightRefusal: flightGate.lastRefusalStatus,
+      redis: usageSince(redisMark),
       durationMs,
       budgetUsedPct: Math.round((durationMs / (maxDuration * 1000)) * 100),
     };
     console.log("[cron/build-concierge-snapshot]", JSON.stringify(summary));
+    checkCronRedisBudget("build-concierge-snapshot", summary.redis);
+    flushRedisMetrics("cron:build-concierge-snapshot");
     return NextResponse.json(summary);
   } finally {
     // Blokada zwalniana ZAWSZE — także gdy build rzuci. Compare-and-delete

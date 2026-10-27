@@ -5,7 +5,10 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { MoodDestinationCard } from "@/components/publisher/mood-destination-card";
 import { iataForCity } from "@/lib/flights/airports";
 import { getDestinationByCityCountry } from "@/lib/mvp/destinations-seed";
-import { pickFreshFlightPrice, pickFreshPrice, readPriceSnapshot } from "@/lib/prices/destination-price-snapshot";
+import { pickFreshFlightPrice, pickFreshPrice } from "@/lib/prices/destination-price-snapshot";
+// Przez cache danych Nexta — inaczej `no-store` w SDK Upstash robiło z każdej
+// strony /wyjazdy/* render dynamiczny mimo ISR (src/lib/redis/cached-reads.ts).
+import { readPriceSnapshotCached as readPriceSnapshot } from "@/lib/redis/cached-reads";
 import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
 import { curatedDestinations } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";

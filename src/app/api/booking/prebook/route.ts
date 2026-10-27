@@ -23,7 +23,9 @@ import { buildCheckoutPrice, checkoutPriceNaDrut } from "@/lib/hotels/domain/che
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   SESSION_TTL_SECONDS,
+  bookingStoreMayBeAvailable,
   getIdempotent,
+  reserveBookingSession,
   saveSession,
   setIdempotent,
   type SessionRecord,
@@ -90,6 +92,26 @@ export async function POST(request: NextRequest) {
   }
   const b = parsed.data;
   const sessionId = randomUUID();
+
+  // MAGAZYN SESJI PRZED DOSTAWCĄ (incydent 2026-10-25). Prebook u LiteAPI
+  // blokuje taryfę i otwiera sesję płatności, a bez zapisu sesji płatność nie
+  // ma jak się sfinalizować. Dwa kroki, oba PRZED LiteAPI:
+  //   1) wyłącznik Redisa już wie, że magazyn leży → 503 bez sieci;
+  //   2) mały zapis-znacznik sesji — jedyny prawdziwy dowód, że zapis sesji
+  //      po prebooku się uda (wyłącznik po oknie otwarcia przepuszcza na ślepo).
+  // Ta sama treść 503, którą trasa zwraca przy niedostępnym magazynie.
+  const storeDownResponse = () => {
+    const down = new BookingError("LITEAPI_DOWN", "booking store unavailable");
+    console.warn(`[booking][prebook] magazyn sesji niedostępny — prebook NIE wysłany sessionId=${sessionId}`);
+    return NextResponse.json({ error: down.code, message: down.userMessagePl }, { status: down.httpStatus });
+  };
+  if (!bookingStoreMayBeAvailable()) return storeDownResponse();
+  try {
+    await reserveBookingSession(sessionId);
+  } catch (err) {
+    if (err instanceof BookingError) return storeDownResponse();
+    throw err;
+  }
 
   // GWARANCJA occupancy (incydent 2026-07-10): goście trafiają do sesji już
   // ZNORMALIZOWANI do jednego gościa głównego na pokój 1..rooms — nawet gdy

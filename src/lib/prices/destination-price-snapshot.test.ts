@@ -30,7 +30,7 @@ function fakeRedis() {
 }
 
 function slim(totalAmount: number): SlimRate {
-  return { totalAmount, currency: "PLN", offerId: "o", rateId: "r" };
+  return { totalAmount, currency: "PLN" };
 }
 
 test("destinationPriceKey: foldowany, stabilny, diakrytyki i wielkość liter nie rozjeżdżają klucza", () => {
