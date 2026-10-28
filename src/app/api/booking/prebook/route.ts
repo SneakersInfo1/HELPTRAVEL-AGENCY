@@ -23,7 +23,9 @@ import { buildCheckoutPrice, checkoutPriceNaDrut } from "@/lib/hotels/domain/che
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   SESSION_TTL_SECONDS,
+  bookingStoreMayBeAvailable,
   getIdempotent,
+  reserveBookingSession,
   saveSession,
   setIdempotent,
   type SessionRecord,
@@ -90,6 +92,36 @@ export async function POST(request: NextRequest) {
   }
   const b = parsed.data;
   const sessionId = randomUUID();
+
+  // MAGAZYN SESJI PRZED DOSTAWCĄ (incydent 2026-10-25). Prebook u LiteAPI
+  // blokuje taryfę i otwiera sesję płatności, a bez zapisu sesji płatność nie
+  // ma jak się sfinalizować. Dwa kroki, oba PRZED LiteAPI:
+  //   1) wyłącznik Redisa już wie, że magazyn leży → 503 bez sieci;
+  //   2) mały zapis-znacznik sesji — jedyny prawdziwy dowód, że zapis sesji
+  //      po prebooku się uda (wyłącznik po oknie otwarcia przepuszcza na ślepo).
+  // Własny kod, nie LITEAPI_DOWN: formularz traktuje LITEAPI_DOWN jak odmowę
+  // dostawcy dla TEJ oferty i odsyła do wyboru innej — przy awarii magazynu
+  // każda inna oferta skończy się tak samo, a komunikat obwiniałby dostawcę.
+  const storeDownResponse = () =>
+    NextResponse.json(
+      {
+        error: "TEMPORARILY_UNAVAILABLE",
+        message:
+          "Rezerwacje są chwilowo wstrzymane z powodu przerwy technicznej po naszej stronie. Nic nie zostało zarezerwowane ani pobrane — spróbuj ponownie za jakiś czas.",
+      },
+      { status: 503, headers: { "Retry-After": "300" } },
+    );
+  const storeDownBeforeProvider = () => {
+    console.warn(`[booking][prebook] magazyn sesji niedostępny — prebook NIE wysłany sessionId=${sessionId}`);
+    return storeDownResponse();
+  };
+  if (!bookingStoreMayBeAvailable()) return storeDownBeforeProvider();
+  try {
+    await reserveBookingSession(sessionId);
+  } catch (err) {
+    if (err instanceof BookingError) return storeDownBeforeProvider();
+    throw err;
+  }
 
   // GWARANCJA occupancy (incydent 2026-07-10): goście trafiają do sesji już
   // ZNORMALIZOWANI do jednego gościa głównego na pokój 1..rooms — nawet gdy
@@ -172,7 +204,21 @@ export async function POST(request: NextRequest) {
       pax: b.pax,
       createdAt: now,
     };
-    await saveSession(sessionId, rec); // strict — throws if store unavailable
+    try {
+      await saveSession(sessionId, rec); // strict — throws if store unavailable
+    } catch (err) {
+      if (!(err instanceof BookingError)) throw err;
+      // Prebook u dostawcy JUŻ powstał, ale sesji nie da się zapisać (magazyn
+      // padł między znacznikiem a zapisem). Płatność NIE zostaje otwarta —
+      // `secretKey` nie wychodzi do przeglądarki — więc nic nie zostanie
+      // pobrane, a niewykorzystany prebook wygaśnie u dostawcy. Ta sama
+      // uczciwa odpowiedź co przy awarii przed dostawcą, nie LITEAPI_DOWN
+      // („wybierz inną ofertę" — każda inna skończyłaby się tak samo).
+      console.error(
+        `[booking][prebook] zapis sesji PO prebooku nieudany — płatność NIE otwarta, prebook bez sesji wygaśnie u dostawcy sessionId=${sessionId} prebookId=${pre.prebookId}`,
+      );
+      return storeDownResponse();
+    }
 
     // B6: the widget's `publicKey` env MUST match the env that created this
     // PaymentIntent, or Stripe 400s on /v1/elements. Prefer LiteAPI's own

@@ -12,8 +12,7 @@
 // (blip Redisa nie może zablokować rezerwacji), ale przetworzenie tego samego
 // webhooka dwa razy musi być bezpieczne.
 
-import { Redis } from "@upstash/redis";
-
+import { getSharedRedis, isRedisFailure } from "@/lib/redis/client";
 import { assertNoProductionStoreInTests } from "@/lib/testing/production-guard";
 
 import type { PaymentEvidenceVerdict } from "./payment-evidence";
@@ -36,7 +35,7 @@ interface RedisLike {
   del(...keys: string[]): Promise<unknown>;
 }
 
-let redis: RedisLike | null | undefined;
+let store: RedisLike | null | undefined;
 let injected: RedisLike | null | undefined;
 
 export class FlightStoreUnavailableError extends Error {
@@ -46,22 +45,46 @@ export class FlightStoreUnavailableError extends Error {
   }
 }
 
+/**
+ * Adapter na wspólny klient: awaria Redisa (limit planu, timeout, otwarty
+ * wyłącznik) → `FlightStoreUnavailableError`, który trasy już mapują na 503.
+ * Bez tego surowy błąd SDK wpadał w „unexpected error" i HTTP 500.
+ */
+function storeAdapter(client: RedisLike): RedisLike {
+  const guard = async <T>(op: () => Promise<T>): Promise<T> => {
+    try {
+      return await op();
+    } catch (err) {
+      if (isRedisFailure(err)) throw new FlightStoreUnavailableError();
+      throw err;
+    }
+  };
+  return {
+    get: <T = unknown>(key: string) => guard(() => client.get<T>(key)),
+    set: (key, value, opts) => guard(() => client.set(key, value, opts)),
+    del: (...keys) => guard(() => client.del(...keys)),
+  };
+}
+
 function getRedis(): RedisLike {
   if (injected !== undefined) {
     if (injected === null) throw new FlightStoreUnavailableError();
     return injected;
   }
-  if (redis === undefined) {
+  if (store === undefined) {
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
     // Bezpiecznik: pod testem bez wstrzykniętej atrapy NIE budujemy klienta
     // produkcyjnego. Rzucany błąd jest INNEGO typu niż
     // `FlightStoreUnavailableError`, żeby nie zamienił się w ciche HTTP 503.
     if (url && token) assertNoProductionStoreInTests("loty");
-    redis = url && token ? (new Redis({ url, token }) as unknown as RedisLike) : null;
+    // Wspólny klient (src/lib/redis/client.ts): timeout, wyłącznik obwodu,
+    // komunikaty błędów BEZ payloadu (dane pasażerów nie trafią do logów).
+    const shared = getSharedRedis() as unknown as RedisLike | null;
+    store = shared ? storeAdapter(shared) : null;
   }
-  if (!redis) throw new FlightStoreUnavailableError();
-  return redis;
+  if (!store) throw new FlightStoreUnavailableError();
+  return store;
 }
 
 // Test-only seam (mirrors booking/session.ts and the client.test env seam).
@@ -70,7 +93,7 @@ export function __setFlightRedisForTests(client: RedisLike | null): void {
 }
 export function __resetFlightRedisForTests(): void {
   injected = undefined;
-  redis = undefined;
+  store = undefined;
 }
 
 // ── Typy domenowe ───────────────────────────────────────────────────────────

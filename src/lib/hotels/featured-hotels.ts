@@ -25,9 +25,8 @@
 // snapshotu w ogóle — nie ma tu ścieżki, w której pokazujemy hotel bez ceny
 // albo cenę bez pokrycia w ofercie.
 
-import { Redis } from "@upstash/redis";
-
 import { rotationBucket as sharedRotationBucket } from "@/lib/home/rotation";
+import { getSharedRedis, warnRedisFallback } from "@/lib/redis/client";
 
 export { rotateSlice } from "@/lib/home/rotation";
 
@@ -85,25 +84,12 @@ interface RedisLike {
   set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
 }
 
-let redis: RedisLike | null | undefined;
 let injected: RedisLike | null | undefined;
-let warnedMissingEnv = false;
 
+// Wspólny klient (src/lib/redis/client.ts): timeout, wyłącznik obwodu, pomiar.
 function getRedis(): RedisLike | null {
   if (injected !== undefined) return injected;
-  if (redis !== undefined) return redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    if (!warnedMissingEnv) {
-      console.warn("[featured-hotels] UPSTASH env brak — sekcja polecanych hoteli WYŁĄCZONA.");
-      warnedMissingEnv = true;
-    }
-    redis = null;
-    return null;
-  }
-  redis = new Redis({ url, token }) as unknown as RedisLike;
-  return redis;
+  return getSharedRedis() as unknown as RedisLike | null;
 }
 
 /** Seam testowy (wzorzec destination-price-snapshot / flights-rates-cache). */
@@ -112,7 +98,6 @@ export function __setFeaturedHotelsRedisForTests(client: RedisLike | null): void
 }
 export function __resetFeaturedHotelsRedisForTests(): void {
   injected = undefined;
-  redis = undefined;
 }
 
 // ── Czysta logika (bez I/O — stąd testowalna) ───────────────────────────────
@@ -251,15 +236,20 @@ export function pickFreshFeatured(
 
 // ── I/O ─────────────────────────────────────────────────────────────────────
 
-/** Odczyt snapshotu. null = brak env / błąd / brak klucza (miss). */
-export async function readFeaturedHotels(): Promise<FeaturedHotelsSnapshot | null> {
+/** Odczyt, który RZUCA przy awarii Redisa (dla cache danych Nexta). null = brak. */
+export async function readFeaturedHotelsStrict(): Promise<FeaturedHotelsSnapshot | null> {
   const client = getRedis();
   if (!client) return null;
+  const v = await client.get<FeaturedHotelsSnapshot>(KEY);
+  return v && typeof v === "object" && Array.isArray(v.hotels) ? v : null;
+}
+
+/** Odczyt snapshotu. null = brak env / błąd / brak klucza (miss). */
+export async function readFeaturedHotels(): Promise<FeaturedHotelsSnapshot | null> {
   try {
-    const v = await client.get<FeaturedHotelsSnapshot>(KEY);
-    return v && typeof v === "object" && Array.isArray(v.hotels) ? v : null;
+    return await readFeaturedHotelsStrict();
   } catch (err) {
-    console.warn("[featured-hotels] read miss:", err instanceof Error ? err.message : err);
+    warnRedisFallback("featured-hotels", err);
     return null;
   }
 }
@@ -283,6 +273,6 @@ export async function writeFeaturedHotels(hotels: FeaturedHotel[], now: number =
     };
     await client.set(KEY, payload, { ex: TTL_SECONDS });
   } catch (err) {
-    console.warn("[featured-hotels] write skip:", err instanceof Error ? err.message : err);
+    warnRedisFallback("featured-hotels", err);
   }
 }

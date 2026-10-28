@@ -12,7 +12,7 @@
 // przebiegu (co 30 min), ale realny fetch idzie NAJWYŻEJ raz na 24 h
 // (throttle po fetchedAt). Porażka fetcha/parsera → stary wpis zostaje.
 
-import { Redis } from "@upstash/redis";
+import { getSharedRedis, warnRedisFallback } from "@/lib/redis/client";
 
 export interface TrustpilotEntry {
   /** Ocena 1-5 (np. 4.2). */
@@ -37,25 +37,12 @@ interface RedisLike {
   set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
 }
 
-let redis: RedisLike | null | undefined;
 let injected: RedisLike | null | undefined;
-let warnedMissingEnv = false;
 
+// Wspólny klient (src/lib/redis/client.ts): timeout, wyłącznik obwodu, pomiar.
 function getRedis(): RedisLike | null {
   if (injected !== undefined) return injected;
-  if (redis !== undefined) return redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    if (!warnedMissingEnv) {
-      console.warn("[trustpilot] UPSTASH env brak — snapshot oceny WYŁĄCZONY (UI bez liczby).");
-      warnedMissingEnv = true;
-    }
-    redis = null;
-    return null;
-  }
-  redis = new Redis({ url, token }) as unknown as RedisLike;
-  return redis;
+  return getSharedRedis() as unknown as RedisLike | null;
 }
 
 export function __setTrustpilotRedisForTests(client: RedisLike | null): void {
@@ -63,7 +50,6 @@ export function __setTrustpilotRedisForTests(client: RedisLike | null): void {
 }
 export function __resetTrustpilotRedisForTests(): void {
   injected = undefined;
-  redis = undefined;
 }
 
 function asScore(v: unknown): number | null {
@@ -144,15 +130,20 @@ export function isFreshTrustpilot(entry: TrustpilotEntry | undefined | null, now
   return now - entry.fetchedAt <= TRUSTPILOT_FRESH_MS;
 }
 
-/** Odczyt snapshotu. null = brak env / błąd / brak klucza (miss). */
-export async function readTrustpilotSnapshot(): Promise<TrustpilotEntry | null> {
+/** Odczyt, który RZUCA przy awarii Redisa (dla cache danych Nexta). null = brak. */
+export async function readTrustpilotSnapshotStrict(): Promise<TrustpilotEntry | null> {
   const client = getRedis();
   if (!client) return null;
+  const v = await client.get<TrustpilotEntry>(KEY);
+  return v && typeof v === "object" && typeof v.score === "number" ? v : null;
+}
+
+/** Odczyt snapshotu. null = brak env / błąd / brak klucza (miss). */
+export async function readTrustpilotSnapshot(): Promise<TrustpilotEntry | null> {
   try {
-    const v = await client.get<TrustpilotEntry>(KEY);
-    return v && typeof v === "object" && typeof v.score === "number" ? v : null;
+    return await readTrustpilotSnapshotStrict();
   } catch (err) {
-    console.warn("[trustpilot] read miss:", err instanceof Error ? err.message : err);
+    warnRedisFallback("trustpilot", err);
     return null;
   }
 }

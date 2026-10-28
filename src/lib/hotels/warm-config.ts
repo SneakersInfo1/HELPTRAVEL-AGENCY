@@ -208,8 +208,10 @@ export function computeWarmDateWindows(now: Date = new Date()): WarmWindow[] {
 //      przy 7 nocach jest najniższa),
 //   2) srodtydzien — poniedziałek ≥40 dni w przód, 4 noce (stawki weekdayowe).
 // Ceny z tych okien są PRAWDZIWE (realne wyszukania) — obniżamy „od" przez
-// szersze szukanie, nigdy przez zmyślanie liczb. Okna te grzeją też cache
-// wyników (bonus dla userów planujących z wyprzedzeniem).
+// szersze szukanie, nigdy przez zmyślanie liczb. Od 2026-10-27 te okna NIE
+// piszą już do cache wyników: to konkretne odległe daty, których nikt nie
+// wyszukuje, a odpowiadały za ~9 200 z 12 500 zapisów na przebieg crona
+// (główna przyczyna wyczerpania limitu transferu Upstash).
 export function computeSnapshotDateWindows(now: Date = new Date()): WarmWindow[] {
   const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const satFar = nextDow(base, 6, 60);

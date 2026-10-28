@@ -15,10 +15,13 @@
 // palił limitu LiteAPI).
 
 import { NextRequest, NextResponse } from "next/server";
-import { zajmijBlokade } from "@/lib/cron/lock";
+import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
 
 import { fetchHotelsForDestination } from "@/lib/liteapi";
 import { searchFlightRates } from "@/lib/flights/client";
+import { createProviderGate } from "@/lib/flights/provider-gate";
+import { redisMayBeAvailable } from "@/lib/redis/client";
+import { checkCronRedisBudget, flushRedisMetrics, usageMark, usageSince } from "@/lib/redis/metrics";
 import { normalizeRatesResponse } from "@/lib/flights/display";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
 import { iataForCity } from "@/lib/flights/airports";
@@ -86,12 +89,10 @@ export async function GET(request: NextRequest) {
   // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
   // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
   const blokada = await zajmijBlokade("warm-rates", 360);
-  if (!blokada.zdobyta) {
-    console.info("[cron/warm-rates] poprzedni przebieg wciaz trwa — pomijam");
-    return NextResponse.json({ ok: true, status: "skipped_locked" });
-  }
+  if (!blokada.zdobyta) return NextResponse.json(odpowiedzBezBlokady("warm-rates", blokada));
 
   const startedAt = Date.now();
+  const redisMark = usageMark();
   const windows = computeWarmDateWindows();
   // Union: top-N popularności + jawne extras (kafelki homepage). Dedup po id.
   const byId = new Map(getTopDestinations(WARM_DESTINATION_COUNT).map((d) => [d.id, d] as const));
@@ -174,10 +175,24 @@ export async function GET(request: NextRequest) {
   // Tanie okna skanują GŁĘBIEJ (150 hoteli = 3 chunki po 50): lista jest
   // sortowana popularnością, a najtańsze bywają za pierwszą 50-tką
   // (sonda: Rzym 513 zł/noc w 0-50 vs 262 zł w 100-150).
+  //
+  // ZAPIS DO CACHE TYLKO DLA BLISKICH OKIEN (incydent 2026-10-25). Zmierzone
+  // 2026-10-24: 250 zadań × 50 hoteli = 12 500 zapisów na przebieg, co 30 min,
+  // z czego ~9 200 z TANICH okien. Tanie okna to konkretne odległe daty
+  // (sobota ≥60 dni, poniedziałek ≥40 dni), których nikt nie wpisuje
+  // w wyszukiwarkę — z nich liczymy WYŁĄCZNIE minimum „od X zł". Cena
+  // w snapshocie zostaje ta sama (te same zapytania), znika martwy zapis.
   const cheapWindows = computeSnapshotDateWindows();
   // windowLabel tylko dla tanich okien — z nich liczymy pakiety (hotel i lot
   // z TEGO SAMEGO okna; patrz computePackagePerPerson).
-  const tasks: Array<{ label: string; priceKey: string; hotelIds: string[]; ctx: RateCacheContext; windowLabel?: string }> = [];
+  const tasks: Array<{
+    label: string;
+    priceKey: string;
+    hotelIds: string[];
+    ctx: RateCacheContext;
+    windowLabel?: string;
+    writeCache: boolean;
+  }> = [];
   for (const dh of destHotels) {
     const nearIds = dh.hotelIds.slice(0, WARM_HOTELS_PER_DEST);
     if (dh.group === "core") {
@@ -187,6 +202,7 @@ export async function GET(request: NextRequest) {
           priceKey: dh.priceKey,
           hotelIds: nearIds,
           ctx: { checkin: w.checkin, checkout: w.checkout, adults: 2, children: [], rooms: 1, currency: "PLN" },
+          writeCache: true,
         });
       }
     }
@@ -203,6 +219,7 @@ export async function GET(request: NextRequest) {
           hotelIds: dh.hotelIds.slice(i, i + 50),
           ctx: { checkin: w.checkin, checkout: w.checkout, adults: 2, children: [], rooms: 1, currency: "PLN" },
           windowLabel: w.label,
+          writeCache: false,
         });
       }
     }
@@ -217,13 +234,21 @@ export async function GET(request: NextRequest) {
   // Minima per (kierunek × tanie okno) — składniki pakietu. Klucz: `${priceKey}|${windowLabel}`.
   const hotelByWindow = new Map<string, number>();
   const flightByWindow = new Map<string, number>();
+  let storeLost = 0;
   await runPool(tasks, WARM_CONCURRENCY, async (t) => {
     if (Date.now() - startedAt > WARM_TIME_BUDGET_MS) {
       skipped++;
       return;
     }
+    // Magazyn padł w trakcie przebiegu (wyłącznik otwarty): wyniku i tak nie
+    // da się zapisać — ani wpisów cache, ani snapshotu cen — więc nie palimy
+    // limitu LiteAPI na resztę zadań.
+    if (!redisMayBeAvailable()) {
+      storeLost++;
+      return;
+    }
     try {
-      const res = await resolveSlimRates(t.hotelIds, t.ctx, { forceRefresh: true });
+      const res = await resolveSlimRates(t.hotelIds, t.ctx, { forceRefresh: true, writeCache: t.writeCache });
       calls++;
       warmedHotels += Object.values(res.rates).filter((r) => r !== null).length;
       // Snapshot cen: minimum za-noc z tego zadania (kierunek × okno) vs
@@ -265,8 +290,15 @@ export async function GET(request: NextRequest) {
       flightTasks.push({ label: `${dh.label}/${w.label}`, priceKey: dh.priceKey, iata: dh.iata, w });
     }
   }
+  // Bramka dostawcy: po kilku odmowach z rzędu (403/429) reszta wyszukiwań
+  // tego przebiegu jest pomijana — patrz src/lib/flights/provider-gate.ts.
+  const flightGate = createProviderGate();
   await runPool(flightTasks, 6, async (t) => {
     if (Date.now() - startedAt > WARM_TIME_BUDGET_MS) return;
+    if (!flightGate.open || !redisMayBeAvailable()) {
+      flightGate.noteSkip();
+      return;
+    }
     try {
       const input = FlightSearchInputSchema.parse({
         legs: [
@@ -275,7 +307,10 @@ export async function GET(request: NextRequest) {
         ],
         adults: 1,
       });
-      const res = await searchFlightRates(input);
+      // `retries: 1` — jeden strzał. Domyślne 3 próby ponawiały też 429, czyli
+      // przy limitowaniu przez dostawcę cron TROIŁ ruch, który go wywołał.
+      const res = await searchFlightRates(input, { retries: 1 });
+      flightGate.onSuccess();
       flightCalls++;
       const minTotal = minTotalFromOffers(normalizeRatesResponse(res));
       if (minTotal !== null) {
@@ -295,6 +330,7 @@ export async function GET(request: NextRequest) {
         flightPrices++;
       }
     } catch (err) {
+      flightGate.onFailure(err);
       console.warn(`[cron/warm-rates] lot '${t.label}' nieudany:`, err instanceof Error ? err.message : err);
     }
   });
@@ -341,13 +377,18 @@ export async function GET(request: NextRequest) {
 
   // Ocena Trustpilot do pasów zaufania — realny fetch max 1×/24 h (throttle
   // w module), porażka nie psuje crona ani nie kasuje starej wartości.
+  // Bez magazynu nie ma sensu: throttle czyta datę z Redisa, a wynik i tak
+  // nie miałby gdzie trafić.
   let trustpilot = "failed";
-  try {
-    trustpilot = await refreshTrustpilotSnapshot();
-  } catch (err) {
-    console.warn("[cron/warm-rates] trustpilot refresh:", err instanceof Error ? err.message : err);
+  if (redisMayBeAvailable()) {
+    try {
+      trustpilot = await refreshTrustpilotSnapshot();
+    } catch (err) {
+      console.warn("[cron/warm-rates] trustpilot refresh:", err instanceof Error ? err.message : err);
+    }
   }
 
+  await blokada.zwolnij();
   const durationMs = Date.now() - startedAt;
   const summary = {
     ok: true,
@@ -356,17 +397,25 @@ export async function GET(request: NextRequest) {
     snapshotOnlyDests: destHotels.filter((d) => d.group === "snapshot").length,
     windows: windows.length + cheapWindows.length,
     tasks: tasks.length,
+    cacheWriteTasks: tasks.filter((t) => t.writeCache).length,
     rateCalls: calls,
     warmedHotels,
     skipped,
+    storeLost,
     flightCalls,
     flightPrices,
+    flightGateSkipped: flightGate.skipped,
+    flightRefusal: flightGate.lastRefusalStatus,
     snapshotEntries,
     pkgCount,
     trustpilot,
+    // Zużycie Upstash TEGO przebiegu (komendy, żądania, bajty) — do prognozy
+    // miesięcznego transferu bez zgadywania (patrz src/lib/redis/metrics.ts).
+    redis: usageSince(redisMark),
     durationMs,
   };
   console.log("[cron/warm-rates]", JSON.stringify(summary));
-  await blokada.zwolnij();
+  checkCronRedisBudget("warm-rates", summary.redis);
+  flushRedisMetrics("cron:warm-rates");
   return NextResponse.json(summary);
 }

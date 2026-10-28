@@ -12,7 +12,8 @@
 // Redis error degrades to "cache miss" and the caller falls back to a
 // live LiteAPI call exactly as before.
 
-import { Redis } from "@upstash/redis";
+import { recordCacheLookup } from "@/lib/redis/metrics";
+import { getSharedRedis, warnRedisFallback } from "@/lib/redis/client";
 
 export interface SlimRate {
   totalAmount: number;
@@ -22,8 +23,14 @@ export interface SlimRate {
   refundableTag?: string;
   cancellationDeadline?: string;
   freeCancellationDeadline?: string;
-  offerId: string;
-  rateId: string;
+  // BEZ `offerId` i `rateId` (od v5, 2026-10-27) — i to była główna przyczyna
+  // incydentu z transferem Upstash. Zmierzone na produkcyjnym wpisie:
+  // `offerId` ma ~1 100 znaków, `rateId` ~550, cała reszta wpisu ~200. Żaden
+  // konsument listy wyników ich nie używał: karta prowadzi na stronę obiektu,
+  // która pobiera WŁASNE, świeże taryfy (rooms-section → prebook), a czat
+  // i crony biorą wyłącznie cenę i opis taryfy. Wożenie ich przez Redis
+  // oznaczało ~1,6 KB martwego ładunku na hotel — przy 12 500 zapisach co
+  // 30 minut z samego crona prewarmingu.
   // Podatki — DWA pola zamiast pełnego rozbicia. Wożenie całej tablicy
   // `taxesAndFees` przez Redis dla ~2000 hoteli byłoby marnotrawstwem, a karta
   // wyniku potrzebuje tylko odpowiedzi „czy coś dopłacę i ile".
@@ -65,7 +72,10 @@ export interface RateCacheContext {
 // v4 (2026-08-07): doszło `originalAmount` (uczciwa cena wyjściowa taryfy).
 // Wpisy v3 go nie mają, więc bez podbicia wersji przeceny pojawiałyby się
 // dopiero po wygaśnięciu TTL — czyli losowo, hotel po hotelu.
-const KEY_VERSION = "v4";
+// v5 (2026-10-27): wpis bez `offerId`/`rateId` (patrz SlimRate). Stare wpisy v4
+// wygasają same w ≤60 min; nowy klucz gwarantuje, że odczyt nie zwróci
+// mieszanki dwóch kształtów.
+const KEY_VERSION = "v5";
 // 60 min — cena DO WYŚWIETLENIA (re-weryfikowana przy prebooku). Podbite 30→60
 // min, bo cron prewarmingu (/api/cron/warm-rates) odświeża co 30 min: dłuższy
 // TTL daje margines (wpis przeżywa 2 cykle crona), więc popularne kierunki są
@@ -76,30 +86,30 @@ const TTL_UNAVAILABLE_SECONDS = 600; // 10 min — availability can return soone
 
 type CachedValue = SlimRate | { unavailable: true };
 
-let redis: Redis | null | undefined;
-let warnedMissingEnv = false;
-
-function getRedis(): Redis | null {
-  if (redis !== undefined) return redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    if (!warnedMissingEnv) {
-      console.warn(
-        "[rate-cache] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set — slim-rate cache DISABLED (falling back to live LiteAPI every time).",
-      );
-      warnedMissingEnv = true;
-    }
-    redis = null;
-    return null;
-  }
-  redis = new Redis({ url, token });
-  return redis;
-}
-
 function keyFor(hotelId: string, ctx: RateCacheContext): string {
   const occ = `${ctx.adults}-${[...ctx.children].sort((a, b) => a - b).join(".")}-${ctx.rooms}`;
   return `htr:${KEY_VERSION}:${ctx.checkin}:${ctx.checkout}:${occ}:${ctx.currency}:${hotelId}`;
+}
+
+/**
+ * Wpis do zapisu — WYŁĄCZNIE pola z kontraktu SlimRate, bez `undefined`.
+ *
+ * Jawna lista zamiast `{ ...rate }`: gdyby ktoś kiedyś dołożył do obiektu
+ * stawki pole spoza kontraktu (choćby z powrotem `offerId`), trafiłoby ono do
+ * Redisa po cichu i przy 12 500 zapisach na przebieg crona — znowu w limit
+ * transferu. Tutaj nowe pole wymaga świadomej decyzji.
+ */
+export function slimForCache(rate: SlimRate): SlimRate {
+  const out: SlimRate = { totalAmount: rate.totalAmount, currency: rate.currency };
+  if (rate.roomName !== undefined) out.roomName = rate.roomName;
+  if (rate.boardName !== undefined) out.boardName = rate.boardName;
+  if (rate.refundableTag !== undefined) out.refundableTag = rate.refundableTag;
+  if (rate.cancellationDeadline !== undefined) out.cancellationDeadline = rate.cancellationDeadline;
+  if (rate.freeCancellationDeadline !== undefined) out.freeCancellationDeadline = rate.freeCancellationDeadline;
+  if (rate.taxesIncluded !== undefined) out.taxesIncluded = rate.taxesIncluded;
+  if (rate.taxExtraAmount !== undefined) out.taxExtraAmount = rate.taxExtraAmount;
+  if (rate.originalAmount !== undefined) out.originalAmount = rate.originalAmount;
+  return out;
 }
 
 export type CacheLookup =
@@ -120,23 +130,26 @@ export async function getCachedRates(
   for (const id of hotelIds) result.set(id, { state: "miss" });
   if (hotelIds.length === 0) return result;
 
-  const client = getRedis();
+  const client = getSharedRedis();
   if (!client) return result;
 
   try {
     const keys = hotelIds.map((id) => keyFor(id, ctx));
     const values = await client.mget<CachedValue[]>(...keys);
+    let hits = 0;
     hotelIds.forEach((id, i) => {
       const v = values[i];
       if (v == null) return; // miss (already set)
+      hits += 1;
       if ("unavailable" in v) {
         result.set(id, { state: "unavailable" });
       } else {
         result.set(id, { state: "hit", rate: v });
       }
     });
+    recordCacheLookup("htr", hits, hotelIds.length - hits);
   } catch (err) {
-    console.warn("[rate-cache] read failed, falling back to live:", err instanceof Error ? err.message : err);
+    warnRedisFallback("rate-cache", err);
   }
   return result;
 }
@@ -151,20 +164,20 @@ export async function setCachedRates(
   ctx: RateCacheContext,
 ): Promise<void> {
   if (entries.length === 0) return;
-  const client = getRedis();
+  const client = getSharedRedis();
   if (!client) return;
   try {
     const pipeline = client.pipeline();
     for (const { hotelId, rate } of entries) {
       const key = keyFor(hotelId, ctx);
       if (rate) {
-        pipeline.set(key, rate satisfies CachedValue, { ex: TTL_PRICED_SECONDS });
+        pipeline.set(key, slimForCache(rate) satisfies CachedValue, { ex: TTL_PRICED_SECONDS });
       } else {
         pipeline.set(key, { unavailable: true } satisfies CachedValue, { ex: TTL_UNAVAILABLE_SECONDS });
       }
     }
     await pipeline.exec();
   } catch (err) {
-    console.warn("[rate-cache] write failed (non-fatal):", err instanceof Error ? err.message : err);
+    warnRedisFallback("rate-cache", err);
   }
 }

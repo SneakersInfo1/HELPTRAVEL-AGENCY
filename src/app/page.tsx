@@ -11,16 +11,24 @@ import { RecentSearches } from "@/components/home/recent-searches";
 import { ThemeTiles, type ThemeTile } from "@/components/home/theme-tiles";
 import { foldText } from "@/lib/flights/airports";
 import { HOME_COPY } from "@/lib/home/copy";
-import { pickFreshDeals, readFlightDeals } from "@/lib/flights/flight-deals";
-import { pickFreshFeatured, readFeaturedHotels } from "@/lib/hotels/featured-hotels";
+import { pickFreshDeals } from "@/lib/flights/flight-deals";
+import { pickFreshFeatured } from "@/lib/hotels/featured-hotels";
 import { TRAVEL_MOODS } from "@/lib/mvp/travel-moods";
 import {
   pickFreshFlightPrice,
   pickFreshPackage,
   pickFreshPrice,
-  readPriceSnapshot,
 } from "@/lib/prices/destination-price-snapshot";
-import { isFreshTrustpilot, readTrustpilotSnapshot } from "@/lib/trust/trustpilot-snapshot";
+// Odczyty przez cache danych Nexta (unstable_cache) — bez tego `fetch`
+// z `cache: "no-store"` w SDK Upstash przełączał stronę na render przy KAŻDYM
+// żądaniu mimo `revalidate` niżej. Szczegóły: src/lib/redis/cached-reads.ts.
+import {
+  readFeaturedHotelsCached as readFeaturedHotels,
+  readFlightDealsCached as readFlightDeals,
+  readPriceSnapshotCached as readPriceSnapshot,
+  readTrustpilotSnapshotCached as readTrustpilotSnapshot,
+} from "@/lib/redis/cached-reads";
+import { isFreshTrustpilot } from "@/lib/trust/trustpilot-snapshot";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import type { SiteLocale } from "@/lib/mvp/locale";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";

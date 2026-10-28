@@ -41,8 +41,6 @@ test("setCachedRates without Redis env resolves silently (best-effort)", async (
   const rate: SlimRate = {
     totalAmount: 1234.5,
     currency: "PLN",
-    offerId: "o1",
-    rateId: "r1",
   };
   await assert.doesNotReject(
     setCachedRates([{ hotelId: "lp1", rate }, { hotelId: "lp2", rate: null }], ctx),

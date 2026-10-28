@@ -5,7 +5,7 @@ import { test } from "node:test";
 
 import seedJson from "../../../data/destinations.json";
 import { buildDestinationTiers, ORIGIN_TIER_A, ORIGIN_TIER_B, type TierSeedRecord } from "./tiers";
-import { buildTaskList, planRun, segmentForNow } from "./rotation";
+import { buildTaskList, planRun, resolveSegment, segmentForNow } from "./rotation";
 import { SEGMENT_COUNT as SEGMENT_COUNT_PROD, TASK_BUDGET as TASK_BUDGET_PROD } from "./config";
 import { buildWindowMatrix } from "./windows";
 
@@ -130,4 +130,27 @@ test("budzet zadan nie ucina zadnego segmentu przy produkcyjnej konfiguracji", (
     const size = all.filter((_, i) => i % SEGMENT_COUNT_PROD === s).length;
     assert.ok(size <= TASK_BUDGET_PROD, `segment ${s}: ${size} > budzet ${TASK_BUDGET_PROD}`);
   }
+});
+
+// REGRESJA z produkcji (2026-10-24): harmonogram woła crona BEZ `?segment`,
+// a `Number(null) === 0` przypinało KAŻDY przebieg do segmentu 0 — te same
+// zadania co 30 minut, pokrycie snapshotu zamrożone na 6,11%.
+test("resolveSegment: brak parametru = segment z ZEGARA, nie 0", () => {
+  const interval = 30 * 60 * 1000;
+  const t = 1_792_808_713_144; // 2026-10-24T02:25 UTC — w logach produkcji: segment 0
+  assert.equal(segmentForNow(t, interval, 20), 4);
+  assert.equal(resolveSegment(null, t, interval, 20), 4);
+  assert.equal(resolveSegment("", t, interval, 20), 4);
+  assert.equal(resolveSegment("abc", t, interval, 20), 4);
+  assert.equal(resolveSegment("-3", t, interval, 20), 4);
+  // kolejny przebieg (+30 min) to KOLEJNY segment
+  assert.equal(resolveSegment(null, t + interval, interval, 20), 5);
+});
+
+test("resolveSegment: jawny parametr (pomiar ręczny) nadal działa, modulo liczba segmentów", () => {
+  const interval = 30 * 60 * 1000;
+  assert.equal(resolveSegment("0", 0, interval, 20), 0);
+  assert.equal(resolveSegment("7", 0, interval, 20), 7);
+  assert.equal(resolveSegment("27", 0, interval, 20), 7);
+  assert.equal(resolveSegment(" 3 ", 0, interval, 20), 3);
 });

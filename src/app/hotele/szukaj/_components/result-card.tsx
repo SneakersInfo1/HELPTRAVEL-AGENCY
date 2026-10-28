@@ -96,8 +96,10 @@ interface OfferCard {
   // Opcjonalne: gdy pominięte, karta renderuje `priceSlot` (progresywne
   // ładowanie cen po stronie klienta) zamiast ceny z serwera.
   cheapestRate?: {
-    rateId: string;
-    offerId: string;
+    // Opcjonalne: progresywne ceny z /api/hotels/rates/batch ich nie niosą
+    // (patrz SlimRate w lib/hotels/rate-cache.ts), a karta ich nie używa.
+    rateId?: string;
+    offerId?: string;
     boardName?: string;
     refundableTag?: string;
     totalAmount: number;

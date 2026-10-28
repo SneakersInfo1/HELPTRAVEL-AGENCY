@@ -68,6 +68,9 @@ export function FlightResults(props: Props) {
   const router = useRouter();
   const [offers, setOffers] = useState<DisplayOffer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Dostawca odmówił dostępu do całego produktu (nie tej trasy): rada „zmień
+  // daty albo lotnisko" i przycisk ponowienia nie mogą tu pomóc.
+  const [providerDown, setProviderDown] = useState(false);
   const [sort, setSort] = useState<SortKey>("best");
   const [filters, setFilters] = useState<FlightFilters>(EMPTY_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -100,6 +103,7 @@ export function FlightResults(props: Props) {
     const merged: DisplayOffer[] = [];
     let anyOk = false;
     let firstMessage: string | undefined;
+    let accessDenied = false;
 
     void Promise.all(
       origins.map(async (o) => {
@@ -114,6 +118,7 @@ export function FlightResults(props: Props) {
           const json = await res.json().catch(() => ({}));
           if (!res.ok) {
             if (!firstMessage) firstMessage = json.message as string | undefined;
+            if (json.reason === "PROVIDER_ACCESS_DENIED") accessDenied = true;
             return;
           }
           anyOk = true;
@@ -137,6 +142,7 @@ export function FlightResults(props: Props) {
       setAllSettled(true);
       if (!anyOk) {
         setError(firstMessage || "Nie udało się pobrać ofert. Spróbuj ponownie.");
+        setProviderDown(accessDenied);
         setOffers([]);
       } else {
         setOffers([...merged]);
@@ -356,11 +362,14 @@ export function FlightResults(props: Props) {
             <div className="rounded-lg border border-line bg-surface-raised p-8 text-center">
               <p className="text-base font-semibold text-ink">{error ?? "Brak lotów dla wybranych dat"}</p>
               <p className="mt-1 text-sm text-ink-muted">
-                Spróbuj zmienić daty albo lotnisko wylotu. Część tras lata tylko w wybrane dni tygodnia.
+                {providerDown
+                  ? "To przerwa po stronie dostawcy lotów, a nie problem z Twoim wyszukiwaniem — zmiana dat ani lotniska teraz nie pomoże."
+                  : "Spróbuj zmienić daty albo lotnisko wylotu. Część tras lata tylko w wybrane dni tygodnia."}
               </p>
               {/* Całkowita awaria (nie „pusta trasa") jest naprawialna — daj akcję,
-                  zamiast zostawiać użytkownika w ślepym zaułku. */}
-              {error && (
+                  zamiast zostawiać użytkownika w ślepym zaułku. Przy odmowie
+                  dostępu u dostawcy ponowienie dałoby ten sam wynik. */}
+              {error && !providerDown && (
                 <button
                   type="button"
                   onClick={() => window.location.reload()}

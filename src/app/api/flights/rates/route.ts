@@ -57,11 +57,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ offers, count: offers.length, cached: false }, { status: 200 });
   } catch (err) {
     const e = toFlightApiError(err, "search");
-    console.warn(`[flights][rates] ${e.code} liteApiStatus=${e.liteApiStatus} liteApiCode=${e.liteApiCode}`);
+    // Opis dostawcy do logu (nigdy do przeglądarki): przy wyszukiwaniu nie
+    // echuje danych osobowych — w zapytaniu są tylko lotniska, daty i liczba
+    // osób. Bez niego przyczyna 403/40301 była nieczytelna z logów.
+    const desc = e.providerDescription ? ` desc="${e.providerDescription.replace(/\s+/g, " ").slice(0, 200)}"` : "";
+    console.warn(`[flights][rates] ${e.code} liteApiStatus=${e.liteApiStatus} liteApiCode=${e.liteApiCode}${desc}`);
     return NextResponse.json(
       // Bez `debug` — kod dostawcy nie jest informacją dla przeglądarki.
       // Diagnostyka zostaje w logu serwera (linia wyżej), gdzie jest komplet.
-      { error: e.code, message: e.message },
+      // `reason` to nasza taksonomia (np. PROVIDER_ACCESS_DENIED), nie kod dostawcy.
+      { error: e.code, message: e.message, ...(e.reason ? { reason: e.reason } : {}) },
       { status: e.httpStatus },
     );
   }

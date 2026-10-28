@@ -9,8 +9,7 @@
 // Idempotency cache is the one best-effort piece (a Redis blip there must not
 // block a booking).
 
-import { Redis } from "@upstash/redis";
-
+import { getSharedRedis, isRedisFailure, redisMayBeAvailable } from "@/lib/redis/client";
 import { assertNoProductionStoreInTests } from "@/lib/testing/production-guard";
 
 import { BookingError } from "@/lib/liteapi";
@@ -37,7 +36,6 @@ interface RedisLike {
   del(...keys: string[]): Promise<unknown>;
 }
 
-let redis: RedisLike | null | undefined;
 let injected: RedisLike | null | undefined;
 
 function storeDown(): BookingError {
@@ -52,16 +50,61 @@ function getRedis(): RedisLike {
     if (injected === null) throw storeDown();
     return injected;
   }
-  if (redis === undefined) {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-    // Ten sam bezpiecznik co przy lotach — hotelowe rekordy leżą w TEJ SAMEJ
-    // produkcyjnej bazie, więc zapomniana atrapa kosztowałaby tyle samo.
-    if (url && token) assertNoProductionStoreInTests("hotele");
-    redis = url && token ? (new Redis({ url, token }) as unknown as RedisLike) : null;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Ten sam bezpiecznik co przy lotach — hotelowe rekordy leżą w TEJ SAMEJ
+  // produkcyjnej bazie, więc zapomniana atrapa kosztowałaby tyle samo.
+  if (url && token) assertNoProductionStoreInTests("hotele");
+  // Wspólny klient (src/lib/redis/client.ts): timeout, wyłącznik obwodu,
+  // komunikaty błędów BEZ payloadu — przy awarii zapisu sesji dane gościa
+  // i `secretKey` nie mogą trafić do logów.
+  const shared = getSharedRedis() as unknown as RedisLike | null;
+  if (!shared) throw storeDown();
+  return shared;
+}
+
+/**
+ * Operacja STRICT na magazynie: awaria Redisa (limit planu, timeout, otwarty
+ * wyłącznik) → `storeDown()` (503 „spróbuj za chwilę"), a nie surowy błąd SDK,
+ * który w trasie wpadał w „unexpected error" i HTTP 500.
+ */
+async function strict<T>(op: (r: RedisLike) => Promise<T>): Promise<T> {
+  const r = getRedis();
+  try {
+    return await op(r);
+  } catch (err) {
+    if (isRedisFailure(err)) throw storeDown();
+    throw err;
   }
-  if (!redis) throw storeDown();
-  return redis;
+}
+
+/**
+ * Czy jest sens zaczynać operację, która MUSI zapisać sesję (prebook)?
+ * `false` = magazyn nieskonfigurowany albo wyłącznik obwodu otwarty — wtedy
+ * trasa odpowiada 503 ZANIM utworzy prebook u dostawcy. Szybka ścieżka bez
+ * sieci; właściwym dowodem jest `reserveBookingSession`.
+ */
+export function bookingStoreMayBeAvailable(): boolean {
+  if (injected !== undefined) return injected !== null;
+  return redisMayBeAvailable();
+}
+
+/** Znacznik „sesja w przygotowaniu" — krótko żyjący, tylko jako dowód zapisu. */
+const PENDING_TTL_SECONDS = 15 * 60;
+const pKey = (id: string) => `booking:${KEY_VERSION}:pending:${id}`;
+
+/**
+ * DOWÓD, że magazyn sesji PRZYJMUJE zapisy — tuż przed prebookiem u dostawcy.
+ *
+ * Wyłącznik obwodu wie tylko tyle, co ostatnie odpowiedzi; po oknie otwarcia
+ * przepuszcza żądania, zanim jakakolwiek próba potwierdzi powrót magazynu.
+ * Gdyby prebook szedł wtedy prosto do LiteAPI, a zapis sesji padł, zostałby
+ * osierocony prebook (zablokowana taryfa, otwarta sesja płatności, której nie
+ * da się sfinalizować). Jeden mały SET przed dostawcą zamyka to okno:
+ * niepowodzenie = `storeDown()` (503) bez kontaktu z LiteAPI.
+ */
+export async function reserveBookingSession(sessionId: string): Promise<void> {
+  await strict((r) => r.set(pKey(sessionId), "1", { ex: PENDING_TTL_SECONDS }));
 }
 
 // Test-only seam (mirrors the codebase convention, e.g. client.test env seam).
@@ -70,7 +113,6 @@ export function __setBookingRedisForTests(client: RedisLike | null): void {
 }
 export function __resetBookingRedisForTests(): void {
   injected = undefined;
-  redis = undefined;
 }
 
 export interface HotelSummary {
@@ -151,10 +193,10 @@ export function isSessionExpired(rec: SessionRecord, now = Date.now()): boolean 
 }
 
 export async function saveSession(sessionId: string, rec: SessionRecord): Promise<void> {
-  await getRedis().set(sKey(sessionId), rec, { ex: SESSION_TTL_SECONDS });
+  await strict((r) => r.set(sKey(sessionId), rec, { ex: SESSION_TTL_SECONDS }));
 }
 export async function getSession(sessionId: string): Promise<SessionRecord | null> {
-  return (await getRedis().get<SessionRecord>(sKey(sessionId))) ?? null;
+  return (await strict((r) => r.get<SessionRecord>(sKey(sessionId)))) ?? null;
 }
 export async function deleteSession(sessionId: string): Promise<void> {
   // Non-fatal: a delete failure just leaves a row the TTL will reap anyway.
@@ -165,15 +207,15 @@ export async function deleteSession(sessionId: string): Promise<void> {
   }
 }
 export async function saveCompleted(rec: CompletedRecord): Promise<void> {
-  await getRedis().set(cKey(rec.bookingId), rec, { ex: RECORD_TTL_SECONDS });
+  await strict((r) => r.set(cKey(rec.bookingId), rec, { ex: RECORD_TTL_SECONDS }));
 }
 export async function getCompleted(bookingId: string): Promise<CompletedRecord | null> {
-  return (await getRedis().get<CompletedRecord>(cKey(bookingId))) ?? null;
+  return (await strict((r) => r.get<CompletedRecord>(cKey(bookingId)))) ?? null;
 }
 export async function saveFailed(rec: FailedRecord): Promise<void> {
   // MUST persist. Caller re-logs [CRITICAL] if this throws — a paid-but-
   // unbooked recovery record is never lost silently.
-  await getRedis().set(fKey(rec.sessionId), rec, { ex: RECORD_TTL_SECONDS });
+  await strict((r) => r.set(fKey(rec.sessionId), rec, { ex: RECORD_TTL_SECONDS }));
 }
 
 // ── Durable session → booking pointer ───────────────────────────────────────

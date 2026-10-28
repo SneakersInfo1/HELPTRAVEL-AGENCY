@@ -6,6 +6,7 @@ import { test } from "node:test";
 
 import { LiteApiError } from "../liteapi/errors";
 import { toFlightApiError } from "./client";
+import { isPaymentDisprovedByBookingFailure } from "./payment-evidence";
 import {
   FlightContactSchema,
   FlightPassengerSchema,
@@ -137,6 +138,72 @@ test("toFlightApiError: 500 z generycznym body NIE jest OFFER_UNAVAILABLE", () =
   });
   const e = toFlightApiError(liteErr, "verify");
   assert.equal(e.code, "PROVIDER_ERROR");
+});
+
+// Incydent 2026-10-25: LiteAPI ograniczyło konto do kluczy sandbox dla lotów.
+// Odpowiedź zmierzona 2026-10-28 (ten sam klucz: hotele 200, loty 403).
+const ACCESS_DENIED_BODY = {
+  error: {
+    code: 40301,
+    description:
+      "Flights API for this account is limited to sandbox API keys only. Please contact support to get full access",
+    message: "user does not have enough permissions to perform this action",
+  },
+};
+
+test("toFlightApiError: 403/40301 przy WYSZUKIWANIU → niedostępny dostawca (503), nie „złe dane pasażera”", () => {
+  const liteErr = new LiteApiError("LITEAPI_UNKNOWN", "HTTP 403", "x", { status: 403, body: ACCESS_DENIED_BODY });
+  for (const stage of ["search", "verify"]) {
+    const e = toFlightApiError(liteErr, stage);
+    assert.equal(e.code, "PROVIDER_ERROR", stage);
+    assert.equal(e.reason, "PROVIDER_ACCESS_DENIED", stage);
+    assert.equal(e.httpStatus, 503, stage);
+    assert.equal(e.retryable, false, "ponowienie tego samego żądania nic nie da");
+    assert.equal(e.liteApiCode, 40301);
+    assert.doesNotMatch(e.message, /pasażer|oferty/i, "komunikat nie obwinia danych użytkownika");
+    assert.match(e.providerDescription ?? "", /sandbox API keys only/, "opis dostawcy zostaje do logu");
+  }
+});
+
+test("toFlightApiError: 403 przy PREBOOKU → niedostępny dostawca (503), bez pieniędzy w grze", () => {
+  const liteErr = new LiteApiError("LITEAPI_UNKNOWN", "HTTP 403", "x", { status: 403, body: ACCESS_DENIED_BODY });
+  const e = toFlightApiError(liteErr, "prebook");
+  assert.equal(e.code, "PROVIDER_ERROR");
+  assert.equal(e.reason, "PROVIDER_ACCESS_DENIED");
+  assert.equal(e.httpStatus, 503);
+  assert.match(e.message, /nic nie zostało pobrane/i);
+});
+
+// Codex, przegląd 3 (High): przy BOOKU (po płatności) odmowa dostępu konta
+// NIE może udawać walidacji — dla logiki płatności VALIDATION + 4xx znaczy
+// „płatności nie było" i gasi ścieżkę paid-but-unbooked.
+test("toFlightApiError: 401/403/40301 przy BOOKU → nierozstrzygnięte (ręczna weryfikacja), NIGDY „płatności nie było”", () => {
+  const cases = [
+    new LiteApiError("LITEAPI_UNKNOWN", "HTTP 403", "x", { status: 403, body: ACCESS_DENIED_BODY }),
+    new LiteApiError("LITEAPI_UNKNOWN", "HTTP 403", "x", { status: 403, body: { error: { message: "forbidden" } } }),
+    new LiteApiError("LITEAPI_UNKNOWN", "HTTP 401", "x", { status: 401 }),
+  ];
+  for (const liteErr of cases) {
+    const e = toFlightApiError(liteErr, "book");
+    assert.notEqual(e.code, "VALIDATION");
+    assert.equal(e.reason, "PROVIDER_ACCESS_DENIED");
+    for (const evidence of ["unverified", "processing"] as const) {
+      assert.equal(
+        isPaymentDisprovedByBookingFailure({ evidence, errorCode: e.code, liteApiStatus: e.liteApiStatus }),
+        false,
+        `status ${liteErr.status}, dowód ${evidence}: płatność NIE jest uznana za niebyłą`,
+      );
+    }
+  }
+  // Kontrola: prawdziwa odmowa walidacyjna (43001) dalej rozstrzyga brak płatności.
+  const validation = toFlightApiError(
+    new LiteApiError("LITEAPI_UNKNOWN", "x", "x", { status: 400, body: { error: { code: 43001, description: "field required" } } }),
+    "book",
+  );
+  assert.equal(
+    isPaymentDisprovedByBookingFailure({ evidence: "unverified", errorCode: validation.code, liteApiStatus: validation.liteApiStatus }),
+    true,
+  );
 });
 
 test("verifyFlightOffer: na powtarzalnym 500 (52099) NIE retry'uje (1 strzał, bez bursta do LiteAPI)", async () => {

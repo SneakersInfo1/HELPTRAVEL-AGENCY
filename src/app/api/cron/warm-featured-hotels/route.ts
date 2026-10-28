@@ -21,7 +21,9 @@
 // Bezpieczeństwo: `Authorization: Bearer ${CRON_SECRET}` — jak pozostałe crony.
 
 import { NextRequest, NextResponse } from "next/server";
-import { zajmijBlokade } from "@/lib/cron/lock";
+import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
+import { redisMayBeAvailable } from "@/lib/redis/client";
+import { checkCronRedisBudget, flushRedisMetrics, usageMark, usageSince } from "@/lib/redis/metrics";
 
 import { fetchHotelsForDestination } from "@/lib/liteapi";
 import { getDestinationProfileBySlug } from "@/lib/mvp/destinations";
@@ -73,12 +75,10 @@ export async function GET(request: NextRequest) {
   // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
   // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
   const blokada = await zajmijBlokade("warm-featured-hotels", 360);
-  if (!blokada.zdobyta) {
-    console.info("[cron/warm-featured-hotels] poprzedni przebieg wciaz trwa — pomijam");
-    return NextResponse.json({ ok: true, status: "skipped_locked" });
-  }
+  if (!blokada.zdobyta) return NextResponse.json(odpowiedzBezBlokady("warm-featured-hotels", blokada));
 
   const startedAt = Date.now();
+  const redisMark = usageMark();
   const bucket = rotationBucket(startedAt);
   const slugs = rotateSlice(FEATURED_DESTINATION_POOL, FEATURED_DESTINATIONS_PER_RUN, bucket);
 
@@ -108,6 +108,11 @@ export async function GET(request: NextRequest) {
   // sekwencja nie konkuruje o limit LiteAPI z `warm-rates`, który potrafi
   // startować w tej samej minucie.
   for (const slug of slugs) {
+    // Bez magazynu zestawu i tak nie da się zapisać — nie pytamy LiteAPI.
+    if (!redisMayBeAvailable()) {
+      diag.push({ slug, scanned: 0, priced: 0, taken: 0 });
+      continue;
+    }
     const profile = getDestinationProfileBySlug(slug);
     if (!profile) {
       console.warn(`[cron/warm-featured] kierunek '${slug}' nie ma profilu — pomijam`);
@@ -203,6 +208,9 @@ export async function GET(request: NextRequest) {
   else console.warn(`[cron/warm-featured] tylko ${collected.length} hoteli — zostawiam poprzedni snapshot`);
 
   await blokada.zwolnij();
+  const redis = usageSince(redisMark);
+  checkCronRedisBudget("warm-featured-hotels", redis);
+  flushRedisMetrics("cron:warm-featured-hotels");
   return NextResponse.json({
     ok: true,
     bucket,
@@ -211,6 +219,7 @@ export async function GET(request: NextRequest) {
     collected: collected.length,
     wrote,
     diag,
+    redis,
     tookMs: Date.now() - startedAt,
   });
 }

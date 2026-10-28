@@ -15,47 +15,49 @@
 // To alert on Redis being down, monitor for a 5-minute streak of
 // `dependencies.redis !== "ok"`. We expose `degraded`/`down`/`unconfigured`
 // to disambiguate.
+//
+// 2026-10-27 (incydent limitu transferu Upstash): ping idzie przez WSPÓLNY
+// klient (timeout, wyłącznik obwodu, pomiar). Przy otwartym wyłączniku NIE
+// odpytujemy Redisa w ogóle — zwracamy stan wyłącznika (`circuit`) i rodzaj
+// ostatniej awarii (`lastFailure`, np. `quota` = limit planu). Wcześniejszy
+// „timeout 1 s" był martwy: AbortController nie był podpięty do zapytania.
 
 import { NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
+
+import {
+  getSharedRedis,
+  isRedisConfigured,
+  redisBreakerSnapshot,
+  redisCircuitAllows,
+} from "@/lib/redis/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Short timeout — health checks must be fast. If Redis takes >1s we report
-// degraded rather than waiting for the full response.
 export const maxDuration = 5;
 
 type DependencyStatus = "ok" | "degraded" | "down" | "unconfigured";
 
 async function checkRedis(): Promise<DependencyStatus> {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return "unconfigured";
-
+  if (!isRedisConfigured()) return "unconfigured";
+  // Otwarty wyłącznik = wiemy już, że magazyn nie odpowiada. Nie płacimy za
+  // kolejny ping (każdy health check co minutę to 1 440 komend na dobę).
+  if (!redisCircuitAllows()) return "down";
+  const redis = getSharedRedis();
+  if (!redis) return "unconfigured";
   try {
-    const redis = new Redis({ url, token });
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1000);
-    try {
-      // Cheapest possible Redis call. `ping` is intentional — it's a no-op
-      // server-side and confirms the round-trip works end-to-end.
-      const result = (await redis.ping()) as string | null;
-      clearTimeout(timeout);
-      return result === "PONG" ? "ok" : "degraded";
-    } catch (err) {
-      clearTimeout(timeout);
-      // AbortError = our 1s timeout fired
-      if (err instanceof Error && err.name === "AbortError") return "degraded";
-      return "down";
-    }
+    // Cheapest possible Redis call. `ping` is intentional — it's a no-op
+    // server-side and confirms the round-trip works end-to-end.
+    const result = (await redis.ping()) as string | null;
+    return result === "PONG" ? "ok" : "degraded";
   } catch {
-    return "down";
+    return redisCircuitAllows() ? "degraded" : "down";
   }
 }
 
 export async function GET() {
   const startedAt = Date.now();
   const redisStatus = await checkRedis();
+  const breaker = redisBreakerSnapshot();
 
   return NextResponse.json(
     {
@@ -68,6 +70,12 @@ export async function GET() {
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || null,
       dependencies: {
         redis: redisStatus,
+      },
+      // Stan wyłącznika TEJ instancji — bez kluczy i bez treści błędów.
+      redisCircuit: {
+        state: breaker.state,
+        lastFailure: breaker.lastFailureKind,
+        openForMs: breaker.openUntil ? Math.max(0, breaker.openUntil - Date.now()) : 0,
       },
       latencyMs: Date.now() - startedAt,
       timestamp: new Date().toISOString(),

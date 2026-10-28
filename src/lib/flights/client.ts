@@ -41,7 +41,7 @@ export type FlightErrorCode =
  * ustalić. `NAME_TOO_SHORT` uruchamia w route’cie wskazanie konkretnych pól
  * formularza; `PROVIDER_REJECTED_INPUT` to reszta deterministycznych odmów.
  */
-export type FlightErrorReason = "NAME_TOO_SHORT" | "PROVIDER_REJECTED_INPUT";
+export type FlightErrorReason = "NAME_TOO_SHORT" | "PROVIDER_REJECTED_INPUT" | "PROVIDER_ACCESS_DENIED";
 
 export class FlightApiError extends Error {
   readonly code: FlightErrorCode;
@@ -103,6 +103,38 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
     const status = err.status ?? 0;
     const { code: provCode, text, raw } = providerError(err.body);
     const label = err.internalCode;
+
+    // ODMOWA DOSTĘPU DO PRODUKTU, nie złe dane (incydent 2026-10-25: każde
+    // wyszukiwanie → 403 `{code:40301, "Flights API for this account is
+    // limited to sandbox API keys only"}`, ten sam klucz działa dla hoteli).
+    // Dotąd wpadało w gałąź 4xx = VALIDATION:
+    //   • przy wyszukiwaniu gość widział „Dane oferty lub pasażera zostały
+    //     odrzucone" i radę zmiany dat, która nie mogła pomóc;
+    //   • przy BOOKU (po płatności) VALIDATION + 4xx to dla
+    //     `isPaymentDisprovedByBookingFailure` „płatności nie było" — a odmowa
+    //     dostępu konta nie mówi NIC o tym, czy klient zapłacił. Jako
+    //     PROVIDER_ERROR trafia do ścieżki nierozstrzygniętej: ręczna
+    //     weryfikacja i alert, nigdy komunikat „płatność nie przeszła".
+    if (status === 401 || status === 403 || provCode === 40301) {
+      const beforeMoney = stage !== "book";
+      return new FlightApiError(
+        "PROVIDER_ERROR",
+        stage === "search" || stage === "verify"
+          ? "Wyszukiwarka lotów jest chwilowo niedostępna po stronie dostawcy. Pracujemy nad jej przywróceniem — spróbuj ponownie później."
+          : stage === "prebook"
+            ? "Rezerwacja lotów jest chwilowo niedostępna po stronie dostawcy. Nic nie zostało pobrane — spróbuj ponownie później."
+            : "Dostawca lotów odmówił dostępu przy rezerwacji — wymaga ręcznej weryfikacji.",
+        {
+          httpStatus: beforeMoney ? 503 : 502,
+          liteApiStatus: status,
+          liteApiCode: provCode ?? label,
+          reason: "PROVIDER_ACCESS_DENIED",
+          providerDescription: raw,
+          retryable: false,
+          cause: err,
+        },
+      );
+    }
 
     // WALIDACJA PRZEBRANA ZA AWARIĘ. Dostawca odrzuca za krótkie imię/nazwisko
     // przez HTTP 500 + `{error:{code:53099}}` — status sugeruje awarię serwera,
