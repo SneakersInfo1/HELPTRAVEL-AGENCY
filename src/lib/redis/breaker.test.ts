@@ -147,3 +147,24 @@ test("przejścia są zgłaszane (do logu) — otwarcie i zamknięcie", () => {
   b.recordSuccess(lease(b));
   assert.deepEqual(events, ["closed->open:quota", "open->half_open:quota", "half_open->closed:-"]);
 });
+
+// Codex, przegląd 2 (B2): żądanie przed ponowieniem pyta, czy jego dzierżawa
+// nadal coś znaczy — inaczej druga próba szłaby do już otwartego obwodu.
+test("isLeaseCurrent: dzierżawa traci ważność przy każdej zmianie stanu obwodu", () => {
+  const c = clock();
+  const b = new CircuitBreaker({ now: c.now, persistentOpenMs: 1_000 });
+  const allow = lease(b);
+  assert.equal(b.isLeaseCurrent(allow), true, "zamknięty obwód, ta sama generacja");
+  fail(b, "quota");
+  assert.equal(b.snapshot().state, "open");
+  assert.equal(b.isLeaseCurrent(allow), false, "obwód otwarty po wydaniu dzierżawy");
+  c.advance(1_000);
+  const probe = lease(b);
+  assert.equal(probe.kind, "probe");
+  assert.equal(b.isLeaseCurrent(probe), true, "próba half-open jest aktualna");
+  assert.equal(b.isLeaseCurrent(allow), false, "stara dzierżawa nie odżywa");
+  b.recordSuccess(probe);
+  assert.equal(b.snapshot().state, "closed");
+  assert.equal(b.isLeaseCurrent(probe), false, "po zamknięciu próba nie jest już próbą");
+  assert.equal(b.isLeaseCurrent(lease(b)), true);
+});

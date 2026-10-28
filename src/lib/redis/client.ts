@@ -184,12 +184,15 @@ export function warnRedisFallback(scope: string, err: unknown): void {
 }
 
 /**
- * Czy awaria jest TRWAŁA w skali sesji (limit planu, autoryzacja) albo obwód
- * jest już otwarty — wtedy nie ma sensu kontynuować pracy zależnej od zapisu.
+ * Czy awaria jest TRWAŁA w skali sesji (limit planu, autoryzacja, zły adres
+ * bazy) albo obwód jest już otwarty — wtedy nie ma sensu kontynuować pracy
+ * zależnej od zapisu. Ta sama lista co `isPersistentFailure` wyłącznika: zły
+ * adres (404/405) też nie minie sam, więc np. blokada crona ma zwrócić
+ * „magazyn niedostępny", a nie przepuścić przebieg bez blokady.
  */
 export function isPersistentRedisOutage(err: unknown): boolean {
   if (!(err instanceof RedisUnavailableError)) return false;
-  return err.reason === "quota" || err.reason === "auth" || err.reason === "circuit_open";
+  return err.reason === "circuit_open" || isPersistentFailure(err.reason);
 }
 
 // ── Szwy testowe ────────────────────────────────────────────────────────────

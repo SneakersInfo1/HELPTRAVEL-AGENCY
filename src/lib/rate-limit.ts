@@ -165,11 +165,58 @@ function getDailyLimiter(key: LimiterKey): Ratelimit | null {
 //     sprawdzić dostępności" zamiast cen);
 //   • zawieszenie → po 5 s timeoutu biblioteka przepuszczała wszystko.
 //
-// Teraz w obu przypadkach liczy limit LOKALNY: ten sam próg, to samo okno,
-// licznik w pamięci instancji funkcji. Ochrona przed nadużyciem zostaje
-// (jeden adres nie wyśle więcej niż próg do jednej instancji), znika jedynie
-// współdzielenie licznika między instancjami. To świadomy kompromis: lepsza
-// ochrona per instancja niż ochrona zerowa albo serwis niedziałający wcale.
+// Teraz w obu przypadkach decyduje POLITYKA klucza (`DEGRADED_POLICY`):
+//
+//   • domyślnie limit LOKALNY: ten sam próg, to samo okno, licznik w pamięci
+//     instancji funkcji. Ochrona przed zalewem z jednego adresu zostaje, znika
+//     współdzielenie licznika między instancjami — przy N instancjach jeden
+//     adres może wysłać do N × próg. Dopuszczalne tam, gdzie żądanie nie
+//     kosztuje pieniędzy i niczego nie otwiera (wyszukiwanie i ceny z LiteAPI
+//     — odczyty bez opłat za wywołanie; podgląd rezerwacji po losowym id);
+//   • „closed" — 503 bez wykonania trasy. Dla kluczy, przy których mnożnik
+//     N jest nie do przyjęcia, bo nie ma go czym ograniczyć: na Vercelu liczba
+//     instancji rośnie razem z ruchem, a bez Redisa nie istnieje globalny
+//     licznik. Patrz komentarz przy `DEGRADED_POLICY`.
+
+/**
+ * Klucze, które przy niedostępnym Redisie odpowiadają 503 zamiast liczyć
+ * limit lokalnie.
+ *
+ *   • `concierge` — każde żądanie to płatne wywołania modelu (OpenRouter).
+ *     Lokalny licznik per instancja nie daje żadnego GLOBALNEGO sufitu kosztu
+ *     (instancji przybywa wraz z ruchem), więc awaria magazynu nie może
+ *     otwierać czatu szerzej niż działający limiter. Czat wraca sam, gdy
+ *     Redis odpowie; reszta serwisu działa bez zmian.
+ *   • `booking-prebook` — zaczyna NOWĄ transakcję (blokada taryfy u dostawcy,
+ *     sesja płatności). Sesji i tak nie da się zapisać bez magazynu, więc 503
+ *     tutaj niczego nie odbiera, a zamyka drogę do prebooków ponad próg.
+ *   • `admin-email-test` — narzędzia operatora wysyłające e-maile (test na
+ *     dowolny adres, ponowne potwierdzenie rezerwacji). Próg 5/min to obrona
+ *     na wypadek wycieku sekretu operatora; mnożnik N instancji ją rozmywa,
+ *     a bez magazynu i tak nie ma czego ponownie potwierdzać.
+ *
+ * Celowo NIE ma tu `booking-book`: to dokończenie transakcji, za którą gość
+ * mógł już zapłacić. Odcięcie go przez awarię limitera zamieniłoby przerwę
+ * techniczną w zapłaconą, niezrealizowaną rezerwację — tam zostaje limit
+ * lokalny (powtórzeniom zapobiega idempotencja sesji, nie limiter).
+ */
+const DEGRADED_POLICY: Partial<Record<LimiterKey, "closed">> = {
+  concierge: "closed",
+  "booking-prebook": "closed",
+  "admin-email-test": "closed",
+};
+
+/** Treść 503 dla klucza zamkniętego przy awarii — bez szczegółów infrastruktury. */
+const CLOSED_MESSAGE: Partial<Record<LimiterKey, string>> = {
+  concierge: "Czat jest chwilowo niedostępny z powodu przerwy technicznej. Spróbuj ponownie za kilka minut.",
+  "booking-prebook":
+    "Rezerwacje są chwilowo wstrzymane z powodu przerwy technicznej po naszej stronie. Nic nie zostało zarezerwowane ani pobrane — spróbuj ponownie za jakiś czas.",
+};
+
+/** Polityka klucza przy niedostępnym Redisie — do asercji w testach i do raportu. */
+export function degradedPolicyFor(key: LimiterKey): "local" | "closed" {
+  return DEGRADED_POLICY[key] ?? "local";
+}
 
 interface LimitOutcome {
   success: boolean;
@@ -178,64 +225,83 @@ interface LimitOutcome {
   reset: number;
 }
 
+interface WindowBucket {
+  start: number;
+  prev: number;
+  curr: number;
+}
+
 /**
  * Okno przesuwne w pamięci — ten sam algorytm co `Ratelimit.slidingWindow`
  * (poprzednie okno ważone ułamkiem, który jeszcze się z nim nakłada).
+ *
+ * PAMIĘĆ OGRANICZONA, KOSZT O(1) NA ŻĄDANIE — dwie generacje map (wzorzec
+ * „quick-lru"). Adres trafia do generacji bieżącej; użycie adresu ze starszej
+ * przenosi go do bieżącej. Gdy bieżąca dojdzie do połowy limitu wpisów,
+ * staje się starszą, a dotychczasowa starsza wypada W CAŁOŚCI — bez
+ * przeglądania czegokolwiek.
+ *
+ * Dlaczego nie jedna mapa jako LRU: pierwsza wersja przeglądała przy pełnej
+ * mapie wszystkie 10 000 wpisów dla każdego NOWEGO adresu, a druga (usuwanie
+ * najstarszego przez `keys().next()`) też nie była O(1) — V8 zostawia po
+ * usuniętych wpisach dziury, które iterator przeskakuje do najbliższego
+ * przebudowania tablicy (zmierzone: 200 tys. nowych adresów 2,3 s, przyrost
+ * szybszy niż liniowy). Zalanie unikalnymi adresami zamieniało limiter
+ * w pętlę zjadającą CPU instancji.
+ *
+ * Adres, który właśnie przekracza próg, nie wypadnie: każda jego próba —
+ * także odrzucona — przenosi go do generacji bieżącej. Wypaść może tylko
+ * adres, który zamilkł na czas co najmniej połowy limitu wpisów (5 000)
+ * innych adresów; jeśli wraca potem z nowym licznikiem, zyskuje tyle, ile
+ * dałaby mu zmiana adresu — a do wyparcia potrzebował tysięcy innych.
  */
 export class LocalSlidingWindow {
-  // Map zachowuje kolejność wstawiania — przenosząc użyty wpis na koniec,
-  // dostajemy LRU: na początku są adresy najdawniej widziane.
-  private readonly buckets = new Map<string, { start: number; prev: number; curr: number }>();
+  private current = new Map<string, WindowBucket>();
+  private previous = new Map<string, WindowBucket>();
+  private readonly generationSize: number;
 
   constructor(
     private readonly limit: number,
     private readonly windowMs: number,
-    private readonly maxEntries = 10_000,
-  ) {}
+    maxEntries = 10_000,
+  ) {
+    this.generationSize = Math.max(1, Math.floor(maxEntries / 2));
+  }
 
   hit(id: string, now: number = Date.now()): LimitOutcome {
     const start = Math.floor(now / this.windowMs) * this.windowMs;
-    let b = this.buckets.get(id);
-    if (!b) {
-      b = { start, prev: 0, curr: 0 };
-    } else {
-      this.buckets.delete(id);
-      if (b.start !== start) {
-        b.prev = start - b.start === this.windowMs ? b.curr : 0;
-        b.curr = 0;
-        b.start = start;
-      }
+    const b = this.bucket(id, start);
+    if (b.start !== start) {
+      b.prev = start - b.start === this.windowMs ? b.curr : 0;
+      b.curr = 0;
+      b.start = start;
     }
-    this.buckets.set(id, b);
     const overlap = 1 - (now - start) / this.windowMs;
     const used = b.prev * overlap + b.curr;
     const reset = start + this.windowMs;
     if (used >= this.limit) return { success: false, limit: this.limit, remaining: 0, reset };
     b.curr += 1;
-    this.prune(start);
     return { success: true, limit: this.limit, remaining: Math.max(0, Math.floor(this.limit - used - 1)), reset };
   }
 
-  /**
-   * Pamięć ograniczona. Najpierw wpisy z okien, które już nic nie ważą; jeśli
-   * to nie wystarczy — NAJDAWNIEJ UŻYWANE (początek mapy). Nigdy nie czyścimy
-   * wszystkiego: zalanie limitera tysiącami adresów nie może wyzerować licznika
-   * adresu, który właśnie przekracza próg (on jest na końcu mapy).
-   */
-  private prune(currentStart: number): void {
-    if (this.buckets.size <= this.maxEntries) return;
-    for (const [id, b] of this.buckets) {
-      if (b.start < currentStart - this.windowMs || (b.start < currentStart && b.curr === 0)) this.buckets.delete(id);
+  /** Licznik adresu w generacji bieżącej (przeniesiony ze starszej albo nowy). */
+  private bucket(id: string, start: number): WindowBucket {
+    const hot = this.current.get(id);
+    if (hot) return hot;
+    let b = this.previous.get(id);
+    if (b) this.previous.delete(id);
+    else b = { start, prev: 0, curr: 0 };
+    this.current.set(id, b);
+    if (this.current.size >= this.generationSize) {
+      this.previous = this.current;
+      this.current = new Map();
     }
-    for (const id of this.buckets.keys()) {
-      if (this.buckets.size <= this.maxEntries) break;
-      this.buckets.delete(id);
-    }
+    return b;
   }
 
   /** Liczba śledzonych adresów (do testów i diagnostyki). */
   get size(): number {
-    return this.buckets.size;
+    return this.current.size + this.previous.size;
   }
 }
 
@@ -266,31 +332,51 @@ function noteDegraded(key: LimiterKey, why: string): void {
   const now = Date.now();
   if (now - (lastDegradedLog.get(key) ?? 0) < MINUTE_MS) return; // jedna linia na minutę na klucz
   lastDegradedLog.set(key, now);
-  console.warn(`[rate-limit] '${key}' Redis niedostępny (${why}) — limit lokalny per instancja`);
+  const action = degradedPolicyFor(key) === "closed" ? "żądania odrzucane (503)" : "limit lokalny per instancja";
+  console.warn(`[rate-limit] '${key}' Redis niedostępny (${why}) — ${action}`);
 }
 
+type Consulted = { degraded: false; result: LimitOutcome } | { degraded: true; why: string };
+
+/** Pytanie Upstash o limit — albo powód, dla którego odpowiedzi nie ma. */
+async function consultRedis(limiter: Ratelimit | null, ip: string): Promise<Consulted> {
+  if (!limiter) return { degraded: true, why: "brak konfiguracji Upstash" };
+  // Otwarty wyłącznik: nie ma sensu nawet próbować.
+  if (!redisCircuitAllows()) return { degraded: true, why: "wyłącznik otwarty" };
+  try {
+    const result = await limiter.limit(ip);
+    return result.reason === "timeout" ? { degraded: true, why: "timeout" } : { degraded: false, result };
+  } catch (err) {
+    return { degraded: true, why: err instanceof Error ? err.name : "błąd" };
+  }
+}
+
+/**
+ * Wynik limitu: z Redisa, a gdy go nie ma — według polityki klucza: licznik
+ * lokalny albo „closed" (trasa ma odpowiedzieć 503).
+ */
 async function limitWithFallback(
-  limiter: Ratelimit,
+  limiter: Ratelimit | null,
   local: LocalSlidingWindow,
   key: LimiterKey,
   ip: string,
-): Promise<LimitOutcome> {
-  // Otwarty wyłącznik: nie ma sensu nawet próbować — od razu licznik lokalny.
-  if (!redisCircuitAllows()) {
-    noteDegraded(key, "wyłącznik otwarty");
-    return local.hit(ip);
-  }
-  try {
-    const result = await limiter.limit(ip);
-    if (result.reason === "timeout") {
-      noteDegraded(key, "timeout");
-      return local.hit(ip);
-    }
-    return result;
-  } catch (err) {
-    noteDegraded(key, err instanceof Error ? err.name : "błąd");
-    return local.hit(ip);
-  }
+): Promise<LimitOutcome | "closed"> {
+  const consulted = await consultRedis(limiter, ip);
+  if (!consulted.degraded) return consulted.result;
+  noteDegraded(key, consulted.why);
+  return degradedPolicyFor(key) === "closed" ? "closed" : local.hit(ip);
+}
+
+/** 503 klucza zamkniętego przy niedostępnym Redisie — bez szczegółów awarii. */
+function closedWhileDegraded(key: LimiterKey): NextResponse {
+  return NextResponse.json(
+    {
+      error: "TEMPORARILY_UNAVAILABLE",
+      message:
+        CLOSED_MESSAGE[key] ?? "Ta funkcja jest chwilowo niedostępna z powodu przerwy technicznej. Spróbuj ponownie za kilka minut.",
+    },
+    { status: 503, headers: { "Retry-After": "60" } },
+  );
 }
 
 // Test-only seam (additive, no runtime behavior change): pre-seed or clear a
@@ -335,14 +421,13 @@ export async function enforceRateLimit(
   const ip = getClientIp(request);
   // Brak klienta Redisa: lokalnie (dev, testy) bez limitów — jak dotąd. Na
   // wdrożeniu Vercela to awaria konfiguracji (pusta albo zła zmienna), a nie
-  // tryb pracy — wtedy limit lokalny zamiast braku jakiejkolwiek ochrony.
+  // tryb pracy — wtedy polityka awaryjna klucza (limit lokalny albo 503)
+  // zamiast braku jakiejkolwiek ochrony.
   const deployed = process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview";
   if (!limiter && !deployed) return null;
-  if (!limiter) noteDegraded(key, "brak konfiguracji Upstash");
 
-  const result = limiter
-    ? await limitWithFallback(limiter, localMinuteFor(key), key, ip)
-    : localMinuteFor(key).hit(ip);
+  const result = await limitWithFallback(limiter, localMinuteFor(key), key, ip);
+  if (result === "closed") return closedWhileDegraded(key);
 
   // Sufit minutowy przechodzi → sprawdzamy jeszcze dobowy (jeśli klucz go ma).
   // Kolejność ma znaczenie: burst odcinamy TANIEJ, zanim dołożymy drugi
@@ -354,9 +439,8 @@ export async function enforceRateLimit(
     // Limiter minutowy jest (Redis albo wstrzyknięty w teście), a dobowego nie
     // da się zbudować — zachowanie jak dotąd: bez sufitu dobowego.
     if (!daily && limiter) return null;
-    const dailyResult = daily
-      ? await limitWithFallback(daily, localDailyFor(key, perDay), key, ip)
-      : localDailyFor(key, perDay).hit(ip);
+    const dailyResult = await limitWithFallback(daily, localDailyFor(key, perDay), key, ip);
+    if (dailyResult === "closed") return closedWhileDegraded(key);
     if (dailyResult.success) return null;
     console.warn(`[rate-limit] dobowy sufit '${key}' wyczerpany dla jednego adresu`);
     return NextResponse.json(

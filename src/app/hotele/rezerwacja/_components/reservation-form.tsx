@@ -103,6 +103,16 @@ function classifyPrebookError(
         message: apiMessage ?? "Zbyt wiele prób w krótkim czasie. Odczekaj chwilę i spróbuj ponownie.",
         repick: false,
       };
+    // Przerwa techniczna po naszej stronie (np. niedostępny magazyn sesji):
+    // inna oferta skończyłaby się tak samo, więc NIE odsyłamy do ponownego
+    // wyboru — mówimy wprost, że rezerwacje chwilowo nie działają.
+    case "TEMPORARILY_UNAVAILABLE":
+      return {
+        message:
+          apiMessage ??
+          "Rezerwacje są chwilowo wstrzymane z powodu przerwy technicznej. Nic nie zostało pobrane — spróbuj ponownie za jakiś czas.",
+        repick: false,
+      };
     default:
       return {
         message: apiMessage ?? "Nie udało się rozpocząć rezerwacji. Spróbuj ponownie.",

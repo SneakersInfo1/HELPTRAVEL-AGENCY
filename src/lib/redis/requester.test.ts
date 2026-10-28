@@ -4,12 +4,16 @@
 import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 
+import { Redis } from "@upstash/redis";
+
 import { CircuitBreaker } from "./breaker";
+import { isPersistentRedisOutage } from "./client";
 import { __resetRedisMetricsForTests, usageMark, usageSince } from "./metrics";
 import {
   classifyHttpFailure,
   createResilientRequester,
   describeCommands,
+  isQuotaMessage,
   RedisCommandError,
   RedisUnavailableError,
   sanitizeUpstashMessage,
@@ -199,6 +203,7 @@ test("klasyfikacja komunikatów Upstash", () => {
   assert.equal(classifyHttpFailure(400, QUOTA), "quota");
   assert.equal(classifyHttpFailure(400, "ERR max requests limit exceeded. Limit: 10000, Usage: 10000"), "quota");
   assert.equal(classifyHttpFailure(400, "ERR max daily request limit exceeded"), "quota");
+  assert.equal(classifyHttpFailure(400, "ERR max monthly bandwidth limit exceeded"), "quota");
   assert.equal(classifyHttpFailure(429, "ERR max requests limit exceeded"), "quota", "429 Z treścią o limicie planu");
   assert.equal(classifyHttpFailure(429, "Too Many Requests"), "server", "goły 429 = chwilowy throttling, nie limit planu");
   assert.equal(classifyHttpFailure(401, "Unauthorized"), "auth");
@@ -210,7 +215,51 @@ test("klasyfikacja komunikatów Upstash", () => {
   assert.equal(classifyHttpFailure(502, "Bad Gateway"), "server");
 });
 
-test("ponawianie TYLKO komend idempotentnych: SET NX, skrypty i transakcje — nigdy", async () => {
+// Codex, przegląd 2: gołe „limit exceeded" otwierało wyłącznik jako awarię
+// TRWAŁĄ (60–600 s bez magazynu) przy zwykłym dławieniu.
+test("dławienie i limity rozmiaru NIE są limitem planu (nie otwierają obwodu na minuty)", () => {
+  const throttles = [
+    "ERR rate limit exceeded",
+    "Rate limit exceeded, retry later",
+    "ERR max requests per second limit exceeded",
+    "ERR max commands per second limit exceeded",
+    "ERR max concurrent connections exceeded",
+    "limit exceeded",
+    "ERR request limit exceeded: 1000/s",
+  ];
+  for (const m of throttles) {
+    assert.equal(isQuotaMessage(m), false, m);
+    assert.equal(classifyHttpFailure(429, m), "server", `429 „${m}" = chwilowe`);
+    assert.equal(classifyHttpFailure(400, m), "command", `400 „${m}" = błąd komendy, serwer działa`);
+  }
+  for (const m of ["ERR max request size exceeded. Limit: 1048576 bytes", "ERR max data size limit exceeded", "ERR max entry size limit exceeded"]) {
+    assert.equal(isQuotaMessage(m), false, m);
+  }
+  for (const m of [QUOTA, "ERR max requests limit exceeded. Limit: 10000, Usage: 10000", "ERR max daily request limit exceeded", "ERR monthly bandwidth limit reached", "quota exceeded"]) {
+    assert.equal(isQuotaMessage(m), true, m);
+  }
+});
+
+test("429 „rate limit exceeded” liczy się jak porażka CHWILOWA: obwód zamknięty po pierwszej, otwarty po trzech na krótko", async () => {
+  const t = 0;
+  const breaker = new CircuitBreaker({ now: () => t });
+  const f = fakeFetch(() => json(429, { error: "ERR rate limit exceeded" }));
+  const { requester } = make(f.fn, breaker);
+  await assert.rejects(() => requester.request({ body: ["get", "k"] }), (err: unknown) => {
+    assert.ok(err instanceof RedisUnavailableError);
+    assert.equal(err.reason, "server");
+    return true;
+  });
+  assert.equal(breaker.snapshot().state, "closed", "jedna odmowa nie wyłącza magazynu");
+  await assert.rejects(() => requester.request({ body: ["get", "k"] }));
+  await assert.rejects(() => requester.request({ body: ["get", "k"] }));
+  const s = breaker.snapshot();
+  assert.equal(s.state, "open");
+  assert.equal(s.lastFailureKind, "server");
+  assert.equal(s.openUntil, 10_000, "okno chwilowe (10 s), nie trwałe (60 s)");
+});
+
+test("ponawianie TYLKO odczytów: zapisy (także SET EX, DEL, HSET), skrypty i transakcje — nigdy", async () => {
   const f = fakeFetch(() => {
     throw new TypeError("fetch failed");
   });
@@ -220,8 +269,14 @@ test("ponawianie TYLKO komend idempotentnych: SET NX, skrypty i transakcje — n
     { req: { body: ["evalsha", "sha", 1, "helptravel:ratelimit:x:1.2.3.4", "1"] }, calls: 1 },
     { req: { path: ["multi-exec"], body: [["set", "a", "1"], ["set", "b", "2"]] }, calls: 1 },
     { req: { path: ["pipeline"], body: [["set", "a", "1"], ["incr", "n"]] }, calls: 1 },
+    { req: { path: ["pipeline"], body: [["set", "a", "1", "ex", 60], ["expire", "a", 60]] }, calls: 1 },
+    { req: { body: ["set", "booking:v1:session:x", "{}", "ex", 3600] }, calls: 1 },
+    { req: { body: ["del", "a"] }, calls: 1 },
+    { req: { body: ["hset", "h", "f", "1"] }, calls: 1 },
+    { req: { body: ["expire", "a", 60] }, calls: 1 },
     { req: { body: ["mget", "a", "b"] }, calls: 2 },
-    { req: { path: ["pipeline"], body: [["set", "a", "1", "ex", 60], ["expire", "a", 60]] }, calls: 2 },
+    { req: { body: ["get", "a"] }, calls: 2 },
+    { req: { path: ["pipeline"], body: [["get", "a"], ["hgetall", "h"]] }, calls: 2 },
   ];
   for (const c of cases) {
     const before = f.calls.length;
@@ -255,6 +310,106 @@ test("potok z błędem LOGICZNYM pozycji → odpowiedź przekazana do SDK, obwó
   assert.equal(breaker.snapshot().state, "closed");
 });
 
+// Codex, przegląd 2 (#7): błąd SERWERA osadzony w pozycji potoku nie może
+// „leczyć" wyłącznika jak sukces. Błąd LOGICZNY (wyżej) — dalej może.
+test("potok z błędem SERWERA w pozycji (ERR internal) → porażka chwilowa, nie sukces", async () => {
+  const f = fakeFetch(() => json(200, [{ result: "OK" }, { error: "ERR internal error, please try again" }]));
+  const { requester, breaker } = make(f.fn);
+  for (let i = 0; i < 3; i++) {
+    await assert.rejects(
+      () => requester.request({ path: ["pipeline"], body: [["get", "a"], ["get", "b"]] }),
+      (err: unknown) => {
+        assert.ok(err instanceof RedisUnavailableError);
+        assert.equal(err.reason, "server");
+        return true;
+      },
+    );
+    if (i < 2) assert.equal(breaker.snapshot().state, "closed", "chwilowa: próg 3 z rzędu");
+  }
+  assert.equal(breaker.snapshot().state, "open");
+});
+
+test("osadzone błędy: stan serwera = porażka, błąd ARGUMENTU (choć ze słowem „timeout”) = odpowiedź serwera", async () => {
+  const serverErrors = [
+    "LOADING Redis is loading the dataset in memory",
+    "BUSY Redis is busy running a script",
+    "ERR internal server error",
+    "TRYAGAIN Multiple keys request during rehashing of slot",
+  ];
+  for (const error of serverErrors) {
+    const f = fakeFetch(() => json(200, [{ result: "OK" }, { error }]));
+    const { requester } = make(f.fn);
+    await assert.rejects(
+      () => requester.request({ path: ["pipeline"], body: [["get", "a"], ["get", "b"]] }),
+      (err: unknown) => {
+        assert.ok(err instanceof RedisUnavailableError, error);
+        assert.equal(err.reason, "server", error);
+        return true;
+      },
+    );
+  }
+  const logical = [
+    "ERR timeout is not a float or out of range",
+    "ERR value is not an integer or out of range",
+    "WRONGTYPE Operation against a key",
+  ];
+  for (const error of logical) {
+    const f = fakeFetch(() => json(200, [{ result: "OK" }, { error }]));
+    const { requester, breaker } = make(f.fn);
+    const res = await requester.request({ path: ["pipeline"], body: [["get", "a"], ["get", "b"]] });
+    assert.ok(Array.isArray(res), error);
+    assert.equal(breaker.snapshot().consecutiveFailures, 0, `${error}: nie liczy się jako awaria`);
+  }
+});
+
+test("błąd LOGICZNY w potoku dociera do wołającego przez SDK (nie jest połykany)", async () => {
+  const f = fakeFetch(() => json(200, [{ result: "OK" }, { error: "WRONGTYPE Operation against a key holding the wrong kind of value" }]));
+  const breaker = new CircuitBreaker();
+  const redis = new Redis(
+    createResilientRequester({ url: "https://example-redis.upstash.io", token: "tok", timeoutMs: 200, breaker, fetchImpl: f.fn }),
+  );
+  const p = redis.pipeline();
+  p.set("a", "1");
+  p.hget("a", "f");
+  await assert.rejects(() => p.exec(), /WRONGTYPE/);
+  assert.equal(breaker.snapshot().state, "closed", "serwer odpowiedział — magazyn działa");
+});
+
+// Codex, przegląd 2 (B2): żądanie czekające na ponowienie nie może iść do
+// sieci, gdy w czasie przerwy inne żądanie otworzyło obwód.
+test("ponowienie sprawdza dzierżawę: obwód otwarty w czasie przerwy → druga próba NIE idzie do sieci", async () => {
+  const breaker = new CircuitBreaker();
+  const f = fakeFetch((call) => {
+    const body = String(call.init.body);
+    if (body.includes("odczyt-a")) throw new TypeError("fetch failed");
+    return json(400, { error: QUOTA });
+  });
+  const { requester } = make(f.fn, breaker);
+  const a = requester.request({ body: ["get", "odczyt-a"] });
+  // B startuje, gdy A śpi przed ponowieniem; limit planu B otwiera obwód.
+  await new Promise((r) => setTimeout(r, 10));
+  await assert.rejects(() => requester.request({ body: ["get", "odczyt-b"] }), RedisUnavailableError);
+  assert.equal(breaker.snapshot().state, "open");
+  await assert.rejects(a, (err: unknown) => {
+    assert.ok(err instanceof RedisUnavailableError);
+    assert.equal(err.reason, "network");
+    return true;
+  });
+  const callsA = f.calls.filter((c) => String(c.init.body).includes("odczyt-a")).length;
+  assert.equal(callsA, 1, "A wysłane raz — bez ponowienia do otwartego obwodu");
+});
+
+test("ponowienie przy zamkniętym obwodzie nadal działa (dzierżawa aktualna)", async () => {
+  const breaker = new CircuitBreaker();
+  const f = fakeFetch((_, n) => {
+    if (n === 1) throw new TypeError("fetch failed");
+    return json(200, { result: "v" });
+  });
+  const { requester } = make(f.fn, breaker);
+  assert.deepEqual(await requester.request({ body: ["get", "k"] }), { result: "v" });
+  assert.equal(f.calls.length, 2);
+});
+
 test("read-your-writes: token z odpowiedzi wraca w kolejnym żądaniu", async () => {
   const f = fakeFetch(
     () => new Response(JSON.stringify({ result: "OK" }), { status: 200, headers: { "upstash-sync-token": "sync-123" } }),
@@ -279,6 +434,7 @@ test("pomiar liczy KAŻDĄ fizyczną próbę (ponowienie = podwójny payload)", 
   await requester.request({ body: ["get", "k"] });
   const used = usageSince(mark);
   assert.equal(used.commands, 2);
+  assert.equal(used.requests, 2, "każda fizyczna próba to osobne żądanie HTTP (Codex #14)");
   assert.equal(used.bytesOut, 2 * Buffer.byteLength(JSON.stringify(["get", "k"])));
 });
 
@@ -287,6 +443,19 @@ test("sanityzacja: odcina „command was: …”, skraca, jedna linia", () => {
   const s = sanitizeUpstashMessage(raw);
   assert.equal(s, QUOTA);
   assert.ok(sanitizeUpstashMessage("x".repeat(500)).length <= 201);
+});
+
+// Codex, przegląd 2 (B3): `config` (404/405) jest trwały dla wyłącznika, więc
+// też dla decyzji „nie zaczynaj pracy zależnej od zapisu" (blokada crona).
+test("isPersistentRedisOutage: limit planu, autoryzacja, ZŁY ADRES i otwarty obwód — tak; chwilowe — nie", () => {
+  for (const reason of ["quota", "auth", "config", "circuit_open"] as const) {
+    assert.equal(isPersistentRedisOutage(new RedisUnavailableError(reason)), true, reason);
+  }
+  for (const reason of ["timeout", "network", "server"] as const) {
+    assert.equal(isPersistentRedisOutage(new RedisUnavailableError(reason)), false, reason);
+  }
+  assert.equal(isPersistentRedisOutage(new RedisCommandError("WRONGTYPE")), false);
+  assert.equal(isPersistentRedisOutage(new Error("x")), false);
 });
 
 test("opis komend: wyłącznie nazwy, nigdy argumenty", () => {

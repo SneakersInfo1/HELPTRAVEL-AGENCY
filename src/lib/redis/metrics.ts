@@ -117,6 +117,8 @@ function familyCounters(family: string): FamilyCounters {
 
 export interface RequestRecord {
   family: string;
+  /** Fizyczne żądania HTTP tej operacji (ponowienie = kolejne żądanie). Domyślnie 1. */
+  attempts?: number;
   commands: number;
   bytesOut: number;
   bytesIn: number;
@@ -125,13 +127,14 @@ export interface RequestRecord {
 }
 
 export function recordRequest(r: RequestRecord): void {
+  const requests = Math.max(1, Math.trunc(r.attempts ?? 1));
   const t = windowState.totals;
   t.commands += r.commands;
-  t.requests += 1;
+  t.requests += requests;
   t.bytesOut += r.bytesOut;
   t.bytesIn += r.bytesIn;
   lifetime.commands += r.commands;
-  lifetime.requests += 1;
+  lifetime.requests += requests;
   lifetime.bytesOut += r.bytesOut;
   lifetime.bytesIn += r.bytesIn;
   if (r.outcome !== "ok") windowState.errors[r.outcome] += 1;
@@ -140,7 +143,7 @@ export function recordRequest(r: RequestRecord): void {
   windowState.latency[bucket] += 1;
   const f = familyCounters(r.family);
   f.commands += r.commands;
-  f.requests += 1;
+  f.requests += requests;
   f.bytesOut += r.bytesOut;
   f.bytesIn += r.bytesIn;
   if (r.outcome !== "ok" && r.outcome !== "command_error") f.errors += 1;

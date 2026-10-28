@@ -316,3 +316,45 @@ test("§37: czesciowo martwe ACTIVE liczy sie tylko zywa czescia", () => {
   const v = validateSnapshot(snap(manyRecords(80), "run-nowy"), active, NOW);
   assert.equal(v.ok, true, `zablokowane mimo zywych 100: ${v.problems.join(" | ")}`);
 });
+
+// ── Codex, przegląd 2, #8: uszkodzone ACTIVE ────────────────────────────────
+// Uwaga ODRZUCONA świadomie, ten test jest jej uzasadnieniem. Uszkodzony albo
+// nieczytelny (inna wersja) ACTIVE dekoduje się do `null` — tak samo dla
+// czytelników (czat), więc użytkownik JUŻ nie widzi żadnego snapshotu. Bramka
+// pokrycia chroni ŻYWY snapshot przed gorszym; tu nie ma czego chronić, a
+// blokada publikacji powtórzyłaby zakleszczenie z 2026-09 (bramka porównywała
+// odbudowę do martwego ACTIVE i nie przepuszczała jej nigdy). Bezpiecznik:
+// PREVIOUS (ostatnia DOBRA wersja) zostaje nietknięty jako cel wycofania.
+test("uszkodzone ACTIVE: odbudowa NIE jest blokowana, PREVIOUS zostaje celem wycofania", async () => {
+  const redis = fakeRedis();
+  __setSnapshotRedisForTests(redis);
+  try {
+    await publishSnapshot(snap(manyRecords(50), "run-1"), NOW);
+    await publishSnapshot(snap(manyRecords(50), "run-2"), NOW);
+    redis.data.set("csnap:v1:active", "to-nie-jest-gzip"); // zepsuty wpis
+    assert.equal(await readActiveSnapshot(), null, "czytelnik też widzi brak snapshotu");
+
+    // Ten sam mniejszy build przy CZYTELNYM ACTIVE zostałby zatrzymany przez bramkę pokrycia…
+    const smaller = snap(manyRecords(25), "run-3");
+    assert.equal(validateSnapshot(smaller, snap(manyRecords(50), "run-2"), NOW).ok, false);
+    // …ale przy uszkodzonym nie ma żywego snapshotu do ochrony: 25 kierunków > 0 widocznych.
+    const res = await publishSnapshot(smaller, NOW);
+    assert.equal(res.published, true, res.problems.join("; "));
+    assert.equal((await readActiveSnapshot())?.meta.runId, "run-3");
+    assert.equal((await readPreviousSnapshot())?.meta.runId, "run-1", "PREVIOUS nie nadpisany śmieciem");
+  } finally {
+    __resetSnapshotRedisForTests();
+  }
+});
+
+test("NIECZYTELNE ACTIVE z powodu AWARII odczytu (nie treści) → publikacja wstrzymana", async () => {
+  const redis = fakeRedis({ failOn: /csnap:v1:active/ });
+  __setSnapshotRedisForTests(redis);
+  try {
+    const res = await publishSnapshot(snap(manyRecords(25), "run-x"), NOW);
+    assert.equal(res.published, false);
+    assert.match(res.problems.join(" "), /nie udało się odczytać ACTIVE/);
+  } finally {
+    __resetSnapshotRedisForTests();
+  }
+});

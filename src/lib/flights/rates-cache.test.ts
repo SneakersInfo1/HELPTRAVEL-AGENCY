@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { test, afterEach } from "node:test";
 
+import { RedisUnavailableError } from "../redis/requester";
 import {
   flightRatesCacheKey,
+  flightSummaryKey,
   getCachedFlightOffers,
+  getCachedFlightSummary,
   setCachedFlightOffers,
   __setFlightRatesRedisForTests,
   __resetFlightRatesRedisForTests,
@@ -110,4 +113,106 @@ test("błąd klienta Redis → miss (get=null), set połknięty", async () => {
   });
   assert.equal(await getCachedFlightOffers("k"), null);
   await setCachedFlightOffers("k", [sampleOffer]); // nie może rzucić
+});
+
+// ── Transakcja lista + skrót (Codex, przegląd 2, #9) ────────────────────────
+// MULTI/EXEC nie wycofuje jednej odrzuconej komendy, gdy druga przeszła.
+// Skrót nie może wtedy przeżyć ze starym albo cudzym minimum.
+
+function txRedis(execImpl: (ops: Array<[string, unknown]>) => Promise<unknown>) {
+  const store = new Map<string, unknown>();
+  const deleted: string[] = [];
+  return {
+    store,
+    deleted,
+    client: {
+      async get<T = unknown>(k: string): Promise<T | null> { return (store.get(k) as T) ?? null; },
+      async set(k: string, v: unknown): Promise<unknown> { store.set(k, v); return "OK"; },
+      async del(...keys: string[]): Promise<unknown> { for (const k of keys) { deleted.push(k); store.delete(k); } return keys.length; },
+      multi() {
+        const ops: Array<[string, unknown]> = [];
+        return {
+          set(k: string, v: unknown) { ops.push([k, v]); return this; },
+          exec: () => execImpl(ops),
+        };
+      },
+    },
+  };
+}
+
+test("transakcja: lista i skrót zapisane razem (ten sam TTL), odczyt skrótu bez listy", async () => {
+  const r = txRedis(async (ops) => { for (const [k, v] of ops) r.store.set(k, v); return ops.map(() => "OK"); });
+  __setFlightRatesRedisForTests(r.client);
+  const key = flightRatesCacheKey(baseInput);
+  await setCachedFlightOffers(key, [sampleOffer]);
+  assert.ok(r.store.has(key));
+  assert.ok(r.store.has(flightSummaryKey(key)));
+  assert.equal((await getCachedFlightSummary(key))?.count, 1);
+});
+
+test("transakcja: odrzucona POZYCJA (serwer odpowiedział) → skrót skasowany, nie zostaje stare minimum", async () => {
+  const r = txRedis(async (ops) => {
+    // pierwsza komenda (lista) przeszła, druga (skrót) odrzucona — jak SDK: wyjątek z exec()
+    r.store.set(ops[0][0], ops[0][1]);
+    throw new Error("Command 2 [ set ] failed: ERR value is too large");
+  });
+  __setFlightRatesRedisForTests(r.client);
+  const key = flightRatesCacheKey(baseInput);
+  r.store.set(flightSummaryKey(key), { min: 199, count: 3, at: 1 }); // skrót z POPRZEDNIEJ listy
+  await setCachedFlightOffers(key, [sampleOffer]);
+  assert.deepEqual(r.deleted, [flightSummaryKey(key)]);
+  assert.equal(r.store.has(flightSummaryKey(key)), false, "brak skrótu = brak ceny, nigdy cena spoza listy");
+});
+
+test("transakcja: żądanie na pewno NIEWYKONANE (wyłącznik, limit planu, autoryzacja, adres) → bez dodatkowego DEL", async () => {
+  for (const reason of ["circuit_open", "quota", "auth", "config"] as const) {
+    const r = txRedis(async () => { throw new RedisUnavailableError(reason); });
+    __setFlightRatesRedisForTests(r.client);
+    await setCachedFlightOffers(flightRatesCacheKey(baseInput), [sampleOffer]);
+    assert.deepEqual(r.deleted, [], reason);
+  }
+});
+
+// Codex, przegląd 3: zgubiona odpowiedź (timeout, zerwane połączenie) może
+// ukrywać EXEC, w którym jedna komenda przeszła, a druga nie.
+test("transakcja: timeout / sieć / błąd serwera → skrót skasowany (wynik EXEC nieznany)", async () => {
+  for (const reason of ["timeout", "network", "server"] as const) {
+    const r = txRedis(async () => { throw new RedisUnavailableError(reason); });
+    __setFlightRatesRedisForTests(r.client);
+    const key = flightRatesCacheKey(baseInput);
+    await setCachedFlightOffers(key, [sampleOffer]);
+    assert.deepEqual(r.deleted, [flightSummaryKey(key)], reason);
+  }
+});
+
+// Codex, przegląd 4 (M1): sprzątające DEL bywa niemożliwe (obwód otwarty tuż
+// po nieudanym EXEC), więc skrót może przez chwilę odpowiadać innej liście tej
+// samej trasy. Gwarancja: skrót jest zawsze minimum z PRAWDZIWEJ odpowiedzi
+// dostawcy i nigdy starszy niż maksymalny wiek samej listy (40 min) — także
+// gdy klucz straciłby TTL.
+test("skrót: rozjechany z listą, ale nigdy starszy niż lista może być (40 min) — potem pudło", async () => {
+  const r = mapRedis();
+  __setFlightRatesRedisForTests(r.client);
+  const key = flightRatesCacheKey(baseInput);
+  const minute = 60_000;
+  r.store.set(flightSummaryKey(key), { min: 450, count: 3, at: Date.now() - 39 * minute });
+  assert.equal((await getCachedFlightSummary(key))?.min, 450, "39 min — w oknie listy");
+  r.store.set(flightSummaryKey(key), { min: 450, count: 3, at: Date.now() - 42 * minute });
+  assert.equal(await getCachedFlightSummary(key), null, "42 min — starszy niż lista może być");
+  r.store.set(flightSummaryKey(key), { min: 450, count: 3 });
+  assert.equal(await getCachedFlightSummary(key), null, "bez znacznika czasu — pudło");
+  r.store.set(flightSummaryKey(key), { min: 450, count: 3, at: "wczoraj" });
+  assert.equal(await getCachedFlightSummary(key), null);
+});
+
+test("skrót: min zawsze z PRAWDZIWEJ listy dostawcy (nigdy wymyślony), count = jej długość", async () => {
+  const r = mapRedis();
+  __setFlightRatesRedisForTests(r.client);
+  const key = flightRatesCacheKey(baseInput);
+  const offers = [{ ...sampleOffer, offerId: "a", total: 812 }, { ...sampleOffer, offerId: "b", total: 640 }];
+  await setCachedFlightOffers(key, offers);
+  const s = await getCachedFlightSummary(key);
+  assert.equal(s?.count, 2);
+  assert.equal(s?.min, 640);
+  assert.ok(typeof s?.at === "number" && Date.now() - s.at < 5_000);
 });

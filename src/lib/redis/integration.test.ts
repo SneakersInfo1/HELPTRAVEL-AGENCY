@@ -145,16 +145,29 @@ test("LIMIT PLANU: cache stawek degraduje do pudeł, po pierwszej odmowie ZERO �
 test("LIMIT PLANU: limiter NIE rzuca (było: 500 na /api/hotels/rates/batch) — liczy lokalnie i nadal odcina nadużycie", async () => {
   mock.mode = "quota";
   const req = () =>
-    new NextRequest("https://helptravel.pl/api/admin/email-test", { headers: { "x-forwarded-for": "203.0.113.7" } });
-  // admin-email-test: 5/min — najniższy próg w serwisie.
-  for (let i = 0; i < 5; i++) {
-    assert.equal(await enforceRateLimit(req(), "admin-email-test"), null, `żądanie ${i + 1} przepuszczone`);
+    new NextRequest("https://helptravel.pl/api/flights/rates", { headers: { "x-forwarded-for": "203.0.113.7" } });
+  // flights-search: 20/min, polityka awaryjna „local".
+  for (let i = 0; i < 20; i++) {
+    assert.equal(await enforceRateLimit(req(), "flights-search"), null, `żądanie ${i + 1} przepuszczone`);
   }
-  const blocked = await enforceRateLimit(req(), "admin-email-test");
-  assert.ok(blocked, "szóste odcięte");
+  const blocked = await enforceRateLimit(req(), "flights-search");
+  assert.ok(blocked, "dwudzieste pierwsze odcięte");
   assert.equal(blocked.status, 429);
   assert.ok(Number(blocked.headers.get("Retry-After")) >= 1);
   assert.ok(mock.stats.requests <= 1, `limiter odpytał Upstash ${mock.stats.requests}× (wyłącznik)`);
+});
+
+test("LIMIT PLANU: klucze ZAMKNIĘTE (czat = płatne LLM, prebook, e-maile operatora) → 503, nie limit lokalny", async () => {
+  mock.mode = "quota";
+  for (const key of ["concierge", "booking-prebook", "admin-email-test"] as const) {
+    const res = await enforceRateLimit(
+      new NextRequest("https://helptravel.pl/api/x", { headers: { "x-forwarded-for": "203.0.113.8" } }),
+      key,
+    );
+    assert.equal(res?.status, 503, key);
+    assert.equal(((await res!.json()) as { error: string }).error, "TEMPORARILY_UNAVAILABLE", key);
+  }
+  assert.ok(mock.stats.requests <= 1, `Upstash odpytany ${mock.stats.requests}× (wyłącznik)`);
 });
 
 test("LIMIT PLANU: zapis sesji rezerwacji → BookingError LITEAPI_DOWN (503), komunikat bez danych gościa", async () => {

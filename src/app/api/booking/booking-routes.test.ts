@@ -308,6 +308,82 @@ test("rate limit exceeded → 429", async () => {
   });
 });
 
+// Incydent 2026-10-25: przy niedostępnym magazynie sesji prebook NIE może
+// dotknąć dostawcy (osierocony prebook), a gość nie może dostać rady „wybierz
+// inną ofertę" (LITEAPI_DOWN) — każda inna skończyłaby się tak samo.
+test("magazyn sesji niedostępny → 503 TEMPORARILY_UNAVAILABLE, zero wywołań LiteAPI", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    __setBookingRedisForTests(null);
+    const restore = mockFetch(() => ({ status: 200, body: PREBOOK_OK }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const r = await POST(post("http://t/api/booking/prebook", PREBOOK_REQ_BODY));
+      assert.equal(r.status, 503);
+      assert.ok(Number(r.headers.get("Retry-After")) > 0);
+      const body = (await r.json()) as { error: string; message: string };
+      assert.equal(body.error, "TEMPORARILY_UNAVAILABLE");
+      assert.match(body.message, /po naszej stronie/);
+      assert.match(body.message, /nic nie zostało/i);
+      assert.equal(fetchCalls.length, 0, "żadnego prebooka u dostawcy bez magazynu sesji");
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("zapis znacznika sesji pada → 503 TEMPORARILY_UNAVAILABLE, zero wywołań LiteAPI", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    const { RedisUnavailableError } = await import("@/lib/redis/requester");
+    fake.set = async () => {
+      throw new RedisUnavailableError("quota");
+    };
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch(() => ({ status: 200, body: PREBOOK_OK }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const r = await POST(post("http://t/api/booking/prebook", PREBOOK_REQ_BODY));
+      assert.equal(r.status, 503);
+      assert.equal(((await r.json()) as { error: string }).error, "TEMPORARILY_UNAVAILABLE");
+      assert.equal(fetchCalls.length, 0);
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+// Codex, przegląd 3: magazyn pada MIĘDZY znacznikiem a zapisem sesji — prebook
+// u dostawcy już jest. Płatność NIE może zostać otwarta (bez secretKey dla
+// przeglądarki), a gość dostaje uczciwą odpowiedź zamiast „wybierz inną ofertę".
+test("zapis sesji PO prebooku pada → 503 TEMPORARILY_UNAVAILABLE, bez secretKey w odpowiedzi", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    const { RedisUnavailableError } = await import("@/lib/redis/requester");
+    const realSet = fake.set.bind(fake);
+    fake.set = async (k: string, v: unknown) => {
+      if (k.includes(":pending:")) return realSet(k, v); // znacznik przechodzi
+      throw new RedisUnavailableError("timeout"); // zapis sesji pada
+    };
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch(() => ({ status: 200, body: PREBOOK_OK }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const r = await POST(post("http://t/api/booking/prebook", PREBOOK_REQ_BODY));
+      assert.equal(r.status, 503);
+      const text = await r.text();
+      const body = JSON.parse(text) as { error: string; message: string };
+      assert.equal(body.error, "TEMPORARILY_UNAVAILABLE");
+      assert.doesNotMatch(text, /secretKey|_secret_/, "sesja płatności nie trafia do przeglądarki");
+      assert.ok(fetchCalls.length >= 1, "prebook u dostawcy był (scenariusz awarii PO nim)");
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
 test("session expired (no payment evidence) → 410 session_expired, no recovery record", async () => {
   await withEnv(LIVE_ENV, async () => {
     const fake = makeFakeRedis();
@@ -1399,6 +1475,11 @@ test("CASE 7 (route): production without EMAIL_FROM refuses instead of using res
     const fake = makeFakeRedis();
     fake.store.set("booking:v1:completed:9c-OQvmqJ", CONFIRMED_RECORD);
     __setBookingRedisForTests(fake);
+    // Na „produkcji" bez Upstash limiter e-maili operatora jest ZAMKNIĘTY
+    // (polityka awaryjna) — tu sprawdzamy EMAIL_FROM, więc limiter działa.
+    __setLimiterForTests("admin-email-test", {
+      limit: async () => ({ success: true, limit: 5, remaining: 4, reset: Date.now() + 60_000 }),
+    } as never);
     __resetResendClientForTests();
     const restore = mockFetch(() => ({ status: 200, body: PROVIDER_BOOKING }));
     try {
@@ -1410,6 +1491,7 @@ test("CASE 7 (route): production without EMAIL_FROM refuses instead of using res
       assert.equal(fetchCalls.filter((c) => c.url.includes(RESEND_URL)).length, 0);
     } finally {
       restore();
+      __resetLimitersForTests();
       __resetResendClientForTests();
       __resetBookingRedisForTests();
     }

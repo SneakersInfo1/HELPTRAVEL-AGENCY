@@ -16,7 +16,7 @@
 import { gunzipSync, gzipSync } from "node:zlib";
 
 import { minTotalFromOffers } from "@/lib/prices/destination-price-snapshot";
-import { getSharedRedis, warnRedisFallback } from "@/lib/redis/client";
+import { getSharedRedis, isRedisUnavailableError, warnRedisFallback } from "@/lib/redis/client";
 import { recordCacheLookup } from "@/lib/redis/metrics";
 
 import type { DisplayOffer } from "./display";
@@ -37,6 +37,15 @@ const TTL_OFFERS_SECONDS = 600; // 10 min — oferty (on-demand)
 // padnie). 40 min = 30 min cyklu + margines.
 const TTL_WARM_SECONDS = 2400; // 40 min — wpisy z crona
 const TTL_EMPTY_SECONDS = 600; // 10 min — negatywny cache martwych tras
+// Sufit wieku SKRÓTU niezależny od TTL klucza. Lista i skrót idą jedną
+// transakcją, ale MULTI/EXEC nie wycofuje pojedynczej odrzuconej komendy,
+// a sprzątające DEL bywa niemożliwe (np. obwód właśnie się otworzył) — skrót
+// może więc chwilowo odpowiadać innej liście tej samej trasy. Ten sufit
+// gwarantuje, że nawet wtedy jest to PRAWDZIWE minimum z odpowiedzi dostawcy
+// sprzed najwyżej tyle, ile może mieć sama lista (40 min) — a nie cena
+// nieograniczenie stara. Skrót nigdy nie jest ceną rezerwacji (verify/prebook
+// zawsze wyceniają od nowa).
+const SUMMARY_MAX_AGE_MS = (TTL_WARM_SECONDS + 60) * 1000;
 
 /** Rodzaj wpisu do cache — steruje TTL. `on-demand` (użytkownik) vs `warm` (cron). */
 export type FlightCacheKind = "on-demand" | "warm";
@@ -58,6 +67,7 @@ interface RedisTransaction {
 interface RedisLike {
   get<T = unknown>(key: string): Promise<T | null>;
   set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
+  del?: (...keys: string[]) => Promise<unknown>;
   /** Transakcja MULTI/EXEC (prawdziwy klient). Atrapy w testach mogą jej nie mieć. */
   multi?: () => RedisTransaction;
 }
@@ -141,6 +151,8 @@ export async function getCachedFlightSummary(key: string): Promise<FlightOffersS
       v !== null &&
       typeof v === "object" &&
       typeof v.count === "number" &&
+      typeof v.at === "number" &&
+      Date.now() - v.at <= SUMMARY_MAX_AGE_MS &&
       (v.min === null || (typeof v.min === "number" && Number.isFinite(v.min) && v.min > 0));
     recordCacheLookup("flmin", ok ? 1 : 0, ok ? 0 : 1);
     return ok ? v : null;
@@ -152,6 +164,19 @@ export async function getCachedFlightSummary(key: string): Promise<FlightOffersS
 
 function summaryOf(offers: DisplayOffer[]): FlightOffersSummary {
   return { min: minTotalFromOffers(offers), count: offers.length, at: Date.now() };
+}
+
+/**
+ * Czy nieudana transakcja MOGŁA wykonać się częściowo. Nie — tylko gdy
+ * żądanie na pewno nie zostało wykonane: wyłącznik (nic nie wyszło), limit
+ * planu, autoryzacja, zły adres (serwer odrzucił całe żądanie). Każdy inny
+ * błąd — odrzucona pozycja, błąd serwera, a także timeout i zerwane
+ * połączenie (Codex, przegląd 3: zgubiona odpowiedź może ukrywać EXEC
+ * z jedną odrzuconą komendą) — kasuje skrót.
+ */
+function transactionMayBePartial(err: unknown): boolean {
+  if (!isRedisUnavailableError(err)) return true;
+  return err.reason !== "circuit_open" && err.reason !== "quota" && err.reason !== "auth" && err.reason !== "config";
 }
 
 /** Zapis (best-effort). Pusta lista → krótszy TTL (negatywny cache martwych tras).
@@ -167,15 +192,30 @@ export async function setCachedFlightOffers(
   const client = getRedis();
   if (!client) return;
   const ex = ttlFor(offers, kind);
-  try {
-    if (typeof client.multi === "function") {
+  if (typeof client.multi === "function") {
+    try {
       const tx = client.multi();
       tx.set(key, packOffers(offers), { ex });
       tx.set(flightSummaryKey(key), summaryOf(offers), { ex });
       await tx.exec();
-      return;
+    } catch (err) {
+      warnRedisFallback("flights/rates-cache", err);
+      // MULTI/EXEC chroni przed przeplotem z innym zapisem, ale NIE wycofuje
+      // jednej nieudanej komendy, gdy druga przeszła. Taki błąd (serwer
+      // odpowiedział, pozycja transakcji odrzucona) zostawiłby skrót
+      // niezgodny z listą — stare minimum przy nowej liście albo nowe przy
+      // starej. Skrót kasujemy: brak skrótu = brak ceny, nigdy cena spoza
+      // listy. Świadomy koszt: DEL może zdążyć po udanym zapisie INNEGO
+      // żądania i skasować jego poprawny skrót — wtedy też zostaje „brak
+      // ceny" do następnego zapisu, a nie cena błędna.
+      if (transactionMayBePartial(err) && typeof client.del === "function") {
+        await client.del(flightSummaryKey(key)).catch(() => {});
+      }
     }
-    // Atrapa bez transakcji (testy): lista, potem skrót.
+    return;
+  }
+  // Atrapa bez transakcji (testy): lista, potem skrót.
+  try {
     await client.set(key, packOffers(offers), { ex });
   } catch (err) {
     warnRedisFallback("flights/rates-cache", err);

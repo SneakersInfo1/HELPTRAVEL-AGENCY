@@ -6,9 +6,11 @@
 //   • TIMEOUT na całe żądanie (AbortSignal: nawiązanie, odpowiedź i treść) —
 //     domyślny HttpClient SDK nie miał żadnego, a przy błędach sieci ponawiał
 //     5× z backoffem wykładniczym (50 ms … 2,7 s);
-//   • PONOWIENIE tylko przy błędzie POŁĄCZENIA i tylko dla komend, których
-//     powtórzenie niczego nie psuje (odczyty, zwykły SET/DEL/EXPIRE). Nigdy
-//     skrypty (limiter), SET NX (blokady crona), liczniki ani transakcje;
+//   • PONOWIENIE tylko przy błędzie POŁĄCZENIA i tylko dla ODCZYTÓW. Zapis,
+//     którego odpowiedź zginęła, mógł już się wykonać — jego powtórzenie po
+//     100 ms potrafi nadpisać nowszą wartość innego żądania (sesja rezerwacji)
+//     albo przesunąć TTL. Nigdy więc zapisy, skrypty (limiter), SET NX
+//     (blokady crona), liczniki ani transakcje;
 //   • ODPOWIEDZI BEZ base64 — domyślny HttpClient prosi serwer o kodowanie
 //     każdej odpowiedzi w base64 (nagłówek `Upstash-Encoding`), co dokłada
 //     ~33% do transferu każdego odczytu. Nasze wartości to JSON/UTF-8, więc
@@ -50,26 +52,52 @@ export class RedisCommandError extends Error {
   }
 }
 
-// Komunikaty limitu planu, które Upstash zwraca (zmierzone 2026-10-25:
-// „ERR This database has reached current Fixed plan limits…"), plus znane
-// warianty dla planów pay-as-you-go/free („ERR max requests limit exceeded",
-// „ERR max daily request limit exceeded", limit przepustowości).
+// LIMIT PLANU = wyczerpany budżet miesięczny albo dobowy. Tylko taki komunikat
+// otwiera wyłącznik jako awarię TRWAŁĄ (od razu, na minutę i dłużej), więc
+// lista jest celowo wąska — znane brzmienia, nie samo słowo „limit":
+//   • zmierzone 2026-10-25: „ERR This database has reached current Fixed plan
+//     limits. Please upgrade manually or enable auto upgrade…";
+//   • warianty planów free/pay-as-you-go: „ERR max requests limit exceeded.
+//     Limit: …, Usage: …", „ERR max daily request limit exceeded", limit
+//     miesięcznej przepustowości (bandwidth).
+// Wcześniej pasowało też gołe „limit exceeded" — więc zwykłe dławienie
+// („rate limit exceeded", limit na sekundę) wyłączało magazyn na 60–600 s
+// zamiast liczyć się jako porażka chwilowa.
 const QUOTA_RE =
-  /plan limits?|max (?:daily |monthly )?(?:requests?|commands?|bandwidth|data size)\b[^.]*\blimit|limit exceeded|exceeded[^.]*\blimit|quota/i;
+  /\bplan limits?\b|\bmax (?:daily|monthly) (?:requests?|commands?|bandwidth)\b|\bmax requests limit exceeded\b|\b(?:daily|monthly) (?:requests?|commands?|bandwidth) limit\b|\bbandwidth limit\b|\bquota\b/i;
+// Dławienie chwilowe (na sekundę, połączenia równoległe, „rate limit") i limity
+// rozmiaru POJEDYNCZEGO żądania albo wpisu — mimo słowa „limit" to nie jest
+// wyczerpany plan. Pełna pamięć bazy też nie: odczyty dalej działają, więc
+// zamykanie całego magazynu byłoby gorsze niż odrzucenie samego zapisu.
+const NOT_QUOTA_RE = /per[- ]second|\/\s*s(?:ec)?\b|concurren|too many requests|rate[- ]?limit|\bsize\b/i;
 const AUTH_RE = /unauthori[sz]ed|invalid (?:api )?token|wrongpass|noauth/i;
+// Błąd SERWERA osadzony w pozycji potoku (HTTP 200, ale serwer nie wykonał
+// komendy z powodu własnego stanu). Liczy się jak porażka chwilowa — w
+// odróżnieniu od błędów logicznych (WRONGTYPE, NOSCRIPT, składnia), po których
+// wiadomo, że magazyn działa. Tylko jednoznaczne stany serwera: prefiksy
+// Redisa (LOADING, BUSY, CLUSTERDOWN, MASTERDOWN, TRYAGAIN) oraz „internal
+// (server) error", „service unavailable", „timed out". NIE gołe „timeout":
+// „ERR timeout is not a float or out of range" to błąd argumentu komendy.
+const EMBEDDED_SERVER_RE =
+  /^(?:ERR\s+)?(?:LOADING|BUSY|CLUSTERDOWN|MASTERDOWN|TRYAGAIN)\b|\binternal (?:server )?error\b|\bservice unavailable\b|\btimed out\b/i;
+
+/** Czy komunikat oznacza wyczerpany limit planu (awaria trwała). */
+export function isQuotaMessage(message: string): boolean {
+  return QUOTA_RE.test(message) && !NOT_QUOTA_RE.test(message);
+}
 
 /**
  * Klasyfikacja odpowiedzi HTTP ≠ 2xx.
- *   • limit planu (po treści) → `quota` (trwałe);
+ *   • limit planu (po treści, patrz `isQuotaMessage`) → `quota` (trwałe);
  *   • 401/403 → `auth` (trwałe);
  *   • 404/405 → `config` (trwałe: zły adres bazy albo ścieżki);
- *   • 408 → `timeout`, 429 bez treści o limicie → `server` (throttling, chwilowe);
+ *   • 408 → `timeout`, 429 → `server` (dławienie, chwilowe);
  *   • 5xx → `server` (chwilowe);
  *   • pozostałe 4xx (400, 413, 422…) → `command`: tak Upstash zgłasza błędy
  *     samych komend Redisa, serwer działa.
  */
 export function classifyHttpFailure(status: number, message: string): FailureKind | "command" {
-  if (QUOTA_RE.test(message)) return "quota";
+  if (isQuotaMessage(message)) return "quota";
   if (status === 401 || status === 403 || AUTH_RE.test(message)) return "auth";
   if (status === 404 || status === 405) return "config";
   if (status === 408) return "timeout";
@@ -116,52 +144,39 @@ export function describeCommands(commands: unknown[], pipeline: boolean): string
   return `pipeline: ${[...counts].map(([n, k]) => (k > 1 ? `${n}×${k}` : n)).join(", ")}`;
 }
 
-/** Komendy, których powtórzenie po zgubionej odpowiedzi daje ten sam stan. */
-const RETRY_SAFE = new Set([
-  "get",
-  "mget",
-  "hget",
-  "hgetall",
-  "hmget",
-  "exists",
-  "ttl",
-  "pttl",
-  "ping",
-  "del",
-  "expire",
-  "hset",
-]);
+/**
+ * Komendy TYLKO DO ODCZYTU — jedyne, które wolno powtórzyć po zgubionej
+ * odpowiedzi. Zapis (także zwykły SET z EX, DEL, HSET, EXPIRE) mógł się już
+ * wykonać: powtórzony po 100 ms nadpisałby wartość zapisaną w międzyczasie
+ * przez inne żądanie albo przesunąłby TTL, a jego odpowiedź (DEL: 0 zamiast 1)
+ * kłamałaby o tym, co się stało.
+ */
+const RETRY_SAFE = new Set(["get", "mget", "hget", "hgetall", "hmget", "exists", "ttl", "pttl", "ping", "strlen"]);
 
 /**
  * Czy żądanie wolno POWTÓRZYĆ, gdy połączenie padło i nie wiemy, czy serwer
- * je wykonał. SET tylko bez NX/XX/GET (zwykłe nadpisanie tą samą wartością);
- * skrypty, liczniki i transakcje — nigdy.
+ * je wykonał. Wyłącznie odczyty (także potok złożony z samych odczytów);
+ * zapisy, skrypty, liczniki i transakcje — nigdy.
  */
 export function isRetrySafe(commands: unknown[], transaction: boolean): boolean {
   if (transaction || commands.length === 0) return false;
-  return commands.every((c) => {
-    if (!Array.isArray(c) || c.length === 0) return false;
-    const name = String(c[0]).toLowerCase();
-    if (name === "set") {
-      const flags = c.slice(3).map((x) => String(x).toLowerCase());
-      return !flags.includes("nx") && !flags.includes("xx") && !flags.includes("get");
-    }
-    return RETRY_SAFE.has(name);
-  });
+  return commands.every((c) => Array.isArray(c) && c.length > 0 && RETRY_SAFE.has(String(c[0]).toLowerCase()));
 }
 
 /**
  * W potoku Upstash zwraca HTTP 200 i błędy per pozycja. Błąd LOGICZNY zostawia
- * SDK (rzuci go jako błąd komendy), ale limit planu albo autoryzacja wewnątrz
- * potoku to awaria magazynu — musi otworzyć wyłącznik, a nie go „uleczyć".
+ * SDK (rzuci go jako błąd komendy), ale limit planu, autoryzacja albo błąd
+ * samego serwera wewnątrz potoku to awaria magazynu — musi liczyć się jako
+ * porażka, a nie „uleczyć" wyłącznik.
  */
 function embeddedOutage(body: unknown): { kind: FailureKind; message: string } | null {
   if (!Array.isArray(body)) return null;
   for (const entry of body) {
     const error = (entry as { error?: unknown } | null)?.error;
     if (typeof error !== "string") continue;
-    if (QUOTA_RE.test(error)) return { kind: "quota", message: sanitizeUpstashMessage(error) };
+    if (isQuotaMessage(error)) return { kind: "quota", message: sanitizeUpstashMessage(error) };
     if (AUTH_RE.test(error)) return { kind: "auth", message: sanitizeUpstashMessage(error) };
+    if (EMBEDDED_SERVER_RE.test(error)) return { kind: "server", message: sanitizeUpstashMessage(error) };
   }
   return null;
 }
@@ -227,7 +242,9 @@ export function createResilientRequester(opts: ResilientRequesterOptions): Reque
       const record = (outcome: Parameters<typeof recordRequest>[0]["outcome"]) =>
         recordRequest({
           family,
-          // Każda fizyczna próba to wysłany payload i potencjalnie wykonane komendy.
+          // Każda fizyczna próba to osobne żądanie HTTP: wysłany payload
+          // i potencjalnie wykonane komendy.
+          attempts: Math.max(1, attempts),
           commands: commands.length * Math.max(1, attempts),
           bytesOut: payloadBytes * Math.max(1, attempts),
           bytesIn,
@@ -273,6 +290,11 @@ export function createResilientRequester(opts: ResilientRequesterOptions): Reque
             if (isTimeoutError(err)) throw unavailable("timeout", what);
             if (attempts > retries) throw unavailable("network", what);
             await sleep(100);
+            // W czasie przerwy inne żądania mogły otworzyć obwód (albo zakończyć
+            // próbę half-open). Wtedy kolejna próba NIE idzie do sieci — jej
+            // wynik i tak byłby zignorowany, a komenda obciążyłaby magazyn,
+            // o którym już wiadomo, że nie działa.
+            if (!opts.breaker.isLeaseCurrent(lease)) throw unavailable("network", what);
           }
         }
 

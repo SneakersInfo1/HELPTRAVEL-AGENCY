@@ -170,6 +170,17 @@ export class CircuitBreaker {
     this.probeInFlight = false;
   }
 
+  /**
+   * Czy dzierżawa nadal odpowiada bieżącemu stanowi obwodu. Żądanie, które
+   * czeka na ponowienie, pyta o to PRZED kolejną próbą: jeśli w tym czasie inne
+   * żądania otworzyły obwód, kolejna próba nie może pójść do sieci (wynik i tak
+   * zostałby zignorowany, a komenda obciążyłaby niedostępny magazyn).
+   */
+  isLeaseCurrent(lease: BreakerLease): boolean {
+    if (lease.generation !== this.generation) return false;
+    return lease.kind === "allow" ? this.state === "closed" : this.state === "half_open";
+  }
+
   /** Czy obwód teraz przepuściłby żądanie (bez zajmowania próby). */
   wouldAllow(): boolean {
     if (this.state === "closed") return true;
