@@ -136,23 +136,23 @@ export function fallbackPlan(
 
   const templates = [
     {
-      title: "Przylot i pierwszy spaćer",
-      description: `Przylot do ${destination.city}, check-in, więczórny spaćer i lokalna kolacja w centrum.`,
+      title: "Przylot i pierwszy spacer",
+      description: `Przylot do ${destination.city}, check-in, wieczorny spacer i lokalna kolacja w centrum.`,
     },
     {
-      title: "Glowny dzień zwiedzania",
-      description: "Najważniejsze atrakcje, punkt widokowy i więczór w dzielnicy z klimatem.",
+      title: "Główny dzień zwiedzania",
+      description: "Najważniejsze atrakcje, punkt widokowy i wieczór w dzielnicy z klimatem.",
     },
     {
-      title: "Dzien lokalny",
+      title: "Dzień lokalny",
       description: "Mniej oczywiste miejsca, kawa, street food i spokojne tempo z czasem na odpoczynek.",
     },
     {
       title: "Wycieczka tematyczna",
-      description: "Opcjonalny wypad poza centrum lub plażą i aktywnosci dopasowane do stylu wyjazdu.",
+      description: "Opcjonalny wypad poza centrum lub plażą i aktywności dopasowane do stylu wyjazdu.",
     },
     {
-      title: "Final i powrót",
+      title: "Finał i powrót",
       description: "Lekki poranek, ostatnie zakupy i transfer na lotnisko.",
     },
   ];
