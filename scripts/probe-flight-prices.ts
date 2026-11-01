@@ -47,7 +47,7 @@ async function jednaTrasa(iata: string, nazwa: string) {
         ],
         adults: 1,
       });
-      const offers = await searchFlightOffers(input);
+      const offers = await searchFlightOffers(input, { source: "user" });
       const kwoty = (offers ?? [])
         .map((o) => (o.currency === "PLN" ? o.total : undefined))
         .filter((v): v is number => typeof v === "number" && v > 0);

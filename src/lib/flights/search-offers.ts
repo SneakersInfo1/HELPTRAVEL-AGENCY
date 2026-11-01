@@ -23,10 +23,10 @@ export const FLIGHT_OFFERS_CAP = 500;
  *
  *  `opts` przepuszcza limit czasu i liczbę prób do klienta: konsjerż ma twardy
  *  budżet tury (50 s na WSZYSTKO), więc nie może użyć domyślnych 30 s × 3
- *  próby lejka lotów. Lejek nadal wywołuje bez `opts` i nic nie traci. */
+ *  próby lejka lotów. `opts.source` jest obowiązkowe (`search-policy.ts`). */
 export async function searchFlightOffers(
   input: FlightSearchInput,
-  opts?: FlightSearchOptions,
+  opts: FlightSearchOptions,
 ): Promise<DisplayOffer[]> {
   const res = await searchFlightRates(input, opts);
   return normalizeRatesResponse(res)

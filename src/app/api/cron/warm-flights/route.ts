@@ -18,6 +18,7 @@ import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
 
 import { createProviderGate } from "@/lib/flights/provider-gate";
 import { searchFlightOffers } from "@/lib/flights/search-offers";
+import { isBackgroundFlightSearchEnabled } from "@/lib/flights/search-policy";
 import { flightRatesCacheKey, setCachedFlightOffers } from "@/lib/flights/rates-cache";
 import { redisMayBeAvailable } from "@/lib/redis/client";
 import { checkCronRedisBudget, flushRedisMetrics, usageMark, usageSince } from "@/lib/redis/metrics";
@@ -70,6 +71,12 @@ export async function GET(request: NextRequest) {
   // przebiegi dublowaly koszt LiteAPI i gubily aktualizacje przy
   // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
   // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
+  // Automatyczne wyszukiwania lotów są domyślnie WYŁĄCZONE (src/lib/flights/search-policy.ts):
+  // bez blokady, bez magazynu i bez dostawcy — cache wypełniają wyszukiwania użytkowników.
+  if (!isBackgroundFlightSearchEnabled()) {
+    return NextResponse.json({ ok: true, skipped: "background_flight_search_disabled" });
+  }
+
   const blokada = await zajmijBlokade("warm-flights", 360);
   if (!blokada.zdobyta) return NextResponse.json(odpowiedzBezBlokady("warm-flights", blokada));
 
@@ -129,7 +136,7 @@ export async function GET(request: NextRequest) {
         adults: WARM_FLIGHT_ADULTS,
       });
       // `retries: 1` — jeden strzał (domyślne 3 próby ponawiały też 429).
-      const offers = await searchFlightOffers(input, { retries: 1 });
+      const offers = await searchFlightOffers(input, { source: "background", retries: 1 });
       gate.onSuccess();
       await setCachedFlightOffers(flightRatesCacheKey(input), offers, "warm");
       if (offers.length > 0) warmed++;

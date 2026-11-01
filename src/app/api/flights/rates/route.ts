@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     // Wspólny helper (search → normalize → sort po cenie → cap) — ten sam,
     // którym cron grzeje cache, więc kształt ofert = identyczny.
-    const offers = await searchFlightOffers(input);
+    const offers = await searchFlightOffers(input, { source: "user" });
     await setCachedFlightOffers(cacheKey, offers);
     return NextResponse.json({ offers, count: offers.length, cached: false }, { status: 200 });
   } catch (err) {

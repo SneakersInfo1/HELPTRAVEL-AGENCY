@@ -20,6 +20,7 @@ import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
 import { fetchHotelsForDestination } from "@/lib/liteapi";
 import { searchFlightRates } from "@/lib/flights/client";
 import { createProviderGate } from "@/lib/flights/provider-gate";
+import { isBackgroundFlightSearchEnabled } from "@/lib/flights/search-policy";
 import { redisMayBeAvailable } from "@/lib/redis/client";
 import { checkCronRedisBudget, flushRedisMetrics, usageMark, usageSince } from "@/lib/redis/metrics";
 import { normalizeRatesResponse } from "@/lib/flights/display";
@@ -283,9 +284,11 @@ export async function GET(request: NextRequest) {
   // Concurrency 4 (nie WARM_CONCURRENCY): /flights/rates jest cięższy (~5-8 s).
   let flightCalls = 0;
   let flightPrices = 0;
+  const backgroundFlights = isBackgroundFlightSearchEnabled();
   const flightTasks: Array<{ label: string; priceKey: string; iata: string; w: (typeof cheapWindows)[number] }> = [];
   for (const dh of destHotels) {
-    if (!dh.iata || !bestPrice.has(dh.priceKey)) continue;
+    // Ceny lotów do kierunków tylko przy włączonych wyszukiwaniach w tle (search-policy.ts).
+    if (!backgroundFlights || !dh.iata || !bestPrice.has(dh.priceKey)) continue;
     for (const w of cheapWindows) {
       flightTasks.push({ label: `${dh.label}/${w.label}`, priceKey: dh.priceKey, iata: dh.iata, w });
     }
@@ -309,7 +312,7 @@ export async function GET(request: NextRequest) {
       });
       // `retries: 1` — jeden strzał. Domyślne 3 próby ponawiały też 429, czyli
       // przy limitowaniu przez dostawcę cron TROIŁ ruch, który go wywołał.
-      const res = await searchFlightRates(input, { retries: 1 });
+      const res = await searchFlightRates(input, { source: "background", retries: 1 });
       flightGate.onSuccess();
       flightCalls++;
       const minTotal = minTotalFromOffers(normalizeRatesResponse(res));

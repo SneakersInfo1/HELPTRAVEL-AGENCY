@@ -134,7 +134,7 @@ async function main() {
       ],
       adults: 1,
     });
-    const offers = normalizeRatesResponse(await searchFlightRates(input));
+    const offers = normalizeRatesResponse(await searchFlightRates(input, { source: "user" }));
     const cheapest = [...offers].sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity))[0];
     if (!cheapest) {
       console.log("  Brak ofert — pomijam.");

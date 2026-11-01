@@ -191,7 +191,7 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
     // na budżet tury i to on dawał teoretyczne 90 s.
     const budgetMs = Math.min(q.budgetMs ?? FLIGHT_GLOBAL_BUDGET_MS, FLIGHT_GLOBAL_BUDGET_MS);
     const result = await searchWithDeadline(
-      ({ timeoutMs }) => searchFlightOffers(input, { timeoutMs, retries: 1 }),
+      ({ timeoutMs }) => searchFlightOffers(input, { source: "chat", timeoutMs, retries: 1 }),
       {
         deadlineAt: Date.now() + budgetMs,
         firstAttemptMs: FLIGHT_FIRST_ATTEMPT_MS,

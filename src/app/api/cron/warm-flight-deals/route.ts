@@ -39,6 +39,7 @@ import {
 import { lookupAirport } from "@/lib/flights/airports";
 import { flightRatesCacheKey, setCachedFlightOffers } from "@/lib/flights/rates-cache";
 import { searchFlightOffers } from "@/lib/flights/search-offers";
+import { isBackgroundFlightSearchEnabled } from "@/lib/flights/search-policy";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
 import { rotateSlice, rotationBucket } from "@/lib/home/rotation";
 
@@ -146,6 +147,12 @@ export async function GET(request: NextRequest) {
   // przebiegi dublowaly koszt LiteAPI i gubily aktualizacje przy
   // wzorcu odczyt-scal-zapis. Zajete = 200 "skipped_locked", bo to
   // sytuacja normalna; 5xx wywolaloby ponawianie i pogorszylo sprawe.
+  // Automatyczne wyszukiwania lotów są domyślnie WYŁĄCZONE (src/lib/flights/search-policy.ts):
+  // bez blokady, bez magazynu i bez dostawcy — cache wypełniają wyszukiwania użytkowników.
+  if (!isBackgroundFlightSearchEnabled()) {
+    return NextResponse.json({ ok: true, skipped: "background_flight_search_disabled" });
+  }
+
   const blokada = await zajmijBlokade("warm-flight-deals", 360);
   if (!blokada.zdobyta) return NextResponse.json(odpowiedzBezBlokady("warm-flight-deals", blokada));
 
@@ -240,7 +247,7 @@ export async function GET(request: NextRequest) {
         adults: DEAL_ADULTS,
       });
       // `retries: 1` — jeden strzał (domyślne 3 próby ponawiały też 429).
-      const offers = await searchFlightOffers(input, { retries: 1 });
+      const offers = await searchFlightOffers(input, { source: "background", retries: 1 });
       gate.onSuccess();
       // Wyszukanie się udało — niezależnie od tego, czy coś z niego wyszło.
       completedByRoute.set(routeKey(route), (completedByRoute.get(routeKey(route)) ?? 0) + 1);

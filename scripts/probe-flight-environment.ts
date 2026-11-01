@@ -47,7 +47,7 @@ async function main() {
   });
   const t0 = Date.now();
   try {
-    const res = await searchFlightRates(input);
+    const res = await searchFlightRates(input, { source: "user" });
     const ms = Date.now() - t0;
     const offers = normalizeRatesResponse(res);
     const prices = offers.map((o) => o.total).filter((p): p is number => typeof p === "number");
