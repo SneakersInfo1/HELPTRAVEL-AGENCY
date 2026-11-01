@@ -16,6 +16,7 @@ import {
   LiteApiUnknownError,
   LiteApiValidationError,
   liteApiErrorFromResponse,
+  parseRetryAfterMs,
 } from "./errors";
 
 // LiteAPI uses a SINGLE hostname for both sandbox and production — environment
@@ -266,7 +267,7 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
           await new Promise((r) => setTimeout(r, jitter(2 ** attempt * 200)));
           continue;
         }
-        throw liteApiErrorFromResponse(res.status, redactPii(body));
+        throw liteApiErrorFromResponse(res.status, redactPii(body), parseRetryAfterMs(res.headers.get("retry-after")));
       }
 
       const parsed = opts.schema.safeParse(body);

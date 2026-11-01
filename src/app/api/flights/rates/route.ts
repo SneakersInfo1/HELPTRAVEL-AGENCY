@@ -67,7 +67,11 @@ export async function POST(request: NextRequest) {
       // Diagnostyka zostaje w logu serwera (linia wyżej), gdzie jest komplet.
       // `reason` to nasza taksonomia (np. PROVIDER_ACCESS_DENIED), nie kod dostawcy.
       { error: e.code, message: e.message, ...(e.reason ? { reason: e.reason } : {}) },
-      { status: e.httpStatus },
+      {
+        status: e.httpStatus,
+        // Pauza po 429 (search-governor.ts) — przeglądarka i boty wiedzą, ile czekać.
+        ...(e.retryAfterMs ? { headers: { "Retry-After": String(Math.max(1, Math.ceil(e.retryAfterMs / 1000))) } } : {}),
+      },
     );
   }
 }
