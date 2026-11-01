@@ -23,6 +23,7 @@ import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
 import { fetchHotelsForDestination } from "@/lib/liteapi";
 import { createProviderGate } from "@/lib/flights/provider-gate";
 import { searchFlightOffers } from "@/lib/flights/search-offers";
+import { isBackgroundFlightSearchEnabled } from "@/lib/flights/search-policy";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
 import { flightRatesCacheKey, getCachedFlightSummary } from "@/lib/flights/rates-cache";
 import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
@@ -205,6 +206,8 @@ export async function GET(request: NextRequest) {
     const freshRecords = new Map<string, SnapshotRecord>();
     // Bramka dostawcy lotów — patrz src/lib/flights/provider-gate.ts.
     const flightGate = createProviderGate();
+    // Bez włączonych wyszukiwań w tle (search-policy.ts) loty tylko ze skrótów cache wyszukiwań użytkowników.
+    const backgroundFlights = isBackgroundFlightSearchEnabled();
     let storeLost = 0;
 
     await runPool(tasks, concurrency, async (task) => {
@@ -250,14 +253,14 @@ export async function GET(request: NextRequest) {
             stats.flightCacheHit += 1;
             return summary.min;
           }
-          if (!flightGate.open) {
+          if (!backgroundFlights || !flightGate.open) {
             flightGate.noteSkip();
             return null;
           }
           stats.liteApiCalls += 1;
           try {
             // Ten sam helper co lejek lotów (sort + cap), jeden strzał.
-            const offers = await searchFlightOffers(input, { retries: 1 });
+            const offers = await searchFlightOffers(input, { source: "background", retries: 1 });
             flightGate.onSuccess();
             return minTotalFromOffers(offers);
           } catch (err) {

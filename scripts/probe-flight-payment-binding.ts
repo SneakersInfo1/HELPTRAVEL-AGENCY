@@ -192,7 +192,7 @@ async function measure(attempt: number, offerIndex: number): Promise<Measurement
     adults: 1,
   });
 
-  const rates = await searchFlightRates(input);
+  const rates = await searchFlightRates(input, { source: "user" });
   const offers = normalizeRatesResponse(rates);
   if (!offers.length) {
     console.log(`  [${attempt}] brak ofert — pomijam`);

@@ -15,6 +15,7 @@ import {
   isDeterministicProviderValidation,
   isProviderNameTooShort,
 } from "./name-policy";
+import { isBackgroundFlightSearchEnabled, type FlightSearchSource } from "./search-policy";
 
 import {
   FlightBookResponseSchema,
@@ -41,7 +42,7 @@ export type FlightErrorCode =
  * ustalić. `NAME_TOO_SHORT` uruchamia w route’cie wskazanie konkretnych pól
  * formularza; `PROVIDER_REJECTED_INPUT` to reszta deterministycznych odmów.
  */
-export type FlightErrorReason = "NAME_TOO_SHORT" | "PROVIDER_REJECTED_INPUT" | "PROVIDER_ACCESS_DENIED";
+export type FlightErrorReason = "NAME_TOO_SHORT" | "PROVIDER_REJECTED_INPUT" | "PROVIDER_ACCESS_DENIED" | "BACKGROUND_DISABLED";
 
 export class FlightApiError extends Error {
   readonly code: FlightErrorCode;
@@ -219,11 +220,21 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
  * podaje go tutaj.
  */
 export interface FlightSearchOptions {
+  /** Kto zleca wyszukiwanie (`search-policy.ts`) — obowiązkowe, żeby żaden wołający nie ominął polityki. */
+  source: FlightSearchSource;
   timeoutMs?: number;
   retries?: number;
 }
 
-export async function searchFlightRates(input: FlightSearchInput, opts: FlightSearchOptions = {}) {
+export async function searchFlightRates(input: FlightSearchInput, opts: FlightSearchOptions) {
+  if (opts.source === "background" && !isBackgroundFlightSearchEnabled()) {
+    // Automatyczne wyszukiwania lotów są wyłączone (incydent 40301) — bez zapytania do dostawcy.
+    throw new FlightApiError("PROVIDER_ERROR", "Automatyczne wyszukiwania lotów są wyłączone.", {
+      httpStatus: 503,
+      reason: "BACKGROUND_DISABLED",
+      retryable: false,
+    });
+  }
   const body = {
     legs: input.legs.map((l) => ({ origin: l.origin, destination: l.destination, date: l.date, direction: l.direction })),
     adults: input.adults,
@@ -241,6 +252,9 @@ export async function searchFlightRates(input: FlightSearchInput, opts: FlightSe
     body,
     timeoutMs: opts.timeoutMs ?? 30_000,
     ...(opts.retries !== undefined ? { retries: opts.retries } : {}),
+    // 429 = limit konta u dostawcy. Ponowienie po 0,4–0,8 s trafia w ten sam
+    // limit i mnoży ruch, który go wywołał (listopad 2026: 429 na wyszukiwaniach).
+    noRetryWhen: (_body, status) => status === 429,
   });
 }
 
