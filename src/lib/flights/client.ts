@@ -15,6 +15,7 @@ import {
   isDeterministicProviderValidation,
   isProviderNameTooShort,
 } from "./name-policy";
+import { activePause, pauseProvider, recordOutcome, reserveSearch } from "./search-governor";
 import { isBackgroundFlightSearchEnabled, type FlightSearchSource } from "./search-policy";
 
 import {
@@ -42,7 +43,15 @@ export type FlightErrorCode =
  * ustalić. `NAME_TOO_SHORT` uruchamia w route’cie wskazanie konkretnych pól
  * formularza; `PROVIDER_REJECTED_INPUT` to reszta deterministycznych odmów.
  */
-export type FlightErrorReason = "NAME_TOO_SHORT" | "PROVIDER_REJECTED_INPUT" | "PROVIDER_ACCESS_DENIED" | "BACKGROUND_DISABLED";
+export type FlightErrorReason =
+  | "NAME_TOO_SHORT"
+  | "PROVIDER_REJECTED_INPUT"
+  | "PROVIDER_ACCESS_DENIED"
+  | "BACKGROUND_DISABLED"
+  /** Dostawca odpowiedział 429 (albo trwa pauza po nim) — bez zapytania, spróbuj później. */
+  | "PROVIDER_THROTTLED"
+  /** Dzienny budżet wyszukiwań wyczerpany (search-governor.ts). */
+  | "SEARCH_BUDGET_EXHAUSTED";
 
 export class FlightApiError extends Error {
   readonly code: FlightErrorCode;
@@ -59,6 +68,8 @@ export class FlightApiError extends Error {
   readonly providerDescription?: string;
   /** Czy powtórzenie TEGO SAMEGO żądania ma jakiekolwiek szanse powodzenia. */
   readonly retryable: boolean;
+  /** Ile czekać przed kolejną próbą (pauza po 429) — trasa oddaje to jako `Retry-After`. */
+  readonly retryAfterMs?: number;
   constructor(
     code: FlightErrorCode,
     message: string,
@@ -69,6 +80,7 @@ export class FlightApiError extends Error {
       reason?: FlightErrorReason;
       providerDescription?: string;
       retryable?: boolean;
+      retryAfterMs?: number;
       cause?: unknown;
     } = {},
   ) {
@@ -81,6 +93,7 @@ export class FlightApiError extends Error {
     this.reason = opts.reason;
     this.providerDescription = opts.providerDescription;
     this.retryable = opts.retryable ?? false;
+    this.retryAfterMs = opts.retryAfterMs;
   }
 }
 
@@ -185,6 +198,31 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
         cause: err,
       });
     }
+    // LIMIT KONTA (429) — nie walidacja. Dotąd wpadał w gałąź „4xx = złe dane”:
+    // przy wyszukiwaniu gość widział „Dane oferty lub pasażera zostały odrzucone”,
+    // a przy BOOKU (po płatności) VALIDATION + 4xx czytało się jako „płatności
+    // nie było”. Pauzę wyszukiwań ustawia gubernator (search-governor.ts).
+    if (status === 429) {
+      const beforeMoney = stage !== "book";
+      return new FlightApiError(
+        "PROVIDER_ERROR",
+        stage === "search" || stage === "verify"
+          ? THROTTLED_MESSAGE_PL
+          : stage === "prebook"
+            ? "Rezerwacja lotów jest chwilowo niedostępna po stronie dostawcy. Nic nie zostało pobrane — spróbuj ponownie za chwilę."
+            : "Dostawca lotów ograniczył zapytania przy rezerwacji — wymaga ręcznej weryfikacji.",
+        {
+          httpStatus: beforeMoney ? 503 : 502,
+          liteApiStatus: status,
+          liteApiCode: provCode ?? label,
+          reason: "PROVIDER_THROTTLED",
+          providerDescription: raw,
+          retryAfterMs: err.retryAfterMs,
+          retryable: false,
+          cause: err,
+        },
+      );
+    }
     // Walidacja danych: kod 43001, etykieta VALIDATION, albo 4xx (poza powyższym).
     if (provCode === 43001 || label === "LITEAPI_VALIDATION" || (status >= 400 && status < 500)) {
       return new FlightApiError("VALIDATION", "Dane oferty lub pasażera zostały odrzucone przez dostawcę.", {
@@ -244,6 +282,46 @@ export async function searchFlightRates(input: FlightSearchInput, opts: FlightSe
     currency: input.currency,
     country: input.country,
   };
+  // Gubernator (search-governor.ts): pauza po odmowie dostawcy i dzienny budżet — PRZED zapytaniem.
+  const pause = await activePause();
+  if (pause) {
+    throw new FlightApiError("PROVIDER_ERROR", THROTTLED_MESSAGE_PL, {
+      httpStatus: 503,
+      reason: pause.reason === "access_denied" ? "PROVIDER_ACCESS_DENIED" : "PROVIDER_THROTTLED",
+      retryAfterMs: Math.max(0, pause.untilMs - Date.now()),
+      retryable: false,
+    });
+  }
+  const budget = await reserveSearch(opts.source);
+  if (!budget.ok) {
+    throw new FlightApiError("PROVIDER_ERROR", THROTTLED_MESSAGE_PL, {
+      httpStatus: 503,
+      reason: "SEARCH_BUDGET_EXHAUSTED",
+      retryable: false,
+    });
+  }
+  try {
+    const res = await requestFlightRates(body, opts);
+    void recordOutcome("ok");
+    return res;
+  } catch (err) {
+    const status = err instanceof LiteApiError ? (err.status ?? 0) : 0;
+    if (status === 429) {
+      await pauseProvider("throttled", (err as LiteApiError).retryAfterMs);
+      void recordOutcome("throttled");
+    } else if (status === 401 || status === 403 || providerError((err as LiteApiError | undefined)?.body).code === 40301) {
+      await pauseProvider("access_denied");
+      void recordOutcome("denied");
+    } else {
+      void recordOutcome("error");
+    }
+    throw err;
+  }
+}
+
+const THROTTLED_MESSAGE_PL = "Wyszukiwarka lotów jest chwilowo przeciążona. Spróbuj ponownie za chwilę.";
+
+function requestFlightRates(body: Record<string, unknown>, opts: FlightSearchOptions) {
   return liteApiRequest({
     path: "/flights/rates",
     method: "POST",

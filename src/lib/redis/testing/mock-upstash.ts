@@ -104,6 +104,12 @@ export async function startMockUpstash(opts: { port?: number } = {}): Promise<Mo
         store.set(key, { kind: "string", value: String(cmd[2]), expireAt });
         return { result: "OK" };
       }
+      case "incr": {
+        const e = live(key);
+        const next = (e && e.kind === "string" ? Number(e.value) || 0 : 0) + 1;
+        store.set(key, { kind: "string", value: String(next), expireAt: e?.expireAt });
+        return { result: next };
+      }
       case "mget":
         return {
           result: cmd.slice(1).map((k) => {

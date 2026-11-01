@@ -9,6 +9,8 @@
 
 import { searchFlightRates, type FlightSearchOptions } from "./client";
 import { normalizeRatesResponse, type DisplayOffer } from "./display";
+import { flightRatesCacheKey } from "./rates-cache";
+import { singleFlight } from "./search-governor";
 import type { FlightSearchInput } from "./types";
 
 // Cap ofert. Sort po cenie PRZED capem → najtańsze zawsze zostają; klient
@@ -28,7 +30,8 @@ export async function searchFlightOffers(
   input: FlightSearchInput,
   opts: FlightSearchOptions,
 ): Promise<DisplayOffer[]> {
-  const res = await searchFlightRates(input, opts);
+  // Identyczne zapytania w locie (ten sam rodzaj źródła) — jedno wywołanie dostawcy.
+  const res = await singleFlight(`${opts.source}:${flightRatesCacheKey(input)}`, () => searchFlightRates(input, opts));
   return normalizeRatesResponse(res)
     .slice()
     .sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity))

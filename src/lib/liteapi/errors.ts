@@ -18,6 +18,8 @@ interface LiteApiErrorOptions {
   status?: number;
   body?: unknown;
   cause?: unknown;
+  /** Z nagłówka `Retry-After` (429/503) — ile dostawca każe czekać. */
+  retryAfterMs?: number;
 }
 
 export class LiteApiError extends Error {
@@ -25,6 +27,7 @@ export class LiteApiError extends Error {
   readonly status?: number;
   readonly body?: unknown;
   readonly userMessagePl: string;
+  readonly retryAfterMs?: number;
 
   constructor(
     code: LiteApiErrorCode,
@@ -38,6 +41,7 @@ export class LiteApiError extends Error {
     this.status = opts.status;
     this.body = opts.body;
     this.userMessagePl = userMessagePl;
+    this.retryAfterMs = opts.retryAfterMs;
   }
 }
 
@@ -133,8 +137,22 @@ export function isHotelNotFoundError(err: unknown): boolean {
 }
 
 // Map an HTTP status + body to the right error subclass.
-export function liteApiErrorFromResponse(status: number, body: unknown): LiteApiError {
-  const opts = { status, body };
+/** `Retry-After`: sekundy albo data HTTP → ms (0…1 h); brak/nieczytelny → undefined. */
+export function parseRetryAfterMs(value: string | null | undefined, now: number = Date.now()): number | undefined {
+  if (!value) return undefined;
+  const v = value.trim();
+  let ms: number;
+  if (/^\d+$/.test(v)) ms = Number(v) * 1000;
+  else {
+    const at = Date.parse(v);
+    if (!Number.isFinite(at)) return undefined;
+    ms = at - now;
+  }
+  return Math.min(Math.max(ms, 0), 3_600_000);
+}
+
+export function liteApiErrorFromResponse(status: number, body: unknown, retryAfterMs?: number): LiteApiError {
+  const opts = { status, body, retryAfterMs };
   if (status === 400 && isInvalidOfferBody(body))
     return new LiteApiRateExpiredError("Invalid/expired offerId (4002)", opts);
   if (status === 401 || status === 403) return new LiteApiAuthError(`HTTP ${status}`, opts);
