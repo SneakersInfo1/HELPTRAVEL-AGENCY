@@ -19,6 +19,7 @@ import { formatHotelTime, taxNoticeText } from "@/lib/hotels/domain/format";
 import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { reviewCategories, reviewHighlights, sentimentUpdatedAt } from "@/lib/hotels/domain/review";
 import { buildRoomIdByRateName, indexRoomsById } from "@/lib/hotels/domain/room";
+import { slimRoomTypesForClient } from "@/lib/hotels/group-rates";
 import { HOTEL_SHELL } from "@/lib/hotels/layout";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { lowest30dNotice, lowestPrice30dAndRecord } from "@/lib/hotels/price-history";
@@ -678,7 +679,7 @@ export default async function HotelDetailPage({
             {/* Rooms */}
             <RoomsSection
               hotelId={hotelId}
-              roomTypes={roomTypes}
+              roomTypes={slimRoomTypesForClient(roomTypes)}
               roomsById={roomsById}
               roomIdByRateName={roomIdByRateName}
               checkin={checkin}

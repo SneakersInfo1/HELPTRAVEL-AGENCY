@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { LiteApiRoomType } from "../liteapi";
-import { groupRates, mergeGroupsByDisplayName } from "./group-rates";
+import { groupRates, mergeGroupsByDisplayName, slimRoomTypesForClient } from "./group-rates";
 
 let seq = 0;
 function offer(opts: {
@@ -155,4 +155,39 @@ test("mergeGroupsByDisplayName: różne nazwy PL + różna pojemność zostają 
   ]);
   const merged = mergeGroupsByDisplayName(res.groups, (n) => n.toLowerCase());
   assert.equal(merged.length, 3); // double(2) / suite(2) / double(4) — różne klucze
+});
+
+test("slimRoomTypesForClient: przeglądarka dostaje tylko pokazywane taryfy, bez rateId — widok identyczny", () => {
+  const roomTypes = [
+    offer({ name: "Superior Double Room", price: 2300 }),
+    offer({ name: "superior  double ROOM", price: 2074.99 }),
+    offer({ name: "Superior Double Room", price: 2500 }),
+    offer({ name: "Superior Double Room", price: 2400, refundable: true }),
+    offer({ name: "Twin Room", price: 1999, board: "Breakfast Included" }),
+    offer({ name: "Twin Room", price: 2100, board: "Breakfast Included" }),
+    offer({ name: "Double or Twin", price: 1999, board: "Breakfast Included" }), // remis → wygrywa pierwszy
+    offer({ name: "Family Suite", price: null, maxOcc: 4 }),
+    offer({ name: "Family Suite", price: 3100, maxOcc: 4 }),
+  ];
+  const slim = slimRoomTypesForClient(roomTypes);
+  assert.ok(slim.length < roomTypes.length, "zwinięte duplikaty nie trafiają do przeglądarki");
+  for (const rt of slim) for (const r of rt.rates) assert.equal(r.rateId, "", "rateId nie jest potrzebny w widoku");
+
+  const localize = (n: string) => (/twin/i.test(n) ? "Pokój z dwoma łóżkami" : n);
+  const view = (rts: typeof roomTypes) =>
+    mergeGroupsByDisplayName(groupRates(rts).groups, localize).map((g) => ({
+      key: g.key,
+      name: g.name,
+      maxOccupancy: g.maxOccupancy,
+      cheapestMinor: g.cheapestMinor,
+      options: g.options.map((o) => ({
+        offerId: o.offerId,
+        totalMinor: o.totalMinor,
+        freeCancellation: o.freeCancellation,
+        cancellationDeadline: o.cancellationDeadline,
+        cheapestOfHotel: o.cheapestOfHotel,
+        board: o.rate.boardName,
+      })),
+    }));
+  assert.deepEqual(view(slim), view(roomTypes));
 });

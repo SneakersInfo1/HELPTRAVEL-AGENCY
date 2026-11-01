@@ -176,6 +176,33 @@ export function groupRates(roomTypes: LiteApiRoomType[]): GroupRatesResult {
   };
 }
 
+/**
+ * Taryfy dla przeglądarki: tylko te, które widok i tak pokaże (zwycięzcy
+ * deduplikacji `groupRates`), bez `rateId`.
+ *
+ * ZMIERZONE NA PRODUKCJI (2026-11-01, strona hotelu): 198 taryf płynęło do
+ * przeglądarki w danych RSC (~1,3 KB każda), a widok pokazywał 44 — reszta to
+ * warunkowo identyczne, droższe duplikaty zwijane przez `groupRates`. `offerId`
+ * (~1 100 znaków) i `rateId` (~550) to losowe tokeny, które prawie się nie
+ * kompresują: 467 z 1 142 KB HTML. `rateId` nie jest używany ani w widoku, ani
+ * przy rezerwacji (prebook bierze `offerId`).
+ *
+ * Wynik `mergeGroupsByDisplayName(groupRates(...))` jest identyczny: usunięcie
+ * przegranych nie zmienia zwycięzców (remis rozstrzyga kolejność, a zwycięzca
+ * był pierwszy), a scalanie po nazwie PL i tak bierze tylko zwycięzców.
+ * Zmienia się jedynie `collapsedCount`, którego widok nie używa.
+ */
+export function slimRoomTypesForClient(roomTypes: LiteApiRoomType[]): LiteApiRoomType[] {
+  const shown = new Set<LiteApiRate>();
+  for (const group of groupRates(roomTypes).groups) for (const option of group.options) shown.add(option.rate);
+  const out: LiteApiRoomType[] = [];
+  for (const rt of roomTypes) {
+    const rates = rt.rates.filter((rate) => shown.has(rate)).map((rate) => ({ ...rate, rateId: "" }));
+    if (rates.length > 0) out.push({ ...rt, rates });
+  }
+  return out;
+}
+
 // FAZA 4 (bonus) — wtórna, PREZENTACYJNA konsolidacja: scala grupy, których
 // PRZETŁUMACZONA nazwa jest identyczna (+ ta sama maks. liczba gości). Bazowe
 // grupowanie zostaje na nazwie EN (jak w groupRates — „zadanie-4-safe"); to
