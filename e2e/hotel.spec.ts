@@ -8,10 +8,14 @@
  */
 import { test, expect, type Page } from "@playwright/test";
 
-const SEARCH =
-  "/hotele/szukaj?destination=Hurghada&country=Egipt&checkin=2026-09-15&checkout=2026-09-17&adults=2&rooms=1";
-const HOTEL =
-  "/hotele/lp657c0fe8?destination=Hurghada&country=Egipt&checkin=2026-09-15&checkout=2026-09-17&adults=2&rooms=1";
+import { isoZaDni } from "./_daty";
+
+// Daty od dziś (patrz `_daty.ts`). Hotel lp3723e zamiast lp657c0fe8: tamten
+// wpis nie zwracał pokoi w żadnym z mierzonych terminów, więc scenariusz D
+// trafiał w pusty stan zamiast w modal pokoju.
+const TERMIN = `checkin=${isoZaDni(30)}&checkout=${isoZaDni(32)}&adults=2&rooms=1`;
+const SEARCH = `/hotele/szukaj?destination=Hurghada&country=Egipt&${TERMIN}`;
+const HOTEL = `/hotele/lp3723e?destination=Barcelona&country=Hiszpania&${TERMIN}`;
 
 /** Baner cookie zasłania dolną część ekranu — w testach domykamy go od razu. */
 async function dismissCookies(page: Page) {

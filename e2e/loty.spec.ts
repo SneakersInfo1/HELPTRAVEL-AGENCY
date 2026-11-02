@@ -12,6 +12,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { zablokujZapisyLotow } from "./_bezpiecznik-lotow";
+import { POWROT, WYLOT } from "./_daty";
 
 // Serwis jest polski i `LanguageProvider` czyta jezyk przegladarki. Playwright
 // startuje domyslnie z `en-US`, wiec provider przelaczal UI na angielski JUZ PO
@@ -34,7 +35,7 @@ test.beforeEach(async ({ page }) => {
 
 const SEARCH =
   "/loty/wyniki?origin=WAW&originLabel=Warszawa&destination=BCN&destLabel=Barcelona" +
-  "&depart=2026-09-20&return=2026-09-27&adults=2";
+  `&depart=${WYLOT}&return=${POWROT}&adults=2`;
 
 /** Wejście na wyniki + poczekanie na pierwszą realną kartę oferty. */
 /**
@@ -296,8 +297,8 @@ test.describe("Dane podróżnych", () => {
     await page.fill("#p0-bday", "1990-05-04");
     await page.selectOption("#p0-gender", "M");
     await page.fill("#p0-docnum", "AB1234567");
-    // Data ważności PRZED datą powrotu (2026-09-27).
-    await page.fill("#p0-docexp", "2026-09-01");
+    // Data ważności PRZED datą powrotu (ważny w dniu wylotu, nie w dniu powrotu).
+    await page.fill("#p0-docexp", WYLOT);
     await page.getByRole("button", { name: /Do płatności|Przejdź do płatności/ }).first().click();
     await page.waitForTimeout(500);
 
