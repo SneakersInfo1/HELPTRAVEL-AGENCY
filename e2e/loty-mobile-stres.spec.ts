@@ -13,6 +13,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { zablokujZapisyLotow } from "./_bezpiecznik-lotow";
+import { POWROT, WYLOT } from "./_daty";
 
 test.use({ locale: "pl-PL" });
 
@@ -32,12 +33,12 @@ const WIDTHS = [
 
 const SEARCH =
   "/loty/wyniki?origin=WAW&originLabel=Warszawa&destination=BCN&destLabel=Barcelona" +
-  "&depart=2026-09-20&return=2026-09-27&adults=2";
+  `&depart=${WYLOT}&return=${POWROT}&adults=2`;
 
 /** Wyszukiwanie z sześcioma podróżnymi — 4 dorosłych, 2 dzieci. */
 const SEARCH_6 =
   "/loty/wyniki?origin=WAW&originLabel=Warszawa&destination=BCN&destLabel=Barcelona" +
-  "&depart=2026-09-20&return=2026-09-27&adults=4&children=2";
+  `&depart=${WYLOT}&return=${POWROT}&adults=4&children=2`;
 
 /**
  * Wyszukiwanie z najdłuższymi realnymi nazwami lotnisk.
@@ -51,7 +52,7 @@ const SEARCH_DLUGIE =
   encodeURIComponent("Warszawa im. Fryderyka Chopina") +
   "&destination=BCN&destLabel=" +
   encodeURIComponent("Barcelona–El Prat Josep Tarradellas") +
-  "&depart=2026-09-20&return=2026-09-27&adults=2";
+  `&depart=${WYLOT}&return=${POWROT}&adults=2`;
 
 function offer(i: number, total: number) {
   const leg = (direction: "OUTBOUND" | "INBOUND", d: string) => ({
@@ -79,7 +80,7 @@ function offer(i: number, total: number) {
     offerId: `OFFER_STRESS_${i}`,
     total,
     currency: "PLN",
-    legs: [leg("OUTBOUND", "2026-09-20"), leg("INBOUND", "2026-09-27")],
+    legs: [leg("OUTBOUND", WYLOT), leg("INBOUND", POWROT)],
     maxDurationMinutes: 170 + (i % 300),
     hasCheckedBag: i % 2 === 0,
     hasCarryOnBag: true,

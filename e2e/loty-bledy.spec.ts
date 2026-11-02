@@ -10,6 +10,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { zablokujZapisyLotow } from "./_bezpiecznik-lotow";
+import { POWROT, WYLOT } from "./_daty";
 
 // Serwis jest polski i `LanguageProvider` czyta jezyk przegladarki. Playwright
 // startuje domyslnie z `en-US`, wiec provider przelaczal UI na angielski JUZ PO
@@ -32,7 +33,7 @@ test.beforeEach(async ({ page }) => {
 
 const SEARCH =
   "/loty/wyniki?origin=WAW&originLabel=Warszawa&destination=BCN&destLabel=Barcelona" +
-  "&depart=2026-09-20&return=2026-09-27&adults=2";
+  `&depart=${WYLOT}&return=${POWROT}&adults=2`;
 
 /**
  * Rozstrzyga baner zgód, wybierając „Tylko niezbędne".
