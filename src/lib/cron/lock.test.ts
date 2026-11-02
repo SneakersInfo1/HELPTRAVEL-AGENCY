@@ -4,6 +4,8 @@ import { test } from "node:test";
 import {
   __resetCronLockRedisForTests,
   __setCronLockRedisForTests,
+  KLUCZ_WYLACZNIKA,
+  odpowiedzBezBlokady,
   zajmijBlokade,
 } from "./lock";
 
@@ -31,6 +33,10 @@ function fakeRedis(opcje: { zajete?: boolean; rzucaj?: boolean } = {}) {
       if (opts?.nx && (opcje.zajete || magazyn.has(key))) return null;
       magazyn.set(key, value);
       return "OK";
+    },
+    async mget(...keys: string[]) {
+      if (opcje.rzucaj) throw new Error("redis padl");
+      return keys.map((k) => magazyn.get(k) ?? null);
     },
     async eval(_script: string, keys: string[], args: string[]) {
       evale.push({ keys, args });
@@ -110,6 +116,38 @@ test("awaria Redisa przepuszcza przebieg zamiast go wywracać", async () => {
   try {
     const uchwyt = await zajmijBlokade("warm-rates");
     assert.equal(uchwyt.zdobyta, true, "aktualizacja ofert jest ważniejsza niż idealna ochrona");
+  } finally {
+    __resetCronLockRedisForTests();
+  }
+});
+
+test("wyłącznik awaryjny zatrzymuje każdy cron bez wdrożenia i bez zajmowania blokady", async () => {
+  const redis = fakeRedis();
+  redis.magazyn.set(KLUCZ_WYLACZNIKA, 1);
+  __setCronLockRedisForTests(redis);
+  try {
+    for (const job of ["warm-rates", "warm-featured-hotels", "build-concierge-snapshot"]) {
+      const uchwyt = await zajmijBlokade(job);
+      assert.equal(uchwyt.zdobyta, false);
+      assert.equal(uchwyt.powod, "wylaczony");
+      assert.deepEqual(odpowiedzBezBlokady(job, uchwyt), { ok: true, status: "skipped_disabled" });
+    }
+    assert.equal(redis.zapisy.length, 0, "wyłączony cron nie zakłada blokady");
+
+    redis.magazyn.delete(KLUCZ_WYLACZNIKA);
+    assert.equal((await zajmijBlokade("warm-rates")).zdobyta, true, "po skasowaniu klucza crony wracają");
+  } finally {
+    __resetCronLockRedisForTests();
+  }
+});
+
+test("wyłącznik jednego joba nie zatrzymuje pozostałych", async () => {
+  const redis = fakeRedis();
+  redis.magazyn.set(`${KLUCZ_WYLACZNIKA}:warm-rates`, 1);
+  __setCronLockRedisForTests(redis);
+  try {
+    assert.equal((await zajmijBlokade("warm-rates")).powod, "wylaczony");
+    assert.equal((await zajmijBlokade("warm-featured-hotels")).zdobyta, true);
   } finally {
     __resetCronLockRedisForTests();
   }

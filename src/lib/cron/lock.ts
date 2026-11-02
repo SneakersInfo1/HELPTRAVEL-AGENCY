@@ -37,12 +37,23 @@ import { getSharedRedis, isPersistentRedisOutage, redisMayBeAvailable } from "@/
 /** Czas życia blokady. Musi przekraczać najdłuższy realny przebieg joba. */
 const DOMYSLNY_TTL_S = 15 * 60;
 
+/**
+ * Wyłącznik awaryjny cronów BEZ wdrożenia (zmiana zmiennej środowiskowej na
+ * Vercelu działa dopiero po redeployu). W konsoli Upstash:
+ *   `SET cron:v1:off 1 EX 86400`         — wszystkie crony na dobę,
+ *   `SET cron:v1:off:warm-rates 1 EX 3600` — jeden job na godzinę,
+ *   `DEL cron:v1:off`                    — powrót.
+ * Ścieżki użytkowników tego klucza nie czytają, więc wyłącznik nie dotyka ruchu.
+ */
+export const KLUCZ_WYLACZNIKA = "cron:v1:off";
+
 interface RedisLike {
   set(
     key: string,
     value: unknown,
     opts?: { nx?: true; ex?: number },
   ): Promise<unknown>;
+  mget(...keys: string[]): Promise<unknown[]>;
   eval(script: string, keys: string[], args: string[]): Promise<unknown>;
 }
 
@@ -68,9 +79,10 @@ export interface UchwytBlokady {
   /**
    * Dlaczego NIE zdobyta: `zajeta` — trwa inny przebieg; `magazyn_niedostepny`
    * — Redis trwale niedostępny (limit planu / autoryzacja / otwarty wyłącznik),
-   * więc wyniku i tak nie dałoby się zapisać.
+   * więc wyniku i tak nie dałoby się zapisać; `wylaczony` — wyłącznik awaryjny
+   * (`KLUCZ_WYLACZNIKA`).
    */
-  powod?: "zajeta" | "magazyn_niedostepny";
+  powod?: "zajeta" | "magazyn_niedostepny" | "wylaczony";
   /** Zwalnia blokadę. Bezpieczne do wywołania także gdy `zdobyta === false`. */
   zwolnij: () => Promise<void>;
 }
@@ -102,6 +114,11 @@ export async function zajmijBlokade(
   const wlasciciel = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
   try {
+    const [wszystkie, ten] = await redis.mget(KLUCZ_WYLACZNIKA, `${KLUCZ_WYLACZNIKA}:${nazwa}`);
+    if (wszystkie != null || ten != null) {
+      console.warn(`[cron-lock] '${nazwa}' pominięty: wyłącznik awaryjny ${ten != null ? `${KLUCZ_WYLACZNIKA}:${nazwa}` : KLUCZ_WYLACZNIKA}`);
+      return { zdobyta: false, powod: "wylaczony", zwolnij: async () => {} };
+    }
     const wynik = await redis.set(klucz, wlasciciel, { nx: true, ex: ttlSekund });
     if (wynik !== "OK") return { zdobyta: false, powod: "zajeta", zwolnij: async () => {} };
   } catch (error) {
@@ -153,6 +170,9 @@ export function __resetCronLockRedisForTests(): void {
 export function odpowiedzBezBlokady(nazwa: string, blokada: UchwytBlokady): { ok: true; status: string } {
   if (blokada.powod === "magazyn_niedostepny") {
     return { ok: true, status: "skipped_store_unavailable" };
+  }
+  if (blokada.powod === "wylaczony") {
+    return { ok: true, status: "skipped_disabled" };
   }
   console.info(`[cron/${nazwa}] poprzedni przebieg wciąż trwa — pomijam`);
   return { ok: true, status: "skipped_locked" };
