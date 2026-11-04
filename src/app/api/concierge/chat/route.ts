@@ -37,8 +37,7 @@ const BodySchema = z.object({
 });
 
 // Kill-switch (domyślnie WŁĄCZONE — ustaw NEXT_PUBLIC_SHOW_CONCIERGE=false, by
-// wyłączyć). Ta sama konwencja co NEXT_PUBLIC_SHOW_QUICK_SEARCH w
-// quick-search-launcher.tsx.
+// wyłączyć). Ta sama konwencja co w concierge-launcher.tsx.
 const CONCIERGE_ENABLED = process.env.NEXT_PUBLIC_SHOW_CONCIERGE?.trim().toLowerCase() !== "false";
 
 const FALLBACK_ERROR_BODY = {

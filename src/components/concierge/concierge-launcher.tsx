@@ -1,20 +1,17 @@
 "use client";
 
 // Dokowany dymek AI Concierge (Task 4.2) — montowany raz w layout.tsx, widoczny
-// na KAŻDEJ stronie (homepage, /hotele/*, /loty/* włącznie — inaczej niż
-// QuickSearchLauncher, który na tych trasach jest chowany). Mechanika portalu/
-// Esc/focus-trap skopiowana z quick-search-launcher.tsx (te same sprawdzone
-// wzorce). Na desktopie pozostaje dokowanym widgetem; poniżej `sm` stan
+// na stronach serwisu poza lejkiem lotów (patrz niżej). Mechanika portalu/
+// Esc/focus-trap pochodzi z dawnego pływającego przycisku „Zaplanuj wyjazd”. Na desktopie pozostaje dokowanym widgetem; poniżej `sm` stan
 // "expanded" jest pełnoekranowym dialogiem. Stany są dwa: "bubble" i "expanded".
 // "Zminimalizowany" to POWRÓT do stanu "bubble" — historia czatu nie ginie,
 // bo żyje w sessionStorage wewnątrz ConciergeChat (patrz ten plik), więc
 // odmontowanie ConciergeChat przy zwinięciu jest poprawne i najprostsze:
 // przy ponownym otwarciu komponent po prostu odczyta tę samą sesję.
 //
-// Coexistence z QuickSearchLauncher: concierge jest widgetem GŁÓWNYM w rogu
-// (ten sam slot bottom-4/right-4 co miał quick-search), więc to quick-search
-// przesunięto WYŻEJ (patrz komentarz w quick-search-launcher.tsx) — jedyna
-// zmiana w tamtym pliku to offset pozycji, nic więcej.
+// JEDYNY element pływający w serwisie. Pływający przycisk „Zaplanuj wyjazd”
+// (QuickSearchLauncher, nad tym dymkiem) USUNIĘTO 2026-11-03 na wyraźne
+// żądanie właściciela: nakładał się na treść. Nie dokładaj tu drugiego.
 //
 // FUNKCJA czatu nadal NIE jest gate'owana zgodą (decyzja produktowa z zadania):
 // ujawnienie dostawcy AI dzieje się W PANELU (stopka ConciergeChat), nie przez
@@ -85,8 +82,7 @@ const ConciergeChat = dynamic(
   },
 );
 
-// Kill-switch (domyślnie WŁĄCZONE) — ta sama konwencja co
-// NEXT_PUBLIC_SHOW_QUICK_SEARCH i /api/concierge/chat route.ts.
+// Kill-switch (domyślnie WŁĄCZONE) — ta sama konwencja co /api/concierge/chat route.ts.
 const ENABLED = process.env.NEXT_PUBLIC_SHOW_CONCIERGE?.trim().toLowerCase() !== "false";
 
 const TEASER_DISMISSED_KEY = "helptravel-concierge-teaser-dismissed-v1";
@@ -170,9 +166,7 @@ export function ConciergeLauncher() {
   // Podnoszenie go wyżej tylko przesuwa problem na inny wiersz listy, więc
   // rozstrzygamy to na poziomie produktu, a nie pikseli: konsjerż jest
   // narzędziem DOBORU wyjazdu, a lejek lotów jest ścieżką ZAKUPU. Kto tu jest,
-  // już wybrał trasę i termin. Dokładnie z tego powodu `QuickSearchLauncher`
-  // jest wyłączony na `/loty/*` od początku — to jest ta sama decyzja,
-  // domknięta dla drugiego pływającego elementu.
+  // już wybrał trasę i termin.
   //
   // Poza lotami NIC się nie zmienia: homepage, hotele i strony treści mają
   // dymek jak dotąd.
