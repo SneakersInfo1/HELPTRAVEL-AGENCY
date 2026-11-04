@@ -326,7 +326,7 @@ test.describe("Kolizje i dostępność", () => {
     await otworzWyniki(page);
 
     // Konsjerż siedział na cenie taryfy „Smart" (zmierzone na 390 px), więc
-    // w lejku lotów go nie ma. `QuickSearchLauncher` był wyłączony od początku.
+    // w lejku lotów go nie ma. Pływający przycisk „Zaplanuj wyjazd” usunięto z serwisu w ogóle.
     const dymek = await page.evaluate(() =>
       Array.from(document.querySelectorAll("body *")).some(
         (e) =>

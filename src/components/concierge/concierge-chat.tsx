@@ -7,7 +7,7 @@
 // src/app/api/concierge/chat/route.ts).
 //
 // Wzorce/DNA skopiowane z trip-offer-card.tsx (ta sama karta oferty) i
-// quick-search-launcher.tsx (refy tylko w efektach/handlerach, żadnego
+// dawnego pływającego przycisku wyszukiwarki (refy tylko w efektach/handlerach, bez
 // setState w renderze poza idiomem „adjust state on prop change").
 //
 // Persystencja: sessionStorage (nie localStorage — historia czatu to sesja,
