@@ -384,6 +384,69 @@ test("zapis sesji PO prebooku pada → 503 TEMPORARILY_UNAVAILABLE, bez secretKe
   });
 });
 
+// Logi Vercela 2026-11-03 (2×): prebook dostał od LiteAPI HTTP 400
+// `2001: no prebook availability`, a trasa odpowiadała 503 LITEAPI_DOWN.
+// Gość widział ogólny komunikat o kłopocie dostawcy, choć ten pokój po prostu
+// się wyprzedał. Teraz: własny kod, status 4xx i komunikat o wyprzedaniu.
+test("prebook: LiteAPI 400/2001 → 410 RATE_UNAVAILABLE (pokój wyprzedany), bez sesji płatności", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    const fake = makeFakeRedis();
+    __setBookingRedisForTests(fake);
+    const restore = mockFetch(() => ({
+      status: 400,
+      body: {
+        error: { code: 2001, message: "no availability found", description: "no prebook availability" },
+      },
+    }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const r = await POST(post("http://t/api/booking/prebook", { ...PREBOOK_REQ_BODY, holder: HOLDER, guests: GUESTS }));
+      assert.equal(r.status, 410);
+      const text = await r.text();
+      const body = JSON.parse(text) as {
+        error: string;
+        message: string;
+        debug?: { liteApiStatus?: number; liteApiCode?: string };
+      };
+      assert.equal(body.error, "RATE_UNAVAILABLE");
+      assert.match(body.message, /wyprzedał/);
+      assert.deepEqual(body.debug, { liteApiStatus: 400, liteApiCode: "LITEAPI_SOLD_OUT" });
+      assert.doesNotMatch(text, /secretKey/, "bez prebooka nie ma sesji płatności");
+      assert.equal(
+        fetchCalls.filter((c) => c.url.includes("/rates/prebook")).length,
+        1,
+        "odmowa 2001 jest ostateczna — bez ponowień",
+      );
+      assert.ok(
+        ![...fake.store.keys()].some((k) => k.startsWith("booking:v1:session:")),
+        "nieudany prebook nie zapisuje sesji płatności",
+      );
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
+test("prebook: inna odmowa 400 (np. 4000 bad request) → nadal 503 LITEAPI_DOWN", async () => {
+  await withEnv(LIVE_ENV, async () => {
+    __setBookingRedisForTests(makeFakeRedis());
+    const restore = mockFetch(() => ({
+      status: 400,
+      body: { error: { code: 4000, message: "bad request" } },
+    }));
+    try {
+      const { POST } = await import("./prebook/route");
+      const r = await POST(post("http://t/api/booking/prebook", PREBOOK_REQ_BODY));
+      assert.equal(r.status, 503);
+      assert.equal(((await r.json()) as { error: string }).error, "LITEAPI_DOWN");
+    } finally {
+      restore();
+      __resetBookingRedisForTests();
+    }
+  });
+});
+
 test("session expired (no payment evidence) → 410 session_expired, no recovery record", async () => {
   await withEnv(LIVE_ENV, async () => {
     const fake = makeFakeRedis();

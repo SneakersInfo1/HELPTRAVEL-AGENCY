@@ -18,7 +18,7 @@
 //     submitButton.text.
 
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import { CalendarX2, Lock } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { track } from "@/lib/analytics/track";
@@ -30,6 +30,7 @@ import { OptionalGuestsAccordion } from "./optional-guests-accordion";
 import { PaymentBrandsInline } from "./payment-brands";
 import type { CheckoutPriceWire } from "@/lib/hotels/domain/checkout-price";
 import { PaymentSlot, type PaymentSlotPrebook } from "./payment-slot";
+import { classifyPrebookError, type FormError } from "./prebook-recovery";
 import { TrustStrip } from "./trust-strip";
 
 interface Props {
@@ -61,64 +62,6 @@ interface Props {
   /** Cancellation badge for the summary card (from the rate link). */
   cancel?: "free" | "nrf";
   cancelUntil?: string;
-}
-
-// Structured prebook error: `repick` decides whether the recovery panel
-// promotes "pick a fresh offer" (deterministic failures — retrying the same
-// offerId cannot succeed) over plain retry (transient failures).
-interface FormError {
-  message: string;
-  repick: boolean;
-}
-
-// code → recovery classification for /api/booking/prebook failures.
-// PREBOOK_EXPIRED / RATE_UNAVAILABLE: the offer is gone — only a fresh rate
-// helps. LITEAPI_DOWN is ALSO classified repick: production logs (2026-06-09)
-// show it firing deterministically for specific offers (supplier rejected /
-// price drifted), and the user who retried it 4× hit the same wall each
-// time — while picking another offer worked on the first try.
-function classifyPrebookError(
-  code: string | undefined,
-  httpStatus: number,
-  apiMessage: string | undefined,
-): FormError {
-  switch (code) {
-    case "PREBOOK_EXPIRED":
-    case "RATE_UNAVAILABLE":
-      return {
-        message:
-          apiMessage ??
-          "Ta oferta nie jest już dostępna. Wybierz ofertę ponownie na stronie hotelu.",
-        repick: true,
-      };
-    case "LITEAPI_DOWN":
-    case "prebook_no_payment_session":
-      return {
-        message:
-          "Nie udało się potwierdzić tej oferty u dostawcy — najczęściej oznacza to, że cena lub dostępność właśnie się zmieniła. Wybierz ofertę ponownie, to zajmie chwilę.",
-        repick: true,
-      };
-    case "RATE_LIMIT_EXCEEDED":
-      return {
-        message: apiMessage ?? "Zbyt wiele prób w krótkim czasie. Odczekaj chwilę i spróbuj ponownie.",
-        repick: false,
-      };
-    // Przerwa techniczna po naszej stronie (np. niedostępny magazyn sesji):
-    // inna oferta skończyłaby się tak samo, więc NIE odsyłamy do ponownego
-    // wyboru — mówimy wprost, że rezerwacje chwilowo nie działają.
-    case "TEMPORARILY_UNAVAILABLE":
-      return {
-        message:
-          apiMessage ??
-          "Rezerwacje są chwilowo wstrzymane z powodu przerwy technicznej. Nic nie zostało pobrane — spróbuj ponownie za jakiś czas.",
-        repick: false,
-      };
-    default:
-      return {
-        message: apiMessage ?? "Nie udało się rozpocząć rezerwacji. Spróbuj ponownie.",
-        repick: httpStatus >= 500,
-      };
-  }
 }
 
 // ── Inline (blur) validation ────────────────────────────────────────────────
@@ -594,7 +537,38 @@ export function ReservationForm({
                   disabled={step === "submitting"}
                 />
 
-                {error && (
+                {/* Pokój się wyprzedał (RATE_UNAVAILABLE — także prebook
+                    2001). To nie awaria ani błąd gościa, więc panel
+                    dostępności jak „brak pokoi" na stronie hotelu, a nie
+                    czerwony alarm. Jedyna droga dalej: lista pokoi tego
+                    hotelu z tymi samymi datami i gośćmi (przycisk płatności
+                    niżej znika — ta oferta już się nie zarezerwuje). */}
+                {error?.soldOut && (
+                  <div role="alert" className="rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200/70">
+                    <div className="flex items-start gap-3">
+                      <CalendarX2 aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                      <div>
+                        <p className="text-sm font-semibold text-amber-950">{error.message}</p>
+                        <p className="mt-1 text-sm text-amber-900/80">
+                          Nic nie zostało pobrane. Wrócisz do listy pokoi tego hotelu — z tymi samymi
+                          datami i liczbą gości.
+                        </p>
+                      </div>
+                    </div>
+                    {/* <Link>, NIE zwykłe <a>: zmierzone w Chromium 375 px —
+                        nawigacja kliencka ląduje na `#rooms` (nagłówek 88 px,
+                        pod sticky paskiem), a pełne wejście na strumieniowany
+                        SSR zostaje na górze strony (scrollY 0). */}
+                    <Link
+                      href={backToHotelHref}
+                      className="mt-4 flex h-12 w-full items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-emerald-700 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 sm:inline-flex sm:w-auto"
+                    >
+                      Zobacz pokoje i ceny
+                    </Link>
+                  </div>
+                )}
+
+                {error && !error.soldOut && (
                   <div
                     role="alert"
                     className="rounded-lg border border-red-200 bg-red-50 px-4 py-3"
@@ -615,46 +589,51 @@ export function ReservationForm({
                   </div>
                 )}
 
-                <div>
-                  <button
-                    type="submit"
-                    disabled={step === "submitting"}
-                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-600/60"
-                  >
-                    {step === "submitting" ? (
-                      <>
-                        <svg
-                          aria-hidden
-                          className="h-4 w-4 animate-spin motion-reduce:hidden"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.3" strokeWidth="3" />
-                          <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                        </svg>
-                        Rezerwujemy pokój… To może potrwać do 30 sekund
-                      </>
-                    ) : (
-                      "Przejdź do płatności →"
-                    )}
-                  </button>
-                  <p className="mt-2 text-center text-xs text-neutral-500">
-                    <Lock aria-hidden className="mr-1 inline-block h-3.5 w-3.5 shrink-0 align-[-2px] text-emerald-700" strokeWidth={2.2} />
-                    Za chwilę przejdziesz do bezpiecznej
-                    płatności. Nic jeszcze nie pobieramy.
-                  </p>
-                  <p className="mt-2 text-center text-[11px] text-neutral-400">
-                    Przechodząc dalej, akceptujesz{" "}
-                    <Link href="/regulamin" target="_blank" className="underline underline-offset-2 hover:text-neutral-600">
-                      Regulamin
-                    </Link>{" "}
-                    i{" "}
-                    <Link href="/polityka-prywatnosci" target="_blank" className="underline underline-offset-2 hover:text-neutral-600">
-                      Politykę prywatności
-                    </Link>
-                    .
-                  </p>
-                </div>
+                {/* Po wyprzedaniu ta sama oferta dostanie znów 2001 — LiteAPI
+                    zaleca nowe wyszukiwanie. Ponowienie byłoby ślepym zaułkiem
+                    i drugim przyciskiem obok powrotu do listy pokoi. */}
+                {!error?.soldOut && (
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={step === "submitting"}
+                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-600/60"
+                    >
+                      {step === "submitting" ? (
+                        <>
+                          <svg
+                            aria-hidden
+                            className="h-4 w-4 animate-spin motion-reduce:hidden"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.3" strokeWidth="3" />
+                            <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                          </svg>
+                          Rezerwujemy pokój… To może potrwać do 30 sekund
+                        </>
+                      ) : (
+                        "Przejdź do płatności →"
+                      )}
+                    </button>
+                    <p className="mt-2 text-center text-xs text-neutral-500">
+                      <Lock aria-hidden className="mr-1 inline-block h-3.5 w-3.5 shrink-0 align-[-2px] text-emerald-700" strokeWidth={2.2} />
+                      Za chwilę przejdziesz do bezpiecznej
+                      płatności. Nic jeszcze nie pobieramy.
+                    </p>
+                    <p className="mt-2 text-center text-[11px] text-neutral-400">
+                      Przechodząc dalej, akceptujesz{" "}
+                      <Link href="/regulamin" target="_blank" className="underline underline-offset-2 hover:text-neutral-600">
+                        Regulamin
+                      </Link>{" "}
+                      i{" "}
+                      <Link href="/polityka-prywatnosci" target="_blank" className="underline underline-offset-2 hover:text-neutral-600">
+                        Politykę prywatności
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                )}
               </fieldset>
               <TrustStrip />
             </form>
