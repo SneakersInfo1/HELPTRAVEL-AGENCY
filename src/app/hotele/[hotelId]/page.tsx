@@ -20,6 +20,8 @@ import { mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { reviewCategories, reviewHighlights, sentimentUpdatedAt } from "@/lib/hotels/domain/review";
 import { buildRoomIdByRateName, indexRoomsById } from "@/lib/hotels/domain/room";
 import { slimRoomTypesForClient } from "@/lib/hotels/group-rates";
+import { dropRefusedOffers, parseRefusedOffers } from "@/lib/hotels/offer-fingerprint";
+import { ratesStayTag } from "@/lib/hotels/refused-offers";
 import { HOTEL_SHELL } from "@/lib/hotels/layout";
 import { nightsBetween, pickCheapestRate, rateTotalMinor } from "@/lib/hotels/normalize";
 import { lowest30dNotice, lowestPrice30dAndRecord } from "@/lib/hotels/price-history";
@@ -78,6 +80,8 @@ interface SP {
   children?: string;
   destination?: string;
   country?: string;
+  /** Odciski ofert odrzuconych temu gościowi (withRefusedOffers). */
+  refused?: string;
 }
 
 const plusDaysIso = (n: number) => {
@@ -139,7 +143,9 @@ async function fetchRates(args: RatesArgs, roomMapping: boolean): Promise<LiteAp
       checkout: args.checkout,
       currency: "PLN",
       occupancies: Array.from({ length: args.rooms }, () => ({ adults: args.adults, children: args.children })),
-      ...(roomMapping ? { roomMapping: true } : {}),
+      // Tag tylko na zapytaniu o dostępność: po odmowie prebooku odświeżamy to,
+      // co da się kupić, a zdjęcia pokoi mogą zostać z cache.
+      ...(roomMapping ? { roomMapping: true } : { cacheTags: [ratesStayTag(args)] }),
     });
     return res.data.find((r) => r.hotelId === args.hotelId)?.roomTypes ?? [];
   } catch (err) {
@@ -249,7 +255,7 @@ export default async function HotelDetailPage({
     : [];
   const nights = nightsBetween(checkin, checkout);
 
-  const { roomTypes, roomIdByRateName } = await fetchRoomsAndMapping({
+  const { roomTypes: fetchedRoomTypes, roomIdByRateName } = await fetchRoomsAndMapping({
     hotelId,
     checkin,
     checkout,
@@ -257,6 +263,12 @@ export default async function HotelDetailPage({
     rooms,
     children,
   });
+  // Powrót po odmowie dostawcy: ta oferta nie może wrócić na listę, nawet gdy
+  // świeże zapytanie zwróci ją pod nowym `offerId`. Filtr stoi PRZED wszystkim,
+  // co liczy się z tej listy (najtańszy pokój, historia cen, JSON-LD). Odciski
+  // jadą w linku tego gościa, więc nie ma tu żadnego odczytu z Redisa, a lista
+  // innych gości zostaje nietknięta.
+  const roomTypes = dropRefusedOffers(fetchedRoomTypes, parseRefusedOffers(sp.refused));
   const cheapest = pickCheapestRate(roomTypes);
   const cheapestMinor = cheapest ? rateTotalMinor(cheapest.rate) : null;
   const cheapestTotal = cheapestMinor !== null ? fromMinor(cheapestMinor) : undefined;

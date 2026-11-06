@@ -12,6 +12,8 @@ import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { TrackView } from "@/components/analytics/track-view";
 
+import { OFFER_FINGERPRINT_RE } from "@/lib/hotels/offer-fingerprint";
+
 import { buildBackToRoomsHref } from "./_components/prebook-recovery";
 import { ReservationForm } from "./_components/reservation-form";
 import { WebviewHint } from "./_components/webview-hint";
@@ -26,6 +28,7 @@ export const metadata: Metadata = {
 interface SP {
   hotelId?: string;
   offerId?: string;
+  fp?: string;
   checkin?: string;
   checkout?: string;
   adults?: string;
@@ -175,6 +178,7 @@ export default async function ReservationPage({
         <ReservationForm
           hotelId={hotelId}
           offerId={offerId}
+          offerFingerprint={sp.fp && OFFER_FINGERPRINT_RE.test(sp.fp) ? sp.fp : undefined}
           hotelName={hotelName}
           hotelCity={hotelCity}
           photoUrl={photoUrl}

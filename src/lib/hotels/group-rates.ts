@@ -20,9 +20,15 @@
 
 import type { LiteApiRate, LiteApiRoomType } from "@/lib/liteapi";
 
+import { offerFingerprint } from "./offer-fingerprint";
 import { isFreeCancellation, rateCancellationDeadline, rateTotalMinor } from "./normalize";
 
+/** Oferta z odciskiem policzonym na serwerze, na pełnych danych (offer-fingerprint.ts). */
+export type FingerprintedRoomType = LiteApiRoomType & { fingerprint?: string };
+
 export interface RoomOption {
+  /** Tożsamość oferty między zapytaniami (`offerId` jest jednorazowy). */
+  fingerprint: string;
   /** Bookable LiteAPI offer id of THIS option's source roomType. */
   offerId: string;
   rate: LiteApiRate;
@@ -108,14 +114,16 @@ function dedupeOptions(options: RoomOption[]): RoomOption[] {
   return [...byCondition.values()].sort(compareByPrice);
 }
 
-export function groupRates(roomTypes: LiteApiRoomType[]): GroupRatesResult {
+export function groupRates(roomTypes: FingerprintedRoomType[]): GroupRatesResult {
   // 1. Flatten offers → options (offerId travels with each row; in practice
   //    LiteAPI ships exactly 1 rate per roomType, but we iterate defensively).
   const flat: RoomOption[] = [];
   for (const rt of roomTypes) {
+    const fingerprint = rt.fingerprint ?? offerFingerprint(rt);
     for (const rate of rt.rates) {
       flat.push({
         offerId: rt.offerId,
+        fingerprint,
         rate,
         totalMinor: rateTotalMinor(rate),
         freeCancellation: isFreeCancellation(rate),
@@ -192,13 +200,14 @@ export function groupRates(roomTypes: LiteApiRoomType[]): GroupRatesResult {
  * był pierwszy), a scalanie po nazwie PL i tak bierze tylko zwycięzców.
  * Zmienia się jedynie `collapsedCount`, którego widok nie używa.
  */
-export function slimRoomTypesForClient(roomTypes: LiteApiRoomType[]): LiteApiRoomType[] {
+export function slimRoomTypesForClient(roomTypes: LiteApiRoomType[]): FingerprintedRoomType[] {
   const shown = new Set<LiteApiRate>();
   for (const group of groupRates(roomTypes).groups) for (const option of group.options) shown.add(option.rate);
-  const out: LiteApiRoomType[] = [];
+  const out: FingerprintedRoomType[] = [];
   for (const rt of roomTypes) {
     const rates = rt.rates.filter((rate) => shown.has(rate)).map((rate) => ({ ...rate, rateId: "" }));
-    if (rates.length > 0) out.push({ ...rt, rates });
+    // Odcisk z pełnej oferty: tu część jej taryf właśnie odpada.
+    if (rates.length > 0) out.push({ ...rt, rates, fingerprint: offerFingerprint(rt) });
   }
   return out;
 }

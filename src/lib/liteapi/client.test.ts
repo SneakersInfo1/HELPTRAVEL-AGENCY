@@ -445,6 +445,36 @@ test("contract: getRates (POST /hotels/rates) sends documented body keys", async
   });
 });
 
+test("contract: getRates — cacheTags idą do tagów Data Cache, nie do zapytania", async () => {
+  const { getRates } = await import("./rates");
+  await withEnv(BASE_ENV, async () => {
+    const orig = globalThis.fetch;
+    let init: RequestInit | undefined;
+    globalThis.fetch = (async (_url: RequestInfo | URL, i?: RequestInit) => {
+      init = i;
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    try {
+      await getRates({
+        hotelIds: ["lp1"],
+        checkin: "2026-06-01",
+        checkout: "2026-06-05",
+        currency: "PLN",
+        occupancies: [{ adults: 2, children: [] }],
+        cacheTags: ["rates-stay:lp1:2026-06-01:2026-06-05"],
+      });
+      assert.deepEqual(init?.next?.tags, ["liteapi", "liteapi-rates", "rates-stay:lp1:2026-06-01:2026-06-05"]);
+      assert.equal(init?.next?.revalidate, 900);
+      assert.equal("cacheTags" in (JSON.parse(String(init?.body)) as object), false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+});
+
 test("contract: getHotelDetail (GET /data/hotel) sends hotelId + language=pl by default", async () => {
   const { getHotelDetail } = await import("./hotel");
   await withEnv(BASE_ENV, async () => {

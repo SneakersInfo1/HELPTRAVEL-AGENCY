@@ -34,6 +34,10 @@ export interface GetRatesInput {
   // Dzięki temu `KEY_VERSION` w lib/hotels/rate-cache.ts NIE wymaga podbicia:
   // kształt tego, co tam trafia (SlimRate), się nie zmienia.
   roomMapping?: boolean;
+  // Dodatkowe tagi wpisu w Data Cache, do celowanego unieważnienia po odmowie
+  // prebooku (lib/hotels/refused-offers.ts). Tag nie wchodzi w klucz cache,
+  // więc dołożenie go nie powoduje masowego cache-miss.
+  cacheTags?: string[];
 }
 
 export async function getRates(input: GetRatesInput): Promise<LiteApiRatesResponse> {
@@ -61,6 +65,6 @@ export async function getRates(input: GetRatesInput): Promise<LiteApiRatesRespon
     // Same (hotelIds, dates, occupancy) within 15 min → instant cache hit.
     // Rates change slowly; if they expire by booking time we fall through
     // to LiteApiRateExpiredError handling already in /prebook.
-    nextCache: { revalidate: 900, tags: ["liteapi", "liteapi-rates"] },
+    nextCache: { revalidate: 900, tags: ["liteapi", "liteapi-rates", ...(input.cacheTags ?? [])] },
   });
 }

@@ -16,18 +16,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BedDouble, CalendarX2, ImageOff, Ruler, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { currentAnalyticsPagePath } from "@/lib/analytics/page-path";
 import { track } from "@/lib/analytics/track";
 import type { RoomProfile } from "@/lib/hotels/domain/types";
-import type { LiteApiRoomType } from "@/lib/liteapi";
 import { guestsLabel, optionsLabel, taxNoticeText } from "@/lib/hotels/domain/format";
 import { honestDiscountFrom, mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
 import { normalizeRateName } from "@/lib/hotels/domain/room";
 import { topRoomAmenities } from "@/lib/hotels/domain/room-description";
-import { groupRates, mergeGroupsByDisplayName, type RoomGroup, type RoomOption } from "@/lib/hotels/group-rates";
+import {
+  groupRates,
+  mergeGroupsByDisplayName,
+  type FingerprintedRoomType,
+  type RoomGroup,
+  type RoomOption,
+} from "@/lib/hotels/group-rates";
+import { readRefusedOffers, withRefusedOffers } from "@/lib/hotels/refused-offers-session";
 import { localizeBoard, localizeRoomName } from "@/lib/liteapi/translations";
 import { formatPLN, fromMinor } from "@/lib/money";
 
@@ -37,7 +44,7 @@ const VISIBLE_OPTIONS_DEFAULT = 3;
 
 interface Props {
   hotelId: string;
-  roomTypes: LiteApiRoomType[];
+  roomTypes: FingerprintedRoomType[];
   /**
    * Profile pokoi z /data/hotel, zaindeksowane po `rooms[].id`.
    * Pusta mapa = brak powiązań → karty bez zdjęć, ale nigdy ze zdjęciem hotelu.
@@ -92,6 +99,42 @@ export function RoomsSection({
     () => mergeGroupsByDisplayName(groupRates(roomTypes).groups, localizeRoomName),
     [roomTypes],
   );
+
+  // Wejście z `#rooms` przy pustym cache stawek. Next szuka kotwicy, gdy na
+  // ekranie jest jeszcze szkielet z loading.tsx, i po dostarczeniu treści nie
+  // próbuje ponownie. Zmierzone na produkcji 2026-11-06: zimny cache 3 z 3 prób
+  // kończyło się na scrollY 0, ciepły działał. Powrót po odmowie prebooku jest
+  // zawsze zimny, bo właśnie unieważniliśmy stawki. Efekt działa przy montażu,
+  // więc klikanie zakładek i przewijanie po wejściu zostają nietknięte.
+  const router = useRouter();
+
+  // Przycisk Wstecz po odmowie prebooku wraca na adres bez `refused`, a Next
+  // przywraca wtedy listę z pamięci, razem z odrzuconą ofertą. Skoro ta oferta
+  // znów jest na ekranie, przechodzimy na adres, z którego serwer ją odfiltruje.
+  // `pageshow` obsługuje powrót z bfcache, gdzie efekty nie uruchamiają się ponownie.
+  useEffect(() => {
+    const stay = { hotelId, checkin, checkout };
+    const hideRefusedOffers = () => {
+      const refused = readRefusedOffers(stay);
+      if (!roomTypes.some((roomType) => roomType.fingerprint && refused.includes(roomType.fingerprint))) return;
+      const current = `${location.pathname}${location.search}${location.hash}`;
+      const target = withRefusedOffers(current, refused);
+      if (target !== current) router.replace(target, { scroll: false });
+    };
+    hideRefusedOffers();
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) hideRefusedOffers();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [hotelId, checkin, checkout, roomTypes, router]);
+
+  useEffect(() => {
+    if (window.location.hash !== "#rooms") return;
+    // „instant”, bo globalne `scroll-behavior: smooth` na długiej stronie
+    // goniłoby cel, który przesuwa się przy doczytywaniu.
+    document.getElementById("rooms")?.scrollIntoView({ behavior: "instant", block: "start" });
+  }, []);
 
   if (!groups.length) {
     return (
@@ -516,6 +559,7 @@ function OptionRow({
   const params = new URLSearchParams(searchQuery);
   params.set("hotelId", hotelId);
   params.set("offerId", option.offerId);
+  params.set("fp", option.fingerprint);
   if (total !== null) params.set("price", String(Math.round(total)));
   params.set("cur", rateCurrency);
   const boardLabel = rate.boardName ?? rate.boardType ?? "";

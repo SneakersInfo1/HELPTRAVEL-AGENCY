@@ -5,13 +5,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import type { Redis } from "@upstash/redis";
 import { NextRequest } from "next/server";
 
 import {
   __resetBookingRedisForTests,
   __setBookingRedisForTests,
 } from "@/lib/booking/session";
+import { __setRatesInvalidatorForTests } from "@/lib/hotels/refused-offers";
 import { __resetLimitersForTests, __setLimiterForTests } from "@/lib/rate-limit";
+import { __resetSharedRedisForTests, __setSharedRedisForTests } from "@/lib/redis/client";
 import { __resetResendClientForTests } from "@/lib/email/client";
 
 function makeFakeRedis() {
@@ -1557,6 +1560,290 @@ test("CASE 7 (route): production without EMAIL_FROM refuses instead of using res
       __resetLimitersForTests();
       __resetResendClientForTests();
       __resetBookingRedisForTests();
+    }
+  });
+});
+
+// ── Pamięć odmów prebooku (lib/hotels/refused-offers.ts) ─────────────────────
+// Odmowa dostawcy ma odświeżyć stawki tego terminu i zablokować powtórkę tej
+// samej oferty, a jednocześnie żadna awaria tej warstwy nie może dotknąć
+// rezerwacji ani niczego wysłać do dostawcy.
+
+function makeRefusalRedis() {
+  const strings = new Map<string, unknown>();
+  return {
+    strings,
+    get: async (key: string): Promise<unknown> => strings.get(key) ?? null,
+    set: async (key: string, value: unknown, opts?: { nx?: boolean }): Promise<string | null> => {
+      if (opts?.nx && strings.has(key)) return null;
+      strings.set(key, value);
+      return "OK";
+    },
+  };
+}
+
+const REFUSAL_REQ = { ...PREBOOK_REQ_BODY, holder: HOLDER, guests: GUESTS, hotelId: "lp1a2b" };
+const STAY_TAG = "rates-stay:lp1a2b:2026-07-15:2026-07-18";
+const SOLD_OUT_2001 = {
+  status: 400,
+  body: { error: { code: 2001, message: "no availability found", description: "no prebook availability" } },
+};
+const offerMarkers = (memory: ReturnType<typeof makeRefusalRedis>) =>
+  [...memory.strings]
+    .filter(([key]) => key.startsWith("offerref:v1:o:"))
+    .map(([, refusal]) => (refusal as { code: string }).code);
+
+async function withRefusalMemory(
+  fn: (ctx: {
+    memory: ReturnType<typeof makeRefusalRedis>;
+    invalidated: string[];
+    send: (body: unknown) => Promise<Response>;
+    prebookCalls: () => Array<{ url: string; body: unknown }>;
+  }) => Promise<void>,
+): Promise<void> {
+  await withEnv(LIVE_ENV, async () => {
+    const memory = makeRefusalRedis();
+    const invalidated: string[] = [];
+    __setBookingRedisForTests(makeFakeRedis());
+    __setSharedRedisForTests(memory as unknown as Redis);
+    __setRatesInvalidatorForTests((tag) => invalidated.push(tag));
+    // Skonfigurowany Redis włącza limiter, a atrapa pamięci nie zna skryptów.
+    __setLimiterForTests("booking-prebook", {
+      limit: async () => ({
+        success: true,
+        limit: 10,
+        remaining: 9,
+        reset: Date.now() + 60_000,
+        pending: Promise.resolve(),
+      }),
+    } as never);
+    const { POST } = await import("./prebook/route");
+    try {
+      await fn({
+        memory,
+        invalidated,
+        send: (body) => POST(post("http://t/api/booking/prebook", body)),
+        prebookCalls: () => fetchCalls.filter((c) => c.url.includes("/rates/prebook")),
+      });
+    } finally {
+      __resetBookingRedisForTests();
+      __resetSharedRedisForTests();
+      __setRatesInvalidatorForTests(null);
+      __resetLimitersForTests();
+    }
+  });
+}
+
+test("prebook: odmowa 2001 trafia do pamięci i odświeża tylko ten termin; ta sama oferta nie idzie już do dostawcy", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send, prebookCalls }) => {
+    const restore = mockFetch(() => SOLD_OUT_2001);
+    try {
+      const first = await send(REFUSAL_REQ);
+      assert.equal(first.status, 410);
+      const firstBody = (await first.json()) as { error: string; message: string };
+      assert.deepEqual(invalidated, [STAY_TAG]);
+      assert.deepEqual(offerMarkers(memory), ["RATE_UNAVAILABLE"]);
+
+      const second = await send(REFUSAL_REQ);
+      assert.equal(second.status, 410);
+      const secondBody = (await second.json()) as { error: string; message: string };
+      assert.equal(secondBody.error, "RATE_UNAVAILABLE");
+      assert.equal(secondBody.message, firstBody.message);
+      assert.equal(prebookCalls().length, 1, "powtórka tej samej oferty bez kolejnego prebooku");
+      assert.deepEqual(invalidated, [STAY_TAG], "w oknie cooldownu stawek nie odświeżamy drugi raz");
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: znacznik zależy tylko od oferty, więc inne daty w body nie omijają pamięci", async () => {
+  await withRefusalMemory(async ({ send, prebookCalls }) => {
+    const restore = mockFetch(() => SOLD_OUT_2001);
+    try {
+      assert.equal((await send(REFUSAL_REQ)).status, 410);
+      const forged = { ...REFUSAL_REQ, rate: { ...REFUSAL_REQ.rate, checkin: "2026-08-01", checkout: "2026-08-02" } };
+      assert.equal((await send(forged)).status, 410);
+      assert.equal(prebookCalls().length, 1);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: martwa oferta klikana po cooldownie znów odświeża stawki (spóźniony zapis do cache)", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send, prebookCalls }) => {
+    const restore = mockFetch(() => SOLD_OUT_2001);
+    try {
+      await send(REFUSAL_REQ);
+      memory.strings.delete("offerref:v1:cd:lp1a2b:2026-07-15:2026-07-18");
+
+      assert.equal((await send(REFUSAL_REQ)).status, 410);
+      assert.deepEqual(invalidated, [STAY_TAG, STAY_TAG]);
+      assert.equal(prebookCalls().length, 1);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: znana martwa oferta z podrobionym hotelem nie czyści cudzego cache", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send, prebookCalls }) => {
+    const restore = mockFetch(() => SOLD_OUT_2001);
+    try {
+      await send(REFUSAL_REQ);
+      memory.strings.delete("offerref:v1:cd:lp1a2b:2026-07-15:2026-07-18");
+
+      assert.equal((await send({ ...REFUSAL_REQ, hotelId: "lpobcyhotel" })).status, 410);
+      assert.deepEqual(invalidated, [STAY_TAG, STAY_TAG], "odświeżamy termin z pierwszej odmowy, nie ten z body");
+      assert.equal(prebookCalls().length, 1);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: równoległe odmowy tego samego terminu: każdy gość dostaje 410, stawki odświeżone raz", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send }) => {
+    const restore = mockFetch(() => SOLD_OUT_2001);
+    try {
+      const responses = await Promise.all(
+        Array.from({ length: 5 }, (_, i) => send({ ...REFUSAL_REQ, offerId: `OFFER_ROWNOLEGLY_${i}` })),
+      );
+      assert.deepEqual(
+        responses.map((r) => r.status),
+        [410, 410, 410, 410, 410],
+      );
+      assert.deepEqual(invalidated, [STAY_TAG]);
+      assert.equal(offerMarkers(memory).length, 5);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: świeża oferta tego samego pokoju (nowy offerId) po odmowie zawsze idzie do dostawcy", async () => {
+  await withRefusalMemory(async ({ send, prebookCalls }) => {
+    const restore = mockFetch((_url, body) =>
+      (body as { offerId?: string }).offerId === "OFFER_ABCDEFGH" ? SOLD_OUT_2001 : { status: 200, body: PREBOOK_OK },
+    );
+    try {
+      assert.equal((await send(REFUSAL_REQ)).status, 410);
+      assert.equal((await send({ ...REFUSAL_REQ, offerId: "OFFER_NOWY_12345" })).status, 200);
+      assert.equal(prebookCalls().length, 2);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: wygasła oferta odświeża stawki i nie wraca do dostawcy", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send, prebookCalls }) => {
+    const restore = mockFetch(() => ({ status: 409, body: { error: { message: "rate expired" } } }));
+    try {
+      const first = await send(REFUSAL_REQ);
+      assert.equal(first.status, 409);
+      assert.equal(((await first.json()) as { error: string }).error, "PREBOOK_EXPIRED");
+      assert.deepEqual(invalidated, [STAY_TAG]);
+      assert.deepEqual(offerMarkers(memory), ["PREBOOK_EXPIRED"]);
+
+      const second = await send(REFUSAL_REQ);
+      assert.equal(((await second.json()) as { error: string }).error, "PREBOOK_EXPIRED");
+      assert.equal(prebookCalls().length, 1);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: inny błąd dostawcy niczego nie zapamiętuje i nie rusza cache stawek", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send }) => {
+    const restore = mockFetch(() => ({ status: 400, body: { error: { code: 4000, message: "bad request" } } }));
+    try {
+      assert.equal((await send(REFUSAL_REQ)).status, 503);
+      assert.equal(memory.strings.size, 0);
+      assert.deepEqual(invalidated, []);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: udana rezerwacja nie zapisuje odmowy, a hotelId nie idzie do dostawcy", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send, prebookCalls }) => {
+    const restore = mockFetch(() => ({ status: 200, body: PREBOOK_OK }));
+    try {
+      assert.equal((await send(REFUSAL_REQ)).status, 200);
+      assert.equal(memory.strings.size, 0);
+      assert.deepEqual(invalidated, []);
+      assert.equal("hotelId" in (prebookCalls()[0]?.body as object), false);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: stary klient bez hotelId — oferta zapamiętana, stawek nie ma jak odświeżyć", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send, prebookCalls }) => {
+    const restore = mockFetch(() => SOLD_OUT_2001);
+    try {
+      const oldClient = { ...PREBOOK_REQ_BODY, holder: HOLDER, guests: GUESTS };
+      assert.equal((await send(oldClient)).status, 410);
+      assert.deepEqual(offerMarkers(memory), ["RATE_UNAVAILABLE"]);
+      assert.deepEqual(invalidated, []);
+
+      assert.equal((await send(oldClient)).status, 410);
+      assert.equal(prebookCalls().length, 1);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: śmieciowe hotelId wyłącza odświeżenie, a nie blokuje rezerwacji", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send, prebookCalls }) => {
+    const restore = mockFetch(() => ({ status: 200, body: PREBOOK_OK }));
+    try {
+      assert.equal((await send({ ...REFUSAL_REQ, hotelId: "../../etc:passwd" })).status, 200);
+      assert.equal(prebookCalls().length, 1);
+      assert.equal(memory.strings.size, 0);
+      assert.deepEqual(invalidated, []);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: awaria odczytu pamięci przepuszcza rezerwację do dostawcy", async () => {
+  await withRefusalMemory(async ({ memory, send, prebookCalls }) => {
+    memory.get = async () => {
+      throw new Error("redis down");
+    };
+    const restore = mockFetch(() => ({ status: 200, body: PREBOOK_OK }));
+    try {
+      const r = await send(REFUSAL_REQ);
+      assert.equal(r.status, 200);
+      assert.match(await r.text(), /secretKey/);
+      assert.equal(prebookCalls().length, 1);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test("prebook: awaria zapisu pamięci nie zmienia odpowiedzi dla gościa", async () => {
+  await withRefusalMemory(async ({ memory, invalidated, send }) => {
+    memory.set = async () => {
+      throw new Error("redis down");
+    };
+    const restore = mockFetch(() => SOLD_OUT_2001);
+    try {
+      const r = await send(REFUSAL_REQ);
+      assert.equal(r.status, 410);
+      assert.match(await r.text(), /wyprzedał/);
+      assert.deepEqual(invalidated, []);
+    } finally {
+      restore();
     }
   });
 });
