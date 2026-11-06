@@ -25,7 +25,9 @@ export type BookingErrorCode =
 const USER_MESSAGE_PL: Record<BookingErrorCode, string> = {
   PREBOOK_EXPIRED:
     "Cena tej oferty wygasła. Wybierz ofertę ponownie, aby pobrać aktualną stawkę.",
-  RATE_UNAVAILABLE: "Ten pokój nie jest już dostępny. Wybierz inną ofertę.",
+  // Oferta właśnie się wyprzedała (HTTP 410 albo prebook 2001 — prebook.ts).
+  // Sam fakt, bez popędzania: gość wraca do listy pokoi tego hotelu.
+  RATE_UNAVAILABLE: "Ten pokój właśnie się wyprzedał — wybierz inną ofertę.",
   INVALID_GUEST_DATA: "Sprawdź poprawność danych gości i spróbuj ponownie.",
   PAYMENT_FAILED: "Płatność nie powiodła się. Sprawdź dane karty lub spróbuj ponownie.",
   BOOK_FAILED_AFTER_PAYMENT:

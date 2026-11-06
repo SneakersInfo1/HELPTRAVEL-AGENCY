@@ -7,6 +7,7 @@
 // front-end User Payment SDK consumes.
 
 import { liteApiRequest } from "./client";
+import { LiteApiError, LiteApiSoldOutError, isNoAvailabilityBody } from "./errors";
 import { LiteApiPrebookResponseSchema, type LiteApiPrebookResponse } from "./types";
 
 export interface PrebookInput {
@@ -37,19 +38,38 @@ export async function prebook(input: PrebookInput): Promise<LiteApiPrebookRespon
     clientReference: input.clientReference,
     usePaymentSdk: true,
   };
-  return liteApiRequest({
-    path: "/rates/prebook",
-    method: "POST",
-    keyMode: "private",
-    body,
-    schema: LiteApiPrebookResponseSchema,
-    timeoutMs: 60_000,
-    // One free retry for transient failures only (5xx / 408 / 425 / network /
-    // timeout — see RETRYABLE_STATUS in client.ts). Deterministic errors
-    // (401/403/409/410/422/429) are NOT retried — they would fail again.
-    // LiteAPI prebook is idempotent within the rate TTL with the same
-    // clientReference, so a duplicate attempt is safe; we only ever persist
-    // the successful response.
-    retries: 2,
-  });
+  try {
+    return await liteApiRequest({
+      path: "/rates/prebook",
+      method: "POST",
+      keyMode: "private",
+      body,
+      schema: LiteApiPrebookResponseSchema,
+      timeoutMs: 60_000,
+      // One free retry for transient failures only (5xx / 408 / 425 / network /
+      // timeout — see RETRYABLE_STATUS in client.ts). Deterministic errors
+      // (401/403/409/410/422/429) are NOT retried — they would fail again.
+      // LiteAPI prebook is idempotent within the rate TTL with the same
+      // clientReference, so a duplicate attempt is safe; we only ever persist
+      // the successful response.
+      retries: 2,
+    });
+  } catch (err) {
+    // 2001 „no prebook availability" (HTTP 400 albo 409) = ta oferta właśnie
+    // przestała być dostępna — nie awaria dostawcy. Bez tego 400 kończyło jako
+    // LITEAPI_DOWN/503, a 409 jako „cena wygasła". Tylko tutaj, nie we wspólnym
+    // mapperze — powód przy `isNoAvailabilityBody` w errors.ts.
+    if (
+      err instanceof LiteApiError &&
+      (err.status === 400 || err.status === 409) &&
+      isNoAvailabilityBody(err.body)
+    ) {
+      throw new LiteApiSoldOutError("No prebook availability (2001)", {
+        status: err.status,
+        body: err.body,
+        cause: err,
+      });
+    }
+    throw err;
+  }
 }

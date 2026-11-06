@@ -119,6 +119,28 @@ function isInvalidOfferBody(body: unknown): boolean {
   return typeof err.message === "string" && /invalid\s*offer\s*id/i.test(err.message);
 }
 
+// LiteAPI odrzuca PREBOOK hotelu oferty, która przestała być dostępna, kodem
+// 2001 (`{error:{code:2001, message:"no availability found", description:
+// "no prebook availability"}}`). Dokumentacja „API Errors for booking
+// workflow": HTTP 400 albo 409, „Offer no longer available…", zalecenie —
+// nowe wyszukiwanie i świeża oferta (ponowienie tej samej nic nie da).
+// Logi 2026-11-03: 2× `400 "2001: no prebook availability"` szło jako
+// LITEAPI_UNKNOWN → LITEAPI_DOWN/503 („chwilowy problem po stronie dostawcy").
+//
+// CELOWO NIE w `liteApiErrorFromResponse`: ten mapper obsługuje też loty i
+// wyszukiwanie hoteli. Przemapowanie 2001 robi wyłącznie prebook hotelu
+// (prebook.ts) — patrz test „wspólny mapper NIE przemapowuje 2001".
+export function isNoAvailabilityBody(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const err = (body as { error?: { code?: unknown; message?: unknown; description?: unknown } }).error;
+  if (!err || typeof err !== "object") return false;
+  if (err.code === 2001 || err.code === "2001") return true;
+  // Gdyby dostawca zmienił numer kodu — rozpoznajemy po treści, jak przy 4002.
+  return [err.message, err.description].some(
+    (t) => typeof t === "string" && /\bno\s+(prebook\s+)?availability\b/i.test(t),
+  );
+}
+
 // Czy błąd z /data/hotel oznacza PRAWDZIWIE nieistniejący hotel? Używane przez
 // stronę szczegółów, żeby zrobić notFound() (czysty 404) zamiast traktować to
 // jak błąd przejściowy (strona 500). UWAGA (zmierzone na żywo): LiteAPI dla

@@ -293,6 +293,136 @@ test("prebookHotel: network failure maps to LITEAPI_DOWN", async () => {
   });
 });
 
+// ── Prebook: 2001 „no prebook availability" ─────────────────────────────────
+// Incydent z logów Vercela 2026-11-03 (2×): LiteAPI odpowiedziało na prebook
+// HTTP 400 `2001: no prebook availability`, a my mapowaliśmy to na
+// LITEAPI_DOWN/503 („chwilowy problem po stronie dostawcy”). To nie awaria —
+// ta konkretna oferta właśnie się wyprzedała. Kształt ciała jak w dokumentacji
+// LiteAPI („API Errors for booking workflow”) i w linii logu (description).
+const NO_AVAILABILITY_BODY = {
+  error: { code: 2001, message: "no availability found", description: "no prebook availability" },
+};
+
+test("prebookHotel: 400 + 2001 (no prebook availability) → RATE_UNAVAILABLE 410, nie LITEAPI_DOWN/503", async () => {
+  const { prebookHotel } = await import("./booking");
+  const { BookingError } = await import("./booking-errors");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce(NO_AVAILABILITY_BODY, 400);
+    const cc = captureConsoleError();
+    try {
+      await assert.rejects(
+        () => prebookHotel({ rateId: "OFFER_ABC" }),
+        (err: unknown) => {
+          assert.ok(err instanceof BookingError);
+          const be = err as InstanceType<typeof BookingError>;
+          assert.equal(be.code, "RATE_UNAVAILABLE");
+          assert.equal(be.httpStatus, 410);
+          assert.match(be.userMessagePl, /wyprzedał/);
+          assert.match(be.userMessagePl, /inną ofertę/);
+          return true;
+        },
+      );
+      // Odmowa jest deterministyczna — ponowienie tej samej oferty to tylko
+      // kolejne zapytanie zużywające limit konta u dostawcy.
+      assert.equal(m.captured.length, 1, "2001 nie może być ponawiane");
+      // Operator dalej widzi w logu surowy powód od dostawcy.
+      const line = cc.lines.find((l) => l.includes("[liteapi][booking][prebook]") && l.includes("status=error"));
+      assert.ok(line, "oczekiwana linia błędu prebooku");
+      assert.match(line!, /code=RATE_UNAVAILABLE/);
+      assert.match(line!, /liteApiStatus=400/);
+      assert.match(line!, /liteApiCode=LITEAPI_SOLD_OUT/);
+      assert.match(line!, /liteApiBody=2001: no prebook availability/);
+    } finally {
+      cc.restore();
+      m.restore();
+    }
+  });
+});
+
+test("prebookHotel: 409 + 2001 → RATE_UNAVAILABLE (dokumentacja: 2001 przychodzi jako 400 albo 409)", async () => {
+  const { prebookHotel } = await import("./booking");
+  const { BookingError } = await import("./booking-errors");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce(NO_AVAILABILITY_BODY, 409);
+    const cc = captureConsoleError();
+    try {
+      await assert.rejects(
+        () => prebookHotel({ rateId: "OFFER_ABC" }),
+        (err: unknown) => {
+          assert.ok(err instanceof BookingError);
+          assert.equal((err as InstanceType<typeof BookingError>).code, "RATE_UNAVAILABLE");
+          return true;
+        },
+      );
+    } finally {
+      cc.restore();
+      m.restore();
+    }
+  });
+});
+
+test("prebookHotel: pozostałe odmowy dostawcy zostają na dotychczasowych ścieżkach", async () => {
+  const { prebookHotel } = await import("./booking");
+  const { BookingError } = await import("./booking-errors");
+  const cases: Array<{ name: string; status: number; body: unknown; want: string }> = [
+    { name: "409 bez kodu 2001", status: 409, body: { error: { code: 4090, message: "conflict" } }, want: "PREBOOK_EXPIRED" },
+    { name: "400 + 4002 (wygasła oferta)", status: 400, body: { error: { code: 4002, message: "invalid offerId" } }, want: "PREBOOK_EXPIRED" },
+    { name: "400 + 5000 (nieokreślony błąd)", status: 400, body: { error: { code: 5000, message: "unable to process request" } }, want: "LITEAPI_DOWN" },
+    { name: "410", status: 410, body: null, want: "RATE_UNAVAILABLE" },
+  ];
+  await withEnv(BASE_ENV, async () => {
+    for (const c of cases) {
+      const m = mockFetchOnce(c.body, c.status);
+      const cc = captureConsoleError();
+      try {
+        await assert.rejects(
+          () => prebookHotel({ rateId: "OFFER_ABC" }),
+          (err: unknown) => {
+            assert.ok(err instanceof BookingError, c.name);
+            assert.equal((err as InstanceType<typeof BookingError>).code, c.want, c.name);
+            return true;
+          },
+        );
+      } finally {
+        cc.restore();
+        m.restore();
+      }
+    }
+  });
+});
+
+// Book idzie PO płatności: każda porażka to BOOK_FAILED_AFTER_PAYMENT, także
+// 2001 z /rates/book (HTTP 409). Przemapowanie 2001 dotyczy tylko prebooku —
+// nie może zamienić porażki po płatności w zwykłe „wybierz inną ofertę”.
+test("CRITICAL: book() z 409/2001 PO płatności → nadal BookFailedAfterPaymentError", async () => {
+  const { bookHotel } = await import("./booking");
+  const { BookFailedAfterPaymentError } = await import("./booking-errors");
+  await withEnv(BASE_ENV, async () => {
+    const m = mockFetchOnce(NO_AVAILABILITY_BODY, 409);
+    const cc = captureConsoleError();
+    try {
+      await assert.rejects(
+        () =>
+          bookHotel({
+            prebookId: "pb_123",
+            transactionId: "tx_123",
+            clientReference: "cr-1",
+            guests: GUESTS,
+            holder: HOLDER,
+          }),
+        (err: unknown) => {
+          assert.ok(err instanceof BookFailedAfterPaymentError);
+          return true;
+        },
+      );
+      assert.ok(cc.lines.some((l) => l.includes("[liteapi][booking][CRITICAL]")));
+    } finally {
+      cc.restore();
+      m.restore();
+    }
+  });
+});
+
 test("CRITICAL: book() failing AFTER payment throws BookFailedAfterPaymentError + logs [CRITICAL]", async () => {
   const { bookHotel } = await import("./booking");
   const { BookFailedAfterPaymentError } = await import("./booking-errors");

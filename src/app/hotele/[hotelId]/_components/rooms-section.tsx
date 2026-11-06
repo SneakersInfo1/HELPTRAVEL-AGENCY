@@ -104,8 +104,11 @@ export function RoomsSection({
     );
   }
 
+  // scroll-mt = przesunięcia z SectionTabs (88 / 100 px od 640 px): wejście
+  // przez `#rooms` (powrót z rezerwacji po wyprzedanym pokoju) i
+  // `scrollIntoView` z widgetu nie chowają nagłówka pod sticky paskiem.
   return (
-    <section id="rooms" className="space-y-4">
+    <section id="rooms" className="scroll-mt-[88px] space-y-4 sm:scroll-mt-[100px]">
       <h2 className="text-xl font-bold text-neutral-900">Pokoje i ceny</h2>
       {groups.map((group) => (
         <RoomGroupCard
@@ -188,7 +191,10 @@ function NoRooms({
   const tydzienPozniej = przesun(7);
 
   return (
-    <section id="rooms" className="rounded-2xl border border-neutral-200 bg-white p-6 sm:p-8">
+    <section
+      id="rooms"
+      className="scroll-mt-[88px] rounded-2xl border border-neutral-200 bg-white p-6 sm:scroll-mt-[100px] sm:p-8"
+    >
       <h2 className="text-xl font-bold text-neutral-900">Pokoje i ceny</h2>
       <div className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200/70">
         <CalendarX2 aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />

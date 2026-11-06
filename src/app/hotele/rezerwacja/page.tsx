@@ -12,6 +12,7 @@ import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { TrackView } from "@/components/analytics/track-view";
 
+import { buildBackToRoomsHref } from "./_components/prebook-recovery";
 import { ReservationForm } from "./_components/reservation-form";
 import { WebviewHint } from "./_components/webview-hint";
 
@@ -124,17 +125,15 @@ export default async function ReservationPage({
       ? sp.cancelUntil
       : undefined;
 
-  // Deep link back to THIS hotel with the same stay parameters. Used by the
-  // prebook-error recovery panel: when LiteAPI rejects the offer (price
-  // changed / sold out / provider hiccup), retrying the same dead offerId is
-  // futile — the productive path is re-picking a fresh rate on the hotel
-  // page. Production logs 2026-06-09 show a user retrying the same offer
-  // 4× into a 503 wall and bouncing; this gives that user a working exit.
-  const backToHotelParams = new URLSearchParams({ checkin, checkout });
-  if (sp.adults) backToHotelParams.set("adults", sp.adults);
-  if (sp.rooms) backToHotelParams.set("rooms", sp.rooms);
-  if (sp.children) backToHotelParams.set("children", sp.children);
-  const backToHotelHref = `/hotele/${encodeURIComponent(hotelId)}?${backToHotelParams.toString()}`;
+  // Recovery link for the prebook-error panel: this hotel's rooms list with
+  // the same dates and guests (why it exists — see buildBackToRoomsHref).
+  const backToHotelHref = buildBackToRoomsHref(hotelId, {
+    checkin,
+    checkout,
+    adults: sp.adults,
+    rooms: sp.rooms,
+    children: sp.children,
+  });
 
   // Per LiteAPI support (19 May 2026): the widget `publicKey` is an ENVIRONMENT
   // FLAG ("live" | "sandbox"), NOT our LiteAPI API public key. Passing the
