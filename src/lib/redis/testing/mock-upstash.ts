@@ -136,6 +136,11 @@ export async function startMockUpstash(
         e.expireAt = Date.now() + Number(cmd[2]) * 1000;
         return { result: 1 };
       }
+      case "pttl": {
+        const e = live(key);
+        if (!e) return { result: -2 };
+        return { result: e.expireAt === undefined ? -1 : Math.max(0, e.expireAt - Date.now()) };
+      }
       case "hset": {
         let e = live(key);
         if (!e || e.kind !== "hash") {

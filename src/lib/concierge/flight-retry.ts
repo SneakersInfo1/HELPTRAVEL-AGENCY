@@ -27,15 +27,11 @@ import {
  *
  * Przejściowe: przekroczony czas (także HTTP 408), błąd sieci i 5xx
  * (`liteApiErrorFromResponse` mapuje każde 5xx na LiteApiNetworkError),
- * oraz 429. Także zajęta bramka lotów (`PROVIDER_BUSY`): do dostawcy nic nie
- * poszło, a za chwilę slot będzie wolny; bez tego czat oddawałby ofertę bez
- * lotu tylko dlatego, że w tej sekundzie szukał ktoś inny. Wszystko inne —
- * walidacja, wygasła oferta, brak autoryzacji, pauza po 429, nieznane 4xx,
- * błędy spoza LiteAPI — jest deterministyczne: druga próba dałaby ten sam
- * wynik, a kosztowałaby użytkownika kolejne sekundy.
+ * oraz 429. Wszystko inne — walidacja, wygasła oferta, brak autoryzacji,
+ * nieznane 4xx, błędy spoza LiteAPI — jest deterministyczne: druga próba
+ * dałaby ten sam wynik, a kosztowałaby użytkownika kolejne sekundy.
  */
 export function isTransientFlightError(err: unknown): boolean {
-  if ((err as { reason?: unknown } | null)?.reason === "PROVIDER_BUSY") return true;
   if (!(err instanceof LiteApiError)) return false;
   return (
     err instanceof LiteApiTimeoutError ||

@@ -30,9 +30,10 @@ const appEnv = {
   UPSTASH_REDIS_REST_URL: `http://127.0.0.1:${FAKE_UPSTASH_PORT}`,
   UPSTASH_REDIS_REST_TOKEN: "mock-token",
   FLIGHTS_FLOW_MODE: "live",
-  // Wartości jawnie: test ma mierzyć produkcyjny odstęp, nie domyślną z lokalnego pliku.
+  // Odstęp krótszy niż produkcyjne 65 s, żeby testy trwały sekundy, ale tak samo
+  // dłuższy niż czekanie w funkcji (3 s): odmowa z terminem i powrót przeglądarki.
   FLIGHTS_PROVIDER_CONCURRENCY: "1",
-  FLIGHTS_PROVIDER_MIN_INTERVAL_MS: "1500",
+  FLIGHTS_PROVIDER_MIN_INTERVAL_MS: process.env.E2E_FLIGHTS_INTERVAL_MS ?? "4000",
   FLIGHTS_BACKGROUND_SEARCH: "off",
 };
 

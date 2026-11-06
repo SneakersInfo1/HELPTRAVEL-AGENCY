@@ -12,6 +12,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const KEY = "flgov:v1:slot:0";
 
 type MemoryStore = SlotStore & {
+  failPttl: boolean;
   get<T = unknown>(key: string): Promise<T | null>;
   del(...keys: string[]): Promise<number>;
   m: Map<string, { v: string; exp: number }>;
@@ -35,6 +36,7 @@ function memoryStore(): MemoryStore {
   const s: MemoryStore = {
     m,
     fail: false,
+    failPttl: false,
     loseSetReply: false,
     async set(k: string, v: string, o: { nx?: boolean; px: number }) {
       if (s.fail) throw new Error("magazyn padł");
@@ -48,6 +50,11 @@ function memoryStore(): MemoryStore {
       const v = (live(k)?.v ?? null) as T | null;
       s.afterGet?.();
       return v;
+    },
+    async pttl(k: string) {
+      if (s.fail || s.failPttl) throw new Error("magazyn padł");
+      const e = live(k);
+      return e ? e.exp - Date.now() : -2;
     },
     // Semantyka skryptu zwolnienia: porównanie i zmiana w JEDNYM kroku.
     async eval(_script: string, keys: string[], args: string[]) {
@@ -71,16 +78,17 @@ function memoryStore(): MemoryStore {
 
 const cfg = (concurrency = 1, minIntervalMs = 0) => () => ({ concurrency, minIntervalMs });
 
-test("konfiguracja: domyślnie 1 naraz i 1500 ms odstępu; wartości spoza zakresu przycięte", () => {
-  assert.deepEqual(providerSlotConfig({}), { concurrency: 1, minIntervalMs: 1500 });
+test("konfiguracja: domyślnie 1 naraz i 65 s odstępu; wartości spoza zakresu przycięte", () => {
+  assert.deepEqual(providerSlotConfig({}), { concurrency: 1, minIntervalMs: 65_000 });
   assert.deepEqual(providerSlotConfig({ FLIGHTS_PROVIDER_CONCURRENCY: "9", FLIGHTS_PROVIDER_MIN_INTERVAL_MS: "-5" }), {
     concurrency: 4,
     minIntervalMs: 0,
   });
   assert.deepEqual(providerSlotConfig({ FLIGHTS_PROVIDER_CONCURRENCY: "abc", FLIGHTS_PROVIDER_MIN_INTERVAL_MS: "" }), {
     concurrency: 1,
-    minIntervalMs: 1500,
+    minIntervalMs: 65_000,
   });
+  assert.equal(providerSlotConfig({ FLIGHTS_PROVIDER_MIN_INTERVAL_MS: "999999" }).minIntervalMs, 300_000);
 });
 
 test("dwie instancje, wspólny magazyn: nigdy więcej niż jedno wyszukiwanie naraz", async () => {
@@ -165,19 +173,49 @@ test("bez magazynu: bramka lokalna szereguje wyszukiwania i trzyma odstęp", asy
   assert.ok(b - a >= 120 && c - b >= 120, `odstępy ${b - a} / ${c - b} ms`);
 });
 
-test("magazyn pada w trakcie czekania → przejście na bramkę lokalną zamiast błędu wyszukiwania", async () => {
+test("magazyn pada, gdy wiadomo, że slot ma ktoś inny → odmowa, nie zapytanie równoległe ze znanym właścicielem", async () => {
   const store = memoryStore();
   const holder = createProviderGate({ store: () => store, config: cfg() });
   const g = createProviderGate({ store: () => store, config: cfg() });
-  const held = await holder.acquire({ maxWaitMs: 1_000, leaseMs: 10_000 });
+  const held = await holder.acquire({ maxWaitMs: 1_000, leaseMs: 2_000 });
   const pending = g.acquire({ maxWaitMs: 3_000, leaseMs: 10_000 });
   await sleep(100);
   store.fail = true;
-  const slot = await pending;
-  assert.equal(slot.index, null);
-  await g.release(slot);
+  await assert.rejects(pending, ProviderSlotTimeoutError);
+  assert.deepEqual(g.localState, { active: 0, waiting: 0 });
   store.fail = false;
   await holder.release(held);
+});
+
+test("magazyn pada od razu, bez śladu właściciela → bramka lokalna: awaria Upstash nie wyłącza lotów", async () => {
+  const store = memoryStore();
+  store.fail = true;
+  const g = createProviderGate({ store: () => store, config: cfg() });
+  const slot = await g.acquire({ maxWaitMs: 300, leaseMs: 10_000 });
+  assert.equal(slot.index, null);
+  await g.release(slot);
+});
+
+test("PTTL pada przy odmowie: nadal odmowa, tylko bez dokładnego terminu", async () => {
+  const store = memoryStore();
+  store.m.set(KEY, { v: "ktos-inny", exp: Date.now() + 5_000 });
+  store.failPttl = true;
+  const g = createProviderGate({ store: () => store, config: cfg(1, 5_000) });
+  await assert.rejects(g.acquire({ maxWaitMs: 300, leaseMs: 10_000 }), (err: unknown) => {
+    assert.ok(err instanceof ProviderSlotTimeoutError);
+    assert.equal(err.retryAfterMs, undefined);
+    return true;
+  });
+  assert.deepEqual(g.localState, { active: 0, waiting: 0 });
+});
+
+test("slot zwolniony tuż po odczycie dzierżawy: czekanie go łapie, zamiast odsyłać gościa na minutę", async () => {
+  const store = memoryStore();
+  // Ktoś zajął slot, trafił w cache i oddał go po 100 ms, choć dzierżawa mówi 60 s.
+  store.m.set(KEY, { v: "ktos-inny", exp: Date.now() + 60_000 });
+  setTimeout(() => store.m.delete(KEY), 100);
+  const g = createProviderGate({ store: () => store, config: cfg(1, 65_000) });
+  await g.release(await g.acquire({ maxWaitMs: 2_000, leaseMs: 10_000 }));
 });
 
 test("zwolnienie to JEDNA atomowa komenda: bez odczytu, po którym ktoś mógłby przejąć slot przed zapisem", async () => {
@@ -302,4 +340,37 @@ test("magazyn rzuca już przy pobraniu klienta → bramka lokalna, kolejka nie p
   await g.release(slot);
   throwing = false;
   assert.deepEqual(g.localState, { active: 0, waiting: 0 });
+});
+
+test("slot wolny dopiero za długo: po krótkim czekaniu odmowa z czasem do zwolnienia", async () => {
+  const store = memoryStore();
+  store.m.set(KEY, { v: "ktos-inny", exp: Date.now() + 5_000 });
+  const g = createProviderGate({ store: () => store, config: cfg(1, 5_000) });
+  await assert.rejects(g.acquire({ maxWaitMs: 300, leaseMs: 10_000 }), (err: unknown) => {
+    assert.ok(err instanceof ProviderSlotTimeoutError);
+    assert.ok((err.retryAfterMs ?? 0) > 4_000 && (err.retryAfterMs ?? 0) <= 5_000, `retryAfterMs=${err.retryAfterMs}`);
+    return true;
+  });
+  assert.deepEqual(g.localState, { active: 0, waiting: 0 });
+});
+
+test("slot zwolni się w czasie czekania: czekamy zamiast odmawiać", async () => {
+  const store = memoryStore();
+  store.m.set(KEY, { v: "ktos-inny", exp: Date.now() + 200 });
+  const g = createProviderGate({ store: () => store, config: cfg() });
+  await g.release(await g.acquire({ maxWaitMs: 2_000, leaseMs: 10_000 }));
+});
+
+test("bez magazynu: odstęp dłuższy niż czekanie → odmowa od razu, z czasem do końca odstępu", async () => {
+  const g = createProviderGate({ store: () => null, config: cfg(1, 5_000) });
+  const slot = await g.acquire({ maxWaitMs: 300, leaseMs: 10_000 });
+  slot.lastProviderCallAt = Date.now();
+  await g.release(slot);
+  const t0 = Date.now();
+  await assert.rejects(g.acquire({ maxWaitMs: 300, leaseMs: 10_000 }), (err: unknown) => {
+    assert.ok(err instanceof ProviderSlotTimeoutError);
+    assert.ok((err.retryAfterMs ?? 0) > 4_000, `retryAfterMs=${err.retryAfterMs}`);
+    return true;
+  });
+  assert.ok(Date.now() - t0 < 100, `odmowa po ${Date.now() - t0} ms`);
 });

@@ -11,14 +11,16 @@
 //   GET /__e2e/reset?afterRefusal=reoffer|gone&prebook=sold|expired&delayMs=1500
 //     reoffer: odrzucony pokój wraca pod nowym offerId (najgorszy przypadek)
 //     gone:    po odmowie świeże zapytania już go nie zwracają
-//   GET /__e2e/reset?flights=ok|empty|429|500&flightsFor=WMI:500,RDO:empty&flightsDelayMs=150
+//   GET /__e2e/reset?flights=ok|empty|429|500&flightsFor=WMI:500,RDO:empty&flightsDelayMs=150&flightsMinGapMs=3500
 //     loty: tryb domyślny i wyjątki per lotnisko wylotu. Bez wyjątków WMI i RDO
 //     są puste, jak w GDS na produkcji.
 //
-// Loty zachowują się jak konto po przywróceniu dostępu (zmierzone 2026-11-03/04):
-// zapytanie równoczesne z innym dostaje HTTP 429 z kodem 4290. Atrapa sama liczy
-// równoległość i odstępy, więc to jej liczniki, a nie deklaracje kodu, mówią, co
-// naprawdę doszło „do dostawcy”.
+// Loty zachowują się jak konto po przywróceniu dostępu (zmierzone 2026-11-03..06):
+// zapytanie za blisko startu poprzedniego dostaje HTTP 429 z kodem 4290, także gdy
+// tamto już się skończyło. Na produkcji 9,46 s to za mało, a 63,8 s wystarcza; tu
+// odstępy są krótsze, ale proporcje te same: bramka musi trzymać odstęp dłuższy niż
+// wolno czekać w funkcji. Atrapa sama liczy równoległość i odstępy, więc to jej
+// liczniki, a nie deklaracje kodu, mówią, co naprawdę doszło „do dostawcy”.
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
@@ -59,6 +61,7 @@ const state = {
   flights: "ok" as FlightMode,
   flightsFor: {} as Record<string, FlightMode>,
   flightsDelayMs: 150,
+  flightsMinGapMs: 0,
   flightsInFlight: 0,
   flightsLastStart: 0,
 };
@@ -188,22 +191,24 @@ async function flightRates(req: IncomingMessage, res: ServerResponse) {
   const startedAt = Date.now();
   stats.flightRates += 1;
   stats.flightOrigins.push(origin);
-  if (state.flightsLastStart > 0) stats.flightStartGapsMs.push(startedAt - state.flightsLastStart);
+  const gap = state.flightsLastStart > 0 ? startedAt - state.flightsLastStart : null;
+  if (gap !== null) stats.flightStartGapsMs.push(gap);
   state.flightsLastStart = startedAt;
   state.flightsInFlight += 1;
   stats.flightMaxInFlight = Math.max(stats.flightMaxInFlight, state.flightsInFlight);
   const concurrent = state.flightsInFlight > 1;
+  const tooSoon = concurrent || (gap !== null && gap < state.flightsMinGapMs);
   await new Promise((resolve) => setTimeout(resolve, state.flightsDelayMs));
   state.flightsInFlight -= 1;
 
-  const mode: FlightMode = concurrent ? "429" : flightMode(origin);
+  const mode: FlightMode = tooSoon ? "429" : flightMode(origin);
   if (mode === "429") {
     stats.flightThrottled += 1;
     return send(
       res,
       429,
       { error: { code: 4290, message: "You have exceeded the allowed request limit", description: "Too many requests, please try again later" } },
-      concurrent ? {} : { "Retry-After": "15" },
+      tooSoon ? {} : { "Retry-After": "15" },
     );
   }
   if (mode === "500") return send(res, 500, { error: { code: 5000, message: "unable to process request" } });
@@ -241,6 +246,7 @@ const server = createServer(async (req, res) => {
         .map((pair) => pair.split(":") as [string, FlightMode]),
     );
     state.flightsDelayMs = Number(url.searchParams.get("flightsDelayMs") ?? 150);
+    state.flightsMinGapMs = Number(url.searchParams.get("flightsMinGapMs") ?? 0);
     state.flightsLastStart = 0;
     return send(res, 200, { ok: true });
   }

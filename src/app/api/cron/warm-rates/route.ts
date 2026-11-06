@@ -310,9 +310,7 @@ export async function GET(request: NextRequest) {
         ],
         adults: 1,
       });
-      // `retries: 1` — jeden strzał. Domyślne 3 próby ponawiały też 429, czyli
-      // przy limitowaniu przez dostawcę cron TROIŁ ruch, który go wywołał.
-      const res = await searchFlightRates(input, { source: "background", retries: 1 });
+      const res = await searchFlightRates(input, { source: "background" });
       flightGate.onSuccess();
       flightCalls++;
       const minTotal = minTotalFromOffers(normalizeRatesResponse(res));

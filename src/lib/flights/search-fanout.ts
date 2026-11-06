@@ -12,6 +12,8 @@
 export type OriginStatus =
   | { state: "pending" }
   | { state: "loading" }
+  /** Serwer odmówił bez zapytania do dostawcy, bo za wcześnie; przeglądarka czeka do `until` (epoch ms). */
+  | { state: "waiting"; until: number }
   | { state: "ok"; count: number }
   | {
       state: "error";
@@ -34,6 +36,8 @@ export interface FanoutSummary {
   message: string | null;
   /** Najpóźniejszy moment, od którego ponowienie ma sens. */
   retryAt: number | null;
+  /** Kiedy przebieg sam wróci do czekającego lotniska; `null` = nic nie czeka. */
+  waitingUntil: number | null;
   /** Wszystkie błędy to odmowa dostępu u dostawcy — ponawianie nie pomoże. */
   providerDown: boolean;
   /** Czy ponowienie nieudanych lotnisk ma sens (nie: same złe dane albo odmowa dostępu). */
@@ -57,20 +61,33 @@ export const STOP_REASONS = new Set([
  */
 export const MAX_CONSECUTIVE_FAILURES = 2;
 
+/** Ile razy jedno lotnisko czeka na odstęp dostawcy, zanim przebieg się podda (inni goście mogą być szybsi). */
+export const MAX_BUSY_WAITS = 6;
+
 export interface FanoutRun {
   /** Wyszukanie jednego lotniska; błąd to stan, nie wyjątek. */
   search(origin: string): Promise<OriginStatus>;
   onStatuses(patch: Record<string, OriginStatus>): void;
   /** `false` po wyjściu ze strony — kolejka staje, reszta nie idzie do serwera. */
   isActive(): boolean;
+  /** Czeka do podanej chwili (epoch ms). */
+  sleepUntil(at: number): Promise<void>;
+}
+
+type WaitableBusy = Extract<OriginStatus, { state: "error" }> & { retryAt: number };
+
+/** Serwer odmówił BEZ zapytania do dostawcy i podał termin: to czekanie, nie błąd. */
+function isWaitableBusy(status: OriginStatus): status is WaitableBusy {
+  return status.state === "error" && status.reason === "PROVIDER_BUSY" && status.retryAt !== undefined;
 }
 
 /**
  * Jeden przebieg po lotniskach: PO KOLEI, w kolejności grupy (najpierw główne).
  * Dawniej szły naraz i dostawca odpowiadał na drugie i trzecie HTTP 429
- * (produkcja 2026-11-03 i 2026-11-04). Serwer i tak szereguje zapytania
- * (provider-slot.ts), ale kolejka w przeglądarce daje główne lotnisko jako
- * pierwsze, nie trzyma funkcji w czekaniu i po wyjściu ze strony nie wysyła reszty.
+ * (produkcja 2026-11-03 i 2026-11-04). Główne lotnisko ma wyniki od razu, a na
+ * resztę przeglądarka czeka w tempie dostawcy: serwer odmawia bez zapytania i
+ * podaje termin (provider-slot.ts), więc funkcja nie wisi, a wyjście ze strony
+ * zatrzymuje kolejkę. Trasa z cache odpowiada od razu, bez czekania.
  */
 export async function runOriginFanout(targets: readonly string[], run: FanoutRun): Promise<{ anyOk: boolean }> {
   run.onStatuses(Object.fromEntries(targets.map((o) => [o, { state: "pending" } as OriginStatus])));
@@ -79,7 +96,14 @@ export async function runOriginFanout(targets: readonly string[], run: FanoutRun
   for (let i = 0; i < targets.length && run.isActive(); i += 1) {
     const origin = targets[i];
     run.onStatuses({ [origin]: { state: "loading" } });
-    const status = await run.search(origin);
+    let status = await run.search(origin);
+    for (let waits = 0; isWaitableBusy(status) && waits < MAX_BUSY_WAITS && run.isActive(); waits += 1) {
+      run.onStatuses({ [origin]: { state: "waiting", until: status.retryAt } });
+      await run.sleepUntil(status.retryAt);
+      if (!run.isActive()) break;
+      run.onStatuses({ [origin]: { state: "loading" } });
+      status = await run.search(origin);
+    }
     if (!run.isActive()) break;
     run.onStatuses({ [origin]: status });
     if (status.state !== "error") {
@@ -110,6 +134,7 @@ export function summarizeFanout(origins: readonly string[], statuses: Readonly<R
   const errors = failed.map((o) => statuses[o]).filter((s): s is Extract<OriginStatus, { state: "error" }> => s?.state === "error");
   const retryAts = errors.map((e) => e.retryAt).filter((t): t is number => typeof t === "number");
   const providerDown = errors.length > 0 && errors.length === origins.length && errors.every((e) => e.reason === "PROVIDER_ACCESS_DENIED");
+  const waiting = list.filter((s): s is Extract<OriginStatus, { state: "waiting" }> => s.state === "waiting");
 
   let outcome: FanoutOutcome;
   if (!settled) outcome = "loading";
@@ -122,6 +147,7 @@ export function summarizeFanout(origins: readonly string[], statuses: Readonly<R
     failed,
     message: errors.find((e) => !e.skipped)?.message ?? errors[0]?.message ?? null,
     retryAt: retryAts.length > 0 ? Math.max(...retryAts) : null,
+    waitingUntil: waiting.length > 0 ? Math.max(...waiting.map((s) => s.until)) : null,
     providerDown,
     retryable: errors.some((e) => e.reason !== "INVALID_SEARCH" && e.reason !== "PROVIDER_ACCESS_DENIED"),
   };

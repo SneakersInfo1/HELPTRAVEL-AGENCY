@@ -268,16 +268,8 @@ export function toFlightApiError(err: unknown, stage: string): FlightApiError {
 export interface FlightSearchOptions {
   /** Kto zleca wyszukiwanie (`search-policy.ts`) — obowiązkowe, żeby żaden wołający nie ominął polityki. */
   source: FlightSearchSource;
-  /** Limit czasu jednej próby u dostawcy (czat: także czekania na slot). */
+  /** Limit czasu zapytania u dostawcy (czat: także czekania na slot). */
   timeoutMs?: number;
-  /**
-   * Łączna liczba prób u dostawcy. Domyślnie użytkownik 2 (jedno ponowienie
-   * wyłącznie po SZYBKIM, ODEBRANYM błędzie 5xx, z odstępem bramki), reszta 1.
-   * Nigdy nie ponawiamy 429, przekroczenia czasu ani zerwanego połączenia:
-   * dostawca i tak liczy porzucone zapytanie i może nad nim jeszcze pracować,
-   * a ponowienie trafia w ten sam limit.
-   */
-  retries?: number;
   /** Ile najwyżej czekać na wolny slot bramki (`provider-slot.ts`). */
   maxWaitMs?: number;
   /** Slot bramki trzymany już przez wołającego (`search-offers.ts`) — nie bierzemy drugiego. */
@@ -287,26 +279,26 @@ export interface FlightSearchOptions {
 const THROTTLED_MESSAGE_PL = "Wyszukiwarka lotów jest chwilowo przeciążona. Spróbuj ponownie za chwilę.";
 const ACCESS_DENIED_MESSAGE_PL =
   "Wyszukiwarka lotów jest chwilowo niedostępna po stronie dostawcy. Pracujemy nad jej przywróceniem — spróbuj ponownie później.";
-const BUSY_MESSAGE_PL = "Wyszukiwarka lotów obsługuje teraz inne zapytanie. Spróbuj ponownie za kilka sekund.";
+const BUSY_MESSAGE_PL = "Dostawca lotów ogranicza liczbę wyszukiwań. Spróbuj ponownie za chwilę.";
 
 const DEFAULT_SEARCH_TIMEOUT_MS = 30_000;
-/** Użytkownik: czekanie na slot + próby muszą zmieścić się w `maxDuration` trasy (60 s). */
-const USER_MAX_WAIT_MS = 12_000;
+const BUSY_RETRY_DEFAULT_MS = 5_000;
+/**
+ * Użytkownik: krótko, bo funkcja na nic nie czeka dłużej. Dłuższy odstęp odsiaduje
+ * przeglądarka (`runOriginFanout`), która dostaje dokładny termin w `Retry-After`.
+ */
+const USER_MAX_WAIT_MS = 3_000;
 /** Czat: najwyżej tyle czekania na slot, i nigdy tyle, żeby na samo zapytanie zostało mniej niż `CHAT_MIN_PROVIDER_MS`. */
 const CHAT_MAX_WAIT_MS = 5_000;
 const CHAT_MIN_PROVIDER_MS = 4_000;
 /** Tło (gdy w ogóle włączone) nie zajmuje kolejki ludziom — krótko czeka i odpuszcza. */
 const BACKGROUND_MAX_WAIT_MS = 2_000;
-/** Ponowienie tylko wtedy, gdy pierwsza próba padła szybko (typowe 5xx dostawcy), a nie po długim czekaniu. */
-const RETRY_FAST_FAIL_MS = 10_000;
-/** Druga próba użytkownika jest krótsza: 12 s czekania + 10 s + odstęp + 20 s to zapas do `maxDuration` (60 s). */
-const RETRY_ATTEMPT_TIMEOUT_MS = 20_000;
 const MIN_PROVIDER_TIMEOUT_MS = 2_500;
 /**
  * Timeout albo zerwane połączenie nie znaczą, że dostawca skończył: porzucone
  * zapytanie może jeszcze u niego pracować, a następne byłoby wtedy równoczesne.
- * Tyle dodatkowo trzymamy slot. Wartość robocza, nie pomiar; dłuższa przekreśliłaby
- * drugą próbę czatu, która ma ledwie 8 s (budżet 23 s, pierwsza próba 15 s).
+ * Tyle najmniej trzymamy wtedy slot. Wartość robocza, nie pomiar; liczy się dopiero
+ * przy odstępie krótszym niż domyślny.
  */
 const UNCERTAIN_OUTCOME_HOLD_MS = 3_000;
 
@@ -319,14 +311,9 @@ function defaultMaxWaitMs(opts: FlightSearchOptions): number {
   return opts.source === "background" ? BACKGROUND_MAX_WAIT_MS : USER_MAX_WAIT_MS;
 }
 
-function attemptsFor(opts: FlightSearchOptions): number {
-  return Math.max(1, opts.retries ?? (opts.source === "user" ? 2 : 1));
-}
-
-/** Limit czasu próby: czat odlicza czekanie na slot ze swojego budżetu, ponowienie jest krótsze. */
-export function attemptTimeoutMs(opts: FlightSearchOptions, attempt: number, waitedMs: number): number {
+/** Limit czasu zapytania: czat odlicza czekanie na slot ze swojego budżetu. */
+export function attemptTimeoutMs(opts: FlightSearchOptions, waitedMs: number): number {
   const base = opts.timeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS;
-  if (attempt > 1) return Math.max(MIN_PROVIDER_TIMEOUT_MS, Math.min(base, RETRY_ATTEMPT_TIMEOUT_MS));
   return Math.max(MIN_PROVIDER_TIMEOUT_MS, opts.source === "chat" ? base - waitedMs : base);
 }
 
@@ -364,21 +351,19 @@ export async function withFlightProviderSlot<T>(
   opts: FlightSearchOptions,
   fn: (slot: ProviderSlot) => Promise<T>,
 ): Promise<T> {
-  const perAttempt = opts.timeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS;
-  // Dzierżawa pokrywa najdłuższe trzymanie slotu (próby + odstęp + zapis
-  // cache) z zapasem; po awarii funkcji slot zwalnia się sam. Ponawiana jest
-  // tylko próba, która padła szybko, więc każda poza ostatnią to najwyżej
-  // `RETRY_FAST_FAIL_MS` plus odstęp.
-  const holdMs = perAttempt + (attemptsFor(opts) - 1) * (RETRY_FAST_FAIL_MS + providerSlotConfig().minIntervalMs + 1_000);
+  // Dzierżawa pokrywa zapytanie, zapis cache i odstęp: po awarii funkcji zwalnia
+  // się sama, ale nie wcześniej, bo padła funkcja też wysłała zapytanie, które
+  // dostawca policzy. Przy zwolnieniu skraca się do końca odstępu.
+  const leaseMs = (opts.timeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS) + 10_000 + providerSlotConfig().minIntervalMs;
   let slot: ProviderSlot;
   try {
-    slot = await acquireProviderSlot({ maxWaitMs: defaultMaxWaitMs(opts), leaseMs: holdMs + 10_000 });
+    slot = await acquireProviderSlot({ maxWaitMs: defaultMaxWaitMs(opts), leaseMs });
   } catch (err) {
     if (err instanceof ProviderSlotTimeoutError) {
       throw new FlightApiError("PROVIDER_ERROR", BUSY_MESSAGE_PL, {
         httpStatus: 503,
         reason: "PROVIDER_BUSY",
-        retryAfterMs: 5_000,
+        retryAfterMs: Math.max(1_000, err.retryAfterMs ?? BUSY_RETRY_DEFAULT_MS),
         retryable: false,
       });
     }
@@ -410,64 +395,54 @@ export async function searchFlightRates(input: FlightSearchInput, opts: FlightSe
   return withFlightProviderSlot(opts, (slot) => requestUnderSlot(body, opts, slot));
 }
 
-/**
- * Awaria, którą wolno JEDEN raz ponowić: wyłącznie ODEBRANE 5xx, bo wtedy wiadomo,
- * że dostawca skończył z tym zapytaniem. Nie 429, nie timeout, nie zerwane połączenie.
- */
-function isRetryableProviderFailure(err: unknown): boolean {
-  return err instanceof LiteApiNetworkError && err.status !== undefined && err.status >= 500;
-}
-
 /** Odpowiedzi nie ma, więc nie wiadomo, czy dostawca nadal pracuje nad zapytaniem. */
 function isUncertainOutcome(err: unknown): boolean {
   return err instanceof LiteApiTimeoutError || (err instanceof LiteApiNetworkError && err.status === undefined);
 }
 
+/**
+ * Jedno zapytanie do dostawcy, bez ponawiania: drugie w tym samym oknie to przepis
+ * na 429 i pauzę dla wszystkich (produkcja 2026-11-06). Ponawia człowiek przyciskiem
+ * albo czat w budżecie tury, i jedno, i drugie przez bramkę z tym samym odstępem.
+ */
 async function requestUnderSlot(body: Record<string, unknown>, opts: FlightSearchOptions, slot: ProviderSlot) {
-  const attempts = attemptsFor(opts);
-  for (let attempt = 1; ; attempt += 1) {
-    // Zawsze, także bez czekania: pauza mogła zacząć się po pierwszym sprawdzeniu,
-    // a opóźniony SET wygląda jak slot zajęty od ręki.
-    await assertFlightSearchAllowed(opts.source);
-    // Gubernator (search-governor.ts): dzienny budżet — każda próba to osobne zapytanie u dostawcy.
-    const budget = await reserveSearch(opts.source);
-    if (!budget.ok) {
-      throw new FlightApiError("PROVIDER_ERROR", THROTTLED_MESSAGE_PL, {
-        httpStatus: 503,
-        reason: "SEARCH_BUDGET_EXHAUSTED",
-        retryable: false,
-      });
+  // Zawsze, także bez czekania: pauza mogła zacząć się po pierwszym sprawdzeniu,
+  // a opóźniony SET wygląda jak slot zajęty od ręki.
+  await assertFlightSearchAllowed(opts.source);
+  // Gubernator (search-governor.ts): dzienny budżet.
+  const budget = await reserveSearch(opts.source);
+  if (!budget.ok) {
+    throw new FlightApiError("PROVIDER_ERROR", THROTTLED_MESSAGE_PL, {
+      httpStatus: 503,
+      reason: "SEARCH_BUDGET_EXHAUSTED",
+      retryable: false,
+    });
+  }
+  slot.lastProviderCallAt = Date.now();
+  try {
+    const res = await requestFlightRates(body, attemptTimeoutMs(opts, slot.waitedMs));
+    void recordOutcome("ok");
+    return res;
+  } catch (err) {
+    const status = err instanceof LiteApiError ? (err.status ?? 0) : 0;
+    const providerWait = err instanceof LiteApiError ? err.retryAfterMs : undefined;
+    if (isUncertainOutcome(err)) slot.holdAfterMs = UNCERTAIN_OUTCOME_HOLD_MS;
+    // 429 albo 5xx z Retry-After: dostawca każe czekać, więc czekają wszyscy.
+    if (status === 429 || (status >= 500 && providerWait !== undefined)) {
+      const pause = await pauseProvider("throttled", providerWait);
+      void recordOutcome("throttled");
+      // W listopadowych 429 pauza była zawsze domyślna (60 s), czyli dostawca nie
+      // podał Retry-After. Bez tego przeglądarka dostałaby aktywny przycisk
+      // ponowienia w trakcie pauzy.
+      throw liteApiErrorFromResponse(status, (err as LiteApiError).body, Math.max(1_000, pause.untilMs - Date.now()));
     }
-    const startedAt = Date.now();
-    slot.lastProviderCallAt = startedAt;
-    try {
-      const res = await requestFlightRates(body, attemptTimeoutMs(opts, attempt, slot.waitedMs));
-      void recordOutcome("ok");
-      return res;
-    } catch (err) {
-      const status = err instanceof LiteApiError ? (err.status ?? 0) : 0;
-      const providerWait = err instanceof LiteApiError ? err.retryAfterMs : undefined;
-      if (isUncertainOutcome(err)) slot.holdAfterMs = UNCERTAIN_OUTCOME_HOLD_MS;
-      // 429 albo 5xx z Retry-After: dostawca każe czekać, więc czekają wszyscy.
-      if (status === 429 || (status >= 500 && providerWait !== undefined)) {
-        const pause = await pauseProvider("throttled", providerWait);
-        void recordOutcome("throttled");
-        // W listopadowych 429 pauza była zawsze domyślna (60 s), czyli dostawca nie
-        // podał Retry-After. Bez tego przeglądarka dostałaby aktywny przycisk
-        // ponowienia w trakcie pauzy.
-        throw liteApiErrorFromResponse(status, (err as LiteApiError).body, Math.max(1_000, pause.untilMs - Date.now()));
-      } else if (status === 401 || status === 403 || providerError((err as LiteApiError | undefined)?.body).code === 40301) {
-        await pauseProvider("access_denied");
-        void recordOutcome("denied");
-      } else {
-        void recordOutcome("error");
-      }
-      const retry = attempt < attempts && isRetryableProviderFailure(err) && Date.now() - startedAt < RETRY_FAST_FAIL_MS;
-      if (!retry) throw err;
-      // Odstęp jak między dwoma wyszukiwaniami w slocie — trzymamy slot, więc nikt się nie wciśnie.
-      const spacing = Math.max(1_000, providerSlotConfig().minIntervalMs);
-      await new Promise((resolve) => setTimeout(resolve, spacing + Math.floor(Math.random() * 500)));
+    if (status === 401 || status === 403 || providerError((err as LiteApiError | undefined)?.body).code === 40301) {
+      await pauseProvider("access_denied");
+      void recordOutcome("denied");
+    } else {
+      void recordOutcome("error");
     }
+    throw err;
   }
 }
 
@@ -479,10 +454,9 @@ function requestFlightRates(body: Record<string, unknown>, timeoutMs: number) {
     schema: FlightRatesResponseSchema,
     body,
     timeoutMs,
-    // Ponawianiem steruje requestUnderSlot (wyżej): tylko szybkie, odebrane 5xx,
-    // raz, z odstępem i pod slotem. Wewnętrzne ponowienia klienta (timeout bez
-    // przerwy, 429 po 0,4 s) mnożyły ruch dokładnie wtedy, gdy dostawca już
-    // nie nadążał albo ograniczał zapytania.
+    // Bez ponowień: wewnętrzne ponowienia klienta (timeout bez przerwy, 429 po
+    // 0,4 s) mnożyły ruch dokładnie wtedy, gdy dostawca już nie nadążał albo
+    // ograniczał zapytania.
     retries: 1,
   });
 }

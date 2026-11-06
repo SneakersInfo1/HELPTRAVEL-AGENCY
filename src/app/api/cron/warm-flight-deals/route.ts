@@ -246,8 +246,7 @@ export async function GET(request: NextRequest) {
         ],
         adults: DEAL_ADULTS,
       });
-      // `retries: 1` — jeden strzał (domyślne 3 próby ponawiały też 429).
-      const offers = await searchFlightOffers(input, { source: "background", retries: 1 });
+      const offers = await searchFlightOffers(input, { source: "background" });
       gate.onSuccess();
       // Wyszukanie się udało — niezależnie od tego, czy coś z niego wyszło.
       completedByRoute.set(routeKey(route), (completedByRoute.get(routeKey(route)) ?? 0) + 1);

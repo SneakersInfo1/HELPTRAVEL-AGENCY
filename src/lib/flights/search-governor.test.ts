@@ -226,7 +226,7 @@ test("czekający na slot czyta cache: czat po trwającym wyszukiwaniu użytkowni
   // Różne źródła = różne klucze singleFlight — jak dwie instancje Vercela.
   const [a, b] = await Promise.all([
     searchFlightOffers(INPUT, { source: "user", cache: { kind: "on-demand" } }),
-    searchFlightOffers(INPUT, { source: "chat", timeoutMs: 15_000, retries: 1, cache: { kind: "on-demand" } }),
+    searchFlightOffers(INPUT, { source: "chat", timeoutMs: 15_000, cache: { kind: "on-demand" } }),
   ]);
   assert.deepEqual(a, b);
   assert.equal(providerCalls, 1, "drugie wyszukiwanie wzięło wynik z cache po zwolnieniu slotu");
@@ -253,34 +253,31 @@ test("429 u pierwszego, drugi czekał na slot → po zajęciu widzi pauzę i NIE
   assert.equal(providerCalls, 1);
 });
 
-test("slot zajęty dłużej niż wolno czekać → PROVIDER_BUSY (503 + Retry-After) bez zapytania", async () => {
-  const held = await acquireProviderSlot({ maxWaitMs: 1_000, leaseMs: 20_000 });
+test("slot zajęty dłużej niż wolno czekać → PROVIDER_BUSY (503) z czasem do zwolnienia, bez zapytania", async () => {
+  process.env.FLIGHTS_PROVIDER_MIN_INTERVAL_MS = "65000";
+  // Slot trzyma INNA instancja: kolejka tej instancji jest pusta, liczy się magazyn.
+  mock.store.set("flgov:v1:slot:0", { kind: "string", value: "inna-instancja", expireAt: Date.now() + 20_000 });
   try {
     await assert.rejects(
       withFlightProviderSlot({ source: "user", maxWaitMs: 200 }, async () => "nie powinno się wykonać"),
       (err: unknown) => {
         rejectsWithReason("PROVIDER_BUSY")(err);
         assert.equal((err as FlightApiError).httpStatus, 503);
-        assert.ok(((err as FlightApiError).retryAfterMs ?? 0) > 0);
+        const after = (err as FlightApiError).retryAfterMs ?? 0;
+        assert.ok(after > 15_000 && after <= 20_000, `retryAfterMs=${after}`);
         return true;
       },
     );
   } finally {
-    await releaseProviderSlot(held);
+    process.env.FLIGHTS_PROVIDER_MIN_INTERVAL_MS = "0";
   }
   assert.equal(providerCalls, 0);
 });
 
-test("szybkie 5xx → JEDNO ponowienie (użytkownik); 429 i czat bez ponowienia", async () => {
-  trackConcurrency(5, (n) => (n === 1 ? errorResponse(500, { error: { code: 5000, message: "unable to process request" } }) : okResponse()));
-  await searchFlightRates(INPUT, { source: "user" });
-  assert.equal(providerCalls, 2);
-
-  providerCalls = 0;
-  __resetGovernorForTests();
-  trackConcurrency(5, () => errorResponse(500, { error: { code: 5000 } }));
-  await assert.rejects(searchFlightRates(INPUT, { source: "chat", timeoutMs: 15_000, retries: 1 }));
-  assert.equal(providerCalls, 1, "czat ponawia sam (searchWithDeadline), klient nie dokłada prób");
+test("5xx bez automatycznego ponowienia: drugie zapytanie w tym samym oknie to przepis na 429", async () => {
+  provider = async () => errorResponse(500, { error: { code: 5000, message: "unable to process request" } });
+  await assert.rejects(searchFlightRates(INPUT, { source: "user" }));
+  assert.equal(providerCalls, 1);
 });
 
 test("klucz slotu przez prawdziwy klient HTTP: po wyszukiwaniu skrócony do końca odstępu, a nie wiszący do końca dzierżawy", async () => {
@@ -356,11 +353,10 @@ test("timeout: następne zapytanie czeka ponad odstęp, bo dostawca może jeszcz
   assert.ok(left > 1_000 && left <= 3_000, `slot trzymany jeszcze ${left} ms`);
 });
 
-test("budżet czasu: druga próba jest krótsza, a czat odlicza czekanie na slot", () => {
-  assert.equal(attemptTimeoutMs({ source: "user" }, 1, 5_000), 30_000);
-  assert.equal(attemptTimeoutMs({ source: "user" }, 2, 5_000), 20_000);
-  assert.equal(attemptTimeoutMs({ source: "chat", timeoutMs: 15_000 }, 1, 5_000), 10_000);
-  assert.equal(attemptTimeoutMs({ source: "chat", timeoutMs: 3_000 }, 1, 5_000), 2_500, "minimum próby");
+test("budżet czasu: użytkownik ma pełny limit, a czat odlicza czekanie na slot", () => {
+  assert.equal(attemptTimeoutMs({ source: "user" }, 5_000), 30_000);
+  assert.equal(attemptTimeoutMs({ source: "chat", timeoutMs: 15_000 }, 5_000), 10_000);
+  assert.equal(attemptTimeoutMs({ source: "chat", timeoutMs: 3_000 }, 5_000), 2_500, "minimum próby");
 });
 
 // ── Jedna akcja użytkownika: prawdziwa trasa + przebieg jak w przeglądarce ──
@@ -369,6 +365,23 @@ test("budżet czasu: druga próba jest krótsza, a czat odlicza czekanie na slot
 
 const WARSAW = ["WAW", "WMI", "RDO"];
 const POLAND = ["WAW", "KRK", "KTW", "GDN", "WRO", "POZ"];
+
+/**
+ * Konto z produkcji: zapytanie za blisko poprzedniego dostaje 429, także gdy
+ * poprzednie już się skończyło (zmierzone 2026-11-06: 9,46 s od startu → 429).
+ */
+function strictProvider(minGapMs: number) {
+  const starts: number[] = [];
+  provider = async () => {
+    const now = Date.now();
+    const last = starts.at(-1);
+    starts.push(now);
+    return last !== undefined && now - last < minGapMs
+      ? errorResponse(429, { error: { code: 4290, message: "You have exceeded the allowed request limit" } })
+      : okResponse();
+  };
+  return starts;
+}
 
 async function userAction(origins: string[], destination = "FNC") {
   __setLimiterForTests("flights-search", {
@@ -379,6 +392,7 @@ async function userAction(origins: string[], destination = "FNC") {
     await runOriginFanout(origins, {
       isActive: () => true,
       onStatuses: (patch) => Object.assign(statuses, patch),
+      sleepUntil: (at) => new Promise((resolve) => setTimeout(resolve, Math.max(0, at - Date.now()))),
       search: async (origin) => {
         const res = await POST(
           new NextRequest("https://helptravel.test/api/flights/rates", {
@@ -433,25 +447,38 @@ test("akcja użytkownika przy 429: JEDNO zapytanie, a powtórka w czasie pauzy n
   assert.equal(providerCalls, 1);
 });
 
-test("akcja użytkownika przy awarii 5xx na 6 lotniskach: najwyżej 4 zapytania (2 lotniska × 2 próby), potem stop", async () => {
+test("akcja użytkownika przy awarii 5xx na 6 lotniskach: 2 zapytania, potem stop", async () => {
   provider = async () => errorResponse(500, { error: { code: 5000, message: "unable to process request" } });
   const s = await userAction(POLAND);
   assert.equal(s.outcome, "error");
   assert.equal(s.failed.length, 6);
-  assert.equal(providerCalls, 4);
+  assert.equal(providerCalls, 2);
 });
 
-test("najgorszy układ na 6 lotniskach (awarie przeplatane sukcesami): górna granica jednej akcji to 10 zapytań", async () => {
-  // Sukces zeruje licznik błędów z rzędu, a każde szybkie 5xx ma jedno ponowienie:
-  // WAW 2 + KRK 1 + KTW 2 + GDN 1 + WRO 2 + POZ 2, po czym przebieg i tak się kończy.
-  const down = new Set([1, 2, 4, 5, 7, 8, 9, 10]);
+test("najgorszy układ na 6 lotniskach (awarie przeplatane sukcesami): górna granica jednej akcji to 6 zapytań", async () => {
   let call = 0;
   provider = async () => {
     call += 1;
-    return down.has(call) ? errorResponse(500, { error: { code: 5000, message: "unable to process request" } }) : okResponse();
+    return call % 2 === 1 ? errorResponse(500, { error: { code: 5000, message: "unable to process request" } }) : okResponse();
   };
   await userAction(POLAND);
-  assert.equal(providerCalls, 10);
+  assert.equal(providerCalls, 6);
+});
+
+test("REGRESJA z produkcji 2026-11-06: konto karzące zbyt gęste zapytania, Warszawa → Madera bez ani jednego 429", async () => {
+  process.env.FLIGHTS_PROVIDER_MIN_INTERVAL_MS = "3400";
+  try {
+    const starts = strictProvider(3_300);
+    const s = await userAction(WARSAW);
+    assert.equal(s.outcome, "empty", "wszystkie lotniska sprawdzone, żadnego błędu");
+    assert.equal(providerCalls, 3);
+    assert.equal((await governorSnapshot()).pause, null, "bez pauzy dla innych gości");
+    for (let i = 1; i < starts.length; i += 1) {
+      assert.ok(starts[i] - starts[i - 1] >= 3_300, `odstęp ${starts[i] - starts[i - 1]} ms`);
+    }
+  } finally {
+    process.env.FLIGHTS_PROVIDER_MIN_INTERVAL_MS = "0";
+  }
 });
 
 test("akcja użytkownika przy timeoucie dostawcy na 6 lotniskach: 2 zapytania, bez ponowień (porzucone zapytanie i tak się liczy)", async () => {

@@ -138,12 +138,56 @@ test("ponowienie po odliczaniu wysyła TYLKO nieudane lotniska, jednym przebiegi
   expect(log).toEqual(["WAW", "WAW", "WMI", "RDO"]);
 });
 
+test("tempo dostawcy: oferty z WAW od razu, odliczanie zamiast błędu, potem sam wraca do WMI i idzie dalej", async ({ page }) => {
+  let wmi = 0;
+  const { log, stats } = await mockRates(page, (o) => {
+    if (o === "WAW") return ok([offer(1, "WAW", 1790)]);
+    if (o === "WMI" && (wmi += 1) === 1) {
+      return {
+        status: 503,
+        body: { error: "PROVIDER_ERROR", reason: "PROVIDER_BUSY", message: "Dostawca lotów ogranicza liczbę wyszukiwań. Spróbuj ponownie za chwilę." },
+        headers: { "Retry-After": "2" },
+      };
+    }
+    return ok([]);
+  });
+  await page.goto(WARSZAWA_MADERA, { waitUntil: "domcontentloaded" });
+  await zamknijZgody(page);
+  await expect(page.getByText(/1 oferta/)).toBeVisible();
+  await expect(page.getByText(/Kolejne lotnisko sprawdzimy za \d+ s/)).toBeVisible();
+  await expect(page.getByText(/Nie udało się sprawdzić/)).toHaveCount(0);
+  await expect.poll(() => log.length).toBe(4);
+  expect(log).toEqual(["WAW", "WMI", "WMI", "RDO"]);
+  expect(stats.max).toBe(1);
+  await expect(page.getByText(/Kolejne lotnisko sprawdzimy/)).toHaveCount(0);
+});
+
+test("tempo dostawcy na pierwszym lotnisku: bez ofert szkielet i odliczanie, nie błąd i nie „Brak lotów”", async ({ page }) => {
+  let waw = 0;
+  await mockRates(page, (o) => {
+    if (o !== "WAW") return ok([]);
+    return (waw += 1) === 1
+      ? {
+          status: 503,
+          body: { error: "PROVIDER_ERROR", reason: "PROVIDER_BUSY", message: "Dostawca lotów ogranicza liczbę wyszukiwań." },
+          headers: { "Retry-After": "3" },
+        }
+      : ok([offer(1, "WAW", 1990)]);
+  });
+  await page.goto(WARSZAWA_MADERA, { waitUntil: "domcontentloaded" });
+  await zamknijZgody(page);
+  await expect(page.getByText(/Szukamy dalej za \d+ s, nic nie musisz robić/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Spróbuj ponownie/ })).toHaveCount(0);
+  await expect(page.getByText("Brak lotów dla wybranych dat")).toHaveCount(0);
+  await expect(page.getByText(/1 oferta/)).toBeVisible();
+});
+
 test("oferty z WAW, WMI zajęte → wyniki + uczciwa informacja o nieudanym lotnisku", async ({ page }) => {
   await mockRates(page, (o) =>
     o === "WAW"
       ? ok([offer(1, "WAW", 1790)])
       : o === "WMI"
-        ? { status: 503, body: { error: "PROVIDER_ERROR", reason: "PROVIDER_BUSY", message: "Wyszukiwarka lotów obsługuje teraz inne zapytanie." }, headers: { "Retry-After": "5" } }
+        ? { status: 503, body: { error: "PROVIDER_ERROR", reason: "PROVIDER_BUSY", message: "Dostawca lotów ogranicza liczbę wyszukiwań." } }
         : ok([]),
   );
   await page.goto(WARSZAWA_MADERA, { waitUntil: "domcontentloaded" });

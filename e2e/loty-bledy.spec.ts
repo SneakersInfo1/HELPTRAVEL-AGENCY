@@ -253,6 +253,33 @@ test.describe("Stany bledu", () => {
     expect(page.url()).toContain("fresh=1");
   });
 
+  test("wygasla oferta przy limicie dostawcy: mowimy, ze swiezych wynikow nie sprawdzono, a nie ze ich nie ma", async ({ page }) => {
+    await otworzWyniki(page);
+    await page.locator("main article[data-offer-card]").first().getByRole("button", { name: "Wybierz" }).click();
+    await page.waitForURL(/\/loty\/dodatki/, { timeout: 30_000 });
+
+    await page.route("**/api/flights/verify", (route) =>
+      route.fulfill({
+        status: 409,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "OFFER_UNAVAILABLE", message: "Ta oferta lotu jest juz niedostepna." }),
+      }),
+    );
+    await page.route("**/api/flights/rates**", (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        headers: { "Retry-After": "40" },
+        body: JSON.stringify({ error: "PROVIDER_ERROR", reason: "PROVIDER_BUSY", message: "Dostawca lotów ogranicza liczbę wyszukiwań." }),
+      }),
+    );
+
+    await page.getByRole("button", { name: /Dalej do danych/ }).first().click();
+    await expect(page.getByText(/nie udało się teraz sprawdzić świeżych wyników/)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/nie znaleźliśmy jej/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Pokaż świeże wyniki" })).toBeVisible();
+  });
+
   test("platnosc bez potwierdzonej kwoty NIE pokazuje formularza karty", async ({ page }) => {
     await page.route("**/api/flights/prebook", (route) =>
       route.fulfill({

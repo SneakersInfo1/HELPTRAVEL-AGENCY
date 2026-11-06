@@ -146,6 +146,7 @@ export function FlightExtras() {
     prevFare: FareOption,
   ): Promise<
     | { fare: FareOption; matchOffer: DisplayOffer; total: number | null; currency: string; priceChanged: boolean; oldTotal?: number; newTotal?: number }
+    | "not-searched"
     | null
   > {
     const legs: Array<{ origin: string; destination: string; date: string; direction: "OUTBOUND" | "INBOUND" }> = [
@@ -159,6 +160,8 @@ export function FlightExtras() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ legs, adults: f.adults, children: f.children, infants: f.infants, cabinClass: "ECONOMY" }),
       });
+      // 503 = do dostawcy nic nie poszło (limit, pauza). To co innego niż „nie ma tej oferty”.
+      if (res.status === 503) return "not-searched";
       if (!res.ok) return null;
       const json = (await res.json().catch(() => ({}))) as { offers?: DisplayOffer[] };
       freshOffers = json.offers ?? [];
@@ -210,9 +213,13 @@ export function FlightExtras() {
       track("flight_offer_recovery", { offer_id: selected.offerId, outcome: "started" });
       setRecovering(true);
       const rec = await recoverExpiredOffer(flow, selected);
-      if (!rec) {
+      if (!rec || rec === "not-searched") {
         track("flight_offer_recovery", { offer_id: selected.offerId, outcome: "failed" });
-        setError("Ta oferta wygasła i nie znaleźliśmy jej w świeżych wynikach. Wróć do wyników i wybierz lot ponownie.");
+        setError(
+          rec === "not-searched"
+            ? "Ta oferta wygasła, a nie udało się teraz sprawdzić świeżych wyników. Przejdź do nich, wyszukamy ponownie."
+            : "Ta oferta wygasła i nie znaleźliśmy jej w świeżych wynikach. Wróć do wyników i wybierz lot ponownie.",
+        );
         return;
       }
       track("flight_offer_recovery", { offer_id: rec.fare.offerId, outcome: "recovered" });
