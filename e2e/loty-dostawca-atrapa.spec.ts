@@ -3,9 +3,10 @@
  * gubernator → cache → dostawca. Prawdziwe są dwa procesy serwera, klient Upstash
  * i kod przeglądarki; LiteAPI i Upstash to atrapy (patrz playwright.loty.config.ts).
  *
- * Atrapa dostawcy zachowuje się jak konto na produkcji: zapytanie równoczesne
- * dostaje HTTP 429, kod 4290. Wynik czytamy z JEJ liczników, więc test mówi, co
- * faktycznie doszło „do dostawcy”, a nie co kod deklaruje.
+ * Atrapa dostawcy zachowuje się jak konto na produkcji: zapytanie za blisko
+ * poprzedniego dostaje HTTP 429, kod 4290, nawet gdy poprzednie już się skończyło.
+ * Wynik czytamy z JEJ liczników, więc test mówi, co faktycznie doszło „do
+ * dostawcy”, a nie co kod deklaruje.
  *
  * Uruchomienie: `pnpm build && pnpm e2e:loty`
  */
@@ -77,21 +78,28 @@ async function newGuest(browser: Browser, baseURL: string | undefined) {
 
 const offerCards = (page: Page) => page.locator("main article[data-offer-card]");
 
+// Konto z produkcji w skali testu: zapytanie bliżej niż 3,5 s od poprzedniego = 429.
+const MIN_GAP = { flightsMinGapMs: "3500" };
+const CALL_TIMEOUT = { timeout: 45_000 };
+
 test.beforeEach(async ({ page }) => {
   await preparePage(page);
-  await resetFake();
+  await resetFake(MIN_GAP);
 });
 
-test("Warszawa → Madera: trzy lotniska po kolei, odstęp co najmniej 1,5 s, zero 429 u dostawcy", async ({ page }) => {
+test("REGRESJA z produkcji 2026-11-06: Warszawa → Madera bez 429, oferty od razu, gość widzi odliczanie", async ({ page }) => {
   await page.goto(search(WARSZAWA, "FNC", "Madera"), { waitUntil: "domcontentloaded" });
   await expect(offerCards(page).first()).toBeVisible();
-  await expect.poll(async () => (await stats()).flightRates).toBe(3);
+  await expect(page.getByText(/Kolejne lotnisko sprawdzimy za \d+ s/)).toBeVisible();
+  await expect.poll(async () => (await stats()).flightRates, CALL_TIMEOUT).toBe(3);
 
   const s = await stats();
   expect(s.flightOrigins).toEqual(WARSZAWA);
   expect(s.flightMaxInFlight).toBe(1);
   expect(s.flightThrottled).toBe(0);
-  for (const gap of s.flightStartGapsMs) expect(gap).toBeGreaterThanOrEqual(1_400);
+  for (const gap of s.flightStartGapsMs) expect(gap).toBeGreaterThanOrEqual(3_500);
+  await expect(page.getByText(/Kolejne lotnisko sprawdzimy/)).toHaveCount(0);
+  await expect(page.getByText(/Nie udało się sprawdzić/)).toHaveCount(0);
   await expect(page.getByText("Brak lotów dla wybranych dat")).toHaveCount(0);
 });
 
@@ -99,7 +107,7 @@ for (const [name, destination] of [["Malta", "MLA"], ["Madryt", "MAD"]] as const
   test(`Warszawa → ${name}: wyniki bez 429`, async ({ page }) => {
     await page.goto(search(WARSZAWA, destination, name), { waitUntil: "domcontentloaded" });
     await expect(offerCards(page).first()).toBeVisible();
-    await expect.poll(async () => (await stats()).flightRates).toBe(3);
+    await expect.poll(async () => (await stats()).flightRates, CALL_TIMEOUT).toBe(3);
     expect((await stats()).flightThrottled).toBe(0);
   });
 }
@@ -110,13 +118,15 @@ test("dwie instancje serwera, dwóch gości naraz, różne trasy: u dostawcy nad
     a.goto(search(WARSZAWA, "FNC", "Madera"), { waitUntil: "domcontentloaded" }),
     b.goto(search(WARSZAWA, "MLA", "Malta"), { waitUntil: "domcontentloaded" }),
   ]);
-  await expect(offerCards(a).first()).toBeVisible();
-  await expect(offerCards(b).first()).toBeVisible();
-  await expect.poll(async () => (await stats()).flightRates, { timeout: 30_000 }).toBe(6);
+  // Jeden slot na dwóch gości: każdy może czekać, aż drugi przejdzie swoje lotniska.
+  await expect(offerCards(a).first()).toBeVisible(CALL_TIMEOUT);
+  await expect(offerCards(b).first()).toBeVisible(CALL_TIMEOUT);
+  await expect.poll(async () => (await stats()).flightRates, { timeout: 60_000 }).toBe(6);
 
   const s = await stats();
   expect(s.flightMaxInFlight).toBe(1);
   expect(s.flightThrottled).toBe(0);
+  for (const gap of s.flightStartGapsMs) expect(gap).toBeGreaterThanOrEqual(3_500);
   await a.context().close();
   await b.context().close();
 });
@@ -128,10 +138,10 @@ test("dwie instancje, to samo wyszukiwanie naraz: dostawca pytany raz na lotnisk
     a.goto(url, { waitUntil: "domcontentloaded" }),
     b.goto(url, { waitUntil: "domcontentloaded" }),
   ]);
-  await expect(offerCards(a).first()).toBeVisible();
-  await expect(offerCards(b).first()).toBeVisible();
-  await expect.poll(async () => (await stats()).flightRates, { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
-  await a.waitForTimeout(2_500);
+  await expect(offerCards(a).first()).toBeVisible(CALL_TIMEOUT);
+  await expect(offerCards(b).first()).toBeVisible(CALL_TIMEOUT);
+  await expect.poll(async () => (await stats()).flightRates, CALL_TIMEOUT).toBeGreaterThanOrEqual(3);
+  await a.waitForTimeout(5_000);
 
   const s = await stats();
   expect(s.flightRates).toBe(3);
@@ -141,41 +151,43 @@ test("dwie instancje, to samo wyszukiwanie naraz: dostawca pytany raz na lotnisk
 });
 
 test("prawdziwy brak lotów: komunikat o braku, licznik 0 ofert i żadnego przycisku ponowienia", async ({ page }) => {
-  await resetFake({ flights: "empty" });
+  await resetFake({ ...MIN_GAP, flights: "empty" });
   await page.goto(search(WARSZAWA, "FNC", "Madera"), { waitUntil: "domcontentloaded" });
-  await expect(page.getByText("Brak lotów dla wybranych dat")).toBeVisible();
+  await expect(page.getByText("Brak lotów dla wybranych dat")).toBeVisible(CALL_TIMEOUT);
   await expect(page.getByText(/· 0 ofert/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Spróbuj ponownie/ })).toHaveCount(0);
   expect((await stats()).flightRates).toBe(3);
 });
 
 test("wynik częściowy: WAW odpowiada, WMI pada na 500 → oferty i uczciwa informacja o nieudanym lotnisku", async ({ page }) => {
-  await resetFake({ flightsFor: "WMI:500" });
+  await resetFake({ ...MIN_GAP, flightsFor: "WMI:500" });
   await page.goto(search(WARSZAWA, "FNC", "Madera"), { waitUntil: "domcontentloaded" });
   await expect(offerCards(page).first()).toBeVisible();
-  await expect(page.getByRole("status").getByText(/Nie udało się sprawdzić lotów z: .*WMI/)).toBeVisible();
+  await expect(page.getByRole("status").getByText(/Nie udało się sprawdzić lotów z: .*WMI/)).toBeVisible(CALL_TIMEOUT);
   await expect(page.getByText("Brak lotów dla wybranych dat")).toHaveCount(0);
 
-  await resetFake();
+  await resetFake(MIN_GAP);
   await page.getByRole("button", { name: /Spróbuj ponownie/ }).click();
-  await expect.poll(async () => (await stats()).flightOrigins).toEqual(["WMI"]);
+  await expect.poll(async () => (await stats()).flightOrigins, CALL_TIMEOUT).toEqual(["WMI"]);
   await expect(page.getByRole("status").getByText(/Nie udało się sprawdzić/)).toHaveCount(0);
   await expect(page.getByText("Szukam w pozostałych lotniskach…")).toHaveCount(0);
 });
 
-test("awaria dostawcy na grupie „Polska”: najwyżej 4 zapytania, po naprawie ponowienie tylko nieudanych", async ({ page }) => {
-  await resetFake({ flights: "500" });
+test("awaria dostawcy na grupie „Polska”: dwa zapytania i stop, po naprawie ponowienie tylko nieudanych", async ({ page }) => {
+  await resetFake({ ...MIN_GAP, flights: "500" });
   await page.goto(search(POLSKA, "FNC", "Madera"), { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("alert").getByText(/Dostawca lotów zwrócił błąd/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("alert").getByText(/Dostawca lotów zwrócił błąd/)).toBeVisible(CALL_TIMEOUT);
   await expect(page.getByText("Brak lotów dla wybranych dat")).toHaveCount(0);
   await expect(page.getByText(/0 ofert/)).toHaveCount(0);
-  expect((await stats()).flightOrigins).toEqual(["WAW", "WAW", "KRK", "KRK"]);
+  expect((await stats()).flightOrigins).toEqual(["WAW", "KRK"]);
 
-  await resetFake();
+  await resetFake(MIN_GAP);
   await page.getByRole("button", { name: /Spróbuj ponownie/ }).click();
-  await expect(offerCards(page).first()).toBeVisible();
-  await expect.poll(async () => (await stats()).flightRates, { timeout: 30_000 }).toBe(6);
-  expect((await stats()).flightOrigins).toEqual(POLSKA);
+  await expect(offerCards(page).first()).toBeVisible(CALL_TIMEOUT);
+  await expect.poll(async () => (await stats()).flightRates, { timeout: 60_000 }).toBe(6);
+  const s = await stats();
+  expect(s.flightOrigins).toEqual(POLSKA);
+  expect(s.flightThrottled).toBe(0);
 });
 
 test("miniona data: zero zapytań do dostawcy, komunikat zamiast ślepego zaułka", async ({ page }) => {
@@ -194,17 +206,17 @@ test("miniona data: zero zapytań do dostawcy, komunikat zamiast ślepego zaułk
 test("429 od dostawcy: jedno zapytanie, odliczanie z Retry-After, po pauzie ponowienie tylko nieudanych", async ({ page }) => {
   await resetFake({ flights: "429" });
   await page.goto(search(WARSZAWA, "FNC", "Madera"), { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("alert").getByText(/chwilowo przeciążona/)).toBeVisible();
+  await expect(page.getByRole("alert").getByText(/chwilowo przeciążona/)).toBeVisible(CALL_TIMEOUT);
   const retry = page.getByRole("button", { name: /Spróbuj ponownie/ });
   await expect(retry).toBeDisabled();
   await expect(retry).toHaveText(/za \d+ s/);
   await expect(page.getByText(/0 ofert/)).toHaveCount(0);
   expect((await stats()).flightOrigins).toEqual(["WAW"]);
 
-  await resetFake();
+  await resetFake(MIN_GAP);
   await expect(retry).toBeEnabled({ timeout: 20_000 });
   await retry.click();
-  await expect(offerCards(page).first()).toBeVisible();
-  await expect.poll(async () => (await stats()).flightRates, { timeout: 15_000 }).toBe(3);
+  await expect(offerCards(page).first()).toBeVisible(CALL_TIMEOUT);
+  await expect.poll(async () => (await stats()).flightRates, CALL_TIMEOUT).toBe(3);
   expect((await stats()).flightOrigins).toEqual(WARSZAWA);
 });

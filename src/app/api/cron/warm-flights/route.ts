@@ -135,8 +135,7 @@ export async function GET(request: NextRequest) {
         ],
         adults: WARM_FLIGHT_ADULTS,
       });
-      // `retries: 1` — jeden strzał (domyślne 3 próby ponawiały też 429).
-      const offers = await searchFlightOffers(input, { source: "background", retries: 1 });
+      const offers = await searchFlightOffers(input, { source: "background" });
       gate.onSuccess();
       await setCachedFlightOffers(flightRatesCacheKey(input), offers, "warm");
       if (offers.length > 0) warmed++;

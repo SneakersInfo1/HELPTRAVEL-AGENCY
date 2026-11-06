@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  MAX_BUSY_WAITS,
   MAX_CONSECUTIVE_FAILURES,
   errorStatusFromResponse,
   offersFromBody,
@@ -91,8 +92,9 @@ test("odrzucenie przez dostawcę (422) to złe dane, nie awaria: bez przycisku p
 
 // ── runOriginFanout: jeden przebieg po lotniskach ───────────────────────────
 
-function fanout(script: Record<string, OriginStatus>, opts: { active?: () => boolean } = {}) {
+function fanout(script: Record<string, OriginStatus | OriginStatus[]>, opts: { active?: () => boolean } = {}) {
   const calls: string[] = [];
+  const waits: number[] = [];
   const statuses: Record<string, OriginStatus> = {};
   let inFlight = 0;
   let maxInFlight = 0;
@@ -100,16 +102,21 @@ function fanout(script: Record<string, OriginStatus>, opts: { active?: () => boo
     runOriginFanout(targets, {
       isActive: opts.active ?? (() => true),
       onStatuses: (patch) => Object.assign(statuses, patch),
+      sleepUntil: async (at) => {
+        waits.push(at);
+      },
       search: async (o) => {
         calls.push(o);
         inFlight += 1;
         maxInFlight = Math.max(maxInFlight, inFlight);
         await new Promise((r) => setTimeout(r, 1));
         inFlight -= 1;
-        return script[o] ?? { state: "ok", count: 0 };
+        const planned = script[o];
+        const next = Array.isArray(planned) ? planned.shift() : planned;
+        return next ?? { state: "ok", count: 0 };
       },
     });
-  return { run, calls, statuses, maxInFlight: () => maxInFlight };
+  return { run, calls, waits, statuses, maxInFlight: () => maxInFlight };
 }
 
 const POLAND = ["WAW", "KRK", "KTW", "GDN", "WRO", "POZ"] as const;
@@ -181,4 +188,81 @@ test("odpowiedź 200 bez listy ofert to awaria, nie „Brak lotów”", () => {
   assert.equal(offersFromBody({ offers: "x" }), null);
   assert.deepEqual(offersFromBody({ offers: [] }), []);
   assert.deepEqual(offersFromBody({ offers: [{ offerId: "a" }] }), [{ offerId: "a" }]);
+});
+
+// ── Tempo dostawcy: serwer odmawia BEZ zapytania, przeglądarka czeka i wraca ──
+
+const busy = (retryAt: number): OriginStatus => ({
+  state: "error",
+  reason: "PROVIDER_BUSY",
+  message: "Dostawca lotów ogranicza liczbę wyszukiwań.",
+  retryAt,
+});
+
+test("zajęta bramka: przeglądarka czeka do terminu i ponawia TO SAMO lotnisko, potem idzie dalej", async () => {
+  const f = fanout({ WMI: [busy(5_000), { state: "ok", count: 3 }], RDO: [busy(9_000), { state: "ok", count: 0 }] });
+  const { anyOk } = await f.run(WARSAW);
+  assert.deepEqual(f.calls, ["WAW", "WMI", "WMI", "RDO", "RDO"]);
+  assert.deepEqual(f.waits, [5_000, 9_000]);
+  assert.equal(anyOk, true);
+  assert.equal(summarizeFanout(WARSAW, f.statuses, 3).outcome, "results");
+});
+
+test("w trakcie czekania wynik nie jest gotowy, a strona zna termin", async () => {
+  const seen: Array<ReturnType<typeof summarizeFanout>> = [];
+  const statuses: Record<string, OriginStatus> = {};
+  let first = true;
+  await runOriginFanout(WARSAW, {
+    isActive: () => true,
+    onStatuses: (patch) => Object.assign(statuses, patch),
+    sleepUntil: async () => {
+      seen.push(summarizeFanout(WARSAW, statuses, 2));
+    },
+    search: async (o) => {
+      if (o === "WMI" && first) {
+        first = false;
+        return busy(7_000);
+      }
+      return { state: "ok", count: 1 };
+    },
+  });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].settled, false);
+  assert.equal(seen[0].outcome, "loading");
+  assert.equal(seen[0].waitingUntil, 7_000);
+  assert.deepEqual(seen[0].failed, [], "czekanie to nie błąd");
+});
+
+test("wyjście ze strony w trakcie czekania: bez ponowienia", async () => {
+  let active = true;
+  const calls: string[] = [];
+  await runOriginFanout(WARSAW, {
+    isActive: () => active,
+    onStatuses: () => {},
+    sleepUntil: async () => {
+      active = false;
+    },
+    search: async (o) => {
+      calls.push(o);
+      return busy(7_000);
+    },
+  });
+  assert.deepEqual(calls, ["WAW"]);
+});
+
+test("zajęta bramka bez końca: po limicie prób przebieg staje jak po każdym błędzie, reszta lotnisk bez zapytań", async () => {
+  const f = fanout({ WAW: { state: "ok", count: 5 }, WMI: Array.from({ length: 50 }, () => busy(5_000)) });
+  await f.run(WARSAW);
+  assert.equal(f.calls.filter((o) => o === "WMI").length, MAX_BUSY_WAITS + 1);
+  assert.ok(!f.calls.includes("RDO"));
+  const s = summarizeFanout(WARSAW, f.statuses, 5);
+  assert.equal(s.outcome, "partial");
+  assert.deepEqual(s.failed, ["WMI", "RDO"]);
+});
+
+test("zajęta bramka bez terminu: nie ma na co czekać, przebieg staje od razu", async () => {
+  const f = fanout({ WAW: { state: "error", reason: "PROVIDER_BUSY", message: "zajęte" } });
+  await f.run(WARSAW);
+  assert.deepEqual(f.calls, ["WAW"]);
+  assert.deepEqual(f.waits, []);
 });

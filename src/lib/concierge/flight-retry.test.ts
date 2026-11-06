@@ -20,7 +20,6 @@ import {
   LiteApiTimeoutError,
   LiteApiValidationError,
 } from "@/lib/liteapi/errors";
-import { FlightApiError } from "@/lib/flights/client";
 import { isTransientFlightError, searchWithDeadline } from "./flight-retry";
 
 const GLOBAL_MS = 23_000;
@@ -218,11 +217,4 @@ test("isTransientFlightError: walidacja, wygasła oferta, autoryzacja i śmieci 
   assert.equal(isTransientFlightError(new LiteApiAuthError("401")), false);
   assert.equal(isTransientFlightError(new Error("cokolwiek")), false);
   assert.equal(isTransientFlightError(null), false);
-});
-
-test("zajęta bramka lotów to błąd przejściowy (nic nie poszło do dostawcy), a pauza po 429 już nie", () => {
-  const busy = new FlightApiError("PROVIDER_ERROR", "zajęte", { httpStatus: 503, reason: "PROVIDER_BUSY" });
-  const paused = new FlightApiError("PROVIDER_ERROR", "pauza", { httpStatus: 503, reason: "PROVIDER_THROTTLED" });
-  assert.equal(isTransientFlightError(busy), true);
-  assert.equal(isTransientFlightError(paused), false);
 });

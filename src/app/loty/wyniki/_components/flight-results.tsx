@@ -144,6 +144,8 @@ export function FlightResults(props: Props) {
       const { anyOk } = await runOriginFanout(targets, {
         search: searchOrigin,
         isActive: () => mountedRef.current,
+        // Chwila zapasu: dzierżawa w magazynie kończy się dokładnie w terminie.
+        sleepUntil: (at) => new Promise((resolve) => setTimeout(resolve, Math.max(0, at - Date.now()) + 300)),
         onStatuses: (patch) => {
           // Zegar z chwili odpowiedzi: inaczej odliczanie startowałoby od czasu
           // wejścia na stronę i przez pierwszą sekundę pokazywało za dużo.
@@ -176,17 +178,19 @@ export function FlightResults(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Odliczanie do ponowienia — tylko gdy jest termin z Retry-After.
-  const retryInS = summary.retryAt ? Math.max(0, Math.ceil((summary.retryAt - now) / 1000)) : 0;
+  // Odliczanie: do ponowienia z Retry-After albo do kolejnego lotniska.
+  const countdownTo = summary.waitingUntil ?? summary.retryAt;
+  const countdownS = countdownTo ? Math.max(0, Math.ceil((countdownTo - now) / 1000)) : 0;
+  const retryInS = summary.retryAt ? countdownS : 0;
   useEffect(() => {
-    if (!summary.retryAt || summary.retryAt <= Date.now()) return;
+    if (!countdownTo || countdownTo <= Date.now()) return;
     const id = window.setInterval(() => {
       const t = Date.now();
       setNow(t);
-      if (t >= (summary.retryAt ?? 0)) window.clearInterval(id);
+      if (t >= countdownTo) window.clearInterval(id);
     }, 1000);
     return () => window.clearInterval(id);
-  }, [summary.retryAt]);
+  }, [countdownTo]);
 
   // Ponowienie WYŁĄCZNIE nieudanych lotnisk, jeden przebieg naraz, po terminie.
   const canRetry = !running && retryInS === 0 && summary.failed.length > 0;
@@ -398,7 +402,15 @@ export function FlightResults(props: Props) {
         <div>
           {/* Ładowanie bez żadnej oferty — także przy ponowieniu po błędzie. */}
           {(offers === null || offers.length === 0) && !allSettled && (
-            <FlightResultsSkeleton originLabel={headerLabel} destination={destLabel || destination} />
+            <>
+              {summary.waitingUntil !== null && (
+                <p role="status" className="mb-3 text-sm text-ink-muted">
+                  Nasz dostawca ogranicza liczbę wyszukiwań. Szukamy dalej za{" "}
+                  <span className="tabular-nums">{countdownS}</span> s, nic nie musisz robić.
+                </p>
+              )}
+              <FlightResultsSkeleton originLabel={headerLabel} destination={destLabel || destination} />
+            </>
           )}
 
           {/* Komplet odpowiedzi i zero ofert: prawdziwy brak lotów ALBO błąd
@@ -472,7 +484,14 @@ export function FlightResults(props: Props) {
           {offers !== null && offers.length > 0 && !allSettled && origins.length > 1 && (
             <p className="mb-3 inline-flex items-center gap-2 text-xs text-ink-muted">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand" aria-hidden />
-              Szukam w pozostałych lotniskach…
+              {summary.waitingUntil !== null ? (
+                <span>
+                  Kolejne lotnisko sprawdzimy za <span className="tabular-nums">{countdownS}</span> s. Nasz dostawca
+                  ogranicza liczbę wyszukiwań.
+                </span>
+              ) : (
+                "Szukam w pozostałych lotniskach…"
+              )}
             </p>
           )}
 

@@ -14,13 +14,16 @@
 // Bramka pilnuje, żeby z naszej strony nigdy nie wyszło więcej niż
 // `FLIGHTS_PROVIDER_CONCURRENCY` (domyślnie 1) wyszukiwań naraz — na
 // wszystkich instancjach — i żeby dwa kolejne zapytania w tym samym slocie
-// dzielił odstęp co najmniej `FLIGHTS_PROVIDER_MIN_INTERVAL_MS` (domyślnie
-// 1500 ms).
+// dzielił odstęp co najmniej `FLIGHTS_PROVIDER_MIN_INTERVAL_MS` (domyślnie 65 s).
 //
-// Te dwie wartości to ZACHOWAWCZE ZAŁOŻENIE ROBOCZE, a nie zmierzony limit
-// LiteAPI: dostawca go nie podał, a sekwencyjne zapytania nie dostały 429
-// tylko dlatego, że nie były równoczesne. Nie podnosić ich „na próbę” na
-// produkcji — 429 zatrzymuje wyszukiwania wszystkim (gubernator).
+// SKĄD 65 s. Sama równoczesność to za mało: 2026-11-06 zapytanie po kolei,
+// 9,46 s od startu poprzedniego i tuż po jego końcu, też dostało 429. Wszystkie
+// pary zapytań do dostawcy od przywrócenia dostępu (1–6.11):
+//   0 s → 429, 9,46 s → 429, 63,8 s → 200, 108–150 s → 200.
+// Limit leży więc gdzieś między 9,5 a 64 s, a 65 s to najkrótszy odstęp, który
+// na tym koncie NA PEWNO działa. To nie jest limit podany przez LiteAPI. Nie
+// skracać go „na próbę” na produkcji — 429 zatrzymuje wyszukiwania wszystkim
+// (gubernator). Po odpowiedzi supportu wystarczy zmienić zmienną środowiskową.
 //
 //   • slot to klucz `flgov:v1:slot:<n>` z dzierżawą (SET NX PX): przydział
 //     jest atomowy, a funkcja, która padła w trakcie, nie blokuje slotu
@@ -42,8 +45,11 @@
 //     działa lokalnie. To ŚWIADOMY wybór: Upstash miał już dobową awarię, a
 //     pełne zablokowanie lotów kosztowałoby więcej niż ryzyko, które zostaje.
 //     Jeden gość nie zrobi równoległości nawet wtedy (przeglądarka idzie po
-//     kolei), a do 429 potrzeba dwóch gości w tej samej sekundzie na dwóch
-//     instancjach. Crony bez magazynu stoją (search-governor.ts).
+//     kolei), a do 429 potrzeba dwóch gości w tej samej chwili na dwóch
+//     instancjach. Wyjątek: gdy magazyn pada, a przed chwilą widzieliśmy
+//     cudzą dzierżawę, odmawiamy — wiemy, że ktoś właśnie pyta dostawcę, a
+//     ponowienie za kilka sekund i tak przejdzie lokalnie.
+//     Crony bez magazynu stoją (search-governor.ts).
 //
 // Klucze są malutkie (UUID), a przy kilku wyszukiwaniach dziennie transfer
 // Upstash jest pomijalny.
@@ -56,6 +62,10 @@ const PREFIX = "flgov:v1:slot";
 /** Co ile czoło kolejki ponawia próbę zajęcia slotu (plus losowy rozrzut). */
 const POLL_MS = 250;
 const POLL_JITTER_MS = 250;
+const DEFAULT_MIN_INTERVAL_MS = 65_000;
+const MAX_MIN_INTERVAL_MS = 300_000;
+/** Termin ponowienia po odmowie, gdy dzierżawa nic nie mówi: odstęp jest krótki, a slot zajęty zapytaniem w toku. */
+const SHORT_INTERVAL_RETRY_MS = 5_000;
 // Pierwsza linia to znacznik: rozpoznaje skrypt atrapa Upstash w testach, bo
 // nie ma interpretera Lua. Wartość ARGV[2] = 0 kasuje slot, > 0 skraca dzierżawę.
 const RELEASE_SCRIPT = `-- provider-slot-release
@@ -81,7 +91,7 @@ function intIn(value: string | undefined, fallback: number, min: number, max: nu
 export function providerSlotConfig(env: Record<string, string | undefined> = process.env): ProviderSlotConfig {
   return {
     concurrency: intIn(env.FLIGHTS_PROVIDER_CONCURRENCY, 1, 1, 4),
-    minIntervalMs: intIn(env.FLIGHTS_PROVIDER_MIN_INTERVAL_MS, 1500, 0, 60_000),
+    minIntervalMs: intIn(env.FLIGHTS_PROVIDER_MIN_INTERVAL_MS, DEFAULT_MIN_INTERVAL_MS, 0, MAX_MIN_INTERVAL_MS),
   };
 }
 
@@ -104,10 +114,13 @@ export interface ProviderSlot {
 /** Nie udało się zająć slotu przed terminem — dostawca jest właśnie odpytywany przez kogoś innego. */
 export class ProviderSlotTimeoutError extends Error {
   readonly waitedMs: number;
-  constructor(waitedMs: number) {
+  /** Za ile slot najpewniej będzie wolny, jeśli to wiadomo. */
+  readonly retryAfterMs?: number;
+  constructor(waitedMs: number, retryAfterMs?: number) {
     super(`Brak wolnego slotu wyszukiwania lotów po ${waitedMs} ms`);
     this.name = "ProviderSlotTimeoutError";
     this.waitedMs = waitedMs;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -115,6 +128,8 @@ export class ProviderSlotTimeoutError extends Error {
 export interface SlotStore {
   set(key: string, value: string, opts: { nx: true; px: number }): Promise<unknown>;
   eval(script: string, keys: string[], args: string[]): Promise<unknown>;
+  /** Ile ms dzierżawy zostało; ujemne = klucza nie ma. */
+  pttl(key: string): Promise<number>;
 }
 
 export interface ProviderGate {
@@ -135,6 +150,17 @@ function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Za ile najbliższy slot się zwolni; `undefined` = nie wiadomo. Tylko do podania terminu, nie do decyzji. */
+async function nearestRelease(store: SlotStore, concurrency: number): Promise<number | undefined> {
+  try {
+    const leases = await Promise.all(Array.from({ length: concurrency }, (_, i) => store.pttl(`${PREFIX}:${i}`)));
+    const soonest = Math.min(...leases);
+    return soonest > 0 ? soonest : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function createProviderGate(deps: ProviderGateDeps): ProviderGate {
   const now = deps.now ?? Date.now;
   const sleep = deps.sleep ?? defaultSleep;
@@ -143,12 +169,15 @@ export function createProviderGate(deps: ProviderGateDeps): ProviderGate {
   // Kolejka w obrębie instancji (FIFO) — pojemność = `concurrency`.
   let active = 0;
   const waiters: Array<() => void> = [];
+  /** Kiedy skończy się odstęp bramki lokalnej (działa bez magazynu). */
+  let localFreeAt = 0;
 
   function takeLocal(deadline: number): Promise<boolean> {
     if (active < config().concurrency && waiters.length === 0) {
       active += 1;
       return Promise.resolve(true);
     }
+    if (localFreeAt > deadline) return Promise.resolve(false);
     return new Promise((resolve) => {
       const grant = () => {
         clearTimeout(timer);
@@ -174,6 +203,7 @@ export function createProviderGate(deps: ProviderGateDeps): ProviderGate {
       run();
       return;
     }
+    localFreeAt = now() + delayMs;
     const t = setTimeout(run, delayMs);
     (t as { unref?: () => void }).unref?.();
   }
@@ -183,7 +213,9 @@ export function createProviderGate(deps: ProviderGateDeps): ProviderGate {
     const deadline = start + Math.max(0, maxWaitMs);
     const token = randomUUID();
     const queuedLocally = active >= config().concurrency || waiters.length > 0;
-    if (!(await takeLocal(deadline))) throw new ProviderSlotTimeoutError(now() - start);
+    if (!(await takeLocal(deadline))) {
+      throw new ProviderSlotTimeoutError(now() - start, localFreeAt > now() ? localFreeAt - now() : undefined);
+    }
 
     let polled = false;
     const slot = (index: number | null, unconfirmedKey: string | null = null): ProviderSlot => {
@@ -200,28 +232,44 @@ export function createProviderGate(deps: ProviderGateDeps): ProviderGate {
       };
     };
 
+    let store: SlotStore | null = null;
     let attempted: string | null = null;
+    let heldByOther = false;
     try {
-      const store = deps.store();
+      store = deps.store();
       if (!store) return slot(null);
       for (;;) {
-        const { concurrency } = config();
+        const { concurrency, minIntervalMs } = config();
         for (let i = 0; i < concurrency; i += 1) {
           attempted = `${PREFIX}:${i}`;
           const res = await store.set(attempted, token, { nx: true, px: Math.max(1_000, leaseMs) });
           if (res === "OK") return slot(i);
+          heldByOther = true;
         }
         attempted = null;
         const left = deadline - now();
         if (left <= 0) {
           giveLocal(0);
-          throw new ProviderSlotTimeoutError(now() - start);
+          const freeIn = await nearestRelease(store, concurrency);
+          // Dzierżawa zapytania w toku bywa dłuższa niż prawdziwe czekanie: nigdy
+          // nie więcej niż odstęp, bo tyle najdłużej trwa przerwa między zapytaniami.
+          throw new ProviderSlotTimeoutError(
+            now() - start,
+            freeIn === undefined ? undefined : Math.min(freeIn, Math.max(minIntervalMs, SHORT_INTERVAL_RETRY_MS)),
+          );
         }
         polled = true;
         await sleep(Math.min(left, POLL_MS + Math.floor(Math.random() * POLL_JITTER_MS)));
       }
     } catch (err) {
       if (err instanceof ProviderSlotTimeoutError) throw err;
+      if (heldByOther) {
+        // Ktoś właśnie pyta dostawcę, a magazyn przestał odpowiadać: odmowa. Tu
+        // zapytania nie będzie, więc ewentualny nasz zapis można sprzątnąć od razu.
+        if (store && attempted) void store.eval(RELEASE_SCRIPT, [attempted], [token, "0"]).catch(() => {});
+        giveLocal(0);
+        throw new ProviderSlotTimeoutError(now() - start);
+      }
       // Magazyn padł — zostaje bramka lokalna (już ją trzymamy). Zapis mógł
       // dojść mimo błędu (zginęła tylko odpowiedź), więc klucz sprząta dopiero
       // zwolnienie: skasowany teraz wpuściłby inną instancję w trakcie zapytania.

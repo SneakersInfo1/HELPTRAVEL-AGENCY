@@ -182,16 +182,15 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
   const cacheKey = flightRatesCacheKey(input);
   let offers = await getCachedFlightOffers(cacheKey);
   if (offers === null) {
-    // `retries: 1` = JEDEN strzał na próbę; ponawianiem steruje searchWithDeadline,
-    // bo tylko ono zna globalny termin. Wewnętrzny retry klienta byłby ślepy
-    // na budżet tury i to on dawał teoretyczne 90 s.
+    // JEDEN strzał na próbę; ponawianiem steruje searchWithDeadline, bo tylko ono
+    // zna globalny termin. Druga próba i tak przechodzi przez bramkę z jej odstępem.
     const budgetMs = Math.min(q.budgetMs ?? FLIGHT_GLOBAL_BUDGET_MS, FLIGHT_GLOBAL_BUDGET_MS);
     const result = await searchWithDeadline(
       // `cache`: zapis wyniku (także pustej listy = negatywny cache) w środku
       // slotu bramki, a po czekaniu na slot ponowny odczyt — jeśli lejek lotów
       // albo inna instancja właśnie wyszukała tę trasę, czat nie pyta dostawcy.
       ({ timeoutMs }) =>
-        searchFlightOffers(input, { source: "chat", timeoutMs, retries: 1, cache: { kind: "on-demand" } }),
+        searchFlightOffers(input, { source: "chat", timeoutMs, cache: { kind: "on-demand" } }),
       {
         deadlineAt: Date.now() + budgetMs,
         firstAttemptMs: FLIGHT_FIRST_ATTEMPT_MS,

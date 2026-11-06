@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
           stats.liteApiCalls += 1;
           try {
             // Ten sam helper co lejek lotów (sort + cap), jeden strzał.
-            const offers = await searchFlightOffers(input, { source: "background", retries: 1 });
+            const offers = await searchFlightOffers(input, { source: "background" });
             flightGate.onSuccess();
             return minTotalFromOffers(offers);
           } catch (err) {
