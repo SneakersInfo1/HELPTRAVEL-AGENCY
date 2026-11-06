@@ -24,7 +24,15 @@ import { track } from "@/lib/analytics/track";
 import { type DisplayOffer } from "@/lib/flights/display";
 import { averagePerTraveller, formatFlightPrice } from "@/lib/flights/money";
 import { saveFlightFlow } from "@/lib/flights/flow-storage";
-import { originHeaderLabel } from "@/lib/flights/airports";
+import { airportLabel, originHeaderLabel } from "@/lib/flights/airports";
+import {
+  errorStatusFromNetwork,
+  errorStatusFromResponse,
+  offersFromBody,
+  runOriginFanout,
+  summarizeFanout,
+  type OriginStatus,
+} from "@/lib/flights/search-fanout";
 import { FLIGHT_CONTROLS_STICKY_TOP, FLIGHT_RESULTS_GRID, FLIGHT_SHELL_WIDE } from "@/lib/flights/layout";
 import {
   EMPTY_FILTERS,
@@ -67,10 +75,10 @@ export function FlightResults(props: Props) {
   const { origins, originLabel, destination, destLabel, depart, ret, adults, childrenCount, infants, fresh } = props;
   const router = useRouter();
   const [offers, setOffers] = useState<DisplayOffer[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  // Dostawca odmówił dostępu do całego produktu (nie tej trasy): rada „zmień
-  // daty albo lotnisko" i przycisk ponowienia nie mogą tu pomóc.
-  const [providerDown, setProviderDown] = useState(false);
+  // Stan KAŻDEGO lotniska osobno (search-fanout.ts): bez tego puste WMI/RDO
+  // przy 429 na WAW dawało fałszywe „Brak lotów”, a błąd wszystkich — „0 ofert”.
+  const [statuses, setStatuses] = useState<Record<string, OriginStatus>>({});
+  const [running, setRunning] = useState(false);
   const [sort, setSort] = useState<SortKey>("best");
   const [filters, setFilters] = useState<FlightFilters>(EMPTY_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -80,33 +88,33 @@ export function FlightResults(props: Props) {
   // na dziesiątki tysięcy pikseli. Sort/filtry działają na PEŁNEJ puli; tniemy
   // wyłącznie render. Zmiana sortu/filtrów wraca do pierwszej strony.
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
-  const [allSettled, setAllSettled] = useState(false);
   const fetchedRef = useRef(false);
+  const mountedRef = useRef(false);
+  const runningRef = useRef(false);
+  const trackedRef = useRef(false);
+  const mergedRef = useRef<{ seen: Set<string>; list: DisplayOffer[] }>({ seen: new Set(), list: [] });
+  // Zegar odliczania do ponowienia (Retry-After) — tyka tylko, gdy jest na co czekać.
+  const [now, setNow] = useState(() => Date.now());
 
   const travellers = adults + childrenCount + infants;
   const originsKey = origins.join(",");
   const headerLabel = originHeaderLabel(origins, originLabel);
+  const summary = useMemo(() => summarizeFanout(origins, statuses, offers?.length ?? 0), [origins, statuses, offers]);
+  const allSettled = summary.settled;
 
-  // Pobranie ofert (raz). Fan-out po lotniskach (metro=1 kod) RÓWNOLEGLE, ale
-  // wyniki POKAZUJEMY W MIARĘ NAPŁYWU (nie czekamy aż wszystkie odpowiedzą):
-  // najszybsze lotnisko pojawia się pierwsze. Scalanie + dedup po offerId.
+  // Pobranie ofert: lotniska PO KOLEI (runOriginFanout), wyniki pokazujemy
+  // w miarę napływu.
   //
   // Wyścig „stare wyszukiwanie nadpisuje nowe" jest wykluczony wyżej: strona
   // nadaje temu komponentowi `key` złożony z parametrów, więc zmiana kierunku
-  // czy dat to REMOUNT ze świeżym stanem, a nie kolejny fetch w tej instancji.
-  // `alive` domyka drugi przypadek — odpowiedź, która wróciła po odmontowaniu.
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    let alive = true;
-    const seen = new Set<string>();
-    const merged: DisplayOffer[] = [];
-    let anyOk = false;
-    let firstMessage: string | undefined;
-    let accessDenied = false;
-
-    void Promise.all(
-      origins.map(async (o) => {
+  // czy dat to REMOUNT ze świeżym stanem. `mountedRef` zatrzymuje kolejkę po
+  // odmontowaniu (StrictMode montuje dwa razy — ref wraca na true).
+  const runSearch = useCallback(
+    async (targets: string[]) => {
+      if (runningRef.current || targets.length === 0) return; // jeden przebieg naraz (podwójny klik)
+      runningRef.current = true;
+      setRunning(true);
+      const searchOrigin = async (o: string): Promise<OriginStatus> => {
         const legs: Leg[] = [{ origin: o, destination, date: depart, direction: "OUTBOUND" }];
         if (ret) legs.push({ origin: destination, destination: o, date: ret, direction: "INBOUND" });
         try {
@@ -115,46 +123,79 @@ export function FlightResults(props: Props) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ legs, adults, children: childrenCount, infants, cabinClass: "ECONOMY" }),
           });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            if (!firstMessage) firstMessage = json.message as string | undefined;
-            if (json.reason === "PROVIDER_ACCESS_DENIED") accessDenied = true;
-            return;
-          }
-          anyOk = true;
-          const got = (json.offers ?? []) as DisplayOffer[];
+          const json = await res.json().catch(() => null);
+          if (!res.ok) return errorStatusFromResponse(res.status, json ?? {}, res.headers.get("Retry-After"));
+          const got = offersFromBody<DisplayOffer>(json);
+          if (!got) return errorStatusFromNetwork();
+          const merged = mergedRef.current;
           for (const off of got) {
-            if (seen.has(off.offerId)) continue;
-            seen.add(off.offerId);
-            merged.push(off);
+            if (merged.seen.has(off.offerId)) continue;
+            merged.seen.add(off.offerId);
+            merged.list.push(off);
           }
-          // Progresywny render TYLKO gdy faktycznie coś dosypaliśmy. Bez tego
-          // lotnisko z 0 ofert (pusta odpowiedź wraca szybciej) wywołałoby
-          // setOffers([]) → mignięcie „Brak lotów" zanim dojdą oferty z lotniska,
-          // które je ma. Stan pusty/błąd domyka .finally().
-          if (alive && merged.length > 0) setOffers([...merged]);
+          // Progresywny render TYLKO gdy faktycznie coś dosypaliśmy — puste
+          // lotnisko nie może wywołać mignięcia „Brak lotów".
+          if (mountedRef.current && got.length > 0) setOffers([...merged.list]);
+          return { state: "ok", count: got.length };
         } catch {
-          /* to lotnisko padło — inne mogą się udać */
+          return errorStatusFromNetwork();
         }
-      }),
-    ).finally(() => {
-      if (!alive) return;
-      setAllSettled(true);
-      if (!anyOk) {
-        setError(firstMessage || "Nie udało się pobrać ofert. Spróbuj ponownie.");
-        setProviderDown(accessDenied);
-        setOffers([]);
-      } else {
-        setOffers([...merged]);
-        track("flight_results_view", { origin: originsKey, destination, results_count: merged.length });
+      };
+      const { anyOk } = await runOriginFanout(targets, {
+        search: searchOrigin,
+        isActive: () => mountedRef.current,
+        onStatuses: (patch) => {
+          // Zegar z chwili odpowiedzi: inaczej odliczanie startowałoby od czasu
+          // wejścia na stronę i przez pierwszą sekundę pokazywało za dużo.
+          setNow(Date.now());
+          setStatuses((prev) => ({ ...prev, ...patch }));
+        },
+      });
+      runningRef.current = false;
+      if (!mountedRef.current) return;
+      setRunning(false);
+      // Stan końcowy: lista (także pusta) dopiero po komplecie odpowiedzi.
+      setOffers([...mergedRef.current.list]);
+      if (anyOk && !trackedRef.current) {
+        trackedRef.current = true;
+        track("flight_results_view", { origin: originsKey, destination, results_count: mergedRef.current.list.length });
       }
-    });
+    },
+    [originsKey, destination, depart, ret, adults, childrenCount, infants, fresh],
+  );
 
+  useEffect(() => {
+    mountedRef.current = true;
+    if (!fetchedRef.current) {
+      fetchedRef.current = true;
+      void runSearch(origins);
+    }
     return () => {
-      alive = false;
+      mountedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [originsKey, destination, depart, ret, adults, childrenCount, infants]);
+  }, []);
+
+  // Odliczanie do ponowienia — tylko gdy jest termin z Retry-After.
+  const retryInS = summary.retryAt ? Math.max(0, Math.ceil((summary.retryAt - now) / 1000)) : 0;
+  useEffect(() => {
+    if (!summary.retryAt || summary.retryAt <= Date.now()) return;
+    const id = window.setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= (summary.retryAt ?? 0)) window.clearInterval(id);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [summary.retryAt]);
+
+  // Ponowienie WYŁĄCZNIE nieudanych lotnisk, jeden przebieg naraz, po terminie.
+  const canRetry = !running && retryInS === 0 && summary.failed.length > 0;
+  const retryFailed = () => {
+    if (!canRetry) return;
+    void runSearch(summary.failed);
+  };
+  const retryLabel = running ? "Szukam…" : retryInS > 0 ? `Spróbuj ponownie za ${retryInS} s` : "Spróbuj ponownie";
+  const failedLabels = summary.failed.map((o) => airportLabel(o)).join(", ");
 
   // Faceting z PEŁNEJ puli (liczniki nie zmieniają się przy filtrowaniu);
   // widoczna lista = filtry + sort, po stronie klienta.
@@ -257,7 +298,9 @@ export function FlightResults(props: Props) {
           <p className="mt-1 text-sm text-ink-muted">
             {ret ? "W obie strony" : "W jedną stronę"} · {travellers}{" "}
             {travellers === 1 ? "podróżny" : "podróżnych"}
-            {offers
+            {/* Licznik tylko przy rzetelnym wyniku: są oferty albo WSZYSTKIE
+                lotniska odpowiedziały pustą listą. Przy błędzie nie ma „0 ofert”. */}
+            {offers && (offers.length > 0 || summary.outcome === "empty")
               ? visible.length === offers.length
                 ? ` · ${offers.length} ${offers.length === 1 ? "oferta" : "ofert"}`
                 : ` · ${visible.length} z ${offers.length} ofert`
@@ -353,29 +396,59 @@ export function FlightResults(props: Props) {
 
         {/* Kolumna wyników */}
         <div>
-          {offers === null && (
+          {/* Ładowanie bez żadnej oferty — także przy ponowieniu po błędzie. */}
+          {(offers === null || offers.length === 0) && !allSettled && (
             <FlightResultsSkeleton originLabel={headerLabel} destination={destLabel || destination} />
           )}
 
-          {/* Brak ofert z serwera / błąd */}
-          {offers !== null && offers.length === 0 && (
-            <div className="rounded-lg border border-line bg-surface-raised p-8 text-center">
-              <p className="text-base font-semibold text-ink">{error ?? "Brak lotów dla wybranych dat"}</p>
-              <p className="mt-1 text-sm text-ink-muted">
-                {providerDown
-                  ? "To przerwa po stronie dostawcy lotów, a nie problem z Twoim wyszukiwaniem — zmiana dat ani lotniska teraz nie pomoże."
-                  : "Spróbuj zmienić daty albo lotnisko wylotu. Część tras lata tylko w wybrane dni tygodnia."}
+          {/* Komplet odpowiedzi i zero ofert: prawdziwy brak lotów ALBO błąd
+              wyszukiwania — nigdy jedno przebrane za drugie (incydent 2026-11-03). */}
+          {allSettled && (offers?.length ?? 0) === 0 && (
+            <div
+              role={summary.outcome === "error" ? "alert" : undefined}
+              className="rounded-lg border border-line bg-surface-raised p-8 text-center"
+            >
+              <p className="text-base font-semibold text-ink">
+                {summary.outcome === "error" ? summary.message : "Brak lotów dla wybranych dat"}
               </p>
-              {/* Całkowita awaria (nie „pusta trasa") jest naprawialna — daj akcję,
-                  zamiast zostawiać użytkownika w ślepym zaułku. Przy odmowie
-                  dostępu u dostawcy ponowienie dałoby ten sam wynik. */}
-              {error && !providerDown && (
+              <p className="mt-1 text-sm text-ink-muted">
+                {summary.outcome !== "error"
+                  ? "Spróbuj zmienić daty albo lotnisko wylotu. Część tras lata tylko w wybrane dni tygodnia."
+                  : summary.providerDown
+                    ? "To przerwa po stronie dostawcy lotów, a nie problem z Twoim wyszukiwaniem — zmiana dat ani lotniska teraz nie pomoże."
+                    : "Wyszukiwanie nie zostało dokończone, więc to nie znaczy, że lotów nie ma."}
+              </p>
+              {/* Awaria (nie „pusta trasa”) jest naprawialna — ponawiamy WYŁĄCZNIE
+                  nieudane lotniska, po terminie z Retry-After, jeden przebieg
+                  naraz. Przy odmowie dostępu i złych danych ponowienie nic nie da. */}
+              {summary.outcome === "error" && summary.retryable && (
                 <button
                   type="button"
-                  onClick={() => window.location.reload()}
-                  className="mt-4 inline-flex h-11 items-center rounded-md bg-brand px-5 font-semibold text-white transition hover:opacity-90 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+                  onClick={retryFailed}
+                  disabled={!canRetry}
+                  className="mt-4 inline-flex h-11 items-center rounded-md bg-brand px-5 font-semibold text-white transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
-                  <span className="text-sm">Spróbuj ponownie</span>
+                  <span className="text-sm tabular-nums">{retryLabel}</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Są oferty, ale część lotnisk nie odpowiedziała — mówimy to wprost. */}
+          {summary.outcome === "partial" && (
+            <div
+              role="status"
+              className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line bg-surface-sunken px-3 py-2 text-sm text-ink"
+            >
+              <span className="min-w-0">Nie udało się sprawdzić lotów z: {failedLabels}.</span>
+              {summary.retryable && (
+                <button
+                  type="button"
+                  onClick={retryFailed}
+                  disabled={!canRetry}
+                  className="inline-flex h-11 items-center rounded-md border border-line bg-surface-raised px-3 font-semibold text-ink transition hover:border-brand/40 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
+                >
+                  <span className="text-sm tabular-nums">{retryLabel}</span>
                 </button>
               )}
             </div>
