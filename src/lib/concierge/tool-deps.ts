@@ -16,11 +16,7 @@ import { iataForCity } from "@/lib/flights/airports";
 // Snapshoty czytane przez cache danych Nexta (5–10 min): rozmowa to kilkanaście
 // tur, a każda czytała oba snapshoty z Redisa od nowa.
 import { readActiveSnapshotCached, readPriceSnapshotCached } from "@/lib/redis/cached-reads";
-import {
-  flightRatesCacheKey,
-  getCachedFlightOffers,
-  setCachedFlightOffers,
-} from "@/lib/flights/rates-cache";
+import { flightRatesCacheKey, getCachedFlightOffers } from "@/lib/flights/rates-cache";
 import { searchFlightOffers } from "@/lib/flights/search-offers";
 import { searchWithDeadline } from "./flight-retry";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
@@ -191,7 +187,11 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
     // na budżet tury i to on dawał teoretyczne 90 s.
     const budgetMs = Math.min(q.budgetMs ?? FLIGHT_GLOBAL_BUDGET_MS, FLIGHT_GLOBAL_BUDGET_MS);
     const result = await searchWithDeadline(
-      ({ timeoutMs }) => searchFlightOffers(input, { source: "chat", timeoutMs, retries: 1 }),
+      // `cache`: zapis wyniku (także pustej listy = negatywny cache) w środku
+      // slotu bramki, a po czekaniu na slot ponowny odczyt — jeśli lejek lotów
+      // albo inna instancja właśnie wyszukała tę trasę, czat nie pyta dostawcy.
+      ({ timeoutMs }) =>
+        searchFlightOffers(input, { source: "chat", timeoutMs, retries: 1, cache: { kind: "on-demand" } }),
       {
         deadlineAt: Date.now() + budgetMs,
         firstAttemptMs: FLIGHT_FIRST_ATTEMPT_MS,
@@ -209,8 +209,9 @@ async function findCheapestFlightLive(q: CheapestFlightQuery): Promise<CheapestF
     // Brak wyniku = brak lotu. NIE zapisujemy tego do cache: pusta lista
     // znaczy „trasa martwa", a tu chodzi o chwilową awarię.
     if (result.value === null) return null;
+    // Zapis do cache zrobił już searchFlightOffers (opcja `cache` wyżej);
+    // drugi zapis to ~200 KB transferu Upstash za nic.
     offers = result.value;
-    await setCachedFlightOffers(cacheKey, offers);
   }
 
   let best: DisplayOffer | null = null;

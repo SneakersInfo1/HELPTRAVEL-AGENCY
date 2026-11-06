@@ -1,6 +1,6 @@
 // Atrapa LiteAPI do E2E „odmowa prebooku → powrót do hotelu”
-// (playwright.odmowa.config.ts). Serwer Nexta rozmawia tylko z nią: żadnych
-// prawdziwych stawek, prebooków ani płatności.
+// (playwright.odmowa.config.ts) i lotów (playwright.loty.config.ts). Serwer Nexta
+// rozmawia tylko z nią: żadnych prawdziwych stawek, prebooków ani płatności.
 //
 // Zachowuje się jak dostawca tam, gdzie ma to znaczenie: każde zapytanie o stawki
 // wydaje NOWE `offerId` (zmierzone 2026-11-06: 0 ze 186 wspólnych), a odpowiedź
@@ -11,6 +11,14 @@
 //   GET /__e2e/reset?afterRefusal=reoffer|gone&prebook=sold|expired&delayMs=1500
 //     reoffer: odrzucony pokój wraca pod nowym offerId (najgorszy przypadek)
 //     gone:    po odmowie świeże zapytania już go nie zwracają
+//   GET /__e2e/reset?flights=ok|empty|429|500&flightsFor=WMI:500,RDO:empty&flightsDelayMs=150
+//     loty: tryb domyślny i wyjątki per lotnisko wylotu. Bez wyjątków WMI i RDO
+//     są puste, jak w GDS na produkcji.
+//
+// Loty zachowują się jak konto po przywróceniu dostępu (zmierzone 2026-11-03/04):
+// zapytanie równoczesne z innym dostaje HTTP 429 z kodem 4290. Atrapa sama liczy
+// równoległość i odstępy, więc to jej liczniki, a nie deklaracje kodu, mówią, co
+// naprawdę doszło „do dostawcy”.
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
@@ -27,10 +35,17 @@ const ROOMS = [
   { key: "dostepny", name: "Deluxe Double Room", amount: 1500 },
 ];
 
+type FlightMode = "ok" | "empty" | "429" | "500";
+
 const emptyStats = () => ({
   ratesAvailability: 0,
   ratesMapped: 0,
   prebook: 0,
+  flightRates: 0,
+  flightOrigins: [] as string[],
+  flightMaxInFlight: 0,
+  flightThrottled: 0,
+  flightStartGapsMs: [] as number[],
   unknown: [] as string[],
 });
 
@@ -41,6 +56,11 @@ const state = {
   delayMs: 0,
   refused: false,
   seq: 0,
+  flights: "ok" as FlightMode,
+  flightsFor: {} as Record<string, FlightMode>,
+  flightsDelayMs: 150,
+  flightsInFlight: 0,
+  flightsLastStart: 0,
 };
 
 function roomType(hotelId: string, room: (typeof ROOMS)[number]) {
@@ -86,6 +106,111 @@ function prebookResponse(body: { offerId?: string }): { status: number; body: un
     : { status: 409, body: { error: { message: "rate expired" } } };
 }
 
+const CARRIERS = [
+  { code: "LO", name: "LOT Polish Airlines" },
+  { code: "TP", name: "TAP Air Portugal" },
+  { code: "LH", name: "Lufthansa" },
+];
+const FARES = [
+  { family: "Basic", extra: 0, carryOn: false, checked: false },
+  { family: "Smart", extra: 180.5, carryOn: true, checked: false },
+  { family: "Flex", extra: 420.9, carryOn: true, checked: true },
+];
+
+interface FlightLeg {
+  origin: string;
+  destination: string;
+  date: string;
+  direction: string;
+}
+
+function flightSegments(leg: FlightLeg, i: number) {
+  const carrier = CARRIERS[i % CARRIERS.length]!;
+  const stops = i % 2;
+  const hub = "MUC";
+  const hops = stops === 0 ? [[leg.origin, leg.destination]] : [[leg.origin, hub], [hub, leg.destination]];
+  return hops.map(([from, to], hop) => ({
+    originCode: from,
+    destinationCode: to,
+    originName: from,
+    destinationName: to,
+    direction: leg.direction,
+    departureTime: `${leg.date}T${String(6 + i + hop * 4).padStart(2, "0")}:15:00`,
+    arrivalTime: `${leg.date}T${String(8 + i + hop * 4).padStart(2, "0")}:40:00`,
+    duration: { minutes: 145 },
+    carrier: { marketingCode: carrier.code, marketingName: carrier.name, operatingCode: carrier.code, operatingName: carrier.name },
+    flight: { marketingNumber: String(300 + i), operatingNumber: String(300 + i) },
+    segmentKey: `${leg.direction}-${i}-${hop}`,
+  }));
+}
+
+function flightJourney(legs: FlightLeg[], i: number) {
+  state.seq += 1;
+  const route = legs.map((l) => `${l.origin}${l.destination}${l.date}`).join("-");
+  const offers = FARES.map((fare, f) => {
+    const total = Number((690.9 + i * 118 + fare.extra).toFixed(2));
+    return {
+      offerId: `e2e-lot-${route}-${state.seq}-${i}-${f}-${"x".repeat(16)}`,
+      expiration: new Date(Date.now() + 30 * 60_000).toISOString(),
+      pricing: { display: { total, currency: "PLN", base: total - 100, fees: 0, taxes: 100 }, converted: true },
+      provider: { code: "ATRAPA" },
+      baggage: { hasCarryOnBag: fare.carryOn, hasCheckedBag: fare.checked, included: [] },
+      fare: { family: fare.family, mixedCabin: false, seatsRemaining: 5 },
+    };
+  });
+  const segments = legs.flatMap((leg) => flightSegments(leg, i));
+  return {
+    cheapestOffer: offers[0],
+    offers,
+    isCheapest: i === 0,
+    journeyKey: `${route}-${i}`,
+    segments,
+    legDurations: legs.map((leg) => ({
+      direction: leg.direction,
+      duration: { minutes: 145 * segments.filter((s) => s.direction === leg.direction).length + 40 * (i % 2) },
+    })),
+    totalDuration: { minutes: 145 * segments.length },
+  };
+}
+
+function flightMode(origin: string): FlightMode {
+  const fixed = state.flightsFor[origin];
+  if (fixed) return fixed;
+  if (state.flights === "ok" && (origin === "WMI" || origin === "RDO")) return "empty";
+  return state.flights;
+}
+
+async function flightRates(req: IncomingMessage, res: ServerResponse) {
+  const body = await readJson(req);
+  const legs = (body.legs ?? []) as FlightLeg[];
+  const origin = legs[0]?.origin ?? "?";
+  const { stats } = state;
+  const startedAt = Date.now();
+  stats.flightRates += 1;
+  stats.flightOrigins.push(origin);
+  if (state.flightsLastStart > 0) stats.flightStartGapsMs.push(startedAt - state.flightsLastStart);
+  state.flightsLastStart = startedAt;
+  state.flightsInFlight += 1;
+  stats.flightMaxInFlight = Math.max(stats.flightMaxInFlight, state.flightsInFlight);
+  const concurrent = state.flightsInFlight > 1;
+  await new Promise((resolve) => setTimeout(resolve, state.flightsDelayMs));
+  state.flightsInFlight -= 1;
+
+  const mode: FlightMode = concurrent ? "429" : flightMode(origin);
+  if (mode === "429") {
+    stats.flightThrottled += 1;
+    return send(
+      res,
+      429,
+      { error: { code: 4290, message: "You have exceeded the allowed request limit", description: "Too many requests, please try again later" } },
+      concurrent ? {} : { "Retry-After": "15" },
+    );
+  }
+  if (mode === "500") return send(res, 500, { error: { code: 5000, message: "unable to process request" } });
+  const journeys = mode === "empty" ? [] : Array.from({ length: 12 }, (_, i) => flightJourney(legs, i));
+  return send(res, 200, { data: [{ journeys, sortMetadata: {} }] });
+}
+
 async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(chunk as Buffer);
@@ -93,8 +218,8 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
   return text ? (JSON.parse(text) as Record<string, unknown>) : {};
 }
 
-const send = (res: ServerResponse, status: number, payload: unknown) => {
-  res.writeHead(status, { "Content-Type": "application/json" });
+const send = (res: ServerResponse, status: number, payload: unknown, headers: Record<string, string> = {}) => {
+  res.writeHead(status, { "Content-Type": "application/json", ...headers });
   res.end(JSON.stringify(payload));
 };
 
@@ -108,8 +233,19 @@ const server = createServer(async (req, res) => {
     state.afterRefusal = url.searchParams.get("afterRefusal") === "gone" ? "gone" : "reoffer";
     state.prebook = url.searchParams.get("prebook") === "expired" ? "expired" : "sold";
     state.delayMs = Number(url.searchParams.get("delayMs") ?? 0);
+    state.flights = (url.searchParams.get("flights") ?? "ok") as FlightMode;
+    state.flightsFor = Object.fromEntries(
+      (url.searchParams.get("flightsFor") ?? "")
+        .split(",")
+        .filter(Boolean)
+        .map((pair) => pair.split(":") as [string, FlightMode]),
+    );
+    state.flightsDelayMs = Number(url.searchParams.get("flightsDelayMs") ?? 150);
+    state.flightsLastStart = 0;
     return send(res, 200, { ok: true });
   }
+
+  if (url.pathname.endsWith("/flights/rates")) return flightRates(req, res);
 
   if (url.pathname.endsWith("/hotels/rates")) {
     const body = await readJson(req);

@@ -25,6 +25,8 @@ interface Props {
   adults: number;
   childrenCount: number;
   infants: number;
+  /** Formularz od razu rozwinięty — gdy wyszukiwania nie da się wykonać (np. minęła data wylotu). */
+  initiallyExpanded?: boolean;
 }
 
 function fmtRange(start: string, end?: string): string {
@@ -47,8 +49,9 @@ export function FlightSearchBar({
   adults,
   childrenCount,
   infants,
+  initiallyExpanded = false,
 }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initiallyExpanded);
 
   const originText = originLabel || airportLabel(origins[0] ?? "");
   const destText = destLabel || destination;

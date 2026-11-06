@@ -23,15 +23,20 @@ do `untilMs` — `DEL` nie wznawia jej wcześniej. Ustawiaj krótkie `untilMs`
 | `FLIGHTS_BACKGROUND_SEARCH` | wyłączone | `on` włącza wyszukiwania lotów w cronach (prewarming, okazje, snapshot czatu). Przed włączeniem: potwierdzić limit konta w LiteAPI. |
 | `FLIGHTS_BACKGROUND_DAILY_LIMIT` | 50 / dobę UTC | sufit wyszukiwań cronów |
 | `FLIGHTS_SEARCH_DAILY_LIMIT` | 500 / dobę UTC | sufit wyszukiwań użytkowników i czatu (liczone tylko trafienia do dostawcy, nie cache) |
+| `FLIGHTS_PROVIDER_CONCURRENCY` | 1 (zakres 1–4) | ile wyszukiwań lotów naraz u dostawcy, na wszystkich instancjach. Nie podnosić bez potwierdzenia limitu przez LiteAPI: zapytania równoczesne to zmierzona przyczyna 429 |
+| `FLIGHTS_PROVIDER_MIN_INTERVAL_MS` | 1500 ms | minimalny odstęp między zapytaniami do dostawcy. To założenie robocze, nie zmierzony limit konta |
 | `SERVER_ERROR_ALERT_THRESHOLD` | 20 / 10 min | próg alarmu serii nieobsłużonych 5xx |
 
 ## Co robi gubernator lotów sam
 
-- **429 od LiteAPI:** pauza wszystkich instancji na `Retry-After` (15 s–15 min, domyślnie 60 s), bez ponowień.
+- **429 od LiteAPI (także 5xx z `Retry-After`):** pauza wszystkich instancji na `Retry-After` (15 s–15 min, domyślnie 60 s), bez ponowień.
+- **Timeout albo zerwane połączenie:** bez ponowienia po stronie serwera, slot zajęty jeszcze 3 s, bo dostawca może pracować nad porzuconym zapytaniem. Automatycznie ponawiane jest tylko szybkie, odebrane 5xx (raz). Czat ma własną drugą próbę w budżecie tury.
 - **401 / 403 / 40301:** pauza 15 min i alarm krytyczny.
 - **Budżety dzienne:** alarm przy 50 %, 80 %, 100 %. Po przekroczeniu odpowiedź 503 bez zapytania do dostawcy.
 - **Te same zapytania równolegle:** jedno zapytanie do dostawcy, jeden wynik dla wszystkich.
-- **Redis niedostępny:** użytkownicy przechodzą (licznik lokalny), crony stoją.
+- **Bramka slotów (`flgov:v1:slot:<n>`):** najwyżej jedno wyszukiwanie naraz u dostawcy na wszystkich instancjach. Kto czekał, po zajęciu slotu najpierw czyta cache. Slot zajęty dłużej niż wolno czekać (12 s użytkownik, 5 s czat, 2 s tło) → 503 `PROVIDER_BUSY` z `Retry-After: 5`, bez zapytania do dostawcy.
+- **Lista wyników:** lotniska z grupy idą po kolei. Pauza, zajęta bramka albo limit przerywają przebieg od razu, a dwa błędy z rzędu (timeout, 5xx, sieć) po drugim lotnisku. Ponowienie obejmuje tylko nieudane lotniska.
+- **Redis niedostępny:** użytkownicy przechodzą (licznik lokalny, bramka lokalna w obrębie instancji), crony stoją. Bramka nie obejmuje wtedy innych instancji: dwóch gości w tej samej sekundzie może dostać 429. To świadomy wybór zamiast wyłączania lotów na czas awarii Upstash.
 
 ## Monitoring
 
@@ -84,6 +89,7 @@ Stan sprzed misji: `335929d`.
 
 ## Znane ograniczenia (2026-11-02)
 
-- **Limit wyszukiwań lotów konta LiteAPI** po odblokowaniu jest nieznany. Limity powyżej są celowo konserwatywne; podnosić dopiero po odpowiedzi supportu.
+- **Limit wyszukiwań lotów konta LiteAPI** po odblokowaniu jest nieznany. Limity powyżej są celowo konserwatywne; podnosić dopiero po odpowiedzi supportu. Bramka obejmuje tylko `/flights/rates`: jeśli limit konta liczy też `verify`, `prebook` i `book`, te wywołania mogą się z nią minąć.
+- **Testy lotów bez ruchu do dostawcy:** `pnpm build && pnpm e2e:loty` (atrapy LiteAPI i Upstash, dwa procesy serwera). Główna konfiguracja Playwrighta idzie do żywego LiteAPI.
 - **Sekcja „Tanie loty z Polski”** na stronie głównej jest ukryta, dopóki crony lotów są wyłączone. Pokazuje tylko ceny młodsze niż 7 h, więc zamiast nieaktualnych cen nie pokazuje nic.
 - **Pakiety lot+hotel w snapshocie czatu** są puste. Czat szuka lotów na żywo (źródło `chat`, w budżecie użytkowników).

@@ -47,6 +47,25 @@ function parseOrigins(v?: string): string[] {
   return [...new Set(codes)].slice(0, 6);
 }
 
+/** Dzisiejsza data w Polsce (YYYY-MM-DD). */
+function todayInPoland(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/**
+ * Powód, dla którego wyszukiwania NIE da się wykonać — zanim pójdzie jakiekolwiek
+ * zapytanie. Produkcja 2026-11-03 17:46: stary link z minioną datą dawał sześć
+ * odrzuconych zapytań (fan-out „Polska — dowolne lotnisko”), komunikat „Nie
+ * udało się pobrać ofert” i przycisk „Spróbuj ponownie”, który nie mógł pomóc.
+ */
+function searchProblem(p: { depart: string; ret?: string; adults: number; infants: number; origins: string[] }): string | null {
+  if (p.depart < todayInPoland()) return "Data wylotu już minęła. Wybierz nowy termin w wyszukiwarce.";
+  if (p.ret && p.ret < p.depart) return "Data powrotu jest wcześniejsza niż data wylotu. Popraw termin w wyszukiwarce.";
+  if (p.infants > p.adults) return "Niemowląt nie może być więcej niż dorosłych — każde leci na kolanach dorosłego.";
+  if (p.origins.length === 0) return "Lotnisko wylotu i cel podróży są takie same. Wybierz inne lotnisko.";
+  return null;
+}
+
 export default async function FlightResultsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const origins = parseOrigins(sp.origin);
@@ -68,13 +87,17 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
   const adults = Math.max(1, Math.min(9, Number(sp.adults) || 1));
   const childrenCount = Math.max(0, Math.min(8, Number(sp.children) || 0));
   const infants = Math.max(0, Math.min(4, Number(sp.infants) || 0));
+  // Lotnisko równe celowi (np. „Polska — dowolne lotnisko” → Warszawa) odpada
+  // z fan-outu — dostawca i tak odrzuciłby takie zapytanie.
+  const searchable = origins.filter((o) => o !== destination);
+  const problem = searchProblem({ depart: sp.depart!, ret, adults, infants, origins: searchable });
 
   // Klucz per-wyszukiwanie: zmiana kierunku/dat/pasażerów w pasku edycji robi
   // SOFT-NAV na ten sam route /loty/wyniki, więc bez tego React reużywałby
   // instancję FlightResults — a `fetchedRef` blokował ponowny fetch → stare
   // wyniki mimo nowych parametrów. `key` wymusza remount: świeży stan +
   // ponowny fetch. Pasek edycji też się remountuje (zwija do podsumowania).
-  const searchKey = [origins.join(","), destination, sp.depart, ret ?? "", adults, childrenCount, infants].join("|");
+  const searchKey = [searchable.join(","), destination, sp.depart, ret ?? "", adults, childrenCount, infants].join("|");
 
   return (
     <>
@@ -109,21 +132,31 @@ export default async function FlightResultsPage({ searchParams }: { searchParams
           adults={adults}
           childrenCount={childrenCount}
           infants={infants}
+          initiallyExpanded={problem !== null}
         />
       </div>
-      <FlightResults
-        key={`fr-${searchKey}`}
-        origins={origins}
-        originLabel={sp.originLabel}
-        destination={destination!}
-        destLabel={sp.destLabel}
-        depart={sp.depart!}
-        ret={ret}
-        adults={adults}
-        childrenCount={childrenCount}
-        infants={infants}
-        fresh={sp.fresh === "1"}
-      />
+      {problem ? (
+        <main className={`${FLIGHT_SHELL_NARROW} min-h-[50vh] py-8`}>
+          <div role="alert" className="rounded-lg border border-line bg-surface-raised p-6 text-center sm:p-8">
+            <p className="text-base font-semibold text-ink">{problem}</p>
+            <p className="mt-1 text-sm text-ink-muted">Nic nie zostało wyszukane — popraw dane w formularzu powyżej.</p>
+          </div>
+        </main>
+      ) : (
+        <FlightResults
+          key={`fr-${searchKey}`}
+          origins={searchable}
+          originLabel={sp.originLabel}
+          destination={destination!}
+          destLabel={sp.destLabel}
+          depart={sp.depart!}
+          ret={ret}
+          adults={adults}
+          childrenCount={childrenCount}
+          infants={infants}
+          fresh={sp.fresh === "1"}
+        />
+      )}
     </>
   );
 }

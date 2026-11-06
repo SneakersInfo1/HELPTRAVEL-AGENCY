@@ -102,7 +102,13 @@ export async function startMockUpstash(
         const nx = opts.includes("nx");
         if (nx && live(key)) return { result: null };
         const exIdx = opts.indexOf("ex");
-        const expireAt = exIdx >= 0 ? Date.now() + Number(cmd[3 + exIdx + 1]) * 1000 : undefined;
+        const pxIdx = opts.indexOf("px");
+        const expireAt =
+          exIdx >= 0
+            ? Date.now() + Number(cmd[3 + exIdx + 1]) * 1000
+            : pxIdx >= 0
+              ? Date.now() + Number(cmd[3 + pxIdx + 1])
+              : undefined;
         store.set(key, { kind: "string", value: String(cmd[2]), expireAt });
         return { result: "OK" };
       }
@@ -151,6 +157,17 @@ export async function startMockUpstash(
         const e = live(key);
         if (!e || e.kind !== "hash") return { result: [] };
         return { result: [...e.value].flat() };
+      }
+      case "eval": {
+        // Bez interpretera Lua: po znaczniku rozpoznajemy jedyny skrypt, którego
+        // używa kod pod testem (zwolnienie slotu lotów — provider-slot.ts).
+        if (!String(cmd[1]).startsWith("-- provider-slot-release")) return { error: "ERR unknown command 'eval' (mock)" };
+        const [slotKey, token, spacing] = [String(cmd[3]), String(cmd[4]), Number(cmd[5])];
+        const e = live(slotKey);
+        if (!e || e.kind !== "string" || e.value !== token) return { result: 0 };
+        if (spacing > 0) e.expireAt = Date.now() + spacing;
+        else store.delete(slotKey);
+        return { result: 1 };
       }
       case "evalsha":
         // @upstash/ratelimit: [pozostałe żetony, limit]. Limiter z polityką

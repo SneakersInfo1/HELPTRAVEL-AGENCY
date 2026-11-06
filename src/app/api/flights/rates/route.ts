@@ -12,11 +12,7 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 import { toFlightApiError } from "@/lib/flights/client";
 import { searchFlightOffers } from "@/lib/flights/search-offers";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
-import {
-  flightRatesCacheKey,
-  getCachedFlightOffers,
-  setCachedFlightOffers,
-} from "@/lib/flights/rates-cache";
+import { flightRatesCacheKey, getCachedFlightOffers } from "@/lib/flights/rates-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,10 +46,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Wspólny helper (search → normalize → sort po cenie → cap) — ten sam,
-    // którym cron grzeje cache, więc kształt ofert = identyczny.
-    const offers = await searchFlightOffers(input, { source: "user" });
-    await setCachedFlightOffers(cacheKey, offers);
+    // Wspólny helper (search → normalize → sort po cenie → cap) przez bramkę
+    // slotów: najwyżej jedno wyszukiwanie naraz u dostawcy, a kto czekał,
+    // dostaje wynik z cache, jeśli inna instancja właśnie wyszukała to samo.
+    // Zapis do cache dzieje się w środku (przed zwolnieniem slotu).
+    const offers = await searchFlightOffers(input, { source: "user", cache: { kind: "on-demand", skipRead: fresh } });
     return NextResponse.json({ offers, count: offers.length, cached: false }, { status: 200 });
   } catch (err) {
     const e = toFlightApiError(err, "search");
@@ -61,7 +58,11 @@ export async function POST(request: NextRequest) {
     // echuje danych osobowych — w zapytaniu są tylko lotniska, daty i liczba
     // osób. Bez niego przyczyna 403/40301 była nieczytelna z logów.
     const desc = e.providerDescription ? ` desc="${e.providerDescription.replace(/\s+/g, " ").slice(0, 200)}"` : "";
-    console.warn(`[flights][rates] ${e.code} liteApiStatus=${e.liteApiStatus} liteApiCode=${e.liteApiCode}${desc}`);
+    // `reason` w logu: bez niego odmowa z pauzy/bramki (bez zapytania do
+    // dostawcy) wyglądała jak „liteApiStatus=undefined” — nieczytelne w incydencie.
+    console.warn(
+      `[flights][rates] ${e.code} reason=${e.reason ?? "-"} liteApiStatus=${e.liteApiStatus} liteApiCode=${e.liteApiCode}${desc}`,
+    );
     return NextResponse.json(
       // Bez `debug` — kod dostawcy nie jest informacją dla przeglądarki.
       // Diagnostyka zostaje w logu serwera (linia wyżej), gdzie jest komplet.
