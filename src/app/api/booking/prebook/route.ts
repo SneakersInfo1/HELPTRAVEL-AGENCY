@@ -17,9 +17,11 @@ import {
   LiteApiHolderSchema,
   prebookHotel,
 } from "@/lib/liteapi";
+import { HOTEL_ID_RE } from "@/lib/liteapi/hotel";
 import { getLiteApiWidgetEnv } from "@/lib/liteapi/widget-env";
 import { normalizeGuestsForRooms } from "@/lib/booking/guests";
 import { buildCheckoutPrice, checkoutPriceNaDrut } from "@/lib/hotels/domain/checkout-price";
+import { knownRefusal, refreshStayRates, rememberRefusal, type StayScope } from "@/lib/hotels/refused-offers";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   SESSION_TTL_SECONDS,
@@ -41,6 +43,10 @@ export const maxDuration = 60;
 
 const BodySchema = z.object({
   offerId: z.string().min(8),
+  // Wyłącznie po to, by odświeżyć stawki tego hotelu po odmowie (refused-offers.ts).
+  // Nie idzie do dostawcy ani do sesji płatności, więc zły format wyłącza
+  // odświeżenie, a nie blokuje rezerwacji.
+  hotelId: z.string().regex(HOTEL_ID_RE).optional().catch(undefined),
   hotel: z.object({ name: z.string().min(1), city: z.string().optional() }),
   rate: z.object({
     boardName: z.string().optional(),
@@ -59,6 +65,26 @@ const BodySchema = z.object({
   rooms: z.number().int().min(1).max(9).optional(),
   pax: z.number().int().min(1).max(15).optional(),
 });
+
+function bookingErrorResponse(err: BookingError) {
+  // Surface the underlying LiteAPI HTTP status + internal code in the
+  // response so the operator can diagnose 503s straight from the browser
+  // DevTools (Network → response body) — no Vercel log dive needed.
+  // No secrets / no PII: just status code + our internal taxonomy label.
+  const cause = err.cause;
+  const debug =
+    cause instanceof LiteApiError
+      ? { liteApiStatus: cause.status, liteApiCode: cause.internalCode }
+      : undefined;
+  return NextResponse.json(
+    {
+      error: err.code,
+      message: err.userMessagePl,
+      ...(debug ? { debug } : {}),
+    },
+    { status: err.httpStatus },
+  );
+}
 
 export async function POST(request: NextRequest) {
   if (!isBookingLive()) {
@@ -116,6 +142,21 @@ export async function POST(request: NextRequest) {
     return storeDownResponse();
   };
   if (!bookingStoreMayBeAvailable()) return storeDownBeforeProvider();
+
+  // Ta sama oferta, którą dostawca już odrzucił (inny gość ze starą listą, ponowne
+  // otwarcie adresu), dostałaby znów odmowę. Odpowiadamy od razu, bez kolejnego
+  // prebooku. Dotyczy tylko dokładnie tego `offerId`: świeża oferta tego samego
+  // pokoju zawsze idzie do dostawcy. Płatność na tym etapie nie istnieje, a błąd
+  // odczytu po prostu przepuszcza żądanie dalej. Skoro ktoś znów trafił na tę
+  // ofertę, jego lista jest nieaktualna, więc odświeżamy stawki terminu zapisanego
+  // przy pierwszej odmowie: pola z body nie mogą tu czyścić cudzego cache.
+  const refusedBefore = await knownRefusal(b.offerId);
+  if (refusedBefore) {
+    if (refusedBefore.scope) await refreshStayRates(refusedBefore.scope);
+    console.info(`[booking][prebook] oferta odrzucona wcześniej (${refusedBefore.code}), bez zapytania do dostawcy`);
+    return bookingErrorResponse(new BookingError(refusedBefore.code, "Oferta odrzucona wcześniej przez dostawcę"));
+  }
+
   try {
     await reserveBookingSession(sessionId);
   } catch (err) {
@@ -252,23 +293,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responseBody, { status: 200 });
   } catch (err) {
     if (err instanceof BookingError) {
-      // Surface the underlying LiteAPI HTTP status + internal code in the
-      // response so the operator can diagnose 503s straight from the browser
-      // DevTools (Network → response body) — no Vercel log dive needed.
-      // No secrets / no PII: just status code + our internal taxonomy label.
-      const cause = err.cause;
-      const debug =
-        cause instanceof LiteApiError
-          ? { liteApiStatus: cause.status, liteApiCode: cause.internalCode }
-          : undefined;
-      return NextResponse.json(
-        {
-          error: err.code,
-          message: err.userMessagePl,
-          ...(debug ? { debug } : {}),
-        },
-        { status: err.httpStatus },
-      );
+      if (err.code === "RATE_UNAVAILABLE" || err.code === "PREBOOK_EXPIRED") {
+        const scope: StayScope | null = b.hotelId
+          ? { hotelId: b.hotelId, checkin: b.rate.checkin, checkout: b.rate.checkout }
+          : null;
+        await rememberRefusal(b.offerId, err.code, scope);
+        if (scope) await refreshStayRates(scope);
+      }
+      return bookingErrorResponse(err);
     }
     console.error(
       `[booking][prebook] unexpected error: ${err instanceof Error ? err.message : String(err)}`,

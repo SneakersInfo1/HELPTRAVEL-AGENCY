@@ -51,6 +51,21 @@ do `untilMs` — `DEL` nie wznawia jej wcześniej. Ustawiaj krótkie `untilMs`
   - `[cron-lock]`,
   - `[alert]`.
 
+## Odmowy prebooku hotelu (`offerref:v1`)
+
+Gdy LiteAPI odrzuci ofertę przy prebooku (wyprzedana albo wygasła), trasa
+`/api/booking/prebook` zapisuje znacznik `offerref:v1:o:<skrót offerId>` (TTL 30 min)
+i unieważnia stawki tylko tego hotelu i terminu, najwyżej raz na 60 s
+(`offerref:v1:cd:…`). Tej warstwy nie trzeba czyścić, klucze wygasają same.
+
+- Strona hotelu nie czyta Redisa. Trasa prebooku robi jeden GET. Gościowi z odmową
+  ofertę ukrywa odcisk w jego linku (`refused=<odcisk>`), innych gości to nie dotyczy.
+- Błąd Redisa oznacza brak wiedzy o odmowach, nigdy błąd rezerwacji. Gorszy wariant
+  to gość, który kliknie martwą ofertę i dostanie zwykłą odmowę od dostawcy.
+- Ślad w logach: `[liteapi][booking][prebook] … code=RATE_UNAVAILABLE`. Powtórka tej
+  samej oferty nie idzie do dostawcy i ma wpis `oferta odrzucona wcześniej`.
+- Test całego toru na atrapach: `pnpm build && pnpm e2e:odmowa`.
+
 ## Wycofanie wdrożenia
 
 Vercel → Deployments → filtr *Production* → wdrożenie z poprzednim commitem →

@@ -14,7 +14,7 @@ const ResponseSchema = z.object({ data: LiteApiHotelDetailSchema });
 // w 2 dni (80% error rate u dostawcy). Id, które nie może być poprawne,
 // odrzucamy LOKALNIE — identycznym błędem, jaki dałoby LiteAPI (400/4002,
 // isHotelNotFoundError=true → strona robi czysty 404), ale BEZ wywołania.
-const HOTEL_ID_RE = /^lp[0-9a-z]{1,24}$/i;
+export const HOTEL_ID_RE = /^lp[0-9a-z]{1,24}$/i;
 
 function invalidHotelIdError(hotelId: string) {
   return liteApiErrorFromResponse(400, {

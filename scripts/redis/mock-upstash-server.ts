@@ -18,7 +18,7 @@ function arg(name: string, fallback: string): string {
 async function main() {
   const port = Number(arg("port", "8799"));
   const mode = arg("mode", "ok");
-  const mock = await startMockUpstash({ port });
+  const mock = await startMockUpstash({ port, allowRatelimit: process.argv.includes("--allow-ratelimit") });
   if (mode === "quota" || mode === "http500" || mode === "hang" || mode === "ok") mock.mode = mode;
   console.log(`[mock-upstash] ${mock.url} token=${mock.token} mode=${mock.mode}`);
   const stop = async () => {

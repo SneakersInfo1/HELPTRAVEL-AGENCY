@@ -30,12 +30,19 @@ import { OptionalGuestsAccordion } from "./optional-guests-accordion";
 import { PaymentBrandsInline } from "./payment-brands";
 import type { CheckoutPriceWire } from "@/lib/hotels/domain/checkout-price";
 import { PaymentSlot, type PaymentSlotPrebook } from "./payment-slot";
+import {
+  readRefusedOffers,
+  rememberRefusedOffer,
+  withRefusedOffers,
+} from "@/lib/hotels/refused-offers-session";
 import { classifyPrebookError, type FormError } from "./prebook-recovery";
 import { TrustStrip } from "./trust-strip";
 
 interface Props {
   hotelId: string;
   offerId: string;
+  /** Odcisk oferty ze strony hotelu: po odmowie ukrywa ją na liście pokoi. */
+  offerFingerprint?: string;
   hotelName: string;
   hotelCity?: string;
   /** Hotel photo / category / guest score for the summary card (all from the
@@ -124,6 +131,7 @@ function formatAmount(amount: number, currency: string): string {
 export function ReservationForm({
   hotelId,
   offerId,
+  offerFingerprint,
   hotelName,
   hotelCity,
   photoUrl,
@@ -162,6 +170,7 @@ export function ReservationForm({
   );
   const [step, setStep] = useState<"form" | "submitting" | "paying">("form");
   const [error, setError] = useState<FormError | null>(null);
+  const [refusedOffers, setRefusedOffers] = useState<string[]>([]);
   const [touched, setTouched] = useState<Partial<Record<HolderField, boolean>>>({});
   const [pay, setPay] = useState<PaymentSlotPrebook | null>(null);
   // Lazily generated in onSubmit (never during render — keeps the component
@@ -249,6 +258,7 @@ export function ReservationForm({
         },
         body: JSON.stringify({
           offerId,
+          hotelId,
           hotel: { name: hotelName, city: hotelCity },
           rate: { boardName: board, price, currency, checkin, checkout },
           holder,
@@ -287,7 +297,12 @@ export function ReservationForm({
         });
         // New attempt must use a fresh idempotency key.
         idemKey.current = freshIdemKey();
-        setError(classifyPrebookError(data.error, res.status, data.message));
+        const failure = classifyPrebookError(data.error, res.status, data.message);
+        if (failure.soldOut) {
+          const stay = { hotelId, checkin, checkout };
+          setRefusedOffers(offerFingerprint ? rememberRefusedOffer(stay, offerFingerprint) : readRefusedOffers(stay));
+        }
+        setError(failure);
         setStep("form");
         return;
       }
@@ -560,7 +575,7 @@ export function ReservationForm({
                         pod sticky paskiem), a pełne wejście na strumieniowany
                         SSR zostaje na górze strony (scrollY 0). */}
                     <Link
-                      href={backToHotelHref}
+                      href={withRefusedOffers(backToHotelHref, refusedOffers)}
                       className="mt-4 flex h-12 w-full items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-emerald-700 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 sm:inline-flex sm:w-auto"
                     >
                       Zobacz pokoje i ceny

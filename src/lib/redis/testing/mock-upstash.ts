@@ -59,7 +59,9 @@ function encodeResult(value: unknown, base64: boolean): unknown {
   return value;
 }
 
-export async function startMockUpstash(opts: { port?: number } = {}): Promise<MockUpstash> {
+export async function startMockUpstash(
+  opts: { port?: number; allowRatelimit?: boolean } = {},
+): Promise<MockUpstash> {
   const store = new Map<string, Entry>();
   const pending = new Set<ServerResponse>();
   const state: MockUpstash = {
@@ -151,6 +153,9 @@ export async function startMockUpstash(opts: { port?: number } = {}): Promise<Mo
         return { result: [...e.value].flat() };
       }
       case "evalsha":
+        // @upstash/ratelimit: [pozostałe żetony, limit]. Limiter z polityką
+        // „closed” bez tego zamyka trasę, zanim test dojdzie do logiki.
+        if (opts.allowRatelimit) return { result: [9, 10] };
         return { error: "NOSCRIPT No matching script. Please use EVAL." };
       default:
         return { error: `ERR unknown command '${name}' (mock)` };
