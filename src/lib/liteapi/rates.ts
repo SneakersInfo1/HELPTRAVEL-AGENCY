@@ -1,6 +1,6 @@
 // LiteAPI rates — fetches priced rates for a list of hotelIds.
 
-import { liteApiRequest } from "./client";
+import { liteApiRequest, type LiteApiCallOptions } from "./client";
 import { LiteApiRatesResponseSchema, type LiteApiRatesResponse } from "./types";
 
 export interface GetRatesInput {
@@ -40,7 +40,12 @@ export interface GetRatesInput {
   cacheTags?: string[];
 }
 
-export async function getRates(input: GetRatesInput): Promise<LiteApiRatesResponse> {
+/**
+ * `call` — opcje wywołania (sygnał, limit czasu, próby, pominięcie Data Cache).
+ * Ścieżki użytkownika go nie podają i zachowują się jak dotąd; cron
+ * prewarmingu podaje `skipDataCache`, bo potrzebuje ŚWIEŻYCH stawek.
+ */
+export async function getRates(input: GetRatesInput, call: LiteApiCallOptions = {}): Promise<LiteApiRatesResponse> {
   const body = {
     hotelIds: input.hotelIds,
     occupancies: input.occupancies.map((o) => ({
@@ -56,6 +61,7 @@ export async function getRates(input: GetRatesInput): Promise<LiteApiRatesRespon
     ...(input.roomMapping ? { roomMapping: true } : {}),
   };
   return liteApiRequest({
+    ...call,
     path: "/hotels/rates",
     method: "POST",
     keyMode: "public",

@@ -23,6 +23,7 @@ const KNOWN_FAMILIES = new Set([
   "trustpilot",
   "csnap", // snapshot konsjerża
   "lock", // blokady cronów
+  "warmrates", // stan i plan hoteli crona warm-rates
   "booking", // sesje i rekordy rezerwacji hoteli
   "flight", // sesje i rekordy rezerwacji lotów
   "ratelimit",

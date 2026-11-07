@@ -72,6 +72,72 @@ i unieważnia stawki tylko tego hotelu i terminu, najwyżej raz na 60 s
   samej oferty nie idzie do dostawcy i ma wpis `oferta odrzucona wcześniej`.
 - Test całego toru na atrapach: `pnpm build && pnpm e2e:odmowa`.
 
+## Cron warm-rates (`/api/cron/warm-rates`, co 30 min)
+
+**Incydent 2026-11-06 („Task timed out after 300 seconds”), przyczyna zmierzona.**
+Stawki z crona szły przez Next Data Cache (`revalidate` 900 s). Przy cronie co 30 min
+każdy wpis był przeterminowany, więc Data Cache oddawał stare ceny od ręki (handler
+~6 s, log `ok:true`), a dostawcę pytał w tle: wszystkimi ~250 zadaniami naraz
+i bez sygnału przerwania, bo Next celowo go nie przekazuje przy odświeżaniu w tle.
+Funkcja czekała na to tło (`waitUntil`). Jedno z 250 zapytań wisiało 298,7 s
+(metryka External APIs: `http_status -1`), więc funkcja dobiła do limitu z HTTP 200.
+Skutki uboczne: realna równoległość ~136 zamiast 6 (zmierzone na atrapie),
+a w Redisie i snapshocie lądowały ceny sprzed cyklu.
+
+**Jak działa po poprawce (`src/lib/hotels/warm-rates-cron.ts`):**
+
+- Stawki i listy hoteli są zawsze świeże, idą na pierwszym planie (`skipDataCache`,
+  a w trasie `fetchCache = "force-no-store"`). Każde zapytanie ma limit 15 s i jedną próbę.
+- Pula o stałej równoległości 6. Po 200 s przebieg nie zaczyna nowych zadań,
+  po 215 s przerywa trwające. Bezpiecznik: 3 odmowy 403/429 albo 12 błędów z rzędu
+  kończą przebieg.
+- Bliskie okna (cache wyników `htr:`) idą co przebieg. Tanie okna snapshotu „od X zł”
+  idą w rotacji: 8 kierunków na przebieg, pełny obieg 46 kierunków w około 3 h.
+  Na przebieg wychodzi ~101 zapytań zamiast 250.
+- Punkt kontrolny `warmrates:v1:state`: kursor rotacji, licznik nieudanych przebiegów
+  i znacznik trwającego przebiegu. Przerwany albo niezaczęty kierunek wraca jako
+  pierwszy, a nieudany zapis snapshotu powtarza całą partię. Znacznik, którego nikt
+  nie wyczyścił, oznacza przebieg zabity przez platformę: seria rośnie już na starcie
+  następnego. Gdy znacznika nie da się zapisać, przebieg jest pomijany.
+- Kierunek z nieudanym zadaniem (błąd, limit czasu, odmowa) nie nadpisuje snapshotu,
+  bo minimum z części okien zawyżyłoby „od X zł”. Stary wpis zostaje (ważny 48 h),
+  kursor idzie dalej, a kierunek wraca w kolejnym obiegu.
+- Plan hoteli `warmrates:v1:ids:<kierunek>`: lista hotelId z TTL 7 dni, odświeżana
+  po 24 h (najwyżej 6 na przebieg) zamiast `/data/hotels` w każdym przebiegu.
+
+**Odczyt logu** — jedna linia `[cron/warm-rates] {…}` na przebieg (`console.warn`, gdy nieudany):
+
+| Pole | Znaczenie |
+|---|---|
+| `stopReason` | `completed`, `time_budget`, `provider_refused`, `provider_unavailable` albo `store_lost` |
+| `rateCalls` / `succeeded` / `failed` / `timedOut` / `refused` / `aborted` / `skipped` | zadania: wysłane, udane, nieudane (w tym limit czasu i odmowy), przerwane przez nas, niezaczęte |
+| `providerRequests` | wszystkie zapytania HTTP do LiteAPI w przebiegu (stawki i plany) |
+| `plan.hits` / `plan.refreshed` | listy hoteli z Redisa i pobrane od dostawcy |
+| `rotation` | partia tanich okien: `from`, `size`, `of`, kursor `next` |
+| `previousRunDied` / `failStreak` | poprzedni przebieg zabity, nieudane przebiegi z rzędu po tym przebiegu |
+| `snapshotSaved` / `stateSaved` | czy zapisał się snapshot cen i stan (nieudany snapshot = partia do powtórki) |
+
+**Alert:** po 3 nieudanych przebiegach z rzędu `[alert][warning][cron]` idzie na
+`ALERT_WEBHOOK_URL`, potem co 16 przebiegów (≈ 8 h). Zabite przebiegi też się liczą.
+Nieudany przebieg to:
+- zatrzymanie przed czasem;
+- co najmniej połowa zadań nieudana;
+- zero zadań, np. zimny start przy leżącym `/data/hotels`;
+- połowa kierunków bez listy hoteli;
+- nieudany zapis snapshotu.
+
+Linia `[alert]` w logu powstaje zawsze, nawet gdy webhook nie odpowie.
+
+**Ręczne zatrzymanie:** `SET cron:v1:off:warm-rates 1 EX 3600`, sekcja „Wyłączniki”.
+Nie wywoływać crona wielokrotnie ręcznie: każdy przebieg to ~100 zapytań do LiteAPI.
+
+**Pomiar w Vercelu bez czytania logów** (`vercel metrics`, filtr
+`origin_path eq '/api/cron/warm-rates'`):
+
+- `vercel.external_api_request.count` z podziałem na `fetch_type`: po poprawce
+  wyłącznie `origin`, bez `cache-get` i `cache-set`;
+- `vercel.function_invocation.function_duration_ms`: czas całej funkcji, łącznie z tłem.
+
 ## Wycofanie wdrożenia
 
 Vercel → Deployments → filtr *Production* → wdrożenie z poprzednim commitem →

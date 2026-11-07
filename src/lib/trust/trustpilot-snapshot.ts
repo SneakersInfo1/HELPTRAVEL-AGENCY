@@ -29,6 +29,7 @@ const KEY = "trustpilot:v1";
 const TTL_SECONDS = 60 * 24 * 3600;
 export const TRUSTPILOT_FRESH_MS = 14 * 24 * 3600 * 1000;
 const REFRESH_MIN_INTERVAL_MS = 24 * 3600 * 1000;
+const TRUSTPILOT_FETCH_TIMEOUT_MS = 8_000;
 
 export const TRUSTPILOT_PROFILE_URL = "https://pl.trustpilot.com/review/helptravel.pl";
 
@@ -165,6 +166,10 @@ export async function refreshTrustpilotSnapshot(
         "Accept-Language": "pl-PL,pl;q=0.9",
       },
       cache: "no-store",
+      // Bez limitu czasu zawieszona odpowiedź Trustpilota trzymałaby cron
+      // warm-rates do limitu funkcji (300 s) — ten sam mechanizm co incydent
+      // z 2026-11-06, tylko po stronie innego serwera.
+      signal: AbortSignal.timeout(TRUSTPILOT_FETCH_TIMEOUT_MS),
     }),
   now: number = Date.now(),
 ): Promise<TrustpilotRefreshResult> {

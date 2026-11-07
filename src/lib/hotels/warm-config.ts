@@ -19,10 +19,65 @@ export const WARM_HOTELS_PER_DEST = 50;
 export const SNAPSHOT_HOTELS_PER_DEST = 150;
 // Równoległość zapytań do LiteAPI (każde ~2,5-4 s). 6 (było 4): głęboki skan
 // snapshotu podniósł liczbę zadań do ~250 — przy 4 zimny przebieg ocierał się
-// o budżet czasu.
+// o budżet czasu. Od 2026-11-07 to REALNA równoległość: wcześniej Data Cache
+// oddawał stare stawki od ręki, a dostawcę pytał w tle wszystkimi zadaniami
+// naraz (zmierzone lokalnie na atrapie: 136 zapytań jednocześnie).
 export const WARM_CONCURRENCY = 6;
-// Twardy budżet czasu — zatrzymujemy się przed limitem funkcji (maxDuration 300 s).
-export const WARM_TIME_BUDGET_MS = 250_000;
+
+// ── Budżet przebiegu i odporność (incydent timeoutu 2026-11-06) ─────────────
+//
+// ZMIERZONE NA PRODUKCJI: handler kończył po ~6 s, a funkcja żyła do limitu
+// 300 s, bo jedno zapytanie wysłane w tle przez Data Cache (bez sygnału,
+// więc bez limitu czasu) wisiało 298,7 s. Teraz cron pyta dostawcę wyłącznie
+// na pierwszym planie (`skipDataCache`) i każde zapytanie ma własny limit.
+// Opóźnienia /hotels/rates z crona (7 dni): p50 2,9 s · p95 3,8 s · p99 4,2 s.
+
+/** Po tym czasie od startu przebieg nie zaczyna nowych zadań (było 250 s). */
+export const WARM_TIME_BUDGET_MS = 200_000;
+/** Limit jednego zapytania o stawki: ~3,5× p99. Dłuższe = dostawca ma problem. */
+export const WARM_RATE_TIMEOUT_MS = 15_000;
+/** Jedna próba na zadanie. Nieudane zadanie wraca w kolejnym przebiegu, nie w tym. */
+export const WARM_RATE_ATTEMPTS = 1;
+/**
+ * Twarde przerwanie trwających zapytań (budżet + limit jednego zapytania).
+ * Z zapasem ~85 s do `maxDuration` 300 s na zapis snapshotu, Trustpilot i blokadę.
+ */
+export const WARM_HARD_STOP_MS = WARM_TIME_BUDGET_MS + WARM_RATE_TIMEOUT_MS;
+/** Tyle nieudanych zadań z rzędu (2 × równoległość) = dostawca leży, koniec przebiegu. */
+export const WARM_MAX_CONSECUTIVE_FAILURES = 2 * WARM_CONCURRENCY;
+/**
+ * Ostatni moment na START wyszukiwania lotu (faza lotów, gdy włączone są
+ * wyszukiwania w tle): wyszukiwanie ma własny limit 30 s plus czekanie na slot
+ * bramki dostawcy, więc późniejszy start mógłby wypchnąć przebieg poza 300 s.
+ */
+export const WARM_FLIGHTS_START_DEADLINE_MS = WARM_TIME_BUDGET_MS - 45_000;
+
+// ── Rotacja tanich okien snapshotu ───────────────────────────────────────────
+//
+// Tanie okna (sobota ≥60 dni, poniedziałek ≥40 dni) służą WYŁĄCZNIE cenie
+// „od X zł/noc", która jest ważna 48 h (PRICE_FRESH_MS). Odświeżanie ich co
+// 30 min kosztowało ~181 z 250 zapytań na przebieg. Każdy przebieg bierze
+// teraz kolejną partię kierunków (pełny obieg 46 kierunków ≈ 6 przebiegów =
+// ~3 h). Bliskie okna (cache wyników dla użytkowników) zostają co 30 min.
+export const WARM_SNAPSHOT_DESTINATIONS_PER_RUN = 8;
+
+// ── Plan hoteli (lista hotelId kierunku, Redis) ──────────────────────────────
+//
+// Cron omija Data Cache, więc listę hoteli kierunku trzyma sam: lista zmienia
+// się wolno, a pobieranie jej w każdym przebiegu dokładałoby ~31 zapytań.
+/** Wiek planu kierunku, po którym go odświeżamy. */
+export const WARM_PLAN_MAX_AGE_MS = 24 * 3600 * 1000;
+/** Ile PRZETERMINOWANYCH planów odświeżamy w jednym przebiegu (brakujące zawsze). */
+export const WARM_PLAN_REFRESH_PER_RUN = 6;
+/** Limit jednego zapytania /data/hotels (typowo ~0,2–1,5 s). */
+export const WARM_PLAN_TIMEOUT_MS = 8_000;
+/** Budżet całej fazy planu — po nim kierunki bez listy czekają do następnego przebiegu. */
+export const WARM_PLAN_BUDGET_MS = 30_000;
+/** Równoległość pobierania planów. */
+export const WARM_PLAN_CONCURRENCY = 4;
+
+/** Po tylu nieudanych przebiegach z rzędu idzie alert (potem co 16 przebiegów ≈ 8 h). */
+export const WARM_ALERT_AFTER_FAILED_RUNS = 3;
 
 // Kafelki „Popularne kierunki" na homepage (8; podzbiór zestawu właściciela
 // z 2026-06-11, dobór leisure-first). ID = id z data/destinations.json ==
