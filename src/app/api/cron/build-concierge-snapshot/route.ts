@@ -20,20 +20,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { odpowiedzBezBlokady, zajmijBlokade } from "@/lib/cron/lock";
-import { fetchHotelsForDestination } from "@/lib/liteapi";
 import { createProviderGate } from "@/lib/flights/provider-gate";
 import { searchFlightOffers } from "@/lib/flights/search-offers";
 import { isBackgroundFlightSearchEnabled } from "@/lib/flights/search-policy";
 import { FlightSearchInputSchema } from "@/lib/flights/types";
 import { flightRatesCacheKey, getCachedFlightSummary } from "@/lib/flights/rates-cache";
-import { resolveSlimRates } from "@/lib/hotels/resolve-slim-rates";
 import { redisMayBeAvailable, warnRedisFallback } from "@/lib/redis/client";
 import { checkCronRedisBudget, flushRedisMetrics, usageMark, usageSince } from "@/lib/redis/metrics";
-import {
-  computePackagePerPerson,
-  minPerNightFromRates,
-  minTotalFromOffers,
-} from "@/lib/prices/destination-price-snapshot";
+import { computePackagePerPerson, minTotalFromOffers } from "@/lib/prices/destination-price-snapshot";
 import { listAllDestinations } from "@/lib/mvp/destinations-seed";
 import { travelNowMs, travelToday } from "@/lib/time/travel-now";
 import { isBookableStart } from "@/lib/concierge/travel-dates";
@@ -41,7 +35,7 @@ import { computeCoverage, isUsableRecord } from "@/lib/snapshot/coverage";
 import {
   CONCURRENCY,
   FLIGHT_ADULTS,
-  HOTELS_PER_DEST,
+  HARD_STOP_MS,
   LOCK_TTL_SECONDS,
   RUN_INTERVAL_MS,
   SEGMENT_COUNT,
@@ -49,6 +43,8 @@ import {
   TIER_B_WINDOWS,
   TIME_BUDGET_MS,
 } from "@/lib/snapshot/config";
+import { createSnapshotHotelIdsReader } from "@/lib/snapshot/hotel-ids";
+import { snapshotHotelPerNight } from "@/lib/snapshot/hotel-rates";
 import { planRun, resolveSegment, type WarmTask } from "@/lib/snapshot/rotation";
 import {
   publishSnapshot,
@@ -98,6 +94,10 @@ interface RunStats {
   timedOut: number;
   metadataCalls: number;
   liteApiCalls: number;
+  /** Realne zapytania HTTP o listy hoteli do dostawcy (pudła cache'u list i odświeżenia w tle zakończone przed podsumowaniem). */
+  metadataRequests: number;
+  /** Realne zapytania HTTP o stawki do dostawcy (z próbami; Data Cache pominięty). */
+  rateRequests: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -110,12 +110,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // Zegar przebiegu rusza PRZED blokadą: wolny Redis przy jej zajmowaniu nie
+  // może przesunąć twardego końca bliżej maxDuration (HARD_STOP_MS w config.ts).
+  const startedAt = Date.now();
+  const hardStop = AbortSignal.timeout(HARD_STOP_MS);
+
   // §34: blokada z runId. Zajęte = 200 „skipped_locked" (sytuacja normalna;
   // 5xx wywołałoby ponawianie i pogorszyło sprawę).
   const blokada = await zajmijBlokade("build-concierge-snapshot", LOCK_TTL_SECONDS);
   if (!blokada.zdobyta) return NextResponse.json(odpowiedzBezBlokady("build-concierge-snapshot", blokada));
 
-  const startedAt = Date.now();
   const redisMark = usageMark();
   const nowMs = travelNowMs();
   const todayIso = travelToday(nowMs);
@@ -171,7 +175,18 @@ export async function GET(request: NextRequest) {
       timedOut: 0,
       metadataCalls: 0,
       liteApiCalls: 0,
+      metadataRequests: 0,
+      rateRequests: 0,
     };
+
+    // Listy hoteli: `unstable_cache` na 24 h, w środku zapytanie z naszym
+    // limitem i twardym końcem — także przy odświeżeniu w tle (hotel-ids.ts).
+    const readHotelIds = createSnapshotHotelIdsReader({
+      signal: hardStop,
+      onAttempt: () => {
+        stats.metadataRequests += 1;
+      },
+    });
 
     // Metadane hoteli per kierunek — RAZ na przebieg, bo są niezależne od okna.
     // Bez tego ten sam kierunek w ośmiu oknach płaciłby osiem razy za tę samą listę.
@@ -184,21 +199,18 @@ export async function GET(request: NextRequest) {
       if (cached) return cached;
       stats.metadataCalls += 1;
       stats.liteApiCalls += 1;
-      const promise = fetchHotelsForDestination({
+      const promise = readHotelIds({
         city: task.dest.cityEn,
         country: task.dest.countryCode ?? task.dest.countryEn,
         lat: task.dest.lat ?? undefined,
         lng: task.dest.lng ?? undefined,
-        limit: HOTELS_PER_DEST,
-      })
-        .then((list) => (list.data ?? []).map((h) => h.id).slice(0, HOTELS_PER_DEST))
-        .catch((err: unknown) => {
-          console.warn(
-            `[cron/build-concierge-snapshot] metadane '${task.dest.id}' nieudane:`,
-            err instanceof Error ? err.message : err,
-          );
-          return [] as string[];
-        });
+      }).catch((err: unknown) => {
+        console.warn(
+          `[cron/build-concierge-snapshot] metadane '${task.dest.id}' nieudane:`,
+          err instanceof Error ? err.message : err,
+        );
+        return [] as string[];
+      });
       hotelIdsCache.set(task.dest.id, promise);
       return promise;
     }
@@ -273,23 +285,14 @@ export async function GET(request: NextRequest) {
           const ids = await hotelIdsFor(task);
           if (ids.length === 0) return null;
           stats.liteApiCalls += 1;
-          // `forceRefresh` + bez zapisu: terminy snapshotu (miesiące naprzód)
-          // nie pokrywają się z tym, co grzeją inne crony, więc odczyt cache
-          // dawał same pudła, a zapis — wpisy, których nikt nie przeczyta
-          // przed wygaśnięciem (zmierzone: ~2 500 zapisów na przebieg).
-          const res = await resolveSlimRates(
-            ids,
-            {
-              checkin: window.checkin,
-              checkout: window.checkout,
-              adults: 2,
-              children: [],
-              rooms: 1,
-              currency: "PLN",
+          // Świeża cena od dostawcy, z limitem czasu i 2 próbami — szczegóły
+          // w src/lib/snapshot/hotel-rates.ts i przy RATE_TIMEOUT_MS.
+          return snapshotHotelPerNight(ids, window, {
+            signal: hardStop,
+            onAttempt: () => {
+              stats.rateRequests += 1;
             },
-            { forceRefresh: true, writeCache: false },
-          );
-          return minPerNightFromRates(res.rates, window.checkin, window.checkout);
+          });
         })();
 
         // allSettled: nieudany lot nie może zabrać hotelu i odwrotnie —

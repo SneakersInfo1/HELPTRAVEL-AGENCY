@@ -131,11 +131,30 @@ Linia `[alert]` w logu powstaje zawsze, nawet gdy webhook nie odpowie.
 **Ręczne zatrzymanie:** `SET cron:v1:off:warm-rates 1 EX 3600`, sekcja „Wyłączniki”.
 Nie wywoływać crona wielokrotnie ręcznie: każdy przebieg to ~100 zapytań do LiteAPI.
 
-**Pomiar w Vercelu bez czytania logów** (`vercel metrics`, filtr
-`origin_path eq '/api/cron/warm-rates'`):
+**`build-concierge-snapshot`** (2026-11-07). Ten cron miał ten sam wzorzec: zadanie
+wraca do terminu po ~10 h, więc ~30% stawek (1024 z 3468 w ~33 h) pochodziło
+z przeterminowanego Data Cache, a świeże pobierało się w tle bez limitu. Teraz:
 
-- `vercel.external_api_request.count` z podziałem na `fetch_type`: po poprawce
-  wyłącznie `origin`, bez `cache-get` i `cache-set`;
+- stawki idą świeże, na pierwszym planie (`src/lib/snapshot/hotel-rates.ts`),
+  15 s i 2 próby na zapytanie; licznik `rateRequests` w logu;
+- listy hoteli trzyma `unstable_cache` na 24 h (`src/lib/snapshot/hotel-ids.ts`),
+  a zapytanie w środku zawsze ma nasz limit (8 s, 2 próby na strategię), także
+  przy odświeżeniu przeterminowanej listy w tle. Pustej listy nie zapisuje
+  (timeout dostawcy wyglądałby jak „brak hoteli” na dobę). Licznik
+  `metadataRequests` w logu;
+- 230 s od wejścia do trasy (przed blokadą) twardy koniec przerywa trwające
+  zapytania o listy i stawki. Takie zadanie liczy się jako brak hotelu, a do
+  300 s zostaje czas na publikację.
+
+**Pomiar w Vercelu bez czytania logów** (`vercel metrics`, filtr
+`origin_path eq '/api/cron/<job>'`):
+
+- `vercel.external_api_request.count` z podziałem na `fetch_type` i `request_path`.
+  W `warm-rates` po poprawce wyłącznie `origin`, bez `cache-get` i `cache-set`.
+  W `build-concierge-snapshot` `/hotels/rates` i `/data/*` też tylko `origin`;
+  listy hoteli rzadko (pudło albo odświeżenie raz na dobę na kierunek).
+  Ewentualne `cache-get`/`cache-set` to operacje cache'u list (`unstable_cache`),
+  nie regresja;
 - `vercel.function_invocation.function_duration_ms`: czas całej funkcji, łącznie z tłem.
 
 ## Wycofanie wdrożenia
