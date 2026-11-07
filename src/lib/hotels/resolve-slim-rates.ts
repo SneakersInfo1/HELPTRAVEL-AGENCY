@@ -9,6 +9,7 @@
 
 import { fromMinor } from "@/lib/money";
 import { getRates, type LiteApiRate } from "@/lib/liteapi";
+import type { LiteApiCallOptions } from "@/lib/liteapi/client";
 import { pickCheapestRate, rateCancellationDeadline, rateCurrency, rateTotalMinor } from "@/lib/hotels/normalize";
 import { getCachedRates, setCachedRates, type RateCacheContext, type SlimRate } from "@/lib/hotels/rate-cache";
 import { honestDiscountFrom, mapTaxes, taxNoticeFrom } from "@/lib/hotels/domain/price";
@@ -51,7 +52,15 @@ export interface ResolveSlimRatesResult {
 
 export interface ResolveSlimRatesOptions {
   guestNationality?: string;
-  /** Pomiń odczyt cache i zawsze pobierz świeże stawki (cron prewarmingu). */
+  /**
+   * Pomija odczyt z REDISA i zawsze pyta `getRates` (crony).
+   *
+   * UWAGA: samo to NIE daje świeżych stawek. `getRates` idzie przez Next Data
+   * Cache (900 s): po tym czasie oddaje STARĄ odpowiedź, a dostawcę pyta w tle,
+   * bez limitu czasu i bez limitu równoległości. Tak działał warm-rates do
+   * 2026-11-07 (cron co 30 min = każdy wpis przeterminowany). Świeże stawki
+   * na pierwszym planie daje dopiero `call.skipDataCache`.
+   */
   forceRefresh?: boolean;
   /**
    * Czy zapisać wynik do cache (domyślnie TAK). `false` dla wywołań, których
@@ -61,6 +70,8 @@ export interface ResolveSlimRatesOptions {
    * Zmierzone 2026-10-24: te dwa tory pisały ~9 200 + ~2 500 wpisów co 30 min.
    */
   writeCache?: boolean;
+  /** Opcje wywołania LiteAPI: sygnał, limit czasu, liczba prób, pominięcie Data Cache. */
+  call?: LiteApiCallOptions;
 }
 
 // Pojedyncze wywołanie LiteAPI obsługuje do 50 hotelId (cap zgodny z batch
@@ -103,7 +114,7 @@ export async function resolveSlimRates(
     guestNationality: opts.guestNationality ?? "PL",
     occupancies: Array.from({ length: ctx.rooms }, () => ({ adults: ctx.adults, children: ctx.children })),
     maxRatesPerHotel: 1,
-  });
+  }, opts.call);
 
   const byHotel = new Map(rates.data.map((r) => [r.hotelId, r] as const));
   const fresh: Array<{ hotelId: string; rate: SlimRate | null }> = [];

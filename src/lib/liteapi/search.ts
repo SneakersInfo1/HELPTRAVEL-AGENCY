@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 
-import { liteApiRequest } from "./client";
+import { liteApiRequest, type LiteApiCallOptions } from "./client";
 import {
   LiteApiHotelsListResponseSchema,
   type LiteApiHotelsListResponse,
@@ -46,12 +46,16 @@ export interface HotelsListInput {
 // after sorting.
 const DEFAULT_HOTELS_LIMIT = 50;
 
-export async function fetchHotelsList(input: HotelsListInput): Promise<LiteApiHotelsListResponse> {
+export async function fetchHotelsList(
+  input: HotelsListInput,
+  call: LiteApiCallOptions = {},
+): Promise<LiteApiHotelsListResponse> {
   const countryCode = resolveCountryCode(input.country);
   if (!countryCode) {
     throw new Error(`Unknown country: "${input.country}"`);
   }
   return liteApiRequest({
+    ...call,
     path: "/data/hotels",
     method: "GET",
     keyMode: "public",
@@ -81,12 +85,16 @@ export async function fetchHotelsList(input: HotelsListInput): Promise<LiteApiHo
 // Bez countryCode/cityName — placeId sam definiuje obszar. Wyniki bywają
 // szersze niż wyspa (sąsiednie wyspy w promieniu), więc strona wyników
 // przycina je przez isInRegion() z lib/hotels/regions.
-export async function fetchHotelsByPlaceId(input: {
-  placeId: string;
-  limit?: number;
-  offset?: number;
-}): Promise<LiteApiHotelsListResponse> {
+export async function fetchHotelsByPlaceId(
+  input: {
+    placeId: string;
+    limit?: number;
+    offset?: number;
+  },
+  call: LiteApiCallOptions = {},
+): Promise<LiteApiHotelsListResponse> {
   return liteApiRequest({
+    ...call,
     path: "/data/hotels",
     method: "GET",
     keyMode: "public",
@@ -105,14 +113,18 @@ export async function fetchHotelsByPlaceId(input: {
 // FAZA 2 — wyszukiwanie po współrzędnych (fallback, gdy cityName daje 0).
 // LiteAPI /data/hotels przyjmuje latitude/longitude/radius (metry, min 1000).
 // Zweryfikowane na żywo (prod): Sharm 27.9158,34.33 r=15km → 722 hotele.
-export async function fetchHotelsByCoords(input: {
-  lat: number;
-  lng: number;
-  radius?: number;
-  limit?: number;
-  offset?: number;
-}): Promise<LiteApiHotelsListResponse> {
+export async function fetchHotelsByCoords(
+  input: {
+    lat: number;
+    lng: number;
+    radius?: number;
+    limit?: number;
+    offset?: number;
+  },
+  call: LiteApiCallOptions = {},
+): Promise<LiteApiHotelsListResponse> {
   return liteApiRequest({
+    ...call,
     path: "/data/hotels",
     method: "GET",
     keyMode: "public",
@@ -162,8 +174,9 @@ export function pickPlaceId(
   return (nonAirport ?? places[0]).placeId;
 }
 
-export async function resolvePlaceId(textQuery: string): Promise<string | null> {
+export async function resolvePlaceId(textQuery: string, call: LiteApiCallOptions = {}): Promise<string | null> {
   const res = await liteApiRequest({
+    ...call,
     path: "/data/places",
     method: "GET",
     keyMode: "public",
@@ -192,13 +205,13 @@ export async function fetchHotelsForDestination(input: {
    *  0 nic nie miała, przy wyższym offsecie też zwróci 0, więc łańcuch trafia
    *  w to samo źródło co strona pierwsza (konsument i tak dedupe'uje po id). */
   offset?: number;
-}): Promise<LiteApiHotelsListResponse> {
+}, call: LiteApiCallOptions = {}): Promise<LiteApiHotelsListResponse> {
   const limit = input.limit ?? DEFAULT_HOTELS_LIMIT;
   const offset = input.offset ?? 0;
 
   let byCity: LiteApiHotelsListResponse | null = null;
   try {
-    byCity = await fetchHotelsList({ city: input.city, country: input.country, limit, offset });
+    byCity = await fetchHotelsList({ city: input.city, country: input.country, limit, offset }, call);
     if ((byCity.data?.length ?? 0) > 0) return byCity;
   } catch {
     // Nieznany kraj / odrzucona nazwa → próbujemy współrzędnych/places.
@@ -206,7 +219,7 @@ export async function fetchHotelsForDestination(input: {
 
   if (typeof input.lat === "number" && typeof input.lng === "number") {
     try {
-      const byCoords = await fetchHotelsByCoords({ lat: input.lat, lng: input.lng, limit, offset });
+      const byCoords = await fetchHotelsByCoords({ lat: input.lat, lng: input.lng, limit, offset }, call);
       if ((byCoords.data?.length ?? 0) > 0) return byCoords;
     } catch {
       // spadamy do places
@@ -215,9 +228,9 @@ export async function fetchHotelsForDestination(input: {
 
   try {
     const query = input.country ? `${input.city}, ${input.country}` : input.city;
-    const placeId = await resolvePlaceId(query);
+    const placeId = await resolvePlaceId(query, call);
     if (placeId) {
-      const byPlace = await fetchHotelsByPlaceId({ placeId, limit, offset });
+      const byPlace = await fetchHotelsByPlaceId({ placeId, limit, offset }, call);
       if ((byPlace.data?.length ?? 0) > 0) return byPlace;
     }
   } catch {

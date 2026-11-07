@@ -43,7 +43,38 @@ function assertValidLiteApiHost(url: string, varName: string): void {
 
 type Method = "GET" | "POST" | "PUT" | "DELETE";
 
-interface ClientRequestOptions<TSchema extends ZodTypeAny> {
+/**
+ * Opcje JEDNEGO wywołania, które wołający przekazuje przez warstwy (rates.ts,
+ * search.ts) bez znajomości reszty klienta. Wszystkie opcjonalne: bez nich
+ * zachowanie jest dokładnie takie jak dotąd.
+ */
+export interface LiteApiCallOptions {
+  /** Przerywa wywołanie, także trwającą próbę i oczekiwanie na kolejną. */
+  signal?: AbortSignal;
+  /** Limit czasu jednej próby (domyślnie 30 s). */
+  timeoutMs?: number;
+  /** Liczba PRÓB łącznie (domyślnie 3). `1` = bez ponowień. */
+  retries?: number;
+  /**
+   * Pomija Next Data Cache, nawet gdy wywołanie go normalnie używa: zawsze
+   * świeża odpowiedź dostawcy, na pierwszym planie, z limitem czasu.
+   *
+   * Dlaczego to ma znaczenie (incydent warm-rates 2026-11-06): po upływie
+   * `revalidate` Data Cache oddaje STARĄ odpowiedź od razu, a dostawcę pyta
+   * w tle — i to zapytanie Next wysyła BEZ naszego `signal`, więc bez limitu
+   * czasu. Funkcja na Vercelu czeka na nie (`waitUntil`) aż do własnego
+   * limitu 300 s.
+   */
+  skipDataCache?: boolean;
+  /**
+   * Wołane przed KAŻDĄ próbą HTTP — pomiar realnych zapytań (crony). Przy
+   * włączonym Data Cache liczy także odczyty z cache, więc tylko razem
+   * z `skipDataCache` oznacza „zapytania do dostawcy".
+   */
+  onAttempt?: () => void;
+}
+
+interface ClientRequestOptions<TSchema extends ZodTypeAny> extends LiteApiCallOptions {
   path: string;
   method: Method;
   // Use the `private` key for booking ops (prebook/book/cancel/retrieve), the
@@ -52,8 +83,8 @@ interface ClientRequestOptions<TSchema extends ZodTypeAny> {
   body?: unknown;
   query?: Record<string, string | number | undefined>;
   schema: TSchema;
-  timeoutMs?: number; // default 30s, override 60s for prebook/book
-  retries?: number; // default 3
+  // timeoutMs: default 30s, override 60s for prebook/book (LiteApiCallOptions)
+  // retries: default 3 attempts in total (LiteApiCallOptions)
   // Opt-in escape hatch from the retry loop for responses that LOOK transient
   // (5xx) but are in fact deterministic rejections of the payload. LiteAPI
   // Flights answers a too-short passenger name with HTTP 500 + `{error:{code:
@@ -63,7 +94,6 @@ interface ClientRequestOptions<TSchema extends ZodTypeAny> {
   // of its 5xx bodies are deterministic. Callers that omit it keep the
   // unchanged policy (3 attempts on 5xx/network).
   noRetryWhen?: (body: unknown, status: number) => boolean;
-  signal?: AbortSignal;
   // Sesja C2 — opt-in Next.js Data Cache. When set, the underlying
   // fetch() is called with `cache: "force-cache"` + `next: {revalidate, tags}`
   // so repeated calls with the same path+query+body hit the on-disk /
@@ -224,11 +254,14 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
 
   while (attempt < maxRetries) {
     attempt += 1;
+    // Wołający już zrezygnował (np. koniec budżetu crona): nie wysyłamy nic.
+    // Bez tego sprawdzenia nasłuch „abort" na już przerwanym sygnale nigdy by
+    // nie zadziałał i zapytanie poszłoby normalnie.
+    if (opts.signal?.aborted) throw new LiteApiTimeoutError("Request aborted by caller");
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    if (opts.signal) {
-      opts.signal.addEventListener("abort", () => controller.abort(), { once: true });
-    }
+    const onCallerAbort = () => controller.abort();
+    opts.signal?.addEventListener("abort", onCallerAbort, { once: true });
 
     try {
       // Sesja C2 — opt-in Next.js Data Cache. Callers (search.ts, rates.ts)
@@ -244,7 +277,7 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
         body: opts.body ? JSON.stringify(opts.body) : undefined,
         signal: controller.signal,
       };
-      if (opts.nextCache) {
+      if (opts.nextCache && !opts.skipDataCache) {
         fetchInit.cache = "force-cache";
         (fetchInit as { next?: { revalidate: number; tags?: string[] } }).next = {
           revalidate: opts.nextCache.revalidate,
@@ -257,6 +290,7 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
       // prebooka ani rezerwacji. Przepuszcza wszystko, co ma podmieniony
       // `fetch` (czyli każdy istniejący test) i wszystkie odczyty.
       assertNoProviderWriteInTests(url);
+      opts.onAttempt?.();
       const res = await fetch(url, fetchInit);
 
       const body = await readBody(res);
@@ -327,6 +361,9 @@ export async function liteApiRequest<TSchema extends ZodTypeAny>(
       );
     } finally {
       clearTimeout(timer);
+      // Jeden sygnał crona obsługuje setki wywołań: bez zdjęcia nasłuchu
+      // każde zostawiałoby po sobie listener (i ostrzeżenie o wycieku).
+      opts.signal?.removeEventListener("abort", onCallerAbort);
     }
   }
 

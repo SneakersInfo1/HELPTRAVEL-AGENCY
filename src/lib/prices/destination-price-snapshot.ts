@@ -130,15 +130,21 @@ export async function readPriceSnapshot(): Promise<DestinationPriceSnapshot | nu
   }
 }
 
-/** Merge (nie replace): częściowy przebieg crona nie kasuje pozostałych kierunków. */
-export async function mergePriceSnapshot(entries: DestinationPriceSnapshot): Promise<void> {
+/**
+ * Merge (nie replace): częściowy przebieg crona nie kasuje pozostałych kierunków.
+ * Zwraca `true`, gdy zapis doszedł — cron z rotacją nie może przesunąć kursora
+ * za kierunki, których ceny się nie zapisały (czekałyby pełny obieg ~3 h).
+ */
+export async function mergePriceSnapshot(entries: DestinationPriceSnapshot): Promise<boolean> {
   const client = getRedis();
-  if (!client) return;
+  if (!client) return false;
   try {
     const existing = (await client.get<DestinationPriceSnapshot>(KEY)) ?? {};
     await client.set(KEY, { ...existing, ...entries }, { ex: TTL_SECONDS });
+    return true;
   } catch (err) {
     warnRedisFallback("dst-price", err);
+    return false;
   }
 }
 
