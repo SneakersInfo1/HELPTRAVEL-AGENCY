@@ -74,6 +74,48 @@ export const CONCURRENCY = 5;
 export const TIME_BUDGET_MS = 170_000;
 /** Ile hoteli skanujemy na kierunek szukając najtańszej stawki. */
 export const HOTELS_PER_DEST = 50;
+
+// ── Zapytania o stawki i listy hoteli (2026-11-07) ───────────────────────────
+//
+// Stawki ZAWSZE świeże, na pierwszym planie: zadanie wraca do terminu po pełnym
+// obiegu (~10 h), a Next Data Cache trzyma stawki 900 s — przez niego cron
+// dostawał cenę sprzed ~10 h (1024 z 3468 zapytań w ~33 h), a świeżą Next
+// pobierał w tle bez limitu czasu (mechanizm timeoutu warm-rates, #152).
+// Domyślne opcje klienta to 3 próby × 30 s = do 90 s na jedno zapytanie przy
+// budżecie przebiegu 170 s; tu najwyżej 2 × 15 s.
+
+/** Limit jednej próby zapytania o stawki (p99 z cronów ~4,2 s). */
+export const RATE_TIMEOUT_MS = 15_000;
+/**
+ * Próby zapytania o stawki. Dwie, nie jedna jak w warm-rates: to samo zadanie
+ * wraca dopiero po ~10 h, więc przejściowy 5xx bez drugiej próby to dziura
+ * w snapshocie na pół doby.
+ */
+export const RATE_ATTEMPTS = 2;
+/**
+ * Listy hoteli (`/data/hotels`, `/data/places`) trzyma `unstable_cache`
+ * (src/lib/snapshot/hotel-ids.ts), a nie Data Cache fetcha: przeterminowany
+ * wpis fetcha Next odświeża w tle BEZ naszego sygnału i limitu, czyli ten sam
+ * mechanizm co timeout warm-rates. W `unstable_cache` odświeża NASZA funkcja,
+ * więc limit (8 s × 2 próby na strategię zamiast 3 × 30 s) i twardy koniec
+ * działają i przy pudle, i przy odświeżeniu w tle. Przy łańcuchu do 4
+ * strategii domyślne opcje dawały nawet 6 minut na jeden kierunek.
+ */
+export const METADATA_TIMEOUT_MS = 8_000;
+export const METADATA_ATTEMPTS = 2;
+/** Ważność listy hoteli kierunku — ta sama co Data Cache list dotąd (24 h). */
+export const HOTEL_IDS_REVALIDATE_S = 86_400;
+/**
+ * Twardy koniec: po tylu ms od WEJŚCIA do trasy (przed blokadą) przerywamy
+ * trwające zapytania o listy hoteli i stawki, także odświeżanie list w tle
+ * (zadanie liczy się jako brak hotelu, jak każdy inny błąd). TIME_BUDGET_MS
+ * sprawdzany jest tylko przy STARCIE zadania, a zadanie przy wiszącym
+ * dostawcy może trwać ~97 s (4 strategie listy × 2 × 8 s + stawki 2 × 15 s).
+ * Po nim zostaje ~70 s na scalenie i publikację: to ~6 operacji Redisa,
+ * a produkcja ma domyślny limit klienta 2,5 s + 1 ponowienie (bez nadpisania
+ * UPSTASH_REDIS_TIMEOUT_MS), czyli najgorzej ~36 s.
+ */
+export const HARD_STOP_MS = 230_000;
 /** Pax, dla którego pytamy o lot. Para to najczęstszy wariant leisure — ten
  *  sam, którym grzeje `warm-flights`, więc wpis trafia w cache użytkownika. */
 export const FLIGHT_ADULTS = 2;
