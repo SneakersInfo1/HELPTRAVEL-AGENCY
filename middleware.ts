@@ -203,6 +203,11 @@ export const config = {
     // legacyRedirectTarget(), więc /tanie-podroze przechodzi dalej bez zmian.
     "/porownanie/malaga-vs-valencia",
     "/tanie-podr(.*)",
+    // Literówki katalogu porównań (/porównanie, /porunanie) w zapisie
+    // zakodowanym i niezakodowanym. Właściwe /porownanie jest wykluczone już
+    // w matcherze — strony porównań nie płacą za wywołanie middleware.
+    "/:dir((?!porownanie(?:/|$))por[^/]*nanie)",
+    "/:dir((?!porownanie(?:/|$))por[^/]*nanie)/:slug",
     // Każdy adres z parametrem `lang`, poza API i zasobami Next.
     {
       source: "/((?!api|_next/static|_next/image|favicon.ico).*)",

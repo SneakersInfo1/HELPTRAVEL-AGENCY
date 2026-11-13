@@ -50,6 +50,22 @@ describe("middleware — ?lang i historyczne adresy (testy B i G)", () => {
     assert.equal(response.headers.get("location"), "https://helptravel.pl/porownanie/malaga-spain-vs-valencia-spain");
   });
 
+  it("literówka katalogu porównań: matcher łapie adres, middleware przekierowuje 301 na istniejącą parę", () => {
+    for (const pathname of ["/por%C3%B3wnanie/athens-greece-vs-rome-italy", "/porunanie/heraklion-greece-vs-rhodes-greece", "/por%C3%B3wnanie"]) {
+      assert.equal(middlewareRunsFor(pathname), true, pathname);
+    }
+    const response = run("https://helptravel.pl/por%C3%B3wnanie/athens-greece-vs-rome-italy");
+    assert.equal(response.status, 301);
+    assert.equal(response.headers.get("location"), "https://helptravel.pl/porownanie/athens-greece-vs-rome-italy");
+    const typo = run("https://helptravel.pl/porunanie/heraklion-greece-vs-rhodes-greece");
+    assert.equal(typo.headers.get("location"), "https://helptravel.pl/porownanie/heraklion-greece-vs-rhodes-greece");
+  });
+
+  it("właściwy adres porównania i nieistniejąca para pod literówką przechodzą dalej bez przekierowania", () => {
+    assert.equal(run("https://helptravel.pl/porownanie/athens-greece-vs-rome-italy").headers.get("location"), null);
+    assert.equal(run("https://helptravel.pl/porunanie/nie-ma-takiej-pary").headers.get("location"), null);
+  });
+
   it("kategoria z polskimi znakami przekierowuje 301 na adres ASCII", () => {
     const response = run("https://helptravel.pl/tanie-podr%C3%B3%C5%BCe");
     assert.equal(response.status, 301);
@@ -71,6 +87,7 @@ describe("middleware — ?lang i historyczne adresy (testy B i G)", () => {
     // Zwykłe strony i API bez ?lang nie płacą za wywołanie middleware.
     assert.equal(middlewareRunsFor("/kierunki/malaga-spain"), false);
     assert.equal(middlewareRunsFor("/porownanie/malaga-spain-vs-valencia-spain"), false);
+    assert.equal(middlewareRunsFor("/porownanie"), false);
     assert.equal(middlewareRunsFor("/api/hotels/search", "lang=en"), false);
   });
 });

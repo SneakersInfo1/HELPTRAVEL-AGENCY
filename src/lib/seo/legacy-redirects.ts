@@ -7,6 +7,12 @@
 //   zabezpieczeniem dla linków i zakładek w tym krótszym zapisie.
 // • /tanie-podróże — slug kategorii z polskimi znakami trafiał do sitemapy
 //   i linków wewnętrznych, a strona kategorii żyje pod /tanie-podroze.
+// • /porównanie/… i /porunanie/… — zapis katalogu porównań z polskim znakiem
+//   albo literówką. GSC (11.08–10.11.2026) pokazuje wyświetlenia trzech takich
+//   adresów, a crawl produkcji 13.11.2026 potwierdził dla nich 404. Reguła jest
+//   1:1: przekierowuje tylko na hub albo na ISTNIEJĄCĄ parę o tym samym slugu.
+
+import { getComparisonPairBySlug } from "@/lib/mvp/comparisons";
 
 export const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
   "/porownanie/malaga-vs-valencia": "/porownanie/malaga-spain-vs-valencia-spain",
@@ -25,5 +31,17 @@ export function legacyRedirectTarget(pathname: string): string | null {
   } catch {
     return null;
   }
-  return LEGACY_REDIRECTS[decoded.normalize("NFC")] ?? null;
+  const normalized = decoded.normalize("NFC");
+  return LEGACY_REDIRECTS[normalized] ?? misspelledComparisonTarget(normalized);
+}
+
+/** Zapisy katalogu, pod którymi porównania nigdy nie istniały, a mają ruch. */
+const MISSPELLED_COMPARISON_DIRS: readonly string[] = ["porównanie", "porunanie"];
+
+function misspelledComparisonTarget(pathname: string): string | null {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length === 0 || parts.length > 2) return null;
+  if (!MISSPELLED_COMPARISON_DIRS.includes(parts[0])) return null;
+  if (parts.length === 1) return "/porownanie";
+  return getComparisonPairBySlug(parts[1]) ? `/porownanie/${parts[1]}` : null;
 }
