@@ -39,7 +39,9 @@
     "bench:concierge-tools": "tsx --env-file=.env.local bench/concierge/tool-latency.ts",
     "bench:concierge-turns": "tsx --env-file=.env.local bench/concierge/turn-latency.ts",
     "snapshot:rollback": "tsx --env-file=.env.local scripts/snapshot-rollback.ts",
-    "probe:rotation": "tsx --env-file=.env.local scripts/probe-rotation-coverage.ts"
+    "probe:rotation": "tsx --env-file=.env.local scripts/probe-rotation-coverage.ts",
+    "seo:crawl": "tsx scripts/seo/crawl.ts",
+    "test:seo": "node --import tsx --test \"src/lib/seo-ops/**/*.test.ts\""
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
