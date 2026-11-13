@@ -329,11 +329,17 @@ export async function research(task: Task, complete: StageComplete, sourceFetche
   // źródła PRZED pytaniem i podajemy ich tekst, żeby cytat dało się przepisać;
   // o tym, czy cytat jest prawdziwy, i tak decyduje kontrola mechaniczna niżej.
   const excerpts: string[] = [];
+  const curatedCandidates: CandidateClaim[] = [];
   for (const registered of registeredSourcesForTarget(task.target).slice(0, MAX_REGISTERED_SOURCES)) {
     try {
       const url = assertAllowedSource(registered.url).href;
       const fetched = await sourceFetcher.fetchText(url);
       fetchedByUrl.set(url, fetched);
+      for (const curated of registered.curated ?? []) {
+        curatedCandidates.push({ ...curated, sourceUrl: url });
+      }
+      // Źródło z zakazem `aiInput` służy tylko do mechanicznej kontroli cytatów.
+      if (registered.aiInput === false) continue;
       if (fetched.status >= 200 && fetched.status < 300 && fetched.text.length > 0) {
         excerpts.push(`ŹRÓDŁO ${url} (${registered.publisher}; ${registered.covers}):\n${sourceExcerpt(fetched.text)}`);
       }
@@ -352,7 +358,7 @@ export async function research(task: Task, complete: StageComplete, sourceFetche
     prompt: `Zbierz kandydackie twierdzenia dla zadania ${task.operation} pod adresem ${task.target} i intencji „${task.primaryQuery}”. Format: {"claims":[{"claim":"...","value":"","dataClass":"geography","sourceUrl":"https://...","observedEvidence":"..."}]}.${sourceBlock}`,
     maxOutputTokens: 8_000,
   });
-  const candidates = candidateArray(parseJsonText(response.text));
+  const candidates = [...curatedCandidates, ...candidateArray(parseJsonText(response.text))];
   const sources: Source[] = [];
   const claims: FactClaim[] = [];
   const sourceByUrl = new Map<string, Source>();

@@ -115,6 +115,8 @@ export const SourceSchema = z.object({
   /** Licencja albo podstawa użycia („fakt, cytat w granicach prawa cytatu", „CC BY 4.0", „dane własne"). */
   licence: z.string().min(3),
   retrievedAt: IsoDateTime,
+  /** sha256 kopii strony, na której sprawdzono cytaty (kopia zostaje poza repo — prawa autorskie). */
+  snapshotSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
 });
 export type Source = z.infer<typeof SourceSchema>;
 

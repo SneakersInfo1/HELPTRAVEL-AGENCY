@@ -1,0 +1,309 @@
+// Testy Anti-AI-Slop Quality Gate.
+//
+// Korpus pozytywny to PRAWDZIWE dokumenty z content/seo (zweryfikowane
+// w źródłach) — na nich mierzymy fałszywe alarmy. Każdy przypadek negatywny
+// to ten sam dobry dokument z jedną wstrzykniętą wadą, więc test pokazuje, że
+// reguła łapie dokładnie tę wadę, a nie coś przy okazji.
+
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { CONTENT_DOCUMENTS } from "../../../content/seo/index.generated";
+import { computeContentHash } from "@/lib/content-engine/hash";
+import { ContentDocumentSchema, type ContentDocument } from "@/lib/content-engine/schema";
+import { buildSiteInventory } from "@/lib/content-engine/site-inventory";
+
+import { FILLER_PHRASES, publishDecision, runQualityGate, type GateContext, type GateReport } from "./gate";
+
+const NOW = new Date("2026-11-20T12:00:00Z");
+const inventory = buildSiteInventory();
+const ctx: GateContext = {
+  now: NOW,
+  existing: inventory.existing(),
+  isKnownRoute: (route) => inventory.isKnownRoute(route.split("?")[0]),
+};
+
+const corpus: ContentDocument[] = CONTENT_DOCUMENTS.map((raw) => ContentDocumentSchema.parse(raw));
+const good = (): ContentDocument => structuredClone(corpus.find((doc) => doc.id === "athens-greece-vs-rome-italy")!);
+
+/** Dokument po zmianie treści dostaje nowy hash — inaczej test sprawdzałby niespójny rekord. */
+function mutate(change: (doc: ContentDocument) => void): ContentDocument {
+  const doc = good();
+  change(doc);
+  doc.contentHash = computeContentHash(doc);
+  return doc;
+}
+
+function firstProse(doc: ContentDocument) {
+  const section = doc.sections.find((s) => s.kind === "prose");
+  assert.ok(section && section.kind === "prose");
+  return section;
+}
+
+const rules = (report: GateReport) => report.findings.filter((f) => f.severity !== "info").map((f) => f.rule);
+
+describe("korpus pozytywny — fałszywe alarmy", () => {
+  it("cztery zweryfikowane dokumenty: zero zastrzeżeń blokujących", () => {
+    assert.equal(corpus.length >= 4, true);
+    let falsePositives = 0;
+    for (const doc of corpus) {
+      const report = runQualityGate(doc, ctx);
+      const blocking = report.findings.filter((f) => f.severity === "block_facts" || f.severity === "revise" || f.severity === "skip");
+      if (blocking.length > 0) falsePositives += 1;
+      assert.deepEqual(blocking, [], `${doc.id}: ${blocking.map((f) => `${f.rule}: ${f.message}`).join(" | ")}`);
+    }
+    // Wskaźnik fałszywych alarmów na korpusie pozytywnym: 0 z N (mierzony, nie deklarowany).
+    assert.equal(falsePositives, 0);
+  });
+
+  it("dokument EVERGREEN przechodzi jako PASS, DYNAMIC jako REVIEW_REQUIRED", () => {
+    for (const doc of corpus) {
+      const report = runQualityGate(doc, ctx);
+      assert.equal(report.verdict, doc.riskClass === "EVERGREEN" ? "PASS" : "REVIEW_REQUIRED", doc.id);
+    }
+  });
+
+  it("naturalny polski tekst z liczebnikami bez jednostek nie jest brany za fakt liczbowy", () => {
+    const doc = mutate((d) => {
+      firstProse(d).paragraphs.push("Na oba miasta wystarczą 3 albo 4 dni, a plan dla 2 osób układa się podobnie jak dla większej grupy znajomych.");
+    });
+    assert.equal(runQualityGate(doc, ctx).verdict, "PASS");
+  });
+});
+
+describe("fakty i źródła", () => {
+  it("liczba z jednostką bez pokrycia w twierdzeniu → BLOCKED_FACTS", () => {
+    const doc = mutate((d) => {
+      firstProse(d).paragraphs.push("W lipcu temperatura w Atenach sięga 34°C, a w Rzymie jest wyraźnie chłodniej i przyjemniej.");
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "BLOCKED_FACTS");
+    assert.ok(rules(report).includes("number_without_claim"));
+    assert.match(report.findings.find((f) => f.rule === "number_without_claim")!.evidence ?? "", /34°C/);
+  });
+
+  it("twierdzenie użyte w tekście, ale niepotwierdzone w źródle → BLOCKED_FACTS", () => {
+    const doc = mutate((d) => {
+      d.factClaims[0].verification = "unverified";
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "BLOCKED_FACTS");
+    assert.ok(rules(report).includes("claim_unverified"));
+  });
+
+  it("twierdzenie po terminie ważności (TTL klasy danych) → BLOCKED_FACTS", () => {
+    const doc = mutate((d) => {
+      d.factClaims[0].dataClass = "opening_hours";
+      d.factClaims[0].riskClass = "DYNAMIC";
+      d.riskClass = "DYNAMIC";
+      d.factClaims[0].retrievedAt = "2026-07-01T10:00:00Z"; // 142 dni przed NOW, TTL 90
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "BLOCKED_FACTS");
+    assert.ok(rules(report).includes("claim_expired"));
+  });
+
+  it("kwota bez twierdzenia cenowego → BLOCKED_FACTS (pozorowana cena)", () => {
+    const doc = mutate((d) => {
+      firstProse(d).paragraphs.push("Hotele w centrum Aten kosztują od 250 zł za noc, więc wyjazd zamkniesz w rozsądnym budżecie.");
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "BLOCKED_FACTS");
+    assert.ok(rules(report).includes("price_without_source"));
+  });
+
+  it("wiza i dokumenty bez źródła urzędowego → BLOCKED_FACTS; ze źródłem → REVIEW_REQUIRED", () => {
+    const withoutSource = mutate((d) => {
+      firstProse(d).paragraphs.push("Do Grecji i Włoch polski turysta wjeżdża bez wizy, wystarczy dowód osobisty albo paszport.");
+    });
+    const blocked = runQualityGate(withoutSource, ctx);
+    assert.equal(blocked.verdict, "BLOCKED_FACTS");
+    assert.ok(rules(blocked).includes("high_risk_without_source"));
+
+    const withSource = mutate((d) => {
+      firstProse(d).paragraphs.push("Do Grecji i Włoch polski turysta wjeżdża bez wizy, wystarczy dowód osobisty albo paszport.");
+      d.sources.push({ id: "msz", url: "https://www.gov.pl/web/dyplomacja/grecja", title: "Grecja — informacje dla podróżujących", publisher: "MSZ", kind: "government", licence: "Informacja publiczna", retrievedAt: "2026-11-19T10:00:00Z" });
+      d.factClaims.push({ id: "wjazd", claim: "Obywatele Polski wjeżdżają do Grecji na podstawie dowodu osobistego lub paszportu", value: "", dataClass: "entry_requirements", riskClass: "HIGH_RISK", sourceId: "msz", observedEvidence: "dowód osobisty lub paszport", retrievedAt: "2026-11-19T10:00:00Z", verification: "source_verified" });
+      d.riskClass = "HIGH_RISK";
+    });
+    const review = runQualityGate(withSource, ctx);
+    assert.equal(review.verdict, "REVIEW_REQUIRED");
+    // Nawet w trybie automatycznym treść wysokiego ryzyka nie jest publikowana bez człowieka.
+    assert.equal(publishDecision(review, withSource, "AUTO_EVERGREEN"), "REVIEW_REQUIRED");
+  });
+
+  it("rok z przyszłości bez twierdzenia → BLOCKED_FACTS", () => {
+    const doc = mutate((d) => {
+      firstProse(d).paragraphs.push("W sezonie 2027 oba miasta przygotowują nowe trasy zwiedzania dla gości z Polski.");
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "BLOCKED_FACTS");
+    assert.ok(rules(report).includes("future_year_without_source"));
+  });
+
+  it("tabela bez przypisanych twierdzeń → BLOCKED_FACTS", () => {
+    const doc = mutate((d) => {
+      d.sections.find((s) => s.kind === "table")!.claimIds = [];
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("section_without_claims"));
+  });
+
+  it("brak zweryfikowanego materiału → SKIPPED_QUALITY_GATE (cron nie musi nic wydać)", () => {
+    const doc = mutate((d) => {
+      for (const claim of d.factClaims) claim.verification = "unverified";
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "SKIPPED_QUALITY_GATE");
+    assert.equal(publishDecision(report, doc, "AUTO_EVERGREEN"), "SKIPPED_QUALITY_GATE");
+  });
+});
+
+describe("jakość redakcyjna", () => {
+  it("zmyślone doświadczenie autora → NEEDS_REVISION", () => {
+    const doc = mutate((d) => {
+      firstProse(d).paragraphs.push("Byliśmy w Atenach w maju i z własnego doświadczenia polecamy zacząć dzień od porannej kawy pod wzgórzem.");
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "NEEDS_REVISION");
+    assert.ok(rules(report).includes("fake_experience"));
+  });
+
+  it("fałszywa presja i obietnica ceny → NEEDS_REVISION", () => {
+    const doc = mutate((d) => {
+      firstProse(d).paragraphs.push("Rezerwuj teraz, bo zostały ostatnie pokoje w tym terminie, a taka okazja szybko się nie powtórzy.");
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("fake_urgency"));
+  });
+
+  it("frazy-wypełniacze → NEEDS_REVISION z listą trafień", () => {
+    const doc = mutate((d) => {
+      firstProse(d).paragraphs.push("Nie da się ukryć, że Ateny to prawdziwa perełka, a malownicze uliczki tętniące życiem gwarantują niezapomniane wrażenia.");
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "NEEDS_REVISION");
+    assert.ok(report.metrics.fillerHits >= 3);
+    assert.ok(rules(report).includes("filler_phrases"));
+  });
+
+  it("lead, który nie odpowiada na intencję → NEEDS_REVISION", () => {
+    const doc = mutate((d) => {
+      d.title = "Europejskie stolice na krótki wyjazd — przegląd";
+      d.lead = "Europa ma wiele miast, które dobrze sprawdzają się na krótki wyjazd. Poniżej zebraliśmy kilka uwag o planowaniu podróży i wyborze terminu dla osób lecących z Polski.";
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("lead_misses_intent"));
+  });
+
+  it("to samo zdanie dwa razy → NEEDS_REVISION", () => {
+    const doc = mutate((d) => {
+      const prose = firstProse(d);
+      prose.paragraphs.push(prose.paragraphs[0]);
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("repeated_sentence"));
+  });
+
+  it("tytuł skopiowany z innej strony serwisu → NEEDS_REVISION (kanibalizacja)", () => {
+    const other = ctx.existing.find((item) => item.canonicalUrl === "/wyjazdy/city-break")!;
+    const doc = mutate((d) => {
+      d.title = other.title;
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("duplicate_title"));
+  });
+
+  it("lead przepisany z istniejącego huba → NEEDS_REVISION", () => {
+    const other = ctx.existing.find((item) => item.canonicalUrl === "/wyjazdy/plaza")!;
+    const doc = mutate((d) => {
+      d.lead = other.lead!;
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("duplicate_intro"));
+  });
+
+  it("za krótki tekst dla typu treści → NEEDS_REVISION", () => {
+    const doc = mutate((d) => {
+      d.sections = d.sections.filter((s) => s.kind === "table");
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("too_short_for_type"));
+  });
+});
+
+describe("linki, adresy i daty", () => {
+  it("CTA do nieistniejącej trasy i do kroku zakupu → NEEDS_REVISION", () => {
+    const missing = mutate((d) => {
+      d.ctaTarget = "/hotele/najlepsze-oferty";
+    });
+    assert.ok(rules(runQualityGate(missing, ctx)).includes("cta_invalid"));
+    const purchase = mutate((d) => {
+      d.ctaTarget = "/hotele/rezerwacja";
+    });
+    assert.ok(rules(runQualityGate(purchase, ctx)).includes("cta_invalid"));
+  });
+
+  it("link wewnętrzny do nieistniejącej strony → NEEDS_REVISION", () => {
+    const doc = mutate((d) => {
+      d.relatedContent.push("/kierunki/atlantyda");
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("related_link_invalid"));
+  });
+
+  it("nowy artykuł pod istniejącym adresem albo z mniej niż 3 linkami → NEEDS_REVISION", () => {
+    const collision = mutate((d) => {
+      d.contentType = "article";
+      d.canonicalUrl = "/inspiracje/tanie-city-breaki-na-weekend";
+    });
+    assert.ok(rules(runQualityGate(collision, ctx)).includes("url_collision"));
+    const fewLinks = mutate((d) => {
+      d.contentType = "article";
+      d.canonicalUrl = "/inspiracje/ateny-czy-rzym-na-city-break";
+      d.relatedContent = ["/porownanie"];
+    });
+    assert.ok(rules(runQualityGate(fewLinks, ctx)).includes("internal_links_plan"));
+  });
+
+  it("data modyfikacji zmieniona bez zmiany treści → NEEDS_REVISION", () => {
+    const doc = good();
+    const report = runQualityGate({ ...doc, materiallyModifiedAt: "2026-11-19T08:00:00Z" }, { ...ctx, previous: { contentHash: doc.contentHash, materiallyModifiedAt: doc.materiallyModifiedAt, publishedAt: doc.publishedAt } });
+    assert.ok(rules(report).includes("date_modified_without_change"));
+  });
+
+  it("daty z przyszłości → NEEDS_REVISION", () => {
+    const doc = good();
+    assert.ok(rules(runQualityGate({ ...doc, verifiedAt: "2026-12-24T00:00:00Z" }, ctx)).includes("date_integrity"));
+  });
+
+  it("dokument niezgodny ze schematem → NEEDS_REVISION z listą pól", () => {
+    const report = runQualityGate({ id: "x", title: "za krótki" }, ctx);
+    assert.equal(report.verdict, "NEEDS_REVISION");
+    assert.ok(report.findings.every((f) => f.rule === "schema_invalid"));
+    assert.ok(report.findings.length > 3);
+  });
+});
+
+describe("polityka publikacji", () => {
+  const pass = runQualityGate(good(), ctx);
+
+  it("PASS + EVERGREEN publikuje się automatycznie tylko w trybie AUTO_EVERGREEN", () => {
+    assert.equal(pass.verdict, "PASS");
+    assert.equal(publishDecision(pass, { riskClass: "EVERGREEN" }, "AUTO_EVERGREEN"), "APPROVED_AUTOMATION");
+    assert.equal(publishDecision(pass, { riskClass: "EVERGREEN" }, "DRAFT_AND_PR"), "REVIEW_REQUIRED");
+    assert.equal(publishDecision(pass, { riskClass: "EVERGREEN" }, "DRY_RUN"), "REVIEW_REQUIRED");
+  });
+
+  it("PASS przy klasie DYNAMIC albo HIGH_RISK nigdy nie jest automatyczny", () => {
+    assert.equal(publishDecision(pass, { riskClass: "DYNAMIC" }, "AUTO_EVERGREEN"), "REVIEW_REQUIRED");
+    assert.equal(publishDecision(pass, { riskClass: "HIGH_RISK" }, "AUTO_EVERGREEN"), "REVIEW_REQUIRED");
+  });
+
+  it("BLOCKED_FACTS i NEEDS_REVISION dają REJECTED w każdym trybie", () => {
+    for (const verdict of ["BLOCKED_FACTS", "NEEDS_REVISION"] as const) {
+      for (const mode of ["DRY_RUN", "DRAFT_AND_PR", "AUTO_EVERGREEN"] as const) {
+        assert.equal(publishDecision({ ...pass, verdict }, { riskClass: "EVERGREEN" }, mode), "REJECTED");
+      }
+    }
+  });
+});
+
+describe("słownik wypełniaczy", () => {
+  it("frazy są małymi literami i bez duplikatów (dopasowanie jest po znormalizowanym tekście)", () => {
+    assert.equal(new Set(FILLER_PHRASES).size, FILLER_PHRASES.length);
+    for (const phrase of FILLER_PHRASES) assert.equal(phrase, phrase.toLowerCase());
+  });
+});
