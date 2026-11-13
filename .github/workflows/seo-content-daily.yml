@@ -1,0 +1,206 @@
+name: SEO content daily
+
+# Dzienny przebieg silnika treści (evidence-first). Runbook: docs/seo/AUTOMATION_RUNBOOK.md
+#
+# BEZPIECZNIKI:
+#  • harmonogram jest WYŁĄCZONY, dopóki właściciel nie ustawi zmiennej repozytorium
+#    SEO_ENGINE_SCHEDULE_ENABLED=true — samo zmergowanie tego pliku niczego nie uruchamia;
+#  • bez sekretu SEO_ENGINE_ANTHROPIC_API_KEY przebieg jest zawsze offline (FakeLlm, dry-run);
+#  • domyślny tryb to dry-run; draft-and-pr otwiera PR, nigdy nie pisze do main;
+#  • SEO_ENGINE_KILL_SWITCH=1 zatrzymuje przebieg przed pierwszym wywołaniem modelu;
+#  • limit kosztu na przebieg: SEO_ENGINE_MAX_USD_PER_RUN (domyślnie 1,50 USD).
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Tryb publikacji
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - draft-and-pr
+          - auto-evergreen
+      scenario:
+        description: Opcjonalny scenariusz offline (FakeLlm)
+        required: false
+        type: choice
+        options:
+          - refresh
+          - new-evergreen
+          - reject-unverified
+
+concurrency:
+  group: seo-content-daily
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  content-engine:
+    if: github.event_name == 'workflow_dispatch' || vars.SEO_ENGINE_SCHEDULE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SEO_ENGINE_MAX_USD_PER_RUN: ${{ vars.SEO_ENGINE_MAX_USD_PER_RUN }}
+      SEO_ENGINE_MAX_REQUESTS_PER_RUN: ${{ vars.SEO_ENGINE_MAX_REQUESTS_PER_RUN }}
+      SEO_ENGINE_ANTHROPIC_API_KEY: ${{ secrets.SEO_ENGINE_ANTHROPIC_API_KEY }}
+      SEO_ENGINE_KILL_SWITCH: ${{ vars.SEO_ENGINE_KILL_SWITCH }}
+      REQUESTED_MODE: ${{ inputs.mode || vars.SEO_ENGINE_MODE || 'dry-run' }}
+      REQUESTED_SCENARIO: ${{ inputs.scenario }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run content-engine tests
+        run: node --import tsx --test "src/lib/content-engine/**/*.test.ts"
+
+      - name: Restore persistent engine state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .seo-engine-state
+          if git fetch --no-tags origin seo-engine-state:refs/remotes/origin/seo-engine-state; then
+            if git ls-tree -r --name-only origin/seo-engine-state -- .seo-engine-state | grep -q '^\.seo-engine-state/'; then
+              git archive origin/seo-engine-state .seo-engine-state | tar -x
+            fi
+          else
+            echo "State branch is absent; it will be created as an orphan."
+          fi
+
+      - name: Run evidence-first engine
+        id: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          scheduled_at="$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"
+          mode="$REQUESTED_MODE"
+          args=(--mode "$mode" --scheduled-at "$scheduled_at" --state-dir .seo-engine-state --store-dir content/seo)
+
+          if [[ -z "${SEO_ENGINE_ANTHROPIC_API_KEY:-}" ]]; then
+            mode="dry-run"
+            scenario="${REQUESTED_SCENARIO:-refresh}"
+            args=(--mode "$mode" --scenario "$scenario" --scheduled-at "$scheduled_at" --state-dir .seo-engine-state --store-dir content/seo)
+            echo "API key is absent: forcing offline dry-run scenario '${scenario}'."
+          elif [[ -n "${REQUESTED_SCENARIO:-}" ]]; then
+            args+=(--scenario "$REQUESTED_SCENARIO")
+          fi
+
+          set +e
+          pnpm exec tsx scripts/content-engine/run.ts "${args[@]}"
+          engine_exit=$?
+          set -e
+
+          report="$(find .seo-engine-state/reports -type f -name '*.json' -printf '%T@ %p\n' | sort -nr | head -n1 | cut -d' ' -f2-)"
+          if [[ -z "$report" ]]; then
+            echo "Engine did not create a run report." >&2
+            exit 1
+          fi
+          day="$(jq -r '.scheduledAt[0:10]' "$report")"
+          target="$(jq -r '[.selectedTasks[] | select(.decision != "REVIEW_REQUIRED")][0].target // "no-target"' "$report")"
+          target_slug="$(basename "$target" | tr -cd 'a-z0-9-')"
+          [[ -n "$target_slug" ]] || target_slug="no-target"
+          changed=false
+          if [[ -n "$(git status --porcelain -- content/seo)" ]]; then changed=true; fi
+
+          echo "exit_code=$engine_exit" >> "$GITHUB_OUTPUT"
+          echo "report=$report" >> "$GITHUB_OUTPUT"
+          echo "day=$day" >> "$GITHUB_OUTPUT"
+          echo "target_slug=$target_slug" >> "$GITHUB_OUTPUT"
+          echo "content_changed=$changed" >> "$GITHUB_OUTPUT"
+
+      - name: Persist state branch
+        if: always() && steps.engine.outputs.report != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          state_worktree="$RUNNER_TEMP/seo-engine-state-worktree"
+          rm -rf "$state_worktree"
+          if git show-ref --verify --quiet refs/remotes/origin/seo-engine-state; then
+            git worktree add --detach "$state_worktree" origin/seo-engine-state
+            git -C "$state_worktree" switch -C seo-engine-state origin/seo-engine-state
+          else
+            git worktree add --detach "$state_worktree" HEAD
+            git -C "$state_worktree" switch --orphan seo-engine-state
+            git -C "$state_worktree" rm -rf .
+          fi
+          rm -rf "$state_worktree/.seo-engine-state"
+          cp -a .seo-engine-state "$state_worktree/.seo-engine-state"
+          git -C "$state_worktree" config user.name "github-actions[bot]"
+          git -C "$state_worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$state_worktree" add -A .seo-engine-state
+          if ! git -C "$state_worktree" diff --cached --quiet; then
+            git -C "$state_worktree" commit -m "chore(seo): persist engine state ${{ steps.engine.outputs.day }}"
+          fi
+          git -C "$state_worktree" push origin HEAD:seo-engine-state
+          git worktree remove "$state_worktree" --force
+
+      - name: Upload run report
+        if: always() && steps.engine.outputs.report != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-content-report-${{ steps.engine.outputs.day }}-${{ github.run_id }}
+          path: ${{ steps.engine.outputs.report }}
+          if-no-files-found: error
+
+      - name: Create content branch and pull request
+        if: steps.engine.outputs.exit_code == '0' && steps.engine.outputs.content_changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="seo-content/${{ steps.engine.outputs.day }}-${{ steps.engine.outputs.target_slug }}"
+          if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null 2>&1; then
+            echo "Remote branch '$branch' already exists; skipping duplicate PR."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add content/seo
+          git commit -m "feat(seo): content proposal ${{ steps.engine.outputs.day }}"
+          git push origin "HEAD:$branch"
+
+          body="$RUNNER_TEMP/seo-content-pr.md"
+          {
+            echo "## Evidence-first content report"
+            echo
+            echo "- Day (UTC): ${{ steps.engine.outputs.day }}"
+            echo "- Outcome: $(jq -r '.outcome' '${{ steps.engine.outputs.report }}')"
+            echo "- Decision: $(jq -r '.decision // "none"' '${{ steps.engine.outputs.report }}')"
+            echo
+            echo "### Quality gate"
+            echo '```json'
+            jq '.gateReport' '${{ steps.engine.outputs.report }}'
+            echo '```'
+          } > "$body"
+          gh pr create --base main --head "$branch" --title "SEO content: ${{ steps.engine.outputs.target_slug }} (${{ steps.engine.outputs.day }})" --body-file "$body"
+
+      - name: Propagate engine failure
+        if: always() && steps.engine.outputs.exit_code != '' && steps.engine.outputs.exit_code != '0'
+        shell: bash
+        run: exit "${{ steps.engine.outputs.exit_code }}"
+
