@@ -107,9 +107,9 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "Na miejscu łatwo zbudować plan: zabytki, punkty widokowe, tapas i plaża.",
     ],
     bestTime:
-      "Najlepszy czas na wyjazd to marzec-maj oraz wrzesień-listopad. Latem Malaga jest bardzo słoneczna i goraca, ale poza szczytem sezonu łatwiej o lepszy balans ceny, pogody i komfortu.",
+      "Najlepszy czas na wyjazd to marzec-maj oraz wrzesień-listopad. Latem Malaga jest bardzo słoneczna i gorąca, ale poza szczytem sezonu łatwiej o lepszy balans ceny, pogody i komfortu.",
     budgetNote:
-      "Na 4 dni budżet zwykle najlepiej rozkładac na lot, nocleg blisko centrum lub plaży, jedzenie i 1-2 płatne atrakcje. To kierunek, w którym da się rozsądnie planować bez schodzenia do poziomu bardzo niskiego standardu.",
+      "Na 4 dni budżet zwykle najlepiej rozkładać na lot, nocleg blisko centrum lub plaży, jedzenie i 1-2 płatne atrakcje. To kierunek, w którym da się rozsądnie planować bez schodzenia do poziomu bardzo niskiego standardu.",
     whoFor: [
       "dla par szukających lekkiego city breaku z klima",
       "dla osób, które chcą plaże i spacery po mieście",
@@ -124,28 +124,28 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
           "Tak. To jeden z łatwiejszych kierunków na start, bo daje prosty dojazd, czytelny układ miasta i dużo rzeczy do zrobienia w krótkim czasie.",
       },
       {
-        question: "Ile dni warto przeznaczyc na Malage?",
+        question: "Ile dni warto przeznaczyć na Malagę?",
         answer:
-          "Najwygodniej planować 3-5 dni. Krotki weekend wystarczy na centrum i plaże, a przy 4-5 dniach można dorzucić więcej lokalnych miejsc albo wyjazd poza miasto.",
+          "Najwygodniej planować 3-5 dni. Krótki weekend wystarczy na centrum i plaże, a przy 4-5 dniach można dorzucić więcej lokalnych miejsc albo wyjazd poza miasto.",
       },
     ],
   },
   {
     slug: "barcelona-spain",
     overview:
-      "Barcelona jest mocna, gdy zależy Ci na dużym mieście z energia, architektura i odrobina klimatu nadmorskiego. To kierunek bardziej intensywny niż Malaga, ale bardzo atrakcyjny dla osób, które chcą czuc tempo miasta.",
+      "Barcelona jest mocna, gdy zależy Ci na dużym mieście z energią, architekturą i odrobiną klimatu nadmorskiego. To kierunek bardziej intensywny niż Malaga, ale bardzo atrakcyjny dla osób, które chcą czuć tempo miasta.",
     whyGo: [
       "Szybko robi wrażenie i daje dużo powodów do powrotu.",
-      "Łączy architekturę, gastronomię i życie więczórne z dostępem do plaży.",
+      "Łączy architekturę, gastronomię i życie wieczorne z dostępem do plaży.",
       "Nadaje się zarówno na 4 dni, jak i dłuższy city break.",
     ],
     bestTime:
-      "Najbardziej komfortowe miesiące to kwiecień-czerwięc oraz wrzesień-październik. W lipcu i sierpniu jest największy tłok i najwyższe ceny, ale wtedy też najłatwiej połączyć miasto z plażą.",
+      "Najbardziej komfortowe miesiące to kwiecień-czerwiec oraz wrzesień-październik. W lipcu i sierpniu jest największy tłok i najwyższe ceny, ale wtedy też najłatwiej połączyć miasto z plażą.",
     budgetNote:
       "Barcelona rzadko bywa najtańsza, dlatego warto pilnować lokalizacji noclegu i kosztów jedzenia. Dobrze zaplanowany wyjazd nadal może być opłacalny, ale trzeba uważać na wysokie koszty centrum.",
     whoFor: [
-      "dla osób, które lubia mocny miejski klimat",
-      "dla par i grup szukających więczórnego zycia",
+      "dla osób, które lubią mocny miejski klimat",
+      "dla par i grup szukających wieczornego życia",
       "dla wyjazdów, gdzie liczą się architektura i design",
     ],
     highlights: ["Sagrada Familia", "Park Guell", "Barceloneta", "El Born", "La Boqueria"],
@@ -157,18 +157,18 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
           "Może się udać, ale trzeba ostrożnie wybierać termin i nocleg. To raczej kierunek o średnim lub wyższym koszcie niż typowo budżetowy city break.",
       },
       {
-        question: "Czy warto jechac do Barcelony tylko na 4 dni?",
+        question: "Czy warto jechać do Barcelony tylko na 4 dni?",
         answer:
-          "Tak. To jeden z najczestszych scenariuszy i przy dobrym planie 4 dni wystarcza na najmocniejsze miejsca i chwilę nad morzem.",
+          "Tak. To jeden z najczęstszych scenariuszy i przy dobrym planie 4 dni wystarcza na najmocniejsze miejsca i chwilę nad morzem.",
       },
     ],
   },
   {
     slug: "lisbon-portugal",
     overview:
-      "Lizbona ma bardziej nastrojowy rytm niż wiele innych stolic Europy. Dobrze pasuje do osób, które lubia spacery, punkty widokowe, jedzenie i mniej oczywisty klimat niż klasyczne duże miasto.",
+      "Lizbona ma bardziej nastrojowy rytm niż wiele innych stolic Europy. Dobrze pasuje do osób, które lubią spacery, punkty widokowe, jedzenie i mniej oczywisty klimat niż klasyczne duże miasto.",
     whyGo: [
-      "Miasto jest charakterystyczne i dobrze zapamietywane nawet po krótkim wyjeździe.",
+      "Miasto jest charakterystyczne i dobrze zapamiętywane nawet po krótkim wyjeździe.",
       "Daje dużo widoków, lokalnych dzielnic i spokojniejszej atmosfery.",
       "Bardzo dobrze działa na 4-5 dni z lekkim planem i przerwami na jedzenie.",
     ],
@@ -177,7 +177,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
     budgetNote:
       "Budżet w Lizbonie warto planować z zapasem na poruszanie się po mieście i jedzenie w bardziej klimatycznych miejscach. To kierunek, gdzie przyjemność wyjazdu często zależy od dobrego rozkładu dnia, nie od ekstremalnego oszczędzania.",
     whoFor: [
-      "dla osób, które lubia klimat i spacery",
+      "dla osób, które lubią klimat i spacery",
       "dla par na krótki wyjazd z charakterem",
       "dla city breaku z widokami i spokojniejszym rytmem",
     ],
@@ -190,7 +190,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
           "Tak, bo daje dobry miks miejskich atrakcji, lokalnego klimatu i prostego planowania. Na pierwszy wyjazd 4-5 dni sprawdza się bardzo dobrze.",
       },
       {
-        question: "Czy w Lizbonie trzeba wynajmowac auto?",
+        question: "Czy w Lizbonie trzeba wynajmować auto?",
         answer:
           "Nie. Na city break auto najczęściej nie jest potrzebne, a poruszanie się po mieście najlepiej opierać na spacerach i transporcie miejskim.",
       },
@@ -205,12 +205,12 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "Rzym bardzo dobrze sprawdza się na 3-4 dni.",
     ],
     bestTime:
-      "Najwygodniejsze terminy to marzec-maj i październik-listopad. W wakacje bywa bardzo gorąco i bardziej tloczno, dlatego wiele osób woli poza sezonem.",
+      "Najwygodniejsze terminy to marzec-maj i październik-listopad. W wakacje bywa bardzo gorąco i bardziej tłoczno, dlatego wiele osób woli poza sezonem.",
     budgetNote:
       "W Rzymie łatwo przepalić budżet na lokalizacji i restauracjach przy głównej trasie. Najlepiej szukać balansu: dobra baza noclegowa, sensowne tempo i kilka kluczowych atrakcji zamiast próbowania zrobić wszystkiego naraz.",
     whoFor: [
-      "dla osób stawiajacych na klasyczne zwiedzanie",
-      "dla par i pierwszych city breakow",
+      "dla osób stawiających na klasyczne zwiedzanie",
+      "dla par i pierwszych city breaków",
       "dla wyjazdów 3-4 dni z mocnymi ikonami miasta",
     ],
     highlights: ["Koloseum", "Fontanna di Trevi", "Watykan", "Panteon", "Zatybrze"],
@@ -219,40 +219,40 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Ile dni trzeba na Rzym?",
         answer:
-          "Najczestszy i najwygodniejszy scenariusz to 3-4 dni. To wystarczy na najbardziej znane miejsca i przyjemniejsze tempo bez biegania od zabytku do zabytku.",
+          "Najczęstszy i najwygodniejszy scenariusz to 3-4 dni. To wystarczy na najbardziej znane miejsca i przyjemniejsze tempo bez biegania od zabytku do zabytku.",
       },
       {
-        question: "Czy Rzym pasuje do budżetu do 2000 zl?",
+        question: "Czy Rzym pasuje do budżetu do 2000 zł?",
         answer:
-          "Przy dobrych terminach i ostroznym doborze noclegu bywa to możliwe, ale Rzym czesciej jest kierunkiem, w którym warto zostawic sobie trochę więcej marginesu.",
+          "Przy dobrych terminach i ostrożnym doborze noclegu bywa to możliwe, ale Rzym częściej jest kierunkiem, w którym warto zostawić sobie trochę więcej marginesu.",
       },
     ],
   },
   {
     slug: "budapest-hungary",
     overview:
-      "Budapeszt jest jednym z najlepszych kierunków dla osób, które chcą dobrego stosunku ceny do jakości. Nadaje się do krótkich wyjazdów, romantycznych weekendow i budżetowych city breakow z Polski.",
+      "Budapeszt jest jednym z najlepszych kierunków dla osób, które chcą dobrego stosunku ceny do jakości. Nadaje się do krótkich wyjazdów, romantycznych weekendów i budżetowych city breaków z Polski.",
     whyGo: [
       "To kierunek o bardzo dobrym balansie ceny, wygody i klimatu miasta.",
-      "Mocne strony to termy, panoramy, spacery i więczórne życie nad Dunajem.",
-      "Bardzo dobrze wypada przy budżetach, które nie pozwalają na drozsze stolice Zachodu.",
+      "Mocne strony to termy, panoramy, spacery i wieczorne życie nad Dunajem.",
+      "Bardzo dobrze wypada przy budżetach, które nie pozwalają na droższe stolice Zachodu.",
     ],
     bestTime:
       "Wiosna i wczesna jesień są zwykle najprzyjemniejsze. Zima nadal ma sens ze względu na termy i klimat miasta, ale wtedy plan warto bardziej opierać o wnętrza i spokojne tempo.",
     budgetNote:
-      "Budapeszt dobrze znosi niższe budżety. Przy rozsądnym planie można zrobić udany wyjazd na 3-4 dni i nadal mieć miejsce na jedzenie, termy i więczórne wyjście.",
+      "Budapeszt dobrze znosi niższe budżety. Przy rozsądnym planie można zrobić udany wyjazd na 3-4 dni i nadal mieć miejsce na jedzenie, termy i wieczorne wyjście.",
     whoFor: [
       "dla osób szukających dobrej relacji cena-jakość",
       "dla par na weekend",
-      "dla city breaku z więczórnym klimatem",
+      "dla city breaku z wieczornym klimatem",
     ],
-    highlights: ["Parlament", "Baszty Rybackie", "termy", "wzgorze Gellerta", "nabrzeze Dunaju"],
-    districts: ["Belvaros", "Buda", "Zydowska dzielnica", "okolice Parlamentu"],
+    highlights: ["Parlament", "Baszty Rybackie", "termy", "wzgórze Gellerta", "nabrzeże Dunaju"],
+    districts: ["Belvaros", "Buda", "Żydowska dzielnica", "okolice Parlamentu"],
     faq: [
       {
-        question: "Czy Budapeszt nadaje się na pierwszy city break za granice?",
+        question: "Czy Budapeszt nadaje się na pierwszy city break za granicę?",
         answer:
-          "Tak. To bardzo bezpieczny wybór na start, bo jest prosty logistycznie, atrakcyjny cenowo i latwy do zaplanowania.",
+          "Tak. To bardzo bezpieczny wybór na start, bo jest prosty logistycznie, atrakcyjny cenowo i łatwy do zaplanowania.",
       },
       {
         question: "Czy 2-3 dni wystarcza na Budapeszt?",
@@ -264,11 +264,11 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
   {
     slug: "prague-czechia",
     overview:
-      "Praga jest jednym z najłatwiejszych kierunków na weekendowy city break z Polski. Mocno działa na osóby, które chcą pewnego wyjazdu: klimatyczne stare miasto, dobra gastronomia i prosty plan.",
+      "Praga jest jednym z najłatwiejszych kierunków na weekendowy city break z Polski. Mocno działa na osoby, które chcą pewnego wyjazdu: klimatyczne stare miasto, dobra gastronomia i prosty plan.",
     whyGo: [
       "Jest blisko, czytelnie i bardzo dobrze nadaje się na 2-3 dni.",
-      "Dobrze wypada kosztówo przy wyjazdach we dwoje i krótkich terminach.",
-      "Ma jeden z najbardziej rozpoznawalnych klimatow miejskich w Europie Srodkowej.",
+      "Dobrze wypada kosztowo przy wyjazdach we dwoje i krótkich terminach.",
+      "Ma jeden z najbardziej rozpoznawalnych klimatów miejskich w Europie Środkowej.",
     ],
     bestTime:
       "Najlepiej sprawdza się od kwietnia do czerwca oraz od września do listopada. Zima też ma sens, jeśli celem jest bardziej klimat miasta niż długie spacery bez przerw.",
@@ -277,7 +277,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
     whoFor: [
       "dla weekendowych wyjazdów z Polski",
       "dla par i grup szukających klasycznego city breaku",
-      "dla osób, które chcą blisko i bez duzej logistyki",
+      "dla osób, które chcą blisko i bez dużej logistyki",
     ],
     highlights: ["Most Karola", "Hradczany", "Rynek Starego Miasta", "Mala Strana", "punkty widokowe"],
     districts: ["Stare Miasto", "Mala Strana", "Nowe Miasto", "Vinohrady"],
@@ -285,12 +285,12 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Czy Praga jest dobra na wyjazd bez samolotu?",
         answer:
-          "Tak. W zaleznosci od miasta startowego wiele osób wybiera też pociag lub samochod, co dodatkowo poszerza grupe odbiórcow tej strony.",
+          "Tak. W zależności od miasta startowego wiele osób wybiera też pociąg lub samochód, co dodatkowo poszerza grupę odbiorców tej strony.",
       },
       {
         question: "Czy Praga nadal jest dobrym kierunkiem przy ograniczonym budżecie?",
         answer:
-          "Tak, szczególnie na 2-3 dni. Trzeba jednak pilnować noclegu w dobrym terminie, bo popularne weekendy potrafią być drozsze.",
+          "Tak, szczególnie na 2-3 dni. Trzeba jednak pilnować noclegu w dobrym terminie, bo popularne weekendy potrafią być droższe.",
       },
     ],
   },
@@ -304,7 +304,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "Dobrze pasuje do osób, które chcą ciepło i zwiedzanie w jednym.",
     ],
     bestTime:
-      "Ateny najlepiej wyglądają wiosna i jesienią. Lato jest bardzo gorące, ale nadal popularne, szczególnie gdy wyjazd łączy miasto z nadmorskim odpoczynkiem.",
+      "Ateny najlepiej wyglądają wiosną i jesienią. Lato jest bardzo gorące, ale nadal popularne, szczególnie gdy wyjazd łączy miasto z nadmorskim odpoczynkiem.",
     budgetNote:
       "Budżet trzeba planować pod wejścia do głównych atrakcji i nocleg z dobrym dojazdem. Przy dobrze wybranym terminie Ateny nadal mogą być opłacalnym city breakiem.",
     whoFor: [
@@ -312,36 +312,36 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "dla krótkiego urlopu 3-4 dni",
       "dla wyjazdów, gdzie duże znaczenie ma lokalna kuchnia",
     ],
-    highlights: ["Akropol", "Plaka", "Monastiraki", "wzgorze Likavitos", "Ateńska agora"],
+    highlights: ["Akropol", "Plaka", "Monastiraki", "wzgórze Likavitos", "Ateńska agora"],
     districts: ["Plaka", "Monastiraki", "Koukaki", "Syntagma"],
     faq: [
       {
         question: "Czy Ateny są bardziej kierunkiem na zwiedzanie czy na relaks?",
         answer:
-          "Na sam city break to głównie zwiedzanie, ale przy dobrym planie można też dorzucić bardziej relaksujace momenty i nadmorski klimat.",
+          "Na sam city break to głównie zwiedzanie, ale przy dobrym planie można też dorzucić bardziej relaksujące momenty i nadmorski klimat.",
       },
       {
         question: "Czy Ateny nadają się na 4 dni?",
         answer:
-          "Tak. To bardzo dobry format, bo pozwala zobaczyć najważniejsze miejsca i nie spieszyc się przez cały wyjazd.",
+          "Tak. To bardzo dobry format, bo pozwala zobaczyć najważniejsze miejsca i nie spieszyć się przez cały wyjazd.",
       },
     ],
   },
   {
     slug: "valletta-malta",
     overview:
-      "Malta dobrze pasuje do osób, które chcą słońce, wygodny krótki wyjazd i miks miasta z morskim klimatem. To kierunek czytelny, kompaktowy i dobry dla polskiego odbiorcy planujacego 4-5 dni.",
+      "Malta dobrze pasuje do osób, które chcą słońce, wygodny krótki wyjazd i miks miasta z morskim klimatem. To kierunek czytelny, kompaktowy i dobry dla polskiego odbiorcy planującego 4-5 dni.",
     whyGo: [
-      "Wyspa daje dużo wrazen na niewielkiej przestrzeni.",
-      "Łatwo zbudować plan bez ciaglego przemieszczania się.",
-      "To dobry kierunek dla osób, które lubia jasny, słoneczny klimat i widoki.",
+      "Wyspa daje dużo wrażeń na niewielkiej przestrzeni.",
+      "Łatwo zbudować plan bez ciągłego przemieszczania się.",
+      "To dobry kierunek dla osób, które lubią jasny, słoneczny klimat i widoki.",
     ],
     bestTime:
-      "Najwygodniej planować od marca do czerwca oraz od września do listopada. Malta jest mocna też zima, jeśli celem jest ucieczka od polskiej pogody i nie zależy Ci na pełnym plażowaniu.",
+      "Najwygodniej planować od marca do czerwca oraz od września do listopada. Malta jest mocna też zimą, jeśli celem jest ucieczka od polskiej pogody i nie zależy Ci na pełnym plażowaniu.",
     budgetNote:
-      "Malta nie zawsze jest najtańsza, ale dobrze działa przy krótszym wyjeździe. W budżecie warto pilnować noclegu, bo lokalizacja potrafi mocno zmienic cały odbiór wyjazdu.",
+      "Malta nie zawsze jest najtańsza, ale dobrze działa przy krótszym wyjeździe. W budżecie warto pilnować noclegu, bo lokalizacja potrafi mocno zmienić cały odbiór wyjazdu.",
     whoFor: [
-      "dla par i krótkich urlopow",
+      "dla par i krótkich urlopów",
       "dla osób szukających słońca poza sezonem",
       "dla wyjazdu z widokami i spokojnym tempem",
     ],
@@ -351,12 +351,12 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Czy Malta pasuje na 4 dni?",
         answer:
-          "Tak. To jeden z najlepszych formatow, bo wyspa jest kompaktowa i w 4 dni można zobaczyć sporo bez przemeczenia.",
+          "Tak. To jeden z najlepszych formatów, bo wyspa jest kompaktowa i w 4 dni można zobaczyć sporo bez przemęczenia.",
       },
       {
         question: "Czy Malta nadaje się na wyjazd poza sezonem?",
         answer:
-          "Tak, bardzo. Wlasnie wtedy często wypada najlepiej dla osób, które szukają słońca, ale nie potrzebuja pełnego wakacyjnego sezonu.",
+          "Tak, bardzo. Właśnie wtedy często wypada najlepiej dla osób, które szukają słońca, ale nie potrzebują pełnego wakacyjnego sezonu.",
       },
     ],
   },
@@ -372,54 +372,54 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
     bestTime:
       "Wiosna oraz jesień są zwykle najprzyjemniejsze. Latem jest bardzo gorąco, ale to nadal naturalny czas dla osób nastawionych głównie na plażę.",
     budgetNote:
-      "Przy planowaniu budżetu warto uwzglednic transfery i standard noclegu, bo to mocno wpływa na odbiór całego wyjazdu. Sam kierunek jest nadal stosunkowo prosty do zorganizowania.",
+      "Przy planowaniu budżetu warto uwzględnić transfery i standard noclegu, bo to mocno wpływa na odbiór całego wyjazdu. Sam kierunek jest nadal stosunkowo prosty do zorganizowania.",
     whoFor: [
-      "dla osób, które stawiaja na słońce i spokój",
+      "dla osób, które stawiają na słońce i spokój",
       "dla par i wyjazdów na 5-7 dni",
       "dla tych, którzy chcą ciepłego kierunku bez skomplikowanego planu",
     ],
-    highlights: ["promenada Finikoudes", "plaże", "kosciol sw. Lazarza", "lokalne tawerny", "okolice Ayia Napy"],
+    highlights: ["promenada Finikoudes", "plaże", "kościół sw. Łazarza", "lokalne tawerny", "okolice Ayia Napy"],
     districts: ["centrum Larnaki", "Finikoudes", "Mackenzie", "okolice portu"],
     faq: [
       {
         question: "Czy Larnaka to kierunek głównie plażowy?",
         answer:
-          "Tak, ale nie tylko. Dobrze działa w modelu spokojnego wyjazdu z jedna lub dwiema wycieczkami i prostym rytmem dnia.",
+          "Tak, ale nie tylko. Dobrze działa w modelu spokojnego wyjazdu z jedną lub dwiema wycieczkami i prostym rytmem dnia.",
       },
       {
         question: "Na ile dni warto lecieć na Cypr?",
         answer:
-          "Najczęściej 5-7 dni. Krotszy wyjazd nadal ma sens, ale ten kierunek dobrze wygląda przy nieco spokojniejszym tempie.",
+          "Najczęściej 5-7 dni. Krótszy wyjazd nadal ma sens, ale ten kierunek dobrze wygląda przy nieco spokojniejszym tempie.",
       },
     ],
   },
   {
     slug: "istanbul-turkey",
     overview:
-      "Stambul jest dla osób, które chcą bardzo mocnego miejskiego kierunku z jedzeniem, historia i energia dużego miasta. To nie jest spokojny city break, ale świetny kierunek dla tych, którzy lubia intensywny klimat.",
+      "Stambuł jest dla osób, które chcą bardzo mocnego miejskiego kierunku z jedzeniem, historia i energia dużego miasta. To nie jest spokojny city break, ale świetny kierunek dla tych, którzy lubią intensywny klimat.",
     whyGo: [
       "To jedno z najbardziej charakterystycznych miast w zasiegu krótkiego lotu.",
-      "Dobrze łączy wartosc historyczna z życiem codzieńnym i lokalnym rytmem.",
+      "Dobrze łączy wartość historyczna z życiem codziennym i lokalnym rytmem.",
     ],
     bestTime:
-      "Najbardziej komfortowe miesiące to kwiecień-czerwięc i wrzesień-listopad. Lato jest ciepłe i intensywne, ale dla wielu osób nadal bardzo atrakcyjne.",
+      "Najbardziej komfortowe miesiące to kwiecień-czerwiec i wrzesień-listopad. Lato jest ciepłe i intensywne, ale dla wielu osób nadal bardzo atrakcyjne.",
     budgetNote:
-      "Stambul daje sporo za swoj koszt, ale warto planować margines na jedzenie, przejazdy i bardziej komfortowa baze noclegowa. To miasto, w którym lokalizacja noclegu bardzo zmienia wygodę wyjazdu.",
+      "Stambuł daje sporo za swój koszt, ale warto planować margines na jedzenie, przejazdy i bardziej komfortową bazę noclegową. To miasto, w którym lokalizacja noclegu bardzo zmienia wygodę wyjazdu.",
     whoFor: [
-      "dla osób, które lubia duże miasta",
-      "dla foodie tripow i intensywnego zwiedzania",
+      "dla osób, które lubią duże miasta",
+      "dla foodie tripów i intensywnego zwiedzania",
       "dla city breaku z charakterem i historia",
     ],
-    highlights: ["Hagia Sophia", "Blekitny Meczet", "Bazar", "Galata", "Bosfor"],
+    highlights: ["Hagia Sophia", "Błękitny Meczet", "Bazar", "Galata", "Bosfor"],
     districts: ["Sultanahmet", "Karakoy", "Galata", "Kadikoy"],
     faq: [
       {
-        question: "Czy Stambul nadaje się na 3 dni?",
+        question: "Czy Stambuł nadaje się na 3 dni?",
         answer:
           "Tak, ale to raczej intensywny format. Najlepiej wypada 4-5 dni, kiedy da się trochę zwolnić i poczuć miasto.",
       },
       {
-        question: "Czy to dobry kierunek dla osób, które lubia jedzenie?",
+        question: "Czy to dobry kierunek dla osób, które lubią jedzenie?",
         answer:
           "Zdecydowanie tak. Kuchnia i rytm miasta są jednym z najmocniejszych powodów, by wybrać ten kierunek.",
       },
@@ -428,7 +428,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
   {
     slug: "antalya-turkey",
     overview:
-      "Antalya to mocny kierunek dla osób, które stawiaja na ciepło, morze i wygodny wypoczynek. Lepiej działa jako krótki urlop niż klasyczny city break, ale dla wielu użytkowników to właśnie taki kierunek bedzie najbardziej praktyczny.",
+      "Antalya to mocny kierunek dla osób, które stawiają na ciepło, morze i wygodny wypoczynek. Lepiej działa jako krótki urlop niż klasyczny city break, ale dla wielu użytkowników to właśnie taki kierunek będzie najbardziej praktyczny.",
     whyGo: [
       "To prosty model: słońce, plaże i hotelowy komfort.",
       "Dobrze wypada dla wyjazdów 5-7 dni i wyższego nacisku na relaks.",
@@ -442,35 +442,35 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "dla krótkiego urlopu 5-7 dni",
       "dla par i wyjazdów z mocnym akcentem relaksu",
     ],
-    highlights: ["stare miasto Kaleici", "plaże", "wodospady", "wycieczki w okolice", "widoki na wybrzeze"],
+    highlights: ["stare miasto Kaleici", "plaże", "wodospady", "wycieczki w okolice", "widoki na wybrzeże"],
     districts: ["Kaleici", "Konyaalti", "Lara", "okolice mariny"],
     faq: [
       {
         question: "Czy Antalya to bardziej wakacje czy city break?",
         answer:
-          "Zdecydowanie bardziej krótkie wakacje i wypoczynek niż klasyczny city break. Da się tu zwiedzac, ale główny atut to słońce i wygoda wyjazdu.",
+          "Zdecydowanie bardziej krótkie wakacje i wypoczynek niż klasyczny city break. Da się tu zwiedzać, ale główny atut to słońce i wygoda wyjazdu.",
       },
       {
         question: "Na ile dni najlepiej planować Antalya?",
         answer:
-          "Najlepiej 5-7 dni. Krotszy wyjazd też ma sens, ale ten kierunek lepiej wypada przy spokojniejszym rytmie.",
+          "Najlepiej 5-7 dni. Krótszy wyjazd też ma sens, ale ten kierunek lepiej wypada przy spokojniejszym rytmie.",
       },
     ],
   },
   {
     slug: "marrakesh-morocco",
     overview:
-      "Marrakesz jest dla osób, które szukają mocno innego klimatu, ciepła i intensywnego miejskiego doswiadczenia. To bardzo dobry kandydat do scenariuszy typu ciepło, bez wizy, cos innego niż Europa.",
+      "Marrakesz jest dla osób, które szukają mocno innego klimatu, ciepła i intensywnego miejskiego doświadczenia. To bardzo dobry kandydat do scenariuszy typu ciepło, bez wizy, coś innego niż Europa.",
     whyGo: [
-      "Daje wyraźny kontrast wobec klasycznych europejskich city breakow.",
-      "Łatwo zbudować z niego mocna historie: kolory, jedzenie, medyna, targi i riady.",
+      "Daje wyraźny kontrast wobec klasycznych europejskich city breaków.",
+      "Łatwo zbudować z niego mocną historię: kolory, jedzenie, medyna, targi i riady.",
     ],
     bestTime:
-      "Najlepiej wypada od października do kwietnia. Latem temperatury potrafią być bardzo wysokie, dlatego wiele osób wybiera właśnie sezony przejsciowe.",
+      "Najlepiej wypada od października do kwietnia. Latem temperatury potrafią być bardzo wysokie, dlatego wiele osób wybiera właśnie sezony przejściowe.",
     budgetNote:
-      "Marrakesz często dobrze wygląda przy budżecie średnim, ale trzeba uczciwie liczyc koszty lotu i noclegu. To kierunek bardziej egzotyczny, ale nadal możliwy do ogarniecia bez wielkiego budżetu.",
+      "Marrakesz często dobrze wygląda przy budżecie średnim, ale trzeba uczciwie liczyć koszty lotu i noclegu. To kierunek bardziej egzotyczny, ale nadal możliwy do ogarnięcia bez wielkiego budżetu.",
     whoFor: [
-      "dla osób szukających czegos innego niż klasyczna Europa",
+      "dla osób szukających czegoś innego niż klasyczna Europa",
       "dla wyjazdów bez wizy z Polski",
       "dla krótkich wyjazdów z mocnym klimatem miejsca",
     ],
@@ -485,23 +485,23 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Czy Marrakesz jest dobry dla osób szukających ciepła poza sezonem?",
         answer:
-          "Tak. To jeden z kierunków, który bardzo dobrze wypada jesienią, zima i wczesna wiosna, gdy wiele osób z Polski szuka słońca i wyraznego odcięcia od codzieńnosci.",
+          "Tak. To jeden z kierunków, który bardzo dobrze wypada jesienią, zimą i wczesną wiosną, gdy wiele osób z Polski szuka słońca i wyraźnego odcięcia od codzienności.",
       },
     ],
   },
   {
     slug: "agadir-morocco",
     overview:
-      "Agadir jest spokojniejszym marokanskim kierunkiem niż Marrakesz i lepiej pasuje do osób, które stawiaja na plażę, słońce i prostszy model wypoczynku. To dobry kontrapunkt w treściach o ciepłych kierunkach.",
+      "Agadir jest spokojniejszym marokańskim kierunkiem niż Marrakesz i lepiej pasuje do osób, które stawiają na plażę, słońce i prostszy model wypoczynku. To dobry kontrapunkt w treściach o ciepłych kierunkach.",
     whyGo: [
       "Dobrze wypada dla osób, które chcą Maroko w łagodniejszej wersji.",
       "Ma mocniejszy profil plażowy niż typowo miejski.",
-      "Nadaje się do zestawien ciepło i relaks oraz plażą plus lokalny klimat.",
+      "Nadaje się do zestawień ciepło i relaks oraz plażą plus lokalny klimat.",
     ],
     bestTime:
-      "Najlepiej sprawdza się od jesieńi do wiosny. Wtedy dobrze wpisuje się w potrzebę ucieczki od chlodniejszej pogody w Polsce.",
+      "Najlepiej sprawdza się od jesieni do wiosny. Wtedy dobrze wpisuje się w potrzebę ucieczki od chłodniejszej pogody w Polsce.",
     budgetNote:
-      "Agadir dobrze wypada przy budżetach średnich, ale trzeba liczyc lot i standard noclegu. Dla wielu osób to kierunek bardziej relaksacyjny niż typowo budżetowy city break.",
+      "Agadir dobrze wypada przy budżetach średnich, ale trzeba liczyć lot i standard noclegu. Dla wielu osób to kierunek bardziej relaksacyjny niż typowo budżetowy city break.",
     whoFor: [
       "dla osób nastawionych na plażę i spokój",
       "dla par i krótkich wakacji",
@@ -518,56 +518,56 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Na ile dni najlepiej lecieć do Agadiru?",
         answer:
-          "Najlepiej 5-7 dni, chociaz krótszy wyjazd też ma sens, jeśli zależy Ci na szybkiej ucieczce do ciepłego miejsca.",
+          "Najlepiej 5-7 dni, chociaż krótszy wyjazd też ma sens, jeśli zależy Ci na szybkiej ucieczce do ciepłego miejsca.",
       },
     ],
   },
   {
     slug: "las-palmas-spain",
     overview:
-      "Las Palmas gra role kanaryjskiego kierunku dla osób, które szukają ciepła wtedy, gdy Europa kontynentalna nie daje już takiej pogody.",
+      "Las Palmas gra rolę kanaryjskiego kierunku dla osób, które szukają ciepła wtedy, gdy Europa kontynentalna nie daje już takiej pogody.",
     whyGo: [
-      "To jeden z mocniejszych kierunków na słońce zima.",
-      "Dobrze łączy miejski klimat wyspy z plażąmi i bardziej urlopowym rytmem.",
+      "To jeden z mocniejszych kierunków na słońce zimą.",
+      "Dobrze łączy miejski klimat wyspy z plażami i bardziej urlopowym rytmem.",
     ],
     bestTime:
-      "Najwieksza przewaga tego kierunku to jesień, zima i wczesna wiosna. Wlasnie wtedy Las Palmas ma najmocniejszy sens dla polskiego odbiorcy.",
+      "Największa przewaga tego kierunku to jesień, zima i wczesna wiosna. Właśnie wtedy Las Palmas ma najmocniejszy sens dla polskiego odbiorcy.",
     budgetNote:
-      "Lot bywa dłuższy i to trzeba uczciwie zaznaczyć. Przy zimowym wyjeździe wiele osób akceptuje ten kompromis, bo w zamian dostaje wyraznie lepsza pogodę.",
+      "Lot bywa dłuższy i to trzeba uczciwie zaznaczyć. Przy zimowym wyjeździe wiele osób akceptuje ten kompromis, bo w zamian dostaje wyraźnie lepsza pogodę.",
     whoFor: [
-      "dla osób szukających ciepła zima",
+      "dla osób szukających ciepła zimą",
       "dla wyjazdów 5-7 dni",
       "dla tych, którzy chcą połączyć miasto i plaże",
     ],
     highlights: ["Las Canteras", "stare miasto", "punkty widokowe", "wyspiarski klimat", "spacery nad oceanem"],
-    districts: ["Las Canteras", "Vegueta", "Triana", "okolice nabrzeza"],
+    districts: ["Las Canteras", "Vegueta", "Triana", "okolice nabrzeża"],
     faq: [
       {
         question: "Czy Las Palmas nadaje się na zimowy wyjazd z Polski?",
         answer:
-          "Tak, i to jest jeden z najmocniejszych argumentow za tym kierunkiem. Wlasnie w chlodniejszych miesiącach wypada szczególnie atrakcyjnie.",
+          "Tak, i to jest jeden z najmocniejszych argumentów za tym kierunkiem. Właśnie w chłodniejszych miesiącach wypada szczególnie atrakcyjnie.",
       },
       {
         question: "Czy to bardziej city break czy urlop?",
         answer:
-          "To cos pomiedzy. Ma miejska baze, ale najczęściej lepiej wypada jako krótkie wakacje niż bardzo szybki city break.",
+          "To coś pomiędzy. Ma miejską bazę, ale najczęściej lepiej wypada jako krótkie wakacje niż bardzo szybki city break.",
       },
     ],
   },
   {
     slug: "funchal-portugal",
     overview:
-      "Funchal i Madera pasują do osób, które szukają krajobrazow, natury i spokojniejszego rytmu.",
+      "Funchal i Madera pasują do osób, które szukają krajobrazów, natury i spokojniejszego rytmu.",
     whyGo: [
       "To mocny kierunek dla natury, widoków i aktywnego odpoczynku.",
-      "Dobrze odroznia się od klasycznych city breakow z Europy.",
+      "Dobrze odróżnia się od klasycznych city breaków z Europy.",
     ],
     bestTime:
-      "Madera jest atrakcyjna przez duża część roku, ale najwięcej sensu ma zwykle wiosna, jesienią i zima, gdy szukasz łagodnej pogody oraz zielonego otoczenia.",
+      "Madera jest atrakcyjna przez dużą część roku, ale najwięcej sensu ma zwykle wiosną, jesienią i zimą, gdy szukasz łagodnej pogody oraz zielonego otoczenia.",
     budgetNote:
-      "Budżet trzeba liczyc z mysla o charakterze wyspy: nocleg, transport i aktywnosci terenowe. To mniej kierunek na bardzo tani wypad, a bardziej na dobrze zaplanowany krótki urlop.",
+      "Budżet trzeba liczyć z myślą o charakterze wyspy: nocleg, transport i aktywności terenowe. To mniej kierunek na bardzo tani wypad, a bardziej na dobrze zaplanowany krótki urlop.",
     whoFor: [
-      "dla osób, które lubia naturę i widoki",
+      "dla osób, które lubią naturę i widoki",
       "dla par na spokojniejszy wyjazd",
       "dla krótkich wakacji zamiast klasycznego city breaku",
     ],
@@ -580,7 +580,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
           "Tak, ale przy 5-6 dniach kierunek wypada jeszcze lepiej. To miejsce, które korzysta na spokojniejszym rytmie i czasie na naturę.",
       },
       {
-        question: "Czy to dobry kierunek dla osób, które nie lubia samego lezenia na plaży?",
+        question: "Czy to dobry kierunek dla osób, które nie lubią samego leżenia na plaży?",
         answer:
           "Tak, zdecydowanie. Najmocniej wygrywa tu widok, natura i aktywne odkrywanie wyspy.",
       },
@@ -589,14 +589,14 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
   {
     slug: "valencia-spain",
     overview:
-      "Walencja to jeden z najlepszych kompromisow miedzy klasycznym city breakiem a wyjazdem z oddechem. Daje plaże, dobre jedzenie, nowoczesna architekturę i mniej przytłącząjace tempo niż Barcelona.",
+      "Walencja to jeden z najlepszych kompromisów między klasycznym city breakiem a wyjazdem z oddechem. Daje plaże, dobre jedzenie, nowoczesna architekturę i mniej przytłaczające tempo niż Barcelona.",
     whyGo: [
       "Bardzo dobrze łączy miejski rytm z dostępem do morza i szerokich spacerowych stref.",
       "Dobrze wypada dla osób, które chcą Hiszpanii, ale mniej chaosu niż w największych miastach.",
       "Nadaje się na 4-5 dni i dobrze znosi scenariusz plażą plus zwiedzanie.",
     ],
     bestTime:
-      "Najbardziej komfortowe miesiące to kwiecień-czerwięc oraz wrzesień-listopad. Wysokie lato nadal ma sens, ale poza szczytem sezonu łatwiej o przyjemniejszy rytm miasta i niższa presje cenowa.",
+      "Najbardziej komfortowe miesiące to kwiecień-czerwiec oraz wrzesień-listopad. Wysokie lato nadal ma sens, ale poza szczytem sezonu łatwiej o przyjemniejszy rytm miasta i niższą presję cenową.",
     budgetNote:
       "Walencja dobrze wygląda przy budżecie średnim. Nie jest tak tania jak Budapeszt czy Praga, ale często daje bardzo dobry stosunek jakości pobytu do finalnego kosztu.",
     whoFor: [
@@ -610,10 +610,10 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Czy Walencja jest lepsza od Barcelony na spokojniejszy wyjazd?",
         answer:
-          "Dla wielu osób tak. Nadal daje Hiszpanie, plaże i dobre jedzenie, ale zwykle z mniejszym tłokiem i spokojniejszym rytmem niż Barcelona.",
+          "Dla wielu osób tak. Nadal daje Hiszpanię, plaże i dobre jedzenie, ale zwykle z mniejszym tłokiem i spokojniejszym rytmem niż Barcelona.",
       },
       {
-        question: "Ile dni najlepiej zaplanować na Walencje?",
+        question: "Ile dni najlepiej zaplanować na Walencję?",
         answer:
           "Najlepiej 4-5 dni. To format, w którym dobrze da się połączyć centrum, nowoczesne strefy i chwilę nad morzem.",
       },
@@ -622,28 +622,28 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
   {
     slug: "naples-italy",
     overview:
-      "Neapol jest kierunkiem dla osób, które chcą intensywnego klimatu południowych Wloch, mocnej kuchni i miasta z charakterem. To nie jest wypolerowany city break, ale właśnie dlatego daje bardzo mocne wrażenie miejsca.",
+      "Neapol jest kierunkiem dla osób, które chcą intensywnego klimatu południowych Włoch, mocnej kuchni i miasta z charakterem. To nie jest wypolerowany city break, ale właśnie dlatego daje bardzo mocne wrażenie miejsca.",
     whyGo: [
       "Jedzenie i lokalny rytm miasta są same w sobie bardzo mocnym powodem wyjazdu.",
-      "To dobry kierunek dla osób, które chcą zobaczyć bardziej surowa i autentyczna strone Wloch.",
-      "Dobrze łączy się z pomyslem na 3-4 dni w mieście lub z szerszym planem wokol Kampanii.",
+      "To dobry kierunek dla osób, które chcą zobaczyć bardziej surową i autentyczną stronę Włoch.",
+      "Dobrze łączy się z pomysłem na 3-4 dni w mieście lub z szerszym planem wokół Kampanii.",
     ],
     bestTime:
-      "Najlepiej planować Neapol na wiosne i jesień, gdy temperatury sprzyjaja spacerom i wyjazdom po okolicy. Lato bywa bardziej męczące, szczególnie przy intensywnym zwiedzaniu.",
+      "Najlepiej planować Neapol na wiosnę i jesień, gdy temperatury sprzyjają spacerom i wyjazdom po okolicy. Lato bywa bardziej męczące, szczególnie przy intensywnym zwiedzaniu.",
     budgetNote:
-      "Neapol potrafi być rozsądniejszy kosztówo niż Rzym czy Mediolan, ale warto pilnować lokalizacji noclegu i logistyki pierwszego dnia. To kierunek, gdzie wygoda bazy noclegówej ma duże znaczenie.",
+      "Neapol potrafi być rozsądniejszy kosztowo niż Rzym czy Mediolan, ale warto pilnować lokalizacji noclegu i logistyki pierwszego dnia. To kierunek, gdzie wygoda bazy noclegowej ma duże znaczenie.",
     whoFor: [
-      "dla foodie tripow i intensywnych miejskich wyjazdów",
-      "dla osób, które lubia surowy lokalny klimat",
-      "dla 3-4 dni we Wloszech bez zbednego polerowania",
+      "dla foodie tripów i intensywnych miejskich wyjazdów",
+      "dla osób, które lubią surowy lokalny klimat",
+      "dla 3-4 dni we Włoszech bez zbędnego polerowania",
     ],
     highlights: ["Spaccanapoli", "historyczne centrum", "nabrzeze", "pizza", "punkty startowe na Pompeje i Wezuwiusz"],
-    districts: ["Centro Storico", "Chiaia", "Quartieri Spagnoli", "okolice nabrzeza"],
+    districts: ["Centro Storico", "Chiaia", "Quartieri Spagnoli", "okolice nabrzeża"],
     faq: [
       {
-        question: "Czy Neapol to dobry pierwszy city break we Wloszech?",
+        question: "Czy Neapol to dobry pierwszy city break we Włoszech?",
         answer:
-          "Tak, ale raczej dla osób, które lubia miasta z mocnym charakterem. Jeśli szukasz bardziej klasycznego i przewidywalnego scenariusza, prostszy może być Rzym.",
+          "Tak, ale raczej dla osób, które lubią miasta z mocnym charakterem. Jeśli szukasz bardziej klasycznego i przewidywalnego scenariusza, prostszy może być Rzym.",
       },
       {
         question: "Czy na Neapol wystarcza 3 dni?",
@@ -655,72 +655,72 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
   {
     slug: "tirana-albania",
     overview:
-      "Tirana to ciekawy kierunek dla osób, które szukają mniej oczywistego miasta na city break i chcą połączyć niższy koszt z poczuciem odkrywania czegos mniej oklepanego. Daje miejski klimat, prostszy budżet i dobry punkt startowy do dalszego poznawania Albanii.",
+      "Tirana to ciekawy kierunek dla osób, które szukają mniej oczywistego miasta na city break i chcą połączyć niższy koszt z poczuciem odkrywania czegoś mniej oklepanego. Daje miejski klimat, prostszy budżet i dobry punkt startowy do dalszego poznawania Albanii.",
     whyGo: [
       "Dobrze sprawdza się dla osób, które chcą nowego kierunku bez presji najdroższych stolic Europy.",
       "To mocny kandydat do treści o tanich wyjazdach i mniej oczywistych city breakach.",
-      "Przy krótszym pobyćie daje miejski klimat, a przy 4-5 dniach można myslec też o okolicy.",
+      "Przy krótszym pobycie daje miejski klimat, a przy 4-5 dniach można myśleć też o okolicy.",
     ],
     bestTime:
-      "Najprzyjemniejsze miesiące to kwiecień-czerwięc i wrzesień-październik. Wtedy Tirana daje przyjemniejszy balans pogody i miejskiego tempa.",
+      "Najprzyjemniejsze miesiące to kwiecień-czerwiec i wrzesień-październik. Wtedy Tirana daje przyjemniejszy balans pogody i miejskiego tempa.",
     budgetNote:
-      "To jeden z kierunków, który często dobrze wypada przy ograniczonym budżecie. Nadal warto jednak patrzec na całość wyjazdu: lot, lokalizacje noclegu i plan dnia.",
+      "To jeden z kierunków, który często dobrze wypada przy ograniczonym budżecie. Nadal warto jednak patrzeć na całość wyjazdu: lot, lokalizację noclegu i plan dnia.",
     whoFor: [
       "dla osób szukających mniej oczywistych miast",
-      "dla budżetowych city breakow",
+      "dla budżetowych city breaków",
       "dla wyjazdów 3-4 dni z poczuciem odkrywania nowego kierunku",
     ],
-    highlights: ["Plac Skanderbega", "Bunk'Art", "kawiarnie", "kolejka Dajti", "miejskie życie więczórne"],
+    highlights: ["Plac Skanderbega", "Bunk'Art", "kawiarnie", "kolejka Dajti", "miejskie życie wieczorne"],
     districts: ["Blloku", "centrum", "okolice placu Skanderbega", "rejony kawiarniane"],
     faq: [
       {
         question: "Czy Tirana nadaje się na tani city break?",
         answer:
-          "Tak, to jedna z jej mocniejszych stron. Przy dobrze dobranym locie i rozsądnym noclegu potrafi bardzo dobrze wypasc kosztówo.",
+          "Tak, to jedna z jej mocniejszych stron. Przy dobrze dobranym locie i rozsądnym noclegu potrafi bardzo dobrze wypaść kosztowo.",
       },
       {
-        question: "Czy Tirana jest dobrym kierunkiem dla osób, które byly już w klasycznych stolicach Europy?",
+        question: "Czy Tirana jest dobrym kierunkiem dla osób, które były już w klasycznych stolicach Europy?",
         answer:
-          "Tak. Wlasnie wtedy daje dodatkowa wartosc, bo pokazuje mniej oczywisty miejski klimat i nie jest kopia najpopularniejszych tras city breakowych.",
+          "Tak. Właśnie wtedy daje dodatkowa wartość, bo pokazuje mniej oczywisty miejski klimat i nie jest kopia najpopularniejszych tras city breakowych.",
       },
     ],
   },
   {
     slug: "berlin-germany",
     overview:
-      "Berlin jest dobrym kierunkiem dla osób, które szukają dużego europejskiego miasta z muzeami, dzielnicami i bardzo wyraźnym charakterem. To mocny kandydat do city breakow dla osób, które cenią kulture, gastro i miejski rytm bardziej niż klasyczne odhaczanie ikon.",
+      "Berlin jest dobrym kierunkiem dla osób, które szukają dużego europejskiego miasta z muzeami, dzielnicami i bardzo wyraźnym charakterem. To mocny kandydat do city breaków dla osób, które cenią kulturę, gastro i miejski rytm bardziej niż klasyczne odhaczanie ikon.",
     whyGo: [
       "Daje ogrom treści: muzea, architekturę, dzielnice i bardzo mocny klimat miejski.",
-      "Dobrze pasuje do wyjazdów 3-4 dni i do odbiorcy, który lubi odkrywac miasto warstwami.",
+      "Dobrze pasuje do wyjazdów 3-4 dni i do odbiorcy, który lubi odkrywać miasto warstwami.",
     ],
     bestTime:
-      "Berlin najlepiej sprawdza się od kwietnia do czerwca oraz we wrzesniu i październiku. To miesiące, w których spacery i tempo miasta są najbardziej komfortowe.",
+      "Berlin najlepiej sprawdza się od kwietnia do czerwca oraz we wrześniu i październiku. To miesiące, w których spacery i tempo miasta są najbardziej komfortowe.",
     budgetNote:
-      "Berlin bywa średni lub wyższy kosztówo, ale nadal da się go zaplanować rozsądnie. Kluczowe jest znalezienie dobrej bazy w dzielnicy, która nie utrudnia poruszania się po mieście.",
+      "Berlin bywa średni lub wyższy kosztowo, ale nadal da się go zaplanować rozsądnie. Kluczowe jest znalezienie dobrej bazy w dzielnicy, która nie utrudnia poruszania się po mieście.",
     whoFor: [
-      "dla osób lubiacych muzea, dzielnice i gastronomię",
-      "dla city breakow z miejskim rytmem zamiast typowego sightseeingu",
-      "dla wyjazdów 3-4 dni z naciskiem na kulture",
+      "dla osób lubiących muzea, dzielnice i gastronomię",
+      "dla city breaków z miejskim rytmem zamiast typowego sightseeingu",
+      "dla wyjazdów 3-4 dni z naciskiem na kulturę",
     ],
-    highlights: ["Wyspa Muzeow", "East Side Gallery", "Mitte", "Kreuzberg", "Prenzlauer Berg"],
+    highlights: ["Wyspa Muzeów", "East Side Gallery", "Mitte", "Kreuzberg", "Prenzlauer Berg"],
     districts: ["Mitte", "Kreuzberg", "Prenzlauer Berg", "Neukolln"],
     faq: [
       {
-        question: "Czy Berlin pasuje na pierwszy city break do Niemieć?",
+        question: "Czy Berlin pasuje na pierwszy city break do Niemiec?",
         answer:
-          "Tak. To bardzo mocny wybór, szczególnie jeśli bardziej od klasycznych zabytkow interesuje Cie nowoczesne duże miasto z warstwami i klimatem.",
+          "Tak. To bardzo mocny wybór, szczególnie jeśli bardziej od klasycznych zabytków interesuje Cię nowoczesne duże miasto z warstwami i klimatem.",
       },
       {
-        question: "Ile dni warto przeznaczyc na Berlin?",
+        question: "Ile dni warto przeznaczyć na Berlin?",
         answer:
-          "Najlepiej 3-4 dni. Taki format pozwala zobaczyć kilka roznych dzielnic i nie robic wyjazdu w zbyt dużym pospiechu.",
+          "Najlepiej 3-4 dni. Taki format pozwala zobaczyć kilka różnych dzielnic i nie robić wyjazdu w zbyt dużym pośpiechu.",
       },
     ],
   },
   {
     slug: "amsterdam-netherlands",
     overview:
-      "Amsterdam to kierunek mocny dla osób, które szukają kompaktowego miasta o wysokiej jakości spaceru, estetyce i bardzo czytelnym miejskim klimacie. Dobrze działa na 3-4 dni i ma silna rozpoznawalnosc dla polskiego odbiorcy.",
+      "Amsterdam to kierunek mocny dla osób, które szukają kompaktowego miasta o wysokiej jakości spaceru, estetyce i bardzo czytelnym miejskim klimacie. Dobrze działa na 3-4 dni i ma silną rozpoznawalność dla polskiego odbiorcy.",
     whyGo: [
       "Miasto jest kompaktowe i bardzo dobrze nadaje się do zwiedzania bez rozbudowanej logistyki.",
       "To mocny kierunek dla par, weekendowych wypadów i scenariuszy z naciskiem na klimat miejsca.",
@@ -730,8 +730,8 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
     budgetNote:
       "Amsterdam rzadko jest kierunkiem budżetowym, dlatego trzeba uczciwie komunikować wyższe koszty noclegów. Nadal jednak wiele osób uznaje go za kierunek wart dopłaty ze względu na jakość pobytu.",
     whoFor: [
-      "dla par i estetycznych city breakow",
-      "dla osób, które lubia kompaktowe miasta",
+      "dla par i estetycznych city breaków",
+      "dla osób, które lubią kompaktowe miasta",
       "dla 3-4 dni z naciskiem na muzealny i spacerowy rytm",
     ],
     highlights: ["kanały", "Jordaan", "muzea", "Vondelpark", "de 9 straatjes"],
@@ -745,7 +745,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Czy Amsterdam jest dobrym kierunkiem przy ograniczonym budżecie?",
         answer:
-          "Raczej nie jest to najtańszy wybór. To kierunek, który bardziej wygrywa klimatem i jakościa miasta niż sama niska cena.",
+          "Raczej nie jest to najtańszy wybór. To kierunek, który bardziej wygrywa klimatem i jakością miasta niż samą niską ceną.",
       },
     ],
   },
@@ -755,17 +755,17 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "Dublin pasuje do osób, które chcą prostego, anglojęzycznego city breaku z pubami, muzyka na żywo i klimatem miasta, które dobrze sprawdza się na szybki wyjazd. To kierunek bardziej o atmosferze niż o długiej liście ikon.",
     whyGo: [
       "To prosty format na 2-4 dni z bardzo czytelnym rytmem miasta.",
-      "Dobrze wypada dla osób, które cenią klimat, muzyke, gastro i więczórne życie.",
-      "To przydatny kontrapunkt wobec bardziej słonecznych city breakow.",
+      "Dobrze wypada dla osób, które cenią klimat, muzykę, gastro i wieczorne życie.",
+      "To przydatny kontrapunkt wobec bardziej słonecznych city breaków.",
     ],
     bestTime:
-      "Dublin najlepiej planować od mają do września, kiedy pogoda bardziej sprzyja spacerom. Poza tym okresem nadal ma sens, ale trzeba liczyc się z bardziej zmiennymi warunkami.",
+      "Dublin najlepiej planować od mają do września, kiedy pogoda bardziej sprzyja spacerom. Poza tym okresem nadal ma sens, ale trzeba liczyć się z bardziej zmiennymi warunkami.",
     budgetNote:
-      "Dublin nie jest kierunkiem niskobudżetowym, dlatego najważniejsze jest uczciwe ustawienie oczekiwan. Najlepiej traktowac go jako city break z wyższym standardem, a nie tania ucieczke na weekend.",
+      "Dublin nie jest kierunkiem niskobudżetowym, dlatego najważniejsze jest uczciwe ustawienie oczekiwań. Najlepiej traktować go jako city break z wyższym standardem, a nie tanią ucieczkę na weekend.",
     whoFor: [
-      "dla osób szukających klimatu miasta i więczórnego zycia",
+      "dla osób szukających klimatu miasta i wieczornego życia",
       "dla wyjazdów 2-4 dni",
-      "dla tych, którzy cenią latwy format bez rozbudowanej logistyki",
+      "dla tych, którzy cenią łatwy format bez rozbudowanej logistyki",
     ],
     highlights: ["Temple Bar", "Trinity College", "puby", "nadbrzeza", "miejskie spacery"],
     districts: ["Temple Bar", "centrum", "St Stephen's Green", "Docklands"],
@@ -773,7 +773,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Czy Dublin to bardziej kierunek na klimat niż na klasyczne zabytki?",
         answer:
-          "Tak. To miasto bardziej wygrywa atmosfera, pubami, muzyka i spacerowym rytmem niż bardzo dluga lista ikon do odhaczenia.",
+          "Tak. To miasto bardziej wygrywa atmosfera, pubami, muzyka i spacerowym rytmem niż bardzo długa lista ikon do odhaczenia.",
       },
       {
         question: "Na ile dni najlepiej planować Dublin?",
@@ -788,16 +788,16 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       "Londyn to kierunek dla osób, które chcą dużego, wielowarstwowego miasta z muzeami, dzielnicami i bardzo mocnym powodem do wyjazdu. To nie jest tani city break, ale nadal jest jednym z najmocniejszych kierunków dla odbiorcy szukającego dużego europejskiego miasta.",
     whyGo: [
       "Daje bardzo szeroki wachlarz scenariuszy: kultura, muzea, zakupy, gastronomia i klasyczne ikony miasta.",
-      "To kierunek, który dobrze działa w treściach porownawczych i scenariuszach z wyższym standardem.",
-      "Bardzo mocno pracuje na rozpoznawalnosc marki i publiczny charakter serwisu.",
+      "To kierunek, który dobrze działa w treściach porównawczych i scenariuszach z wyższym standardem.",
+      "Bardzo mocno pracuje na rozpoznawalność marki i publiczny charakter serwisu.",
     ],
     bestTime:
-      "Najbardziej komfortowe miesiące to maj-czerwięc oraz wrzesień-październik. Londyn da się odwiedzac przez cały rok, ale w tych miesiącach zwykle najłatwiej o wygodny rytm spacerowy.",
+      "Najbardziej komfortowe miesiące to maj-czerwiec oraz wrzesień-październik. Londyn da się odwiedzać przez cały rok, ale w tych miesiącach zwykle najłatwiej o wygodny rytm spacerowy.",
     budgetNote:
-      "To kierunek droższy, dlatego kluczowe jest uczciwe ustawienie oczekiwan i budżetu. W zamian Londyn daje ogrom treści, muzeow i scenariuszy pobytu nawet na krótki wyjazd.",
+      "To kierunek droższy, dlatego kluczowe jest uczciwe ustawienie oczekiwań i budżetu. W zamian Londyn daje ogrom treści, muzeów i scenariuszy pobytu nawet na krótki wyjazd.",
     whoFor: [
       "dla osób, które chcą dużego miasta z bardzo szeroka oferta",
-      "dla 3-5 dni z naciskiem na kulture i dzielnice",
+      "dla 3-5 dni z naciskiem na kulturę i dzielnice",
       "dla wyjazdów, gdzie koszt schodzi na drugi plan wobec jakości kierunku",
     ],
     highlights: ["Westminster", "South Bank", "muzea", "Covent Garden", "Notting Hill"],
@@ -806,7 +806,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
       {
         question: "Czy Londyn ma sens na 3 dni?",
         answer:
-          "Tak, ale trzeba podejsc do niego selektywnie. To kierunek, który daje dużo nawet przy 3 dniach, ale zdecydowanie nie da się wtedy zobaczyć wszystkiego.",
+          "Tak, ale trzeba podejść do niego selektywnie. To kierunek, który daje dużo nawet przy 3 dniach, ale zdecydowanie nie da się wtedy zobaczyć wszystkiego.",
       },
       {
         question: "Czy Londyn nadaje się do treści o tanich podróżach?",
@@ -824,14 +824,14 @@ const editorialArticles: EditorialArticle[] = [
     description:
       "Praktyczny przewodnik po ciepłych kierunkach, które dobrze sprawdzają się z Polski i nie wymagają skomplikowanej logistyki.",
     excerpt:
-      "Scenariusz dla osób, które chcą słońca, prostszych formalnosci i sensownego budżetu na 4-7 dni.",
+      "Scenariusz dla osób, które chcą słońca, prostszych formalności i sensownego budżetu na 4-7 dni.",
     plannerPrompt:
-      "Chce do ciepłego kraju bez wizy, 5 dni, budżet do 2500 zl, najlepiej z Polski, plaża i cos do zwiedzania.",
+      "Chce do ciepłego kraju bez wizy, 5 dni, budżet do 2500 zł, najlepiej z Polski, plaża i coś do zwiedzania.",
     categorySlugs: ["ciepłe-kierunki", "bez-wizy", "przewodniki"],
     destinationSlugs: ["marrakesh-morocco", "agadir-morocco", "antalya-turkey", "larnaca-cyprus", "las-palmas-spain"],
     practicalBullets: [
       "Sprawdź realny czas lotu, a nie tylko sam koszt biletu.",
-      "Nie mieszaj bardzo taniego lotu z bardzo slabym noclegiem tylko po to, by zmiescic się w budżecie.",
+      "Nie mieszaj bardzo taniego lotu z bardzo słabym noclegiem tylko po to, by zmieścić się w budżecie.",
       "Przy 4-5 dniach mocniej premiuj kierunki z prostym dojazdem i szybkim transferem z lotniska.",
     ],
     sections: [
@@ -843,7 +843,7 @@ const editorialArticles: EditorialArticle[] = [
         ],
       },
       {
-        title: "Na co patrzec przy wybórze",
+        title: "Na co patrzeć przy wyborze",
         paragraphs: [
           "Najważniejsze jest połączenie pogody, czasu lotu i budżetu. Samo ciepło nie wystarczy, jeśli dojazd zjada zbyt dużo czasu albo mocno ogranicza jakość noclegu.",
         ],
@@ -856,14 +856,14 @@ const editorialArticles: EditorialArticle[] = [
     ],
     faq: [
       {
-        question: "Czy bez wizy zawsze oznacza brak jakichkolwiek formalnosci?",
+        question: "Czy bez wizy zawsze oznacza brak jakichkolwiek formalności?",
         answer:
-          "Nie. To dobra wskazowka na etapie wybóru kierunku, ale przed wyjazdem zawsze trzeba sprawdźic aktualne zasady wjazdu i wymagane dokumenty.",
+          "Nie. To dobra wskazówka na etapie wyboru kierunku, ale przed wyjazdem zawsze trzeba sprawdzić aktualne zasady wjazdu i wymagane dokumenty.",
       },
       {
-        question: "Czy da się poleciec do ciepłego kraju na 5 dni i nie przepalić budżetu?",
+        question: "Czy da się polecieć do ciepłego kraju na 5 dni i nie przepalić budżetu?",
         answer:
-          "Tak, ale najlepiej wybierać kierunki z dobrym stosunkiem ceny do pogody i nie przeciagac lotu ponad to, co ma sens przy tak krótkim czasie.",
+          "Tak, ale najlepiej wybierać kierunki z dobrym stosunkiem ceny do pogody i nie przeciągać lotu ponad to, co ma sens przy tak krótkim czasie.",
       },
     ],
   },
@@ -873,36 +873,36 @@ const editorialArticles: EditorialArticle[] = [
     description:
       "Zestawienie kierunków, które dają sensowną jakość na 2-4 dni bez potrzeby rozciągania budżetu ponad potrzebę.",
     excerpt:
-      "Weekendowy city break powinien być prosty: latwy dojazd, czytelny plan i dobra relacja ceny do wygody.",
+      "Weekendowy city break powinien być prosty: łatwy dojazd, czytelny plan i dobra relacja ceny do wygody.",
     hero:
-      "Weekendowy wyjazd nie musi być przypadkowy. Najlepiej działaja kierunki, które są blisko, mają prosty układ miasta i nie wymagają wielkiej logistyki.",
+      "Weekendowy wyjazd nie musi być przypadkowy. Najlepiej działają kierunki, które są blisko, mają prosty układ miasta i nie wymagają wielkiej logistyki.",
     plannerPrompt:
-      "Szukam taniego city breaku na weekend, 2-3 dni, z Polski, dużo zwiedzania i budżet do 1800 zl.",
+      "Szukam taniego city breaku na weekend, 2-3 dni, z Polski, dużo zwiedzania i budżet do 1800 zł.",
     categorySlugs: ["city-breaki", "tanie-podróże", "weekendowe-wyjazdy"],
     destinationSlugs: ["budapest-hungary", "prague-czechia", "rome-italy", "malaga-spain"],
     practicalBullets: [
       "Na 2-3 dni premiuj kierunki z szybkim transferem z lotniska.",
       "Lepszy prosty hotel blisko centrum niż pozornie tańszy nocleg daleko od wszystkiego.",
-      "Najpierw licz czas, dopiero potem dopracowuj liste atrakcji.",
+      "Najpierw licz czas, dopiero potem dopracowuj listę atrakcji.",
     ],
     sections: [
       {
-        title: "Co sprawia, ze city break jest naprawde opłacalny",
+        title: "Co sprawia, że city break jest naprawdę opłacalny",
         paragraphs: [
-          "Nie zawsze wygrywa najnizsza cena lotu. W weekendowych wyjazdach liczy się też wygodny dojazd, latwe poruszanie się po mieście i brak potrzeby ciaglego przemieszczania się.",
-          "Dlatego często lepiej wypada kierunek wystarczajaco tani, ale prostszy i bardziej przewidywalny.",
+          "Nie zawsze wygrywa najniższa cena lotu. W weekendowych wyjazdach liczy się też wygodny dojazd, łatwe poruszanie się po mieście i brak potrzeby ciągłego przemieszczania się.",
+          "Dlatego często lepiej wypada kierunek wystarczająco tani, ale prostszy i bardziej przewidywalny.",
         ],
       },
       {
-        title: "Jak nie zepsuc sobie krótkiego wyjazdu",
+        title: "Jak nie zepsuć sobie krótkiego wyjazdu",
         paragraphs: [
-          "Najczestszy blad to ladowanie zbyt wielu atrakcji do 48 godzin. Taki wyjazd powinien zostawic przestrzen na jedzenie, spacer i oddech, inaczej nawet dobry kierunek zaczyna meczyc.",
+          "Najczęstszy błąd to lądowanie zbyt wielu atrakcji do 48 godzin. Taki wyjazd powinien zostawić przestrzeń na jedzenie, spacer i oddech, inaczej nawet dobry kierunek zaczyna męczyć.",
         ],
       },
       {
         title: "Dla kogo taki scenariusz działa najlepiej",
         paragraphs: [
-          "To idealna opcja dla par, znajomych i osób, które chcą wyjechac bez brania długiego urlopu.",
+          "To idealna opcja dla par, znajomych i osób, które chcą wyjechać bez brania długiego urlopu.",
         ],
       },
     ],
@@ -910,12 +910,12 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Jaki budżet ma sens na tani city break?",
         answer:
-          "Najczęściej od 1500 do 2500 zl za cały wyjazd, zalezne od kierunku, terminu i standardu noclegu. Najważniejszy jest jednak stosunek kosztu do wygody.",
+          "Najczęściej od 1500 do 2500 zł za cały wyjazd, zależne od kierunku, terminu i standardu noclegu. Najważniejszy jest jednak stosunek kosztu do wygody.",
       },
       {
-        question: "Czy na weekend lepiej wybierać Poludnie Europy czy kierunki blizsze Polsce?",
+        question: "Czy na weekend lepiej wybierać Południe Europy czy kierunki bliższe Polsce?",
         answer:
-          "Przy bardzo krótkim formacie zwykle lepiej wypadają kierunki z krótszym lotem, chyba ze mocno zależy Ci na pogodzie i akceptujesz dłuższy dojazd.",
+          "Przy bardzo krótkim formacie zwykle lepiej wypadają kierunki z krótszym lotem, chyba że mocno zależy Ci na pogodzie i akceptujesz dłuższy dojazd.",
       },
     ],
   },
@@ -925,29 +925,29 @@ const editorialArticles: EditorialArticle[] = [
     description:
       "Praktyczny wybór kierunków na 4-dniowy wyjazd z Polski z naciskiem na sensowny balans zwiedzania, komfortu i budżetu.",
     excerpt:
-      "Cztery dni to jeden z najlepszych formatow na miasto albo lekki kierunek z plażą i zwiedzaniem.",
+      "Cztery dni to jeden z najlepszych formatów na miasto albo lekki kierunek z plażą i zwiedzaniem.",
     hero:
-      "4 dni to wystarczajaco dużo, żeby poczuć kierunek, ale nadal na tyle krotko, ze trzeba dobrze wybierać logistyke i charakter miasta.",
+      "4 dni to wystarczająco dużo, żeby poczuć kierunek, ale nadal na tyle krótko, że trzeba dobrze wybierać logistykę i charakter miasta.",
     plannerPrompt:
-      "Najlepszy kierunek na 4 dni z Polski, budżet do 2500 zl, zwiedzanie i dobry klimat miasta.",
+      "Najlepszy kierunek na 4 dni z Polski, budżet do 2500 zł, zwiedzanie i dobry klimat miasta.",
     categorySlugs: ["city-breaki", "przewodniki"],
     destinationSlugs: ["lisbon-portugal", "rome-italy", "athens-greece", "barcelona-spain", "budapest-hungary"],
     practicalBullets: [
       "4 dni to bardzo dobry format na jedno miasto z 1-2 dodatkowymi strefami.",
-      "Najlepiej wybierać kierunki, które nie zmuszaja do wielu przesiadek i dalekich transferow.",
-      "W tym formacie bardziej oplaca się skupic na jakości planu niż na odhaczaniu wszystkiego.",
+      "Najlepiej wybierać kierunki, które nie zmuszają do wielu przesiadek i dalekich transferów.",
+      "W tym formacie bardziej opłaca się skupić na jakości planu niż na odhaczaniu wszystkiego.",
     ],
     sections: [
       {
         title: "Dlaczego 4 dni to tak dobry format",
         paragraphs: [
-          "To jeden z najbardziej praktycznych układow dla polskiego odbiorcy. Pozwala zobaczyć dużo więcej niż weekend, ale nie wymaga jeszcze pełnych wakacji ani wysokiego budżetu.",
+          "To jeden z najbardziej praktycznych układów dla polskiego odbiorcy. Pozwala zobaczyć dużo więcej niż weekend, ale nie wymaga jeszcze pełnych wakacji ani wysokiego budżetu.",
         ],
       },
       {
         title: "Jak wybierać miasto na 4 dni",
         paragraphs: [
-          "Szukaj miejsc, które mają mocne centrum, kilka dzielnic z roznym klimatem i dobry dostęp z lotniska. Wlasnie takie kierunki najczęściej zostawiają najlepsze wrażenie po krótkim wyjeździe.",
+          "Szukaj miejsc, które mają mocne centrum, kilka dzielnic z różnym klimatem i dobry dostęp z lotniska. Właśnie takie kierunki najczęściej zostawiają najlepsze wrażenie po krótkim wyjeździe.",
         ],
       },
     ],
@@ -955,57 +955,57 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy 4 dni wystarcza na Barcelona albo Rzym?",
         answer:
-          "Tak, jeśli plan jest dobrze ustawiony i nie probujesz zobaczyć wszystkiego naraz. To właśnie jeden z najczestszych i najlepszych formatow dla tych kierunków.",
+          "Tak, jeśli plan jest dobrze ustawiony i nie próbujesz zobaczyć wszystkiego naraz. To właśnie jeden z najczęstszych i najlepszych formatów dla tych kierunków.",
       },
       {
         question: "Czy lepiej wybrać jeden kierunek czy łączyć dwa miasta?",
         answer:
-          "Przy 4 dniach prawie zawsze lepiej wygrywa jeden kierunek. Tylko wtedy masz szanse na wyjazd, który jest wygodny i daje prawdziwe wrażenie miejsca.",
+          "Przy 4 dniach prawie zawsze lepiej wygrywa jeden kierunek. Tylko wtedy masz szansę na wyjazd, który jest wygodny i daje prawdziwe wrażenie miejsca.",
       },
     ],
   },
   {
     slug: "gdzie-poleciec-do-2000-zl",
-    title: "Gdzie poleciec do 2000 zl",
+    title: "Gdzie polecieć do 2000 zł",
     description:
-      "Kierunki, które mają realna szanse zmiescic się w budżecie do 2000 zl, szczególnie przy krótszych formatach wyjazdu.",
+      "Kierunki, które mają realną szansę zmieścić się w budżecie do 2000 zł, szczególnie przy krótszych formatach wyjazdu.",
     excerpt:
-      "To temat dla osób, które szukają konkretu: jaki kierunek ma jeszcze sens, gdy budżet jest wyraznie ograniczony.",
+      "To temat dla osób, które szukają konkretu: jaki kierunek ma jeszcze sens, gdy budżet jest wyraźnie ograniczony.",
     hero:
-      "Budżet do 2000 zl wciąż pozwala zaplanować sensowny wyjazd, ale wymaga lepszego filtrowania kierunku i unikania miejsc, które na starcie są po prostu zbyt drogie.",
+      "Budżet do 2000 zł wciąż pozwala zaplanować sensowny wyjazd, ale wymaga lepszego filtrowania kierunku i unikania miejsc, które na starcie są po prostu zbyt drogie.",
     plannerPrompt:
-      "Gdzie poleciec do 2000 zl z Polski, 3-4 dni, najlepiej dobre jedzenie i zwiedzanie.",
+      "Gdzie polecieć do 2000 zł z Polski, 3-4 dni, najlepiej dobre jedzenie i zwiedzanie.",
     categorySlugs: ["tanie-podróże", "city-breaki"],
     destinationSlugs: ["budapest-hungary", "prague-czechia", "athens-greece", "malaga-spain"],
     practicalBullets: [
-      "Przy takim budżecie wybieraj krótsze wyjazdy i mocno patrz na lot plus nocleg, nie tylko na sama destynacje.",
-      "Najlepiej działaja miasta o mocnym centrum i niewielkiej potrzebie dodatkowych przejazdow.",
+      "Przy takim budżecie wybieraj krótsze wyjazdy i mocno patrz na lot plus nocleg, nie tylko na samą destynację.",
+      "Najlepiej działają miasta o mocnym centrum i niewielkiej potrzebie dodatkowych przejazdów.",
       "Wynik ma być sensowny, a nie ekstremalnie tani kosztem komfortu.",
     ],
     sections: [
       {
-        title: "Co naprawde miesci się w tym budżecie",
+        title: "Co naprawdę mieści się w tym budżecie",
         paragraphs: [
-          "Najłatwiej zmiescic się przy 2-4 dniach i kierunkach o średnim lub niskim koscie na miejscu. W droższych stolicach taki budżet szybko robi się zbyt ciasny.",
+          "Najłatwiej zmieścić się przy 2-4 dniach i kierunkach o średnim lub niskim koszcie na miejscu. W droższych stolicach taki budżet szybko robi się zbyt ciasny.",
         ],
       },
       {
         title: "Jak uniknąć pozornie taniego wyjazdu",
         paragraphs: [
-          "Niski lot i bardzo słaby nocleg daleko od centrum rzadko dają dobry efekt. Warto patrzec na całość: wygodę, czas i jakość pobytu, nie tylko sama cyfrę.",
+          "Niski lot i bardzo słaby nocleg daleko od centrum rzadko dają dobry efekt. Warto patrzeć na całość: wygodę, czas i jakość pobytu, nie tylko samą cyfrę.",
         ],
       },
     ],
     faq: [
       {
-        question: "Czy 2000 zl to budżet na osóbe czy za cały wyjazd?",
+        question: "Czy 2000 zł to budżet na osobę czy za cały wyjazd?",
         answer:
           "Najczęściej takie frazy są rozumiane jako cały budżet scenariusza planowania.",
       },
       {
-        question: "Czy w tym budżecie lepiej wybierać Europe Srodkowa?",
+        question: "Czy w tym budżecie lepiej wybierać Europę Środkową?",
         answer:
-          "Często tak, bo skraca lot i poprawia stosunek ceny do czasu na miejscu. Ale przy dobrym terminie można czasem zmiescic też poludniowe kierunki.",
+          "Często tak, bo skraca lot i poprawia stosunek ceny do czasu na miejscu. Ale przy dobrym terminie można czasem zmieścić też południowe kierunki.",
       },
     ],
   },
@@ -1013,9 +1013,9 @@ const editorialArticles: EditorialArticle[] = [
     slug: "gdzie-na-weekend-we-dwoje",
     title: "Gdzie na weekend we dwoje",
     description:
-      "Pomysly na city break i krótkie wyjazdy dla par, z naciskiem na klimat miejsca, tempo dnia i komfort wyjazdu.",
+      "Pomysły na city break i krótkie wyjazdy dla par, z naciskiem na klimat miejsca, tempo dnia i komfort wyjazdu.",
     excerpt:
-      "Dobre kierunki dla par to nie zawsze najglosniejsze miasta. Liczy się klimat, spacery, jedzenie i sensowny rytm pobytu.",
+      "Dobre kierunki dla par to nie zawsze najgłośniejsze miasta. Liczy się klimat, spacery, jedzenie i sensowny rytm pobytu.",
     hero:
       "Weekend we dwoje powinien być prosty do zaplanowania i mieć wyraźny charakter: nastrojowe dzielnice, dobra gastronomia, spacerowy rytm i realny czas dla siebie.",
     plannerPrompt:
@@ -1023,29 +1023,29 @@ const editorialArticles: EditorialArticle[] = [
     categorySlugs: ["weekendowe-wyjazdy", "city-breaki"],
     destinationSlugs: ["budapest-hungary", "lisbon-portugal", "malaga-spain", "valletta-malta"],
     practicalBullets: [
-      "Na wyjazd dla par lepiej działaja miasta z dobrym rytmem spacerowym niż kierunki wymagające ciaglego przemieszczania się.",
-      "Wieczorne dzielnice, punkty widokowe i dobra baza noclegowa robia większa roznice niż przesadnie dluga lista atrakcji.",
-      "Warto pilnować lotu powrótnego, żeby nie zepsuc ostatniego dnia.",
+      "Na wyjazd dla par lepiej działają miasta z dobrym rytmem spacerowym niż kierunki wymagające ciągłego przemieszczania się.",
+      "Wieczorne dzielnice, punkty widokowe i dobra baza noclegowa robią większą różnicę niż przesadnie długa lista atrakcji.",
+      "Warto pilnować lotu powrotnego, żeby nie zepsuć ostatniego dnia.",
     ],
     sections: [
       {
         title: "Czego najczęściej szukają pary",
         paragraphs: [
-          "Nie chodzi tylko o romantycznosc. Dla wielu osób liczy się wygoda wyjazdu, dobra kuchnia, spacerowy klimat i poczucie, ze miasto nie wymusza ciaglego tempa.",
+          "Nie chodzi tylko o romantyczność. Dla wielu osób liczy się wygoda wyjazdu, dobra kuchnia, spacerowy klimat i poczucie, że miasto nie wymusza ciągłego tempa.",
         ],
       },
       {
         title: "Jak wybrać kierunek pod taki wyjazd",
         paragraphs: [
-          "Warto stawiac na miasta, które dobrze działaja już od pierwszego więczóru. Jeśli po przylocie możesz od razu wejsc w klimat centrum, promenady lub dzielnicy z restauracjami, to znaczy, ze kierunek pracuje na Twója korzysc.",
+          "Warto stawiać na miasta, które dobrze działają już od pierwszego wieczoru. Jeśli po przylocie możesz od razu wejść w klimat centrum, promenady lub dzielnicy z restauracjami, to znaczy, że kierunek pracuje na Twoją korzyść.",
         ],
       },
     ],
     faq: [
       {
-        question: "Czy lepszy bedzie kierunek plażowy czy miejski?",
+        question: "Czy lepszy będzie kierunek plażowy czy miejski?",
         answer:
-          "To zależy od pory roku i oczekiwan. Na krótki weekend często lepiej wypada miasto z miejscem na spacer i dobra kolacje niż kierunek stricte wakacyjny.",
+          "To zależy od pory roku i oczekiwań. Na krótki weekend często lepiej wypada miasto z miejscem na spacer i dobrą kolację niż kierunek stricte wakacyjny.",
       },
       {
         question: "Ile dni planować na weekend we dwoje?",
@@ -1059,31 +1059,31 @@ const editorialArticles: EditorialArticle[] = [
     draft: true,
     title: "Najlepsze kierunki na krótki urlop",
     description:
-      "Wybór kierunków na 4-7 dni, gdy chcesz czegos więcej niż weekend, ale bez planowania dużych wakacji.",
+      "Wybór kierunków na 4-7 dni, gdy chcesz czegoś więcej niż weekend, ale bez planowania dużych wakacji.",
     excerpt:
-      "Krotki urlop powinien łączyć wygodę lotu, sensowny rytm dnia i kierunek, który daje dosc atrakcji bez chaosu.",
+      "Krótki urlop powinien łączyć wygodę lotu, sensowny rytm dnia i kierunek, który daje dość atrakcji bez chaosu.",
     hero:
-      "Najlepsze kierunki na krótki urlop to te, które nie wymagają duzej logistyki, a jednocześnie dają realne odciecie od codzieńnosci.",
+      "Najlepsze kierunki na krótki urlop to te, które nie wymagają dużej logistyki, a jednocześnie dają realne odcięcie od codzienności.",
     plannerPrompt:
-      "Szukam kierunku na krótki urlop 5-6 dni, ciepło albo miejski klimat, z Polski, budżet do 3000 zl.",
+      "Szukam kierunku na krótki urlop 5-6 dni, ciepło albo miejski klimat, z Polski, budżet do 3000 zł.",
     categorySlugs: ["przewodniki", "ciepłe-kierunki"],
     destinationSlugs: ["malaga-spain", "athens-greece", "larnaca-cyprus", "funchal-portugal", "antalya-turkey"],
     practicalBullets: [
       "W tym formacie szczególnie liczy się balans czasu lotu do czasu pobytu.",
       "Najlepiej wybierać kierunki, które dają więcej niż jedna rzecz: na przykład plaże i miasto albo naturę i spokój.",
-      "Dobrze jest mieć jeden główny plan dnia i sporo luzu dookola niego.",
+      "Dobrze jest mieć jeden główny plan dnia i sporo luzu dookoła niego.",
     ],
     sections: [
       {
         title: "Kiedy krótki urlop wygrywa z klasycznym city breakiem",
         paragraphs: [
-          "Wtedy, gdy chcesz nie tylko zobaczyć miasto, ale też odpocząć. 5-6 dni pozwala lepiej rozłożyć wyjazd i nie zamienia całego pobytu w ciagle przejazdy i odhaczanie atrakcji.",
+          "Wtedy, gdy chcesz nie tylko zobaczyć miasto, ale też odpocząć. 5-6 dni pozwala lepiej rozłożyć wyjazd i nie zamienia całego pobytu w ciągłe przejazdy i odhaczanie atrakcji.",
         ],
       },
       {
-        title: "Jak budowac ranking takich kierunków",
+        title: "Jak budować ranking takich kierunków",
         paragraphs: [
-          "Najmocniej powinny punktówac kierunki z dobrym dojazdem, przewidywalna pogoda i wysoka szansa, ze już pierwszy dzień bedzie przyjemny, a nie tylko organizacyjny.",
+          "Najmocniej powinny punktować kierunki z dobrym dojazdem, przewidywalna pogoda i wysoka szansa, że już pierwszy dzień będzie przyjemny, a nie tylko organizacyjny.",
         ],
       },
     ],
@@ -1091,12 +1091,12 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy 5 dni to już wakacje czy jeszcze city break?",
         answer:
-          "To format pomiedzy. Wlasnie dlatego jest tak ciekawy treściowo i produktowo: pozwala złapać i miejski klimat, i chwilę odpoczynku.",
+          "To format pomiędzy. Właśnie dlatego jest tak ciekawy treściowo i produktowo: pozwala złapać i miejski klimat, i chwilę odpoczynku.",
       },
       {
         question: "Czy taki wyjazd musi być drogi?",
         answer:
-          "Nie. Przy dobrym kierunku i rozsądnym terminie nadal da się utrzymać koszt na sensownym poziomie, zwlaszcza jeśli nie celujesz w najdrozsze stolice.",
+          "Nie. Przy dobrym kierunku i rozsądnym terminie nadal da się utrzymać koszt na sensownym poziomie, zwłaszcza jeśli nie celujesz w najdroższe stolice.",
       },
     ],
   },
@@ -1104,37 +1104,37 @@ const editorialArticles: EditorialArticle[] = [
     slug: "tanie-kierunki-z-polski",
     title: "Tanie kierunki z Polski",
     description:
-      "Kierunki, które dobrze wypadają dla osób startujacych z Polski i szukających realnej relacji ceny do jakości.",
+      "Kierunki, które dobrze wypadają dla osób startujących z Polski i szukających realnej relacji ceny do jakości.",
     excerpt:
       "To nie tylko kwestia samego lotu. Liczy się też to, ile kosztuje pobyt na miejscu i czy kierunek dobrze wypada przy krótkim czasie.",
     hero:
       "Najciekawsze tanie kierunki z Polski to te, które nie tylko mają dobry bilet, ale jeszcze pozwalają sensownie spędzić czas bez przepalania budżetu na miejscu.",
     plannerPrompt:
-      "Tanie kierunki z Polski, 4 dni, budżet do 2200 zl, zwiedzanie i dobry dojazd.",
+      "Tanie kierunki z Polski, 4 dni, budżet do 2200 zł, zwiedzanie i dobry dojazd.",
     categorySlugs: ["tanie-podróże", "przewodniki"],
     destinationSlugs: ["budapest-hungary", "prague-czechia", "istanbul-turkey", "athens-greece", "malaga-spain"],
     practicalBullets: [
       "Nie patrz tylko na stolice. Czasem lepiej wypada miasto o słabiej rozpoznawalnej marce, ale lepszym budżecie.",
       "Przy tanim kierunku bardzo dużo daje dobra lokalizacja noclegu i prosty plan dnia.",
-      "Najmocniej wygrywają miejsca, które łatwo obsluzyc komunikacja i spacerem.",
+      "Najmocniej wygrywają miejsca, które łatwo obsłużyć komunikacja i spacerem.",
     ],
     sections: [
       {
         title: "Jak rozumieć tani kierunek",
         paragraphs: [
-          "To nie musi być absolutnie najtańsza opcja. W praktyce lepiej szukać miejsc, które są uczciwie opłacalne: lot, nocleg, jedzenie i prosty plan w jednej, sensownej całośći.",
+          "To nie musi być absolutnie najtańsza opcja. W praktyce lepiej szukać miejsc, które są uczciwie opłacalne: lot, nocleg, jedzenie i prosty plan w jednej, sensownej całości.",
         ],
       },
       {
         title: "Co najczęściej psuje budżet",
         paragraphs: [
-          "Slaby nocleg daleko od centrum, drogie transfery i zbyt długi lot jak na format wyjazdu. Dlatego właśnie potrzebny jest ranking oparty o cały scenariusz, a nie tylko jedna cene.",
+          "Słaby nocleg daleko od centrum, drogie transfery i zbyt długi lot jak na format wyjazdu. Dlatego właśnie potrzebny jest ranking oparty o cały scenariusz, a nie tylko jedną cenę.",
         ],
       },
     ],
     faq: [
       {
-        question: "Czy tani kierunek to zawsze Europa Srodkowa?",
+        question: "Czy tani kierunek to zawsze Europa Środkowa?",
         answer:
           "Nie zawsze, ale często tak bywa przy bardzo ograniczonych budżetach. W praktyce wiele zależy od terminu i aktualnych lotów z Polski.",
       },
@@ -1145,11 +1145,11 @@ const editorialArticles: EditorialArticle[] = [
     draft: true,
     title: "Kierunki z plażą i zwiedzaniem",
     description:
-      "Najlepsze miejsca dla osób, które nie chcą wybierać miedzy relaksem a miejskim klimatem.",
+      "Najlepsze miejsca dla osób, które nie chcą wybierać między relaksem a miejskim klimatem.",
     excerpt:
       "To bardzo mocny typ wyjazdu: rano miasto lub atrakcje, po południu woda, promenada i spokojniejszy rytm.",
     hero:
-      "Wlasnie takie kierunki najczęściej wygrywają w praktyce: dają i ladne miasto, i prawdziwy oddech przy wodzie. To wygodne, komercyjnie mocne i bardzo zrozumiale dla odbiorcy.",
+      "Właśnie takie kierunki najczęściej wygrywają w praktyce: dają i ładne miasto, i prawdziwy oddech przy wodzie. To wygodne, komercyjnie mocne i bardzo zrozumiałe dla odbiorcy.",
     plannerPrompt:
       "Szukam kierunku z plażą i zwiedzaniem, 4-5 dni, z Polski, słońce i miasto w jednym.",
     categorySlugs: ["ciepłe-kierunki", "city-breaki"],
@@ -1163,13 +1163,13 @@ const editorialArticles: EditorialArticle[] = [
       {
         title: "Dlaczego ten typ wyjazdu tak dobrze się sprzedaje",
         paragraphs: [
-          "Bo rozwiazuje bardzo czesty dylemat. Wiele osób nie chce wybierać miedzy odpoczynkiem a czyms do zrobienia. Kierunki z plażą i zwiedzaniem odpowiadają na obie potrzeby naraz.",
+          "Bo rozwiązuje bardzo częsty dylemat. Wiele osób nie chce wybierać między odpoczynkiem a czymś do zrobienia. Kierunki z plażą i zwiedzaniem odpowiadają na obie potrzeby naraz.",
         ],
       },
       {
-        title: "Jak wybierać najlepsza opcje",
+        title: "Jak wybierać najlepszą opcję",
         paragraphs: [
-          "Warto patrzec na to, czy centrum i plaża są blisko siebie oraz czy miasto ma cos więcej niż tylko dobra pogodę. Im mocniejszy lokalny charakter i gastronomia, tym lepszy efekt dla całego wyjazdu.",
+          "Warto patrzeć na to, czy centrum i plaża są blisko siebie oraz czy miasto ma coś więcej niż tylko dobra pogodę. Im mocniejszy lokalny charakter i gastronomia, tym lepszy efekt dla całego wyjazdu.",
         ],
       },
     ],
@@ -1177,45 +1177,45 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy taki kierunek nadaje się na 3 dni?",
         answer:
-          "Tak, ale najlepiej wypada przy 4-5 dniach. Wtedy masz realna szanse połączyć obie potrzeby bez poczucia, ze wszystko robisz w biegu.",
+          "Tak, ale najlepiej wypada przy 4-5 dniach. Wtedy masz realną szansę połączyć obie potrzeby bez poczucia, że wszystko robisz w biegu.",
       },
       {
         question: "Czy to dobry scenariusz dla osób niezdecydowanych?",
         answer:
-          "Tak, bo to jedna z najczestszych kombinacji preferencji. Wlasnie taki opis bardzo dobrze nadaje się do wpisania naturalnym jezykiem w plannerze.",
+          "Tak, bo to jedna z najczęstszych kombinacji preferencji. Właśnie taki opis bardzo dobrze nadaje się do wpisania naturalnym językiem w plannerze.",
       },
     ],
   },
   {
     slug: "pomysły-na-city-break-w-europie",
     draft: true,
-    title: "Pomysly na city break w Europie",
+    title: "Pomysły na city break w Europie",
     description:
       "Lista najmocniejszych kierunków w Europie dla osób szukających konkretu: co wybrać, dlaczego i dla jakiego stylu wyjazdu.",
     excerpt:
-      "To przewodnik dla osób, które chcą szybko zrozumieć roznice miedzy klasycznymi kierunkami i dobrac miasto do swojego stylu.",
+      "To przewodnik dla osób, które chcą szybko zrozumieć różnice między klasycznymi kierunkami i dobrać miasto do swojego stylu.",
     hero:
-      "Nie każdy city break jest taki sam. Jedne kierunki wygrywają dla par, inne dla szybkiego zwiedzania, a jeszcze inne dla połączenia miasta i relaksu. Wlasnie to warto pokazać czytelnikowi.",
+      "Nie każdy city break jest taki sam. Jedne kierunki wygrywają dla par, inne dla szybkiego zwiedzania, a jeszcze inne dla połączenia miasta i relaksu. Właśnie to warto pokazać czytelnikowi.",
     plannerPrompt:
-      "Pomoz wybrać city break w Europie na 4 dni, budżet do 2500 zl, dobry klimat miejsca i zwiedzanie.",
+      "Pomóż wybrać city break w Europie na 4 dni, budżet do 2500 zł, dobry klimat miejsca i zwiedzanie.",
     categorySlugs: ["city-breaki", "przewodniki"],
     destinationSlugs: ["rome-italy", "barcelona-spain", "lisbon-portugal", "budapest-hungary", "prague-czechia"],
     practicalBullets: [
       "Najpierw wybierz format wyjazdu: klasyczne zwiedzanie, para, jedzenie, plaża plus miasto lub budżetowy weekend.",
       "Dobre miasto na city break powinno mieć mocny pierwszy dzień i proste centrum.",
-      "Lepiej mieć 3 swietne miejsca na planie niż 20 losowych punktów.",
+      "Lepiej mieć 3 świetne miejsca na planie niż 20 losowych punktów.",
     ],
     sections: [
       {
         title: "Jak nie wybierać miasta tylko po marce",
         paragraphs: [
-          "Wiele osób zaczyna od najbardziej znanych nazw, ale nie zawsze to one najlepiej pasują do celu wyjazdu. Czasem mniejsze lub tańsze miasto daje wyraznie lepszy efekt.",
+          "Wiele osób zaczyna od najbardziej znanych nazw, ale nie zawsze to one najlepiej pasują do celu wyjazdu. Czasem mniejsze lub tańsze miasto daje wyraźnie lepszy efekt.",
         ],
       },
       {
-        title: "Jak zbudować porównańie kierunków",
+        title: "Jak zbudować porównanie kierunków",
         paragraphs: [
-          "Najwygodniej patrzec na pięć rzeczy: czas lotu, koszt pobytu, klimat miasta, styl wyjazdu i liczbę miejsc, które rzeczywiście warto zobaczyć w tak krótkim czasie.",
+          "Najwygodniej patrzeć na pięć rzeczy: czas lotu, koszt pobytu, klimat miasta, styl wyjazdu i liczbę miejsc, które rzeczywiście warto zobaczyć w tak krótkim czasie.",
         ],
       },
     ],
@@ -1226,33 +1226,33 @@ const editorialArticles: EditorialArticle[] = [
           "To zależy od potrzeb. Znane miasta są prostsze na pierwszy wyjazd, ale bardziej niszowe kierunki często wygrywają kosztem i tempem pobytu.",
       },
       {
-        question: "Czy city break zawsze musi oznaczac duże miasto?",
+        question: "Czy city break zawsze musi oznaczać duże miasto?",
         answer:
-          "Nie. Najważniejsze jest to, czy miejsce daje miejski rytm, czytelny plan i wystarczajaco dużo treści na krótki wyjazd.",
+          "Nie. Najważniejsze jest to, czy miejsce daje miejski rytm, czytelny plan i wystarczająco dużo treści na krótki wyjazd.",
       },
     ],
   },
   {
     slug: "gdzie-poleciec-jesienia-z-polski",
-    title: "Gdzie poleciec jesienią z Polski",
+    title: "Gdzie polecieć jesienią z Polski",
     description:
-      "Jesieńne kierunki z Polski z naciskiem na pogodę, balans ceny do komfortu i praktyczny format 4-7 dni.",
+      "Jesienne kierunki z Polski z naciskiem na pogodę, balans ceny do komfortu i praktyczny format 4-7 dni.",
     excerpt:
-      "Jesień to jeden z najlepszych momentow na wyjazdy: mniej tłoku, często lepsze ceny i bardziej komfortowa pogoda w wielu kierunkach.",
+      "Jesień to jeden z najlepszych momentów na wyjazdy: mniej tłoku, często lepsze ceny i bardziej komfortowa pogoda w wielu kierunkach.",
     plannerPrompt:
-      "Gdzie poleciec jesienią z Polski, 5 dni, najlepiej ciepło i bez bardzo wysokiego budżetu.",
+      "Gdzie polecieć jesienią z Polski, 5 dni, najlepiej ciepło i bez bardzo wysokiego budżetu.",
     categorySlugs: ["ciepłe-kierunki", "przewodniki"],
     destinationSlugs: ["malaga-spain", "lisbon-portugal", "valletta-malta", "marrakesh-morocco", "funchal-portugal"],
     practicalBullets: [
-      "Jesieńia warto grac na kierunki, które nadal mają pogodę, ale nie są już w szcżycie sezonu.",
-      "To dobry czas na Malaga, Malte, Lizbone, Madere i część kierunków w Maroku.",
-      "Przy jesieńnych wyjazdach szczególnie dobrze pracuje mix miasta i relaksu.",
+      "Jesienią warto grać na kierunki, które nadal mają pogodę, ale nie są już w szczycie sezonu.",
+      "To dobry czas na Malagę, Maltę, Lizbonę, Maderę i część kierunków w Maroku.",
+      "Przy jesiennych wyjazdach szczególnie dobrze pracuje mix miasta i relaksu.",
     ],
     sections: [
       {
-        title: "Dlaczego jesień daje przewage",
+        title: "Dlaczego jesień daje przewagę",
         paragraphs: [
-          "Po wakacjach wiele kierunków nadal ma bardzo dobra pogodę, ale mniejszy tłok i lepsze warunki do spokojnego zwiedzania. To bardzo mocny argument dla polskiego odbiorcy.",
+          "Po wakacjach wiele kierunków nadal ma bardzo dobrą pogodę, ale mniejszy tłok i lepsze warunki do spokojnego zwiedzania. To bardzo mocny argument dla polskiego odbiorcy.",
         ],
       },
     ],
@@ -1260,7 +1260,7 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy jesień to dobry moment na ciepły kierunek?",
         answer:
-          "Tak, bardzo często lepszy niż srodek lata, bo daje lepsza pogodę do spacerow i mniejszy tłok w najpopularniejszych miejscach.",
+          "Tak, bardzo często lepszy niż środek lata, bo daje lepszą pogodę do spacerów i mniejszy tłok w najpopularniejszych miejscach.",
       },
       {
         question: "Czy jesień lepiej sprawdza się na city break czy krótkie wakacje?",
@@ -1271,75 +1271,75 @@ const editorialArticles: EditorialArticle[] = [
   },
   {
     slug: "gdzie-poleciec-zima-z-polski",
-    title: "Gdzie poleciec zima z Polski",
+    title: "Gdzie polecieć zimą z Polski",
     description:
       "Najciekawsze kierunki na zimowy wyjazd z Polski, od słonecznych opcji po klimatyczne miasta na krótki urlop.",
     excerpt:
-      "Zima nie musi oznaczac tylko jarmarkow i grubyćh kurtek. Dla wielu użytkowników to moment szukania słońca i prostego resetu.",
+      "Zima nie musi oznaczać tylko jarmarków i grubych kurtek. Dla wielu użytkowników to moment szukania słońca i prostego resetu.",
     plannerPrompt:
-      "Gdzie poleciec zima z Polski, najlepiej ciepło, 5 dni, budżet do 3000 zl, bez komplikacji.",
+      "Gdzie polecieć zimą z Polski, najlepiej ciepło, 5 dni, budżet do 3000 zł, bez komplikacji.",
     categorySlugs: ["ciepłe-kierunki", "przewodniki"],
     destinationSlugs: ["las-palmas-spain", "marrakesh-morocco", "agadir-morocco", "malaga-spain", "funchal-portugal"],
     practicalBullets: [
       "Zima najmocniej premiuje kierunki, które mają przewidywalna pogodę i sensowny czas lotu.",
-      "To dobry moment na Kanary, poludnie Hiszpanii, Madeire i część Maroka.",
-      "Wynik powinien jasno pokazywac kompromis: pogoda kontra długość lotu i budżet.",
+      "To dobry moment na Kanary, południe Hiszpanii, Maderę i część Maroka.",
+      "Wynik powinien jasno pokazywać kompromis: pogoda kontra długość lotu i budżet.",
     ],
     sections: [
       {
-        title: "Czego szuka użytkownik zima",
+        title: "Czego szuka użytkownik zimą",
         paragraphs: [
-          "Najczęściej nie tylko samego wyjazdu, ale odcięcia od pogody i rutyny. Dlatego kierunki zimowe trzeba opisywać nie tylko przez temperaturę, ale też przez prostote całego scenariusza.",
+          "Najczęściej nie tylko samego wyjazdu, ale odcięcia od pogody i rutyny. Dlatego kierunki zimowe trzeba opisywać nie tylko przez temperaturę, ale też przez prostotę całego scenariusza.",
         ],
       },
       {
-        title: "Jak porownywac zimowe opcje",
+        title: "Jak porównywać zimowe opcje",
         paragraphs: [
-          "Warto uczciwie pokazać, ze niektóre miejsca mają lepsza pogodę, ale są dalej lub drozsze. Inne są bliżej, ale dają tylko łagodniejszy klimat, a nie pełne lato.",
+          "Warto uczciwie pokazać, że niektóre miejsca mają lepszą pogodę, ale są dalej lub droższe. Inne są bliżej, ale dają tylko łagodniejszy klimat, a nie pełne lato.",
         ],
       },
     ],
     faq: [
       {
-        question: "Czy zima da się poleciec w ciepłe miejsce bez bardzo dużego budżetu?",
+        question: "Czy zimą da się polecieć w ciepłe miejsce bez bardzo dużego budżetu?",
         answer:
-          "Tak, ale trzeba dobrze dobrac kierunek i termin. Najlepiej szukać miejsc, które mają przewidywalna pogodę i nie są skrajnie daleko od Polski.",
+          "Tak, ale trzeba dobrze dobrać kierunek i termin. Najlepiej szukać miejsc, które mają przewidywalna pogodę i nie są skrajnie daleko od Polski.",
       },
       {
         question: "Czy Malaga to dobry zimowy kierunek?",
         answer:
-          "Tak, jeśli szukasz łagodnej zimy i city breaku z oddechem. Jeśli oczekujesz pełnego plażowego lata, lepiej spojrzec na Kanary lub inne ciepłejsze opcje.",
+          "Tak, jeśli szukasz łagodnej zimy i city breaku z oddechem. Jeśli oczekujesz pełnego plażowego lata, lepiej spojrzeć na Kanary lub inne cieplejsze opcje.",
       },
     ],
   },
   {
     slug: "krótkie-wakacje-w-europie",
     draft: true,
-    title: "Krotkie wakacje w Europie",
+    title: "Krótkie wakacje w Europie",
     description:
-      "Pomysly na 4-7 dni w Europie dla osób, które chcą wyjechac na lekki urlop bez skomplikowanej organizacji.",
+      "Pomysły na 4-7 dni w Europie dla osób, które chcą wyjechać na lekki urlop bez skomplikowanej organizacji.",
     excerpt:
-      "To wyjazdy pomiedzy city breakiem a pełnymi wakacjami: nadal wygodne, ale dające więcej odpoczynku i elastycznosci.",
+      "To wyjazdy pomiędzy city breakiem a pełnymi wakacjami: nadal wygodne, ale dające więcej odpoczynku i elastyczności.",
     hero:
-      "Krotkie wakacje w Europie to jeden z najmocniejszych formatow dla startupu travelowego. Ludzie szukają czegos szybkiego, ale nadal wartosciowego i dobrze uzasadnionego.",
+      "Krótkie wakacje w Europie to jeden z najmocniejszych formatów dla startupu travelowego. Ludzie szukają czegoś szybkiego, ale nadal wartościowego i dobrze uzasadnionego.",
     plannerPrompt:
-      "Krotkie wakacje w Europie, 5-6 dni, budżet do 3200 zl, najlepiej plaże albo ladne miasto.",
+      "Krótkie wakacje w Europie, 5-6 dni, budżet do 3200 zł, najlepiej plaże albo ładne miasto.",
     categorySlugs: ["ciepłe-kierunki", "weekendowe-wyjazdy"],
     destinationSlugs: ["valletta-malta", "larnaca-cyprus", "funchal-portugal", "malaga-spain", "athens-greece"],
     practicalBullets: [
-      "Najlepiej wybierać kierunki, które pozwalają i odpocząć, i cos zobaczyć.",
-      "Dobrze sprawdzają się miejsca z jednym wygodnym noclegiem i planem bez ciaglych zmian bazy.",
+      "Najlepiej wybierać kierunki, które pozwalają i odpocząć, i coś zobaczyć.",
+      "Dobrze sprawdzają się miejsca z jednym wygodnym noclegiem i planem bez ciągłych zmian bazy.",
       "Ten format lubi jasne komunikaty o pogodzie, budżecie i stylu wyjazdu.",
     ],
     sections: [
       {
-        title: "Czym krótkie wakacje roznia się od city breaku",
+        title: "Czym krótkie wakacje różnią się od city breaku",
         paragraphs: [
-          "Przede wszystkim tempem. To nadal wyjazd zorganizowany na krotko, ale nie musi być tak gesty od atrakcji. Warto pokazać uzytkownikowi, ze taka opcja jest bardziej do zycia niż 48 godzin gonitwy.",
+          "Przede wszystkim tempem. To nadal wyjazd zorganizowany na krótko, ale nie musi być tak gęsty od atrakcji. Warto pokazać użytkownikowi, że taka opcja jest bardziej do życia niż 48 godzin gonitwy.",
         ],
       },
       {
-        title: "Jak dobierac kierunek",
+        title: "Jak dobierać kierunek",
         paragraphs: [
           "Najlepiej szukać miejsc, które dają przynajmniej dwie mocne osie wyjazdu: na przykład morze i miasto albo natura i spokój. Wtedy taki wyjazd broni się nawet przy nieco wyższym budżecie.",
         ],
@@ -1347,14 +1347,14 @@ const editorialArticles: EditorialArticle[] = [
     ],
     faq: [
       {
-        question: "Czy 5-6 dni to nadal dobry format na Europe?",
+        question: "Czy 5-6 dni to nadal dobry format na Europę?",
         answer:
           "Tak, to bardzo dobry format. Daje dużo swobody i pozwala wybrać kierunek bardziej pod styl pobytu, a nie tylko pod sam czas dojazdu.",
       },
       {
         question: "Czy lepiej wtedy wybierać wyspy czy miasta?",
         answer:
-          "To zależy od oczekiwan. Jeśli chcesz relaksu i pogody, wyspy często wygrywają. Jeśli zależy Ci na rytmie miasta i gastronomii, lepiej sprawdzi się mocny kierunek miejski.",
+          "To zależy od oczekiwań. Jeśli chcesz relaksu i pogody, wyspy często wygrywają. Jeśli zależy Ci na rytmie miasta i gastronomii, lepiej sprawdzi się mocny kierunek miejski.",
       },
     ],
   },
@@ -1364,33 +1364,33 @@ const editorialArticles: EditorialArticle[] = [
     description:
       "Przewodnik po miastach, które najlepiej nadają się na pierwszy zagraniczny city break z Polski: proste, czytelne i bez zbędnej logistyki.",
     excerpt:
-      "Pierwszy city break powinien być latwy do ogarniecia. Najlepiej wygrywają miasta z mocnym centrum, prostym dojazdem i scenariuszem, który nie wymaga eksperckiej wiedzy.",
+      "Pierwszy city break powinien być łatwy do ogarnięcia. Najlepiej wygrywają miasta z mocnym centrum, prostym dojazdem i scenariuszem, który nie wymaga eksperckiej wiedzy.",
     plannerPrompt:
-      "Szukam pierwszego city breaku z Polski, 3-4 dni, bez skomplikowanej logistyki, budżet do 2500 zl.",
+      "Szukam pierwszego city breaku z Polski, 3-4 dni, bez skomplikowanej logistyki, budżet do 2500 zł.",
     categorySlugs: ["city-breaki", "przewodniki", "weekendowe-wyjazdy"],
     destinationSlugs: ["budapest-hungary", "prague-czechia", "rome-italy", "malaga-spain", "lisbon-portugal"],
     practicalBullets: [
       "Najpierw patrz na prosty dojazd i kompaktowe centrum.",
-      "Pierwszy wyjazd nie powinien wymagac walki z dalekimi transferami i przejazdami pomiedzy atrakcjami.",
-      "Lepiej wybrać jedno miasto z jasnym rytmem niż ambitny kierunek, który na starcie meczy logistyka.",
+      "Pierwszy wyjazd nie powinien wymagać walki z dalekimi transferami i przejazdami pomiędzy atrakcjami.",
+      "Lepiej wybrać jedno miasto z jasnym rytmem niż ambitny kierunek, który na starcie męczy logistyka.",
     ],
     sections: [
       {
-        title: "Jak rozpoznac dobry pierwszy kierunek",
+        title: "Jak rozpoznać dobry pierwszy kierunek",
         paragraphs: [
-          "Najlepiej wygrywają miasta, w których już pierwszy dzień jest przyjemny i czytelny. Po wyjsciu z lotniska powinienes szybko trafic do centrum i mieć od razu poczucie, ze wyjazd zaczal się dobrze.",
+          "Najlepiej wygrywają miasta, w których już pierwszy dzień jest przyjemny i czytelny. Po wyjściu z lotniska powinieneś szybko trafić do centrum i mieć od razu poczucie, że wyjazd zaczął się dobrze.",
           "Dlatego tak dobrze wypadają Budapeszt, Praga czy Malaga. Dają szybki efekt i nie wymagają od czytelnika zbyt wielu decyzji organizacyjnych.",
         ],
       },
       {
-        title: "Czego unikac przy pierwszym city breaku",
+        title: "Czego unikać przy pierwszym city breaku",
         paragraphs: [
-          "Nie warto zaczynac od miasta, które jest bardzo drogie, rozlegle albo wymaga wielu przesiadek. Lepiej zostawic sobie takie kierunki na pozniejszy etap, kiedy wiesz już, jaki styl wyjazdu najbardziej Ci odpowiada.",
+          "Nie warto zaczynać od miasta, które jest bardzo drogie, rozległe albo wymaga wielu przesiadek. Lepiej zostawić sobie takie kierunki na późniejszy etap, kiedy wiesz już, jaki styl wyjazdu najbardziej Ci odpowiada.",
         ],
         bullets: [
           "zbyt długiego lotu jak na 2-4 dni",
-          "noclegu daleko od centrum tylko dlatego, ze jest niższa cena",
-          "planu, który probuje zmiescic cale miasto w 48 godzin",
+          "noclegu daleko od centrum tylko dlatego, że jest niższa cena",
+          "planu, który próbuje zmieścić cale miasto w 48 godzin",
         ],
       },
     ],
@@ -1398,36 +1398,36 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy pierwszy city break musi być bardzo tani?",
         answer:
-          "Nie. Wazniejsze jest to, żeby byl prosty i wygodny. Czasem trochę wyższy budżet daje znacznie lepszy pierwszy kontakt z zagranicznym wyjazdem.",
+          "Nie. Ważniejsze jest to, żeby był prosty i wygodny. Czasem trochę wyższy budżet daje znacznie lepszy pierwszy kontakt z zagranicznym wyjazdem.",
       },
       {
-        question: "Czy lepiej zaczac od miasta czy od kierunku z plażą?",
+        question: "Czy lepiej zacząć od miasta czy od kierunku z plażą?",
         answer:
-          "Na pierwszy raz zwykle najlepiej wypada miasto albo kierunek typu plaża plus zwiedzanie, gdzie łatwo ustawic rytm dnia bez skrajnych kompromisow.",
+          "Na pierwszy raz zwykle najlepiej wypada miasto albo kierunek typu plaża plus zwiedzanie, gdzie łatwo ustawić rytm dnia bez skrajnych kompromisów.",
       },
     ],
   },
   {
     slug: "gdzie-poleciec-w-maju",
-    title: "Gdzie poleciec w maju",
+    title: "Gdzie polecieć w maju",
     description:
-      "Najlepsze kierunki na majowy wyjazd z Polski, kiedy pogoda zaczyna już mocno sprzyjac city breakom i krótkim wakacjom.",
+      "Najlepsze kierunki na majowy wyjazd z Polski, kiedy pogoda zaczyna już mocno sprzyjać city breakom i krótkim wakacjom.",
     excerpt:
-      "Maj to jeden z najlepszych miesiecy na wyjazdy. W wielu kierunkach jest już ciepło, ale nadal bez największego sezonowego tłoku.",
+      "Maj to jeden z najlepszych miesięcy na wyjazdy. W wielu kierunkach jest już ciepło, ale nadal bez największego sezonowego tłoku.",
     plannerPrompt:
-      "Gdzie poleciec w maju z Polski, 4-5 dni, najlepiej ciepło i cos do zwiedzania, budżet do 3000 zl.",
+      "Gdzie polecieć w maju z Polski, 4-5 dni, najlepiej ciepło i coś do zwiedzania, budżet do 3000 zł.",
     categorySlugs: ["ciepłe-kierunki", "przewodniki"],
     destinationSlugs: ["malaga-spain", "valencia-spain", "athens-greece", "larnaca-cyprus", "valletta-malta"],
     practicalBullets: [
-      "Maj premiuje kierunki, które mają już pogodę, ale jeszcze nie są w pełnym szcżycie sezonu.",
-      "To dobry miesiąc dla scenariuszy plaża plus miasto oraz dla łagodniejszych city breakow na południu Europy.",
-      "Warto pilnować terminu wylotu, bo okolice długich weekendow potrafią mocno zmienic dostępność i ceny.",
+      "Maj premiuje kierunki, które mają już pogodę, ale jeszcze nie są w pełnym szczycie sezonu.",
+      "To dobry miesiąc dla scenariuszy plaża plus miasto oraz dla łagodniejszych city breaków na południu Europy.",
+      "Warto pilnować terminu wylotu, bo okolice długich weekendów potrafią mocno zmienić dostępność i ceny.",
     ],
     sections: [
       {
         title: "Dlaczego maj jest tak dobry na wyjazd",
         paragraphs: [
-          "W maju wiele kierunków daje już bardzo przyjemna pogodę do spacerow, plaży i więczórnego zycia miasta. Jednoczesnie nie ma jeszcze takiego obciazenia jak w pelni lata, co poprawia komfort pobytu.",
+          "W maju wiele kierunków daje już bardzo przyjemna pogodę do spacerów, plaży i wieczornego życia miasta. Jednocześnie nie ma jeszcze takiego obciążenia jak w pełni lata, co poprawia komfort pobytu.",
         ],
       },
       {
@@ -1438,7 +1438,7 @@ const editorialArticles: EditorialArticle[] = [
         bullets: [
           "sprawdzaj nie tylko temperaturę, ale też wiatr i komfort spaceru",
           "premiuj kierunki z prostym dojazdem z lotniska",
-          "szukaj miast, które dobrze działaja już od pierwszego popołudnia",
+          "szukaj miast, które dobrze działają już od pierwszego popołudnia",
         ],
       },
     ],
@@ -1446,12 +1446,12 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy maj jest lepszy od czerwca na krótki wyjazd?",
         answer:
-          "Często tak, bo daje bardzo dobry balans pogody i tłoku. Dla wielu osób to jeden z najlepszych miesiecy na city breaki i krótkie wakacje.",
+          "Często tak, bo daje bardzo dobry balans pogody i tłoku. Dla wielu osób to jeden z najlepszych miesięcy na city breaki i krótkie wakacje.",
       },
       {
         question: "Czy w maju lepiej wybierać miasto czy kierunek plażowy?",
         answer:
-          "Oba scenariusze mają sens. Maj jest mocny właśnie dlatego, ze wiele kierunków daje wtedy i komfort zwiedzania, i pierwsze odczucie ciepłego wyjazdu.",
+          "Oba scenariusze mają sens. Maj jest mocny właśnie dlatego, że wiele kierunków daje wtedy i komfort zwiedzania, i pierwsze odczucie ciepłego wyjazdu.",
       },
     ],
   },
@@ -1459,23 +1459,23 @@ const editorialArticles: EditorialArticle[] = [
     slug: "europa-na-5-dni",
     title: "Europa na 5 dni",
     description:
-      "Najlepsze kierunki w Europie na 5-dniowy wyjazd z Polski: ani za krotko, ani jeszcze nie pełne wakacje, ale idealnie pod praktyczny reset.",
+      "Najlepsze kierunki w Europie na 5-dniowy wyjazd z Polski: ani za krótko, ani jeszcze nie pełne wakacje, ale idealnie pod praktyczny reset.",
     excerpt:
-      "Pieciodniowy wyjazd to bardzo wdzieczny format. Daje więcej swobody niż weekend, ale nadal wymaga dobrego doboru miasta lub kierunku.",
+      "Pięciodniowy wyjazd to bardzo wdzięczny format. Daje więcej swobody niż weekend, ale nadal wymaga dobrego doboru miasta lub kierunku.",
     plannerPrompt:
-      "Szukam kierunku w Europie na 5 dni, z Polski, budżet do 3200 zl, zwiedzanie albo plaża plus miasto.",
+      "Szukam kierunku w Europie na 5 dni, z Polski, budżet do 3200 zł, zwiedzanie albo plaża plus miasto.",
     categorySlugs: ["przewodniki", "ciepłe-kierunki", "city-breaki"],
     destinationSlugs: ["lisbon-portugal", "valencia-spain", "athens-greece", "valletta-malta", "funchal-portugal"],
     practicalBullets: [
-      "5 dni to dobry format na wyjazdy, które potrzebuja trochę więcej oddechu niż klasyczny city break.",
-      "Najlepiej pracuja kierunki, które nie marnuja pierwszego dnia na logistyczne zamieszanie.",
+      "5 dni to dobry format na wyjazdy, które potrzebują trochę więcej oddechu niż klasyczny city break.",
+      "Najlepiej pracują kierunki, które nie marnują pierwszego dnia na logistyczne zamieszanie.",
       "To dobry moment, by pozwolić sobie na 1-2 mocne atrakcje i nadal zachować spokojny rytm.",
     ],
     sections: [
       {
         title: "Co daje 5 dni, czego nie daje weekend",
         paragraphs: [
-          "Przede wszystkim pozwala przestać gonic. Możesz rozłożyć wyjazd na dzień przylotu, dwa mocniejsze dni zwiedzania, jeden spokojniejszy i finalny dzień bez poczucia, ze wszystko dzieje się za szybko.",
+          "Przede wszystkim pozwala przestać gonić. Możesz rozłożyć wyjazd na dzień przylotu, dwa mocniejsze dni zwiedzania, jeden spokojniejszy i finalny dzień bez poczucia, że wszystko dzieje się za szybko.",
         ],
       },
       {
@@ -1494,47 +1494,47 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy 5 dni to już dobry format na ciepły kierunek?",
         answer:
-          "Tak. To jeden z najlepszych formatow na miejsca, które łączą odpoczynek i zwiedzanie bez koniecznosci brania pełnego tygodnia urlopu.",
+          "Tak. To jeden z najlepszych formatów na miejsca, które łączą odpoczynek i zwiedzanie bez konieczności brania pełnego tygodnia urlopu.",
       },
       {
         question: "Czy na 5 dni lepiej wybrać jedno miasto czy dwa miejsca?",
         answer:
-          "W wiekszosci przypadkow nadal lepiej wygrywa jeden kierunek. Pozwala to zachować wygodę i nie psuc wyjazdu przeladowana logistyka.",
+          "W większości przypadków nadal lepiej wygrywa jeden kierunek. Pozwala to zachować wygodę i nie psuć wyjazdu przeładowana logistyka.",
       },
     ],
   },
   {
     slug: "gdzie-poleciec-latem-na-krotko",
-    title: "Gdzie poleciec latem na krotko",
+    title: "Gdzie polecieć latem na krótko",
     description:
-      "Kierunki na 3-5 dni latem, kiedy chcesz wykorzystac pogodę, ale nie budowac od razu pełnych wakacji.",
+      "Kierunki na 3-5 dni latem, kiedy chcesz wykorzystać pogodę, ale nie budować od razu pełnych wakacji.",
     excerpt:
-      "Latem wiele osób szuka nie tylko dużego urlopu, ale też krotszego wyjazdu, który daje szybki reset i poczucie prawdziwego lata.",
+      "Latem wiele osób szuka nie tylko dużego urlopu, ale też krótszego wyjazdu, który daje szybki reset i poczucie prawdziwego lata.",
     plannerPrompt:
-      "Gdzie poleciec latem na krotko z Polski, 3-5 dni, słońce, plaża albo ladne miasto, budżet do 3000 zl.",
+      "Gdzie polecieć latem na krótko z Polski, 3-5 dni, słońce, plaża albo ładne miasto, budżet do 3000 zł.",
     categorySlugs: ["ciepłe-kierunki", "weekendowe-wyjazdy", "przewodniki"],
     destinationSlugs: ["malaga-spain", "valencia-spain", "larnaca-cyprus", "valletta-malta", "las-palmas-spain"],
     practicalBullets: [
-      "Latem szczególnie liczy się to, żeby kierunek dawal efekt już przy krótkim pobyćie.",
-      "Najmocniej wygrywają miejsca, w których nie tracisz czasu na dalekie transfery i rozciagnieta logistyke.",
-      "Krotki letni wyjazd powinien mieć prosty model: centrum, morze, jedzenie i kilka pewnych atrakcji.",
+      "Latem szczególnie liczy się to, żeby kierunek dawał efekt już przy krótkim pobycie.",
+      "Najmocniej wygrywają miejsca, w których nie tracisz czasu na dalekie transfery i rozciągniętą logistykę.",
+      "Krótki letni wyjazd powinien mieć prosty model: centrum, morze, jedzenie i kilka pewnych atrakcji.",
     ],
     sections: [
       {
         title: "Kiedy krótki letni wyjazd ma sens",
         paragraphs: [
-          "Wtedy, gdy chcesz wykorzystac pogodę i nie czekac na dłuższy urlop. Dla wielu osób 3-5 dni latem jest wystarczajace, żeby realnie odpocząć i zobaczyć cos nowego.",
+          "Wtedy, gdy chcesz wykorzystać pogodę i nie czekać na dłuższy urlop. Dla wielu osób 3-5 dni latem jest wystarczające, żeby realnie odpocząć i zobaczyć coś nowego.",
         ],
       },
       {
-        title: "Jakie kierunki najlepiej działaja latem",
+        title: "Jakie kierunki najlepiej działają latem",
         paragraphs: [
-          "Najbezpieczniej wypadają miasta i kierunki, które mają i rytm miejski, i latwy dostęp do morza. Dzięki temu nawet przy krótszym pobyćie masz poczucie pełnego wyjazdu, a nie tylko szybkiego przelotu i powrotu.",
+          "Najbezpieczniej wypadają miasta i kierunki, które mają i rytm miejski, i łatwy dostęp do morza. Dzięki temu nawet przy krótszym pobycie masz poczucie pełnego wyjazdu, a nie tylko szybkiego przelotu i powrotu.",
         ],
         bullets: [
           "Walencja i Malaga dla plaży plus miasta",
           "Malta i Cypr dla bardziej wakacyjnego klimatu",
-          "Kanary wtedy, gdy priorytetem jest mocna pogoda niezaleznie od sezonu",
+          "Kanary wtedy, gdy priorytetem jest mocna pogoda niezależnie od sezonu",
         ],
       },
     ],
@@ -1542,7 +1542,7 @@ const editorialArticles: EditorialArticle[] = [
       {
         question: "Czy 3 dni latem wystarcza na ciepły wyjazd?",
         answer:
-          "Tak, jeśli wybierzesz kierunek o prostym dojezdzie i nie bedziesz probowal zmiescic zbyt wielu rzeczy w jednym planie.",
+          "Tak, jeśli wybierzesz kierunek o prostym dojeździe i nie będziesz próbował zmieścić zbyt wielu rzeczy w jednym planie.",
       },
       {
         question: "Czy lepiej latem wybrać miasto czy typowo wakacyjny kierunek?",
@@ -1560,7 +1560,7 @@ const editorialCategories: EditorialCategory[] = [
     description:
       "Praktyczne przewodniki i scenariusze wyjazdów — od wyboru kierunku po sprawdzenie cen w wyszukiwarce.",
     eyebrow: "Praktyczne treści",
-    hero: "Treśći dla osób, które chcą zrozumieć kierunek przed kliknieciem w oferty.",
+    hero: "Treści dla osób, które chcą zrozumieć kierunek przed kliknięciem w oferty.",
     articleSlugs: [
       "cieple-kraje-bez-wizy",
       "najlepsze-kierunki-na-4-dni",
@@ -1581,7 +1581,7 @@ const editorialCategories: EditorialCategory[] = [
     description:
       "Kierunki i poradniki dla osób, które chcą zrobić mocny wyjazd 2-5 dni bez chaosu i z dobrym stosunkiem ceny do jakości.",
     eyebrow: "Miejskie wyjazdy",
-    hero: "Najlepsze city breaki dla polskiego odbiorcy: czytelne, praktyczne i dobrze porównańe.",
+    hero: "Najlepsze city breaki dla polskiego odbiorcy: czytelne, praktyczne i dobrze porównane.",
     articleSlugs: [
       "tanie-city-breaki-na-weekend",
       "najlepsze-kierunki-na-4-dni",
@@ -1598,7 +1598,7 @@ const editorialCategories: EditorialCategory[] = [
     description:
       "Słońce, łagodniejsza pogoda i sensowne scenariusze wyjazdów z Polski na 4-7 dni.",
     eyebrow: "Słońce i klimat",
-    hero: "Kierunki dla osób, które szukają ciepła, ale nadal chcą podejmowac decyzje na podstawie realnych argumentow.",
+    hero: "Kierunki dla osób, które szukają ciepła, ale nadal chcą podejmować decyzje na podstawie realnych argumentów.",
     articleSlugs: [
       "cieple-kraje-bez-wizy",
       "kierunki-z-plaża-i-zwiedzaniem",
@@ -1615,9 +1615,9 @@ const editorialCategories: EditorialCategory[] = [
     slug: "bez-wizy",
     title: "Bez wizy",
     description:
-      "Scenariusze dla osób, które chcą uproscic decyzje i szukają kierunków z mniejsza liczba formalnosci na starcie.",
-    eyebrow: "Mniej formalnosci",
-    hero: "To jeden z najmocniejszych tematow do wyszukiwania naturalnym jezykiem i do budowy contentu o wysokiej intencji.",
+      "Scenariusze dla osób, które chcą uprościć decyzję i szukają kierunków z mniejszą liczbą formalności na starcie.",
+    eyebrow: "Mniej formalności",
+    hero: "To jeden z najmocniejszych tematów do wyszukiwania naturalnym językiem i do budowy contentu o wysokiej intencji.",
     articleSlugs: ["ciepłe-kraje-bez-wizy"],
     destinationSlugs: ["marrakesh-morocco", "agadir-morocco", "antalya-turkey", "larnaca-cyprus", "tirana-albania"],
   },
@@ -1625,7 +1625,7 @@ const editorialCategories: EditorialCategory[] = [
     slug: "tanie-podróże",
     title: "Tanie podróże",
     description:
-      "Treść dla osób, które chcą dobrze wydac budżet, a nie tylko szukać najniższej cyfry za wszelka cene.",
+      "Treść dla osób, które chcą dobrze wydać budżet, a nie tylko szukać najniższej cyfry za wszelką cenę.",
     eyebrow: "Budżet pod kontrola",
     hero: "Najlepsze kierunki do budżetowych decyzji to te, które nadal dają sensowną jakość i prosty plan.",
     articleSlugs: ["tanie-city-breaki-na-weekend", "gdzie-poleciec-do-2000-zl", "tanie-kierunki-z-polski", "kierunki-na-pierwszy-city-break"],
@@ -1678,22 +1678,22 @@ function describeBestMonths(temperatures: readonly number[]): string {
     .map((item) => monthLabel(item.index));
 
   if (comfortableMonths.length === 0) {
-    return "Ten kierunek najlepiej traktowac jako elastyczny sezonowo i dopasowywac bardziej do briefu niż do jednego miesiąca.";
+    return "Ten kierunek najlepiej traktować jako elastyczny sezonowo i dopasowywać bardziej do briefu niż do jednego miesiąca.";
   }
 
-  return `Najwygodniej planować ten kierunek zwykle w ${comfortableMonths.join(", ")}, kiedy łatwiej połączyć pogodę, spacerowy rytm i realna przyjemność z pobytu.`;
+  return `Najwygodniej planować ten kierunek zwykle w ${comfortableMonths.join(", ")}, kiedy łatwiej połączyć pogodę, spacerowy rytm i realną przyjemność z pobytu.`;
 }
 
 function describeBudget(destination: DestinationProfile): string {
   if (destination.costIndex <= 0.95) {
-    return "To kierunek, który dobrze broni się przy rozsądnym budżecie i nie wymaga od razu wysokich wydatkow, żeby wyjazd mial sens.";
+    return "To kierunek, który dobrze broni się przy rozsądnym budżecie i nie wymaga od razu wysokich wydatków, żeby wyjazd miał sens.";
   }
 
   if (destination.costIndex >= 1.4) {
-    return "Budżet warto ustawic z lekkim zapasem, bo noclegi i codzieńne wydatki mogą szybciej rosnac niż w tańszych alternatywach.";
+    return "Budżet warto ustawić z lekkim zapasem, bo noclegi i codzienne wydatki mogą szybciej rosnąć niż w tańszych alternatywach.";
   }
 
-  return "Najlepiej planować go jako średni budżet: z dobra baza noclegowa, sensowna logistyka i marginesem na jedzenie oraz 1-2 płatne punkty programu.";
+  return "Najlepiej planować go jako średni budżet: z dobrą bazą noclegową, sensowną logistyką i marginesem na jedzenie oraz 1-2 płatne punkty programu.";
 }
 
 function describeWorstMonths(name: string, temperatures: readonly number[]): string {
@@ -1715,12 +1715,12 @@ function describeWorstMonths(name: string, temperatures: readonly number[]): str
 function describeWhoForExtra(destination: DestinationProfile, flightHours: number | null, costKnown: boolean): string[] {
   const extras: string[] = [];
   if (destination.beachScore >= 0.75) extras.push("plażowicze szukający resetu nad morzem");
-  if (destination.cityScore >= 0.8 && destination.sightseeingScore >= 0.7) extras.push("fani klasycznych city breakow");
-  if (destination.nightlifeScore >= 0.75) extras.push("ekipy szukające zycia wieczornego");
-  if (destination.natureScore >= 0.7) extras.push("osóby ceniace bliskosc natury");
-  if (costKnown && destination.costIndex <= 1) extras.push("planujacy z mysla o budżecie");
-  if (flightHours !== null && flightHours <= 3) extras.push("wybierajacy się na wyjazd 3-4 dniowy");
-  if (destination.safetyScore >= 0.78) extras.push("rodziny z dziecmi");
+  if (destination.cityScore >= 0.8 && destination.sightseeingScore >= 0.7) extras.push("fani klasycznych city breaków");
+  if (destination.nightlifeScore >= 0.75) extras.push("ekipy szukające życia wieczornego");
+  if (destination.natureScore >= 0.7) extras.push("osoby ceniące bliskość natury");
+  if (costKnown && destination.costIndex <= 1) extras.push("planujący z myślą o budżecie");
+  if (flightHours !== null && flightHours <= 3) extras.push("wybierający się na wyjazd 3-4 dniowy");
+  if (destination.safetyScore >= 0.78) extras.push("rodziny z dziećmi");
   return extras.slice(0, 4);
 }
 
@@ -1756,21 +1756,21 @@ function buildGenericDestinationGuide(destination: DestinationProfile): Destinat
     whyGo.push(`Solidny profil plażowy (${Math.round(destination.beachScore * 100)}/100), więc można połączyć miasto z resetem nad morzem.`);
   }
   if (costKnown && destination.costIndex <= 1.05) {
-    whyGo.push("Rozsadny indeks kosztów — łatwo obronić kierunek przy normalnym budżecie wakacyjnym.");
+    whyGo.push("Rozsądny indeks kosztów — łatwo obronić kierunek przy normalnym budżecie wakacyjnym.");
   } else if (costKnown && destination.costIndex >= 1.3) {
-    whyGo.push("Wyzszy indeks kosztów oznacza, ze warto mieć przemyslane decyzje noclegówe i logistyczne, ale produkt obrania się jakościa.");
+    whyGo.push("Wyższy indeks kosztów oznacza, że warto mieć przemyślane decyzje noclegowe i logistyczne, ale produkt obrania się jakością.");
   }
-  whyGo.push("Po stronie produktu łatwo przejść od inspiracji do konkretu: noclegu, lotu i dalszych decyzji wyjazdówych.");
+  whyGo.push("Po stronie produktu łatwo przejść od inspiracji do konkretu: noclegu, lotu i dalszych decyzji wyjazdowych.");
 
   const dataDrivenHighlights: string[] = [];
   if (traitsKnown && destination.sightseeingScore >= 0.75) {
     dataDrivenHighlights.push(`Gesta siatka miejsc do zobaczenia — scoring zwiedzania ${Math.round(destination.sightseeingScore * 100)}/100.`);
   }
   if (traitsKnown && destination.nightlifeScore >= 0.75) {
-    dataDrivenHighlights.push("Aktywne życie więczórne, dobrze pasujące pod wyjazdy w grupie.");
+    dataDrivenHighlights.push("Aktywne życie wieczorne, dobrze pasujące pod wyjazdy w grupie.");
   }
   if (traitsKnown && destination.natureScore >= 0.7) {
-    dataDrivenHighlights.push("Bliskosc natury — krajobrazy i widoki w zasiegu krótkiego wyjazdu z miasta.");
+    dataDrivenHighlights.push("Bliskość natury — krajobrazy i widoki w zasiegu krótkiego wyjazdu z miasta.");
   }
   const highlights = [...story.attractions.slice(0, 5), ...dataDrivenHighlights].slice(0, 7);
 
@@ -1785,7 +1785,7 @@ function buildGenericDestinationGuide(destination: DestinationProfile): Destinat
     question: `${name}: city break czy pełny wypoczynek?`,
     answer:
       destination.beachScore >= 0.7
-        ? "To kierunek, który dobrze łączy pobyt miejski z oddechem i wypoczynkiem, więc można zbudować go jako hybryde — 2 dni miasto, 2 dni morze."
+        ? "To kierunek, który dobrze łączy pobyt miejski z oddechem i wypoczynkiem, więc można zbudować go jako hybrydę — 2 dni miasto, 2 dni morze."
         : "Najlepiej wypada jako kierunek decyzyjny pod konkretne zwiedzanie, jedzenie i rytm miasta, a nie tylko bierny wypoczynek nad woda.",
   });
   if (temperatures !== null) {

@@ -40,7 +40,7 @@ function makePair(
 
 export const comparisonPairs: ComparisonPair[] = [
   // Hiszpania - city break
-  makePair("barcelona-spain", "valencia-spain", "Drugie miasto Hiszpanii — porównańie pod city break"),
+  makePair("barcelona-spain", "valencia-spain", "Drugie miasto Hiszpanii — porównanie pod city break"),
 makePair("barcelona-spain", "malaga-spain", "Plaża i miasto: kierunki katalońskie kontra Andaluzja"),
 makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat plażowo-miejski", undefined, "Malaga czy Walencja? Porównanie (plaża, ceny, pogoda)"),
 
@@ -50,17 +50,17 @@ makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat
   makePair("lisbon-portugal", "valencia-spain", "Atlantyk kontra Morze Srodziemne na city break"),
 
   // Wlochy
-  makePair("rome-italy", "naples-italy", "Klasyk kontra wloskie poludnie"),
+  makePair("rome-italy", "naples-italy", "Klasyk kontra wloskie południe"),
   makePair("rome-italy", "barcelona-spain", "Dwie kultowe stolice na city break"),
 
   // Wschodnie srodziemnomorze
   makePair("athens-greece", "istanbul-turkey", "Antyk kontra metropolia — Grecja vs Turcja"),
   makePair("antalya-turkey", "larnaca-cyprus", "Wakacje all-inclusive: Turcja vs Cypr"),
   makePair("larnaca-cyprus", "valletta-malta", "Wyspy południa: Cypr kontra Malta"),
-  makePair("athens-greece", "valletta-malta", "Krotki wyjazd nad ciepłym morzem"),
+  makePair("athens-greece", "valletta-malta", "Krótki wyjazd nad ciepłym morzem"),
 
   // Tanie city breaki Europy Srodkowej
-  makePair("budapest-hungary", "prague-czechia", "Klasyczny duet city breaku Europy Srodkowej"),
+  makePair("budapest-hungary", "prague-czechia", "Klasyczny duet city breaku Europy Środkowej"),
   makePair("berlin-germany", "prague-czechia", "Berlin kontra Praga — weekend miejski"),
   makePair("budapest-hungary", "berlin-germany", "Atmosfera kontra design — Budapeszt vs Berlin"),
 
@@ -70,7 +70,7 @@ makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat
   // Pln Europa
   makePair("amsterdam-netherlands", "berlin-germany", "Dwa rowne city breaki w Europie Zachodniej"),
   makePair("dublin-ireland", "london-uk", "Wyspy Brytyjskie — gdzie krótki wypad"),
-  makePair("amsterdam-netherlands", "london-uk", "Krotki lot, mocny city break"),
+  makePair("amsterdam-netherlands", "london-uk", "Krótki lot, mocny city break"),
 
   // Maroko
   makePair("agadir-morocco", "marrakesh-morocco", "Maroko: plaża Atlantyku kontra Medyna"),

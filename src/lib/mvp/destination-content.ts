@@ -189,7 +189,7 @@ const destinationStories: Record<string, DestinationStory> = {
       {
         day: 3,
         title: "Morze i oddech",
-        description: "Promenada, plażę i plan, który nie meczy nawet przy krótkim wyjeździe.",
+        description: "Promenada, plażę i plan, który nie męczy nawet przy krótkim wyjeździe.",
       },
     ],
     bestFor: ["plażą + miasto", "optymalny city break", "spokojny rytm", "bardzo dobra relacja ceny do jakości"],
