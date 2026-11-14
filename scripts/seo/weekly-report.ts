@@ -72,7 +72,7 @@ async function loadApi(): Promise<ReportGscData> {
     ];
     throw new Error(`Dla --source api ustaw wymagane zmienne środowiskowe: ${missing.join(", ")}`);
   }
-  const gsc = await fetchGscExport({ siteUrl, serviceAccountJson, days: requestedDays() });
+  const gsc = await fetchGscExport({ siteUrl, serviceAccountJson, days: requestedDays(), includePageQuery: false });
   return { daily: gsc.daily, pages: gsc.pages, queries: gsc.queries, endDate: gsc.range.endDate };
 }
 

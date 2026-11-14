@@ -102,7 +102,11 @@ async function loadGscFromApi(now: Date): Promise<GscCsvInputs> {
     ];
     throw new Error(`Dla --gsc-source api ustaw wymagane zmienne środowiskowe: ${missing.join(", ")}`);
   }
-  return toGscCsvInputs(await fetchGscExport({ siteUrl, serviceAccountJson, now }));
+  // Zakres danych liczymy od dnia przebiegu, ale JWT musi nosić bieżący czas —
+  // przy powtórce starego dnia Google odrzuciłby podpis z dawnym `iat`.
+  const end = new Date(now.getTime());
+  end.setUTCDate(end.getUTCDate() - 3);
+  return toGscCsvInputs(await fetchGscExport({ siteUrl, serviceAccountJson, endDate: end.toISOString().slice(0, 10), includePageQuery: false }));
 }
 
 async function main(): Promise<void> {

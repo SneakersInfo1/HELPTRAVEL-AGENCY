@@ -74,7 +74,9 @@ function windowLine(daily: readonly GscRow[], endDate: string, days: number): st
   const inRange = (from: string, to: string) => daily.filter((row) => row.key >= from && row.key <= to);
   const current = inRange(currentFrom, endDate);
   const previous = inRange(previousFrom, previousTo);
-  if (current.length < days || previous.length < days) {
+  // API pomija dni bez danych, więc kompletność oceniamy po zasięgu dat, nie po liczbie wierszy.
+  const earliest = daily.reduce<string | null>((min, row) => (min === null || row.key < min ? row.key : min), null);
+  if (current.length === 0 || earliest === null || earliest > previousFrom) {
     return `| ${days} dni | brak pełnych danych (${current.length}/${days} i ${previous.length}/${days} dni) | | | |`;
   }
   const comparison = comparePeriods(previous, current);
@@ -94,7 +96,10 @@ export function buildWeeklyReport(input: WeeklyReportInput): string {
 
   lines.push("## Okna czasowe (cała usługa)", "", "| Okno | Kliknięcia | Wyświetlenia | CTR | Pozycja (ważona) |", "|---|---|---|---|---|");
   lines.push(windowLine(input.daily, input.endDate, 28), windowLine(input.daily, input.endDate, 56), "");
-  const anomalies = periodAnomalies(comparePeriods(input.daily.slice(0, Math.floor(input.daily.length / 2)), input.daily.slice(Math.floor(input.daily.length / 2))));
+  // Podział na połowy ma sens tylko chronologicznie; wiersze z API nie mają gwarantowanej kolejności.
+  const chronological = [...input.daily].sort((a, b) => a.key.localeCompare(b.key));
+  const half = Math.floor(chronological.length / 2);
+  const anomalies = periodAnomalies(comparePeriods(chronological.slice(0, half), chronological.slice(half)));
   for (const anomaly of anomalies) lines.push(`- ⚠ ${anomaly.detail}`);
   if (anomalies.length > 0) lines.push("");
 

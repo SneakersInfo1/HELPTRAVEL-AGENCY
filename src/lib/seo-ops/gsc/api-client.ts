@@ -100,6 +100,8 @@ export interface FetchGscExportOptions {
   serviceAccountJson: string;
   endDate?: string;
   days?: number;
+  /** Pary strona × zapytanie to do 25 000 wierszy; pobieraj tylko, gdy są używane. */
+  includePageQuery?: boolean;
   fetchImpl?: typeof fetch;
   now?: Date;
   sleep?: GscSleep;
@@ -449,7 +451,7 @@ export async function fetchGscExport(options: FetchGscExportOptions): Promise<Gs
   const pages = (await query(["page"])).map(singleDimensionRow);
   const queries = (await query(["query"])).map(singleDimensionRow);
   const daily = (await query(["date"])).map(singleDimensionRow);
-  const pageQuery = (await query(["page", "query"], PAGE_QUERY_MAX_ROWS)).map(pageQueryRow);
+  const pageQuery = options.includePageQuery === false ? [] : (await query(["page", "query"], PAGE_QUERY_MAX_ROWS)).map(pageQueryRow);
   return { range, pages, queries, daily, pageQuery };
 }
 

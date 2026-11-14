@@ -49,6 +49,11 @@ function readCsv(file: string): Array<Record<string, string>> {
       cell = "";
     } else if (c !== "\r") cell += c;
   }
+  // Plik bez końcowego znaku nowej linii: ostatni rekord też się liczy.
+  if (cell !== "" || cur.length > 0) {
+    cur.push(cell);
+    rows.push(cur);
+  }
   const head = rows.shift() ?? [];
   return rows.filter((row) => row.length === head.length).map((row) => Object.fromEntries(head.map((h, index) => [h, row[index]])));
 }
@@ -89,6 +94,7 @@ function inventory(beforeFile: string, afterFile: string, out: string) {
       canonical_self_after: next?.canonicalSelf ?? "",
     };
   });
+  if (rows.length === 0) throw new Error(`Crawl ${beforeFile} nie zawiera stron HTML 200`);
   rows.sort((a, b) => a.path.localeCompare(b.path));
   writeCsv(out, Object.keys(rows[0]), rows);
   console.log(`INVENTORY: ${rows.length} adresów → ${out}`);
@@ -155,7 +161,11 @@ function decisionFor(path: string): Decision {
 }
 
 function backlog(dir: string, out: string) {
-  const find = (pattern: RegExp) => join(dir, readdirSync(dir).find((file) => pattern.test(file))!);
+  const find = (pattern: RegExp) => {
+    const name = readdirSync(dir).find((file) => pattern.test(file));
+    if (!name) throw new Error(`Brak pliku ${pattern} w ${dir}`);
+    return join(dir, name);
+  };
   const pages = parseGscCsv(readFileSync(find(/pages.*\.csv$/), "utf8")).rows;
   const queries = parseGscCsv(readFileSync(find(/queries.*\.csv$/), "utf8")).rows;
   const byPath = new Map<string, GscRow>();
