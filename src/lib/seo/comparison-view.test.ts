@@ -95,6 +95,11 @@ describe("model widoku porównania — wszystkie pary", () => {
       assert.ok(view.editorial.some((section) => section.kind === "table"), view.slug);
       assert.ok(view.verifiedAt && view.modifiedAt && view.aiDisclosure, view.slug);
       assert.equal(view.standfirst, null, view.slug);
+      // Kontekst pomiaru GA4: identyfikator dokumentu, wersja treści (8 znaków hasha) i klaster.
+      assert.ok(view.content, view.slug);
+      assert.equal(view.content.id, view.slug);
+      assert.match(view.content.version, /^[0-9a-f]{8}$/);
+      assert.ok(view.content.topicCluster.length > 2);
       const article = (view.structuredData["@graph"] as Array<Record<string, unknown>>).find((node) => node["@type"] === "Article")!;
       assert.equal(article.dateModified, view.modifiedAt);
       assert.deepEqual(
@@ -110,6 +115,7 @@ describe("model widoku porównania — wszystkie pary", () => {
     assert.ok(plain.length > 40);
     for (const view of plain) {
       assert.equal(view.verifiedAt, null);
+      assert.equal(view.content, null, view.slug);
       const article = (view.structuredData["@graph"] as Array<Record<string, unknown>>).find((node) => node["@type"] === "Article")!;
       assert.equal(article.dateModified, undefined);
       assert.equal(article.citation, undefined);

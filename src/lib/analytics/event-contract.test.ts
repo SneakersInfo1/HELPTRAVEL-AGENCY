@@ -276,6 +276,21 @@ describe("CTA stron treściowych wysyła seo_cta_click (testy B, C, D)", () => {
     });
   }
 
+  it("porównanie przekazuje kontekst dokumentu treści do każdego CTA (content_id, wersja, klaster)", () => {
+    const szablon = czytaj("src/components/editorial/comparison-template.tsx");
+    const bloki = czytaj("src/components/editorial/comparison-blocks.tsx");
+    for (const [plik, tresc] of [["comparison-template.tsx", szablon], ["comparison-blocks.tsx", bloki]] as const) {
+      const otwarcia = (tresc.match(/<SeoCtaLink[\s>]/g) ?? []).length;
+      const zKontekstem = (tresc.match(/content=\{(view\.)?content\}/g) ?? []).length;
+      assert.ok(otwarcia > 0, plik);
+      assert.equal(zKontekstem, otwarcia, `${plik}: ${zKontekstem} z ${otwarcia} SeoCtaLink ma kontekst treści`);
+    }
+    const link = czytaj("src/components/analytics/seo-cta-link.tsx");
+    assert.ok(link.includes("content_id: content.id"));
+    assert.ok(link.includes("content_version: content.version"));
+    assert.ok(link.includes("topic_cluster: content.topicCluster"));
+  });
+
   it("strona miesiąca podaje miesiąc — bez niego nie da się porównać sezonów", () => {
     // Od 2026-11 CTA strony miesiąca żyją w szablonie; KAŻDY z nich niesie miesiąc.
     const tresc = czytaj("src/components/editorial/month-template.tsx");

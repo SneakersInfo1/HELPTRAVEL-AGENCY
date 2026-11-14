@@ -82,3 +82,13 @@ Ten dokument opisuje podstawowe eventy po stronie klienta, ktore mierza najwazni
 
 - Publiczny przelacznik jezyka EN jest tymczasowo ukryty, wiec nie mierzymy teraz osobnego eventu przejscia PL/EN w glownym UX.
 - Eventy maja byc nazywane prosto i konsekwentnie, bez mieszania warstwy produktu z nazewnictwem technicznym.
+
+## Strony treści (SEO) → produkt
+
+- `seo_cta_click`
+  - kiedy: klik w link ze strony treściowej (porównanie, miesiąc, przewodnik, landing miasta) do wyszukiwarki hoteli albo lotów
+  - payload: `source_path`, `destination_path`, `content_type` (typ strony), `cta_type` (rola CTA: `hero_search`, `final_cta`, `flight_search`…), opcjonalnie `destination_slug`, `month`
+  - od 2026-11 także, gdy strona ma dokument treści z `content/seo`: `content_id` (id dokumentu), `content_version` (8 znaków `contentHash` — zmienia się tylko przy materialnej zmianie treści), `topic_cluster`
+  - po co: pozwala porównać skuteczność CTA na stronach z treścią ze źródłami i bez niej oraz przed i po odświeżeniu tej samej strony
+  - uwaga: GA4 pokaże te parametry w raportach dopiero po zarejestrowaniu ich jako wymiarów niestandardowych (zakres: zdarzenie) — patrz `docs/seo/OWNER_ACTIONS.md`
+  - klik w CTA to NIE jest rezerwacja; lejek dalej mierzą `hotel_results_loaded`, `booking_intent` i zdarzenia kasy

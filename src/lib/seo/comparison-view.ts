@@ -46,6 +46,8 @@ export interface ComparisonView {
   verifiedAt: string | null;
   modifiedAt: string | null;
   aiDisclosure: string | null;
+  /** Kontekst pomiaru GA4 — tylko gdy strona ma dokument treści. */
+  content: { id: string; version: string; topicCluster: string } | null;
   relatedComparisons: ComparisonLink[];
   breadcrumbs: Array<{ label: string; href?: string }>;
   structuredData: Record<string, unknown>;
@@ -202,6 +204,7 @@ export function buildComparisonView(input: ComparisonViewInput): ComparisonView 
     verifiedAt: enrichment?.verifiedAt ?? null,
     modifiedAt: enrichment?.materiallyModifiedAt ?? null,
     aiDisclosure: enrichment?.aiDisclosure ?? null,
+    content: enrichment ? { id: enrichment.id, version: enrichment.contentHash.slice(0, 8), topicCluster: enrichment.topicCluster } : null,
     relatedComparisons: relatedComparisons(pair, input.allPairs),
     breadcrumbs: [{ label: "Start", href: "/" }, { label: "Porównania", href: "/porownanie" }, { label: `${nameA} czy ${nameB}` }],
     structuredData: { ...model.structuredData, "@graph": baseGraph },

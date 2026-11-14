@@ -61,11 +61,11 @@ function ReviewLine({ view }: { view: ComparisonView }) {
   );
 }
 
-function FlightsLine({ sides }: { sides: [SideInfo, SideInfo] }) {
+function FlightsLine({ sides, content }: { sides: [SideInfo, SideInfo]; content: ComparisonView["content"] }) {
   return (
     <p className="text-sm leading-6 text-ink-muted">
       Szukasz lotu?{" "}
-      <SeoCtaLink href="/?tab=loty" typTresci="comparison" ctaType="flight_search" destinationSlug={sides[0].slug} className="font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand">
+      <SeoCtaLink href="/?tab=loty" typTresci="comparison" ctaType="flight_search" destinationSlug={sides[0].slug} content={content} className="font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand">
         <span className="text-brand">Otwórz wyszukiwarkę lotów</span>
       </SeoCtaLink>{" "}
       i wybierz lotnisko wylotu oraz termin.
@@ -208,7 +208,7 @@ function ReadNext({ view, sides, articleLinks }: Pick<ComparisonTemplateProps, "
   );
 }
 
-function FinalCta({ sides }: { sides: [SideInfo, SideInfo] }) {
+function FinalCta({ sides, content }: { sides: [SideInfo, SideInfo]; content: ComparisonView["content"] }) {
   return (
     <section aria-labelledby="sprawdz-hotele" className="rounded-2xl bg-brand-strong p-5 [--focus-ring:#fff] sm:p-8">
       <h2 id="sprawdz-hotele" className="font-display text-2xl font-semibold text-white sm:text-3xl">
@@ -225,6 +225,7 @@ function FinalCta({ sides }: { sides: [SideInfo, SideInfo] }) {
             typTresci="comparison"
             ctaType="final_cta"
             destinationSlug={side.slug}
+            content={content}
             className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-5 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             <span className="text-sm font-bold text-brand-strong">Hotele: {side.name}</span>
@@ -252,7 +253,7 @@ function LowerSections({ view, model, sides, liveStats, articleLinks, tape }: Co
       <Budget model={model} />
       <LiveStats liveStats={liveStats} sides={sides} />
       <Faq model={model} />
-      <FinalCta sides={sides} />
+      <FinalCta sides={sides} content={view.content} />
       <SourcesNote sources={view.sources} verifiedAt={view.verifiedAt} aiDisclosure={view.aiDisclosure} />
       <ReadNext view={view} sides={sides} articleLinks={articleLinks} />
     </>
@@ -287,13 +288,13 @@ function VariantWerdykt(props: ComparisonTemplateProps) {
           {view.standfirst ? <p className="mt-2 text-base leading-7 text-ink-muted">{view.standfirst}</p> : null}
         </div>
         <p className="text-pretty border-t border-ink/80 pt-4 text-lg leading-8 text-ink">{view.answer}</p>
-        <DualHotelCta sides={sides} placement="hero_search" />
+        <DualHotelCta sides={sides} placement="hero_search" content={view.content} />
         <SplitPhotos sides={sides} />
         <ReviewLine view={view} />
       </header>
       <Verdict view={view} />
       <EditorialSections sections={view.editorial} nameA={view.nameA} nameB={view.nameB} />
-      <FlightsLine sides={sides} />
+      <FlightsLine sides={sides} content={view.content} />
       <LowerSections {...props} tape={false} />
     </main>
   );
@@ -310,13 +311,13 @@ function VariantPojedynek(props: ComparisonTemplateProps) {
         <Breadcrumbs items={view.breadcrumbs} />
         <h1 className="text-balance text-center font-display text-hero font-semibold text-ink">{view.h1}</h1>
         <SplitPhotos sides={sides} tall />
-        <DualHotelCta sides={sides} placement="hero_search" />
+        <DualHotelCta sides={sides} placement="hero_search" content={view.content} />
         <p className="text-pretty text-center text-lg leading-8 text-ink">{view.answer}</p>
         <ReviewLine view={view} />
       </header>
       <Verdict view={view} compact />
       <EditorialSections sections={view.editorial} nameA={view.nameA} nameB={view.nameB} />
-      <FlightsLine sides={sides} />
+      <FlightsLine sides={sides} content={view.content} />
       <LowerSections {...props} tape />
     </main>
   );
@@ -340,6 +341,7 @@ function VariantKarta(props: ComparisonTemplateProps) {
               typTresci="comparison"
               ctaType="hero_search"
               destinationSlug={side.slug}
+              content={view.content}
               className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-4 text-center transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               <span className="text-sm font-bold leading-tight text-brand-strong">Hotele: {side.name}</span>
@@ -353,7 +355,7 @@ function VariantKarta(props: ComparisonTemplateProps) {
         <div className="mt-6 flex flex-col gap-10">
           <Verdict view={view} />
           <EditorialSections sections={view.editorial} nameA={view.nameA} nameB={view.nameB} />
-          <FlightsLine sides={sides} />
+          <FlightsLine sides={sides} content={view.content} />
         </div>
       </div>
       <div className="flex flex-col gap-10 rounded-2xl border border-line bg-surface-raised p-5 sm:p-8">

@@ -488,6 +488,19 @@ export interface TrackEventMap {
     destination_slug?: string;
     /** Miesiąc, jeśli strona go dotyczy (np. "lipiec"). */
     month?: string;
+    /**
+     * Identyfikator dokumentu treści z content/seo (np. "athens-greece-vs-rome-italy"),
+     * gdy strona pokazuje treść redakcyjną ze źródłami. Brak = strona szablonowa.
+     */
+    content_id?: string;
+    /**
+     * Pierwsze 8 znaków `contentHash` dokumentu. Zmienia się wyłącznie przy
+     * materialnej zmianie treści, więc pozwala porównać skuteczność CTA przed
+     * i po odświeżeniu tej samej strony (bez mieszania wersji).
+     */
+    content_version?: string;
+    /** Klaster tematyczny dokumentu (np. "porownania-hiszpania"). */
+    topic_cluster?: string;
   };
 
   /**

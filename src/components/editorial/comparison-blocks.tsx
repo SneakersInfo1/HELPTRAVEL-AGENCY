@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
 
-import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
+import { SeoCtaLink, type SeoContentContext } from "@/components/analytics/seo-cta-link";
 import type { Section, Source } from "@/lib/content-engine/schema";
 import type { ComparisonVerdictOption } from "@/lib/seo/comparison-view";
 
@@ -60,10 +60,12 @@ export function DualHotelCta({
   sides,
   placement,
   contentType = "comparison",
+  content = null,
 }: {
   sides: [SideInfo, SideInfo];
   placement: "hero_search" | "final_cta";
   contentType?: "comparison";
+  content?: SeoContentContext | null;
 }) {
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -74,6 +76,7 @@ export function DualHotelCta({
           typTresci={contentType}
           ctaType={placement}
           destinationSlug={side.slug}
+          content={content}
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-4 text-center transition duration-150 ease-out hover:bg-brand-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
         >
           <span className="text-sm font-bold leading-tight text-white">Hotele: {side.name}</span>

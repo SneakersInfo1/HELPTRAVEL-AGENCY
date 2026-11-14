@@ -29,12 +29,20 @@ import { track, type TrackEventMap } from "@/lib/analytics/track";
 
 type SeoCtaParams = TrackEventMap["seo_cta_click"];
 
+export interface SeoContentContext {
+  id: string;
+  version: string;
+  topicCluster: string;
+}
+
 export interface SeoCtaLinkProps {
   href: string;
   typTresci: SeoCtaParams["content_type"];
   ctaType: SeoCtaParams["cta_type"];
   destinationSlug?: string;
   month?: string;
+  /** Kontekst dokumentu treści (content/seo), jeśli strona go ma. */
+  content?: SeoContentContext | null;
   /**
    * Renderuj `LocalizedLink` zamiast gołego `next/link`.
    *
@@ -78,6 +86,7 @@ export function SeoCtaLink({
   ctaType,
   destinationSlug,
   month,
+  content,
   localized = false,
   children,
   ...rest
@@ -90,8 +99,9 @@ export function SeoCtaLink({
       cta_type: ctaType,
       ...(destinationSlug ? { destination_slug: destinationSlug } : {}),
       ...(month ? { month } : {}),
+      ...(content ? { content_id: content.id, content_version: content.version, topic_cluster: content.topicCluster } : {}),
     });
-  }, [href, typTresci, ctaType, destinationSlug, month]);
+  }, [href, typTresci, ctaType, destinationSlug, month, content]);
 
   const Znacznik = localized ? LocalizedLink : Link;
 

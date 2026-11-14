@@ -34,6 +34,8 @@ export interface RenderableContent {
   materiallyModifiedAt: string;
   createdAt: string;
   aiDisclosure: string;
+  topicCluster: string;
+  contentHash: string;
   /** Sekcje ukryte przez wygaśnięcie twierdzeń — do monitoringu, nie do UI. */
   hiddenSectionIds: string[];
 }
@@ -85,6 +87,8 @@ export function toRenderable(doc: ContentDocument, now: Date): RenderableContent
     materiallyModifiedAt: doc.materiallyModifiedAt,
     createdAt: doc.createdAt,
     aiDisclosure: doc.aiDisclosure,
+    topicCluster: doc.topicCluster,
+    contentHash: doc.contentHash,
     hiddenSectionIds,
   };
 }
