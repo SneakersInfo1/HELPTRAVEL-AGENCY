@@ -10,6 +10,14 @@ import { redactRunReport, runDaily, type GscCsvInputs } from "../../src/lib/cont
 import { FixtureSourceFetcher, HttpSourceFetcher, type SourceFetcher } from "../../src/lib/content-engine/sources";
 import { ContentStore } from "../../src/lib/content-engine/store";
 import type { PublishMode } from "../../src/lib/content-quality/gate";
+import {
+  SEO_GSC_SERVICE_ACCOUNT_JSON,
+  SEO_GSC_SITE_URL,
+  fetchGscExport,
+  toGscCsvInputs,
+} from "../../src/lib/seo-ops/gsc/api-client";
+
+type GscSource = "csv" | "api";
 
 interface CliOptions {
   mode: PublishMode;
@@ -18,6 +26,7 @@ interface CliOptions {
   stateDir: string;
   storeDir: string;
   gscDir: string;
+  gscSource: GscSource;
   /** Gdzie zapisać raport bez danych GSC (artefakt CI). */
   publicReport?: string;
 }
@@ -44,6 +53,11 @@ function parseScenario(value: string): FixtureScenarioName {
   throw new Error(`Nieznany scenariusz: ${value}`);
 }
 
+function parseGscSource(value: string): GscSource {
+  if (value === "csv" || value === "api") return value;
+  throw new Error(`Nieznane źródło GSC: ${value}; użyj csv albo api`);
+}
+
 export function parseCliArgs(args: readonly string[], currentDate = new Date()): CliOptions {
   const result: CliOptions = {
     mode: "DRY_RUN",
@@ -51,15 +65,19 @@ export function parseCliArgs(args: readonly string[], currentDate = new Date()):
     stateDir: ".seo-engine-state",
     storeDir: "content/seo",
     gscDir: "data/gsc",
+    gscSource: "csv",
   };
   for (let index = 0; index < args.length; index += 1) {
     const option = args[index];
+    // `pnpm content:run -- --mode …` przekazuje separator `--` do skryptu; obie formy mają działać.
+    if (option === "--") continue;
     if (option === "--mode") result.mode = parseMode(valueAfter(args, index++, option));
     else if (option === "--scenario") result.scenario = parseScenario(valueAfter(args, index++, option));
     else if (option === "--scheduled-at") result.scheduledAt = valueAfter(args, index++, option);
     else if (option === "--state-dir") result.stateDir = valueAfter(args, index++, option);
     else if (option === "--store-dir") result.storeDir = valueAfter(args, index++, option);
     else if (option === "--gsc-dir") result.gscDir = valueAfter(args, index++, option);
+    else if (option === "--gsc-source") result.gscSource = parseGscSource(valueAfter(args, index++, option));
     else if (option === "--public-report") result.publicReport = valueAfter(args, index++, option);
     else throw new Error(`Nieznana opcja: ${option}`);
   }
@@ -72,6 +90,19 @@ async function loadGsc(directory: string): Promise<GscCsvInputs> {
     ["pages.csv", "queries.csv", "daily.csv"].map((name) => readFile(path.join(directory, name), "utf8")),
   );
   return { pages, queries, daily };
+}
+
+async function loadGscFromApi(now: Date): Promise<GscCsvInputs> {
+  const serviceAccountJson = process.env[SEO_GSC_SERVICE_ACCOUNT_JSON];
+  const siteUrl = process.env[SEO_GSC_SITE_URL];
+  if (!serviceAccountJson || !siteUrl) {
+    const missing = [
+      ...(serviceAccountJson ? [] : [SEO_GSC_SERVICE_ACCOUNT_JSON]),
+      ...(siteUrl ? [] : [SEO_GSC_SITE_URL]),
+    ];
+    throw new Error(`Dla --gsc-source api ustaw wymagane zmienne środowiskowe: ${missing.join(", ")}`);
+  }
+  return toGscCsvInputs(await fetchGscExport({ siteUrl, serviceAccountJson, now }));
 }
 
 async function main(): Promise<void> {
@@ -95,7 +126,7 @@ async function main(): Promise<void> {
     sourceFetcher = new FixtureSourceFetcher(fixture.sources, () => new Date(scheduled));
     baseInventory = new FixtureInventory(fixture.inventory);
   } else {
-    gsc = await loadGsc(options.gscDir);
+    gsc = options.gscSource === "api" ? await loadGscFromApi(scheduled) : await loadGsc(options.gscDir);
     llm = new AnthropicLlm();
     sourceFetcher = new HttpSourceFetcher();
     // Realne trasy (z tej samej funkcji co sitemap) i tytuły istniejących treści —

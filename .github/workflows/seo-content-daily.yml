@@ -5,15 +5,15 @@ name: SEO content daily
 # BEZPIECZNIKI:
 #  • harmonogram jest WYŁĄCZONY, dopóki właściciel nie ustawi zmiennej repozytorium
 #    SEO_ENGINE_SCHEDULE_ENABLED=true — samo zmergowanie tego pliku niczego nie uruchamia;
-#  • tryb na żywo wymaga OBU: sekretu SEO_ENGINE_ANTHROPIC_API_KEY i źródła danych GSC
-#    (katalog data/gsc z eksportem — API Search Console nie jest jeszcze podłączone).
-#    Bez któregokolwiek przebieg jest offline (FakeLlm, scenariusz testowy, dry-run);
+#  • tryb na żywo wymaga OBU: sekretu SEO_ENGINE_ANTHROPIC_API_KEY i źródła danych GSC.
+#    Preferowane API wymaga sekretu SEO_GSC_SERVICE_ACCOUNT_JSON i zmiennej SEO_GSC_SITE_URL;
+#    awaryjnie obsługiwany jest katalog data/gsc. Bez kompletu przebieg jest offline;
 #  • domyślny tryb to dry-run; draft-and-pr otwiera PR, nigdy nie pisze do main;
 #  • SEO_ENGINE_KILL_SWITCH=1 zatrzymuje przebieg przed pierwszym wywołaniem modelu;
 #  • limit kosztu na przebieg: SEO_ENGINE_MAX_USD_PER_RUN (domyślnie 1,50 USD);
-#  • repozytorium jest PUBLICZNE: gałąź stanu przechowuje tylko ledger (klucze
-#    idempotencji, blokady, oczekujące propozycje, dead-letter), a artefakt to raport
-#    bez danych GSC (zapytań, kliknięć, wyświetleń);
+#  • repozytorium jest PUBLICZNE: surowy eksport z API GSC żyje tylko w pamięci,
+#    gałąź stanu przechowuje tylko ledger, a artefakt to raport bez danych GSC
+#    (zapytań, kliknięć, wyświetleń);
 #  • sekrety trafiają tylko do kroków, które ich potrzebują — nie do `pnpm install`.
 
 on:
@@ -98,6 +98,8 @@ jobs:
         shell: bash
         env:
           SEO_ENGINE_ANTHROPIC_API_KEY: ${{ secrets.SEO_ENGINE_ANTHROPIC_API_KEY }}
+          SEO_GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.SEO_GSC_SERVICE_ACCOUNT_JSON }}
+          SEO_GSC_SITE_URL: ${{ vars.SEO_GSC_SITE_URL }}
           SEO_ENGINE_KILL_SWITCH: ${{ vars.SEO_ENGINE_KILL_SWITCH }}
           SEO_ENGINE_MAX_USD_PER_RUN: ${{ vars.SEO_ENGINE_MAX_USD_PER_RUN }}
           SEO_ENGINE_MAX_REQUESTS_PER_RUN: ${{ vars.SEO_ENGINE_MAX_REQUESTS_PER_RUN }}
@@ -111,13 +113,35 @@ jobs:
           public_report="$RUNNER_TEMP/seo-run-report.public.json"
           args=(--mode "$mode" --scheduled-at "$scheduled_at" --state-dir .seo-engine-state --store-dir content/seo --public-report "$public_report")
 
-          if [[ -z "${SEO_ENGINE_ANTHROPIC_API_KEY:-}" || ! -f data/gsc/pages.csv ]]; then
+          gsc_source=""
+          if [[ -n "${SEO_GSC_SERVICE_ACCOUNT_JSON:-}" && -n "${SEO_GSC_SITE_URL:-}" ]]; then
+            gsc_source="api"
+          elif [[ -f data/gsc/pages.csv ]]; then
+            gsc_source="csv"
+          fi
+
+          missing=()
+          if [[ -z "${SEO_ENGINE_ANTHROPIC_API_KEY:-}" ]]; then
+            missing+=("SEO_ENGINE_ANTHROPIC_API_KEY")
+          fi
+          if [[ -z "$gsc_source" ]]; then
+            missing+=("źródła GSC: komplet SEO_GSC_SERVICE_ACCOUNT_JSON + SEO_GSC_SITE_URL albo data/gsc/pages.csv")
+          fi
+
+          if (( ${#missing[@]} > 0 )); then
             mode="dry-run"
             scenario="${REQUESTED_SCENARIO:-refresh}"
             args=(--mode "$mode" --scenario "$scenario" --scheduled-at "$scheduled_at" --state-dir .seo-engine-state --store-dir content/seo --public-report "$public_report")
-            echo "BLOCKED: brak klucza API albo źródła GSC (data/gsc) — przebieg offline, scenariusz '${scenario}'."
-          elif [[ -n "${REQUESTED_SCENARIO:-}" ]]; then
-            args+=(--scenario "$REQUESTED_SCENARIO")
+            missing_text="$(printf '%s, ' "${missing[@]}")"
+            missing_text="${missing_text%, }"
+            echo "BLOCKED: brak ${missing_text} — przebieg offline, scenariusz '${scenario}'."
+          else
+            if [[ "$gsc_source" == "api" ]]; then
+              args+=(--gsc-source api)
+            fi
+            if [[ -n "${REQUESTED_SCENARIO:-}" ]]; then
+              args+=(--scenario "$REQUESTED_SCENARIO")
+            fi
           fi
 
           set +e
