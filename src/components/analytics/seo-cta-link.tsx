@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useCallback } from "react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
+import { defaultCtaPrefetch } from "@/lib/analytics/cta-prefetch";
 import { analyticsPagePath, currentAnalyticsPagePath } from "@/lib/analytics/page-path";
 import { track, type TrackEventMap } from "@/lib/analytics/track";
 
@@ -88,6 +89,7 @@ export function SeoCtaLink({
   month,
   content,
   localized = false,
+  prefetch,
   children,
   ...rest
 }: SeoCtaLinkProps) {
@@ -106,7 +108,7 @@ export function SeoCtaLink({
   const Znacznik = localized ? LocalizedLink : Link;
 
   return (
-    <Znacznik href={href} onClick={onClick} {...rest}>
+    <Znacznik href={href} onClick={onClick} prefetch={defaultCtaPrefetch(href, prefetch)} {...rest}>
       {children}
     </Znacznik>
   );

@@ -2,6 +2,7 @@
 //
 //   pnpm seo:shots -- --base https://helptravel.pl --label before --out docs/seo/screenshots
 //   pnpm seo:shots -- --base http://localhost:3000 --label after --paths /porownanie/a-vs-b,/wyjazdy/city-break
+//   pnpm seo:shots -- --base https://<preview>.vercel.app --share <token _vercel_share> --label preview
 //
 // Dla każdej strony i szerokości zapisuje kadr nad linią zgięcia oraz całą
 // stronę (JPEG), a do `<label>-report.json` — błędy konsoli, przepełnienie
@@ -46,6 +47,7 @@ async function main() {
     // więc ścieżki można podać bez wiodącego ukośnika.
     .map((p) => (p.startsWith("/") ? p : `/${p}`));
   const fullPage = !process.argv.includes("--fold-only");
+  const share = arg("share");
   mkdirSync(out, { recursive: true });
 
   const browser = await chromium.launch();
@@ -60,6 +62,13 @@ async function main() {
       locale: "pl-PL",
       reducedMotion: "reduce",
     });
+    // Preview na Vercelu jest chroniony: wejście z tokenem `_vercel_share` ustawia ciasteczko
+    // dostępu dla całego kontekstu, więc kolejne strony otwieramy już pod czystym adresem.
+    if (share) {
+      const gate = await context.newPage();
+      await gate.goto(`${base}/robots.txt?_vercel_share=${encodeURIComponent(share)}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await gate.close();
+    }
     for (const path of paths) {
       const page = await context.newPage();
       const consoleErrors: string[] = [];

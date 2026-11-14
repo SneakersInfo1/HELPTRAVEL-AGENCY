@@ -87,17 +87,32 @@ interface Result {
 const results: Result[] = [];
 const record = (check: string, path: string, ok: boolean, detail = "") => results.push({ check, path, ok, detail });
 
-function withShare(url: string): string {
-  if (!SHARE) return url;
-  const u = new URL(url);
-  u.searchParams.set("_vercel_share", SHARE);
-  return u.toString();
+// Preview na Vercelu: token `_vercel_share` w adresie daje 307 z ciasteczkiem dostępu.
+// Wymieniamy go raz na ciasteczko i dalej pytamy o czyste adresy — z tokenem w każdym
+// żądaniu test sprawdzałby przekierowanie Vercela, a nie stronę (27/27 fałszywych 307).
+let accessCookie: string | null = null;
+
+async function exchangeShareToken(): Promise<void> {
+  if (!SHARE) return;
+  const url = new URL(`${BASE}/robots.txt`);
+  url.searchParams.set("_vercel_share", SHARE);
+  const response = await fetch(url, { redirect: "manual" });
+  const cookies = response.headers.getSetCookie().map((cookie) => cookie.split(";")[0]).filter(Boolean);
+  if (cookies.length === 0) {
+    throw new Error(`Token _vercel_share nie dał ciasteczka dostępu (status ${response.status}). Token traci ważność po każdym wdrożeniu.`);
+  }
+  accessCookie = cookies.join("; ");
 }
 
 async function get(path: string, redirect: RequestRedirect = "manual"): Promise<Response> {
-  return fetch(withShare(`${BASE}${path}`), {
+  return fetch(`${BASE}${path}`, {
     redirect,
-    headers: { "user-agent": "HelpTravelSeoSmoke/1.0", accept: "text/html", "accept-language": "pl-PL" },
+    headers: {
+      "user-agent": "HelpTravelSeoSmoke/1.0",
+      accept: "text/html",
+      "accept-language": "pl-PL",
+      ...(accessCookie ? { cookie: accessCookie } : {}),
+    },
   });
 }
 
@@ -198,6 +213,7 @@ async function checkRobots() {
 }
 
 async function main() {
+  await exchangeShareToken();
   for (const page of PAGES) await checkPage(page);
   for (const item of REDIRECTS) await checkRedirect(item);
   for (const path of NOT_FOUND) await checkNotFound(path);
