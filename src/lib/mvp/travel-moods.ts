@@ -163,7 +163,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
     aura: "from-indigo-400/30 via-fuchsia-300/20 to-emerald-300/25",
     eyebrow: "Miasto na krótko",
     h1: "City break — najlepsze miasta na krótki wyjazd z Polski",
-    metaTitle: "City break — najlepsze miasta na weekend i 3–5 dni",
+    metaTitle: "City break z Polski — miasta na weekend i 3–5 dni",
     metaDescription:
       "Najlepsze city breaki z Polski: czytelne miasta na 2–5 dni z dobrym dojazdem. Porównaj kierunki, sprawdź ceny hoteli i lotów w PLN.",
     lead:

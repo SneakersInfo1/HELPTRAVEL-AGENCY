@@ -45,7 +45,7 @@
     "content:verify": "tsx scripts/content-engine/verify-docs.ts",
     "content:check": "tsx scripts/content-engine/verify-docs.ts --offline",
     "content:run": "tsx scripts/content-engine/run.ts",
-    "test:seo": "node --import tsx --test \"src/lib/seo-ops/**/*.test.ts\" \"src/lib/content-quality/**/*.test.ts\" \"src/lib/content-engine/**/*.test.ts\" src/lib/seo/comparison-view.test.ts && pnpm -s content:check"
+    "test:seo": "node --import tsx --test \"src/lib/seo-ops/**/*.test.ts\" \"src/lib/content-quality/**/*.test.ts\" \"src/lib/content-engine/**/*.test.ts\" src/lib/seo/comparison-view.test.ts src/lib/seo/mood-hub-model.test.ts && pnpm -s content:check"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",

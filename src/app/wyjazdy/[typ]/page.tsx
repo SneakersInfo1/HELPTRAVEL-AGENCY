@@ -29,7 +29,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const mood = getMoodBySlug(typ);
   if (!mood) return { title: "Pomysły na wyjazd" };
   return completeSocial({
-    title: mood.metaTitle,
+    // Bez sufiksu marki: z „| HelpTravel” tytuły hubów miały 63–73 znaki.
+    title: { absolute: mood.metaTitle },
     description: mood.metaDescription,
     alternates: { canonical: `/wyjazdy/${mood.slug}` },
     openGraph: {

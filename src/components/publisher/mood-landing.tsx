@@ -15,6 +15,7 @@ import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { TRAVEL_MOODS, getMoodBySlug, type MoodPick } from "@/lib/mvp/travel-moods";
 import type { DestinationProfile } from "@/lib/mvp/types";
+import { hubComparisons, hubFactRows } from "@/lib/seo/mood-hub-model";
 import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 // Default search window for the "Zobacz hotele i loty" CTA so the link lands on
@@ -113,6 +114,8 @@ export async function MoodLanding({ slug }: { slug: string }) {
 
   const siteUrl = getSiteUrl();
   const moodUrl = `${siteUrl}/wyjazdy/${mood.slug}`;
+  const factRows = hubFactRows(mood);
+  const comparisonLinks = hubComparisons(mood);
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -134,12 +137,16 @@ export async function MoodLanding({ slug }: { slug: string }) {
       {
         "@type": "ItemList",
         name: `${mood.label} — kierunki`,
-        itemListElement: cards.map((item, index) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          url: item.guideHref ? `${siteUrl}${item.guideHref}` : `${siteUrl}${item.hotelsHref}`,
-          name: `${item.pick.name}, ${item.pick.countryPl}`,
-        })),
+        // Tylko kierunki z przewodnikiem. Wcześniej pozostałe wskazywały na
+        // /hotele/szukaj?…, czyli adres zablokowany w robots.txt i noindex.
+        itemListElement: cards
+          .filter((item) => item.guideHref)
+          .map((item, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            url: `${siteUrl}${item.guideHref}`,
+            name: `${item.pick.name}, ${item.pick.countryPl}`,
+          })),
       },
       {
         "@type": "FAQPage",
@@ -253,6 +260,64 @@ export async function MoodLanding({ slug }: { slug: string }) {
           ))}
         </div>
       </section>
+
+      {/* Fakty o kierunkach z huba — wyłącznie z bramki faktów (lib/seo/mood-hub-model.ts). */}
+      <section aria-labelledby="w-liczbach" className="border-t border-line pt-6">
+        <h2 id="w-liczbach" className="font-display text-2xl text-ink sm:text-3xl">
+          {mood.label}: kierunki w liczbach
+        </h2>
+        <p className="mt-3 max-w-[65ch] text-sm leading-6 text-ink-muted">
+          Czas lotu z Polski i miesiące ze średnią temperaturą 18–30°C według danych redakcyjnych HelpTravel (średnie
+          wieloletnie, nie prognoza). Szacunek lotu liczony z odległości jest oznaczony. Gdzie nie mamy sprawdzonych danych,
+          piszemy to wprost.
+        </p>
+        <dl className="mt-4 divide-y divide-line border-y border-line">
+          {factRows.map((row) => (
+            <div key={row.name} className="grid gap-1 py-3.5 sm:grid-cols-[12rem_1fr_1fr] sm:gap-6">
+              <dt className="font-display text-lg font-semibold text-ink">
+                {row.guideHref ? (
+                  <Link href={row.guideHref} className="underline decoration-line underline-offset-4 transition hover:decoration-brand">
+                    <span className="text-ink">{row.name}</span>
+                  </Link>
+                ) : (
+                  row.name
+                )}
+              </dt>
+              <dd className="text-sm leading-6 text-ink">
+                <span className="text-ink-muted">Lot z Polski: </span>
+                {row.flight ?? "brak sprawdzonych danych"}
+              </dd>
+              <dd className="text-sm leading-6 text-ink">
+                <span className="text-ink-muted">18–30°C: </span>
+                {row.comfortableMonths ?? "brak sprawdzonych danych"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {comparisonLinks.length > 0 ? (
+        <section aria-labelledby="porownaj">
+          <h2 id="porownaj" className="font-display text-2xl text-ink sm:text-3xl">
+            Wahasz się między dwoma kierunkami?
+          </h2>
+          <p className="mt-3 max-w-[65ch] text-base leading-7 text-ink-muted">
+            Porównania stawiają dwa miasta obok siebie: dolot, pogodę w ciągu roku i to, dla kogo lepiej sprawdzi się każde z nich.
+          </p>
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {comparisonLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="inline-flex min-h-11 items-center rounded-full border border-line bg-surface-raised px-4 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+                >
+                  <span className="text-sm font-semibold text-ink">{link.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* Editorial content — human-written, SEO */}
       {/* Treść redakcyjna czyta się jak tekst, nie jak kafelki: karty zamieniały
