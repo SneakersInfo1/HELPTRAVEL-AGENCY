@@ -21,6 +21,7 @@
 // search-query phrasing ("hotele w X").
 
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
@@ -65,7 +66,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // "w Barcelonie" / "na Teneryfie" — preposition lives on the city record.
   const inLoc = `${city.preposition} ${city.cityLocative}`;
 
-  return {
+  return completeSocial({
     title: text.title,
     description: text.description,
     keywords: [
@@ -89,7 +90,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: text.twitterTitle,
       description: text.twitterDescription,
     },
-  };
+  });
 }
 
 // Server-side LiteAPI fetch with hard failure fallback. The page MUST

@@ -3,10 +3,11 @@ import type { Metadata } from "next";
 import { CategoryPage } from "@/components/publisher/category-page";
 import { getEditorialCategoryBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { completeSocial } from "@/lib/seo/social-meta";
 
 const category = getEditorialCategoryBySlug("bez-wizy");
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: category?.title ?? "Bez wizy",
   description: category?.description ?? "Kierunki i inspiracje dla osób szukających prostszych formalności.",
   alternates: {
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
     url: `${getSiteUrl()}/bez-wizy`,
     type: "website",
   },
-};
+});
 
 export default function VisaFreeCategoryPage() {
   return <CategoryPage slug="bez-wizy" />;

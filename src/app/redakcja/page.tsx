@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -6,7 +7,7 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { getSiteUrl } from "@/lib/mvp/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Redakcja — kto tworzy HelpTravel",
   description:
     "Poznaj autora i metodologię HelpTravel: skąd biorą się ceny hoteli, dane o pogodzie i czasy lotów, i jak weryfikujemy treści, zanim trafią na stronę.",
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
     type: "profile",
     locale: "pl_PL",
   },
-};
+});
 
 const dataSources = [
   {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 import Image from "next/image";
 import { Plane, Plus, Sun } from "lucide-react";
@@ -72,7 +73,7 @@ export function getDestinationsIndexMetadata(locale: SiteLocale): Metadata {
   };
 }
 
-export const metadata: Metadata = getDestinationsIndexMetadata("pl");
+export const metadata: Metadata = completeSocial(getDestinationsIndexMetadata("pl"));
 
 // Flagship mix (city + beach) for the "popularne teraz" tiles — links into the
 // hotel search (conversion path). Order = visual rhythm, not ranking.

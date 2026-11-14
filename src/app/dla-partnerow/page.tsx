@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { getEditorialArticles, getEditorialCategories, getPublishedDestinations } from "@/lib/mvp/publisher-content";
+import { completeSocial } from "@/lib/seo/social-meta";
 
 const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Dla partnerów",
   description:
     "Informacje o współpracy z HelpTravel: do kogo dociera serwis, jak wygląda ekspozycja i gdzie napisać.",
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
     url: "/dla-partnerow",
     type: "website",
   },
-};
+});
 
 const audienceCards = [
   {

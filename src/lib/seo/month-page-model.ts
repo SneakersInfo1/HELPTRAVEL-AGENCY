@@ -10,7 +10,7 @@ import {
   monthTemperature,
   type DestinationSeoFacts,
 } from "./destination-facts";
-import { buildMonthPageStructuredData } from "./month-page-schema";
+import { buildMonthPageStructuredData, monthPageQuestions, type MonthQuestion } from "./month-page-schema";
 import { monthPageText } from "./page-titles";
 
 export interface MonthPageModelInput {
@@ -46,7 +46,46 @@ export interface MonthPageModel {
   weather: MonthWeather | null;
   budgetEstimate: { min: number; max: number } | null;
   flightText: string | null;
+  /** Widoczne FAQ — identyczne z węzłem FAQPage. */
+  faq: MonthQuestion[];
+  /** Na co ten termin się nadaje, a na co nie — wyłącznie ze średniej temperatury. */
+  fit: MonthFit | null;
   structuredData: Record<string, unknown>;
+}
+
+export interface MonthFit {
+  goodFor: string[];
+  skipIf: string[];
+  basis: string;
+}
+
+// Reguły z samej średniej temperatury miesiąca (dane kuratorowane). Nie mówią
+// nic o tłumach, cenach ani opadach — do tego nie mamy źródła.
+function buildFit(weather: MonthWeather, isBeachDestination: boolean): MonthFit {
+  const goodFor: string[] = [];
+  const skipIf: string[] = [];
+  const t = weather.tempC;
+  if (t >= 27) {
+    goodFor.push("plażowanie i kąpiel", "wieczory na zewnątrz");
+    skipIf.push("planujesz długie zwiedzanie pieszo w środku dnia — bywa upalnie");
+  } else if (t >= 22) {
+    goodFor.push("zwiedzanie pieszo bez grubej kurtki", "posiłki i wieczory na zewnątrz");
+    if (isBeachDestination) goodFor.push("plażowanie w cieplejsze dni");
+  } else if (t >= 17) {
+    goodFor.push("zwiedzanie pieszo — bez upału", "spacery i tarasy w ciągu dnia");
+    if (isBeachDestination) skipIf.push("liczysz na pewną pogodę plażową i ciepłe morze");
+  } else if (t >= 12) {
+    goodFor.push("zwiedzanie miasta bez upału", "muzea, kuchnię i spokojniejsze tempo");
+    skipIf.push("celem wyjazdu jest plaża i kąpiel");
+  } else {
+    goodFor.push("muzea, wnętrza i kuchnię", "krótki miejski wyjazd z ciepłą kurtką");
+    skipIf.push("chcesz spędzać dni na zewnątrz albo na plaży");
+  }
+  return {
+    goodFor,
+    skipIf,
+    basis: `Wskazania wynikają wyłącznie ze średniej temperatury miesiąca (${t}°C, średnia wieloletnia z danych redakcyjnych HelpTravel). To nie jest prognoza pogody; nie uwzględnia opadów, tłumów ani cen.`,
+  };
 }
 
 function estimateBudgetForMonth(costIndex: number, flightHours: number, monthIndex: number) {
@@ -131,9 +170,9 @@ export function buildMonthPageModel(input: MonthPageModelInput): MonthPageModel 
     ? estimateBudgetForMonth(profile.costIndex, facts.flight.hours, monthIndex)
     : null;
   const inMonth = inMonthPhrase(month);
-  const h1 = weather
-    ? `${facts.name} ${inMonth} — pogoda ${weather.tempC}°C, hotele i kiedy lecieć`
-    : `${facts.name} ${inMonth} — hotele i kiedy lecieć`;
+  // Nagłówek to fraza, której ludzie szukają („Barcelona w styczniu: pogoda");
+  // liczby i odpowiedź stoją zaraz pod nim, nie w nagłówku.
+  const h1 = weather ? `${facts.name} ${inMonth}: pogoda i temperatura` : `${facts.name} ${inMonth}: hotele i loty`;
   const lead = weather
     ? `${facts.name} ${inMonth}: ${weather.description} (śr. ${weather.tempC}°C${weather.seaTempEstimate !== null ? `, morze szacunkowo ~${weather.seaTempEstimate}°C` : ""}).${budgetEstimate ? " Poniżej orientacyjny budżet, temperatury w ciągu roku i przejście do hoteli z cenami w PLN." : " Poniżej temperatury w ciągu roku i przejście do hoteli z cenami w PLN."}`
     : `${facts.name} ${inMonth}: przejdź do hoteli z cenami w PLN na ten termin i sprawdź dostępność.`;
@@ -170,6 +209,13 @@ export function buildMonthPageModel(input: MonthPageModelInput): MonthPageModel 
     weather,
     budgetEstimate,
     flightText: facts.flight ? formatFlightFact(facts.flight) : null,
+    faq: monthPageQuestions({
+      month,
+      name: facts.name,
+      weather: weather ? { tempC: weather.tempC, description: weather.description, verdict: weather.verdict } : null,
+      exactFlightHours: exactFlightHours(facts),
+    }),
+    fit: weather ? buildFit(weather, profile.beachScore >= 0.6) : null,
     structuredData,
   };
 }

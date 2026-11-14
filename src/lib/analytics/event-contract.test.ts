@@ -245,7 +245,7 @@ describe("page_path ma jedno źródło (test A, warstwa strukturalna)", () => {
 // ── §11 B/C/D: CTA na stronach treściowych ──────────────────────────────
 describe("CTA stron treściowych wysyła seo_cta_click (testy B, C, D)", () => {
   const PRZYPADKI: Array<[string, string, string]> = [
-    ["B — strona miesiąca", "src/app/kierunki/[slug]/[miesiac]/page.tsx", "month_page"],
+    ["B — strona miesiąca", "src/components/editorial/month-template.tsx", "month_page"],
     ["C — przewodnik kierunku", "src/app/kierunki/[slug]/page.tsx", "guide"],
     // Od 2026-11 CTA porównania żyją w szablonie, nie w pliku trasy.
     ["D — porównanie", "src/components/editorial/comparison-template.tsx", "comparison"],
@@ -277,8 +277,11 @@ describe("CTA stron treściowych wysyła seo_cta_click (testy B, C, D)", () => {
   }
 
   it("strona miesiąca podaje miesiąc — bez niego nie da się porównać sezonów", () => {
-    const tresc = czytaj("src/app/kierunki/[slug]/[miesiac]/page.tsx");
-    assert.equal(tresc.includes("month={miesiac}"), true);
+    // Od 2026-11 CTA strony miesiąca żyją w szablonie; KAŻDY z nich niesie miesiąc.
+    const tresc = czytaj("src/components/editorial/month-template.tsx");
+    const otwarcia = (tresc.match(/<SeoCtaLink[\s>]/g) ?? []).length;
+    assert.ok(otwarcia >= 2);
+    assert.equal((tresc.match(/month=\{month\}/g) ?? []).length, otwarcia);
   });
 });
 

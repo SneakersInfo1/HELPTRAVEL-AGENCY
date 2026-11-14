@@ -4,6 +4,7 @@
 // moods only.
 
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import { notFound } from "next/navigation";
 
 import { MoodLanding } from "@/components/publisher/mood-landing";
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { typ } = await params;
   const mood = getMoodBySlug(typ);
   if (!mood) return { title: "Pomysły na wyjazd" };
-  return {
+  return completeSocial({
     title: mood.metaTitle,
     description: mood.metaDescription,
     alternates: { canonical: `/wyjazdy/${mood.slug}` },
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${getSiteUrl()}/wyjazdy/${mood.slug}`,
       type: "website",
     },
-  };
+  });
 }
 
 export default async function MoodPage({ params }: PageProps) {

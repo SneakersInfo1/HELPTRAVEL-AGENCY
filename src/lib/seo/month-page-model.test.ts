@@ -93,7 +93,7 @@ describe("model strony kierunku w miesiącu", () => {
 
   it("zachowuje kuratorowane dane i używa polskich nazw (test D)", () => {
     const malaga = modelForSlug("malaga-spain", "wrzesien");
-    assert.equal(malaga.text.title, "Malaga we wrześniu: pogoda 27°C, hotele i kiedy lecieć");
+    assert.equal(malaga.text.title, "Malaga we wrześniu: pogoda i temperatura 27°C");
     assert.match(JSON.stringify(malaga.structuredData), /27°C/);
 
     const rome = modelForSlug("rome-italy", "lipiec");

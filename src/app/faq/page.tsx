@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
@@ -46,7 +47,7 @@ const faqItems = [
   },
 ];
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "FAQ",
   description:
     "Najczęstsze pytania o HelpTravel, planner, linki partnerskie, ceny, zapisywanie planów i sposób działania serwisu.",
@@ -60,7 +61,7 @@ export const metadata: Metadata = {
     url: "/faq",
     type: "website",
   },
-};
+});
 
 export default function FaqPage() {
   const structuredData = {

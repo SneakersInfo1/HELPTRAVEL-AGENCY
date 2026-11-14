@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -72,7 +73,7 @@ const seasonIntro: Record<Season, string> = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { sezon } = await params;
   if (!isSeason(sezon)) return { title: "Najlepsze kierunki" };
-  return {
+  return completeSocial({
     title: seasonPageHeading(sezon),
     description: `Ranking kierunków na ${seasonInflected[sezon]} — pogoda, koszty i charakter wyjazdu. Praktyczna lista pod decyzję city break i krótki urlop z Polski.`,
     alternates: { canonical: `/najlepsze-kierunki/${sezon}` },
@@ -83,7 +84,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${getSiteUrl()}/najlepsze-kierunki/${sezon}`,
       type: "article",
     },
-  };
+  }, { ownImage: true });
 }
 
 export default async function SeasonRankingPage({ params }: PageProps) {

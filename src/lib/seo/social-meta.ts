@@ -51,3 +51,32 @@ export function socialMeta(input: SocialMetaInput): Pick<Metadata, "openGraph" |
     },
   };
 }
+
+/**
+ * Uzupełnia gotowe metadane strony o brakujące pola społecznościowe:
+ * obraz domyślny w `openGraph` (chyba że segment ma własny plik
+ * opengraph-image) i kartę Twittera z tytułem i opisem TEJ strony.
+ * Niczego nie nadpisuje — strona, która podała własne wartości, zachowuje je.
+ */
+export function completeSocial(meta: Metadata, options: { ownImage?: boolean } = {}): Metadata {
+  const openGraph = meta.openGraph;
+  if (!openGraph) return meta;
+  const title = typeof openGraph.title === "string" ? openGraph.title : undefined;
+  const description = typeof openGraph.description === "string" ? openGraph.description : undefined;
+  const needsImage = !options.ownImage && openGraph.images === undefined;
+  return {
+    ...meta,
+    openGraph: needsImage ? { ...openGraph, images: [DEFAULT_OG_IMAGE] } : openGraph,
+    twitter: meta.twitter
+      ? {
+          ...meta.twitter,
+          ...(needsImage && !meta.twitter.images ? { images: [DEFAULT_OG_IMAGE.url] } : {}),
+        }
+      : {
+          card: "summary_large_image",
+          ...(title ? { title } : {}),
+          ...(description ? { description } : {}),
+          ...(needsImage ? { images: [DEFAULT_OG_IMAGE.url] } : {}),
+        },
+  };
+}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -25,7 +26,7 @@ export const revalidate = 86400;
 //   • „za 0 zł" — wyjazd kupuje się tutaj; bezpłatne jest wyszukiwanie, nie wyjazd.
 //   • gradient na tekście nagłówka i nadtytuły nad każdą sekcją.
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Pomysły na wyjazd i poradniki",
   description:
     "Pomysły na city breaki, ciepłe kierunki i praktyczne poradniki — dla osób, które chcą najpierw poczytać i porównać, zanim wybiorą termin i hotel.",
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
     url: `${getSiteUrl()}/inspiracje`,
     type: "website",
   },
-};
+});
 
 const HERO_SLUG = "athens-greece";
 const TILE_SLUGS = ["barcelona-spain", "lisbon-portugal", "rome-italy", "malaga-spain"] as const;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -38,7 +39,7 @@ export async function generateMetadata({ params }: InspirationPageProps): Promis
     };
   }
 
-  return {
+  return completeSocial({
     title: article.title,
     description: article.description,
     alternates: {
@@ -50,7 +51,7 @@ export async function generateMetadata({ params }: InspirationPageProps): Promis
       url: `${getSiteUrl()}/inspiracje/${article.slug}`,
       type: "article",
     },
-  };
+  }, { ownImage: true });
 }
 
 export default async function InspirationPage({ params }: InspirationPageProps) {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 
 import { CategoryPage } from "@/components/publisher/category-page";
 import { getEditorialCategoryBySlug } from "@/lib/mvp/publisher-content";
@@ -8,7 +9,7 @@ export const revalidate = 86400;
 
 const category = getEditorialCategoryBySlug("przewodniki");
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: category?.title ?? "Przewodniki",
   description: category?.description ?? "Przewodniki travelowe HelpTravel.",
   alternates: {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     url: `${getSiteUrl()}/przewodniki`,
     type: "website",
   },
-};
+});
 
 export default function GuidesCategoryPage() {
   return <CategoryPage slug="przewodniki" />;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 
 import { CategoryPage } from "@/components/publisher/category-page";
 import { getEditorialCategoryBySlug } from "@/lib/mvp/publisher-content";
@@ -6,7 +7,7 @@ import { getSiteUrl } from "@/lib/mvp/site";
 
 const category = getEditorialCategoryBySlug("weekendowe-wyjazdy");
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: category?.title ?? "Weekendowe wyjazdy",
   description: category?.description ?? "Weekendowe wyjazdy i szybkie city breaki z Polski.",
   alternates: {
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
     url: `${getSiteUrl()}/weekendowe-wyjazdy`,
     type: "website",
   },
-};
+});
 
 export default function WeekendTripsCategoryPage() {
   return <CategoryPage slug="weekendowe-wyjazdy" />;

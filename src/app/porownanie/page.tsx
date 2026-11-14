@@ -4,6 +4,7 @@
 // here (keeps it fast — the detail pages own the rich media).
 
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
@@ -14,7 +15,7 @@ import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
 export const revalidate = 86400;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Porównania kierunków — który wybrać na wyjazd?",
   description:
     "Bezpośrednie porównania popularnych kierunków z Polski: pogoda, koszty, plaża, zwiedzanie i dolot. Kreta czy Turcja, Majorka czy Cypr, Rzym czy Ateny i wiele więcej.",
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     url: `${getSiteUrl()}/porownanie`,
     type: "website",
   },
-};
+});
 
 export default function ComparisonsHubPage() {
   const baseUrl = getSiteUrl();

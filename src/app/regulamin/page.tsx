@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -35,7 +36,7 @@ const operator = {
 const EFFECTIVE_DATE = "13 czerwca 2026 r.";
 const EFFECTIVE_DATE_ISO = "2026-06-13";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Regulamin",
   description:
     "Regulamin serwisu HelpTravel. Zasady korzystania, świadczenie usług drogą elektroniczną, proces rezerwacji hotelowej, reklamacje, prawo odstąpienia, dane Operatora.",
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
     type: "article",
   },
   robots: { index: true, follow: true },
-};
+});
 
 // ────────────────────────────────────────────────────────────────────────────
 // Struktura dokumentu

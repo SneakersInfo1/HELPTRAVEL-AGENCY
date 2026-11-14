@@ -34,28 +34,41 @@ function question(name: string, text: string) {
   return { "@type": "Question", name, acceptedAnswer: { "@type": "Answer", text } };
 }
 
+export interface MonthQuestion {
+  question: string;
+  answer: string;
+}
+
+/**
+ * Pytania i odpowiedzi strony miesiąca. Ta sama lista trafia do widocznej
+ * sekcji FAQ i do węzła FAQPage — dane strukturalne nie mogą mówić niczego,
+ * czego nie ma na stronie.
+ */
+export function monthPageQuestions(input: Pick<MonthPageSchemaInput, "month" | "name" | "weather" | "exactFlightHours">): MonthQuestion[] {
+  const { month, name, weather, exactFlightHours } = input;
+  const inMonth = inMonthPhrase(month);
+  const questions: MonthQuestion[] = [];
+  if (weather) {
+    questions.push(
+      {
+        question: `${name} ${inMonth} — jaka jest pogoda?`,
+        answer: `Średnia temperatura: ${weather.tempC}°C — ${weather.description}. ${weather.verdict}`,
+      },
+      { question: `${name} ${inMonth} — czy warto lecieć?`, answer: weather.verdict },
+    );
+  }
+  if (exactFlightHours !== null) {
+    questions.push({ question: `${name} — jak długo trwa lot z Polski?`, answer: `Lot z Polski trwa około ${exactFlightHours.toFixed(1)} h.` });
+  }
+  return questions;
+}
+
 export function buildMonthPageStructuredData(input: MonthPageSchemaInput) {
-  const { baseUrl, destinationSlug, month, name, countryName, weather, exactFlightHours, author } = input;
+  const { baseUrl, destinationSlug, month, name, countryName, weather, author } = input;
   const inMonth = inMonthPhrase(month);
   const pageUrl = `${baseUrl}/kierunki/${destinationSlug}/${month}`;
   const headline = monthPageText({ name, month, tempC: weather?.tempC ?? null }).headline;
-  const questions = [];
-
-  if (weather) {
-    questions.push(
-      question(
-        `${name} ${inMonth} — jaka jest pogoda?`,
-        `Średnia temperatura: ${weather.tempC}°C — ${weather.description}. ${weather.verdict}`,
-      ),
-      question(`${name} ${inMonth} — czy warto lecieć?`, weather.verdict),
-    );
-  }
-
-  if (exactFlightHours !== null) {
-    questions.push(
-      question(`${name} — jak długo trwa lot z Polski?`, `Lot z Polski trwa około ${exactFlightHours.toFixed(1)} h.`),
-    );
-  }
+  const questions = monthPageQuestions(input).map((item) => question(item.question, item.answer));
 
   return {
     "@context": "https://schema.org",

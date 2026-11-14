@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -20,7 +21,7 @@ export const revalidate = 86400;
 // działa tak, jak napisano. Poniżej jest przebieg, który faktycznie ma
 // miejsce, krok po kroku, zgodnie z docs/booking-flow.md.
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Jak to działa",
   description:
     "Od wyszukania do potwierdzenia: pięć kroków rezerwacji na helptravel.pl. Kiedy podajesz dane, kiedy płacisz, kto pobiera pieniądze i co dostajesz na e-mail.",
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pl_PL",
   },
-};
+});
 
 const HERO_SLUG = "rome-italy";
 const EXAMPLE_SLUG = "lisbon-portugal";

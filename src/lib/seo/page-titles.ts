@@ -68,6 +68,16 @@ export interface MonthPageTextInput {
   price?: VerifiedTitlePrice | null;
 }
 
+/**
+ * Tytuł strony miesiąca z pogodą. Z sufiksem „| HelpTravel" ma się zmieścić
+ * w ok. 60 znakach — poprzedni szablon („…: pogoda 13°C, hotele i kiedy lecieć")
+ * dawał 63–72 znaki i był ucinany w wynikach (crawl 13.11.2026: 270 stron).
+ */
+function monthWeatherTitle(name: string, inMonth: string, tempC: number): string {
+  const full = `${name} ${inMonth}: pogoda i temperatura ${tempC}°C`;
+  return full.length <= 47 ? full : `${name} ${inMonth}: pogoda ${tempC}°C`;
+}
+
 export function monthPageText({ name, month, tempC, price }: MonthPageTextInput) {
   const inMonth = inMonthPhrase(month);
   if (tempC === null) {
@@ -82,7 +92,7 @@ export function monthPageText({ name, month, tempC, price }: MonthPageTextInput)
   return {
     title: price
       ? `${name} ${inMonth}: pogoda ${tempC}°C, ${hotelsFromPhrase(price)}`
-      : `${name} ${inMonth}: pogoda ${tempC}°C, hotele i kiedy lecieć`,
+      : monthWeatherTitle(name, inMonth, tempC),
     description: `${name} ${inMonth}: średnia temperatura ${tempC}°C. Sprawdź, czy to dobry termin, i przejdź do hoteli i lotów z cenami w PLN.`,
     ogTitle: price
       ? `${name} ${inMonth} — pogoda ${tempC}°C i ${hotelsFromPhrase(price)}`

@@ -56,7 +56,7 @@ describe("tytuły i opisy bez roku i bez ceny modelowanej (testy C i F)", () => 
     }
     assert.equal(
       monthPageText({ name: "Malaga", month: "wrzesien", tempC: 27 }).title,
-      "Malaga we wrześniu: pogoda 27°C, hotele i kiedy lecieć",
+      "Malaga we wrześniu: pogoda i temperatura 27°C",
     );
   });
 
