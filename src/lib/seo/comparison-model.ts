@@ -170,6 +170,11 @@ function audienceTags(side: ComparisonSide): string[] {
   return tags.slice(0, 4);
 }
 
+// JĘZYK: nazwa kierunku stoi zawsze po dwukropku, bez orzeczenia, które musiałoby
+// się z nią zgadzać. „Lepszy jest Ateny", „Walencja wypada taniej" i „Ateny ma"
+// to błędy rodzaju i liczby, których nie da się uniknąć bez odmiany nazw
+// (Ateny — l.mn., Walencja — r.ż.), a odmiany nie ma w danych.
+
 function buildVerdicts(
   a: ComparisonSide,
   b: ComparisonSide,
@@ -183,7 +188,7 @@ function buildVerdicts(
       cheaper
         ? {
             title: "Budżet",
-            body: `${cheaper.name} wypada zwykle taniej — przy podobnym planie łatwiej obronić tańszy kierunek.`,
+            body: `Taniej zwykle: ${cheaper.name}. Przy podobnym planie łatwiej obronić tańszy kierunek.`,
           }
         : {
             title: "Budżet",
@@ -197,7 +202,7 @@ function buildVerdicts(
     if (beach) {
       verdicts.push({
         title: "Plaża i klimat morski",
-        body: `${beach.name} ma mocniejszy profil plażowy — to lepszy wybór pod reset nad morzem.`,
+        body: `Mocniejszy profil plażowy: ${beach.name}. Lepszy wybór pod reset nad morzem.`,
       });
     }
 
@@ -205,7 +210,7 @@ function buildVerdicts(
     if (city) {
       verdicts.push({
         title: "City break i tło miejskie",
-        body: `${city.name} jest mocniejszy jako klasyczny city break z gęstszym zwiedzaniem i klimatem ulicznym.`,
+        body: `Mocniejszy profil city breaku: ${city.name}. Gęstsze zwiedzanie i klimat uliczny.`,
       });
     }
   }
@@ -214,7 +219,7 @@ function buildVerdicts(
   if (access) {
     verdicts.push({
       title: "Dolot z Polski",
-      body: `${access.name} ma łatwiejszą i bardziej regularną logistykę z Polski — sensowny wybór pod krótki wyjazd.`,
+      body: `Łatwiejsza i bardziej regularna logistyka z Polski: ${access.name}. Sensowny wybór pod krótki wyjazd.`,
     });
   }
 
@@ -246,7 +251,7 @@ function buildFaq(
   const summer = warmerInSummer(a, b);
   const logistics = exactFlights
     ? easier
-      ? `Na prosty pierwszy wyjazd zwykle wygodniej wypada ${easier.name} (łatwiejszy dolot i logistyka z Polski). `
+      ? `Łatwiejszy dolot i logistyka z Polski na pierwszy wyjazd: ${easier.name}. `
       : "Pod względem dolotu i logistyki z Polski oba kierunki wypadają podobnie. "
     : "";
 
@@ -257,25 +262,25 @@ function buildFaq(
     faq.push(
       {
         question: `${a.name} czy ${b.name} — co wybrać na pierwszy raz?`,
-        answer: `${logistics}${beach ? `Jeśli zależy Ci głównie na plaży, lepszy będzie ${beach.name}` : "Pod plażę oba są porównywalne"}; ${
-          city ? `jeśli na zwiedzaniu i miejskim klimacie — ${city.name}.` : "pod zwiedzanie żaden nie ma wyraźnej przewagi."
+        answer: `${logistics}${beach ? `Jeśli zależy Ci głównie na plaży: ${beach.name}` : "Pod plażę oba kierunki wypadają podobnie"}; ${
+          city ? `jeśli na zwiedzaniu i miejskim klimacie: ${city.name}.` : "pod zwiedzanie żaden nie ma wyraźnej przewagi."
         }`,
       },
       {
         // Bez danych o klimacie pytanie nie obiecuje odpowiedzi o temperaturze.
         question: summer ? `Gdzie cieplej i lepsza plaża — ${a.name} czy ${b.name}?` : `Gdzie lepsza plaża — ${a.name} czy ${b.name}?`,
         answer:
-          (beach ? `Pod kątem plaży mocniej wypada ${beach.name}.` : "Pod kątem plaży oba kierunki wypadają podobnie.") +
+          (beach ? `Pod kątem plaży przewaga: ${beach.name}.` : "Pod kątem plaży oba kierunki wypadają podobnie.") +
           (summer
             ? summer.warmer
-              ? ` Latem (czerwiec-sierpień) cieplej bywa w kierunku ${summer.warmer} (${Math.max(summer.sumA, summer.sumB)}°C wobec ${Math.min(summer.sumA, summer.sumB)}°C).`
+              ? ` Latem (czerwiec–sierpień) cieplej: ${summer.warmer} (${Math.max(summer.sumA, summer.sumB)}°C wobec ${Math.min(summer.sumA, summer.sumB)}°C).`
               : ` Latem oba kierunki mają podobne temperatury (ok. ${summer.sumA}°C).`
             : ""),
       },
       {
         question: `Co lepsze na zwiedzanie i city break — ${a.name} czy ${b.name}?`,
         answer: city
-          ? `${city.name} ma mocniejszy profil miejski i więcej do zwiedzania, więc lepiej sprawdzi się przy planie pełnym atrakcji i spacerów po mieście.`
+          ? `Przy planie pełnym atrakcji i spacerów po mieście: ${city.name} (mocniejszy profil miejski i więcej do zwiedzania w ocenie redakcji).`
           : "Oba kierunki mają podobny profil miejski — o wyborze zdecydują raczej konkretne atrakcje i termin.",
       },
     );
@@ -283,7 +288,7 @@ function buildFaq(
     faq.push({
       question: `Gdzie cieplej — ${a.name} czy ${b.name}?`,
       answer: summer.warmer
-        ? `Latem (czerwiec-sierpień) cieplej bywa w kierunku ${summer.warmer} (${Math.max(summer.sumA, summer.sumB)}°C wobec ${Math.min(summer.sumA, summer.sumB)}°C).`
+        ? `Latem (czerwiec–sierpień) cieplej: ${summer.warmer} (${Math.max(summer.sumA, summer.sumB)}°C wobec ${Math.min(summer.sumA, summer.sumB)}°C).`
         : `Latem oba kierunki mają podobne temperatury (ok. ${summer.sumA}°C).`,
     });
   }
@@ -293,7 +298,7 @@ function buildFaq(
     faq.push({
       question: `Który wyjazd jest tańszy — ${a.name} czy ${b.name}?`,
       answer: `Według orientacyjnego szacunku (lot, nocleg, jedzenie i transport dla 2 osób na 4 dni) ${
-        cheaper ? `taniej zwykle wypada ${cheaper}` : "oba kierunki są w podobnym pułapie"
+        cheaper ? `taniej zwykle: ${cheaper}` : "oba kierunki są w podobnym pułapie"
       }. Aktualne ceny dla swoich dat sprawdzisz w wyszukiwarce.`,
     });
   }
@@ -319,7 +324,7 @@ function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide, budgets: { a: nu
     const parts = [
       `${a.name} czy ${b.name}? Dla tej pary nie mamy jeszcze opracowanych danych o obu kierunkach, więc nie wskazujemy lepszego.`,
     ];
-    if (summer?.warmer) parts.push(`Latem cieplej bywa w kierunku ${summer.warmer}.`);
+    if (summer?.warmer) parts.push(`Latem cieplej: ${summer.warmer}.`);
     parts.push("Poniżej porównanie tego, co mamy sprawdzone.");
     return parts.join(" ");
   }
@@ -329,24 +334,22 @@ function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide, budgets: { a: nu
   const easier = winner(a, b, (d) => d.accessScore);
 
   const beachPart = beach
-    ? `Na plażę i wypoczynek nad morzem lepszy jest ${beach.name}`
+    ? `Na plażę i wypoczynek nad morzem: ${beach.name}`
     : "Pod plażę i wypoczynek nad morzem oba kierunki wypadają podobnie";
-  const cityPart = city ? `a na zwiedzanie i miejski klimat — ${city.name}` : "a pod zwiedzanie żaden nie ma wyraźnej przewagi";
+  const cityPart = city ? `na zwiedzanie i miejski klimat: ${city.name}` : "pod zwiedzanie żaden nie ma wyraźnej przewagi";
   const accessPart = bothExactFlights(a, b)
     ? easier
-      ? `najprostszy dolot z Polski ma ${easier.name}`
-      : "dolot z Polski jest porównywalny"
+      ? `Najprostszy dolot z Polski: ${easier.name}.`
+      : "Dolot z Polski jest porównywalny."
     : null;
 
-  let answer = `${a.name} czy ${b.name}? ${beachPart}, ${cityPart}.`;
+  let answer = `${a.name} czy ${b.name}? ${beachPart}; ${cityPart}.`;
   if (budgets) {
     const cheaper = cheaperName(a, b, budgets);
-    const budgetPart = cheaper ? `Taniej zwykle wychodzi ${cheaper}` : "Budżetowo oba kierunki są podobne";
-    answer += accessPart ? ` ${budgetPart}, a ${accessPart}.` : ` ${budgetPart}.`;
-  } else if (accessPart) {
-    answer += ` ${accessPart.charAt(0).toUpperCase()}${accessPart.slice(1)}.`;
+    answer += cheaper ? ` Taniej zwykle: ${cheaper}.` : " Budżetowo oba kierunki są podobne.";
   }
-  if (summer?.warmer) answer += ` Latem cieplej bywa w kierunku ${summer.warmer}.`;
+  if (accessPart) answer += ` ${accessPart}`;
+  if (summer?.warmer) answer += ` Latem cieplej: ${summer.warmer}.`;
   return answer;
 }
 

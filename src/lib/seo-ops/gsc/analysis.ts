@@ -210,9 +210,10 @@ const SEGMENT_WEIGHT: Record<UrlSegment, number> = {
   // SERP pogodowy zabiera kliknięcia stronom miesięcy (Faza 2.1: dane
   // kuratorowane nie poprawiły CTR), więc ten sam odstęp CTR waży mniej.
   month: 0.35,
-  // Strony informacyjne i główna żyją z linków dodatkowych przy marce.
-  home: 0.1,
-  info: 0.05,
+  // Strony informacyjne i główna żyją z linków dodatkowych przy marce
+  // (Faza 2.1: 93/93 kliknięć /cennik z zapytań markowych) — to nie są szanse treści.
+  home: 0,
+  info: 0,
   hotel_detail: 0,
   legacy: 0,
   other: 0.2,

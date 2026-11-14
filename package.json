@@ -41,6 +41,8 @@
     "snapshot:rollback": "tsx --env-file=.env.local scripts/snapshot-rollback.ts",
     "probe:rotation": "tsx --env-file=.env.local scripts/probe-rotation-coverage.ts",
     "seo:crawl": "tsx scripts/seo/crawl.ts",
+    "seo:weekly": "tsx scripts/seo/weekly-report.ts",
+    "seo:inventory": "tsx scripts/seo/build-inventory.ts",
     "seo:smoke": "tsx scripts/seo/smoke.ts",
     "seo:shots": "tsx scripts/seo/shots.ts",
     "content:verify": "tsx scripts/content-engine/verify-docs.ts",

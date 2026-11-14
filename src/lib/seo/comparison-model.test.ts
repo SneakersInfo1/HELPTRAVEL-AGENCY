@@ -151,7 +151,8 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
     for (const pair of comparisonPairs) {
       const model = modelFor(pair.slug);
       const scoresKnown = curated.has(model.a.profile.slug) && curated.has(model.b.profile.slug);
-      const claims = /mocniejszy profil|mocniej wypada|lepszy będzie|więcej do zwiedzania|lepszy jest|wypadają podobnie|porównywalne/i;
+      const claims =
+        /mocniejszy profil|mocniej wypada|lepszy będzie|więcej do zwiedzania|lepszy jest|wypadają podobnie|porównywalne|przewaga:|na plażę i wypoczynek nad morzem:|na zwiedzanie i miejski klimat:|dolot z polski:|taniej zwykle:/i;
 
       if (scoresKnown) {
         assert.ok(model.audience[0].length > 0 && model.audience[1].length > 0, pair.slug);
@@ -185,7 +186,7 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
       assert.equal(model.budget, null, slug);
       assert.equal(model.whenToGo.length, 0, slug);
       assert.ok(model.rows.length >= 3, slug);
-      assert.doesNotMatch(model.quickAnswer, /lepszy jest|najprostszy dolot z Polski ma/, slug);
+      assert.doesNotMatch(model.quickAnswer, /lepszy jest|najprostszy dolot z Polski/, slug);
       assert.deepEqual(model.verdicts, [], slug);
       assert.deepEqual(model.faq, [], slug);
       assert.deepEqual(model.audience, [[], []], slug);
@@ -227,5 +228,16 @@ describe("porównania kierunków bez faktów z fallbacku", () => {
     assert.ok(model.faq.some((item) => item.question === "Kiedy najlepiej jechać?"));
     assert.ok(model.faq.some((item) => /cieplej/.test(item.question)));
     assert.match(model.rows.find((row) => row.label === "Lot z Polski (h)")?.av ?? "", /^~\d\.\d h$/);
+  });
+});
+
+describe("język generatora porównań", () => {
+  it("nazwa kierunku bez orzeczenia, które musiałoby się z nią zgadzać (Ateny, Walencja)", () => {
+    const agreement = /(lepszy jest|lepszy będzie|wypada zwykle taniej|ma mocniejszy|jest mocniejszy|mocniej wypada|cieplej bywa w kierunku|taniej zwykle wychodzi|dolot z Polski ma) /i;
+    for (const pair of comparisonPairs) {
+      const model = modelFor(pair.slug);
+      const text = JSON.stringify({ quick: model.quickAnswer, faq: model.faq, verdicts: model.verdicts });
+      assert.doesNotMatch(text, agreement, pair.slug);
+    }
   });
 });
