@@ -148,4 +148,4 @@ Jak to czytać:
 
 - GSC pokazuje stan sprzed zmian. Efekt będzie widać najwcześniej po 28 dniach od wdrożenia, a i wtedy będzie to korelacja: sezon, ruch z TikToka i wygląd wyników też się zmieniają.
 - GA4 nie jest podłączone, więc nie ma punktu odniesienia dla kliknięć CTA ani rezerwacji z ruchu organicznego.
-- Build lokalny nie ma kluczy dostawców (LiteAPI, Pexels). Bloki zależne od nich, czyli statystyki hoteli i zdjęcia, trzeba sprawdzić na Preview.
+- Build lokalny nie ma kluczy dostawców (LiteAPI, Pexels). Bloki zależne od nich, czyli statystyki hoteli i zdjęcia, sprawdzono osobno na Preview (`PHASE_7_RESULTS.md`).

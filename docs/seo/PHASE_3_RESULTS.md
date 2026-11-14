@@ -33,5 +33,5 @@ Trzy kierunki art direction („Werdykt”, „Pojedynek”, „Karta decyzji”
 ## Ograniczenia
 
 - Wybór kierunku opiera się na zrzutach i pomiarach układu. Nie było testów z użytkownikami.
-- Zdjęcia i statystyki hoteli na żywo trzeba obejrzeć na Preview, bo build lokalny nie ma kluczy dostawców.
+- Build lokalny nie ma kluczy dostawców, więc zdjęcia i statystyki hoteli na żywo sprawdzono na Preview (`PHASE_7_RESULTS.md`).
 - Wzbogacenie treścią ze źródeł mają dziś 4 z 54 porównań. Pozostałe korzystają z nowego szablonu z danymi bazowymi.

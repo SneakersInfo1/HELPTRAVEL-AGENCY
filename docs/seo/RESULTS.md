@@ -15,6 +15,7 @@ Stan na 14.11.2026. PR: [SneakersInfo1/HELPTRAVEL-AGENCY#154](https://github.com
 | Raport tygodniowy z GSC (28 i 56 dni) | działa na eksporcie CSV | `pnpm seo:weekly` |
 | Kontekst treści w zdarzeniu `seo_cta_click` | gotowe | test kontraktu zdarzeń |
 | Dwa skille jakości i audyt narzędzi | gotowe | `TOOLING_AUDIT.md` |
+| Preview na Vercelu | sprawdzone 14.11.2026 | test dymny 263/263, prawdziwe zdjęcia i blok statystyk hoteli, 0 błędów konsoli w trzech szerokościach |
 
 Liczby przed i po (produkcja z 13.11 kontra build gałęzi):
 
@@ -28,7 +29,7 @@ Liczby przed i po (produkcja z 13.11 kontra build gałęzi):
 | LCP i CLS | — | bez regresji, CLS 0 |
 | Zmiany indeksu (robots) | — | 0 |
 
-Testy: `pnpm test` 1668 + 155 zaliczonych, `tsc` i `eslint` czyste.
+Testy: `pnpm test` 1672 + 155 zaliczonych, `tsc` i `eslint` czyste.
 
 ## Co wymaga klucza albo Twojej zgody
 
@@ -55,7 +56,7 @@ Dokładne kroki: `OWNER_ACTIONS.md`.
 
 ## Co zostało opublikowane
 
-Nic. Na produkcji nie zmieniono żadnej strony ani ustawienia. Powstały: gałąź `claude/helptravel-seo-modernizacja-6f1b7c`, szkic PR i wdrożenie Preview na Vercelu. Automat nie utworzył żadnego PR.
+Nic. Na produkcji nie zmieniono żadnej strony ani ustawienia. Powstały: gałąź `claude/helptravel-seo-modernizacja-6f1b7c`, szkic PR i wdrożenia Preview na Vercelu (z linkiem udostępniania ważnym 23 godziny, utworzonym do testów). Automat nie utworzył żadnego PR.
 
 ## Koszty
 

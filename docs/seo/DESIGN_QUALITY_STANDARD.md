@@ -68,7 +68,7 @@ Każdy próg ma test. Zmiana szablonu, która któregoś nie spełnia, nie jest 
 | 5 | axe: 0 naruszeń na trzech szablonach w trzech szerokościach | e2e (`@axe-core/playwright`) |
 | 6 | Fokus z klawiatury jest widoczny i trafia w CTA | e2e |
 | 7 | Kliknięcie CTA prowadzi do wyszukiwarki z kierunkiem i wysyła `seo_cta_click` | e2e z przechwyconym `/hotele/szukaj` |
-| 8 | Przy wczytaniu strony treści nie ma żądań do wyszukiwarki, rezerwacji i lotów | raport `seo:shots` (`forbiddenRequestsOnLoad`) |
+| 8 | Przy wczytaniu strony treści nie ma żądań do API wyszukiwarki, rezerwacji i lotów, a linki CTA nie pobierają wstępnie tras transakcyjnych | raport `seo:shots` (`forbiddenRequestsOnLoad`), test `cta-prefetch.test.ts` |
 | 9 | Lighthouse (telefon): dostępność 100, CLS 0, LCP bez regresji względem `main` | `pnpm lighthouse -- --routes=…`, mediana z 3 przebiegów |
 | 10 | Tabela na telefonie jest układem blokowym z zachowanymi rolami ARIA | e2e i axe |
 | 11 | Zdjęcia są prawdziwymi zdjęciami miejsca z podpisem autora, mają `alt` i poprawne `sizes` | przegląd kodu, bramka treści (alt) |
@@ -101,7 +101,7 @@ W Git Bash ścieżki zaczynające się od `/` są zamieniane na ścieżki Window
 
 ## 5. Znane ograniczenia
 
-- **Zdjęcia na lokalnych zrzutach „po”.** Build lokalny nie ma klucza Pexels, więc pokazuje zdjęcia zastępcze z puli w repo (na zrzucie Aten jest przypadkowa architektura). Na Preview i produkcji klucz jest ustawiony i strona pokazuje zdjęcia miejsca, co widać na zrzutach laboratoryjnych zrobionych z kluczem.
+- **Zdjęcia w buildzie lokalnym.** Build lokalny nie ma klucza Pexels, więc pokazuje zdjęcia zastępcze z puli w repo. Dlatego zrzuty „po” w repozytorium pochodzą z Preview na Vercelu (14.11.2026), gdzie widać prawdziwe zdjęcia miejsc i blok statystyk hoteli.
 - **Baner cookies przy pierwszej wizycie** zakrywa dolną część pierwszego ekranu, w tym parę CTA (478 px od góry). Odpowiedź pod H1 jest widoczna nad banerem. Baner jest elementem zgody i nie był zmieniany.
 - **Linki pomocnicze niższe niż 40 px.** Okruszki, podpis autora, linki w zdaniach, lista źródeł i nazwy miast w tabeli huba mają 17–24 px wysokości: 9 na porównaniu (przed: 4), 7 na przewodniku miesięcznym (przed: 18), 7 na hubie (przed: 3). Spełniają WCAG 2.2 AA dzięki wyjątkom dla linków w tekście i dla odstępów, ale to nie są wygodne cele dla kciuka. Główne CTA mają 48 px. Powiększenie listy źródeł to mała zmiana do kolejnej iteracji.
 - **Brak testów z użytkownikami i danych o konwersji.** Wybór kierunku jest decyzją projektową popartą pomiarami układu.

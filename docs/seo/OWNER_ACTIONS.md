@@ -35,7 +35,7 @@ Najwygodniej czytać je na Preview. Każdy fakt ma źródło na dole strony. Je�
 
 ### 2. Obejrzyj Preview na telefonie
 
-Otwórz na telefonie trzy strony: porównanie Ateny–Rzym, „Barcelona w styczniu” i hub city break. Sprawdź zdjęcia i blok statystyk hoteli, bo tych dwóch rzeczy nie dało się zobaczyć lokalnie (brak kluczy dostawców).
+Otwórz na telefonie trzy strony: porównanie Ateny–Rzym, „Barcelona w styczniu” i hub city break. Zdjęcia i blok statystyk hoteli sprawdziłem na Preview automatycznie (zrzuty i test dymny 263/263), ale ocena wyglądu na prawdziwym telefonie należy do Ciebie.
 
 Scalenie zmienia H1 na 1592 stronach i tytuł na 338. Adresy, canonicale, mapa witryny i dyrektywy robots zostają bez zmian. Wycofanie to revert jednego PR. Szczegóły: `BASELINE.md`, pkt 4, oraz ryzyko R-01.
 
