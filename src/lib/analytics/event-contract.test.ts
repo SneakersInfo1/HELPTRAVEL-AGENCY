@@ -247,7 +247,8 @@ describe("CTA stron treściowych wysyła seo_cta_click (testy B, C, D)", () => {
   const PRZYPADKI: Array<[string, string, string]> = [
     ["B — strona miesiąca", "src/app/kierunki/[slug]/[miesiac]/page.tsx", "month_page"],
     ["C — przewodnik kierunku", "src/app/kierunki/[slug]/page.tsx", "guide"],
-    ["D — porównanie", "src/app/porownanie/[para]/page.tsx", "comparison"],
+    // Od 2026-11 CTA porównania żyją w szablonie, nie w pliku trasy.
+    ["D — porównanie", "src/components/editorial/comparison-template.tsx", "comparison"],
     ["landing miasta", "src/app/hotele/w/[miasto]/page.tsx", "landing_city"],
   ];
 

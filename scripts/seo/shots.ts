@@ -41,7 +41,10 @@ async function main() {
   const base = (arg("base") ?? "http://localhost:3000").replace(/\/$/, "");
   const label = arg("label") ?? "shot";
   const out = arg("out") ?? "docs/seo/screenshots";
-  const paths = (arg("paths") ?? DEFAULT_PATHS.join(",")).split(",").map((p) => p.trim()).filter(Boolean);
+  const paths = (arg("paths") ?? DEFAULT_PATHS.join(",")).split(",").map((p) => p.trim()).filter(Boolean)
+    // Git Bash na Windows zamienia argument zaczynający się od „/" na ścieżkę dysku,
+    // więc ścieżki można podać bez wiodącego ukośnika.
+    .map((p) => (p.startsWith("/") ? p : `/${p}`));
   const fullPage = !process.argv.includes("--fold-only");
   mkdirSync(out, { recursive: true });
 

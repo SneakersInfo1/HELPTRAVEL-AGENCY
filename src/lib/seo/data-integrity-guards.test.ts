@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 
 import sitemap from "@/app/sitemap";
+import { contentLastModified } from "@/lib/content-engine/site-content";
 
 // Strażnicy źródeł (SEO Data Integrity, PR #1.5). Testy modeli sprawdzają
 // wynik; ten plik pilnuje, żeby wzorce zastane przez audyt Faza 2.2 nie wróciły
@@ -68,10 +69,21 @@ describe("strażnicy integralności danych SEO", () => {
     assert.deepEqual(hits(/updatedISO=\{\s*new Date\(/), []);
   });
 
-  it("sitemap bez lastmod z zegara generowania", () => {
+  it("sitemap podaje lastmod wyłącznie z dokumentów treści, nigdy z zegara generowania", () => {
+    const fromContent = contentLastModified();
+    let dated = 0;
     for (const entry of sitemap()) {
-      assert.equal(entry.lastModified, undefined, entry.url);
+      const route = new URL(entry.url).pathname;
+      const expected = fromContent.get(route);
+      if (expected === undefined) {
+        assert.equal(entry.lastModified, undefined, entry.url);
+      } else {
+        assert.equal(entry.lastModified, expected, entry.url);
+        dated += 1;
+      }
     }
+    // Każdy dokument treści musi trafić na adres obecny w sitemapie.
+    assert.equal(dated, fromContent.size);
   });
 
   it("bez TouristAttraction z tagów (test F)", () => {
