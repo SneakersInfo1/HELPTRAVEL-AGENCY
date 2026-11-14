@@ -58,7 +58,7 @@ export function monthPageQuestions(input: Pick<MonthPageSchemaInput, "month" | "
     );
   }
   if (exactFlightHours !== null) {
-    questions.push({ question: `${name} — jak długo trwa lot z Polski?`, answer: `Lot z Polski trwa około ${exactFlightHours.toFixed(1)} h.` });
+    questions.push({ question: `${name} — jak długo trwa lot z Polski?`, answer: `Lot z Polski trwa około ${exactFlightHours.toFixed(1).replace(".", ",")} h.` });
   }
   return questions;
 }

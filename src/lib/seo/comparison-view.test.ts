@@ -137,3 +137,13 @@ describe("defaultComparisonMeta", () => {
     assert.ok(meta.title.length <= 60, meta.title);
   });
 });
+
+describe("język werdyktu", () => {
+  it("wskazania z profilu to pełne zdania — bez „szukasz napiętego budżetu”", () => {
+    for (const view of views) {
+      for (const option of view.verdict?.options ?? []) {
+        for (const item of option.chooseIf) assert.doesNotMatch(item, /szukasz napiętego budżetu|szukasz uniwersalnego/, view.slug);
+      }
+    }
+  });
+});

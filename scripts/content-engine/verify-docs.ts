@@ -18,6 +18,16 @@
 //
 // Kod wyjścia 1, gdy dokument o statusie `approved` nie przechodzi bramki
 // (BLOCKED_FACTS / NEEDS_REVISION / SKIPPED) — to jest test treści dla CI.
+//
+// Świeżość twierdzeń:
+//   --offline (pnpm content:check, część pnpm test) ocenia bramkę na dzień
+//   ostatniej weryfikacji dokumentu, a wygasające twierdzenia tylko OSTRZEGA.
+//   Inaczej `pnpm test` zaczynałby padać w konkretnym dniu bez zmiany kodu
+//   (przegląd 2026-11-14). Strona i tak sama ukrywa dokument z wygasłym
+//   twierdzeniem (site-content.ts), a pipeline wybiera go do odświeżenia.
+//   --strict-freshness (pnpm content:freshness) — wygasłe twierdzenie = błąd.
+//   --require-approved — dokument inny niż `approved` = błąd (sprawdzenie PR-ów:
+//   merge propozycji z pipeline'u wymaga jawnego zatwierdzenia przez człowieka).
 
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
@@ -25,7 +35,7 @@ import path from "node:path";
 
 import { runQualityGate, type GateReport } from "../../src/lib/content-quality/gate";
 import { computeContentHash } from "../../src/lib/content-engine/hash";
-import { ContentDocumentSchema, type ContentDocument } from "../../src/lib/content-engine/schema";
+import { claimExpiresAt, ContentDocumentSchema, type ContentDocument } from "../../src/lib/content-engine/schema";
 import { buildSiteInventory } from "../../src/lib/content-engine/site-inventory";
 import { HttpSourceFetcher, assertAllowedSource, evidenceFoundIn, htmlToText } from "../../src/lib/content-engine/sources";
 import { ContentStore } from "../../src/lib/content-engine/store";
@@ -82,6 +92,8 @@ async function readSnapshot(directory: string, url: string): Promise<FetchedSour
 async function main(): Promise<void> {
   const root = option("store-dir") ?? "content/seo";
   const offline = flag("offline");
+  const strictFreshness = flag("strict-freshness");
+  const requireApproved = flag("require-approved");
   const write = flag("write");
   const approveId = option("approve");
   const approvedBy = option("by");
@@ -161,8 +173,21 @@ async function main(): Promise<void> {
     }
 
     const checked = ContentDocumentSchema.parse(doc);
+    // Bez --strict-freshness bramka liczy świeżość na dzień ostatniej weryfikacji.
+    const gateNow = offline && !strictFreshness ? new Date(checked.verifiedAt) : now;
+    const expiring = checked.factClaims
+      .map((claim) => ({ id: claim.id, expiresAt: claimExpiresAt(claim) }))
+      .filter((item) => item.expiresAt.getTime() - now.getTime() < 30 * 86_400_000);
+    for (const item of expiring) {
+      const expired = item.expiresAt.getTime() <= now.getTime();
+      notes.push(`${expired ? "WYGASŁE" : "wygasa wkrótce"}: ${item.id} (${item.expiresAt.toISOString().slice(0, 10)}) — wymaga ponownej weryfikacji źródła`);
+    }
+    if (requireApproved && checked.reviewStatus !== "approved") {
+      notes.push(`status ${checked.reviewStatus} — przed merge'em zatwierdź: pnpm content:verify -- --approve ${checked.id} --by "Imię Nazwisko" --write`);
+      failed = true;
+    }
     const report: GateReport = runQualityGate(checked, {
-      now,
+      now: gateNow,
       existing: inventory.existing(),
       isKnownRoute: (route) => inventory.isKnownRoute(route.split("?")[0]),
     });

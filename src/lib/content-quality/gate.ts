@@ -22,6 +22,7 @@ import {
   type PublishDecision,
   type Section,
 } from "@/lib/content-engine/schema";
+import { extractNumbers, numbersCoveredBy } from "@/lib/content-engine/numbers";
 import { countWords, shingleSimilarity } from "@/lib/seo-ops/html-audit";
 
 export type FindingSeverity = "skip" | "block_facts" | "revise" | "review" | "info";
@@ -132,7 +133,10 @@ const FAKE_EXPERIENCE: readonly RegExp[] = [
 
 /** Fałszywa presja i obietnice dostępności — zakazane w PRODUCT.md. */
 const FAKE_URGENCY: readonly RegExp[] = [
-  /ostatni(e|a|ch)? (miejsc|pokoj|pokoi|sztuk|bilet)/i,
+  // „zostały ostatnie pokoje", „ostatnie wolne miejsca" — ale NIE „jedno z ostatnich
+  // miejsc na wybrzeżu", które jest zwykłym opisem, a nie presją.
+  /(zosta[łl][oay]?|tylko|już)\s+(tylko\s+)?(\d+\s+)?ostatni\p{L}*\s+(wolne\s+|dostępne\s+)?(miejsc|pokoj|pokoi|sztuk|bilet)/iu,
+  /ostatni\p{L}*\s+(wolne|dostępne)\s+(miejsc|pokoj|pokoi|sztuk|bilet)/iu,
   /tylko (dziś|dzisiaj|teraz)/i,
   /oferta (kończy się|wygasa)/i,
   /zostało (już )?tylko \d+/i,
@@ -142,14 +146,33 @@ const FAKE_URGENCY: readonly RegExp[] = [
   /rezerwuj (teraz|natychmiast), (zanim|bo)/i,
 ];
 
-const HIGH_RISK_TOPIC = /\b(wiz[aąyęo]|wizow\w*|paszport\w*|dow[oó]d\w* osobist\w*|msz|szczepi\w*|covid|kwarantann\w*|ostrzeżeni\w* dla podróżujących|zamach\w*|stan wyjątkowy|ubezpieczeni\w* obowiązkow\w*)\b/i;
+// Granice słów przez \p{L}: `\b` w JavaScripcie zna tylko litery ASCII, więc
+// „wizę", „wizą" i „bezwizowy" przechodziły niezauważone (przegląd 2026-11-14).
+// Odmiana „wiza" wypisana jawnie, żeby nie łapać „wizyty" ani „wizualizacji".
+const HIGH_RISK_TOPIC =
+  /(?<!\p{L})((bez)?wiz(a|y|ie|ę|ą|om|ami|ach|ow\p{L}*)?|paszport\p{L}*|dow(ód|odu|odem|odzie)\s+osobist\p{L}*|msz|szczepi\p{L}*|covid\p{L}*|kwarantann\p{L}*|ostrzeże\p{L}*\s+dla\s+podróżujących|zamach\p{L}*|stan\p{L}*\s+wyjątkow\p{L}*|ubezpieczeni\p{L}*\s+obowiązkow\p{L}*)(?!\p{L})/iu;
 
-const PRICE_MENTION = /\d[\d\s.,]*\s?(zł|pln|eur|euro|€|usd|\$|gbp|£|dirham\w*|lir\w*)(?![\p{L}])/iu;
+const PRICE_MENTION =
+  /\d[\d\s.,]*\s?(zł|złot\p{L}*|pln|eur|euro|€|usd|\$|dolar\p{L}*|gbp|£|funt\p{L}*|chf|frank\p{L}*|czk|kč|koron\p{L}*|huf|forint\p{L}*|ft|try|lir\p{L}*|mad|dirham\p{L}*|lek\p{L}*|lew\p{L}*|lei|rsd|dinar\p{L}*)(?![\p{L}])/iu;
 
 const UNSOURCED_SUPERLATIVE = /\b(najlepsz\w+|najpiękniejsz\w+|najtańsz\w+|najpopularniejsz\w+|numer(em)? 1|nr 1|bezkonkurencyjn\w+|gwarantowan\w+)\b/giu;
 
 /** Liczba z jednostką, która jest twierdzeniem o świecie i wymaga pokrycia. */
-const FACTUAL_NUMBER = /(?<![\p{L}\d])(\d+(?:[.,]\d+)?)\s?(°c|°|stopni\w*|km|mm|m n\.p\.m\.|%|proc\.|godzin\w*|godz\.|h(?![\p{L}])|min(?:ut\w*)?(?![\p{L}])|zł|pln|eur|euro|€)/giu;
+// Liczba z jednostką = twierdzenie o świecie. Liczby bez jednostki („3 albo 4")
+// i krótkie okresy planu („na 3–4 dni") nie wymagają źródła — dni od 15 wzwyż
+// („300 dni słońca") już tak.
+const FACTUAL_NUMBER =
+  /(?<![\p{L}\d.,])(\d+(?:[ \u00a0\u202f]\d{3})*(?:[.,]\d+)?)\s?(°c|°|stopni\p{L}*|kilometr\p{L}*|km|metr(?!o)\p{L}*|m(?![\p{L}])|mm|m n\.p\.m\.|%|proc\.|procent\p{L}*|godzin\p{L}*|godz\.|h(?![\p{L}])|min(?:ut\p{L}*)?(?![\p{L}])|mln|milion\p{L}*|tys\.|tysięc\p{L}*|tysiąc\p{L}*|ha(?![\p{L}])|hektar\p{L}*|dni|dzień|dnia|zł|złot\p{L}*|pln|eur|euro|€|usd|\$|dolar\p{L}*|gbp|£|funt\p{L}*|czk|koron\p{L}*|huf|forint\p{L}*|try|lir\p{L}*|mad|dirham\p{L}*)(?![\p{L}])/giu;
+
+const DAY_UNIT = /^(dni|dzień|dnia)$/i;
+
+/** Liczba z dopasowania FACTUAL_NUMBER, która wymaga twierdzenia (null = nie wymaga). */
+function factualValue(match: RegExpMatchArray): number | null {
+  const [value] = extractNumbers(match[1], "pl");
+  if (value === undefined) return null;
+  if (DAY_UNIT.test(match[2]) && value < 15) return null;
+  return value;
+}
 
 const YEAR = /(?<![\d.,])((?:19|20)\d{2})(?![\d.,]|\s?(zł|pln|eur|€|km|m\b))/g;
 
@@ -263,6 +286,22 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
       add({ rule: "date_integrity", severity: "revise", message: "retrievedAt w przyszłości", location: claim.id });
     }
   }
+  // 2b. Twierdzenie „zweryfikowane" musi mieć swoje liczby w zacytowanym fragmencie
+  // źródła. Bez tego cytat „Tenerife South Airport" potwierdzałby „60 km od centrum".
+  for (const claim of doc.factClaims) {
+    if (claim.verification === "unverified") continue;
+    const check = numbersCoveredBy(`${claim.claim} ${claim.value}`, claim.observedEvidence);
+    if (!check.ok) {
+      add({
+        rule: "claim_number_not_in_evidence",
+        severity: "block_facts",
+        message: `Liczby ${check.missing.join(", ")} z twierdzenia nie występują w zacytowanym fragmencie źródła`,
+        evidence: claim.observedEvidence,
+        location: claim.id,
+      });
+    }
+  }
+
   for (const source of doc.sources) {
     if (!source.url.startsWith("https://")) {
       add({ rule: "source_not_https", severity: "revise", message: "Źródło bez HTTPS", evidence: source.url, location: source.id });
@@ -273,11 +312,12 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
   for (const section of doc.sections) {
     const body = sectionText(section);
     const sectionClaims = section.claimIds.map((id) => claimsById.get(id)).filter((c): c is NonNullable<typeof c> => Boolean(c));
-    const haystack = normalize(sectionClaims.map((c) => `${c.value} ${c.claim}`).join(" | "));
+    // Porównanie po WARTOŚCI z granicami cyfr: podciąg przepuszczał „9 h" przy roku „1987".
+    const covered = new Set(extractNumbers(sectionClaims.map((c) => `${c.value} ${c.claim}`).join(" | "), "pl"));
     for (const match of body.matchAll(FACTUAL_NUMBER)) {
-      const number = match[1].replace(",", ".");
-      const covered = haystack.includes(number) || haystack.includes(match[1]);
-      if (!covered) {
+      const value = factualValue(match);
+      if (value === null) continue;
+      if (!covered.has(value)) {
         add({
           rule: "number_without_claim",
           severity: "block_facts",
@@ -288,10 +328,11 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
       }
     }
   }
+  const allClaimNumbers = new Set(extractNumbers(doc.factClaims.map((c) => `${c.value} ${c.claim}`).join(" | "), "pl"));
   for (const match of `${doc.title}\n${doc.description}\n${doc.lead}`.matchAll(FACTUAL_NUMBER)) {
-    const number = match[1].replace(",", ".");
-    const all = normalize(doc.factClaims.map((c) => `${c.value} ${c.claim}`).join(" | "));
-    if (!all.includes(number) && !all.includes(match[1])) {
+    const value = factualValue(match);
+    if (value === null) continue;
+    if (!allClaimNumbers.has(value)) {
       add({ rule: "number_without_claim", severity: "block_facts", message: `Liczba „${match[0].trim()}" w tytule, opisie albo leadzie bez pokrycia`, location: "lead" });
     }
   }

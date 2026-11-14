@@ -53,6 +53,14 @@ function isVisibleStatus(doc: ContentDocument, previewDrafts: boolean): boolean 
   return doc.reviewStatus === "approved" || (previewDrafts && doc.reviewStatus === "in_review");
 }
 
+/**
+ * Typy dokumentów, które renderuje jakaś strona. `lastmod` w sitemapie i treść
+ * na stronie biorą się WYŁĄCZNIE z tych typów — dokument innego typu (np. miesiąca,
+ * dopóki strona miesiąca go nie pokazuje) nie może zmieniać daty strony, której
+ * treść się nie zmieniła. Nowy renderer = nowy wpis tutaj.
+ */
+export const RENDERED_CONTENT_TYPES: ReadonlySet<ContentDocument["contentType"]> = new Set(["comparison_enrichment"]);
+
 export function toRenderable(doc: ContentDocument, now: Date): RenderableContent | null {
   const claimsById = new Map(doc.factClaims.map((claim) => [claim.id, claim]));
   const usable = (id: string) => {
@@ -66,7 +74,10 @@ export function toRenderable(doc: ContentDocument, now: Date): RenderableContent
     if (section.claimIds.every(usable)) sections.push(section);
     else hiddenSectionIds.push(section.id);
   }
-  if (sections.length === 0) return null;
+  // Całość albo nic: lead, opis i dateModified opierają się na wszystkich sekcjach.
+  // Gdy którekolwiek twierdzenie wygasło, strona wraca do szablonu do czasu
+  // ponownej weryfikacji, zamiast pokazywać wstęp bez sekcji, które go uzasadniają.
+  if (sections.length === 0 || hiddenSectionIds.length > 0) return null;
 
   const shownClaimIds = new Set(sections.flatMap((section) => section.claimIds));
   const claims = doc.factClaims.filter((claim) => shownClaimIds.has(claim.id));
@@ -111,7 +122,9 @@ function resolveOptions(options: ContentLookupOptions) {
 /** Rozszerzenie redakcyjne dla istniejącego adresu albo null. */
 export function getEnrichment(canonicalUrl: string, options: ContentLookupOptions = {}): RenderableContent | null {
   const { now, previewDrafts, documents } = resolveOptions(options);
-  const doc = documents.find((item) => item.canonicalUrl === canonicalUrl && item.contentType !== "article" && isVisibleStatus(item, previewDrafts));
+  const doc = documents.find(
+    (item) => item.canonicalUrl === canonicalUrl && RENDERED_CONTENT_TYPES.has(item.contentType) && isVisibleStatus(item, previewDrafts),
+  );
   return doc ? toRenderable(doc, now) : null;
 }
 
@@ -120,7 +133,7 @@ export function contentLastModified(options: ContentLookupOptions = {}): Map<str
   const { now, previewDrafts, documents } = resolveOptions(options);
   const result = new Map<string, string>();
   for (const doc of documents) {
-    if (!isVisibleStatus(doc, previewDrafts)) continue;
+    if (!isVisibleStatus(doc, previewDrafts) || !RENDERED_CONTENT_TYPES.has(doc.contentType)) continue;
     if (!toRenderable(doc, now)) continue;
     result.set(doc.canonicalUrl, doc.materiallyModifiedAt);
   }

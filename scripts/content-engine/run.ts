@@ -1,11 +1,12 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { fixtureScenario, type FixtureScenarioName } from "../../src/lib/content-engine/fixtures/scenarios";
 import { FixtureInventory, StoreBackedInventory } from "../../src/lib/content-engine/inventory";
 import { AnthropicLlm } from "../../src/lib/content-engine/anthropic-llm";
 import { FakeLlm, type LlmClient } from "../../src/lib/content-engine/llm";
-import { runDaily, type GscCsvInputs } from "../../src/lib/content-engine/pipeline";
+import { buildSiteInventory } from "../../src/lib/content-engine/site-inventory";
+import { redactRunReport, runDaily, type GscCsvInputs } from "../../src/lib/content-engine/pipeline";
 import { FixtureSourceFetcher, HttpSourceFetcher, type SourceFetcher } from "../../src/lib/content-engine/sources";
 import { ContentStore } from "../../src/lib/content-engine/store";
 import type { PublishMode } from "../../src/lib/content-quality/gate";
@@ -17,6 +18,8 @@ interface CliOptions {
   stateDir: string;
   storeDir: string;
   gscDir: string;
+  /** Gdzie zapisać raport bez danych GSC (artefakt CI). */
+  publicReport?: string;
 }
 
 function valueAfter(args: readonly string[], index: number, option: string): string {
@@ -57,6 +60,7 @@ export function parseCliArgs(args: readonly string[], currentDate = new Date()):
     else if (option === "--state-dir") result.stateDir = valueAfter(args, index++, option);
     else if (option === "--store-dir") result.storeDir = valueAfter(args, index++, option);
     else if (option === "--gsc-dir") result.gscDir = valueAfter(args, index++, option);
+    else if (option === "--public-report") result.publicReport = valueAfter(args, index++, option);
     else throw new Error(`Nieznana opcja: ${option}`);
   }
   if (!Number.isFinite(new Date(result.scheduledAt).getTime())) throw new Error("--scheduled-at wymaga poprawnego czasu ISO");
@@ -94,8 +98,9 @@ async function main(): Promise<void> {
     gsc = await loadGsc(options.gscDir);
     llm = new AnthropicLlm();
     sourceFetcher = new HttpSourceFetcher();
-    // Produkcyjny adapter tras zostanie dostarczony przez właściciela przez SiteInventory.
-    baseInventory = new FixtureInventory();
+    // Realne trasy (z tej samej funkcji co sitemap) i tytuły istniejących treści —
+    // z pustym inwentarzem każde CTA byłoby „nieznaną trasą", a kontrola duplikatów pusta.
+    baseInventory = buildSiteInventory();
   }
 
   const inventory = await StoreBackedInventory.create(baseInventory, store);
@@ -105,6 +110,9 @@ async function main(): Promise<void> {
   );
 
   const reportPath = path.join(options.stateDir, "reports", `${report.runId}.json`);
+  if (options.publicReport) {
+    await writeFile(options.publicReport, `${JSON.stringify(redactRunReport(report), null, 2)}\n`, "utf8");
+  }
   console.log(`HelpTravel content engine: ${report.outcome}`);
   console.log(`run: ${report.runId} | dzień UTC: ${report.scheduledAt.slice(0, 10)} | tryb: ${report.mode}`);
   console.log(`zadania: ${report.selectedTasks.length} | decyzja: ${report.decision ?? "brak"} | gate: ${report.gateReport?.verdict ?? "brak"}`);

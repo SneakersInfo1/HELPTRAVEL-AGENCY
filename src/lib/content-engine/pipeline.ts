@@ -7,10 +7,11 @@ import { parseGscCsv, type GscRow, type GscTable } from "@/lib/seo-ops/gsc/csv";
 import { classifyQuery, classifyUrl, isBrandQuery, isHighRiskIntent } from "@/lib/seo-ops/gsc/segments";
 
 import { RunBudget, type BudgetSummary } from "./budget";
+import { numbersCoveredBy } from "./numbers";
 import { computeContentHash } from "./hash";
 import type { SiteInventory } from "./inventory";
 import { Ledger, type LedgerLock, idempotencyKey } from "./ledger";
-import type { LlmClient, LlmResponse, LlmRole } from "./llm";
+import { LlmError, type LlmClient, type LlmResponse, type LlmRole } from "./llm";
 import { modelForRole, type EngineEnv } from "./models";
 import { withRetry, type RetryOptions, type Sleep } from "./retry";
 import {
@@ -108,6 +109,27 @@ export interface RunReport {
   error?: { class: string; message: string; stage: string };
 }
 
+/**
+ * Raport do publikacji (artefakt CI, opis PR-a) — repozytorium jest publiczne.
+ * Usuwa dane z Search Console: zapytania, kliknięcia, wyświetlenia, pozycje
+ * i uzasadnienia, które je cytują. Adres docelowy zostaje: i tak trafi do PR-a.
+ */
+export function redactRunReport(report: RunReport): RunReport {
+  return {
+    ...report,
+    selectedTasks: report.selectedTasks.map((task) => ({
+      operation: task.operation,
+      target: task.target,
+      primaryQuery: task.operation === "new_article" ? "[usunięte]" : task.primaryQuery,
+      evidence: { source: task.evidence.source, key: "[usunięte]", clicks: 0, impressions: 0, ctr: 0, position: 0 },
+      rationale: "[usunięte: dane GSC]",
+      ...(task.decision ? { decision: task.decision } : {}),
+    })),
+    stages: { ...report.stages, select: report.stages.select ? { tasks: report.stages.select.tasks, reason: "[usunięte: dane GSC]" } : undefined },
+    reason: report.reason ? "[usunięte: może zawierać dane GSC]" : undefined,
+  };
+}
+
 export class PipelineStageError extends Error {
   readonly name = "PipelineStageError";
 
@@ -201,10 +223,14 @@ function taskEvidence(row: GscRow, source: TaskEvidence["source"], opportunitySc
   };
 }
 
-export function select(input: CollectedInput, inventory: SiteInventory, now: Date): SelectionResult {
+/** Ile dni propozycja dla tej samej strony blokuje kolejne (czas na przegląd PR-a). */
+export const PENDING_PROPOSAL_DAYS = 14;
+
+export function select(input: CollectedInput, inventory: SiteInventory, now: Date, pending: ReadonlySet<string> = new Set()): SelectionResult {
   const opportunities = rankOpportunities(input.pages.rows);
   for (const opportunity of opportunities) {
     const target = routeOf(opportunity.url);
+    if (pending.has(target)) continue;
     const existing = input.existing.find((item) => item.canonicalUrl === target);
     if (!existing) continue;
     if (inventory.hasEnrichment(target) && !enrichmentExpired(inventory, target, now)) continue;
@@ -233,6 +259,7 @@ export function select(input: CollectedInput, inventory: SiteInventory, now: Dat
     });
   for (const row of candidates) {
     const target = `/inspiracje/${asciiSlug(row.key)}`;
+    if (pending.has(target)) continue;
     if (intentCovered(row.key, target, input.existing)) continue;
     const links = relevantInternalTargets(row.key, input.existing);
     if (links.length < 3) continue;
@@ -397,6 +424,12 @@ export async function research(task: Task, complete: StageComplete, sourceFetche
       continue;
     }
     if (!evidenceFoundIn(fetched.text, candidate.observedEvidence)) {
+      droppedCount += 1;
+      continue;
+    }
+    // Cytat musi zawierać liczby twierdzenia — inaczej prawdziwy, ale niezwiązany
+    // fragment („Tenerife South Airport") „potwierdzałby" dowolną liczbę („60 km").
+    if (!numbersCoveredBy(`${candidate.claim} ${candidate.value}`, candidate.observedEvidence).ok) {
       droppedCount += 1;
       continue;
     }
@@ -712,10 +745,16 @@ export async function runDaily(deps: DailyDependencies, options: DailyOptions): 
     const model = modelForRole(request.role, env);
     return withRetry(
       async () => {
-        budget.assertCanSpend();
-        const response = await deps.llm.complete({ ...request, model });
-        budget.charge(response.usage, response.model);
-        return response;
+        budget.assertCanSpend({ maxOutputTokens: request.maxOutputTokens, model });
+        try {
+          const response = await deps.llm.complete({ ...request, model });
+          budget.charge(response.usage, response.model);
+          return response;
+        } catch (error) {
+          // Ucięta albo odrzucona odpowiedź też jest płatna.
+          if (error instanceof LlmError && error.usage) budget.charge(error.usage, error.usage.model);
+          throw error;
+        }
       },
       {
         retries: deps.retry?.retries ?? 3,
@@ -749,7 +788,10 @@ export async function runDaily(deps: DailyDependencies, options: DailyOptions): 
     };
 
     stage = "select";
-    const selection = select(collected, deps.inventory, scheduled);
+    // Strona, dla której propozycja czeka już w PR-ze, nie dostaje kolejnej
+    // codziennie — inaczej do czasu merge'a każdy dzień kosztowałby nowy przebieg i nowy PR.
+    const pending = await ledger.pendingTargets(scheduled, PENDING_PROPOSAL_DAYS);
+    const selection = select(collected, deps.inventory, scheduled, pending);
     report.selectedTasks = selection.tasks;
     report.stages.select = { tasks: selection.tasks.length, reason: selection.reason };
     const task = selection.tasks.find((candidate) => candidate.decision !== "REVIEW_REQUIRED");
@@ -814,6 +856,7 @@ export async function runDaily(deps: DailyDependencies, options: DailyOptions): 
       });
       const write = await deps.store.writeDocumentsAtomically([finalDocument]);
       storeChanged = true;
+      await ledger.markPending(task.target, runId, scheduled);
       const index = await deps.store.regenerateIndex();
       report.filesWritten = [...write.files, index];
       report.stages.publish = { written: true, reviewStatus: finalDocument.reviewStatus };

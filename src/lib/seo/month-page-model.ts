@@ -3,6 +3,7 @@ import { getMonthIndex, inMonthPhrase, polishMonthSlugs, type PolishMonthSlug } 
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 import {
+  canClaimFromProfileScores,
   canShowBudgetEstimate,
   exactFlightHours,
   formatFlightFact,
@@ -66,7 +67,9 @@ function buildFit(weather: MonthWeather, isBeachDestination: boolean): MonthFit 
   const skipIf: string[] = [];
   const t = weather.tempC;
   if (t >= 27) {
-    goodFor.push("plażowanie i kąpiel", "wieczory na zewnątrz");
+    // Upał to nie to samo co plaża: Marrakesz i Rzym latem mają 27°C+, ale nie są
+    // kierunkami plażowymi (przegląd 2026-11-14).
+    goodFor.push(...(isBeachDestination ? ["plażowanie i kąpiel", "wieczory na zewnątrz"] : ["wieczory na zewnątrz", "zwiedzanie wcześnie rano i późnym popołudniem"]));
     skipIf.push("planujesz długie zwiedzanie pieszo w środku dnia — bywa upalnie");
   } else if (t >= 22) {
     goodFor.push("zwiedzanie pieszo bez grubej kurtki", "posiłki i wieczory na zewnątrz");
@@ -215,7 +218,9 @@ export function buildMonthPageModel(input: MonthPageModelInput): MonthPageModel 
       weather: weather ? { tempC: weather.tempC, description: weather.description, verdict: weather.verdict } : null,
       exactFlightHours: exactFlightHours(facts),
     }),
-    fit: weather ? buildFit(weather, profile.beachScore >= 0.6) : null,
+    // Kierunek plażowy tylko według ocen kuratorowanych — w profilu z szablonu
+    // beachScore to stała regionu (bramka faktów, PR #1.5).
+    fit: weather ? buildFit(weather, canClaimFromProfileScores(facts) && profile.beachScore >= 0.6) : null,
     structuredData,
   };
 }

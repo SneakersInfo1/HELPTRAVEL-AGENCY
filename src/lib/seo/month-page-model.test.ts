@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { canClaimFromProfileScores } from "./destination-facts";
+
 import { isFactGrade, provenanceOf } from "@/lib/mvp/data-provenance";
 import { curatedDestinations, getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { isMonthIndexable } from "@/lib/mvp/month-index-policy";
@@ -114,5 +116,38 @@ describe("model strony kierunku w miesiącu", () => {
       collectJsonLdNodes(miami.structuredData).some((node) => node["@type"] === "FAQPage"),
       false,
     );
+  });
+});
+
+describe("dopasowanie terminu (fit) na stronie miesiąca", () => {
+  it("„plażowanie” tylko przy kierunku plażowym według ocen kuratorowanych", () => {
+    let checked = 0;
+    for (const profile of profiles) {
+      for (const month of polishMonthSlugs) {
+        const model = modelFor(profile, month);
+        if (!model.fit) continue;
+        checked += 1;
+        const beach = canClaimFromProfileScores(model.facts) && profile.beachScore >= 0.6;
+        if (!beach) {
+          for (const item of model.fit.goodFor) assert.doesNotMatch(item, /plażowanie/, `${profile.slug}/${month}`);
+        }
+      }
+    }
+    // Fit istnieje tylko przy temperaturach kuratorowanych (23 kierunki × 12 miesięcy).
+    assert.ok(checked >= 200, String(checked));
+  });
+
+  it("Marrakesz latem: upał bez obietnicy plaży", () => {
+    const marrakesh = profiles.find((profile) => profile.slug === "marrakesh-morocco")!;
+    const july = modelFor(marrakesh, "lipiec");
+    assert.ok(july.fit);
+    assert.doesNotMatch(july.fit.goodFor.join(" "), /plażowanie/);
+  });
+
+  it("FAQ z czasem lotu używa przecinka dziesiętnego", () => {
+    for (const profile of profiles) {
+      const model = modelFor(profile, "styczen");
+      for (const item of model.faq) assert.doesNotMatch(item.answer, /\d\.\d h/, profile.slug);
+    }
   });
 });

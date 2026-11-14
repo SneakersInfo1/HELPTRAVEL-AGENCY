@@ -32,6 +32,8 @@ export class LlmError extends Error {
     readonly status: number | null,
     readonly retryable: boolean,
     readonly code?: "timeout" | "http" | "configuration" | "invalid_response" | "refusal",
+    /** Zużycie żądania, które skończyło się błędem po stronie treści (ucięcie, odmowa) — też jest płatne. */
+    readonly usage?: { inputTokens: number; outputTokens: number; model: string },
   ) {
     super(message);
   }

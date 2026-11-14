@@ -183,7 +183,8 @@ export function flightHoursForTripLength(facts: DestinationSeoFacts): number | n
 
 /** Tekst do widocznej treści. Szacunek zawsze niesie etykietę i hub. */
 export function formatFlightFact(fact: FlightFact): string {
-  const hours = `${fact.hours.toFixed(1)} h`;
+  // Polski zapis ułamka: „2,6 h", nie „2.6 h".
+  const hours = `${fact.hours.toFixed(1).replace(".", ",")} h`;
   return fact.kind === "exact" ? `ok. ${hours}` : `szacunkowo ok. ${hours} ${fact.fromHub} (liczone z odległości)`;
 }
 

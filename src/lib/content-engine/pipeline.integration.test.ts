@@ -7,9 +7,9 @@ import test from "node:test";
 import { fixtureScenario, type FixtureScenarioName } from "./fixtures/scenarios";
 import { FixtureInventory, StoreBackedInventory } from "./inventory";
 import { Ledger } from "./ledger";
-import { FakeLlm, type FakeLlmOptions } from "./llm";
+import { FakeLlm, LlmError, type FakeLlmOptions } from "./llm";
 import type { EngineEnv } from "./models";
-import { runDaily, type RunReport } from "./pipeline";
+import { redactRunReport, runDaily, type RunReport } from "./pipeline";
 import { FixtureSourceFetcher, type FixtureSource } from "./sources";
 import { ContentStore, NODE_FS, type FsLike } from "./store";
 import type { PublishMode } from "@/lib/content-quality/gate";
@@ -275,3 +275,75 @@ test("AUTO_EVERGREEN zatwierdza tylko PASS plus EVERGREEN", async (t) => {
   assert.equal((await dynamic.store.listDocuments())[0].reviewStatus, "in_review");
 });
 
+// ── Regresje z przeglądu 2026-11-14 ─────────────────────────────────────
+
+test("propozycja dla strony blokuje kolejne przebiegi przez PENDING_PROPOSAL_DAYS — bez nowego PR co dzień", async (t) => {
+  const first = await runFixture("new-evergreen", { mode: "DRAFT_AND_PR", runId: "pending-first" });
+  t.after(first.cleanup);
+  assert.equal(first.report.outcome, "DRAFT_CREATED");
+  const target = first.report.selectedTasks.find((task) => task.decision !== "REVIEW_REQUIRED")!.target;
+
+  // Następny dzień, ten sam stan: idempotencja per dzień już nie chroni, blokada propozycji tak.
+  const next = await runDaily(
+    {
+      gsc: fixtureScenario("new-evergreen").gsc,
+      inventory: await StoreBackedInventory.create(new FixtureInventory(fixtureScenario("new-evergreen").inventory), first.store),
+      store: first.store,
+      llm: new FakeLlm(fixtureScenario("new-evergreen").scripts),
+      sourceFetcher: new FixtureSourceFetcher(fixtureScenario("new-evergreen").sources, () => new Date("2026-11-14T04:17:00.000Z")),
+      sleep: async () => undefined,
+      random: () => 0,
+    },
+    { mode: "DRAFT_AND_PR", scheduledAt: "2026-11-14T04:17:00.000Z", stateDir: first.stateDir, runId: "pending-next" },
+  );
+  assert.ok(!next.selectedTasks.some((task) => task.target === target), "ta sama strona wybrana ponownie mimo otwartej propozycji");
+});
+
+test("ucięta odpowiedź (max_tokens) jest doliczana do budżetu, a nie gubiona", async (t) => {
+  const parent = await mkdtemp(path.join(os.tmpdir(), "seo-pipeline-cut-"));
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const fixture = fixtureScenario("refresh");
+  const store = new ContentStore(path.join(parent, "store"));
+  const cut = new LlmError("Odpowiedź ucięta limitem max_tokens", null, false, "invalid_response", {
+    inputTokens: 2_000,
+    outputTokens: 8_000,
+    model: "claude-opus-5-5",
+  });
+  const report = await runDaily(
+    {
+      gsc: fixture.gsc,
+      inventory: await StoreBackedInventory.create(new FixtureInventory(fixture.inventory), store),
+      store,
+      llm: new FakeLlm({ researcher: [cut] }),
+      sourceFetcher: new FixtureSourceFetcher(fixture.sources, () => new Date(SCHEDULED)),
+      sleep: async () => undefined,
+      random: () => 0,
+    },
+    { mode: "DRY_RUN", scheduledAt: SCHEDULED, stateDir: path.join(parent, "state"), runId: "cut-run" },
+  );
+  assert.equal(report.outcome, "FAILED");
+  // 2000 × 4 + 8000 × 20 USD za MTok (claude-opus-5-5) = 0,168 USD.
+  assert.equal(report.usage.costUsd, 0.168);
+  assert.equal(report.usage.outputTokens, 8_000);
+});
+
+test("budżet odmawia żądania, którego najgorszy koszt przekroczyłby limit", async (t) => {
+  const result = await runFixture("refresh", { runId: "reserve-run", env: { SEO_ENGINE_MAX_USD_PER_RUN: "0.05" } });
+  t.after(result.cleanup);
+  // Researcher (8000 tokenów wyjścia × 20 USD/MTok = 0,16 USD) nie zmieści się w 0,05 USD.
+  assert.equal(result.report.outcome, "FAILED");
+  assert.equal(result.fake.calls.length, 0);
+  assert.match(result.report.error?.message ?? "", /usd/i);
+});
+
+test("raport publiczny nie zawiera danych z Search Console", async (t) => {
+  const result = await runFixture("new-evergreen", { runId: "redact-run" });
+  t.after(result.cleanup);
+  const full = JSON.stringify(result.report);
+  const publicReport = JSON.stringify(redactRunReport(result.report));
+  const task = result.report.selectedTasks.find((item) => item.operation === "new_article")!;
+  assert.ok(full.includes(task.primaryQuery));
+  assert.ok(!publicReport.includes(task.primaryQuery), "zapytanie z GSC w raporcie publicznym");
+  assert.ok(!publicReport.includes(`"impressions":${task.evidence.impressions}`) || task.evidence.impressions === 0);
+  assert.ok(publicReport.includes(task.target));
+});

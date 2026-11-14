@@ -1,0 +1,36 @@
+name: SEO content check
+
+# Kontrola PR-ów zmieniających treść SEO albo jej silnik. Uruchamia testy treści,
+# bramkę jakości na wszystkich dokumentach (offline, bez sieci) i wymaga, żeby każdy
+# dokument w content/seo miał status approved z podpisem człowieka — propozycja
+# z pipeline'u nie wejdzie do main bez jawnego zatwierdzenia.
+
+on:
+  pull_request:
+    paths:
+      - "content/seo/**"
+      - "src/lib/content-engine/**"
+      - "src/lib/content-quality/**"
+      - "src/lib/seo-ops/**"
+      - "scripts/content-engine/**"
+
+permissions:
+  contents: read
+
+jobs:
+  content-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:seo

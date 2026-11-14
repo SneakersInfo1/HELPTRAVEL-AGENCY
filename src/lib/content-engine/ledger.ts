@@ -208,6 +208,36 @@ export class Ledger {
     return new LedgerLock(this.fs, file, this.runId);
   }
 
+  /** Zapisuje, że dla adresu powstała propozycja (PR) — selekcja pominie go przez kilka dni. */
+  async markPending(target: string, runId: string, now: Date): Promise<void> {
+    const directory = path.join(this.stateDir, "pending");
+    await this.fs.mkdir(directory, { recursive: true });
+    const record = { target, runId, createdAt: now.toISOString() };
+    await this.fs.writeFile(path.join(directory, `${safeName(target)}.json`), `${JSON.stringify(record, null, 2)}\n`, { flag: "w" });
+  }
+
+  /** Adresy z propozycją młodszą niż `days` dni. */
+  async pendingTargets(now: Date, days: number): Promise<Set<string>> {
+    const directory = path.join(this.stateDir, "pending");
+    let names: string[];
+    try {
+      names = await this.fs.readdir(directory);
+    } catch {
+      return new Set();
+    }
+    const result = new Set<string>();
+    for (const name of names.filter((entry) => entry.endsWith(".json"))) {
+      try {
+        const record = JSON.parse(await this.fs.readFile(path.join(directory, name), "utf8")) as { target?: string; createdAt?: string };
+        if (!record.target || !record.createdAt) continue;
+        if (now.getTime() - new Date(record.createdAt).getTime() < days * 86_400_000) result.add(record.target);
+      } catch {
+        // Uszkodzony wpis nie blokuje przebiegu — w najgorszym razie powstanie druga propozycja.
+      }
+    }
+    return result;
+  }
+
   async writeReport(report: { runId: string } & Record<string, unknown>): Promise<string> {
     const directory = path.join(this.stateDir, "reports");
     await this.fs.mkdir(directory, { recursive: true });

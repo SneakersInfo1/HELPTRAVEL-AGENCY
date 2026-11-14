@@ -307,3 +307,65 @@ describe("słownik wypełniaczy", () => {
     for (const phrase of FILLER_PHRASES) assert.equal(phrase, phrase.toLowerCase());
   });
 });
+
+describe("regresje z przeglądu 2026-11-14", () => {
+  const addParagraph = (text: string) => mutate((d) => firstProse(d).paragraphs.push(text));
+
+  it("liczba porównywana po wartości: „9 h” nie jest pokryta rokiem 1987", () => {
+    const report = runQualityGate(addParagraph("Lot z Polski do Aten trwa 9 h, więc na krótki wyjazd to daleko."), ctx);
+    assert.ok(rules(report).includes("number_without_claim"));
+  });
+
+  it("jednostki pisane słownie i inne waluty wymagają twierdzenia", () => {
+    for (const text of [
+      "Od lotniska do centrum jest 8 kilometrów, dojazd zajmuje chwilę.",
+      "Miasto ma średnio 300 dni słońca w roku i łagodny klimat.",
+      "Bilet wstępu do muzeum kosztuje 450 koron za osobę dorosłą.",
+    ]) {
+      assert.equal(runQualityGate(addParagraph(text), ctx).verdict, "BLOCKED_FACTS", text);
+    }
+  });
+
+  it("krótki okres planu („3 albo 4 dni”) i liczby bez jednostki nie wymagają źródła", () => {
+    const report = runQualityGate(addParagraph("Na oba miasta wystarczą 3 albo 4 dni, a pierwszy dzień warto zostawić na spokojny spacer."), ctx);
+    assert.equal(report.verdict, "PASS");
+  });
+
+  it("twierdzenie „zweryfikowane” musi mieć swoje liczby w cytacie źródła", () => {
+    const doc = mutate((d) => {
+      d.factClaims[0].claim = "Lotnisko leży 60 km od centrum Aten";
+      d.factClaims[0].value = "60 km";
+      d.factClaims[0].observedEvidence = "Athens International Airport";
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "BLOCKED_FACTS");
+    assert.ok(rules(report).includes("claim_number_not_in_evidence"));
+  });
+
+  it("zapis tysięcy z angielskiego źródła („3,718 m”) pokrywa twierdzenie „3718 m”", () => {
+    const doc = mutate((d) => {
+      d.factClaims[0].claim = "Szczyt ma 3718 m wysokości";
+      d.factClaims[0].value = "3718 m";
+      d.factClaims[0].observedEvidence = "at 3,718 m, is the highest peak on Spanish soil";
+    });
+    assert.ok(!rules(runQualityGate(doc, ctx)).includes("claim_number_not_in_evidence"));
+  });
+
+  it("odmiana „wiza” i „bezwizowy” to temat wysokiego ryzyka; „wizyta” nie", () => {
+    for (const text of [
+      "Przed wyjazdem musisz mieć wizę wydaną przez konsulat tego kraju.",
+      "Do tego kraju polecisz z wizą elektroniczną wyrobioną wcześniej.",
+      "Obowiązuje tam ruch bezwizowy dla obywateli Unii Europejskiej.",
+    ]) {
+      const found = rules(runQualityGate(addParagraph(text), ctx));
+      assert.ok(found.includes("high_risk_without_source"), text);
+    }
+    const visit = rules(runQualityGate(addParagraph("Wizyta w muzeum archeologicznym zajmuje zwykle pół dnia, warto zacząć rano."), ctx));
+    assert.ok(!visit.includes("high_risk_without_source"));
+  });
+
+  it("„jedno z ostatnich miejsc na wybrzeżu” to opis, nie fałszywa presja", () => {
+    const report = runQualityGate(addParagraph("To jedno z ostatnich miejsc na wybrzeżu, gdzie stare kamienice stoją tuż przy porcie."), ctx);
+    assert.ok(!rules(report).includes("fake_urgency"));
+  });
+});

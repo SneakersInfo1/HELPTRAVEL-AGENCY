@@ -67,17 +67,23 @@ export class RunBudget {
     };
   }
 
-  /** Rezerwacja żądania jest atomowa z kontrolą limitów, więc retry też zużywa limit. */
-  assertCanSpend(): void {
+  /**
+   * Rezerwacja żądania jest atomowa z kontrolą limitów, więc retry też zużywa limit.
+   * Z `reserve` sprawdza też NAJGORSZY przypadek tego żądania (pełne `maxOutputTokens`
+   * po cenie modelu) — inaczej przebieg mógł przekroczyć limit o całe jedno wywołanie.
+   */
+  assertCanSpend(reserve?: { maxOutputTokens: number; model: string }): void {
     this.assertRuntime();
     if (this.requests >= this.caps.maxRequests) {
       throw new BudgetExceededError("requests", this.caps.maxRequests, this.requests);
     }
-    if (this.outputTokens >= this.caps.maxOutputTokens) {
-      throw new BudgetExceededError("output_tokens", this.caps.maxOutputTokens, this.outputTokens);
+    const plannedOutput = this.outputTokens + (reserve?.maxOutputTokens ?? 0);
+    if (this.outputTokens >= this.caps.maxOutputTokens || plannedOutput > this.caps.maxOutputTokens) {
+      throw new BudgetExceededError("output_tokens", this.caps.maxOutputTokens, plannedOutput);
     }
-    if (this.costUsd >= this.caps.maxUsd) {
-      throw new BudgetExceededError("usd", this.caps.maxUsd, this.costUsd);
+    const worstCaseUsd = reserve ? (reserve.maxOutputTokens * priceForModel(reserve.model).output) / 1_000_000 : 0;
+    if (this.costUsd >= this.caps.maxUsd || this.costUsd + worstCaseUsd > this.caps.maxUsd) {
+      throw new BudgetExceededError("usd", this.caps.maxUsd, this.costUsd + worstCaseUsd);
     }
     this.requests += 1;
   }

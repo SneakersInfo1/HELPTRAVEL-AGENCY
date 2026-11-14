@@ -58,27 +58,26 @@ export class AnthropicLlm implements LlmClient {
         ...(withFallback ? { betas: [FALLBACK_BETA], fallbacks: "default" as const } : {}),
       });
 
+      // Zapis i odczyt cache też są wejściem — do limitu liczymy je po pełnej cenie.
+      const usage = {
+        inputTokens:
+          response.usage.input_tokens + (response.usage.cache_creation_input_tokens ?? 0) + (response.usage.cache_read_input_tokens ?? 0),
+        outputTokens: response.usage.output_tokens,
+        model: response.model,
+      };
+      // Odmowa i ucięcie są płatne — błąd niesie zużycie, żeby budżet je policzył.
       if (response.stop_reason === "refusal") {
-        throw new LlmError(`Model odmówił odpowiedzi (${response.stop_details?.category ?? "bez kategorii"})`, null, false, "refusal");
+        throw new LlmError(`Model odmówił odpowiedzi (${response.stop_details?.category ?? "bez kategorii"})`, null, false, "refusal", usage);
       }
       if (response.stop_reason === "max_tokens") {
-        throw new LlmError("Odpowiedź ucięta limitem max_tokens — JSON byłby niekompletny", null, false, "invalid_response");
+        throw new LlmError("Odpowiedź ucięta limitem max_tokens — JSON byłby niekompletny", null, false, "invalid_response", usage);
       }
       const text = response.content
         .flatMap((block) => (block.type === "text" ? [block.text] : []))
         .join("\n");
-      if (text === "") throw new LlmError("Odpowiedź modelu nie zawiera tekstu", null, false, "invalid_response");
+      if (text === "") throw new LlmError("Odpowiedź modelu nie zawiera tekstu", null, false, "invalid_response", usage);
 
-      const usage = response.usage;
-      return {
-        text,
-        model: response.model,
-        usage: {
-          // Zapis i odczyt cache też są wejściem — do limitu liczymy je po pełnej cenie.
-          inputTokens: usage.input_tokens + (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
-          outputTokens: usage.output_tokens,
-        },
-      };
+      return { text, model: response.model, usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
     } catch (error) {
       if (error instanceof LlmError) throw error;
       if (error instanceof Anthropic.APIConnectionTimeoutError) {

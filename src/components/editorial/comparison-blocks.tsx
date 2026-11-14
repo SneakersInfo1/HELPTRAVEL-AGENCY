@@ -93,7 +93,9 @@ export function VerdictColumns({ options, compact = false }: { options: Comparis
     <div className={`grid gap-x-8 gap-y-8 ${compact ? "grid-cols-2 gap-x-4" : "sm:grid-cols-2"}`}>
       {options.map((option) => (
         <div key={option.label}>
-          <h3 className={`font-display font-semibold text-ink ${compact ? "text-lg" : "text-xl"}`}>Wybierz {option.label}, jeśli</h3>
+          {/* Nazwa zostaje w mianowniku: „Wybierz Barcelona" byłoby błędem (biernik:
+              „Barcelonę"), a odmiany nazw nie mamy w danych. */}
+          <h3 className={`font-display font-semibold text-ink ${compact ? "text-lg" : "text-xl"}`}>{option.label} — wybierz, jeśli</h3>
           <ul className={`mt-3 space-y-3 ${compact ? "text-sm leading-6" : "text-base leading-7"}`}>
             {option.chooseIf.map((item) => (
               <li key={item} className="flex gap-2.5 text-ink">
@@ -141,7 +143,9 @@ export function FactTable({ caption, nameA, nameB, rows, note }: { caption: stri
         <caption className="sr-only">{caption}</caption>
         <thead role="rowgroup" className="block sm:table-header-group">
           <tr role="row" className="grid grid-cols-2 border-b border-ink/80 sm:table-row">
-            <th role="columnheader" scope="col" className="hidden w-[30%] py-2 pr-4 text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted sm:table-cell">
+            {/* sr-only zamiast hidden: przy display:none czytnik przypisywał wartości
+                strony A do nagłówka strony B (wiersze mają trzy komórki). */}
+            <th role="columnheader" scope="col" className="sr-only w-[30%] py-2 pr-4 text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted sm:not-sr-only sm:table-cell">
               Kryterium
             </th>
             <th role="columnheader" scope="col" className="py-2 pr-3 font-display text-lg font-semibold text-ink sm:w-[35%]">
@@ -216,8 +220,8 @@ export function EditorialSections({ sections, nameA, nameB }: { sections: Editor
           </h2>
           {section.kind === "prose" ? (
             <div className="mt-4 max-w-[65ch] space-y-4">
-              {section.paragraphs.map((paragraph) => (
-                <p key={paragraph.slice(0, 40)} className="text-base leading-7 text-ink">
+              {section.paragraphs.map((paragraph, index) => (
+                <p key={`${index}-${paragraph.slice(0, 24)}`} className="text-base leading-7 text-ink">
                   {paragraph}
                 </p>
               ))}
@@ -227,8 +231,8 @@ export function EditorialSections({ sections, nameA, nameB }: { sections: Editor
             <div className="mt-4 max-w-[65ch]">
               {section.intro ? <p className="text-base leading-7 text-ink">{section.intro}</p> : null}
               <ul className="mt-3 space-y-2.5">
-                {section.items.map((item) => (
-                  <li key={item.slice(0, 40)} className="flex gap-3 text-base leading-7 text-ink">
+                {section.items.map((item, index) => (
+                  <li key={`${index}-${item.slice(0, 24)}`} className="flex gap-3 text-base leading-7 text-ink">
                     <span aria-hidden className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
                     <span>{item}</span>
                   </li>
