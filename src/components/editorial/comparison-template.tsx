@@ -73,6 +73,34 @@ function FlightsLine({ sides, content }: { sides: [SideInfo, SideInfo]; content:
   );
 }
 
+/**
+ * Oba kierunki w skrócie — opisy z przewodników. Na stronie bez dokumentu
+ * treści to jedyna proza o samych miejscach; po przebudowie z 2026-11 zniknęła
+ * i porównania szablonowe straciły połowę tekstu (test dymny po buildzie).
+ */
+function Overviews({ sides }: { sides: [SideInfo, SideInfo] }) {
+  return (
+    <section aria-labelledby="w-skrocie">
+      <h2 id="w-skrocie" className={H2}>
+        Oba kierunki w skrócie
+      </h2>
+      <div className="mt-4 grid gap-8 sm:grid-cols-2">
+        {sides.map((side) => (
+          <div key={side.slug}>
+            <h3 className="font-display text-xl font-semibold text-ink">{side.name}</h3>
+            <p className="mt-2 text-base leading-7 text-ink">{side.overview}</p>
+            <p className="mt-3">
+              <Link href={side.guideHref} className="text-sm font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand">
+                <span className="text-brand">Przewodnik: {side.name}</span>
+              </Link>
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function WhenToGo({ model }: { model: ComparisonModel }) {
   if (model.whenToGo.length === 0) return null;
   return (
@@ -241,6 +269,8 @@ function LowerSections({ view, model, sides, liveStats, articleLinks, tape }: Co
   const Table = tape ? TapeTable : FactTable;
   return (
     <>
+      {/* Przy dokumencie treści opis miejsc jest w sekcjach redakcyjnych wyżej. */}
+      {view.sources.length === 0 ? <Overviews sides={sides} /> : null}
       <section aria-labelledby="w-liczbach">
         <h2 id="w-liczbach" className={H2}>
           {view.nameA} i {view.nameB} w liczbach

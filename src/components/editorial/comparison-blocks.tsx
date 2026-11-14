@@ -18,6 +18,8 @@ export interface SideInfo {
   hotelHref: string;
   guideHref: string;
   image: string | null;
+  /** Opis kierunku z przewodnika (publisher-content) — treść redakcyjna, bez liczb. */
+  overview: string;
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Warsaw" });

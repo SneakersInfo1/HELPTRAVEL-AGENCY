@@ -41,6 +41,7 @@
     "snapshot:rollback": "tsx --env-file=.env.local scripts/snapshot-rollback.ts",
     "probe:rotation": "tsx --env-file=.env.local scripts/probe-rotation-coverage.ts",
     "seo:crawl": "tsx scripts/seo/crawl.ts",
+    "seo:smoke": "tsx scripts/seo/smoke.ts",
     "seo:shots": "tsx scripts/seo/shots.ts",
     "content:verify": "tsx scripts/content-engine/verify-docs.ts",
     "content:check": "tsx scripts/content-engine/verify-docs.ts --offline",
@@ -73,6 +74,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
+    "@axe-core/playwright": "^4.14.0",
     "@next/bundle-analyzer": "^16.2.4",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",

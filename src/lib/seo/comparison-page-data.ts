@@ -50,8 +50,8 @@ export async function loadComparisonPage(slug: string): Promise<Omit<ComparisonT
   });
 
   const sides: [SideInfo, SideInfo] = [
-    { name: model.a.name, slug: pair.a, hotelHref: hotelHref(ga.destination), guideHref: `/kierunki/${pair.a}`, image: mediaA.heroImage ?? null },
-    { name: model.b.name, slug: pair.b, hotelHref: hotelHref(gb.destination), guideHref: `/kierunki/${pair.b}`, image: mediaB.heroImage ?? null },
+    { name: model.a.name, slug: pair.a, hotelHref: hotelHref(ga.destination), guideHref: `/kierunki/${pair.a}`, image: mediaA.heroImage ?? null, overview: ga.overview },
+    { name: model.b.name, slug: pair.b, hotelHref: hotelHref(gb.destination), guideHref: `/kierunki/${pair.b}`, image: mediaB.heroImage ?? null, overview: gb.overview },
   ];
 
   const seen = new Set<string>();
