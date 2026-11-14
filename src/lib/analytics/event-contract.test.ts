@@ -280,10 +280,12 @@ describe("CTA stron treściowych wysyła seo_cta_click (testy B, C, D)", () => {
     const szablon = czytaj("src/components/editorial/comparison-template.tsx");
     const bloki = czytaj("src/components/editorial/comparison-blocks.tsx");
     for (const [plik, tresc] of [["comparison-template.tsx", szablon], ["comparison-blocks.tsx", bloki]] as const) {
-      const otwarcia = (tresc.match(/<SeoCtaLink[\s>]/g) ?? []).length;
-      const zKontekstem = (tresc.match(/content=\{(view\.)?content\}/g) ?? []).length;
-      assert.ok(otwarcia > 0, plik);
-      assert.equal(zKontekstem, otwarcia, `${plik}: ${zKontekstem} z ${otwarcia} SeoCtaLink ma kontekst treści`);
+      // Każdy znacznik otwierający <SeoCtaLink …> osobno — atrybuty nie zawierają „>".
+      const znaczniki = tresc.match(/<SeoCtaLink\b[^>]*>/g) ?? [];
+      assert.ok(znaczniki.length > 0, plik);
+      for (const znacznik of znaczniki) {
+        assert.match(znacznik, /content=\{(view\.)?content\}/, `${plik}: SeoCtaLink bez kontekstu treści: ${znacznik.slice(0, 120)}`);
+      }
     }
     const link = czytaj("src/components/analytics/seo-cta-link.tsx");
     assert.ok(link.includes("content_id: content.id"));
