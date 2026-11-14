@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: evaluates-external-spec
+expected_outcome: |
+  Nie wdrażamy palety ani stylu w całości; zostają tokeny marki; gradienty i długie animacje odrzucone; zmiana fontu to decyzja właściciela z kosztem LCP; z propozycji przyjęta tylko checklista dostępności.

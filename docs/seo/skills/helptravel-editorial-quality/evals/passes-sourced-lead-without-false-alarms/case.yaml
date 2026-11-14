@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: passes-sourced-lead-without-false-alarms
+expected_outcome: |
+  Lead jest uznany za odpowiadający na intencję. Odpowiedź nie żąda usunięcia udokumentowanych dat UNESCO i nie wymyśla blokujących zarzutów; werdykt PASS albo tylko drobne uwagi stylistyczne.

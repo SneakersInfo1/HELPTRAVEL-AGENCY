@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: flags-fabricated-facts-and-filler
+expected_outcome: |
+  Akapit nie jest zatwierdzony. Odpowiedź wskazuje cenę bez pomiaru, zmyślone doświadczenie autora, fałszywą presję, godziny otwarcia bez źródła i frazesy, a proponowana poprawka nie dodaje nowych faktów bez źródła.

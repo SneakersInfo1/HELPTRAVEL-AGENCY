@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: mobile-fact-table-pattern
+expected_outcome: |
+  Wiersze zamienione w bloki na wąskim ekranie, bez poziomego przewijania strony; źródło i data zostają widoczne; semantyka tabeli dla czytników ekranu zachowana; testy w kilku szerokościach i axe.
