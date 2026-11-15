@@ -42,6 +42,16 @@ Stan na 14.11.2026. Skala: prawdopodobieństwo i skutek jako niskie (N), średni
 | R-23 | Konsola Chrome zgłasza leniwie ładowane logo bez wymiarów we wspólnej powłoce (`site-shell.tsx`). Zmierzony CLS wynosi 0. Komponent jest wspólny ze stroną główną, więc nie był zmieniany. | Do rozważenia przy pracy nad powłoką |
 | R-24 | 48 stron na produkcji odpowiadało dłużej niż 3 s w crawlu z 13.11. | Do obserwacji w `/api/vitals` |
 
+## Ryzyka po końcowej kontroli jakości
+
+| ID | Ryzyko | Stan |
+|---|---|---|
+| R-26 | 158 indeksowalnych stron miesięcy (25 kierunków) nie ma żadnych danych o miesiącu, bo WMO nie ma jednoznacznie dopasowanej stacji. | Decyzja właściciela: wyłączyć z indeksu albo zostawić (`OWNER_ACTIONS.md`, pkt 16) |
+| R-27 | Okresy norm WMO różnią się między krajami (od 1961–1990 do 1991–2020), a dla 28 kierunków źródło ich nie podaje. Porównania między kierunkami zestawiają więc różne okresy. | Przyjęte: okres jest pokazany przy danych |
+| R-28 | Przycisk „Szukaj lotów” prowadzi na stronę główną bez kierunku i terminu. | Decyzja właściciela: zgoda na zmianę formularza lotów (`OWNER_ACTIONS.md`, pkt 17) |
+| R-29 | Proza stron miesięcy jest szablonem; mediana 67% zdań po zamaskowaniu powtarza się na ponad połowie stron. Google może je nadal oceniać jako treść o niskiej unikalności. | Otwarte: ocena po 28 dniach w GSC |
+| R-30 | Normy WMO są pobrane jednorazowo (16.11.2026). Służby aktualizują je rzadko, ale plik nie odświeża się sam. | Przyjęte: `pnpm seo:climate` raz w roku |
+
 ## Czego celowo nie zrobiono
 
 - Żadnych masowych przekierowań, zmian `noindex` ani usunięć stron.

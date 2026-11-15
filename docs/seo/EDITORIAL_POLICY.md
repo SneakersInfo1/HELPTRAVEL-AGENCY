@@ -49,9 +49,19 @@ Dokument dziedziczy najwyższe ryzyko swoich twierdzeń.
 
 Po terminie ważności twierdzenie przestaje być faktem. `pnpm content:freshness` kończy się błędem, a strona pokazuje wersję bez dokumentu, dopóki ktoś nie zweryfikuje źródła ponownie.
 
+### Dane pogodowe
+
+Temperatury i opady na stronach kierunków pochodzą wyłącznie z norm klimatycznych WMO World Weather Information Service (`src/lib/mvp/climate-normals.generated.json`, pobierane poleceniem `pnpm seo:climate`). Zasady:
+
+- pokazujemy średnią temperaturę maksymalną i minimalną, dni z opadem i sumę opadu, zawsze z nazwą źródła, służby meteorologicznej, stacji i okresem normy;
+- wartości odtwarzamy wiernie, z jednym miejscem po przecinku (warunek WMO);
+- kierunek bez jednoznacznie dopasowanej stacji nie dostaje żadnych liczb ani danych z sąsiedniego miasta;
+- nie podajemy temperatury morza ani prognoz;
+- długość dnia jest obliczeniem astronomicznym z szerokości geograficznej stacji i tak jest podpisana.
+
 ## 4. Ceny
 
-Nie podajemy cen z pamięci, z cudzych serwisów ani „orientacyjnych”. Kwota może pochodzić wyłącznie z własnego pomiaru z datą (migawki cen w serwisie). Nie używamy słowa „okazja” ani porównań do „ceny regularnej”, bo nie mamy ceny z 30 dni wymaganej przez przepisy. Nie obiecujemy dostępności.
+Nie podajemy cen z pamięci, z cudzych serwisów ani „orientacyjnych”. Nie pokazujemy też budżetów wyjazdu liczonych ze wzoru. Kwota może pochodzić wyłącznie z własnego pomiaru z datą (migawki cen w serwisie). Nie używamy słowa „okazja” ani porównań do „ceny regularnej”, bo nie mamy ceny z 30 dni wymaganej przez przepisy. Nie obiecujemy dostępności.
 
 ## 5. Czego nie piszemy
 

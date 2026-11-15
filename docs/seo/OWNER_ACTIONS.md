@@ -18,6 +18,8 @@ Lista rzeczy, których nie da się dokończyć bez Ciebie: decyzje, konta, klucz
 | 13 | Włączyć dzienny automat | gdy zechcesz | 30 min |
 | 14 | Odświeżyć godziny otwarcia w jednym dokumencie | przed 11.02.2027 | 10 min |
 | 15 | Włączyć ochronę gałęzi `main` | przed włączeniem automatu | 5 min |
+| 16 | Zdecydować o 158 stronach miesięcy bez danych | przed albo po scaleniu | 5 min |
+| 17 | Zdecydować o przycisku lotów bez kierunku | bez pośpiechu | 2 min |
 
 ## Przed scaleniem PR
 
@@ -140,3 +142,19 @@ Dokument Funchal–Santa Cruz de Tenerife zawiera godziny otwarcia, które trac�
 Gałąź `main` nie ma dziś żadnej reguły ochrony. Workflow dziennego automatu działa z tokenem, który ma prawo zapisu do repozytorium. Skrypt wypycha tylko gałąź stanu i gałęzie propozycji, ale nic poza nim nie broni `main`.
 
 Przed włączeniem automatu ustaw w GitHubie (Settings → Rules → Rulesets) regułę dla `main`: wymagany pull request, bez wyjątku dla GitHub Actions. Warto też oznaczyć kontrole `content-check` i `templates-e2e` jako wymagane.
+
+## Decyzje po końcowej kontroli jakości
+
+Szczegóły i liczby: `FINAL_QUALITY_AUDIT.md`.
+
+### 16. 158 indeksowalnych stron miesięcy bez danych
+
+Dla 25 kierunków (m.in. Kos, Zakynthos, Mykonos, Santorini, Tirana, Djerba, Bodrum) WMO nie ma jednoznacznie dopasowanej stacji. Ich strony miesięcy nie pokazują żadnej informacji o miesiącu, a 158 z nich jest w indeksie. W 92 dni zebrały 13 kliknięć i 1060 wyświetleń.
+
+Zalecam wyłączenie ich z indeksu (`noindex, follow`, adresy zostają) do czasu znalezienia wiarygodnych danych. Niczego nie zmieniłem. Po Twojej zgodzie to zmiana w jednym pliku (`src/lib/mvp/month-index-policy.ts`) z testem.
+
+Osobna sprawa: 1363 strony mają teraz dane WMO, ale są poza indeksem. Nie zalecam włączania ich przed oceną wyników po 28 dniach.
+
+### 17. Przycisk „Szukaj lotów”
+
+Prowadzi do `/?tab=loty`, czyli na stronę główną bez kierunku i terminu. Żeby przekazywał kierunek, formularz lotów na stronie głównej musi przyjmować go z adresu. To zmiana w komponentach strony głównej, więc potrzebuję Twojej zgody.

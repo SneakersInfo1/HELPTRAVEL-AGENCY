@@ -4,11 +4,11 @@
 
 | Rodzaj | Polecenie | Wynik |
 |---|---|---|
-| Jednostkowe i integracyjne całego projektu | `pnpm test` | 1672 zaliczone |
+| Jednostkowe i integracyjne całego projektu | `pnpm test` | 1686 zaliczonych |
 | SEO, bramka treści, silnik, klient GSC | `pnpm test:seo` | 186 zaliczonych |
 | Kontrola dokumentów treści | `pnpm content:check` | 4/4, wszystkie `approved` |
 | Typy i linter | `pnpm exec tsc --noEmit`, `pnpm lint` | czyste |
-| Test dymny po buildzie lokalnym | `pnpm seo:smoke` | 263/263 |
+| Test dymny po buildzie lokalnym | `pnpm seo:smoke` | 268/268 |
 | Test dymny na Preview (Vercel) | `pnpm seo:smoke -- --base <preview> --share <token>` | 263/263 |
 | Playwright z axe | `pnpm exec playwright test e2e/seo-templates.spec.ts` | 13/13 |
 | Lighthouse (telefon, mediana z 3) | `pnpm lighthouse -- --routes=…` | dostępność 100, CLS 0, LCP bez regresji |
@@ -102,6 +102,8 @@ Przegląd w trybie tylko do odczytu, cała gałąź. Każde ustalenie zostało s
 Po poprawkach sprawdzono w wierszu poleceń: przebieg próbny, potem drugi próbny (`DUPLICATE_SKIPPED`), potem właściwy tego samego dnia (`DRAFT_CREATED`), ponowny właściwy (bez drugiego dokumentu) i zwolnienie tematu poleceniem `--release-pending`.
 
 Ustalenie 13 jest prawdziwe: w chwili przeglądu gałąź `main` nie miała żadnej reguły ochrony.
+
+Po tym etapie odbyła się jeszcze końcowa kontrola jakości danych i powtarzalności stron. Jej wyniki są w `FINAL_QUALITY_AUDIT.md`.
 
 ## Czego testy nie pokrywają
 

@@ -29,7 +29,16 @@ Liczby przed i po (produkcja z 13.11 kontra build gałęzi):
 | LCP i CLS | — | bez regresji, CLS 0 |
 | Zmiany indeksu (robots) | — | 0 |
 
-Testy: `pnpm test` 1672 + 186 zaliczonych, `tsc` i `eslint` czyste.
+Testy: `pnpm test` 1686 + 186 zaliczonych, `tsc` i `eslint` czyste.
+
+## Końcowa kontrola jakości (15–16.11.2026)
+
+Pełny opis: `FINAL_QUALITY_AUDIT.md`. W skrócie:
+
+- Temperatury pochodzą teraz z norm WMO dla 187 z 235 kierunków. Dane pogodowe ma 2244 z 2820 stron miesięcy, w tym 881 z 1039 indeksowalnych.
+- Usunięte: temperatura morza liczona z powietrza i budżety w zł ze wzoru.
+- Powtarzalność 1039 indeksowalnych stron miesięcy: 274 → 900 wariantów tekstu, największa grupa identycznych stron 178 → 36.
+- Proza tych stron nadal jest szablonem, a wartość daje dane. 158 indeksowalnych stron nie ma żadnych danych o miesiącu.
 
 ## Co wymaga klucza albo Twojej zgody
 
@@ -82,4 +91,5 @@ Jak to cofnąć: `TOOLING_AUDIT.md`, sekcja „Zmiany w konfiguracji”.
 | `DESIGN_QUALITY_STANDARD.md` | Kierunek wizualny i progi |
 | `TOOLING_AUDIT.md` | Narzędzia |
 | `PHASE_0…7_RESULTS.md` | Wyniki etapów |
+| `FINAL_QUALITY_AUDIT.md` | Końcowa kontrola: dane WMO, powtarzalność stron, strategia indeksu |
 | `HANDOFF.md` | Przekazanie dla następnej sesji |

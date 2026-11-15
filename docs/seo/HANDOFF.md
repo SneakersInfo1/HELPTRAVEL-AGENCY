@@ -34,7 +34,7 @@ pnpm seo:smoke -- --base http://localhost:3000
 pnpm exec playwright test e2e/seo-templates.spec.ts
 ```
 
-Oczekiwane: testy 1672 + 186, test dymny 263/263, Playwright 13/13.
+Oczekiwane: testy 1686 + 186, test dymny 268/268, Playwright 13/13.
 
 ## Pułapki, które już kosztowały czas
 
