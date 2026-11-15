@@ -154,7 +154,7 @@
       "dataClass": "attraction",
       "riskClass": "EVERGREEN",
       "sourceId": "spain-info-barcelona",
-      "observedEvidence": "Casa Batlló and La Pedrera",
+      "observedEvidence": "like the Sagrada Familia, Park Güell , Casa Batlló and La Pedrera",
       "retrievedAt": "2026-11-13T18:32:35Z",
       "verification": "source_verified"
     },
@@ -349,7 +349,7 @@
   ],
   "ctaTarget": "/hotele/szukaj",
   "riskClass": "EVERGREEN",
-  "contentHash": "bdf8cef0e77032172dd878a48011ca25ba41e13ec1e2b2e8c14336827955b35c",
+  "contentHash": "debd8f4c4ad1b99be2057ea05158045495ef28b378022882201a56e4b0f7c6a7",
   "createdAt": "2026-11-13T23:14:30Z",
   "publishedAt": null,
   "materiallyModifiedAt": "2026-11-13T23:14:30Z",

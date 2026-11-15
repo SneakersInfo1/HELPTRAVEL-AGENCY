@@ -240,7 +240,7 @@
       "dataClass": "attraction",
       "riskClass": "EVERGREEN",
       "sourceId": "visitmadeira-szlaki",
-      "observedEvidence": "PR6 – Levada das 25 Fontes",
+      "observedEvidence": "PR1 – Pico do Areeiro PR1.2 – Vereda do Pico Ruivo PR6 – Levada das 25 Fontes",
       "retrievedAt": "2026-11-13T18:32:01Z",
       "verification": "source_verified"
     },
@@ -325,7 +325,7 @@
   ],
   "ctaTarget": "/hotele/szukaj",
   "riskClass": "DYNAMIC",
-  "contentHash": "4512669c74918e2e833d89f00d24a0f8824986968120c23c26494eaa6a3fc579",
+  "contentHash": "30d0fcf78fe85df06545b98b5bf040800b42e08dc47badbe797e7d71cddb3d46",
   "createdAt": "2026-11-13T23:14:30Z",
   "publishedAt": null,
   "materiallyModifiedAt": "2026-11-13T23:14:30Z",
