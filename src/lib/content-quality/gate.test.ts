@@ -12,6 +12,7 @@ import { CONTENT_DOCUMENTS } from "../../../content/seo/index.generated";
 import { computeContentHash } from "@/lib/content-engine/hash";
 import { ContentDocumentSchema, type ContentDocument } from "@/lib/content-engine/schema";
 import { buildSiteInventory } from "@/lib/content-engine/site-inventory";
+import { makeDocument } from "@/lib/content-engine/test-helpers";
 
 import { FILLER_PHRASES, publishDecision, runQualityGate, type GateContext, type GateReport } from "./gate";
 
@@ -103,6 +104,28 @@ describe("fakty i źródła", () => {
     assert.ok(rules(report).includes("claim_expired"));
   });
 
+  it("niezweryfikowane albo przeterminowane twierdzenie nie pokrywa liczby w tekście", () => {
+    for (const state of ["unverified", "expired"] as const) {
+      const doc = mutate((d) => {
+        const claim = d.factClaims[0];
+        claim.claim = "Trasa spacerowa ma 3 km długości";
+        claim.value = "3 km";
+        claim.observedEvidence = "The walking route is 3 km long.";
+        if (state === "unverified") claim.verification = "unverified";
+        else {
+          claim.dataClass = "opening_hours";
+          claim.riskClass = "DYNAMIC";
+          claim.retrievedAt = "2026-01-01T10:00:00Z";
+          d.riskClass = "DYNAMIC";
+        }
+        const prose = firstProse(d);
+        if (!prose.claimIds.includes(claim.id)) prose.claimIds.push(claim.id);
+        prose.paragraphs.push("Trasa spacerowa ma 3 km długości i prowadzi przez zwartą część historycznego centrum.");
+      });
+      assert.ok(rules(runQualityGate(doc, ctx)).includes("number_without_claim"), state);
+    }
+  });
+
   it("kwota bez twierdzenia cenowego → BLOCKED_FACTS (pozorowana cena)", () => {
     const doc = mutate((d) => {
       firstProse(d).paragraphs.push("Hotele w centrum Aten kosztują od 250 zł za noc, więc wyjazd zamkniesz w rozsądnym budżecie.");
@@ -155,6 +178,19 @@ describe("fakty i źródła", () => {
     const report = runQualityGate(doc, ctx);
     assert.equal(report.verdict, "SKIPPED_QUALITY_GATE");
     assert.equal(publishDecision(report, doc, "AUTO_EVERGREEN"), "SKIPPED_QUALITY_GATE");
+  });
+
+  it("źródło spoza allowlisty blokuje dokument; własne dane wymagają jawnego rodzaju", () => {
+    const blocked = mutate((d) => {
+      d.sources[0].url = "https://example.com/fakty";
+    });
+    assert.ok(rules(runQualityGate(blocked, ctx)).includes("source_not_allowed"));
+
+    const own = mutate((d) => {
+      d.sources[0].url = "https://helptravel.pl/dane/metodologia";
+      d.sources[0].kind = "own_data";
+    });
+    assert.ok(!rules(runQualityGate(own, ctx)).includes("source_not_allowed"));
   });
 });
 
@@ -222,6 +258,40 @@ describe("jakość redakcyjna", () => {
       d.sections = d.sections.filter((s) => s.kind === "table");
     });
     assert.ok(rules(runQualityGate(doc, ctx)).includes("too_short_for_type"));
+  });
+
+  it("znacznik HTML w dowolnym polu tekstowym → NEEDS_REVISION", () => {
+    const doc = mutate((d) => {
+      firstProse(d).paragraphs.push("Opis pozostaje tekstem, ale zawiera <strong>niedozwolony znacznik</strong> przekazany dalej do strony.");
+    });
+    const report = runQualityGate(doc, ctx);
+    assert.equal(report.verdict, "NEEDS_REVISION");
+    assert.ok(rules(report).includes("html_markup_in_text"));
+  });
+});
+
+describe("sekcje faktograficzne i opinie", () => {
+  it("prose/list bez twierdzeń wymaga opinion:true", () => {
+    const factual = makeDocument();
+    const section = factual.sections[0];
+    assert.equal(section.kind, "prose");
+    section.claimIds = [];
+    assert.equal(ContentDocumentSchema.safeParse(factual).success, false);
+
+    if (section.kind === "prose") section.opinion = true;
+    assert.equal(ContentDocumentSchema.safeParse(factual).success, true);
+  });
+
+  it("sekcja-opinia nie może zawierać liczby z jednostką", () => {
+    const doc = makeDocument();
+    const section = doc.sections[0];
+    assert.equal(section.kind, "prose");
+    section.claimIds = [];
+    if (section.kind === "prose") {
+      section.opinion = true;
+      section.paragraphs.push("Moim zdaniem odcinek 3 km jest najlepszym wariantem spokojnego spaceru po mieście.");
+    }
+    assert.equal(ContentDocumentSchema.safeParse(doc).success, false);
   });
 });
 
@@ -349,6 +419,24 @@ describe("regresje z przeglądu 2026-11-14", () => {
       d.factClaims[0].observedEvidence = "at 3,718 m, is the highest peak on Spanish soil";
     });
     assert.ok(!rules(runQualityGate(doc, ctx)).includes("claim_number_not_in_evidence"));
+  });
+
+  it("ta sama liczba z innym wymiarem nie potwierdza twierdzenia", () => {
+    const doc = mutate((d) => {
+      d.factClaims[0].claim = "Dojazd trwa 3 godziny";
+      d.factClaims[0].value = "3 godziny";
+      d.factClaims[0].observedEvidence = "The route is 3 km long";
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("claim_number_not_in_evidence"));
+  });
+
+  it("brak identyfikatora alfanumerycznego w cytacie blokuje twierdzenie", () => {
+    const doc = mutate((d) => {
+      d.factClaims[0].claim = "Szlak PR6 prowadzi przez dolinę";
+      d.factClaims[0].value = "PR6";
+      d.factClaims[0].observedEvidence = "Official route PR1 crosses the valley";
+    });
+    assert.ok(rules(runQualityGate(doc, ctx)).includes("claim_identifier_not_in_evidence"));
   });
 
   it("odmiana „wiza” i „bezwizowy” to temat wysokiego ryzyka; „wizyta” nie", () => {

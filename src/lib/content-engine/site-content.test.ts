@@ -33,6 +33,20 @@ describe("treść dla stron (site-content)", () => {
     assert.equal(toRenderable(tampered, NOW), null);
   });
 
+  it("jawna sekcja-opinia bez twierdzeń jest renderowana", () => {
+    const withOpinion = structuredClone(athens);
+    withOpinion.sections.push({
+      id: "opinia-redakcyjna",
+      kind: "prose",
+      opinion: true,
+      heading: "Jak czytać to porównanie",
+      claimIds: [],
+      paragraphs: ["Wybór zależy od rytmu podróży i tego, czy ważniejszy jest spokojny spacer, czy intensywny plan zwiedzania miasta."],
+    });
+    const rendered = toRenderable(withOpinion, NOW);
+    assert.ok(rendered?.sections.some((section) => section.id === "opinia-redakcyjna"));
+  });
+
   it("lastmod tylko dla typów, które jakaś strona renderuje", () => {
     assert.deepEqual([...RENDERED_CONTENT_TYPES], ["comparison_enrichment"]);
     const monthDoc = { ...athens, id: "barcelona-styczen", canonicalUrl: "/kierunki/barcelona-spain/styczen", contentType: "month_enrichment" as const };

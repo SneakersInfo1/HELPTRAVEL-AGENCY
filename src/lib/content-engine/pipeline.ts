@@ -1,4 +1,4 @@
-import { randomUUID as nodeRandomUUID } from "node:crypto";
+import { createHash, randomUUID as nodeRandomUUID } from "node:crypto";
 import { z } from "zod";
 
 import { publishDecision, runQualityGate, type GateReport, type PublishMode } from "@/lib/content-quality/gate";
@@ -31,6 +31,7 @@ import {
   type Source,
 } from "./schema";
 import { registeredSourcesForTarget } from "./source-registry";
+import { RENDERED_CONTENT_TYPES } from "./site-content";
 import { assertAllowedSource, evidenceFoundIn, type SourceFetchResult, type SourceFetcher } from "./sources";
 import { NODE_FS, type ContentStore, type FsLike } from "./store";
 
@@ -70,6 +71,14 @@ export interface Task {
 export interface SelectionResult {
   tasks: Task[];
   reason: string;
+  skipped: SelectionSkip[];
+}
+
+export interface SelectionSkip {
+  operation: Task["operation"];
+  target: string;
+  contentType: ContentType;
+  reason: "content_type_not_rendered";
 }
 
 export type RunOutcome =
@@ -106,27 +115,78 @@ export interface RunReport {
   usage: BudgetSummary;
   outcome: RunOutcome;
   reason?: string;
-  error?: { class: string; message: string; stage: string };
+  error?: { class: string; message: string; stage: string; code: string };
 }
 
-/**
- * Raport do publikacji (artefakt CI, opis PR-a) — repozytorium jest publiczne.
- * Usuwa dane z Search Console: zapytania, kliknięcia, wyświetlenia, pozycje
- * i uzasadnienia, które je cytują. Adres docelowy zostaje: i tak trafi do PR-a.
- */
-export function redactRunReport(report: RunReport): RunReport {
+export interface PublicRunReport {
+  runId: string;
+  scheduledAt: string;
+  startedAt: string;
+  finishedAt: string;
+  mode: PublishMode;
+  policyVersion: string;
+  outcome: RunOutcome;
+  decision: PublishDecision | null;
+  usage: BudgetSummary;
+  filesWritten: string[];
+  selectedTasks: Array<{ operation: Task["operation"]; decision: PublishDecision | "REVIEW_REQUIRED" | null; target: string }>;
+  gateReport: { verdict: GateReport["verdict"]; metrics: GateReport["metrics"]; findings: Array<Pick<GateReport["findings"][number], "rule" | "severity">> } | null;
+  error: { stage: string; code: string } | null;
+}
+
+function publicTaskTarget(task: Task): string {
+  if (task.operation === "refresh") return task.target;
+  const digest = createHash("sha256").update(task.target.normalize("NFKC"), "utf8").digest("hex").slice(0, 8);
+  return `nowy-temat-${digest}`;
+}
+
+/** Raport publiczny powstaje wyłącznie z jawnie wymienionych, bezpiecznych pól. */
+export function redactRunReport(report: RunReport): PublicRunReport {
+  const gateReport = report.gateReport
+    ? {
+        verdict: report.gateReport.verdict,
+        metrics: {
+          words: report.gateReport.metrics.words,
+          claims: report.gateReport.metrics.claims,
+          verifiedClaims: report.gateReport.metrics.verifiedClaims,
+          sources: report.gateReport.metrics.sources,
+          fillerHits: report.gateReport.metrics.fillerHits,
+          repeatedShingleRatio: report.gateReport.metrics.repeatedShingleRatio,
+        },
+        findings: report.gateReport.findings.map((finding) => ({ rule: finding.rule, severity: finding.severity })),
+      }
+    : null;
+  const hasExistingTarget = report.selectedTasks.some((task) => task.operation === "refresh" && task.decision !== "REVIEW_REQUIRED");
   return {
-    ...report,
+    runId: report.runId,
+    scheduledAt: report.scheduledAt,
+    startedAt: report.startedAt,
+    finishedAt: report.finishedAt,
+    mode: report.mode,
+    policyVersion: report.policyVersion,
+    outcome: report.outcome,
+    decision: report.decision,
+    usage: {
+      requests: report.usage.requests,
+      inputTokens: report.usage.inputTokens,
+      outputTokens: report.usage.outputTokens,
+      costUsd: report.usage.costUsd,
+      runtimeSeconds: report.usage.runtimeSeconds,
+      caps: {
+        maxUsd: report.usage.caps.maxUsd,
+        maxRequests: report.usage.caps.maxRequests,
+        maxOutputTokens: report.usage.caps.maxOutputTokens,
+        maxRuntimeSeconds: report.usage.caps.maxRuntimeSeconds,
+      },
+    },
+    filesWritten: hasExistingTarget ? [...report.filesWritten] : [],
     selectedTasks: report.selectedTasks.map((task) => ({
       operation: task.operation,
-      target: task.target,
-      primaryQuery: task.operation === "new_article" ? "[usunięte]" : task.primaryQuery,
-      evidence: { source: task.evidence.source, key: "[usunięte]", clicks: 0, impressions: 0, ctr: 0, position: 0 },
-      rationale: "[usunięte: dane GSC]",
-      ...(task.decision ? { decision: task.decision } : {}),
+      decision: task.decision ?? report.decision,
+      target: publicTaskTarget(task),
     })),
-    stages: { ...report.stages, select: report.stages.select ? { tasks: report.stages.select.tasks, reason: "[usunięte: dane GSC]" } : undefined },
-    reason: report.reason ? "[usunięte: może zawierać dane GSC]" : undefined,
+    gateReport,
+    error: report.error ? { stage: report.error.stage, code: report.error.code } : null,
   };
 }
 
@@ -226,7 +286,32 @@ function taskEvidence(row: GscRow, source: TaskEvidence["source"], opportunitySc
 /** Ile dni propozycja dla tej samej strony blokuje kolejne (czas na przegląd PR-a). */
 export const PENDING_PROPOSAL_DAYS = 14;
 
-export function select(input: CollectedInput, inventory: SiteInventory, now: Date, pending: ReadonlySet<string> = new Set()): SelectionResult {
+function selectionReason(reason: string, skipped: readonly SelectionSkip[]): string {
+  if (skipped.length === 0) return reason;
+  const types = [...new Set(skipped.map((item) => item.contentType))].sort().join(", ");
+  return `${reason} Pominięto ${skipped.length} zadań, ponieważ typy treści nie mają renderera: ${types}.`;
+}
+
+export function select(
+  input: CollectedInput,
+  inventory: SiteInventory,
+  now: Date,
+  pending: ReadonlySet<string> = new Set(),
+  renderableTypes: ReadonlySet<ContentType> = RENDERED_CONTENT_TYPES,
+): SelectionResult {
+  const skipped: SelectionSkip[] = [];
+  const skippedKeys = new Set<string>();
+  const canRender = (task: Task): boolean => {
+    const contentType = contentTypeFor(task);
+    if (renderableTypes.has(contentType)) return true;
+    const key = `${task.operation}|${task.target}|${contentType}`;
+    if (!skippedKeys.has(key)) {
+      skippedKeys.add(key);
+      skipped.push({ operation: task.operation, target: task.target, contentType, reason: "content_type_not_rendered" });
+    }
+    return false;
+  };
+  const reviewTasks = highRiskReviewTasks(input.queries.rows).filter(canRender);
   const opportunities = rankOpportunities(input.pages.rows);
   for (const opportunity of opportunities) {
     const target = routeOf(opportunity.url);
@@ -244,11 +329,14 @@ export function select(input: CollectedInput, inventory: SiteInventory, now: Dat
       evidence: taskEvidence(row, "page", opportunity.score),
       rationale: `${reason}; ${opportunity.rationale}`,
     };
-    const reviewTasks = highRiskReviewTasks(input.queries.rows);
-    return { tasks: [refresh, ...reviewTasks], reason: "Odświeżenie istniejącego adresu ma pierwszeństwo przed nowym artykułem." };
+    if (!canRender(refresh)) continue;
+    return {
+      tasks: [refresh, ...reviewTasks],
+      reason: selectionReason("Odświeżenie istniejącego adresu ma pierwszeństwo przed nowym artykułem.", skipped),
+      skipped,
+    };
   }
 
-  const reviewTasks = highRiskReviewTasks(input.queries.rows);
   const rankedQueries = new Map(rankOpportunities(input.queries.rows).map((opportunity, index) => [opportunity.url, { index, score: opportunity.score }]));
   const candidates = input.queries.rows
     .filter((row) => !isBrandQuery(row.key) && !isHighRiskIntent(classifyQuery(row.key)) && row.impressions > 0)
@@ -270,13 +358,28 @@ export function select(input: CollectedInput, inventory: SiteInventory, now: Dat
       evidence: taskEvidence(row, "query", rankedQueries.get(row.key)?.score, links.slice(0, 8)),
       rationale: `${row.impressions} wyświetleń potwierdza popyt; brak adresu pokrywającego intencję; ${links.length} trafnych celów linkowania wewnętrznego.`,
     };
-    return { tasks: [...reviewTasks, task], reason: "Wybrano najwyżej popytowy, niepokryty klaster zapytań; limit nowego artykułu wynosi jeden." };
+    if (!canRender(task)) continue;
+    return {
+      tasks: [...reviewTasks, task],
+      reason: selectionReason("Wybrano najwyżej popytowy, niepokryty klaster zapytań; limit nowego artykułu wynosi jeden.", skipped),
+      skipped,
+    };
   }
 
-  if (reviewTasks.length > 0) return { tasks: reviewTasks, reason: "Zapytania wysokiego ryzyka przekazano wyłącznie do ręcznego przeglądu." };
+  if (reviewTasks.length > 0) {
+    return {
+      tasks: reviewTasks,
+      reason: selectionReason("Zapytania wysokiego ryzyka przekazano wyłącznie do ręcznego przeglądu.", skipped),
+      skipped,
+    };
+  }
   return {
     tasks: [],
-    reason: "Brak kwalifikującego się odświeżenia ani klastra z popytem, luką intencji i co najmniej trzema trafnymi linkami wewnętrznymi.",
+    reason: selectionReason(
+      "Brak kwalifikującego się odświeżenia ani klastra z popytem, luką intencji i co najmniej trzema trafnymi linkami wewnętrznymi.",
+      skipped,
+    ),
+    skipped,
   };
 }
 
@@ -576,6 +679,7 @@ export async function draft(
   const basePrompt = [
     `Napisz polski korpus JSON dla ${task.target}, intencja: „${task.primaryQuery}”.`,
     "Nie dodawaj pól stanu, identyfikatora dokumentu, dat, statusu, klasy ryzyka ani twierdzeń. Używaj wyłącznie poniższych zweryfikowanych twierdzeń i ich identyfikatorów w section.claimIds.",
+    "Sekcja prose lub list bez faktów musi mieć opinion:true, puste claimIds i nie może zawierać liczb z jednostką.",
     `Dla nowego artykułu użyj linków wewnętrznych: ${JSON.stringify(task.evidence.internalLinkTargets ?? [])}.`,
     "Zwróć: topicCluster, title, description, lead, sections, imageAsset, relatedContent, ctaTarget.",
     JSON.stringify(verifiedFacts),
@@ -664,6 +768,8 @@ export interface DailyOptions {
   scheduledAt: string | Date;
   stateDir?: string;
   runId?: string;
+  /** Scenariusze offline mogą jawnie testować typy, których produkcja jeszcze nie renderuje. */
+  renderableTypes?: ReadonlySet<ContentType>;
 }
 
 function asScheduledDate(value: string | Date): Date {
@@ -680,6 +786,15 @@ function safeErrorMessage(error: unknown): string {
   return (error instanceof Error ? error.message : String(error))
     .replace(/sk-ant-[a-zA-Z0-9_-]+/g, "[REDACTED]")
     .replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]");
+}
+
+function safeErrorCode(error: unknown): string {
+  if (error instanceof PipelineStageError && error.cause) return safeErrorCode(error.cause);
+  if (error instanceof LlmError && error.code) return error.code;
+  if (typeof error === "object" && error !== null && "code" in error && typeof (error as { code?: unknown }).code === "string") {
+    return (error as { code: string }).code.toLowerCase();
+  }
+  return error instanceof Error ? error.name.toLowerCase() : "unknown_error";
 }
 
 function outcomeFor(decision: PublishDecision, mode: PublishMode, wrote: boolean): RunOutcome {
@@ -743,16 +858,23 @@ export async function runDaily(deps: DailyDependencies, options: DailyOptions): 
 
   const complete: StageComplete = async (request) => {
     const model = modelForRole(request.role, env);
+    // Znaki/2 celowo zawyża typowy odczyt tokenów; rezerwacja ma być bezpieczna.
+    const reservation = {
+      inputTokens: Math.ceil((request.system.length + request.prompt.length) / 2),
+      maxOutputTokens: request.maxOutputTokens,
+      model,
+    };
     return withRetry(
       async () => {
-        budget.assertCanSpend({ maxOutputTokens: request.maxOutputTokens, model });
+        budget.assertCanSpend(reservation);
         try {
           const response = await deps.llm.complete({ ...request, model });
           budget.charge(response.usage, response.model);
           return response;
         } catch (error) {
-          // Ucięta albo odrzucona odpowiedź też jest płatna.
+          // Brak usage nie oznacza braku kosztu: timeout i 5xx mogły zużyć całą rezerwę.
           if (error instanceof LlmError && error.usage) budget.charge(error.usage, error.usage.model);
+          else budget.chargeReservation(reservation);
           throw error;
         }
       },
@@ -791,9 +913,9 @@ export async function runDaily(deps: DailyDependencies, options: DailyOptions): 
     // Strona, dla której propozycja czeka już w PR-ze, nie dostaje kolejnej
     // codziennie — inaczej do czasu merge'a każdy dzień kosztowałby nowy przebieg i nowy PR.
     const pending = await ledger.pendingTargets(scheduled, PENDING_PROPOSAL_DAYS);
-    const selection = select(collected, deps.inventory, scheduled, pending);
+    const selection = select(collected, deps.inventory, scheduled, pending, options.renderableTypes ?? RENDERED_CONTENT_TYPES);
     report.selectedTasks = selection.tasks;
-    report.stages.select = { tasks: selection.tasks.length, reason: selection.reason };
+    report.stages.select = { tasks: selection.tasks.length, reason: selection.reason, skipped: selection.skipped };
     const task = selection.tasks.find((candidate) => candidate.decision !== "REVIEW_REQUIRED");
     if (!task) {
       if (selection.tasks.some((candidate) => candidate.decision === "REVIEW_REQUIRED")) {
@@ -804,7 +926,13 @@ export async function runDaily(deps: DailyDependencies, options: DailyOptions): 
       return await finish("SKIPPED_QUALITY_GATE", selection.reason);
     }
 
-    ledgerKey = idempotencyKey({ day, target: task.target, operation: task.operation, policyVersion: POLICY_VERSION });
+    ledgerKey = idempotencyKey({
+      day,
+      target: task.target,
+      operation: task.operation,
+      policyVersion: POLICY_VERSION,
+      modeClass: mode === "DRY_RUN" ? "trial" : "publishing",
+    });
     stage = "idempotency";
     const begin = await ledger.begin(ledgerKey, runId);
     if (begin.status === "duplicate") {
@@ -856,9 +984,9 @@ export async function runDaily(deps: DailyDependencies, options: DailyOptions): 
       });
       const write = await deps.store.writeDocumentsAtomically([finalDocument]);
       storeChanged = true;
-      await ledger.markPending(task.target, runId, scheduled);
       const index = await deps.store.regenerateIndex();
       report.filesWritten = [...write.files, index];
+      await ledger.markPending(task.target, runId, scheduled);
       report.stages.publish = { written: true, reviewStatus: finalDocument.reviewStatus };
     } else {
       report.stages.publish = { written: false, mode, decision: verified.decision };
@@ -877,10 +1005,21 @@ export async function runDaily(deps: DailyDependencies, options: DailyOptions): 
       } catch {
         // Raport zachowuje pierwotny błąd; rollback ma własne testy integralności.
       }
+      try {
+        // Sprzątamy także zapis, po którym implementacja FS zgłosiła błąd.
+        await ledger.releasePending(runId);
+      } catch {
+        // TTL propozycji i opcja CLI pozwalają posprzątać wpis po awarii systemu plików.
+      }
     }
     const wrapped = error instanceof PipelineStageError ? error : new PipelineStageError(stage, safeErrorMessage(error), error);
     report.outcome = "FAILED";
-    report.error = { class: error instanceof Error ? error.name : "UnknownError", message: safeErrorMessage(error), stage: wrapped.stage };
+    report.error = {
+      class: error instanceof Error ? error.name : "UnknownError",
+      message: safeErrorMessage(error),
+      stage: wrapped.stage,
+      code: safeErrorCode(error),
+    };
     report.finishedAt = now().toISOString();
     report.usage = budget.summary();
     try {

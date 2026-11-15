@@ -12,7 +12,9 @@
 
 import { z } from "zod";
 
-export const POLICY_VERSION = "2026-11-13.1";
+import { hasNumberWithUnit } from "./numbers";
+
+export const POLICY_VERSION = "2026-11-15.1";
 
 // ── Klasy ryzyka i statusy ───────────────────────────────────────────────
 
@@ -147,10 +149,11 @@ export type FactClaim = z.infer<typeof FactClaimSchema>;
 // ── Sekcje ───────────────────────────────────────────────────────────────
 
 const SectionBase = { id: Slug, heading: z.string().min(3).max(90), claimIds: z.array(Slug).default([]) };
+const OpinionMarker = { opinion: z.literal(true).optional() };
 
 export const SectionSchema = z.discriminatedUnion("kind", [
-  z.object({ ...SectionBase, kind: z.literal("prose"), paragraphs: z.array(z.string().min(40)).min(1) }),
-  z.object({ ...SectionBase, kind: z.literal("list"), intro: z.string().optional(), items: z.array(z.string().min(8)).min(2) }),
+  z.object({ ...SectionBase, ...OpinionMarker, kind: z.literal("prose"), paragraphs: z.array(z.string().min(40)).min(1) }),
+  z.object({ ...SectionBase, ...OpinionMarker, kind: z.literal("list"), intro: z.string().optional(), items: z.array(z.string().min(8)).min(2) }),
   z.object({
     ...SectionBase,
     kind: z.literal("table"),
@@ -237,6 +240,17 @@ export const ContentDocumentSchema = z
     for (const section of doc.sections) {
       for (const id of section.claimIds) {
         if (!claimIds.has(id)) ctx.addIssue({ code: "custom", message: `sekcja ${section.id} wskazuje nieistniejące twierdzenie ${id}` });
+      }
+      if (section.kind === "prose" || section.kind === "list") {
+        if (section.opinion === true && section.claimIds.length > 0) {
+          ctx.addIssue({ code: "custom", message: `sekcja-opinia ${section.id} nie może wskazywać twierdzeń` });
+        }
+        if (section.opinion !== true && section.claimIds.length === 0) {
+          ctx.addIssue({ code: "custom", message: `sekcja faktograficzna ${section.id} wymaga co najmniej jednego twierdzenia` });
+        }
+        if (section.opinion === true && hasNumberWithUnit(documentText({ title: "", description: "", lead: "", sections: [section] }))) {
+          ctx.addIssue({ code: "custom", message: `sekcja-opinia ${section.id} nie może zawierać liczby z jednostką` });
+        }
       }
     }
     const required = maxRisk(...doc.factClaims.map((c) => c.riskClass));

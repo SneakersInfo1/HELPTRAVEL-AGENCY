@@ -20,19 +20,18 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
-/** Hash obejmuje wyłącznie treść redakcyjną; pola przebiegu nie wywołują fałszywej aktualizacji. */
+/** Hash obejmuje treść widoczną; korekta niewidocznego cytatu nie zmienia daty strony. */
 export function computeContentHash(doc: EditorialDocument): string {
   const editorial = {
     title: doc.title,
     description: doc.description,
     lead: doc.lead,
     sections: doc.sections,
-    factClaims: doc.factClaims.map(({ id, claim, value, sourceId, observedEvidence }) => ({
+    factClaims: doc.factClaims.map(({ id, claim, value, sourceId }) => ({
       id,
       claim,
       value,
       sourceId,
-      observedEvidence,
     })),
     sources: doc.sources.map(({ id, url }) => ({ id, url })),
     ctaTarget: doc.ctaTarget,

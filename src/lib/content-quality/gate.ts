@@ -23,6 +23,7 @@ import {
   type Section,
 } from "@/lib/content-engine/schema";
 import { extractNumbers, numbersCoveredBy } from "@/lib/content-engine/numbers";
+import { assertAllowedSource, isOwnDataSourceUrl } from "@/lib/content-engine/sources";
 import { countWords, shingleSimilarity } from "@/lib/seo-ops/html-audit";
 
 export type FindingSeverity = "skip" | "block_facts" | "revise" | "review" | "info";
@@ -233,12 +234,24 @@ const MIN_WORDS: Readonly<Record<ContentDocument["contentType"], number>> = {
 };
 
 const PURCHASE_FLOW = /^\/(hotele\/rezerwacja|loty\/(pasazerowie|platnosc|dodatki|potwierdzenie)|api\/)/;
+const HTML_MARKUP = /<[\p{L}/!]/u;
+
+function htmlMarkupLocations(value: unknown, path = "root"): string[] {
+  if (typeof value === "string") return HTML_MARKUP.test(value) ? [path] : [];
+  if (Array.isArray(value)) return value.flatMap((entry, index) => htmlMarkupLocations(entry, `${path}.${index}`));
+  if (value === null || typeof value !== "object") return [];
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, entry]) => htmlMarkupLocations(entry, path === "root" ? key : `${path}.${key}`));
+}
 
 export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
   const findings: GateFinding[] = [];
   const add = (finding: GateFinding) => findings.push(finding);
   const checkedAt = ctx.now.toISOString();
   const emptyMetrics = { words: 0, claims: 0, verifiedClaims: 0, sources: 0, fillerHits: 0, repeatedShingleRatio: 0 };
+
+  for (const location of htmlMarkupLocations(input).slice(0, 12)) {
+    add({ rule: "html_markup_in_text", severity: "revise", message: "Pole tekstowe zawiera znacznik HTML", location });
+  }
 
   const parsed = ContentDocumentSchema.safeParse(input);
   if (!parsed.success) {
@@ -253,6 +266,13 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
   const words = countWords(text);
   const claimsById = new Map(doc.factClaims.map((claim) => [claim.id, claim]));
   const verifiedClaims = doc.factClaims.filter((claim) => claim.verification !== "unverified");
+  const usableClaims = doc.factClaims.filter(
+    (claim) =>
+      claim.verification !== "unverified" &&
+      (claim.verification !== "human_verified" || Boolean(claim.verifiedBy)) &&
+      isClaimFresh(claim, ctx.now),
+  );
+  const usableClaimIds = new Set(usableClaims.map((claim) => claim.id));
 
   // 1. Materiał. Bez zweryfikowanych twierdzeń i bez własnej wartości nie ma czego publikować.
   const hasDecisionValue = doc.sections.some((s) => s.kind === "table" || s.kind === "verdict");
@@ -291,7 +311,7 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
   for (const claim of doc.factClaims) {
     if (claim.verification === "unverified") continue;
     const check = numbersCoveredBy(`${claim.claim} ${claim.value}`, claim.observedEvidence);
-    if (!check.ok) {
+    if (check.missing.length > 0) {
       add({
         rule: "claim_number_not_in_evidence",
         severity: "block_facts",
@@ -300,24 +320,47 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
         location: claim.id,
       });
     }
+    if (check.missingIdentifiers.length > 0) {
+      add({
+        rule: "claim_identifier_not_in_evidence",
+        severity: "block_facts",
+        message: `Identyfikatory ${check.missingIdentifiers.join(", ")} z twierdzenia nie występują dosłownie w zacytowanym fragmencie źródła`,
+        evidence: claim.observedEvidence,
+        location: claim.id,
+      });
+    }
   }
 
   for (const source of doc.sources) {
-    if (!source.url.startsWith("https://")) {
-      add({ rule: "source_not_https", severity: "revise", message: "Źródło bez HTTPS", evidence: source.url, location: source.id });
+    try {
+      assertAllowedSource(source.url);
+      const ownUrl = isOwnDataSourceUrl(source.url);
+      if ((source.kind === "own_data") !== ownUrl) {
+        throw new Error(source.kind === "own_data" ? "Własne dane muszą pochodzić z helptravel.pl" : "Źródło helptravel.pl wymaga rodzaju own_data");
+      }
+    } catch (error) {
+      add({
+        rule: "source_not_allowed",
+        severity: "block_facts",
+        message: error instanceof Error ? error.message : "Źródło spoza listy dozwolonych",
+        evidence: source.url,
+        location: source.id,
+      });
     }
   }
 
   // 3. Liczby z jednostką muszą mieć pokrycie w twierdzeniu przypisanym do sekcji.
   for (const section of doc.sections) {
     const body = sectionText(section);
-    const sectionClaims = section.claimIds.map((id) => claimsById.get(id)).filter((c): c is NonNullable<typeof c> => Boolean(c));
-    // Porównanie po WARTOŚCI z granicami cyfr: podciąg przepuszczał „9 h" przy roku „1987".
-    const covered = new Set(extractNumbers(sectionClaims.map((c) => `${c.value} ${c.claim}`).join(" | "), "pl"));
+    const sectionClaims = section.claimIds
+      .filter((id) => usableClaimIds.has(id))
+      .map((id) => claimsById.get(id))
+      .filter((c): c is NonNullable<typeof c> => Boolean(c));
+    const claimText = sectionClaims.map((claim) => `${claim.value} ${claim.claim}`).join(" | ");
     for (const match of body.matchAll(FACTUAL_NUMBER)) {
       const value = factualValue(match);
       if (value === null) continue;
-      if (!covered.has(value)) {
+      if (!numbersCoveredBy(match[0], claimText).ok) {
         add({
           rule: "number_without_claim",
           severity: "block_facts",
@@ -328,11 +371,11 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
       }
     }
   }
-  const allClaimNumbers = new Set(extractNumbers(doc.factClaims.map((c) => `${c.value} ${c.claim}`).join(" | "), "pl"));
+  const allClaimText = usableClaims.map((claim) => `${claim.value} ${claim.claim}`).join(" | ");
   for (const match of `${doc.title}\n${doc.description}\n${doc.lead}`.matchAll(FACTUAL_NUMBER)) {
     const value = factualValue(match);
     if (value === null) continue;
-    if (!allClaimNumbers.has(value)) {
+    if (!numbersCoveredBy(match[0], allClaimText).ok) {
       add({ rule: "number_without_claim", severity: "block_facts", message: `Liczba „${match[0].trim()}" w tytule, opisie albo leadzie bez pokrycia`, location: "lead" });
     }
   }
@@ -340,7 +383,7 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
   // 4. Ceny: zawsze dane dynamiczne.
   const price = PRICE_MENTION.exec(text);
   if (price) {
-    const priceClaims = doc.factClaims.filter((c) => c.dataClass === "price" && c.verification !== "unverified");
+    const priceClaims = usableClaims.filter((claim) => claim.dataClass === "price");
     if (priceClaims.length === 0) {
       add({ rule: "price_without_source", severity: "block_facts", message: "Kwota w tekście bez zweryfikowanego twierdzenia klasy price", evidence: excerpt(text, price.index) });
     } else {
@@ -351,7 +394,7 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
   // 5. Tematy wysokiego ryzyka.
   const risky = HIGH_RISK_TOPIC.exec(text);
   if (risky) {
-    const covered = doc.factClaims.some((c) => c.dataClass === "entry_requirements" && c.verification !== "unverified");
+    const covered = usableClaims.some((claim) => claim.dataClass === "entry_requirements");
     add(
       covered
         ? { rule: "high_risk_topic", severity: "review", message: "Dokumenty wjazdowe, zdrowie albo bezpieczeństwo — wymagane zatwierdzenie człowieka", evidence: excerpt(text, risky.index) }
@@ -388,7 +431,7 @@ export function runQualityGate(input: unknown, ctx: GateContext): GateReport {
 
   // 9. Lata: przeszły jako bieżący albo przyszły bez źródła.
   const currentYear = ctx.now.getUTCFullYear();
-  const claimText = doc.factClaims.map((c) => `${c.value} ${c.claim}`).join(" ");
+  const claimText = usableClaims.map((claim) => `${claim.value} ${claim.claim}`).join(" ");
   for (const match of text.matchAll(YEAR)) {
     const year = Number(match[1]);
     if (year > currentYear && !claimText.includes(match[1])) {

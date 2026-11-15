@@ -22,3 +22,10 @@ test("hash zmienia się po zmianie redakcyjnej", () => {
   assert.notEqual(computeContentHash({ ...document, title: `${document.title} dziś` }), computeContentHash(document));
 });
 
+test("hash widocznej treści nie zmienia się po korekcie samego cytatu dowodu", () => {
+  const document = makeDocument();
+  const changed = structuredClone(document);
+  changed.factClaims[0].observedEvidence = "The corrected source excerpt still supports the same visible claim.";
+  assert.equal(computeContentHash(changed), computeContentHash(document));
+});
+

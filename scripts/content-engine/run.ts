@@ -4,11 +4,13 @@ import path from "node:path";
 import { fixtureScenario, type FixtureScenarioName } from "../../src/lib/content-engine/fixtures/scenarios";
 import { FixtureInventory, StoreBackedInventory } from "../../src/lib/content-engine/inventory";
 import { AnthropicLlm } from "../../src/lib/content-engine/anthropic-llm";
+import { Ledger } from "../../src/lib/content-engine/ledger";
 import { FakeLlm, type LlmClient } from "../../src/lib/content-engine/llm";
 import { buildSiteInventory } from "../../src/lib/content-engine/site-inventory";
 import { redactRunReport, runDaily, type GscCsvInputs } from "../../src/lib/content-engine/pipeline";
 import { FixtureSourceFetcher, HttpSourceFetcher, type SourceFetcher } from "../../src/lib/content-engine/sources";
 import { ContentStore } from "../../src/lib/content-engine/store";
+import type { ContentType } from "../../src/lib/content-engine/schema";
 import type { PublishMode } from "../../src/lib/content-quality/gate";
 import {
   SEO_GSC_SERVICE_ACCOUNT_JSON,
@@ -29,7 +31,15 @@ interface CliOptions {
   gscSource: GscSource;
   /** Gdzie zapisać raport bez danych GSC (artefakt CI). */
   publicReport?: string;
+  releasePending?: string;
 }
+
+const FIXTURE_RENDERABLE_TYPES: ReadonlySet<ContentType> = new Set([
+  "comparison_enrichment",
+  "month_enrichment",
+  "hub_enrichment",
+  "article",
+]);
 
 function valueAfter(args: readonly string[], index: number, option: string): string {
   const value = args[index + 1];
@@ -79,6 +89,7 @@ export function parseCliArgs(args: readonly string[], currentDate = new Date()):
     else if (option === "--gsc-dir") result.gscDir = valueAfter(args, index++, option);
     else if (option === "--gsc-source") result.gscSource = parseGscSource(valueAfter(args, index++, option));
     else if (option === "--public-report") result.publicReport = valueAfter(args, index++, option);
+    else if (option === "--release-pending") result.releasePending = valueAfter(args, index++, option);
     else throw new Error(`Nieznana opcja: ${option}`);
   }
   if (!Number.isFinite(new Date(result.scheduledAt).getTime())) throw new Error("--scheduled-at wymaga poprawnego czasu ISO");
@@ -111,6 +122,11 @@ async function loadGscFromApi(now: Date): Promise<GscCsvInputs> {
 
 async function main(): Promise<void> {
   const options = parseCliArgs(process.argv.slice(2));
+  if (options.releasePending) {
+    const removed = await new Ledger({ stateDir: options.stateDir }).releasePending(options.releasePending);
+    console.log(`Zwolniono ${removed} wpisów pending przebiegu ${options.releasePending}.`);
+    return;
+  }
   const hasApiKey = Boolean(process.env.SEO_ENGINE_ANTHROPIC_API_KEY);
   if (!hasApiKey && !options.scenario) {
     throw new Error("Bez SEO_ENGINE_ANTHROPIC_API_KEY podaj --scenario refresh|new-evergreen|reject-unverified; scenariusz działa całkowicie offline.");
@@ -141,7 +157,12 @@ async function main(): Promise<void> {
   const inventory = await StoreBackedInventory.create(baseInventory, store);
   const report = await runDaily(
     { gsc, inventory, store, llm, sourceFetcher },
-    { mode: options.mode, scheduledAt: options.scheduledAt, stateDir: options.stateDir },
+    {
+      mode: options.mode,
+      scheduledAt: options.scheduledAt,
+      stateDir: options.stateDir,
+      ...(options.scenario ? { renderableTypes: FIXTURE_RENDERABLE_TYPES } : {}),
+    },
   );
 
   const reportPath = path.join(options.stateDir, "reports", `${report.runId}.json`);

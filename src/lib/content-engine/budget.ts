@@ -46,6 +46,12 @@ export interface RunBudgetOptions {
   startedAtMs?: number;
 }
 
+export interface BudgetReservation {
+  inputTokens: number;
+  maxOutputTokens: number;
+  model: string;
+}
+
 export class RunBudget {
   readonly caps: BudgetCaps;
   private readonly now: () => number;
@@ -72,7 +78,7 @@ export class RunBudget {
    * Z `reserve` sprawdza też NAJGORSZY przypadek tego żądania (pełne `maxOutputTokens`
    * po cenie modelu) — inaczej przebieg mógł przekroczyć limit o całe jedno wywołanie.
    */
-  assertCanSpend(reserve?: { maxOutputTokens: number; model: string }): void {
+  assertCanSpend(reserve?: BudgetReservation): void {
     this.assertRuntime();
     if (this.requests >= this.caps.maxRequests) {
       throw new BudgetExceededError("requests", this.caps.maxRequests, this.requests);
@@ -81,11 +87,18 @@ export class RunBudget {
     if (this.outputTokens >= this.caps.maxOutputTokens || plannedOutput > this.caps.maxOutputTokens) {
       throw new BudgetExceededError("output_tokens", this.caps.maxOutputTokens, plannedOutput);
     }
-    const worstCaseUsd = reserve ? (reserve.maxOutputTokens * priceForModel(reserve.model).output) / 1_000_000 : 0;
+    const worstCaseUsd = reserve
+      ? (reserve.inputTokens * priceForModel(reserve.model).input + reserve.maxOutputTokens * priceForModel(reserve.model).output) / 1_000_000
+      : 0;
     if (this.costUsd >= this.caps.maxUsd || this.costUsd + worstCaseUsd > this.caps.maxUsd) {
       throw new BudgetExceededError("usd", this.caps.maxUsd, this.costUsd + worstCaseUsd);
     }
     this.requests += 1;
+  }
+
+  /** Błąd bez `usage` nie może czynić ponowień darmowymi. */
+  chargeReservation(reservation: BudgetReservation): void {
+    this.charge({ inputTokens: reservation.inputTokens, outputTokens: reservation.maxOutputTokens }, reservation.model);
   }
 
   charge(usage: TokenUsage, model: string): void {

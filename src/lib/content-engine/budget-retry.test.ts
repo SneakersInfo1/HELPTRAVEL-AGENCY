@@ -34,6 +34,28 @@ test("budżet blokuje USD, liczbę żądań i tokeny przed kolejnym żądaniem",
   assert.throws(() => tokens.assertCanSpend(), (error) => error instanceof BudgetExceededError && error.dimension === "output_tokens");
 });
 
+test("rezerwacja obejmuje wejście, a błąd bez usage zużywa pełną rezerwę", () => {
+  const tooSmall = new RunBudget({ env: { SEO_ENGINE_MAX_USD_PER_RUN: "0.161" }, now: () => 0, startedAtMs: 0 });
+  assert.throws(
+    () => tooSmall.assertCanSpend({ inputTokens: 1_000, maxOutputTokens: 8_000, model: "claude-opus-5-5" }),
+    (error) => error instanceof BudgetExceededError && error.dimension === "usd",
+  );
+
+  const charged = new RunBudget({ env: { SEO_ENGINE_MAX_USD_PER_RUN: "0.2" }, now: () => 0, startedAtMs: 0 });
+  const reservation = { inputTokens: 1_000, maxOutputTokens: 8_000, model: "claude-opus-5-5" };
+  charged.assertCanSpend(reservation);
+  charged.chargeReservation(reservation);
+  assert.equal(charged.summary().costUsd, 0.164);
+  assert.equal(charged.summary().outputTokens, 8_000);
+});
+
+test("po przekroczeniu limitu USD każde kolejne żądanie jest blokowane", () => {
+  const budget = new RunBudget({ env: { SEO_ENGINE_MAX_USD_PER_RUN: "0.05" }, now: () => 0, startedAtMs: 0 });
+  budget.charge({ inputTokens: 0, outputTokens: 3_000 }, "claude-opus-5-5");
+  assert.throws(() => budget.assertCanSpend(), (error) => error instanceof BudgetExceededError && error.dimension === "usd");
+  assert.throws(() => budget.assertCanSpend(), (error) => error instanceof BudgetExceededError && error.dimension === "usd");
+});
+
 test("retry ponawia 429 i 500 z pełnym jitterem", async () => {
   const errors = [new LlmError("rate", 429, true), new LlmError("server", 500, true)];
   const waits: number[] = [];

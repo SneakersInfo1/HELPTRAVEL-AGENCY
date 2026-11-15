@@ -1,6 +1,7 @@
 import type { ExistingContent } from "@/lib/content-quality/gate";
 
 import type { FactClaim } from "./schema";
+import { RENDERED_CONTENT_TYPES } from "./site-content";
 import type { ContentStore } from "./store";
 
 export interface SiteInventory {
@@ -77,9 +78,13 @@ export class StoreBackedInventory implements SiteInventory {
     this.stored = await this.store.listDocuments();
   }
 
+  private renderedStored() {
+    return this.stored.filter((document) => RENDERED_CONTENT_TYPES.has(document.contentType));
+  }
+
   existing(): ExistingContent[] {
     const merged = new Map(this.base.existing().map((item) => [item.canonicalUrl, { ...item }]));
-    for (const document of this.stored) {
+    for (const document of this.renderedStored()) {
       const previous = merged.get(document.canonicalUrl);
       merged.set(document.canonicalUrl, {
         canonicalUrl: document.canonicalUrl,
@@ -92,22 +97,22 @@ export class StoreBackedInventory implements SiteInventory {
   }
 
   isKnownRoute(route: string): boolean {
-    return this.base.isKnownRoute(route) || this.stored.some((document) => document.canonicalUrl === route);
+    return this.base.isKnownRoute(route) || this.renderedStored().some((document) => document.canonicalUrl === route);
   }
 
   hasEnrichment(canonicalUrl: string): boolean {
-    return this.base.hasEnrichment(canonicalUrl) || this.stored.some((document) => document.canonicalUrl === canonicalUrl);
+    return this.base.hasEnrichment(canonicalUrl) || this.renderedStored().some((document) => document.canonicalUrl === canonicalUrl);
   }
 
   enrichmentVerifiedAt(canonicalUrl: string): string | null {
-    const storedDates = this.stored.filter((document) => document.canonicalUrl === canonicalUrl).map((document) => document.verifiedAt);
+    const storedDates = this.renderedStored().filter((document) => document.canonicalUrl === canonicalUrl).map((document) => document.verifiedAt);
     const baseDate = this.base.enrichmentVerifiedAt(canonicalUrl);
     const dates = [...storedDates, ...(baseDate ? [baseDate] : [])].sort();
     return dates.at(-1) ?? null;
   }
 
   enrichmentClaims(canonicalUrl: string): readonly FactClaim[] {
-    const claims = this.stored.filter((document) => document.canonicalUrl === canonicalUrl).flatMap((document) => document.factClaims);
+    const claims = this.renderedStored().filter((document) => document.canonicalUrl === canonicalUrl).flatMap((document) => document.factClaims);
     return claims.length > 0 ? claims : (this.base.enrichmentClaims?.(canonicalUrl) ?? []);
   }
 }

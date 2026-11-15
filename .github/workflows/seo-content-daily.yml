@@ -14,7 +14,9 @@ name: SEO content daily
 #  • repozytorium jest PUBLICZNE: surowy eksport z API GSC żyje tylko w pamięci,
 #    gałąź stanu przechowuje tylko ledger, a artefakt to raport bez danych GSC
 #    (zapytań, kliknięć, wyświetleń);
-#  • sekrety trafiają tylko do kroków, które ich potrzebują — nie do `pnpm install`.
+#  • sekrety trafiają tylko do kroków, które ich potrzebują — nie do `pnpm install`;
+#  • akcje są przypięte do pełnych SHA; PR powstaje PRZED zapisem rejestru, a gdy się nie
+#    uda, temat jest zwalniany z listy oczekujących.
 
 on:
   schedule:
@@ -55,19 +57,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
           # Token nie zostaje w konfiguracji gita — skrypty instalacji i testy go nie widzą.
           persist-credentials: false
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 10
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: pnpm
@@ -164,52 +166,16 @@ jobs:
           rm -rf .seo-engine-state/reports
 
           echo "exit_code=$engine_exit" >> "$GITHUB_OUTPUT"
+          echo "run_id=$(jq -r '.runId // empty' "$public_report")" >> "$GITHUB_OUTPUT"
           echo "public_report=$public_report" >> "$GITHUB_OUTPUT"
           echo "day=$day" >> "$GITHUB_OUTPUT"
           echo "target_slug=$target_slug" >> "$GITHUB_OUTPUT"
           echo "content_changed=$changed" >> "$GITHUB_OUTPUT"
 
-      - name: Persist ledger branch
-        if: always() && steps.engine.outputs.day != ''
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          state_worktree="$RUNNER_TEMP/seo-engine-state-worktree"
-          rm -rf "$state_worktree"
-          if git show-ref --verify --quiet refs/remotes/origin/seo-engine-state; then
-            git worktree add --detach "$state_worktree" origin/seo-engine-state
-            git -C "$state_worktree" switch -C seo-engine-state origin/seo-engine-state
-          else
-            git worktree add --detach "$state_worktree" HEAD
-            git -C "$state_worktree" switch --orphan seo-engine-state
-            # --orphan już czyści indeks; bez --ignore-unmatch `git rm` kończył krok błędem.
-            git -C "$state_worktree" rm -rf --quiet --ignore-unmatch .
-          fi
-          rm -rf "$state_worktree/.seo-engine-state"
-          mkdir -p "$state_worktree/.seo-engine-state"
-          for part in idempotency locks pending dead-letter; do
-            if [[ -d ".seo-engine-state/$part" ]]; then cp -a ".seo-engine-state/$part" "$state_worktree/.seo-engine-state/"; fi
-          done
-          git -C "$state_worktree" config user.name "github-actions[bot]"
-          git -C "$state_worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C "$state_worktree" add -A .seo-engine-state
-          if ! git -C "$state_worktree" diff --cached --quiet; then
-            git -C "$state_worktree" commit -m "chore(seo): ledger silnika treści ${{ steps.engine.outputs.day }}"
-          fi
-          git -C "$state_worktree" push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:seo-engine-state
-          git worktree remove "$state_worktree" --force
-
-      - name: Upload public run report
-        if: always() && steps.engine.outputs.public_report != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: seo-content-report-${{ steps.engine.outputs.day }}-${{ github.run_id }}
-          path: ${{ steps.engine.outputs.public_report }}
-          if-no-files-found: error
-
       - name: Create content branch and pull request
+        id: pr
+        # Niepowodzenie nie przerywa zadania: rejestr musi najpierw zwolnić temat (krok niżej).
+        continue-on-error: true
         if: steps.engine.outputs.exit_code == '0' && steps.engine.outputs.content_changed == 'true'
         shell: bash
         env:
@@ -250,7 +216,62 @@ jobs:
           } > "$body"
           gh pr create --base main --head "$branch" --title "Treść SEO: ${{ steps.engine.outputs.target_slug }} (${{ steps.engine.outputs.day }})" --body-file "$body"
 
+      - name: Release pending proposal after failed pull request
+        if: always() && steps.pr.outcome == 'failure' && steps.engine.outputs.run_id != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Bez PR-a temat nie może wisieć w „oczekujących” przez 14 dni.
+          pnpm exec tsx scripts/content-engine/run.ts --release-pending "${{ steps.engine.outputs.run_id }}" --state-dir .seo-engine-state
+
+      - name: Persist ledger branch
+        if: always() && steps.engine.outputs.day != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          state_worktree="$RUNNER_TEMP/seo-engine-state-worktree"
+          rm -rf "$state_worktree"
+          if git show-ref --verify --quiet refs/remotes/origin/seo-engine-state; then
+            git worktree add --detach "$state_worktree" origin/seo-engine-state
+            git -C "$state_worktree" switch -C seo-engine-state origin/seo-engine-state
+          else
+            git worktree add --detach "$state_worktree" HEAD
+            git -C "$state_worktree" switch --orphan seo-engine-state
+            # --orphan już czyści indeks; bez --ignore-unmatch `git rm` kończył krok błędem.
+            git -C "$state_worktree" rm -rf --quiet --ignore-unmatch .
+          fi
+          rm -rf "$state_worktree/.seo-engine-state"
+          mkdir -p "$state_worktree/.seo-engine-state"
+          for part in idempotency locks pending dead-letter; do
+            if [[ -d ".seo-engine-state/$part" ]]; then cp -a ".seo-engine-state/$part" "$state_worktree/.seo-engine-state/"; fi
+          done
+          git -C "$state_worktree" config user.name "github-actions[bot]"
+          git -C "$state_worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$state_worktree" add -A .seo-engine-state
+          if ! git -C "$state_worktree" diff --cached --quiet; then
+            git -C "$state_worktree" commit -m "chore(seo): ledger silnika treści ${{ steps.engine.outputs.day }}"
+          fi
+          git -C "$state_worktree" push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:seo-engine-state
+          git worktree remove "$state_worktree" --force
+
+      - name: Upload public run report
+        if: always() && steps.engine.outputs.public_report != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: seo-content-report-${{ steps.engine.outputs.day }}-${{ github.run_id }}
+          path: ${{ steps.engine.outputs.public_report }}
+          if-no-files-found: error
+
       - name: Propagate engine failure
         if: always() && steps.engine.outputs.exit_code != '' && steps.engine.outputs.exit_code != '0'
         shell: bash
         run: exit "${{ steps.engine.outputs.exit_code }}"
+
+      - name: Propagate pull request failure
+        if: always() && steps.pr.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Nie udało się utworzyć gałęzi albo PR-a z propozycją treści." >&2
+          exit 1

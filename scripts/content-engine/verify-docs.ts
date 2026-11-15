@@ -5,6 +5,7 @@
 //   pnpm content:verify -- --write          zapisuje wynik weryfikacji, hash i indeks
 //   pnpm content:verify -- --approve <id> --by "Imię Nazwisko" --write
 //   pnpm content:verify -- --snapshots seo-private/sources/2026-11-13 --write
+//   pnpm content:verify -- --snapshots <katalog> --verified-at <ISO> --write
 //
 // `--snapshots <katalog>`: cytaty sprawdzane na zachowanej kopii strony (plik
 // HTML nazwany adresem), z datą pobrania = datą pliku. Potrzebne, gdy źródło
@@ -97,6 +98,14 @@ async function main(): Promise<void> {
   const write = flag("write");
   const approveId = option("approve");
   const approvedBy = option("by");
+  const explicitVerifiedAt = option("verified-at");
+  if (
+    explicitVerifiedAt &&
+    (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(explicitVerifiedAt) ||
+      !Number.isFinite(new Date(explicitVerifiedAt).getTime()))
+  ) {
+    throw new Error("--verified-at wymaga czasu UTC w formacie ISO 8601");
+  }
   if (approveId && !approvedBy) throw new Error("--approve wymaga --by \"Imię Nazwisko\" (zatwierdza człowiek)");
 
   const now = new Date();
@@ -157,14 +166,21 @@ async function main(): Promise<void> {
         };
       });
       const allVerified = factClaims.every((claim) => claim.verification !== "unverified");
-      doc = { ...doc, factClaims, sources, verifiedAt: allVerified ? nowIso : doc.verifiedAt };
+      const verifiedAt = explicitVerifiedAt ?? (snapshots ? doc.verifiedAt : nowIso);
+      doc = { ...doc, factClaims, sources, verifiedAt: allVerified ? verifiedAt : doc.verifiedAt };
     }
 
     const contentHash = computeContentHash(doc);
     if (contentHash !== doc.contentHash) {
-      // Materialna zmiana treści: tylko wtedy rusza się data modyfikacji.
-      doc = { ...doc, contentHash, materiallyModifiedAt: /^0+$/.test(doc.contentHash) ? doc.createdAt : nowIso };
-      notes.push("contentHash przeliczony (treść zmieniona)");
+      if (!write) {
+        failed = true;
+        notes.push("BŁĄD: contentHash nie odpowiada treści; przelicz: pnpm content:verify -- --offline --write");
+      } else {
+        // Hash nie obejmuje cytatu dowodu, więc sama ponowna weryfikacja źródła
+        // nie udaje materialnej zmiany widocznej treści.
+        doc = { ...doc, contentHash, materiallyModifiedAt: /^0+$/.test(doc.contentHash) ? doc.createdAt : nowIso };
+        notes.push("contentHash przeliczony (treść widoczna zmieniona)");
+      }
     }
 
     if (approveId === doc.id) {

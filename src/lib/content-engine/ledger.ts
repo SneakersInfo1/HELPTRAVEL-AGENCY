@@ -24,10 +24,11 @@ export interface IdempotencyInput {
   target: string;
   operation: string;
   policyVersion: string;
+  modeClass: "trial" | "publishing";
 }
 
 export function idempotencyKey(input: IdempotencyInput): string {
-  const material = `${input.day}|${normalizeTarget(input.target)}|${input.operation}|${input.policyVersion}`;
+  const material = `${input.day}|${normalizeTarget(input.target)}|${input.operation}|${input.policyVersion}|${input.modeClass}`;
   return createHash("sha256").update(material, "utf8").digest("hex");
 }
 
@@ -136,7 +137,12 @@ export class Ledger {
     } catch (error) {
       if (!isCode(error, "EEXIST")) throw new LedgerError("Nie można rozpocząć wpisu idempotencji", error);
       try {
-        return { status: "duplicate", previous: JSON.parse(await this.fs.readFile(file, "utf8")) as LedgerRecord };
+        const previous = JSON.parse(await this.fs.readFile(file, "utf8")) as LedgerRecord;
+        if (previous.status === "failed") {
+          await this.fs.writeFile(file, `${JSON.stringify(record, null, 2)}\n`, { flag: "w" });
+          return { status: "started" };
+        }
+        return { status: "duplicate", previous };
       } catch (readError) {
         throw new LedgerError("Istniejący wpis idempotencji jest nieczytelny", readError);
       }
@@ -236,6 +242,37 @@ export class Ledger {
       }
     }
     return result;
+  }
+
+  /** Usuwa propozycje utworzone przez wycofany albo ręcznie sprzątany przebieg. */
+  async releasePending(runId: string): Promise<number> {
+    const directory = path.join(this.stateDir, "pending");
+    let names: string[];
+    try {
+      names = await this.fs.readdir(directory);
+    } catch (error) {
+      if (isCode(error, "ENOENT")) return 0;
+      throw new LedgerError("Nie można odczytać wpisów pending", error);
+    }
+    let removed = 0;
+    for (const name of names.filter((entry) => entry.endsWith(".json"))) {
+      const file = path.join(directory, name);
+      let record: { runId?: string };
+      try {
+        record = JSON.parse(await this.fs.readFile(file, "utf8")) as { runId?: string };
+      } catch {
+        // Nieczytelnego wpisu nie przypisujemy do przebiegu bez dowodu.
+        continue;
+      }
+      if (record.runId !== runId) continue;
+      try {
+        await this.fs.rm(file, { force: true });
+        removed += 1;
+      } catch (error) {
+        throw new LedgerError(`Nie można zwolnić wpisu pending ${name}`, error);
+      }
+    }
+    return removed;
   }
 
   async writeReport(report: { runId: string } & Record<string, unknown>): Promise<string> {
