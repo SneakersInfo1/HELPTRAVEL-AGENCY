@@ -163,9 +163,9 @@ Stan żyje na gałęzi `seo-engine-state`, w katalogu `.seo-engine-state/`:
 
 | Katalog | Zawartość | Kiedy ruszać ręcznie |
 |---|---|---|
-| `idempotency/` | Klucz na dzień | Usuń wpis dnia, żeby powtórzyć przebieg tego samego dnia |
+| `idempotency/` | Klucz na dzień i klasę trybu (próbny albo publikujący) | Przebieg próbny nie blokuje właściwego. Nieudany przebieg można ponowić bez sprzątania. |
 | `locks/` | Blokada przebiegu z czasem wygaśnięcia | Wygasa sama. Usuń tylko po przerwanym zadaniu, gdy blokuje kolejne. |
-| `pending/` | Tematy z otwartą propozycją (14 dni) | Usuń wpis, żeby temat mógł wrócić wcześniej |
+| `pending/` | Tematy z otwartą propozycją (14 dni) | `pnpm content:run -- --release-pending <runId>` zwalnia tematy danego przebiegu. Workflow robi to sam, gdy nie uda się utworzyć PR. |
 | `dead-letter/` | Zapis nieudanych przebiegów | Tylko do diagnozy |
 
 Gałąź stanu nie zawiera danych GSC ani treści raportów.
@@ -211,10 +211,10 @@ Wyniki z tej misji:
 | `draft-and-pr`, a potem następny dzień | — | Dokument zapisany. Dzień później ten sam temat pominięty jako oczekujący. |
 | Wyłącznik awaryjny | — | `KILLED` |
 
-Te same zachowania sprawdza 21 testów integracyjnych (`src/lib/content-engine/pipeline.integration.test.ts`).
+Te same zachowania sprawdza 26 testów integracyjnych (`src/lib/content-engine/pipeline.integration.test.ts`).
 
 ## 11. Czego automat jeszcze nie umie
 
 - Nie był uruchomiony na prawdziwym modelu ani na prawdziwym API Search Console. Obie ścieżki mają testy na podstawionych odpowiedziach. Pierwsze uruchomienie musi być próbne.
-- Na stronach pokazywane są dziś tylko wzbogacenia porównań. Nowe artykuły i wzbogacenia stron miesięcy powstaną jako dokumenty, ale nie mają jeszcze szablonu.
+- Na żywo automat wybiera tylko wzbogacenia porównań, bo tylko ten typ treści ma szablon. Nowe artykuły oraz wzbogacenia stron miesięcy i hubów są pomijane z jawnym powodem w raporcie, dopóki nie powstaną dla nich strony.
 - Nie scala PR i nie wdraża.

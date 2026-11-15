@@ -17,6 +17,7 @@ Lista rzeczy, których nie da się dokończyć bez Ciebie: decyzje, konta, klucz
 | 9–12 | Narzędzia (opcjonalne) | kiedykolwiek | — |
 | 13 | Włączyć dzienny automat | gdy zechcesz | 30 min |
 | 14 | Odświeżyć godziny otwarcia w jednym dokumencie | przed 11.02.2027 | 10 min |
+| 15 | Włączyć ochronę gałęzi `main` | przed włączeniem automatu | 5 min |
 
 ## Przed scaleniem PR
 
@@ -131,3 +132,11 @@ Naturalne pierwsze zadania to porównania z kolejki w `OPPORTUNITY_BACKLOG.csv` 
 ### 14. Godziny otwarcia: 11.02.2027
 
 Dokument Funchal–Santa Cruz de Tenerife zawiera godziny otwarcia, które tracą ważność 11.02.2027. Po tej dacie kontrola `content:freshness` zgłosi błąd, a strona wróci do wersji bez tekstu. Wystarczy wtedy potwierdzić godziny u źródła i zweryfikować dokument ponownie albo usunąć z niego zdania o godzinach.
+
+## Bezpieczeństwo repozytorium
+
+### 15. Ochrona gałęzi `main`
+
+Gałąź `main` nie ma dziś żadnej reguły ochrony. Workflow dziennego automatu działa z tokenem, który ma prawo zapisu do repozytorium. Skrypt wypycha tylko gałąź stanu i gałęzie propozycji, ale nic poza nim nie broni `main`.
+
+Przed włączeniem automatu ustaw w GitHubie (Settings → Rules → Rulesets) regułę dla `main`: wymagany pull request, bez wyjątku dla GitHub Actions. Warto też oznaczyć kontrole `content-check` i `templates-e2e` jako wymagane.

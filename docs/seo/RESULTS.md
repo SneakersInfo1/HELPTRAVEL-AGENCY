@@ -9,7 +9,7 @@ Stan na 14.11.2026. PR: [SneakersInfo1/HELPTRAVEL-AGENCY#154](https://github.com
 | Trzy nowe szablony: porównanie, przewodnik miesięczny, hub | gotowe | Playwright z axe 13/13, test dymny 263/263 |
 | 10 adresów priorytetowych poprawionych (łącznie 12 z backlogu) | gotowe | `BASELINE.md`, pkt 5 |
 | Cztery porównania z treścią ze źródeł (48 twierdzeń z cytatami) | gotowe, czekają na Twoją akceptację | `pnpm content:check` |
-| Bramka jakości treści: 36 reguł, 36 testów | gotowe | `pnpm test:seo` |
+| Bramka jakości treści: 38 reguł, 43 testy | gotowe | `pnpm test:seo` |
 | Techniczne SEO: tytuły, obraz społecznościowy, dane strukturalne, przekierowania literówek, polskie znaki | gotowe | crawl buildu: 0 błędów JSON-LD, 0 złych linków, 0 stron bez `og:image` |
 | Dzienny automat propozycji treści | zbudowany i przetestowany offline, wyłączony | 21 testów integracyjnych, trzy scenariusze |
 | Raport tygodniowy z GSC (28 i 56 dni) | działa na eksporcie CSV | `pnpm seo:weekly` |
@@ -29,7 +29,7 @@ Liczby przed i po (produkcja z 13.11 kontra build gałęzi):
 | LCP i CLS | — | bez regresji, CLS 0 |
 | Zmiany indeksu (robots) | — | 0 |
 
-Testy: `pnpm test` 1672 + 155 zaliczonych, `tsc` i `eslint` czyste.
+Testy: `pnpm test` 1672 + 186 zaliczonych, `tsc` i `eslint` czyste.
 
 ## Co wymaga klucza albo Twojej zgody
 

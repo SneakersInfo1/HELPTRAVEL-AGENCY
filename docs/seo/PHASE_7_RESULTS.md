@@ -5,7 +5,7 @@
 | Rodzaj | Polecenie | Wynik |
 |---|---|---|
 | Jednostkowe i integracyjne całego projektu | `pnpm test` | 1672 zaliczone |
-| SEO, bramka treści, silnik, klient GSC | `pnpm test:seo` | 155 zaliczonych |
+| SEO, bramka treści, silnik, klient GSC | `pnpm test:seo` | 186 zaliczonych |
 | Kontrola dokumentów treści | `pnpm content:check` | 4/4, wszystkie `approved` |
 | Typy i linter | `pnpm exec tsc --noEmit`, `pnpm lint` | czyste |
 | Test dymny po buildzie lokalnym | `pnpm seo:smoke` | 263/263 |
@@ -14,6 +14,7 @@
 | Lighthouse (telefon, mediana z 3) | `pnpm lighthouse -- --routes=…` | dostępność 100, CLS 0, LCP bez regresji |
 | Crawl buildu | `pnpm seo:crawl` | 0 błędów JSON-LD, 0 złych linków, 0 zmian robots |
 | Kontrola treści w CI | workflow „SEO content check” na PR | zaliczona |
+| Szablony w CI (build, test dymny, Playwright z axe) | zadanie `templates-e2e` na PR | zaliczone |
 
 Test dymny i Playwright zostały powtórzone na końcowym buildzie, już po zmianie linków CTA opisanej niżej. Lighthouse i crawl pochodzą z buildu commita `b4d9a22`. Późniejsze zmiany dotyczą skryptów, klienta GSC, workflow, dokumentów i jednego atrybutu linku, więc nie zmieniają treści stron.
 
@@ -62,7 +63,7 @@ Przy okazji naprawiono `seo:smoke --share`: token `_vercel_share` w każdym żą
 |---|---|---|---|
 | Niezależny przegląd gałęzi | całość do `009db8e` | 15 | wszystkie naprawione w `e930cb4` |
 | Wbudowany `/code-review` | `e930cb4..HEAD` | 9 | 6 naprawionych w `7b9636f`, 3 pominięte świadomie |
-| Krytyczny przegląd Codeksa | cała gałąź | patrz niżej | patrz niżej |
+| Krytyczny przegląd Codeksa | cała gałąź | 14 (10 poważnych, 4 mniejsze, 0 krytycznych) | 12 naprawionych, 2 częściowo (patrz niżej) |
 
 Naprawione po `/code-review`:
 
@@ -79,7 +80,28 @@ Pominięte świadomie:
 
 ## Krytyczny przegląd Codeksa
 
-Wynik nie był gotowy w chwili zapisu tego dokumentu. Ustalenia i decyzje trafią do opisu PR #154.
+Przegląd w trybie tylko do odczytu, cała gałąź. Każde ustalenie zostało sprawdzone przed naprawą. Poprawki silnika wykonał Codex według specyfikacji, a ich kod i testy zostały przeczytane i uruchomione.
+
+| # | Ustalenie | Stan |
+|---|---|---|
+| 1 | Dwa zatwierdzone teksty miały twierdzenia szersze niż zapisany cytat | Naprawione: cytaty rozszerzone i potwierdzone w migawkach. Nowa reguła dla identyfikatorów. |
+| 2 | Automat mógł tworzyć treść, której żadna strona nie renderuje (404) | Naprawione: na żywo wybierane są tylko typy renderowane. |
+| 3 | Wartość z dokumentu mogła zamknąć znacznik JSON-LD i wstrzyknąć skrypt | Naprawione: bezpieczny zapis w 17 miejscach, reguła odrzucająca HTML w treści. |
+| 4 | Raport „publiczny” mógł ujawnić zapytanie GSC przez adres nowego tematu | Naprawione: raport budowany od zera z listy dozwolonych pól. |
+| 5 | Kontrola offline nie egzekwowała listy dozwolonych źródeł | Naprawione. |
+| 6 | Sekcja bez twierdzeń i twierdzenie niezweryfikowane omijały „wszystko albo nic” | Naprawione. |
+| 7 | Porównanie liczb ignorowało jednostkę i mieszało zapisy | Naprawione. |
+| 8 | Nieudany PR blokował temat na 14 dni | Naprawione: PR powstaje przed zapisem rejestru, a po błędzie temat jest zwalniany. |
+| 9 | Limit kosztu nie obejmował tokenów wejściowych ani nieudanych prób | Naprawione: rezerwa obejmuje wejście i wyjście, błąd bez danych o zużyciu obciąża rezerwę. |
+| 10 | Przebieg próbny blokował właściwy przebieg tego samego dnia | Naprawione: klucz idempotencji rozróżnia tryb, nieudany przebieg można ponowić. |
+| 11 | Nieaktualny skrót treści przechodził kontrolę | Naprawione: kontrola kończy się błędem. |
+| 12 | Pobieranie źródeł nie sprawdzało portu, danych logowania ani adresów prywatnych | Naprawione: odrzucane są dane logowania, porty inne niż 443 i adresy prywatne po rozwiązaniu DNS. |
+| 13 | Workflow ma token z prawem zapisu, a `main` nie jest chronione | Częściowo: akcje przypięte do pełnych SHA. Ochrona gałęzi i rozdzielenie zadań wymagają właściciela (`OWNER_ACTIONS.md`, pkt 15). |
+| 14 | Testy szablonów nie były wymagane w CI | Naprawione: zadanie `templates-e2e` (build, test dymny, Playwright) przeszło na tym PR. Oznaczenie go jako wymaganego to ustawienie repozytorium. |
+
+Po poprawkach sprawdzono w wierszu poleceń: przebieg próbny, potem drugi próbny (`DUPLICATE_SKIPPED`), potem właściwy tego samego dnia (`DRAFT_CREATED`), ponowny właściwy (bez drugiego dokumentu) i zwolnienie tematu poleceniem `--release-pending`.
+
+Ustalenie 13 jest prawdziwe: w chwili przeglądu gałąź `main` nie miała żadnej reguły ochrony.
 
 ## Czego testy nie pokrywają
 

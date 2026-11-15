@@ -7,8 +7,8 @@ Nie istnieje narzędzie, które gwarantuje „zero AI-slopu”, i ten standard n
 | Element | Plik |
 |---|---|
 | Schemat dokumentu treści i klasy ryzyka | `src/lib/content-engine/schema.ts` |
-| Bramka jakości (36 reguł) | `src/lib/content-quality/gate.ts` |
-| Testy bramki (36 przypadków) | `src/lib/content-quality/gate.test.ts` |
+| Bramka jakości (38 reguł) | `src/lib/content-quality/gate.ts` |
+| Testy bramki (43 przypadki) | `src/lib/content-quality/gate.test.ts` |
 | Porównanie liczb w tekście i w dowodzie | `src/lib/content-engine/numbers.ts` |
 | Dozwolone źródła i pobieranie | `src/lib/content-engine/sources.ts`, `source-registry.ts` |
 | Decyzja, co trafia na stronę | `src/lib/content-engine/site-content.ts` |
@@ -57,7 +57,7 @@ Minimalna długość zależy od typu: artykuł 450 słów, wzbogacenie porównan
 
 ## 4. Przypadki testowe i fałszywe alarmy
 
-Zestaw ma 36 przypadków (wymagane było co najmniej 12): pozytywne, negatywne i pułapki na fałszywe alarmy.
+Zestaw ma 43 przypadki (wymagane było co najmniej 12): pozytywne, negatywne i pułapki na fałszywe alarmy. Poniższy podział opisuje pierwsze 36. Siedem kolejnych doszło po krytycznym przeglądzie i opisuje je punkt 8.
 
 - **Korpus pozytywny (2 testy)** to cztery prawdziwe dokumenty z `content/seo/comparisons/` (1925 słów, 48 twierdzeń). Wynik: 0 zastrzeżeń blokujących, czyli 0 fałszywych alarmów na 4 dokumentach. Trzy mają werdykt `PASS`, a jeden `REVIEW_REQUIRED`, bo zawiera godziny otwarcia (klasa `DYNAMIC`). To wynik zamierzony.
 - **Przypadki negatywne (25 testów)**, każdy z oczekiwanym werdyktem: liczba bez twierdzenia, twierdzenie bez dowodu, twierdzenie po terminie, pozorowana cena, wiza bez źródła urzędowego, rok z przyszłości, tabela bez twierdzeń, brak zweryfikowanego materiału, zmyślone doświadczenie, fałszywa presja, wypełniacze, lead obok intencji, powtórzone zdanie, skopiowany tytuł, lead przepisany z huba, za krótki tekst, CTA donikąd lub do kroku zakupu, zły link, kolizja adresu, zmieniona data bez zmiany treści, daty z przyszłości, błąd schematu, liczba niepokryta wartością w cytacie, jednostki słowne i obce waluty, twierdzenie „zweryfikowane” bez swoich liczb w cytacie.
@@ -116,3 +116,20 @@ Wnioski:
 - Model bez skilla nie podał jednoznacznego werdyktu („`NEEDS_REVISION` albo `BLOCKED_FACTS`”, „tak, gotowy”). Ze skillem każda odpowiedź ma stały format.
 - Po pierwszej iteracji skill dostał dwa uzupełnienia: zakaz potwierdzania faktów wysokiego ryzyka z pamięci i obowiązek napisania jednym zdaniem, co grozi czytelnikowi.
 - Asercja o niepotwierdzaniu z pamięci została dopisana po obejrzeniu wyników pierwszej iteracji. Próba jest mała: 3 przypadki, po jednym przebiegu, a oceniał autor skilla.
+
+## 8. Zmiany po krytycznym przeglądzie (15.11.2026)
+
+Przegląd całej gałęzi wykazał luki w samej bramce. Każda poprawka ma test regresji.
+
+| Luka | Poprawka |
+|---|---|
+| Dokument ze źródłem spoza listy dozwolonych przechodził kontrolę offline | Nowa reguła `source_not_allowed`. Lista jest sprawdzana zawsze, bez sieci. |
+| Liczbę w leadzie mogło „pokryć” twierdzenie niezweryfikowane | Liczby pokrywają tylko twierdzenia zweryfikowane i nieprzeterminowane. |
+| Sekcja tekstu bez twierdzeń przechodziła bramkę | Sekcja jest faktograficzna (wymaga twierdzenia) albo jawnie oznaczona jako opinia (`opinion: true`). Opinia nie może zawierać liczb z jednostką. |
+| „3 km” w twierdzeniu było pokryte przez „3 hours” w cytacie | Porównanie uwzględnia wymiar jednostki (długość, czas, temperatura, procent, rok, waluta). |
+| Cytat „3,5 hours” pokrywał wartość 3 | Zapis angielski i polski liczb nie są już mieszane. |
+| Twierdzenie o „PR1 i PR6” przechodziło z cytatem zawierającym tylko PR6 | Nowa reguła `claim_identifier_not_in_evidence`: identyfikatory typu PR1 czy A380 muszą wystąpić w cytacie dosłownie. |
+| Tekst mógł zawierać znaczniki HTML | Nowa reguła `html_markup_in_text`. Dodatkowo JSON-LD jest zapisywany z ucieczką znaków `<`, `>` i `&`. |
+| Rozjazd skrótu treści nie zatrzymywał kontroli | `content:check` kończy się błędem i podaje, jak przeliczyć skrót. |
+
+Czego bramka nadal nie sprawdzi mechanicznie: czy cytat pokrywa każdą nazwę własną z twierdzenia. Dwa takie przypadki (Barcelona, Madera) wykrył przegląd i poprawiono je ręcznie. Dlatego twierdzenia powinny być atomowe, a recenzent porównuje nazwy z cytatem.

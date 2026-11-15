@@ -27,6 +27,7 @@ Stan na 14.11.2026. Skala: prawdopodobieństwo i skutek jako niskie (N), średni
 | R-14 | Sekret trafi do logów albo do kroków instalacji. | N | W | `persist-credentials: false`. Sekrety są przekazywane tylko do kroku silnika i kroków wypychania. Klucz czytany wyłącznie ze zmiennej środowiskowej. | Zamknięte |
 | R-15 | Robot treści albo crawler wywoła wyszukiwarkę, rezerwację lub API dostawcy. | N | W | Twarda blokada hostów dostawców i tras zakupowych w `sources.ts`. Crawler pomija trasy dostawców. Test e2e przechwytuje `/hotele/szukaj`. Linki CTA nie pobierają wstępnie tras transakcyjnych. | Zamknięte |
 | R-16 | Nazwy modeli albo ceny API się zmienią. | Ś | N | Jedno miejsce konfiguracji (`models.ts`). Błąd modelu kończy przebieg bez publikacji i trafia do rejestru błędów. | Przyjęte |
+| R-25 | Gałąź `main` nie ma reguły ochrony, a workflow automatu działa z tokenem z prawem zapisu. Skrypt wypycha tylko gałąź stanu i gałęzie propozycji, ale nic poza nim tego nie wymusza. | N | W | Akcje przypięte do pełnych SHA. Reguła „wymagany PR” na `main` to ustawienie repozytorium. | Otwarte: działanie właściciela |
 | R-17 | Klient API Search Console nie był uruchomiony na prawdziwym koncie. | Ś | N | Testy na podstawionych odpowiedziach. Pierwsze uruchomienie w trybie próbnym. Import CSV zostaje jako ścieżka zapasowa. | Otwarte do pierwszego uruchomienia |
 
 ## Ryzyka istniejące wcześniej (bez zmian w tej gałęzi)

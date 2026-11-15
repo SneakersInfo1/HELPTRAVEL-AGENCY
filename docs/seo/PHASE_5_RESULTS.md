@@ -39,7 +39,7 @@ Potok zbudował Codex według specyfikacji. Kod został potem zweryfikowany i po
 | Nowa treść stała | `PASS` | `REVIEW_REQUIRED` (tryb próbny nie publikuje) |
 | Szkic z niepotwierdzonym faktem | `BLOCKED_FACTS` | `REJECTED` |
 
-Dodatkowo sprawdzono: tryb roboczy zapisuje dokument, a dzień później pomija ten sam temat jako oczekujący. 21 testów integracyjnych pokrywa te ścieżki.
+Dodatkowo sprawdzono: tryb roboczy zapisuje dokument, a dzień później pomija ten sam temat jako oczekujący. 26 testów integracyjnych pokrywa te ścieżki.
 
 ## Czego nie zrobiono
 

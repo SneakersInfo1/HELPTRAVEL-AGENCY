@@ -17,7 +17,7 @@ Zasady są w `EDITORIAL_POLICY.md`, a reguły bramki w `EDITORIAL_QUALITY_STANDA
 | Porównywanie liczb (zapis polski i angielski) | `src/lib/content-engine/numbers.ts` |
 | Lista dozwolonych źródeł i bezpieczne pobieranie | `src/lib/content-engine/sources.ts` |
 | Rejestr źródeł per kierunek | `src/lib/content-engine/source-registry.ts` |
-| Bramka jakości: 36 reguł, 36 testów | `src/lib/content-quality/gate.ts` |
+| Bramka jakości: 38 reguł, 43 testy | `src/lib/content-quality/gate.ts` |
 | Weryfikacja i zatwierdzanie dokumentów | `scripts/content-engine/verify-docs.ts` (`content:verify`, `content:check`, `content:freshness`) |
 | Podłączenie do stron | `src/lib/content-engine/site-content.ts` |
 | Cztery dokumenty treści | `content/seo/comparisons/*.json` |

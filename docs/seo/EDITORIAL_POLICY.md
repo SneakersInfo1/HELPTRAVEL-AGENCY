@@ -1,6 +1,6 @@
 # Polityka redakcyjna treści SEO
 
-Wersja polityki: `2026-11-13.1` (`POLICY_VERSION` w `src/lib/content-engine/schema.ts`). Zmiana zasad wymaga podniesienia wersji, bo każdy raport bramki ją zapisuje.
+Wersja polityki: `2026-11-15.1` (`POLICY_VERSION` w `src/lib/content-engine/schema.ts`). Zmiana zasad wymaga podniesienia wersji, bo każdy raport bramki ją zapisuje.
 
 ## 1. Zasada nadrzędna
 
