@@ -1,3 +1,4 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 
@@ -151,7 +152,7 @@ export default function RootLayout({
         <a href="#main-content" className="skip-to-content">
           Przejdź do głównej treści
         </a>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
         <ConsentProvider>
           <LanguageProvider>
             <GoogleAnalytics />

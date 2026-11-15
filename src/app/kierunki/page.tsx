@@ -1,3 +1,4 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
@@ -353,7 +354,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
 
   return (
     <main className={`flex w-full flex-1 flex-col gap-10 py-6 ${SHELL_DISCOVERY}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
 
       {/* HERO */}
       <MediaHero

@@ -3,6 +3,7 @@
 // passes equity to every /porownanie/[para] page. No per-destination images
 // here (keeps it fast — the detail pages own the rich media).
 
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
@@ -82,7 +83,7 @@ export default function ComparisonsHubPage() {
     <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
       />
 
       <section className="rounded-[2.5rem] border border-line bg-surface-raised p-6 shadow-sm sm:p-9">

@@ -1,3 +1,4 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
@@ -121,7 +122,7 @@ export default async function HowItWorksPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }} />
 
       <MediaHero
         imageUrl={heroMedia?.heroImage ?? null}

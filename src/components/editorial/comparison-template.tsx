@@ -5,6 +5,7 @@
 // są dostępne tylko na trasie laboratoryjnej /lab/porownanie, żeby dało się je
 // porównać na zrzutach. Uzasadnienie wyboru: docs/seo/DESIGN_QUALITY_STANDARD.md.
 
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import Link from "next/link";
 
 import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
@@ -399,7 +400,7 @@ export function ComparisonTemplate(props: ComparisonTemplateProps) {
   const variant = props.variant ?? DEFAULT_COMPARISON_VARIANT;
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(props.view.structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(props.view.structuredData) }} />
       {variant === "pojedynek" ? <VariantPojedynek {...props} /> : variant === "karta" ? <VariantKarta {...props} /> : <VariantWerdykt {...props} />}
     </>
   );

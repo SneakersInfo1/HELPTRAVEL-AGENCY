@@ -5,6 +5,7 @@
 // czyli z bramki faktów — strona bez danych kuratorowanych nie pokazuje pogody
 // wcale i mówi o tym wprost, zamiast wypełniać miejsce szablonem regionu.
 
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
 
@@ -49,7 +50,7 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(model.structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(model.structuredData) }} />
       <main className="mx-auto flex w-full max-w-[46rem] flex-1 flex-col gap-10 px-4 py-6 sm:px-6 sm:py-10">
         <header className="flex flex-col gap-5">
           <Breadcrumbs

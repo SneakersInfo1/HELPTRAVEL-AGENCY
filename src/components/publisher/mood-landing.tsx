@@ -1,3 +1,4 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import Link from "next/link";
 import { Check, Plus } from "lucide-react";
 
@@ -163,7 +164,7 @@ export async function MoodLanding({ slug }: { slug: string }) {
     <main className={`flex w-full flex-1 flex-col gap-10 py-6 ${SHELL_DISCOVERY}`}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
       />
 
       {/* PRZEBUDOWANE 2026-08-01. Poprzedni „futuristic hero" był zbiorem

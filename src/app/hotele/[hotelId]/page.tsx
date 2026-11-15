@@ -6,6 +6,7 @@
 // Phase 4 carry-overs (intentional): Embla full-screen lightbox, MapLibre
 // embed with nearby POIs, reviews block.
 
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -474,11 +475,11 @@ export default async function HotelDetailPage({
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumb) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(hotelJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(hotelJsonLd) }}
       />
 
       {/* Breadcrumb visible */}

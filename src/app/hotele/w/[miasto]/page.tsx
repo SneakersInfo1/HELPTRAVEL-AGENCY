@@ -20,6 +20,7 @@
 // preposition "w") naturally separates URL hierarchy AND matches the
 // search-query phrasing ("hotele w X").
 
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
@@ -215,7 +216,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
 
   return (
     <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
       <TrackView
         event="landing_view"
         params={{ city_slug: city.slug, monthly_volume: city.monthlySearchVolumePL }}

@@ -1,3 +1,4 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
@@ -156,7 +157,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
 
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <Breadcrumbs

@@ -13,6 +13,20 @@ on:
       - "src/lib/content-quality/**"
       - "src/lib/seo-ops/**"
       - "scripts/content-engine/**"
+      - "scripts/seo/**"
+      - "src/lib/seo/**"
+      - "src/lib/analytics/**"
+      - "src/components/editorial/**"
+      - "src/components/publisher/**"
+      - "src/components/analytics/**"
+      - "src/app/porownanie/**"
+      - "src/app/kierunki/**"
+      - "src/app/wyjazdy/**"
+      - "src/app/sitemap.ts"
+      - "middleware.ts"
+      - "e2e/seo-templates.spec.ts"
+      - "package.json"
+      - ".github/workflows/seo-content-check.yml"
 
 permissions:
   contents: read
@@ -22,15 +36,52 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:seo
+
+  # Szablony stron treści: build produkcyjny, test dymny (statusy, tytuły, canonicale,
+  # robots, JSON-LD, sitemap) i Playwright z axe w 390/768/1440 px. Bez kluczy dostawców —
+  # strony treści muszą renderować się bez nich.
+  templates-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_SITE_URL: https://helptravel.pl
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      - name: Start server
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm start > "$RUNNER_TEMP/next-start.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://localhost:3000/wyjazdy/city-break; then exit 0; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/next-start.log"
+          exit 1
+      - run: pnpm seo:smoke -- --base http://localhost:3000 --out "$RUNNER_TEMP/smoke.json"
+      - run: pnpm exec playwright test e2e/seo-templates.spec.ts
