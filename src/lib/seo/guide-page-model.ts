@@ -2,11 +2,11 @@ import { tripLengthLabel, type LocalizedDestinationGuide } from "@/lib/mvp/desti
 import type { DestinationGuideContent } from "@/lib/mvp/publisher-content";
 
 import {
-  canShowBudgetEstimate,
   exactFlightHours,
   flightHoursForTripLength,
   formatFlightFact,
   getDestinationSeoFacts,
+  type ClimateFactSource,
   type DestinationSeoFacts,
 } from "./destination-facts";
 import { guidePageText } from "./page-titles";
@@ -19,6 +19,14 @@ export interface GuidePageModelInput {
   author: Record<string, unknown>;
 }
 
+export interface GuideClimateSummary {
+  /** Miesiące, w których średnia maksymalna w dzień mieści się w 18–30°C. */
+  daytimeMaxMonths: number[];
+  lowestDaytimeMaxC: number;
+  highestDaytimeMaxC: number;
+  source: ClimateFactSource;
+}
+
 export interface GuidePageModel {
   facts: DestinationSeoFacts;
   name: string;
@@ -26,35 +34,17 @@ export interface GuidePageModel {
   tripLength: string | null;
   flightChip: string | null;
   flightSentence: string | null;
-  budgetEstimate: { min: number; max: number } | null;
-  bestMonths: number[];
+  climate: GuideClimateSummary | null;
   metaBarItems: string[];
   structuredData: Record<string, unknown>;
 }
 
-function estimateBudget(costIndex: number, flightHours: number) {
-  const days = 4;
-  const travelers = 2;
-  const flightBasePerPerson = 380 + flightHours * 70;
-  const stayAndFoodPerDayPerPerson = 170 * costIndex;
-  const localTransportAndTickets = 65 * costIndex;
-  const total =
-    travelers * flightBasePerPerson +
-    travelers * days * stayAndFoodPerDayPerPerson +
-    days * localTransportAndTickets;
-
-  return {
-    min: Math.round(total * 0.9),
-    max: Math.round(total * 1.18),
-  };
-}
-
-function bestMonthsFromTemperatures(temperatures: readonly number[]) {
+function daytimeMaxMonths(temperatures: readonly number[]) {
   return temperatures
-    .map((temp, index) => ({ temp, index }))
-    .filter((item) => item.temp >= 20 && item.temp <= 30)
+    .map((temperature, index) => ({ temperature, month: index + 1 }))
+    .filter(({ temperature }) => temperature >= 18 && temperature <= 30)
     .slice(0, 6)
-    .map((item) => item.index + 1);
+    .map(({ month }) => month);
 }
 
 export function buildGuidePageModel(input: GuidePageModelInput): GuidePageModel {
@@ -74,11 +64,14 @@ export function buildGuidePageModel(input: GuidePageModelInput): GuidePageModel 
       ? `Lot z Polski zwykle zajmuje około ${facts.flight.hours.toFixed(1)} h.`
       : `Lot ${formatFlightFact(facts.flight)}.`
     : null;
-  const budgetEstimate =
-    canShowBudgetEstimate(facts) && tripLengthHours !== null
-      ? estimateBudget(guide.destination.costIndex, tripLengthHours)
-      : null;
-  const bestMonths = facts.temperature ? bestMonthsFromTemperatures(facts.temperature.byMonth) : [];
+  const climate = facts.temperature
+    ? {
+        daytimeMaxMonths: daytimeMaxMonths(facts.temperature.byMonth),
+        lowestDaytimeMaxC: Math.min(...facts.temperature.byMonth),
+        highestDaytimeMaxC: Math.max(...facts.temperature.byMonth),
+        source: facts.temperature.source,
+      }
+    : null;
   const pageUrl = `${baseUrl}/kierunki/${facts.slug}`;
   const faqNode =
     localizedGuide.faq.length > 0
@@ -116,14 +109,13 @@ export function buildGuidePageModel(input: GuidePageModelInput): GuidePageModel 
         author,
         publisher: { "@id": `${baseUrl}/#organization` },
         about: [name, facts.countryName, "city break", "planowanie podróży"],
+        ...(climate ? { citation: climate.source.url } : {}),
       },
       {
         "@type": "TouristDestination",
         "@id": `${pageUrl}#destination`,
         name,
         description: localizedGuide.overview,
-        // `touristType` tylko z odbiorcami, którzy mają pokrycie: w profilu
-        // z szablonu lista wychodzi z ocen regionu (patrz publisher-content).
         ...(localizedGuide.whoFor.length > 0 ? { touristType: localizedGuide.whoFor } : {}),
         url: pageUrl,
         image: heroImage,
@@ -143,8 +135,7 @@ export function buildGuidePageModel(input: GuidePageModelInput): GuidePageModel 
     tripLength,
     flightChip,
     flightSentence,
-    budgetEstimate,
-    bestMonths,
+    climate,
     metaBarItems: [
       facts.isDomestic ? name : `${name} z Polski`,
       ...(facts.flight?.kind === "exact" ? [`${facts.flight.hours.toFixed(1)} h lotu`] : []),

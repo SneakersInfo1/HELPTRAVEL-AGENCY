@@ -61,7 +61,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const path = `/kierunki/${slug}/${miesiac}`;
 
   return {
-    title: model.text.title,
+    // Tytuł miesięczny jest kompletny i ma limit 60 znaków; nie dokładamy
+    // globalnego sufiksu „| HelpTravel”.
+    title: { absolute: model.text.title },
     description: model.text.description,
     robots: model.indexable ? undefined : { index: false, follow: true },
     alternates: { canonical: path },

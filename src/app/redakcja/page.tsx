@@ -31,9 +31,10 @@ const dataSources = [
   {
     // Do 2026-09 stało tu „wieloletnie średnie dla każdego kierunku", podczas gdy
     // 212 z 235 kierunków miało jedną tablicę temperatur na cały region (audyt Faza 2.2).
+    // Od 2026-11 liczby pochodzą wyłącznie z norm WMO (src/lib/mvp/climate-normals.generated.json).
     title: "Pogoda i sezon",
     body:
-      "Temperatury i sezon podajemy tylko dla kierunków, dla których mamy ręcznie opracowane średnie miesięczne. Gdzie takich danych jeszcze nie ma, nie pokazujemy ani temperatury, ani sezonu. Temperatura morza to szacunek liczony z temperatur powietrza.",
+      "Temperatury i opady pochodzą z norm klimatycznych publikowanych przez WMO World Weather Information Service na podstawie danych krajowych służb meteorologicznych. Podajemy średnią temperaturę maksymalną i minimalną, liczbę dni z opadem i sumę opadu, zawsze z nazwą źródła i okresem normy. Gdzie nie ma jednoznacznie dopasowanej stacji, nie pokazujemy żadnych liczb. Nie podajemy temperatury morza ani orientacyjnych budżetów, bo nie mamy dla nich wiarygodnego źródła.",
   },
   {
     title: "Czasy lotów z Polski",

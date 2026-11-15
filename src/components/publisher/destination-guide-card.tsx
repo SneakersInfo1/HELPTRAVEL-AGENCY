@@ -64,7 +64,7 @@ export function DestinationGuideCard({
   // Czas lotu tylko z danych kuratorowanych: przy 212 kierunkach to stała regionu
   // („3,1 h" dla całej Europy Płd.), a karta trafia też do „podobnych kierunków".
   const showFlightHours = isFactGrade(provenanceOf(destination, "flightDuration"));
-  // Pasmo budżetu z `costIndex` jak canShowBudgetEstimate: w profilu z szablonu to stała kraju albo regionu.
+  // Względne pasmo kosztu z `costIndex`: w profilu z szablonu to stała kraju albo regionu.
   const showBudgetBand = derivedProvenance(provenanceOf(destination, "price")) === "derived";
   const cityLabel = locale === "en" ? destination.city : localizeCity(destination.city);
   const countryLabel = locale === "en" ? destination.country : localizeCountry(destination.country);

@@ -9,7 +9,7 @@
 //   • Hotels carousel — top 6 from LiteAPI's /data/hotels metadata
 //     (cached 24h via Next Data Cache, ~10ms warm)
 //   • Why-us block (trust signals: PLN pricing, free cancellation, etc.)
-//   • Best-time-to-visit panel from our destinations.ts climate data
+//   • Panel norm klimatycznych z WMO WWIS
 //   • FAQ schema (5 questions) — boosts SERP rich snippets
 //   • Internal linking cluster: links to /kierunki/[slug], the season
 //     best-of pages, and other commercial city pages
@@ -26,6 +26,7 @@ import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
+import { ClimateSourceLine } from "@/components/editorial/climate-source-line";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
@@ -124,8 +125,8 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
 
   const profile = getAllDestinationProfiles().find((d) => d.slug === city.destinationId);
   // Liczby o kierunku wyłącznie z bramki faktów (SEO Data Integrity, PR #1.5):
-  // temperatura tylko kuratorowana, czas lotu kuratorowany albo oznaczony szacunek.
-  // Do 2026-09 stał tu też „od X zł/noc" liczony wzorem (buildBudgetEstimate) i
+  // temperatura tylko z normy WMO, czas lotu kuratorowany albo oznaczony szacunek.
+  // Do 2026-09 stał tu też „od X zł/noc" liczony wzorem i
   // pokazywany w hero obok „ceny w PLN" jak aktualna cena — usunięty bez zamiennika.
   const facts = profile ? getDestinationSeoFacts(profile) : null;
   const text = cityHotelsPageText({ city });
@@ -160,7 +161,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
     rooms: "1",
   }).toString()}`;
 
-  // Komfortowe miesiące (18-30°C) — tylko z temperatur kuratorowanych.
+  // Miesiące ze średnią maksymalną w dzień 18–30°C — tylko z norm WMO.
   const bestMonths = facts?.temperature
     ? facts.temperature.byMonth
         .map((t, i) => ({ t, i }))
@@ -204,6 +205,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
     city,
     flightHours: facts ? exactFlightHours(facts) : null,
     bestMonths,
+    climateSource: facts?.temperature?.source ?? null,
   };
   const faq = buildCityHotelsFaq(faqInput);
   const structuredData = buildCityHotelsStructuredData({
@@ -401,14 +403,14 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
         <section className="grid gap-5 lg:grid-cols-2">
           <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
             <h2 className="mt-2 font-display text-3xl text-ink">
-              {bestMonths.length > 0 ? `Najlepszy termin na wyjazd ${dirPrep} ${dirForm}` : `Planowanie wyjazdu ${dirPrep} ${dirForm}`}
+              {bestMonths.length > 0 ? `Normy klimatyczne dla wyjazdu ${dirPrep} ${dirForm}` : `Planowanie wyjazdu ${dirPrep} ${dirForm}`}
             </h2>
-            {/* Bez temperatur kuratorowanych nie ma listy miesięcy — do 2026-09 stał
+            {/* Bez normy WMO nie ma listy miesięcy — do 2026-09 stał
                 tu wtedy napis „Cały rok", czyli twierdzenie bez danych. */}
             {bestMonths.length > 0 && (
               <>
                 <p className="mt-3 text-sm leading-7 text-ink-muted">
-                  Najbardziej komfortowe miesiące (temperatury 18-30°C):
+                  Miesiące ze średnią maksymalną temperaturą w dzień 18–30°C:
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {bestMonths.slice(0, 8).map((m) => (
@@ -420,6 +422,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
                     </span>
                   ))}
                 </div>
+                {facts?.temperature ? <ClimateSourceLine source={facts.temperature.source} className="mt-3 text-xs leading-6 text-ink-muted" /> : null}
               </>
             )}
             <p className="mt-4 text-sm leading-7 text-ink-muted">
@@ -444,7 +447,7 @@ export default async function CityHotelsLandingPage({ params }: PageProps) {
             </h2>
             <p className="mt-3 text-sm leading-7 text-ink-muted">
               {facts?.temperature
-                ? "Pogoda, budżet i porady na konkretny miesiąc — wybierz termin wyjazdu."
+                ? "Normy pogodowe i porady na konkretny miesiąc — wybierz termin wyjazdu."
                 : "Hotele i porady na konkretny miesiąc — wybierz termin wyjazdu."}
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">

@@ -2,7 +2,7 @@
 // tabela faktów o kierunkach z huba i ścieżka do porównań.
 //
 // Liczby wyłącznie z bramki faktów (destination-facts.ts): czas lotu jako fakt
-// albo oznaczony szacunek, miesiące tylko z temperatur kuratorowanych. Kierunek
+// albo oznaczony szacunek, miesiące tylko z oficjalnej normy WMO. Kierunek
 // bez przewodnika albo bez danych dostaje „brak danych", a nie liczbę z szablonu.
 
 import { comparisonPairs } from "@/lib/mvp/comparisons";
@@ -10,15 +10,21 @@ import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import { getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import type { TravelMood } from "@/lib/mvp/travel-moods";
 
-import { destinationDisplayName, formatFlightFact, getDestinationSeoFacts } from "./destination-facts";
+import {
+  destinationDisplayName,
+  formatFlightFact,
+  getDestinationSeoFacts,
+  type ClimateFactSource,
+} from "./destination-facts";
 
 export interface HubFactRow {
   name: string;
   guideHref: string | null;
   /** „ok. 2.6 h" albo „szacunkowo ok. 2.4 h z Krakowa (liczone z odległości)"; null = brak danych. */
   flight: string | null;
-  /** Zakresy miesięcy ze średnią 18–30°C, np. „kwiecień–czerwiec, wrzesień–październik"; null = brak danych. */
-  comfortableMonths: string | null;
+  /** Zakresy miesięcy ze średnią maksymalną w dzień 18–30°C. */
+  daytimeMaxMonths: string | null;
+  climateSource: ClimateFactSource | null;
 }
 
 export interface HubLink {
@@ -49,7 +55,7 @@ export function monthRangesLabel(indices: readonly number[]): string | null {
 export function hubFactRows(mood: TravelMood): HubFactRow[] {
   return mood.picks.map((pick) => {
     const guide = pick.slug ? getDestinationGuideBySlug(pick.slug) : undefined;
-    if (!guide) return { name: pick.name, guideHref: null, flight: null, comfortableMonths: null };
+    if (!guide) return { name: pick.name, guideHref: null, flight: null, daytimeMaxMonths: null, climateSource: null };
     const facts = getDestinationSeoFacts(guide.destination);
     const temps = facts.temperature?.byMonth;
     const comfortable = temps
@@ -59,7 +65,8 @@ export function hubFactRows(mood: TravelMood): HubFactRow[] {
       name: pick.name,
       guideHref: `/kierunki/${guide.destination.slug}`,
       flight: facts.flight ? formatFlightFact(facts.flight) : null,
-      comfortableMonths: comfortable ? (monthRangesLabel(comfortable) ?? "żaden miesiąc w przedziale 18–30°C") : null,
+      daytimeMaxMonths: comfortable ? (monthRangesLabel(comfortable) ?? "żaden miesiąc w przedziale 18–30°C") : null,
+      climateSource: facts.temperature?.source ?? null,
     };
   });
 }

@@ -11,6 +11,13 @@ import { buildSiteStructuredData } from "./site-schema";
 const SITE = "https://helptravel.pl";
 const TODAY = "2026-09-13";
 const AUTHOR = { "@type": "Person", name: "Jakub Ogrodniczuk", url: `${SITE}/redakcja` };
+const CLIMATE_SOURCE = {
+  name: "WMO World Weather Information Service" as const,
+  provider: "Instituto Estatal de Meteorologia (AEMET)",
+  station: "Malaga / Aeropuerto",
+  periodLabel: "norma 1981–2010",
+  url: "https://worldweather.wmo.int/en/city.html?cityId=195",
+};
 
 function nodeTypes(data: unknown): unknown[] {
   return collectJsonLdNodes(data).map((node) => node["@type"]);
@@ -27,9 +34,11 @@ const monthInput = {
   name: "Malaga",
   countryName: "Hiszpania",
   weather: {
-    tempC: 27,
-    description: "ciepło, komfortowo na zwiedzanie i plażę",
-    verdict: "Tak — to jeden z lepszych terminów na ten kierunek.",
+    maxTempC: 27,
+    minTempC: 18.8,
+    rainDays: 3.2,
+    rainfallMm: 18.4,
+    source: CLIMATE_SOURCE,
   },
   exactFlightHours: 4.1,
   author: AUTHOR,
@@ -45,15 +54,15 @@ describe("dane strukturalne szablonów (test E i walidacja JSON-LD)", () => {
     assert.deepEqual(nodesWithPrice(data), []);
   });
 
-  it("strona miesiąca: bez Offer, kwot i dat, nagłówek bez roku", () => {
+  it("strona miesiąca: bez Offer, kwot i dat publikacji, z okresem normy", () => {
     const data = buildMonthPageStructuredData(monthInput);
     assert.deepEqual(validateJsonLd(data, { todayIso: TODAY }), []);
     assert.equal(nodeTypes(data).includes("Offer"), false);
     assert.deepEqual(nodesWithPrice(data), []);
     assert.doesNotMatch(JSON.stringify(data), /zł/);
-    assert.doesNotMatch(JSON.stringify(data), /\b20\d{2}\b(?!-)/);
     assert.doesNotMatch(JSON.stringify(data), /datePublished|dateModified/);
     assert.doesNotMatch(JSON.stringify(data), /morza/i);
+    assert.match(JSON.stringify(data), /norma 1981–2010/);
     assert.match(JSON.stringify(data), /Malaga we wrześniu/);
   });
 
@@ -72,6 +81,7 @@ describe("dane strukturalne szablonów (test E i walidacja JSON-LD)", () => {
         city,
         flightHours: 3.2,
         bestMonths: ["maj", "czerwiec"],
+        climateSource: CLIMATE_SOURCE,
         featuredHotels: [{ id: "lp1", name: "Hotel testowy", city: city.cityNominative, stars: 4 }],
         heroImage: "https://images.pexels.com/photos/1/pexels-photo-1.jpeg",
         author: AUTHOR,
@@ -86,7 +96,12 @@ describe("dane strukturalne szablonów (test E i walidacja JSON-LD)", () => {
 
   it("widoczne FAQ hoteli w mieście nie podaje ceny modelowanej", () => {
     for (const city of commercialCities) {
-      const faq = buildCityHotelsFaq({ city, flightHours: 3.2, bestMonths: ["maj"] });
+      const faq = buildCityHotelsFaq({
+        city,
+        flightHours: 3.2,
+        bestMonths: ["maj"],
+        climateSource: CLIMATE_SOURCE,
+      });
       assert.ok(faq.length >= 4, city.slug);
       for (const item of faq) {
         assert.doesNotMatch(`${item.question} ${item.answer}`, /\d\s*zł/, city.slug);

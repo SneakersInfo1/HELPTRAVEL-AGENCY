@@ -21,17 +21,22 @@ describe("monthRangesLabel", () => {
 });
 
 describe("tabela faktów huba", () => {
-  it("liczby wyłącznie z bramki faktów: bez temperatury kuratorowanej nie ma miesięcy", () => {
+  it("liczby wyłącznie z bramki faktów: bez normy WMO nie ma miesięcy", () => {
     for (const mood of TRAVEL_MOODS) {
       for (const [index, row] of hubFactRows(mood).entries()) {
         const pick = mood.picks[index];
         const guide = pick.slug ? getDestinationGuideBySlug(pick.slug) : undefined;
         if (!guide) {
-          assert.deepEqual([row.guideHref, row.flight, row.comfortableMonths], [null, null, null], `${mood.slug}/${pick.name}`);
+          assert.deepEqual([row.guideHref, row.flight, row.daytimeMaxMonths, row.climateSource], [null, null, null, null], `${mood.slug}/${pick.name}`);
           continue;
         }
         const facts = getDestinationSeoFacts(guide.destination);
-        assert.equal(row.comfortableMonths === null, facts.temperature === null, `${mood.slug}/${pick.name}`);
+        assert.equal(row.daytimeMaxMonths === null, facts.temperature === null, `${mood.slug}/${pick.name}`);
+        assert.equal(row.climateSource === null, facts.temperature === null, `${mood.slug}/${pick.name}`);
+        if (row.climateSource) {
+          assert.equal(row.climateSource.name, "WMO World Weather Information Service", `${mood.slug}/${pick.name}`);
+          assert.match(row.climateSource.url, /^https:\/\/worldweather\.wmo\.int\//, `${mood.slug}/${pick.name}`);
+        }
         assert.equal(row.flight === null, facts.flight === null, `${mood.slug}/${pick.name}`);
         if (facts.flight?.kind === "estimate") assert.match(row.flight ?? "", /szacunkowo/, `${mood.slug}/${pick.name}`);
         assert.ok(routes.has(row.guideHref!), row.guideHref!);

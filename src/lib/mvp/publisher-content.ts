@@ -6,11 +6,11 @@ import type { DestinationProfile } from "./types";
 
 import {
   canClaimFromProfileScores,
-  canShowBudgetEstimate,
+  canClaimFromCostIndex,
   destinationDisplayName,
   flightHoursForTripLength,
   getDestinationSeoFacts,
-  monthTemperature,
+  monthDaytimeMaxTemperature,
 } from "../seo/destination-facts";
 
 export interface EditorialFaq {
@@ -222,7 +222,7 @@ const destinationGuideOverrides: DestinationGuideOverrides[] = [
           "Najczęstszy i najwygodniejszy scenariusz to 3-4 dni. To wystarczy na najbardziej znane miejsca i przyjemniejsze tempo bez biegania od zabytku do zabytku.",
       },
       {
-        question: "Czy Rzym pasuje do budżetu do 2000 zł?",
+        question: "Czy Rzym pasuje do ograniczonego budżetu?",
         answer:
           "Przy dobrych terminach i ostrożnym doborze noclegu bywa to możliwe, ale Rzym częściej jest kierunkiem, w którym warto zostawić sobie trochę więcej marginesu.",
       },
@@ -1646,17 +1646,17 @@ const editorialCategories: EditorialCategory[] = [
 function inferDestinationCategorySlugs(destination: DestinationProfile): string[] {
   const categories = new Set<string>(["przewodniki"]);
   const facts = getDestinationSeoFacts(destination);
-  const mayTemperature = monthTemperature(facts, 4);
+  const mayDaytimeMax = monthDaytimeMaxTemperature(facts, 4);
   const flightHours = flightHoursForTripLength(facts);
 
   if (destination.cityScore >= 0.76 || destination.sightseeingScore >= 0.76) {
     categories.add("city-breaki");
   }
-  if (destination.beachScore >= 0.62 || (mayTemperature !== null && mayTemperature >= 22)) {
+  if (destination.beachScore >= 0.62 || (mayDaytimeMax !== null && mayDaytimeMax >= 22)) {
     categories.add("ciepłe-kierunki");
   }
   // Indeks kosztów profilu z szablonu to stała kraju albo regionu (deriveCostIndex).
-  if (destination.costIndex <= 1.02 && canShowBudgetEstimate(facts)) {
+  if (destination.costIndex <= 1.02 && canClaimFromCostIndex(facts)) {
     categories.add("tanie-podróże");
   }
   if (flightHours !== null && flightHours <= 3.3) {
@@ -1678,10 +1678,10 @@ function describeBestMonths(temperatures: readonly number[]): string {
     .map((item) => monthLabel(item.index));
 
   if (comfortableMonths.length === 0) {
-    return "Ten kierunek najlepiej traktować jako elastyczny sezonowo i dopasowywać bardziej do briefu niż do jednego miesiąca.";
+    return "W normie WMO żaden miesiąc nie ma średniej maksymalnej temperatury w dzień w przedziale 18–30°C.";
   }
 
-  return `Najwygodniej planować ten kierunek zwykle w ${comfortableMonths.join(", ")}, kiedy łatwiej połączyć pogodę, spacerowy rytm i realną przyjemność z pobytu.`;
+  return `Średnia maksymalna temperatura w dzień mieści się w przedziale 18–30°C w ${comfortableMonths.join(", ")}. To norma wieloletnia, nie prognoza.`;
 }
 
 function describeBudget(destination: DestinationProfile): string {
@@ -1707,9 +1707,9 @@ function describeWorstMonths(name: string, temperatures: readonly number[]): str
     });
   const worst = ranked.slice(0, 2).filter((m) => m.temp < 12 || m.temp > 32);
   if (worst.length === 0) {
-    return `${name} działa całorocznie — nie ma tu jednego miesiąca, który zdecydowanie odpada. Decyzje warto opierać na cenach lotów i własnych preferencjach pogodowych.`;
+    return `Dla ${name} średnie maksymalne temperatury w dzień nie wychodzą poza przyjęty tu przedział 12–32°C. To norma wieloletnia, nie prognoza.`;
   }
-  return `Najslabiej broni się zwykle w miesiącach takich jak ${worst.map((m) => m.name).join(" i ")}, gdy temperatura odbiega od komfortowego okna na chodzenie po mieście. Jeśli pogoda ma być kluczowa, lepiej wybrać inny termin.`;
+  return `Najdalej od przedziału 12–32°C dla średniej maksymalnej temperatury w dzień są ${worst.map((m) => m.name).join(" i ")}. To norma wieloletnia, nie ocena sezonu ani prognoza.`;
 }
 
 function describeWhoForExtra(destination: DestinationProfile, flightHours: number | null, costKnown: boolean): string[] {
@@ -1732,7 +1732,7 @@ function buildGenericDestinationGuide(destination: DestinationProfile): Destinat
   const lengthHint = flightHours === null ? null : tripLengthLabel(flightHours, "pl");
   const temperatures = facts.temperature?.byMonth ?? null;
   // Indeks kosztów profilu z szablonu to stała kraju albo regionu (deriveCostIndex) — bez oceny kosztów.
-  const costKnown = canShowBudgetEstimate(facts);
+  const costKnown = canClaimFromCostIndex(facts);
   // Odbiorcy i oceny profilu („mocny pod plażą", „rodziny z dziećmi", 88/100)
   // wychodzą z deriveScores, czyli z list miast i regionu. Dla profilu
   // z szablonu to ta sama wartość dla całych grup kierunków, więc nie budujemy

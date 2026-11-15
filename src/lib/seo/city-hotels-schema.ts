@@ -1,5 +1,6 @@
 import type { CommercialCity } from "@/lib/mvp/commercial-cities";
 
+import type { ClimateFactSource } from "./destination-facts";
 import { cityHotelsPageText, cityLocationPhrase } from "./page-titles";
 
 // JSON-LD i FAQ strony /hotele/w/[miasto].
@@ -22,8 +23,9 @@ export interface CityHotelsFaqInput {
   city: CommercialCity;
   /** Czas lotu z profilu kierunku; null, gdy miasto nie ma profilu. */
   flightHours: number | null;
-  /** Nazwy miesięcy z komfortową temperaturą. */
+  /** Miesiące ze średnią maksymalną temperaturą w dzień 18–30°C. */
   bestMonths: string[];
+  climateSource: ClimateFactSource | null;
 }
 
 export interface CityHotelsSchemaInput extends CityHotelsFaqInput {
@@ -33,7 +35,7 @@ export interface CityHotelsSchemaInput extends CityHotelsFaqInput {
   author: Record<string, unknown>;
 }
 
-export function buildCityHotelsFaq({ city, flightHours, bestMonths }: CityHotelsFaqInput) {
+export function buildCityHotelsFaq({ city, flightHours, bestMonths, climateSource }: CityHotelsFaqInput) {
   const inLoc = cityLocationPhrase(city);
   // Kierunek podróży: „do Barcelony" (dopełniacz) albo „na Kretę" (biernik).
   const dirPrep = city.preposition === "na" ? "na" : "do";
@@ -43,8 +45,8 @@ export function buildCityHotelsFaq({ city, flightHours, bestMonths }: CityHotels
     {
       question: `Kiedy najlepiej jechać ${dirPrep} ${dirForm}?`,
       answer:
-        bestMonths.length > 0
-          ? `Najprzyjemniejsze miesiące na wyjazd ${dirPrep} ${dirForm} to ${bestMonths.slice(0, 6).join(", ")} — temperatury 18-30°C komfortowe na zwiedzanie.`
+        bestMonths.length > 0 && climateSource
+          ? `W miesiącach ${bestMonths.slice(0, 6).join(", ")} średnia maksymalna temperatura w dzień mieści się w przedziale 18–30°C. To norma wieloletnia z ${climateSource.name}, nie prognoza.`
           : `Termin najlepiej dobrać do planu wyjazdu — sprawdź przewodnik po ${city.cityLocative} i dostępność hoteli w wybranych datach.`,
     },
     {
@@ -97,6 +99,7 @@ export function buildCityHotelsStructuredData(input: CityHotelsSchemaInput) {
           "@type": "TouristDestination",
           name: `${city.cityNominative}, ${city.countryNominative}`,
         },
+        ...(input.climateSource ? { citation: input.climateSource.url } : {}),
       },
       {
         "@type": "BreadcrumbList",

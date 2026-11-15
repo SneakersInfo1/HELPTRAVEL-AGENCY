@@ -134,6 +134,9 @@ async function checkPage(page: PageCase) {
   // właśnie na „| HelpTravel", a nie na treści.
   const bare = title.replace(/ \| HelpTravel$/, "");
   record("tytuł ≤ 60 znaków bez sufiksu marki", page.path, bare.length > 10 && bare.length <= 60, `${bare.length}: ${title}`);
+  if (page.template === "month") {
+    record("strona miesiąca: tytuł bez sufiksu marki", page.path, title === bare, title);
+  }
   const description = audit.metaDescription ?? "";
   record("opis 50–170 znaków", page.path, description.length >= 50 && description.length <= 170, `${description.length}`);
   record("canonical na siebie", page.path, audit.canonicals.length === 1 && audit.canonicalInHead && canonicalPath === page.path, audit.canonicals.join(" "));

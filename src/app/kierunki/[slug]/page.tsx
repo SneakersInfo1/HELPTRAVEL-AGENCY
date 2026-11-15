@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { AuthorByline } from "@/components/publisher/author-byline";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
+import { ClimateSourceLine } from "@/components/editorial/climate-source-line";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
@@ -13,6 +14,7 @@ import { LocalizedLink } from "@/components/site/localized-link";
 import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { categoryPath } from "@/lib/mvp/category-slug";
+import { formatClimateNumber } from "@/lib/mvp/climate-normals";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
@@ -157,11 +159,10 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       : winningScenarios.length === 2
         ? "Dwie sytuacje, w których"
         : "Sytuacja, w której";
-  // Karty planowania tylko z danymi, które mają pokrycie; bez żadnej z nich kolumna znika.
+  // Karty liczbowe tylko z danymi, które mają pokrycie; informacja o cenach
+  // zawsze odsyła do wyszukiwarki i nie zawiera kwoty modelowanej.
   const showTimingCard = Boolean(localizedGuide.bestTime.trim() || model.tripLength);
-  const showBudgetCard = Boolean(model.budgetEstimate || localizedGuide.budgetNote);
-  const showLogisticsCard = Boolean(model.flightSentence || model.bestMonths.length > 0);
-  const showPlanningColumn = showTimingCard || showBudgetCard || showLogisticsCard;
+  const showLogisticsCard = Boolean(model.flightSentence || model.climate);
   // Internal links to this destination's 1:1 comparison pages (/porownanie/…).
   // Passes equity from the ~235 guide pages into the high-CTR comparison pages
   // and gives "X czy Y" searchers a direct entry. SEO master plan D6 (extended).
@@ -274,7 +275,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         items={model.metaBarItems}
       />
 
-      <section className={showPlanningColumn ? "grid gap-5 lg:grid-cols-[1.1fr_0.9fr]" : "grid gap-5"}>
+      <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <h2 className="mt-3 font-display text-4xl text-ink">Mocne strony kierunku</h2>
           <div className="mt-5 space-y-3">
@@ -286,9 +287,8 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
         </article>
 
-        {showPlanningColumn ? (
-          <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(225,243,231,0.9))] p-6 shadow-sm">
-            <div className="mt-4 grid gap-3">
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(225,243,231,0.9))] p-6 shadow-sm">
+          <div className="mt-4 grid gap-3">
               {showTimingCard ? (
                 <div className="rounded-2xl bg-surface-raised px-4 py-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepszy czas i tempo</p>
@@ -302,39 +302,37 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                   ) : null}
                 </div>
               ) : null}
-              {showBudgetCard ? (
-                <div className="rounded-2xl bg-surface-raised px-4 py-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-                    {model.budgetEstimate ? "Orientacyjny budżet" : "Budżet"}
-                  </p>
-                  {model.budgetEstimate ? (
-                    <p className="mt-2 text-sm leading-7 text-ink-muted">
-                      Dla 2 osób na 4 dni zwykle warto liczyć okolice {model.budgetEstimate.min}-{model.budgetEstimate.max} PLN.
-                      To orientacyjny zakres planistyczny, a nie cena gwarantowana.
-                    </p>
-                  ) : null}
-                  {localizedGuide.budgetNote ? (
-                    <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
-                  ) : null}
-                </div>
-              ) : null}
+            <div className="rounded-2xl bg-surface-raised px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Ceny hoteli</p>
+              <p className="mt-2 text-sm leading-7 text-ink-muted">
+                Aktualne ceny hoteli dla wybranych dat pokazuje wyszukiwarka.
+              </p>
+            </div>
               {showLogisticsCard ? (
                 <div className="rounded-2xl bg-surface-raised px-4 py-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd i logistyka</p>
                   {model.flightSentence ? (
                     <p className="mt-2 text-sm leading-7 text-ink-muted">{model.flightSentence}</p>
                   ) : null}
-                  {model.bestMonths.length > 0 ? (
-                    <p className="mt-2 text-sm leading-7 text-ink-muted">
-                      Kierunek najlepiej wygląda zwykle w miesiącach:{" "}
-                      {model.bestMonths.slice(0, 4).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
-                    </p>
+                  {model.climate ? (
+                    <>
+                      <p className="mt-2 text-sm leading-7 text-ink-muted">
+                        Średnia maksymalna temperatura w dzień mieści się w ciągu roku między{" "}
+                        <strong className="font-semibold text-ink">{formatClimateNumber(model.climate.lowestDaytimeMaxC)}°C</strong> a{" "}
+                        <strong className="font-semibold text-ink">{formatClimateNumber(model.climate.highestDaytimeMaxC)}°C</strong>.
+                      </p>
+                      {model.climate.daytimeMaxMonths.length > 0 ? (
+                        <p className="mt-2 text-sm leading-7 text-ink-muted">
+                          Średnia maksymalna 18–30°C: {model.climate.daytimeMaxMonths.map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+                        </p>
+                      ) : null}
+                      <ClimateSourceLine source={model.climate.source} className="mt-3 text-xs leading-6 text-ink-muted" />
+                    </>
                   ) : null}
                 </div>
               ) : null}
-            </div>
-          </article>
-        ) : null}
+          </div>
+        </article>
       </section>
 
       <section
@@ -481,14 +479,19 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             ) : null}
             <div className="rounded-2xl bg-surface-sunken px-4 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-                {model.bestMonths.length > 0 ? "Formalności i sezon" : "Formalności"}
+                {model.climate ? "Formalności i normy klimatyczne" : "Formalności"}
               </p>
               <p className="mt-2 text-lg font-bold text-ink">{visaNote}</p>
-              {model.bestMonths.length > 0 ? (
-                <p className="mt-2 text-sm leading-6 text-ink-muted">
-                  Najmocniejsze miesiące dla tego kierunku to zwykle{" "}
-                  {model.bestMonths.slice(0, 3).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
-                </p>
+              {model.climate ? (
+                <>
+                  {model.climate.daytimeMaxMonths.length > 0 ? (
+                    <p className="mt-2 text-sm leading-6 text-ink-muted">
+                      Średnia maksymalna temperatura w dzień mieści się w przedziale 18–30°C w miesiącach:{" "}
+                      {model.climate.daytimeMaxMonths.slice(0, 3).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+                    </p>
+                  ) : null}
+                  <ClimateSourceLine source={model.climate.source} className="mt-3 text-xs leading-6 text-ink-muted" />
+                </>
               ) : null}
             </div>
           </div>
@@ -650,7 +653,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <div className="max-w-3xl">
               <h2 className="mt-2 font-display text-4xl text-ink">Porównaj {model.name} z innym kierunkiem</h2>
               <p className="mt-3 text-sm leading-7 text-ink-muted">
-                Wahasz się między dwoma kierunkami? Zobacz bezpośrednie porównanie obok siebie — plaże, zwiedzanie i dolot z Polski, a przy kierunkach z opracowanymi danymi także pogoda i orientacyjny budżet.
+                Wahasz się między dwoma kierunkami? Zobacz bezpośrednie porównanie obok siebie — plaże, zwiedzanie i dolot z Polski, a przy kierunkach z normami WMO także pogodę.
               </p>
             </div>
             <LocalizedLink

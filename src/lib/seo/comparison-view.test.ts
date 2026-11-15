@@ -102,15 +102,14 @@ describe("model widoku porównania — wszystkie pary", () => {
       assert.ok(view.content.topicCluster.length > 2);
       const article = (view.structuredData["@graph"] as Array<Record<string, unknown>>).find((node) => node["@type"] === "Article")!;
       assert.equal(article.dateModified, view.modifiedAt);
-      assert.deepEqual(
-        article.citation,
-        view.sources.map((source) => source.url),
-      );
+      assert.ok(Array.isArray(article.citation), view.slug);
+      for (const source of view.sources) assert.ok(article.citation.includes(source.url), `${view.slug}: ${source.url}`);
+      assert.ok(article.citation.some((url: string) => url.startsWith("https://worldweather.wmo.int/")), view.slug);
       assert.equal(article.datePublished, undefined);
     }
   });
 
-  it("strona bez rozszerzenia nie ma źródeł, dat ani dateModified — brak pokrycia to brak twierdzenia", () => {
+  it("strona bez rozszerzenia nie ma daty redakcyjnej, ale zachowuje cytowanie norm WMO", () => {
     const plain = views.filter((view) => view.sources.length === 0);
     assert.ok(plain.length > 40);
     for (const view of plain) {
@@ -118,22 +117,24 @@ describe("model widoku porównania — wszystkie pary", () => {
       assert.equal(view.content, null, view.slug);
       const article = (view.structuredData["@graph"] as Array<Record<string, unknown>>).find((node) => node["@type"] === "Article")!;
       assert.equal(article.dateModified, undefined);
-      assert.equal(article.citation, undefined);
+      assert.ok(Array.isArray(article.citation), view.slug);
+      assert.ok(article.citation.some((url: string) => url.startsWith("https://worldweather.wmo.int/")), view.slug);
     }
   });
 });
 
 describe("defaultComparisonMeta", () => {
-  it("obiecuje pogodę i budżet tylko wtedy, gdy strona je pokaże", () => {
-    const none = defaultComparisonMeta("Kreta", "Rodos", "Dwie greckie wyspy", { climate: false, budget: false });
+  it("obiecuje pogodę tylko wtedy, gdy strona ją pokaże, i nigdy kwoty budżetu", () => {
+    const none = defaultComparisonMeta("Kreta", "Rodos", "Dwie greckie wyspy", { climate: false });
     assert.doesNotMatch(`${none.title} ${none.description}`, /pogod|temperatur|budżet/i);
-    const full = defaultComparisonMeta("Ateny", "Rzym", "Antyczne stolice", { climate: true, budget: true });
-    assert.match(full.title, /pogoda, budżet/);
+    const full = defaultComparisonMeta("Ateny", "Rzym", "Antyczne stolice", { climate: true });
+    assert.match(full.title, /pogoda/);
     assert.match(full.description, /temperatury/);
+    assert.doesNotMatch(`${full.title} ${full.description}`, /budżet/i);
   });
 
   it("długie nazwy dostają krótszy wariant tytułu zamiast ucięcia", () => {
-    const meta = defaultComparisonMeta("Gran Canaria", "Wyspy Zielonego Przylądka", "x", { climate: true, budget: true });
+    const meta = defaultComparisonMeta("Gran Canaria", "Wyspy Zielonego Przylądka", "x", { climate: true });
     assert.ok(meta.title.length <= 60, meta.title);
   });
 });

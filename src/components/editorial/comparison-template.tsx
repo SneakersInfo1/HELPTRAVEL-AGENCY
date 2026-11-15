@@ -9,9 +9,11 @@ import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import Link from "next/link";
 
 import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
+import { ClimateSourceLine } from "@/components/editorial/climate-source-line";
 import { AuthorByline } from "@/components/publisher/author-byline";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { EDITOR_IN_CHIEF } from "@/lib/mvp/authors";
+import { formatClimateNumber } from "@/lib/mvp/climate-normals";
 import type { CityHotelStats } from "@/lib/mvp/live-hotel-stats";
 import type { ComparisonModel } from "@/lib/seo/comparison-model";
 import type { ComparisonView } from "@/lib/seo/comparison-view";
@@ -103,24 +105,25 @@ function Overviews({ sides }: { sides: [SideInfo, SideInfo] }) {
 }
 
 function WhenToGo({ model }: { model: ComparisonModel }) {
-  if (model.whenToGo.length === 0) return null;
+  if (model.climate.length === 0) return null;
   return (
     <section aria-labelledby="kiedy-jechac">
       <h2 id="kiedy-jechac" className={H2}>
-        Kiedy jechać
+        Normy klimatyczne w ciągu roku
       </h2>
       <p className="mt-3 max-w-[65ch] text-sm leading-6 text-ink-muted">
-        Miesiące ze średnią temperaturą 18–30°C według danych redakcyjnych HelpTravel. To średnie wieloletnie, nie prognoza pogody.
+        Zakresy średniej maksymalnej temperatury w dzień. To normy wieloletnie, nie prognoza pogody.
       </p>
       <dl className="mt-4 divide-y divide-line border-y border-line">
-        {model.whenToGo.map((entry) => (
+        {model.climate.map((entry) => (
           <div key={entry.side.profile.slug} className="grid gap-1 py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
             <dt className="font-display text-lg font-semibold text-ink">{entry.side.name}</dt>
             <dd className="text-base leading-7 text-ink">
-              {entry.months.length > 0 ? entry.months.join(", ") : "przez cały rok bywa chłodniej"}
+              Zakres: <span className="font-semibold tabular-nums">{formatClimateNumber(entry.lowestDaytimeMaxC)}–{formatClimateNumber(entry.highestDaytimeMaxC)}°C</span>.
               <span className="block text-sm text-ink-muted">
-                Lato ok. {entry.summerAvg}°C, zima ok. {entry.winterAvg}°C
+                Najwyższe średnie maksymalne: {entry.warmestMonths.join(", ")}; najniższe: {entry.coldestMonths.join(", ")}.
               </span>
+              <ClimateSourceLine source={entry.source} className="mt-2 text-xs leading-6 text-ink-muted" />
             </dd>
           </div>
         ))}
@@ -131,32 +134,6 @@ function WhenToGo({ model }: { model: ComparisonModel }) {
           </div>
         ))}
       </dl>
-    </section>
-  );
-}
-
-function Budget({ model }: { model: ComparisonModel }) {
-  if (!model.budget) return null;
-  const items = [
-    { name: model.a.name, amount: model.budget.a },
-    { name: model.b.name, amount: model.budget.b },
-  ];
-  return (
-    <section aria-labelledby="budzet">
-      <h2 id="budzet" className={H2}>
-        Orientacyjny budżet
-      </h2>
-      <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line">
-        {items.map((item) => (
-          <div key={item.name} className="bg-surface-raised p-4 sm:p-5">
-            <dt className="text-sm font-semibold text-ink-muted">{item.name}</dt>
-            <dd className="mt-1 font-display text-3xl font-semibold tabular-nums text-ink">ok. {item.amount.toLocaleString("pl-PL", { useGrouping: "always" })} zł</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-3 max-w-[65ch] text-xs leading-6 text-ink-muted">
-        Szacunek ze wzoru HelpTravel dla 2 osób na 4 dni: lot z Polski, nocleg, jedzenie i transport lokalny. To nie jest cena oferty — aktualne stawki dla swoich dat zobaczysz w wyszukiwarce.
-      </p>
     </section>
   );
 }
@@ -265,7 +242,7 @@ function FinalCta({ sides, content }: { sides: [SideInfo, SideInfo]; content: Co
   );
 }
 
-/** Wspólna dolna część: liczby, pogoda, budżet, dane własne, FAQ, CTA, źródła, linki. */
+/** Wspólna dolna część: liczby, normy WMO, dane własne, FAQ, CTA, źródła i linki. */
 function LowerSections({ view, model, sides, liveStats, articleLinks, tape }: ComparisonTemplateProps & { tape: boolean }) {
   const Table = tape ? TapeTable : FactTable;
   return (
@@ -278,10 +255,16 @@ function LowerSections({ view, model, sides, liveStats, articleLinks, tape }: Co
         </h2>
         <div className="mt-4">
           <Table caption={`${view.nameA} i ${view.nameB} w liczbach`} nameA={view.nameA} nameB={view.nameB} rows={numericRows(model)} note={model.scoreNote} />
+          {model.climate.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              {model.climate.map((entry) => (
+                <ClimateSourceLine key={entry.side.profile.slug} source={entry.source} />
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
       <WhenToGo model={model} />
-      <Budget model={model} />
       <LiveStats liveStats={liveStats} sides={sides} />
       <Faq model={model} />
       <FinalCta sides={sides} content={view.content} />

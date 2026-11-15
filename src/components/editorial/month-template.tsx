@@ -2,7 +2,7 @@
 //
 // Ten sam język co porównanie: jedna szpalta, odpowiedź pod nagłówkiem, linie
 // zamiast kart. Wszystkie liczby pochodzą z modelu (lib/seo/month-page-model.ts),
-// czyli z bramki faktów — strona bez danych kuratorowanych nie pokazuje pogody
+// czyli z bramki faktów — strona bez normy WMO nie pokazuje pogody
 // wcale i mówi o tym wprost, zamiast wypełniać miejsce szablonem regionu.
 
 import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
@@ -10,9 +10,11 @@ import Link from "next/link";
 import { Check, X } from "lucide-react";
 
 import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
+import { ClimateSourceLine } from "@/components/editorial/climate-source-line";
 import { AuthorByline } from "@/components/publisher/author-byline";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { EDITOR_IN_CHIEF } from "@/lib/mvp/authors";
+import { formatClimateNumber } from "@/lib/mvp/climate-normals";
 import { inMonthPhrase, polishMonthLabels, polishMonthSlugs, type PolishMonthSlug } from "@/lib/mvp/months";
 import type { MonthPageModel } from "@/lib/seo/month-page-model";
 
@@ -36,7 +38,7 @@ function capitalize(text: string): string {
 }
 
 export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparisonLinks }: MonthTemplateProps) {
-  const { facts, weather, budgetEstimate, month, slug } = model;
+  const { facts, weather, context, month, slug } = model;
   const inMonth = inMonthPhrase(month);
   const monthLabel = polishMonthLabels[month];
   const index = polishMonthSlugs.indexOf(month);
@@ -45,7 +47,7 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
   const monthHref = (value: PolishMonthSlug) => `/kierunki/${slug}/${value}`;
 
   const answer = weather
-    ? `${facts.name} ${inMonth} to średnio ${weather.tempC}°C — ${weather.description}. ${weather.verdict}`
+    ? model.text.lead
     : `Dla tego kierunku nie mamy jeszcze zweryfikowanych danych klimatycznych, więc nie podajemy temperatur. Możesz od razu sprawdzić hotele i loty na ${polishMonthLabels[month]}.`;
 
   return (
@@ -63,6 +65,7 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
           />
           <h1 className="text-balance font-display text-hero font-semibold text-ink">{model.text.h1}</h1>
           <p className="text-pretty border-t border-ink/80 pt-4 text-lg leading-8 text-ink">{answer}</p>
+          {weather ? <ClimateSourceLine source={weather.source} /> : null}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <SeoCtaLink
               href={hotelHref}
@@ -126,7 +129,7 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
           </section>
         ) : null}
 
-        {weather || model.flightText || budgetEstimate ? (
+        {weather || model.flightText ? (
           <section aria-labelledby="w-liczbach">
             <h2 id="w-liczbach" className={H2}>
               {facts.name} {inMonth} w liczbach
@@ -135,35 +138,91 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
               {weather ? (
                 <>
                   <div className={ROW}>
-                    <dt className="text-sm font-semibold text-ink-muted">Średnia temperatura</dt>
+                    <dt className="text-sm font-semibold text-ink-muted">Średnia maksymalna w dzień</dt>
                     <dd className="text-base leading-7 text-ink">
-                      <span className="font-semibold tabular-nums">{weather.tempC}°C</span>
-                      <span className="block text-sm text-ink-muted">Średnia wieloletnia z danych redakcyjnych, nie prognoza.</span>
+                      <span className="font-semibold tabular-nums">{formatClimateNumber(weather.maxTempC)}°C</span>
+                      <span className="block text-sm text-ink-muted">Norma wieloletnia, nie prognoza.</span>
                     </dd>
                   </div>
                   <div className={ROW}>
-                    <dt className="text-sm font-semibold text-ink-muted">Na tle roku</dt>
+                    <dt className="text-sm font-semibold text-ink-muted">Średnia minimalna w nocy</dt>
                     <dd className="text-base leading-7 text-ink">
-                      Zakres w roku: {weather.yearMin}–{weather.yearMax}°C. Najcieplej{" "}
-                      <Link href={monthHref(weather.warmestMonth)} className="font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand">
-                        <span className="text-brand">{inMonthPhrase(weather.warmestMonth)}</span>
-                      </Link>
-                      , najchłodniej{" "}
-                      <Link href={monthHref(weather.coldestMonth)} className="font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand">
-                        <span className="text-brand">{inMonthPhrase(weather.coldestMonth)}</span>
-                      </Link>
-                      .
+                      <span className="font-semibold tabular-nums">{formatClimateNumber(weather.minTempC)}°C</span>
                     </dd>
                   </div>
-                  {weather.seaTempEstimate !== null ? (
+                  {weather.rainDays !== null ? (
                     <div className={ROW}>
-                      <dt className="text-sm font-semibold text-ink-muted">Morze</dt>
+                      <dt className="text-sm font-semibold text-ink-muted">Dni z opadem</dt>
                       <dd className="text-base leading-7 text-ink">
-                        <span className="font-semibold tabular-nums">ok. {weather.seaTempEstimate}°C</span>
-                        <span className="block text-sm text-ink-muted">Szacunek liczony z temperatur powietrza, nie pomiar.</span>
+                        <span className="font-semibold tabular-nums">{formatClimateNumber(weather.rainDays)} dnia</span>
                       </dd>
                     </div>
                   ) : null}
+                  <div className={ROW}>
+                    <dt className="text-sm font-semibold text-ink-muted">Suma opadu</dt>
+                    <dd className="text-base leading-7 text-ink">
+                      <span className="font-semibold tabular-nums">{formatClimateNumber(weather.rainfallMm)} mm</span>
+                    </dd>
+                  </div>
+                  <div className={ROW}>
+                    <dt className="text-sm font-semibold text-ink-muted">Miejsce miesiąca w roku</dt>
+                    <dd className="text-base leading-7 text-ink">
+                      <span className="font-semibold">
+                        {weather.rankInYear === 1
+                          ? "Najcieplejszy miesiąc roku"
+                          : weather.rankInYear === 12
+                            ? "Najchłodniejszy miesiąc roku"
+                            : `${weather.rankInYear}. najcieplejszy miesiąc z 12`}
+                        {weather.rankShared ? " (ex aequo)" : ""}
+                      </span>
+                      <span className="block text-sm text-ink-muted">
+                        Według średnich maksimów; roczny zakres {formatClimateNumber(weather.yearMinMaxTempC)}–{formatClimateNumber(weather.yearMaxMaxTempC)}°C.
+                      </span>
+                    </dd>
+                  </div>
+                  {context?.dayLength ? (
+                    <div className={ROW}>
+                      <dt className="text-sm font-semibold text-ink-muted">Długość dnia</dt>
+                      <dd className="text-base leading-7 text-ink">
+                        <span className="font-semibold tabular-nums">{context.dayLength}</span>
+                        <span className="block text-sm text-ink-muted">Od wschodu do zachodu słońca w połowie miesiąca; obliczone z szerokości geograficznej stacji.</span>
+                      </dd>
+                    </div>
+                  ) : null}
+                  {context?.home ? (
+                    <div className={ROW}>
+                      <dt className="text-sm font-semibold text-ink-muted">Na tle Warszawy</dt>
+                      <dd className="text-base leading-7 text-ink">
+                        <span className="font-semibold tabular-nums">
+                          {context.home.maxDiffC > 0 ? "+" : context.home.maxDiffC < 0 ? "−" : ""}
+                          {formatClimateNumber(Math.abs(context.home.maxDiffC))}°C w dzień
+                        </span>
+                        <span className="block text-sm text-ink-muted">
+                          Warszawa {inMonth}: {formatClimateNumber(context.home.homeMaxC)}°C.
+                          {context.home.rainDaysDiff !== null && Math.abs(context.home.rainDaysDiff) >= 1
+                            ? ` Dni z opadem: o ${formatClimateNumber(Math.abs(context.home.rainDaysDiff))} ${context.home.rainDaysDiff < 0 ? "mniej" : "więcej"}.`
+                            : ""}
+                        </span>
+                      </dd>
+                    </div>
+                  ) : null}
+                  {context ? (
+                    <div className={ROW}>
+                      <dt className="text-sm font-semibold text-ink-muted">Na tle innych kierunków</dt>
+                      <dd className="text-base leading-7 text-ink">
+                        {context.standing.warmerCount === 0
+                          ? `Najcieplejszy ${inMonth} spośród ${context.standing.total} kierunków, dla których mamy normy.`
+                          : `${capitalize(inMonth)} cieplej jest w ${context.standing.warmerCount} z ${context.standing.total} kierunków, dla których mamy normy.`}
+                      </dd>
+                    </div>
+                  ) : null}
+                  <div className={ROW}>
+                    <dt className="text-sm font-semibold text-ink-muted">Najcieplej i najchłodniej</dt>
+                    <dd className="text-base leading-7 text-ink">
+                      Najcieplej: {weather.warmestMonths.map((value) => polishMonthLabels[value]).join(", ")} ({formatClimateNumber(weather.yearMaxMaxTempC)}°C). Najchłodniej:{" "}
+                      {weather.coldestMonths.map((value) => polishMonthLabels[value]).join(", ")} ({formatClimateNumber(weather.yearMinMaxTempC)}°C).
+                    </dd>
+                  </div>
                 </>
               ) : null}
               {model.flightText ? (
@@ -172,28 +231,36 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
                   <dd className="text-base leading-7 text-ink">{capitalize(model.flightText)}</dd>
                 </div>
               ) : null}
-              {budgetEstimate ? (
-                <div className={ROW}>
-                  <dt className="text-sm font-semibold text-ink-muted">Orientacyjny budżet</dt>
-                  <dd className="text-base leading-7 text-ink">
-                    <span className="font-semibold tabular-nums">
-                      {budgetEstimate.min.toLocaleString("pl-PL", { useGrouping: "always" })}–{budgetEstimate.max.toLocaleString("pl-PL", { useGrouping: "always" })} zł
-                    </span>
-                    <span className="block text-sm text-ink-muted">
-                      Szacunek ze wzoru dla 2 osób na 4 dni (lot, nocleg, jedzenie, transport). To nie jest cena oferty.
-                    </span>
-                  </dd>
-                </div>
-              ) : null}
             </dl>
+            {weather ? <ClimateSourceLine source={weather.source} className="mt-3 text-xs leading-6 text-ink-muted" /> : null}
+            <p className="mt-3 text-sm leading-6 text-ink-muted">Aktualne ceny hoteli dla wybranego terminu pokazuje wyszukiwarka powyżej.</p>
+          </section>
+        ) : null}
+
+        {context && context.warmer.length > 0 ? (
+          <section aria-labelledby="gdzie-cieplej">
+            <h2 id="gdzie-cieplej" className={H2}>
+              Gdzie {inMonth} jest cieplej
+            </h2>
+            <p className="mt-3 max-w-[65ch] text-base leading-7 text-ink-muted">
+              Kierunki z najbliższą wyższą średnią temperaturą maksymalną w tym samym miesiącu. W nawiasie: o ile cieplej niż tutaj.
+            </p>
+            <div className="mt-4">
+              <LinkPills
+                links={context.warmer.map((item) => ({
+                  href: `/kierunki/${item.slug}/${month}`,
+                  label: `${item.name}: ${formatClimateNumber(item.maxTempC)}°C (+${formatClimateNumber(item.diffC)}°C)`,
+                }))}
+              />
+            </div>
           </section>
         ) : null}
 
         <section aria-labelledby="miesiace">
           <h2 id="miesiace" className={H2}>
-            {weather ? `${facts.name}: temperatury w ciągu roku` : `${facts.name} miesiąc po miesiącu`}
+            {weather ? `${facts.name}: średnie maksymalne w ciągu roku` : `${facts.name} miesiąc po miesiącu`}
           </h2>
-          {weather ? <p className="mt-3 text-sm leading-6 text-ink-muted">Średnie wieloletnie w °C. Wybierz miesiąc, żeby zobaczyć jego stronę.</p> : null}
+          {weather ? <p className="mt-3 text-sm leading-6 text-ink-muted">Średnie maksymalne temperatury w dzień, norma wieloletnia w °C. Wybierz miesiąc, żeby zobaczyć szczegóły.</p> : null}
           <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {polishMonthSlugs.map((value, monthIndex) => {
               const current = value === month;
@@ -207,12 +274,13 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
                     }`}
                   >
                     <span className="text-sm capitalize text-ink">{polishMonthLabels[value]}</span>
-                    {weather ? <span className="text-sm font-semibold tabular-nums text-ink">{weather.yearTemps[monthIndex]}°C</span> : null}
+                    {weather ? <span className="text-sm font-semibold tabular-nums text-ink">{formatClimateNumber(weather.yearMaxTemps[monthIndex])}°C</span> : null}
                   </Link>
                 </li>
               );
             })}
           </ul>
+          {weather ? <ClimateSourceLine source={weather.source} className="mt-3 text-xs leading-6 text-ink-muted" /> : null}
         </section>
 
         <section aria-labelledby="o-kierunku">

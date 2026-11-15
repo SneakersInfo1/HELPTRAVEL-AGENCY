@@ -59,6 +59,14 @@ const SEO_RENDERERS = [
   "src/lib/seo/page-titles.ts",
 ].map((file) => path.join(ROOT, file));
 
+const WEATHER_AND_COST_MODELS = [
+  "src/lib/seo/destination-facts.ts",
+  "src/lib/seo/month-page-model.ts",
+  "src/lib/seo/month-page-schema.ts",
+  "src/lib/seo/guide-page-model.ts",
+  "src/lib/seo/comparison-model.ts",
+].map((file) => path.join(ROOT, file));
+
 describe("strażnicy integralności danych SEO", () => {
   it("bez daty publikacji wpisanej na sztywno", () => {
     assert.deepEqual(hits(/datePublished:\s*["'`]20\d\d-/), []);
@@ -101,6 +109,13 @@ describe("strażnicy integralności danych SEO", () => {
 
   it("renderery SEO nie czytają temperatury ani czasu lotu z profilu z pominięciem bramki", () => {
     assert.deepEqual(hits(/avgTempByMonth|typicalFlightHoursFromPL/, SEO_RENDERERS), []);
+  });
+
+  it("modele SEO nie przywracają temperatury morza ani kwot liczonych ze wzoru", () => {
+    assert.deepEqual(
+      hits(/estimateSeaTemperature|seaTemp|budgetEstimate|canShowBudgetEstimate|estimateBudget/, WEATHER_AND_COST_MODELS),
+      [],
+    );
   });
 
   // Metodologia na /redakcja obiecywała „realne dane dostawców i wieloletnie średnie

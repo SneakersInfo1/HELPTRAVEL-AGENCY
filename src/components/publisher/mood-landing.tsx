@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Check, Plus } from "lucide-react";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
+import { ClimateSourceLine } from "@/components/editorial/climate-source-line";
 import { MoodDestinationCard } from "@/components/publisher/mood-destination-card";
 import { iataForCity } from "@/lib/flights/airports";
 import { getDestinationByCityCountry } from "@/lib/mvp/destinations-seed";
@@ -268,9 +269,8 @@ export async function MoodLanding({ slug }: { slug: string }) {
           {mood.label}: kierunki w liczbach
         </h2>
         <p className="mt-3 max-w-[65ch] text-sm leading-6 text-ink-muted">
-          Czas lotu z Polski i miesiące ze średnią temperaturą 18–30°C według danych redakcyjnych HelpTravel (średnie
-          wieloletnie, nie prognoza). Szacunek lotu liczony z odległości jest oznaczony. Gdzie nie mamy sprawdzonych danych,
-          piszemy to wprost.
+          Czas lotu z Polski i miesiące ze średnią maksymalną temperaturą w dzień 18–30°C. Dane pogodowe pochodzą z norm
+          WMO WWIS i nie są prognozą. Szacunek lotu liczony z odległości jest oznaczony; brak danych pokazujemy wprost.
         </p>
         <dl className="mt-4 divide-y divide-line border-y border-line">
           {factRows.map((row) => (
@@ -289,8 +289,9 @@ export async function MoodLanding({ slug }: { slug: string }) {
                 {row.flight ?? "brak sprawdzonych danych"}
               </dd>
               <dd className="text-sm leading-6 text-ink">
-                <span className="text-ink-muted">18–30°C: </span>
-                {row.comfortableMonths ?? "brak sprawdzonych danych"}
+                <span className="text-ink-muted">Średnia maks. 18–30°C: </span>
+                {row.daytimeMaxMonths ?? "brak sprawdzonych danych"}
+                {row.climateSource ? <ClimateSourceLine source={row.climateSource} className="mt-2 text-xs leading-5 text-ink-muted" /> : null}
               </dd>
             </div>
           ))}

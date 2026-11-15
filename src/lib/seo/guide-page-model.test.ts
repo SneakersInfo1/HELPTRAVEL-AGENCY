@@ -9,6 +9,7 @@ import {
   getLocalizedDestinationGuide,
 } from "@/lib/mvp/destination-localization";
 import { curatedDestinations, getAllDestinationProfiles } from "@/lib/mvp/destinations";
+import { getClimateNormal } from "@/lib/mvp/climate-normals";
 import {
   getCategoriesForDestination,
   getDestinationGuideBySlug,
@@ -100,20 +101,29 @@ describe("model przewodnika po kierunku", () => {
     }
   });
 
-  it("temperatura spoza danych kuratorowanych: bez °C w JSON-LD i bez najlepszych miesięcy (test B)", () => {
+  it("klimat wyłącznie z norm WMO; brak normy oznacza brak liczb i miesięcy", () => {
     for (const profile of profiles) {
-      if (curatedSlugs.has(profile.slug)) continue;
       const { model, localizedGuide } = build(profile.slug);
-      assert.doesNotMatch(JSON.stringify(model.structuredData), /°C/, profile.slug);
-      assert.deepEqual(model.bestMonths, [], profile.slug);
-      assert.equal(localizedGuide.bestTime, "", profile.slug);
+      const normal = getClimateNormal(profile.slug);
+      if (normal) {
+        assert.ok(model.climate, profile.slug);
+        assert.equal(model.climate.lowestDaytimeMaxC, Math.min(...normal.maxTempC), profile.slug);
+        assert.equal(model.climate.highestDaytimeMaxC, Math.max(...normal.maxTempC), profile.slug);
+        assert.equal(model.climate.source.url, normal.sourceUrl, profile.slug);
+        assert.match(JSON.stringify(model.structuredData), /worldweather\.wmo\.int/, profile.slug);
+      } else {
+        assert.equal(model.climate, null, profile.slug);
+        assert.doesNotMatch(JSON.stringify(model.structuredData), /°C|worldweather\.wmo\.int/, profile.slug);
+        if (!curatedSlugs.has(profile.slug)) assert.equal(localizedGuide.bestTime, "", profile.slug);
+      }
     }
   });
 
-  it("budżet ze wzoru tylko z danymi kuratorowanymi", () => {
+  it("nie zawiera kwoty budżetu liczonej ze wzoru", () => {
     for (const profile of profiles) {
       const { model } = build(profile.slug);
-      assert.equal(model.budgetEstimate !== null, curatedSlugs.has(profile.slug), profile.slug);
+      assert.equal(Object.hasOwn(model, "budgetEstimate"), false, profile.slug);
+      assert.doesNotMatch(JSON.stringify(model), /\d(?:[\d\s.,]*\d)?\s*(?:zł|PLN)/i, profile.slug);
     }
   });
 

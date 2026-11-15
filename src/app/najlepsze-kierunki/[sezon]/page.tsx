@@ -5,6 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
+import { ClimateSourceLine } from "@/components/editorial/climate-source-line";
+import { formatClimateNumber } from "@/lib/mvp/climate-normals";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import {
   inMonthPhrase,
@@ -38,7 +40,7 @@ function isSeason(value: string): value is Season {
   return (seasonSlugs as readonly string[]).includes(value);
 }
 
-function avgSeasonalTemp(temps: readonly number[], months: number[]) {
+function avgSeasonalDaytimeMax(temps: readonly number[], months: number[]) {
   return months.reduce((sum, m) => sum + temps[m], 0) / months.length;
 }
 
@@ -47,10 +49,8 @@ type RankingCandidate = {
   facts: DestinationSeoFacts & { temperature: TemperatureFact };
 };
 
-// Ranking liczony wyłącznie z temperatur kuratorowanych. 212 z 235 kierunków ma
-// jedną tablicę temperatur na cały region, a ranking z niej stawiał Gdańsk,
-// Warszawę i Kraków na miejscach 5–7 „na lato" (audyt Faza 2.2). Kierunki
-// w Polsce nie są ucieczką „z Polski", więc też poza rankingiem.
+// Ranking korzysta wyłącznie z oficjalnych norm WMO WWIS. Kierunki bez normy
+// oraz kierunki w Polsce nie trafiają do rankingu.
 function rankingCandidates(): RankingCandidate[] {
   return getAllDestinationProfiles()
     .map((destination) => ({ destination, facts: getDestinationSeoFacts(destination) }))
@@ -76,12 +76,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!isSeason(sezon)) return { title: "Najlepsze kierunki" };
   return completeSocial({
     title: seasonPageHeading(sezon),
-    description: `Ranking kierunków na ${seasonInflected[sezon]} — pogoda, koszty i charakter wyjazdu. Praktyczna lista pod decyzję city break i krótki urlop z Polski.`,
+    description: `Ranking kierunków na ${seasonInflected[sezon]} z normami WMO: średnie maksymalne temperatury w dzień, dolot i charakter wyjazdu.`,
     alternates: { canonical: `/najlepsze-kierunki/${sezon}` },
     openGraph: {
       title: seasonPageHeading(sezon),
       // Do 2026-09: „oparty o realne dane pogodowe i kosztowe" — przy temperaturach z szablonu regionu.
-      description: `Ranking kierunków na ${seasonInflected[sezon]}: ręcznie opracowane średnie temperatur, dostępność lotów z Polski i indeks kosztów.`,
+      description: `Ranking kierunków na ${seasonInflected[sezon]}: normy WMO, dostępność lotów z Polski i redakcyjny indeks kosztów.`,
       url: `${getSiteUrl()}/najlepsze-kierunki/${sezon}`,
       type: "article",
     },
@@ -95,7 +95,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
   const months = seasonMonthIndexes[sezon];
   const ranked = rankingCandidates()
     .map(({ destination, facts }) => {
-      const temp = avgSeasonalTemp(facts.temperature.byMonth, months);
+      const temp = avgSeasonalDaytimeMax(facts.temperature.byMonth, months);
       // Score: temperatura w komfortowym przedziale 18-28 + access + value
       const tempScore =
         temp >= 22 && temp <= 28
@@ -110,7 +110,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       const accessScore = destination.accessScore ?? 0.7;
       const valueScore = 1 / Math.max(0.6, destination.costIndex);
       const composite = tempScore * 0.6 + accessScore * 0.25 + valueScore * 0.15;
-      return { destination, facts, temp: Math.round(temp), composite };
+      return { destination, facts, temp, composite };
     })
     .sort((a, b) => b.composite - a.composite)
     .slice(0, 12);
@@ -212,7 +212,9 @@ export default async function SeasonRankingPage({ params }: PageProps) {
                   </h2>
                 </div>
                 <div className="flex gap-3 text-sm text-ink-muted">
-                  <span className="rounded-full bg-surface-sunken px-3 py-1.5">{entry.temp}°C średnio</span>
+                  <span className="rounded-full bg-surface-sunken px-3 py-1.5">
+                    {formatClimateNumber(entry.temp)}°C — średnia maksimów w dzień
+                  </span>
                   {flightHours !== null && (
                     <span className="rounded-full bg-surface-sunken px-3 py-1.5">Lot ~{flightHours}h</span>
                   )}
@@ -228,12 +230,13 @@ export default async function SeasonRankingPage({ params }: PageProps) {
                       className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface-sunken px-3 py-1 transition duration-150 ease-out hover:bg-brand-soft active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                     >
                       <span className="text-xs font-semibold text-ink">
-                        {entry.facts.name} {inMonthPhrase(monthSlug)} ({entry.facts.temperature.byMonth[monthIdx]}°C)
+                        {entry.facts.name} {inMonthPhrase(monthSlug)} (maks. w dzień {formatClimateNumber(entry.facts.temperature.byMonth[monthIdx])}°C)
                       </span>
                     </Link>
                   );
                 })}
               </div>
+              <ClimateSourceLine source={entry.facts.temperature.source} className="mt-3 text-xs leading-6 text-ink-muted" />
             </article>
           );
         })}
@@ -242,9 +245,9 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <h2 className="font-display text-3xl text-ink">Jak czytać ten ranking</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
-          Pozycja w rankingu liczy się z trzech rzeczy: średnia temperatura w sezonie (komfort 22-28°C dostaje najwięcej punktów),
-          dostępność lotów z Polski oraz indeks kosztów. Ranking obejmuje wyłącznie kierunki z ręcznie opracowanymi średnimi
-          temperatur — bez nich pozycja byłaby zgadywaniem. Finalną decyzję warto sprawdzić w wyszukiwarce hoteli i lotów —
+          Pozycja w rankingu liczy się z trzech rzeczy: średnia z miesięcznych temperatur maksymalnych w dzień (przedział 22–28°C dostaje najwięcej punktów),
+          dostępność lotów z Polski oraz indeks kosztów. Ranking obejmuje wyłącznie kierunki z oficjalnymi normami WMO WWIS —
+          bez nich pozycja byłaby zgadywaniem. Finalną decyzję warto sprawdzić w wyszukiwarce hoteli i lotów —
           uwzględnia ona długość wyjazdu, budżet i preferencje stylu.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">

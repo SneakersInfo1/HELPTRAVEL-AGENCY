@@ -4,7 +4,7 @@ import type { DestinationGuideContent, EditorialFaq } from "./publisher-content"
 import type { DestinationProfile } from "./types";
 
 import {
-  canShowBudgetEstimate,
+  canClaimFromCostIndex,
   destinationDisplayName,
   ENTRY_REQUIREMENTS_NOTE,
   flightHoursForTripLength,
@@ -77,8 +77,8 @@ function sanitizeDistricts(districts: string[]) {
   });
 }
 
-function comfortableMonths(destination: DestinationProfile) {
-  return destination.avgTempByMonth
+function daytimeMaxMonths(destination: DestinationProfile) {
+  return (getDestinationSeoFacts(destination).temperature?.byMonth ?? [])
     .map((temp, index) => ({ temp, index: index + 1 }))
     .filter((item) => item.temp >= 18 && item.temp <= 30)
     .slice(0, 4)
@@ -171,12 +171,12 @@ function englishWhyGo(guide: DestinationGuideContent, story: DestinationStory) {
 }
 
 function englishBestTime(destination: DestinationProfile) {
-  const months = comfortableMonths(destination).map((month) => formatDestinationMonth(month, "en"));
+  const months = daytimeMaxMonths(destination).map((month) => formatDestinationMonth(month, "en"));
   if (months.length === 0) {
-    return "This destination is better treated as flexible across the year, with the final choice depending more on the exact brief than on one perfect month.";
+    return "No month in the WMO normal has an average daytime maximum in the 18–30°C range.";
   }
 
-  return `The most comfortable window usually lands around ${months.join(", ")}, when weather, walkability and the overall trip rhythm tend to work best together.`;
+  return `The average daytime maximum is in the 18–30°C range in ${months.join(", ")}. This is a climate normal, not a forecast.`;
 }
 
 function englishBudget(destination: DestinationProfile) {
@@ -312,7 +312,7 @@ export function buildLocalizedAvoidNotes(guide: DestinationGuideContent, locale:
     );
   }
   // Indeks kosztów profilu z szablonu to stała kraju albo regionu (deriveCostIndex).
-  if (guide.destination.costIndex > 1.3 && canShowBudgetEstimate(facts)) {
+  if (guide.destination.costIndex > 1.3 && canClaimFromCostIndex(facts)) {
     notes.push(
       locale === "en"
         ? "Harder to defend when the budget is extremely tight and cheaper alternatives can deliver a similar climate or trip style."
@@ -376,13 +376,13 @@ export function buildLocalizedComparisonSignals(
   locale: SiteLocale,
 ) {
   const currentName = locale === "en" ? current.city : destinationDisplayName(current);
-  const currentCostKnown = canShowBudgetEstimate(getDestinationSeoFacts(current));
+  const currentCostKnown = canClaimFromCostIndex(getDestinationSeoFacts(current));
 
   return alternatives.slice(0, 3).map((destination) => {
     const name = locale === "en" ? destination.city : destinationDisplayName(destination);
     // Kąt cenowy tylko przy kosztach spoza szablonu regionu po obu stronach: dla dwóch kierunków
     // z tego samego kraju „podobny pułap cenowy" to po prostu ta sama stała z deriveCostIndex.
-    const costKnown = currentCostKnown && canShowBudgetEstimate(getDestinationSeoFacts(destination));
+    const costKnown = currentCostKnown && canClaimFromCostIndex(getDestinationSeoFacts(destination));
     const priceAngle = !costKnown
       ? null
       : locale === "en"
@@ -428,7 +428,7 @@ export function buildLocalizedWinningScenarios(guide: DestinationGuideContent, l
   const facts = getDestinationSeoFacts(destination);
   // `accessScore` i `costIndex` profilu z szablonu to przeliczone stałe regionu — bez scenariuszy na nich opartych.
   const exactFlight = facts.flight?.kind === "exact";
-  const costKnown = canShowBudgetEstimate(facts);
+  const costKnown = canClaimFromCostIndex(facts);
 
   if (locale === "en") {
     return [

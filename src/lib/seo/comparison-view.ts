@@ -3,7 +3,7 @@
 // wszystkich par naraz.
 //
 // Dwa źródła treści:
-//  • model liczbowy (comparison-model.ts) — tabela, FAQ, pogoda, budżet;
+//  • model liczbowy (comparison-model.ts) — tabela, FAQ i normy WMO;
 //    liczby wyłącznie z bramki faktów;
 //  • rozszerzenie redakcyjne (content/seo) — werdykt, sekcje i tabela faktów
 //    z twierdzeniami sprawdzonymi w źródłach. Gdy go nie ma, strona nie udaje,
@@ -60,7 +60,7 @@ export interface ComparisonViewInput {
   /** Wszystkie pary z etykietami — do linków powiązanych. */
   allPairs: ReadonlyArray<{ slug: string; a: string; b: string; label: string }>;
   baseUrl: string;
-  coverage: { climate: boolean; budget: boolean };
+  coverage: { climate: boolean };
 }
 
 const TITLE_LIMIT = 60;
@@ -85,17 +85,10 @@ function intentWithoutNames(intent: string, nameA: string, nameB: string): strin
 }
 
 /** Tytuł i opis dla pary bez rozszerzenia: obiecują tylko sekcje, które strona pokaże. */
-export function defaultComparisonMeta(nameA: string, nameB: string, intent: string, coverage: { climate: boolean; budget: boolean }) {
+export function defaultComparisonMeta(nameA: string, nameB: string, intent: string, coverage: { climate: boolean }) {
   const question = `${nameA} czy ${nameB}?`;
-  const topics =
-    coverage.climate && coverage.budget
-      ? "pogoda, budżet, dolot"
-      : coverage.climate
-        ? "pogoda, plaże, dolot"
-        : coverage.budget
-          ? "budżet, plaże, dolot"
-          : "plaże, zwiedzanie, dolot";
-  const details = [coverage.climate ? "temperatury" : null, coverage.budget ? "budżet na 4 dni" : null, "dolot z Polski"]
+  const topics = coverage.climate ? "pogoda, plaże, dolot" : "plaże, zwiedzanie, dolot";
+  const details = [coverage.climate ? "temperatury" : null, "dolot z Polski"]
     .filter((item): item is string => item !== null)
     .join(", ")
     .replace(/, ([^,]*)$/, " i $1");
@@ -179,12 +172,19 @@ export function buildComparisonView(input: ComparisonViewInput): ComparisonView 
 
   const baseGraph = (model.structuredData["@graph"] as Array<Record<string, unknown>>).map((node) => {
     if (node["@type"] === "Article") {
+      const modelCitations = Array.isArray(node.citation)
+        ? node.citation.filter((value): value is string => typeof value === "string")
+        : typeof node.citation === "string"
+          ? [node.citation]
+          : [];
+      const citations = [...new Set([...modelCitations, ...(enrichment?.sources.map((source) => source.url) ?? [])])];
       return {
         ...node,
         headline: enrichment?.title ?? `${nameA} czy ${nameB}? Porównanie kierunków`,
         description: enrichment?.description ?? fallbackMeta.description,
         // Data tylko wtedy, gdy ma źródło prawdy: materialna zmiana treści redakcyjnej.
-        ...(enrichment ? { dateModified: enrichment.materiallyModifiedAt, citation: enrichment.sources.map((source) => source.url) } : {}),
+        ...(enrichment ? { dateModified: enrichment.materiallyModifiedAt } : {}),
+        ...(citations.length > 0 ? { citation: citations } : {}),
       };
     }
     if (node["@type"] === "BreadcrumbList") {
