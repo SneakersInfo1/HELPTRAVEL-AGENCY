@@ -131,9 +131,15 @@ function rozbijSciezke(raw: string): { pathname: string; osieroconeQuery: string
  * identyczne pary `klucz=wartość` są sklejane do jednej. Pary o tym samym
  * kluczu, ale RÓŻNEJ wartości zostają obie: to legalny URL, a zgadywanie,
  * która wartość jest „prawdziwa", byłoby cichym psuciem danych.
+ *
+ * Fragment (`#…`) odpada także tutaj, nie tylko w `rozbijSciezke`: link CTA
+ * podany jako `"/?tab=loty#destination=BCN…"` (lib/flights/prefill-link.ts)
+ * daje query `"tab=loty#destination=BCN…"`, a znak `#` nie może być częścią
+ * query poprawnego adresu (w wartości byłby zakodowany jako `%23`).
  */
 function normalizujQuery(raw: string): Array<[string, string]> {
-  const oczyszczony = raw.replace(/^[?&]+/, "").replace(/\?/g, "&");
+  const bezFragmentu = raw.split("#")[0] ?? "";
+  const oczyszczony = bezFragmentu.replace(/^[?&]+/, "").replace(/\?/g, "&");
   if (!oczyszczony) return [];
 
   const pary: Array<[string, string]> = [];

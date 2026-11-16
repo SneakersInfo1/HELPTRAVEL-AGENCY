@@ -26,6 +26,8 @@ export interface MonthTemplateProps {
   /** Opis kierunku z przewodnika. */
   overview: string;
   hotelHref: string;
+  /** Wyszukiwarka lotów z tym kierunkiem i terminem (lib/flights/prefill-link.ts). */
+  flightHref: string;
   /** Strona „hotele w mieście", jeśli istnieje dla tego kierunku. */
   cityHotels: { href: string; label: string } | null;
   comparisonLinks: Array<{ href: string; label: string }>;
@@ -38,7 +40,7 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparisonLinks }: MonthTemplateProps) {
+export function MonthTemplate({ model, overview, hotelHref, flightHref, cityHotels, comparisonLinks }: MonthTemplateProps) {
   const { facts, weather, context, month, slug } = model;
   const inMonth = inMonthPhrase(month);
   const monthLabel = polishMonthLabels[month];
@@ -79,7 +81,7 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
               <span className="text-sm font-bold text-white">Sprawdź hotele {inMonth}</span>
             </SeoCtaLink>
             <SeoCtaLink
-              href="/?tab=loty"
+              href={flightHref}
               typTresci="month_page"
               ctaType="flight_search"
               destinationSlug={slug}
@@ -90,7 +92,7 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
             </SeoCtaLink>
           </div>
           <p className="text-xs leading-5 text-ink-muted">
-            Wyszukiwarka hoteli otworzy się z tym kierunkiem i przykładowym terminem {inMonth}. Ceny i dostępność zobaczysz dopiero tam.
+            Hotele i loty otworzą się z tym kierunkiem i przykładowym terminem {inMonth}; przy lotach wybierzesz jeszcze lotnisko wylotu. Ceny i dostępność zobaczysz dopiero tam.
           </p>
           <AuthorByline author={EDITOR_IN_CHIEF} />
         </header>

@@ -64,14 +64,26 @@ function ReviewLine({ view }: { view: ComparisonView }) {
   );
 }
 
+// Link do lotów dla KAŻDEGO z dwóch kierunków — wyszukiwarka otwiera się
+// z wpisanym celem (lib/flights/prefill-link.ts). Do 17.11.2026 był jeden
+// link do pustego formularza, opisany slugiem pierwszego kierunku.
 function FlightsLine({ sides, content }: { sides: [SideInfo, SideInfo]; content: ComparisonView["content"] }) {
+  const link = (side: SideInfo) => (
+    <SeoCtaLink
+      href={side.flightHref}
+      typTresci="comparison"
+      ctaType="flight_search"
+      destinationSlug={side.slug}
+      content={content}
+      className="font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand"
+    >
+      <span className="text-brand">{side.name}</span>
+    </SeoCtaLink>
+  );
   return (
     <p className="text-sm leading-6 text-ink-muted">
-      Szukasz lotu?{" "}
-      <SeoCtaLink href="/?tab=loty" typTresci="comparison" ctaType="flight_search" destinationSlug={sides[0].slug} content={content} className="font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand">
-        <span className="text-brand">Otwórz wyszukiwarkę lotów</span>
-      </SeoCtaLink>{" "}
-      i wybierz lotnisko wylotu oraz termin.
+      Szukasz lotu? Wyszukiwarka lotów z wpisanym celem: {link(sides[0])} albo {link(sides[1])}. Lotnisko wylotu
+      i termin wybierzesz na miejscu.
     </p>
   );
 }

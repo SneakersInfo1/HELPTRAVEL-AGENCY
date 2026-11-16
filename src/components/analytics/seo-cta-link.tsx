@@ -66,7 +66,8 @@ export interface SeoCtaLinkProps {
  *
  * Adres bezwzględny (gdyby kiedyś się pojawił) traci host, a ścieżka i tak
  * przechodzi przez `analyticsPagePath`, więc obowiązują ją te same zasady
- * co ścieżce strony: jeden `?` i żadnych poświadczeń w parametrach.
+ * co ścieżce strony: jeden `?`, bez fragmentu (`#…`) i żadnych poświadczeń
+ * w parametrach.
  */
 function sciezkaCelu(href: string): string {
   try {

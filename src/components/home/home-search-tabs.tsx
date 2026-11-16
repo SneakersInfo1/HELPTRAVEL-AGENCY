@@ -19,6 +19,12 @@
 // DOSTĘPNOŚĆ: poprzednia wersja miała role="tab" bez obsługi klawiatury —
 // strzałki nic nie robiły, a każdy przycisk łapał Tab osobno. Teraz jest
 // roving tabindex + Strzałki/Home/End, zgodnie z wzorcem WAI-ARIA Tabs.
+//
+// WEJŚCIE ZE STRON TREŚCI (17.11.2026): „Szukaj lotów” na stronie miesiąca,
+// porównania czy przewodnika prowadzi na `/?tab=loty#destination=…` — cel
+// i termin we fragmencie (lib/flights/prefill-link.ts). Formularz dostaje je
+// jako wartości początkowe; wyszukiwania NIE uruchamiamy, bo lotnisko wylotu
+// wybiera użytkownik.
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Building2, Compass, Maximize2, Plane } from "lucide-react";
@@ -28,8 +34,20 @@ import {
   CONCIERGE_STATE_EVENT,
   requestConciergeOpen,
 } from "@/lib/concierge/open-event";
+import { parseFlightSearchPrefill, type FlightSearchPrefill } from "@/lib/flights/prefill-link";
+import { travelToday } from "@/lib/time/travel-now";
 import { cn } from "@/lib/ui/cn";
 import { MiniPlannerForm } from "./mini-planner-form";
+
+type MiniPlannerInitial = NonNullable<Parameters<typeof MiniPlannerForm>[0]["initial"]>;
+
+function initialFromPrefill(prefill: FlightSearchPrefill): MiniPlannerInitial {
+  const initial: MiniPlannerInitial = { destination: prefill.destination, destIata: prefill.destIata };
+  if (prefill.destinationCountry) initial.destinationCountry = prefill.destinationCountry;
+  if (prefill.startDate) initial.startDate = prefill.startDate;
+  if (prefill.endDate) initial.endDate = prefill.endDate;
+  return initial;
+}
 
 type Tab = "hotels" | "flights" | "assistant";
 
@@ -59,6 +77,8 @@ export function HomeSearchTabs() {
   // SSR i pierwszy render klienta = "hotels" (brak hydration mismatch).
   // ?tab= z URL doczytujemy po zamontowaniu.
   const [tab, setTab] = useState<Tab>("hotels");
+  // Cel i termin z linku ze strony treści (tylko zakładka lotów).
+  const [flightPrefill, setFlightPrefill] = useState<FlightSearchPrefill | null>(null);
   const tablistRef = useRef<HTMLDivElement>(null);
   const baseId = useId();
 
@@ -66,9 +86,13 @@ export function HomeSearchTabs() {
     const param = new URLSearchParams(window.location.search).get("tab");
     const match = TABS.find((t) => t.param && t.param === param);
     if (!match) return;
+    const prefill = match.key === "flights" ? parseFlightSearchPrefill(window.location.hash, travelToday()) : null;
     // Deferred (setTimeout 0) — uniknięcie kaskadowego renderu w efekcie
     // (react-hooks/set-state-in-effect), wzorzec użyty już w webview-hint.
-    const id = window.setTimeout(() => setTab(match.key), 0);
+    const id = window.setTimeout(() => {
+      setTab(match.key);
+      if (prefill) setFlightPrefill(prefill);
+    }, 0);
     return () => window.clearTimeout(id);
   }, []);
 
@@ -178,7 +202,14 @@ export function HomeSearchTabs() {
         {tab === "assistant" ? (
           <AssistantPanel />
         ) : (
-          <MiniPlannerForm compact mode={tab} />
+          // Formularz czyta wartości początkowe tylko przy montowaniu, więc
+          // po odczycie linku montujemy go raz jeszcze (zmiana `key`).
+          <MiniPlannerForm
+            key={flightPrefill ? "z-linku" : "pusty"}
+            compact
+            mode={tab}
+            initial={flightPrefill ? initialFromPrefill(flightPrefill) : undefined}
+          />
         )}
       </div>
     </div>

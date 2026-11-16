@@ -12,6 +12,7 @@ import { EditorialArticleCard } from "@/components/publisher/editorial-article-c
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
+import { flightSearchPrefillHref } from "@/lib/flights/prefill-link";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { categoryPath } from "@/lib/mvp/category-slug";
 import { formatClimateNumber } from "@/lib/mvp/climate-normals";
@@ -198,6 +199,13 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     adults: "2",
     rooms: "1",
   }).toString()}`;
+  // Wyszukiwarka lotów z wpisanym celem; termin i lotnisko wylotu wybiera
+  // czytelnik (przewodnik nie dotyczy konkretnego miesiąca).
+  const flightsHref = flightSearchPrefillHref({
+    destIata: guide.destination.airportCode,
+    city: guide.destination.city,
+    country: guide.destination.country,
+  });
   // If this destination has a dedicated commercial landing page
   // (/hotele/w/[miasto]), link to it — passes link equity from this guide
   // into the high-intent money page and gives the user a direct "hotele w X"
@@ -422,7 +430,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             </p>
           </SeoCtaLink>
           <SeoCtaLink
-            href="/?tab=loty"
+            href={flightsHref}
             localized
             typTresci="guide"
             ctaType="flight_search"

@@ -16,6 +16,8 @@ export interface SideInfo {
   name: string;
   slug: string;
   hotelHref: string;
+  /** Wyszukiwarka lotów z wpisanym celem (lib/flights/prefill-link.ts). */
+  flightHref: string;
   guideHref: string;
   image: string | null;
   /** Opis kierunku z przewodnika (publisher-content) — treść redakcyjna, bez liczb. */

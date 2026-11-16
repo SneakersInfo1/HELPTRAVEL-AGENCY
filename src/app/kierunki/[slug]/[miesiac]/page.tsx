@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { MonthTemplate } from "@/components/editorial/month-template";
+import { flightSearchPrefillHref } from "@/lib/flights/prefill-link";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
@@ -84,14 +85,23 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
 
   // Klucze wyszukiwarki pozostają po angielsku: oczekuje ona nazw z profilu.
   const checkin = monthCheckinIso(model.monthIndex);
+  const checkout = addDaysToIsoDate(checkin, 4);
   const hotelHref = `/hotele/szukaj?${new URLSearchParams({
     destination: guide.destination.city,
     country: guide.destination.country,
     checkin,
-    checkout: addDaysToIsoDate(checkin, 4),
+    checkout,
     adults: "2",
     rooms: "1",
   }).toString()}`;
+  // Wyszukiwarka lotów z tym samym kierunkiem i terminem co hotele.
+  const flightHref = flightSearchPrefillHref({
+    destIata: guide.destination.airportCode,
+    city: guide.destination.city,
+    country: guide.destination.country,
+    depart: checkin,
+    return: checkout,
+  });
 
   const commercialCity = findCommercialCityByDestinationId(model.slug);
   const comparisonLinks = getComparisonsForDestination(slug).flatMap((pair) => {
@@ -108,6 +118,7 @@ export default async function MonthlyDestinationPage({ params }: PageProps) {
       model={model}
       overview={guide.overview}
       hotelHref={hotelHref}
+      flightHref={flightHref}
       cityHotels={
         commercialCity
           ? { href: `/hotele/w/${commercialCity.slug}`, label: `Hotele ${commercialCity.preposition} ${commercialCity.cityLocative}` }

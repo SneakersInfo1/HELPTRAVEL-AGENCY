@@ -4,6 +4,7 @@
 import type { SideInfo } from "@/components/editorial/comparison-blocks";
 import type { ComparisonTemplateProps } from "@/components/editorial/comparison-template";
 import { getEnrichment } from "@/lib/content-engine/site-content";
+import { flightSearchPrefillHref } from "@/lib/flights/prefill-link";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { getComparisonPairBySlug, isTopComparison } from "@/lib/mvp/comparisons";
 import { getCityHotelStats } from "@/lib/mvp/live-hotel-stats";
@@ -18,6 +19,11 @@ import { pairsWithLabels } from "./comparison-view-data";
 
 function hotelHref(profile: DestinationProfile): string {
   return `/hotele/szukaj?${new URLSearchParams({ destination: profile.city, country: profile.country }).toString()}`;
+}
+
+/** Wyszukiwarka lotów z wpisanym celem; porównanie nie ma terminu, więc bez dat. */
+function flightHref(profile: DestinationProfile): string {
+  return flightSearchPrefillHref({ destIata: profile.airportCode, city: profile.city, country: profile.country });
 }
 
 /** Komplet danych szablonu (zdjęcia z istniejącej integracji, dane własne dla par flagowych). */
@@ -50,8 +56,8 @@ export async function loadComparisonPage(slug: string): Promise<Omit<ComparisonT
   });
 
   const sides: [SideInfo, SideInfo] = [
-    { name: model.a.name, slug: pair.a, hotelHref: hotelHref(ga.destination), guideHref: `/kierunki/${pair.a}`, image: mediaA.heroImage ?? null, overview: ga.overview },
-    { name: model.b.name, slug: pair.b, hotelHref: hotelHref(gb.destination), guideHref: `/kierunki/${pair.b}`, image: mediaB.heroImage ?? null, overview: gb.overview },
+    { name: model.a.name, slug: pair.a, hotelHref: hotelHref(ga.destination), flightHref: flightHref(ga.destination), guideHref: `/kierunki/${pair.a}`, image: mediaA.heroImage ?? null, overview: ga.overview },
+    { name: model.b.name, slug: pair.b, hotelHref: hotelHref(gb.destination), flightHref: flightHref(gb.destination), guideHref: `/kierunki/${pair.b}`, image: mediaB.heroImage ?? null, overview: gb.overview },
   ];
 
   const seen = new Set<string>();
