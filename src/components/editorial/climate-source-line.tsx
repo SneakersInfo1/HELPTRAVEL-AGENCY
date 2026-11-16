@@ -18,7 +18,7 @@ export function ClimateSourceLine({
       >
         <span className="text-brand">{source.name}</span>
       </a>
-      ; dane: {source.provider}, stacja {source.station}, {source.periodLabel}
+      ; dane: {source.provider}, {source.stationLabel} {source.station}, {source.periodLabel}
     </p>
   );
 }

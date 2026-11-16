@@ -46,7 +46,7 @@ export function buildCityHotelsFaq({ city, flightHours, bestMonths, climateSourc
       question: `Kiedy najlepiej jechać ${dirPrep} ${dirForm}?`,
       answer:
         bestMonths.length > 0 && climateSource
-          ? `W miesiącach ${bestMonths.slice(0, 6).join(", ")} średnia maksymalna temperatura w dzień mieści się w przedziale 18–30°C. To norma wieloletnia z ${climateSource.name}, nie prognoza.`
+          ? `Średnia maksymalna temperatura w dzień mieści się w przedziale 18–30°C w tych miesiącach: ${bestMonths.slice(0, 6).join(", ")}. To norma wieloletnia z ${climateSource.name}, nie prognoza.`
           : `Termin najlepiej dobrać do planu wyjazdu — sprawdź przewodnik po ${city.cityLocative} i dostępność hoteli w wybranych datach.`,
     },
     {

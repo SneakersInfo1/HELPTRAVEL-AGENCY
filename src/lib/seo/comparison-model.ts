@@ -1,3 +1,26 @@
+// Model strony /porownanie/[para] (SEO Data Integrity, PR #1.5; normy WMO, 11.2026).
+//
+// Porównania zestawiały liczby z profili kierunków. Dla 212 z 235 kierunków
+// temperatura, czas lotu i budżet ze wzoru były szablonem regionu, więc Kreta–Rodos
+// i Kreta–Majorka pokazywały po obu stronach identyczne wartości, a przy remisie
+// wyników szybka odpowiedź i FAQ i tak „wybierały zwycięzcę”.
+//
+// Model bierze liczby wyłącznie z bramki faktów (destination-facts.ts): wiersz
+// tabeli, zdanie FAQ albo sekcja pojawia się tylko wtedy, gdy obie strony mają
+// wartość dozwoloną kontraktem. Temperatury to normy WMO (średnie maksima
+// i minima), z widocznym źródłem. Kwot budżetu ze wzoru nie ma — stałe wzoru nie
+// miały żadnego źródła. Remis = brak zwycięzcy.
+//
+// W profilu z szablonu `costIndex`, `accessScore` i oceny profilu (`deriveScores`)
+// to przeliczone stałe kraju, regionu i list miast. „Taniej”, „łatwiejszy dolot”,
+// „mocniejszy profil plażowy” i „dla kogo” wymagają więc danych kuratorowanych
+// po obu stronach; bez nich strona nie wskazuje zwycięzcy.
+//
+// JĘZYK: nazwa kierunku stoi zawsze po dwukropku, bez orzeczenia, które musiałoby
+// się z nią zgadzać. „Lepszy jest Ateny”, „w kierunku Ateny” i „Ateny ma” to błędy
+// rodzaju, liczby albo przypadku, których nie da się uniknąć bez odmiany nazw
+// (Ateny — l.mn., Walencja — r.ż.), a odmiany nie ma w danych.
+
 import type { ComparisonPair } from "@/lib/mvp/comparisons";
 import { formatClimateNumber } from "@/lib/mvp/climate-normals";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
@@ -193,7 +216,7 @@ function buildFaq(a: ComparisonSide, b: ComparisonSide): Array<{ question: strin
     faq.push({
       question: `Gdzie jest wyższa średnia maksymalna w lipcu — ${a.name} czy ${b.name}?`,
       answer: july.higher
-        ? `Wyższa średnia maksymalna temperatura w dzień jest w kierunku ${july.higher}: ${formatClimateNumber(Math.max(july.aValue, july.bValue))}°C wobec ${formatClimateNumber(Math.min(july.aValue, july.bValue))}°C. Źródło: WMO World Weather Information Service.`
+        ? `Wyższą średnią maksymalną temperaturę w dzień ma w lipcu: ${july.higher} (${formatClimateNumber(Math.max(july.aValue, july.bValue))}°C wobec ${formatClimateNumber(Math.min(july.aValue, july.bValue))}°C). Źródło: WMO World Weather Information Service.`
         : `Oba kierunki mają w lipcu taką samą średnią maksymalną temperaturę w dzień: ${formatClimateNumber(july.aValue)}°C. Źródło: WMO World Weather Information Service.`,
     });
   }

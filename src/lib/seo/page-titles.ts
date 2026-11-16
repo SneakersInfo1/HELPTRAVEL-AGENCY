@@ -81,7 +81,8 @@ export function monthWeatherTitle(name: string, inMonth: string, maxTempC: numbe
   const candidates = [
     `${name} ${inMonth}: pogoda, w dzień ${value}°C`,
     `${name} ${inMonth}: w dzień ${value}°C`,
-    `${name}: pogoda ${value}°C`,
+    // Miesiąc zostaje zawsze: bez niego 12 stron kierunku miałoby ten sam tytuł.
+    `${name} ${inMonth}: ${value}°C`,
   ];
   return candidates.find((candidate) => candidate.length <= 60) ?? candidates[candidates.length - 1];
 }

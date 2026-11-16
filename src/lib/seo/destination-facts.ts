@@ -49,7 +49,9 @@ export interface TemperatureFact {
 export interface ClimateFactSource {
   name: "WMO World Weather Information Service";
   provider: string;
+  /** Nazwa stacji albo, gdy WWIS jej nie podaje, nazwa miasta w WWIS — z jawną etykietą. */
   station: string;
+  stationLabel: "stacja" | "punkt WWIS";
   periodLabel: string;
   url: string;
 }
@@ -169,7 +171,8 @@ export function getDestinationSeoFacts(profile: DestinationProfile): Destination
         source: {
           name: "WMO World Weather Information Service",
           provider: normal.provider,
-          station: normal.stationName,
+          station: normal.stationName ?? normal.wwisCity,
+          stationLabel: normal.stationName ? "stacja" : "punkt WWIS",
           periodLabel: formatClimatePeriod(normal.periodFrom, normal.periodTo),
           url: normal.sourceUrl,
         },

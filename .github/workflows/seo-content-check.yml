@@ -71,7 +71,17 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm build
+      - name: Build
+        shell: bash
+        run: |
+          # next/font pobiera fonty Google w czasie builda. Przejściowy błąd sieci daje
+          # w Turbopacku „next/font/google queries have exactly one entry” (15.11.2026
+          # w CI i raz na Vercelu). Jedna powtórka; drugi błąd jest już prawdziwy.
+          if ! pnpm build; then
+            echo "::warning::Build nie powiódł się — ponawiam raz (możliwy przejściowy błąd pobierania fontów Google)."
+            sleep 20
+            pnpm build
+          fi
       - name: Start server
         shell: bash
         run: |

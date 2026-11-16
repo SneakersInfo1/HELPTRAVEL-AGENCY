@@ -49,7 +49,9 @@ describe("bramka faktów SEO", () => {
         assert.equal(monthDaytimeMaxTemperature(facts, 6), normal.maxTempC[6], profile.slug);
         assert.equal(facts.temperature?.source.name, "WMO World Weather Information Service", profile.slug);
         assert.equal(facts.temperature?.source.provider, normal.provider, profile.slug);
-        assert.equal(facts.temperature?.source.station, normal.stationName, profile.slug);
+        // Gdy WWIS nie podaje stacji, pokazujemy miasto WWIS z jawną etykietą, nigdy pusty dopisek.
+        assert.equal(facts.temperature?.source.station, normal.stationName ?? normal.wwisCity, profile.slug);
+        assert.equal(facts.temperature?.source.stationLabel, normal.stationName ? "stacja" : "punkt WWIS", profile.slug);
         assert.equal(
           facts.temperature?.source.periodLabel,
           formatClimatePeriod(normal.periodFrom, normal.periodTo),

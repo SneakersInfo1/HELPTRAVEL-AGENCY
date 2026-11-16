@@ -15,6 +15,7 @@ const CLIMATE_SOURCE = {
   name: "WMO World Weather Information Service" as const,
   provider: "Instituto Estatal de Meteorologia (AEMET)",
   station: "Malaga / Aeropuerto",
+  stationLabel: "stacja" as const,
   periodLabel: "norma 1981–2010",
   url: "https://worldweather.wmo.int/en/city.html?cityId=195",
 };

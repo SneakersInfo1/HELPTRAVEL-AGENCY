@@ -19,7 +19,8 @@ export interface ClimateNormal {
   slug: string;
   cityId: string;
   wwisCity: string;
-  stationName: string;
+  /** Nazwa stacji z WWIS; null, gdy źródło jej nie podaje (wtedy pokazujemy miasto WWIS). */
+  stationName: string | null;
   provider: string;
   periodFrom: number | null;
   periodTo: number | null;

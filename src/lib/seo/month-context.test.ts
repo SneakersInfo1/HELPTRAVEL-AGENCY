@@ -100,3 +100,13 @@ describe("kontekst na stronie miesiąca", () => {
     assert.match(source, /context\.warmer\.map/);
   });
 });
+
+describe("tytuły stron miesięcy", () => {
+  it("każdy kierunek ma 12 różnych tytułów, każdy z nazwą miesiąca i w limicie 60 znaków", () => {
+    for (const profile of profiles) {
+      const titles = polishMonthSlugs.map((month) => buildMonthPageModel({ profile, overview: "", month, baseUrl: "https://helptravel.pl", author: {} }).text.title);
+      assert.equal(new Set(titles).size, 12, profile.slug);
+      for (const title of titles) assert.ok(title.replace(/ \| HelpTravel$/, "").length <= 60, `${profile.slug}: ${title}`);
+    }
+  });
+});

@@ -1707,9 +1707,9 @@ function describeWorstMonths(name: string, temperatures: readonly number[]): str
     });
   const worst = ranked.slice(0, 2).filter((m) => m.temp < 12 || m.temp > 32);
   if (worst.length === 0) {
-    return `Dla ${name} średnie maksymalne temperatury w dzień nie wychodzą poza przyjęty tu przedział 12–32°C. To norma wieloletnia, nie prognoza.`;
+    return "Średnie maksymalne temperatury w dzień nie wychodzą tu w żadnym miesiącu poza przedział 12–32°C. To norma wieloletnia, nie prognoza.";
   }
-  return `Najdalej od przedziału 12–32°C dla średniej maksymalnej temperatury w dzień są ${worst.map((m) => m.name).join(" i ")}. To norma wieloletnia, nie ocena sezonu ani prognoza.`;
+  return `Najdalej od przedziału 12–32°C (średnia maksymalna w dzień) leżą miesiące: ${worst.map((m) => m.name).join(" i ")}. To norma wieloletnia, nie ocena sezonu ani prognoza.`;
 }
 
 function describeWhoForExtra(destination: DestinationProfile, flightHours: number | null, costKnown: boolean): string[] {

@@ -159,10 +159,11 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       : winningScenarios.length === 2
         ? "Dwie sytuacje, w których"
         : "Sytuacja, w której";
-  // Karty liczbowe tylko z danymi, które mają pokrycie; informacja o cenach
-  // zawsze odsyła do wyszukiwarki i nie zawiera kwoty modelowanej.
+  // Karty liczbowe tylko z danymi, które mają pokrycie; bez żadnej z nich kolumna znika.
+  // Kwot budżetu ze wzoru nie ma — ceny pokazuje wyszukiwarka, do której prowadzi CTA.
   const showTimingCard = Boolean(localizedGuide.bestTime.trim() || model.tripLength);
   const showLogisticsCard = Boolean(model.flightSentence || model.climate);
+  const showPlanningColumn = showTimingCard || showLogisticsCard;
   // Internal links to this destination's 1:1 comparison pages (/porownanie/…).
   // Passes equity from the ~235 guide pages into the high-CTR comparison pages
   // and gives "X czy Y" searchers a direct entry. SEO master plan D6 (extended).
@@ -275,7 +276,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         items={model.metaBarItems}
       />
 
-      <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className={showPlanningColumn ? "grid gap-5 lg:grid-cols-[1.1fr_0.9fr]" : "grid gap-5"}>
         <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
           <h2 className="mt-3 font-display text-4xl text-ink">Mocne strony kierunku</h2>
           <div className="mt-5 space-y-3">
@@ -287,6 +288,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           </div>
         </article>
 
+        {showPlanningColumn ? (
         <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(225,243,231,0.9))] p-6 shadow-sm">
           <div className="mt-4 grid gap-3">
               {showTimingCard ? (
@@ -302,12 +304,6 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                   ) : null}
                 </div>
               ) : null}
-            <div className="rounded-2xl bg-surface-raised px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Ceny hoteli</p>
-              <p className="mt-2 text-sm leading-7 text-ink-muted">
-                Aktualne ceny hoteli dla wybranych dat pokazuje wyszukiwarka.
-              </p>
-            </div>
               {showLogisticsCard ? (
                 <div className="rounded-2xl bg-surface-raised px-4 py-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd i logistyka</p>
@@ -333,6 +329,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               ) : null}
           </div>
         </article>
+        ) : null}
       </section>
 
       <section

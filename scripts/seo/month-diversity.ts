@@ -10,15 +10,21 @@
 //  • udział zdań, które po zamaskowaniu występują na ponad połowie stron (szablon);
 //  • liczbę faktów liczbowych z jednostką (°C, mm, dni, h) widocznych na stronie.
 // Tylko GET stron treści; żadnych tras wyszukiwarki ani dostawców.
+//
+// `--strict` maskuje dodatkowo WSZYSTKIE nazwy własne z danych serwisu: nazwy
+// kierunków (PL i EN), krajów, miast i stacji WWIS oraz służb meteorologicznych.
+// Bez tego linki do innych miast i nazwy służb różnicują tekst, choć to też tylko
+// podstawione wartości — tryb podstawowy zawyża więc liczbę wariantów.
 
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { getAllDestinationProfiles } from "../../src/lib/mvp/destinations";
 import { isMonthIndexable } from "../../src/lib/mvp/month-index-policy";
 import { polishMonthSlugs } from "../../src/lib/mvp/months";
 import { auditHtml } from "../../src/lib/seo-ops/html-audit";
+import { getDestinationSeoFacts } from "../../src/lib/seo/destination-facts";
 
 function arg(name: string, fallback: string): string {
   const index = process.argv.indexOf(`--${name}`);
@@ -45,11 +51,37 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const STRICT = process.argv.includes("--strict");
+
+/** Wszystkie nazwy własne z danych serwisu, od najdłuższej („Santa Cruz de Tenerife” przed „Santa”). */
+function properNamesPattern(): RegExp | null {
+  if (!STRICT) return null;
+  const names = new Set<string>();
+  for (const profile of getAllDestinationProfiles()) {
+    const facts = getDestinationSeoFacts(profile);
+    for (const name of [facts.name, facts.countryName, profile.city, profile.country]) if (name && name.length >= 3) names.add(name);
+  }
+  const normals = JSON.parse(readFileSync("src/lib/mvp/climate-normals.generated.json", "utf8")) as {
+    normals: Array<{ wwisCity: string; stationName: string | null; provider: string }>;
+  };
+  for (const normal of normals.normals) {
+    for (const name of [normal.wwisCity, normal.stationName, normal.provider]) if (name && name.length >= 3) names.add(name);
+  }
+  // Odmiana: rdzeń bez dwóch ostatnich liter i dowolna końcówka. Wielkość liter ma
+  // znaczenie, żeby nie maskować zwykłych słów.
+  const patterns = [...names]
+    .sort((a, b) => b.length - a.length)
+    .map((name) => `${escapeRegExp(name.length > 5 ? name.slice(0, -2) : name)}\\p{L}*`);
+  return new RegExp(`(?<!\\p{L})(?:${patterns.join("|")})`, "gu");
+}
+
+const PROPER_NAMES = properNamesPattern();
+
 function mask(text: string, name: string): string {
   // Nazwa bywa odmieniona („w Barcelonie”), więc maskujemy po rdzeniu.
   const stem = name.length > 5 ? name.slice(0, -2) : name;
-  return text
-    .replace(new RegExp(`${escapeRegExp(stem)}\\p{L}*`, "giu"), "{MIASTO}")
+  const own = text.replace(new RegExp(`${escapeRegExp(stem)}\\p{L}*`, "giu"), "{MIASTO}");
+  return (PROPER_NAMES ? own.replace(PROPER_NAMES, "{NAZWA}") : own)
     .replace(MONTH_WORDS, "{MIESIAC}")
     .replace(/\d+(?:[.,]\d+)?/g, "{N}")
     .replace(/\s+/g, " ")
@@ -120,6 +152,7 @@ async function main() {
   const report = {
     base: BASE,
     measuredAt: new Date().toISOString(),
+    mode: STRICT ? "strict" : "basic",
     groups: [
       summarize("wszystkie strony miesięcy", rows),
       summarize("indeksowalne", indexable),
