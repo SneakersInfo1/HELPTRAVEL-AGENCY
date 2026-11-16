@@ -20,6 +20,7 @@ Lista rzeczy, których nie da się dokończyć bez Ciebie: decyzje, konta, klucz
 | 15 | Włączyć ochronę gałęzi `main` | przed włączeniem automatu | 5 min |
 | 16 | Zdecydować o 158 stronach miesięcy bez danych | przed albo po scaleniu | 5 min |
 | 17 | Zdecydować o przycisku lotów bez kierunku | bez pośpiechu | 2 min |
+| 18 | Zdecydować o fontach w repozytorium (opcjonalne) | bez pośpiechu | 2 min |
 
 ## Przed scaleniem PR
 
@@ -158,3 +159,9 @@ Osobna sprawa: 1363 strony mają teraz dane WMO, ale są poza indeksem. Nie zale
 ### 17. Przycisk „Szukaj lotów”
 
 Prowadzi do `/?tab=loty`, czyli na stronę główną bez kierunku i terminu. Żeby przekazywał kierunek, formularz lotów na stronie głównej musi przyjmować go z adresu. To zmiana w komponentach strony głównej, więc potrzebuję Twojej zgody.
+
+### 18. Fonty w repozytorium (opcjonalne)
+
+Build pobiera fonty Manrope i Cormorant Garamond z Google Fonts. Gdy to pobieranie chwilowo zawiedzie, build pada: zdarzyło się to 15.11.2026 w CI, lokalnie i wcześniej raz na Vercelu. CI ma teraz jedną powtórkę, ale wdrożenie produkcyjne na Vercelu nadal może trafić na ten błąd. Wtedy wystarczy je ponowić.
+
+Trwałe rozwiązanie to trzymanie plików fontów w repozytorium (`next/font/local`). Zmienia to wspólny układ strony, także strony głównej, więc nie zrobiłem tego bez Twojej zgody. Wygląd strony zostałby taki sam.
