@@ -7,7 +7,6 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { ClimateSourceLine } from "@/components/editorial/climate-source-line";
 import { formatClimateNumber } from "@/lib/mvp/climate-normals";
-import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import {
   inMonthPhrase,
   polishMonthSlugs,
@@ -17,14 +16,12 @@ import {
   type Season,
 } from "@/lib/mvp/months";
 import { getSiteUrl } from "@/lib/mvp/site";
-import type { DestinationProfile } from "@/lib/mvp/types";
-import {
-  exactFlightHours,
-  getDestinationSeoFacts,
-  type DestinationSeoFacts,
-  type TemperatureFact,
-} from "@/lib/seo/destination-facts";
 import { seasonPageHeading } from "@/lib/seo/page-titles";
+import {
+  buildSeasonList,
+  seasonListDescription,
+  seasonListIntro,
+} from "@/lib/seo/season-page-model";
 
 export const revalidate = 86400;
 
@@ -40,80 +37,33 @@ function isSeason(value: string): value is Season {
   return (seasonSlugs as readonly string[]).includes(value);
 }
 
-function avgSeasonalDaytimeMax(temps: readonly number[], months: number[]) {
-  return months.reduce((sum, m) => sum + temps[m], 0) / months.length;
-}
-
-type RankingCandidate = {
-  destination: DestinationProfile;
-  facts: DestinationSeoFacts & { temperature: TemperatureFact };
-};
-
-// Ranking korzysta wyłącznie z oficjalnych norm WMO WWIS. Kierunki bez normy
-// oraz kierunki w Polsce nie trafiają do rankingu.
-function rankingCandidates(): RankingCandidate[] {
-  return getAllDestinationProfiles()
-    .map((destination) => ({ destination, facts: getDestinationSeoFacts(destination) }))
-    .filter((entry): entry is RankingCandidate => entry.facts.temperature !== null && !entry.facts.isDomestic);
-}
-
-const seasonIntro: Record<Season, string> = {
-  wiosna:
-    "Wiosna to najlepszy moment na cieplejsze miasta południa Europy bez letnich tłumów i przed wzrostem cen sezonowych.",
-  lato:
-    "Latem szukamy klimatu plażowego i komfortowej temperatury, ale rezerwujemy z wyprzedzeniem — to pełnia sezonu.",
-  jesien:
-    "Jesień daje ciepłe kierunki z drugiego rzędu i krótkie wyjazdy bez letnich kolejek, często za rozsądne pieniądze.",
-  zima:
-    "Zima to czas na ucieczki w ciepło (południowa Hiszpania, Wyspy Kanaryjskie) lub atmosferyczne city breaki w Europie.",
-};
-
 // Nagłówek i tytuł: seasonPageHeading() z lib/seo/page-titles.ts. Do 2026-09
 // stał tu rok wpisany na sztywno — „na wiosnę 2026" także we wrześniu 2026.
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { sezon } = await params;
-  if (!isSeason(sezon)) return { title: "Najlepsze kierunki" };
+  if (!isSeason(sezon)) return { title: "Kierunki sezonowe" };
+  const description = seasonListDescription(sezon);
   return completeSocial({
     title: seasonPageHeading(sezon),
-    description: `Ranking kierunków na ${seasonInflected[sezon]} z normami WMO: średnie maksymalne temperatury w dzień, dolot i charakter wyjazdu.`,
+    description,
     alternates: { canonical: `/najlepsze-kierunki/${sezon}` },
     openGraph: {
       title: seasonPageHeading(sezon),
-      // Do 2026-09: „oparty o realne dane pogodowe i kosztowe" — przy temperaturach z szablonu regionu.
-      description: `Ranking kierunków na ${seasonInflected[sezon]}: normy WMO, dostępność lotów z Polski i redakcyjny indeks kosztów.`,
+      description,
       url: `${getSiteUrl()}/najlepsze-kierunki/${sezon}`,
       type: "article",
     },
   }, { ownImage: true });
 }
 
-export default async function SeasonRankingPage({ params }: PageProps) {
+export default async function SeasonListPage({ params }: PageProps) {
   const { sezon } = await params;
   if (!isSeason(sezon)) notFound();
 
   const months = seasonMonthIndexes[sezon];
-  const ranked = rankingCandidates()
-    .map(({ destination, facts }) => {
-      const temp = avgSeasonalDaytimeMax(facts.temperature.byMonth, months);
-      // Score: temperatura w komfortowym przedziale 18-28 + access + value
-      const tempScore =
-        temp >= 22 && temp <= 28
-          ? 1
-          : temp >= 18 && temp < 22
-            ? 0.85
-            : temp > 28 && temp <= 31
-              ? 0.75
-              : temp >= 14 && temp < 18
-                ? 0.6
-                : 0.3;
-      const accessScore = destination.accessScore ?? 0.7;
-      const valueScore = 1 / Math.max(0.6, destination.costIndex);
-      const composite = tempScore * 0.6 + accessScore * 0.25 + valueScore * 0.15;
-      return { destination, facts, temp, composite };
-    })
-    .sort((a, b) => b.composite - a.composite)
-    .slice(0, 12);
+  const entries = buildSeasonList(sezon);
+  const intro = seasonListIntro(sezon);
 
   const baseUrl = getSiteUrl();
   const structuredData = {
@@ -122,10 +72,10 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       {
         "@type": "Article",
         headline: seasonPageHeading(sezon),
-        description: seasonIntro[sezon],
+        description: intro,
         url: `${baseUrl}/najlepsze-kierunki/${sezon}`,
         inLanguage: "pl-PL",
-        // Ranking liczony z danych serwisu, więc autorem jest serwis, a nie osoba
+        // Lista liczona z danych serwisu, więc autorem jest serwis, a nie osoba
         // (tak jak na /inspiracje/[slug]). Bez tych pól węzeł był niekompletny.
         author: { "@type": "Organization", "@id": `${baseUrl}/#organization`, name: "HelpTravel" },
         publisher: { "@id": `${baseUrl}/#organization` },
@@ -137,7 +87,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
           {
             "@type": "ListItem",
             position: 2,
-            name: `Najlepsze kierunki na ${seasonInflected[sezon]}`,
+            name: seasonPageHeading(sezon),
             item: `${baseUrl}/najlepsze-kierunki/${sezon}`,
           },
         ],
@@ -145,7 +95,7 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       {
         "@type": "ItemList",
         name: seasonPageHeading(sezon),
-        itemListElement: ranked.map((entry, index) => ({
+        itemListElement: entries.map((entry, index) => ({
           "@type": "ListItem",
           position: index + 1,
           url: `${baseUrl}/kierunki/${entry.destination.slug}`,
@@ -163,13 +113,13 @@ export default async function SeasonRankingPage({ params }: PageProps) {
         <Breadcrumbs
           items={[
             { label: "Start", href: "/" },
-            { label: `Najlepsze kierunki na ${seasonInflected[sezon]}` },
+            { label: seasonPageHeading(sezon) },
           ]}
         />
         <h1 className="mt-3 max-w-3xl font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">
           {seasonPageHeading(sezon)}
         </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">{seasonIntro[sezon]}</p>
+        <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">{intro}</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             href="/hotele/szukaj"
@@ -194,16 +144,14 @@ export default async function SeasonRankingPage({ params }: PageProps) {
       </section>
 
       <section className="flex flex-col gap-3">
-        {ranked.map((entry, index) => {
-          const flightHours = exactFlightHours(entry.facts);
-          return (
+        {entries.length > 0 ? (
+          entries.map((entry) => (
             <article
               key={entry.destination.slug}
               className="rounded-2xl border border-line bg-surface-raised p-5 shadow-sm"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-baseline gap-3">
-                  <span className="text-2xl font-bold text-brand">#{index + 1}</span>
                   <h2 className="font-display text-2xl text-ink">
                     <Link href={`/kierunki/${entry.destination.slug}`}>
                       <span className="transition hover:text-brand">{entry.facts.name}</span>
@@ -213,11 +161,8 @@ export default async function SeasonRankingPage({ params }: PageProps) {
                 </div>
                 <div className="flex gap-3 text-sm text-ink-muted">
                   <span className="rounded-full bg-surface-sunken px-3 py-1.5">
-                    {formatClimateNumber(entry.temp)}°C — średnia maksimów w dzień
+                    {formatClimateNumber(entry.averageDaytimeMaxC)}°C — średnia maksimów w dzień
                   </span>
-                  {flightHours !== null && (
-                    <span className="rounded-full bg-surface-sunken px-3 py-1.5">Lot ~{flightHours}h</span>
-                  )}
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -238,17 +183,19 @@ export default async function SeasonRankingPage({ params }: PageProps) {
               </div>
               <ClimateSourceLine source={entry.facts.temperature.source} className="mt-3 text-xs leading-6 text-ink-muted" />
             </article>
-          );
-        })}
+          ))
+        ) : (
+          <p className="rounded-2xl border border-line bg-surface-raised p-5 text-base leading-7 text-ink-muted">
+            W tej porze roku żaden kierunek z dostępną normą WMO nie mieści się w przedziale 22–28°C.
+          </p>
+        )}
       </section>
 
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
-        <h2 className="font-display text-3xl text-ink">Jak czytać ten ranking</h2>
+        <h2 className="font-display text-3xl text-ink">Jak czytać tę listę</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
-          Pozycja w rankingu liczy się z trzech rzeczy: średnia z miesięcznych temperatur maksymalnych w dzień (przedział 22–28°C dostaje najwięcej punktów),
-          dostępność lotów z Polski oraz indeks kosztów. Ranking obejmuje wyłącznie kierunki z oficjalnymi normami WMO WWIS —
-          bez nich pozycja byłaby zgadywaniem. Finalną decyzję warto sprawdzić w wyszukiwarce hoteli i lotów —
-          uwzględnia ona długość wyjazdu, budżet i preferencje stylu.
+          Na liście są wyłącznie kierunki z oficjalną normą WMO WWIS, w których średnia z miesięcznych średnich maksimów w dzień mieści się w przedziale 22–28°C.
+          Kolejność jest alfabetyczna, nie według temperatury. Poszczególne normy pochodzą z różnych okresów referencyjnych, dlatego przy każdym kierunku podajemy jego własne źródło i okres.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link

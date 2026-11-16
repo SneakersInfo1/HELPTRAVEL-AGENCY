@@ -40,7 +40,7 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
           <div style={{ fontSize: 28, opacity: 0.85, textTransform: "uppercase", letterSpacing: 4 }}>{country}</div>
           <div style={{ fontSize: 96, fontWeight: 800, lineHeight: 1 }}>{city}</div>
           <div style={{ fontSize: 26, opacity: 0.8, marginTop: 16 }}>
-            Praktyczny przewodnik, koszty, najlepszy czas na wyjazd.
+            Praktyczny przewodnik i najlepszy czas na wyjazd.
           </div>
         </div>
       </div>

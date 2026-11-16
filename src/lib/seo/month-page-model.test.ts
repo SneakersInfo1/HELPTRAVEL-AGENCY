@@ -64,6 +64,7 @@ describe("model strony kierunku w miesiącu", () => {
         assert.ok(model.text.title.length <= 60, `${profile.slug}/${month}: ${model.text.title}`);
         assert.doesNotMatch(serialized, /temperatur\w* morz|morze szacunk|seaTemp/i, `${profile.slug}/${month}`);
         assert.doesNotMatch(serialized, /\d(?:[\d\s.,]*\d)?\s*(?:zł|PLN)/i, `${profile.slug}/${month}`);
+        assert.doesNotMatch(serialized, /taniej|drożej|tanio|budżet|opłacaln|cheaper|pricier/i, `${profile.slug}/${month}`);
         assert.doesNotMatch(jsonLd, /datePublished|dateModified|"Offer"|"price"/, `${profile.slug}/${month}`);
         assert.doesNotMatch(
           `${jsonLd} ${model.text.lead}`,

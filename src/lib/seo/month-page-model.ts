@@ -1,4 +1,5 @@
 import { formatClimateNumber } from "@/lib/mvp/climate-normals";
+import { APPROXIMATE_MIN_DIFF_C } from "@/lib/mvp/climate-periods";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { isMonthIndexable } from "@/lib/mvp/month-index-policy";
 import { getMonthIndex, inMonthPhrase, polishMonthSlugs, type PolishMonthSlug } from "@/lib/mvp/months";
@@ -51,11 +52,25 @@ export interface MonthContext {
   /** Długość dnia 15. dnia miesiąca, np. „9 h 35 min”. */
   dayLength: string | null;
   /** Porównanie z Warszawą w tym samym miesiącu; null dla samej Warszawy. */
-  home: { maxDiffC: number; homeMaxC: number; rainDaysDiff: number | null } | null;
+  home: {
+    maxDiffC: number;
+    homeMaxC: number;
+    rainDaysDiff: number | null;
+    approximate: boolean;
+    periodLabel: string;
+    homePeriodLabel: string;
+  } | null;
   /** Ile kierunków z normą ma w tym miesiącu wyższe średnie maksimum. */
-  standing: { warmerCount: number; total: number };
+  standing: { warmerCount: number; total: number; periodLabel: string } | null;
   /** Najbliższe cieplejsze kierunki z indeksowalną stroną tego samego miesiąca. */
-  warmer: Array<{ slug: string; name: string; maxTempC: number; diffC: number }>;
+  warmer: Array<{
+    slug: string;
+    name: string;
+    maxTempC: number;
+    diffC: number;
+    approximate: boolean;
+    periodLabel: string;
+  }>;
 }
 
 export interface MonthPageModel {
@@ -156,7 +171,6 @@ function profileBySlug(slug: string): DestinationProfile | undefined {
 
 function buildContext(slug: string, monthIndex: number): MonthContext | null {
   const standing = monthStanding(slug, monthIndex);
-  if (!standing) return null;
   const latitude = stationLatitude(slug);
   const warmer = warmerAlternatives(slug, monthIndex, {
     // Linkujemy tylko do stron, które istnieją i są w indeksie — nie do noindex.
@@ -177,6 +191,16 @@ function buildContext(slug: string, monthIndex: number): MonthContext | null {
 function homeLead(context: MonthContext | null, inMonth: string): string {
   const home = context?.home;
   if (!home) return "";
+  if (home.approximate) {
+    const periods = `normy z lat ${home.periodLabel} i ${home.homePeriodLabel}, porównanie orientacyjne`;
+    if (Math.abs(home.maxDiffC) < APPROXIMATE_MIN_DIFF_C) {
+      return ` W dzień jest podobnie jak w Warszawie ${inMonth} (${periods}).`;
+    }
+    const difference = Math.abs(home.maxDiffC);
+    return home.maxDiffC > 0
+      ? ` W dzień to ok. ${difference}°C więcej niż w Warszawie ${inMonth} (${periods}).`
+      : ` W dzień to ok. ${difference}°C mniej niż w Warszawie ${inMonth} (${periods}).`;
+  }
   const difference = formatClimateNumber(Math.abs(home.maxDiffC));
   const warsaw = `${formatClimateNumber(home.homeMaxC)}°C`;
   if (home.maxDiffC >= 1) return ` W dzień to o ${difference}°C więcej niż w Warszawie ${inMonth} (${warsaw}).`;

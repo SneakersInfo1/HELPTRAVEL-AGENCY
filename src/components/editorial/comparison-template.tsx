@@ -255,6 +255,9 @@ function LowerSections({ view, model, sides, liveStats, articleLinks, tape }: Co
         </h2>
         <div className="mt-4">
           <Table caption={`${view.nameA} i ${view.nameB} w liczbach`} nameA={view.nameA} nameB={view.nameB} rows={numericRows(model)} note={model.scoreNote} />
+          {model.climatePeriodNote ? (
+            <p className="mt-3 text-xs leading-6 text-ink-muted">{model.climatePeriodNote}</p>
+          ) : null}
           {model.climate.length > 0 ? (
             <div className="mt-3 space-y-2">
               {model.climate.map((entry) => (

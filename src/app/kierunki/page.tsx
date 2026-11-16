@@ -271,7 +271,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
   const faqs: Array<{ q: string; a: string }> = [
     {
       q: "Jaki kierunek wybrać na city break z Polski?",
-      a: "Na krótki wypad miejski najlepiej sprawdzają się Barcelona, Rzym, Lizbona, Praga i Budapeszt — krótki lot, dużo do zwiedzania pieszo i hotele w każdym budżecie. Pełną listę miejskich kierunków znajdziesz w sekcji city breaki, a ceny i terminy sprawdzisz w wyszukiwarce hoteli.",
+      a: "Na krótki wypad miejski najlepiej sprawdzają się Barcelona, Rzym, Lizbona, Praga i Budapeszt — krótki lot i dużo do zwiedzania pieszo. Pełną listę miejskich kierunków znajdziesz w sekcji city breaki, a ceny i terminy sprawdzisz w wyszukiwarce hoteli.",
     },
     {
       q: "Gdzie jest ciepło zimą w zasięgu krótkiego lotu?",

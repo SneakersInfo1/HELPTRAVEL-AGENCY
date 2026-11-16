@@ -126,9 +126,8 @@ function relatedComparisons(pair: ComparisonPair, allPairs: ComparisonViewInput[
   return [...shared, ...rest].slice(0, limit).map((item) => ({ href: `/porownanie/${item.slug}`, label: item.label }));
 }
 
-/** Tag profilu („napiętego budżetu") jako pełne zdanie po „wybierz, jeśli". */
+/** Tag profilu jako pełne zdanie po „wybierz, jeśli". */
 const AUDIENCE_CLAUSES: Readonly<Record<string, string>> = {
-  "napiętego budżetu": "masz napięty budżet",
   "krótkiego wypadu (bliski lot)": "planujesz krótki wypad i zależy Ci na bliskim locie",
   "uniwersalnego wyjazdu na 3-5 dni": "planujesz uniwersalny wyjazd na 3–5 dni",
 };

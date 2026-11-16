@@ -34,9 +34,7 @@ const TODAY = "2026-09-15";
 const HERO = "https://images.pexels.com/photos/1/pexels-photo-1.jpeg";
 const AUTHOR = { "@type": "Person", name: "Jakub Ogrodniczuk", url: `${SITE}/redakcja` };
 const HOURS = /\d[.,]\d\s?h\b/;
-// Oceny kosztów z `costIndex`: w profilu z szablonu to stała kraju albo regionu (deriveCostIndex).
-const COST_CLAIMS =
-  /indeks\w* kosztów|taniej|(?:pułapie|pulapie) cenowym|średni budżet|rozsądnym budżecie|z mysla o budżecie|budżet warto|broni budżet|droga destynacja/i;
+const RELATIVE_COST_CLAIMS = /taniej|drożej|tanio|budżet|koszt|opłacaln|cheaper|pricier|budget/i;
 
 const profiles = getAllDestinationProfiles();
 const curatedSlugs = new Set(curatedDestinations.map((destination) => destination.slug));
@@ -127,26 +125,39 @@ describe("model przewodnika po kierunku", () => {
     }
   });
 
-  it("koszty z szablonu regionu: bez indeksu kosztów, pasm budżetu i porównań cen (FAQ, treść, kategorie)", () => {
+  it("treść przewodników PL i EN nie wyprowadza względnych kosztów z ręcznej oceny", () => {
     for (const profile of profiles) {
       const { guide, localizedGuide, model } = build(profile.slug);
-      // Liczba `costIndex` nie trafia do FAQPage w żadnym przewodniku — także przy danych kuratorowanych.
-      assert.doesNotMatch(faqAnswers(model.structuredData), /indeks\w* kosztów/i, profile.slug);
-      assert.doesNotMatch(JSON.stringify(localizedGuide.faq), /najwyższe ceny|najdrożej|najtłumniej|sezon czy poza sezonem/i, profile.slug);
-      if (curatedSlugs.has(profile.slug)) continue;
+      const story = getDestinationStory(guide.destination);
+      const localizedEn = getLocalizedDestinationGuide(guide, story, "en");
 
-      assert.equal(localizedGuide.budgetNote, "", profile.slug);
-      assert.doesNotMatch(
-        JSON.stringify({ whyGo: localizedGuide.whyGo, whoFor: localizedGuide.whoFor, faq: localizedGuide.faq, tags: localizedGuide.bestForTags }),
-        COST_CLAIMS,
-        profile.slug,
-      );
-      assert.doesNotMatch(JSON.stringify(localizedGuide.bestForTags), /budżet/i, profile.slug);
-      assert.ok(!getCategoriesForDestination(profile.slug).some((category) => category.slug === "tanie-podróże"), profile.slug);
-      assert.ok(!buildLocalizedAvoidNotes(guide, "pl").some((note) => /budżec/i.test(note)), profile.slug);
-      assert.ok(!buildLocalizedWinningScenarios(guide, "pl").some((scenario) => /budżet/i.test(scenario.title)), profile.slug);
-      for (const signal of buildLocalizedComparisonSignals(profile, getSimilarDestinations(profile.slug, 4), "pl")) {
-        assert.doesNotMatch(`${signal.summary} ${signal.bestFor ?? ""}`, COST_CLAIMS, `${profile.slug} → ${signal.slug}`);
+      for (const [locale, content] of [
+        ["pl", localizedGuide],
+        ["en", localizedEn],
+      ] as const) {
+        assert.doesNotMatch(JSON.stringify(content), RELATIVE_COST_CLAIMS, `${profile.slug} ${locale}`);
+        assert.doesNotMatch(
+          JSON.stringify(buildLocalizedAvoidNotes(guide, locale)),
+          RELATIVE_COST_CLAIMS,
+          `${profile.slug} ${locale} avoid`,
+        );
+        assert.doesNotMatch(
+          JSON.stringify(buildLocalizedWinningScenarios(guide, locale)),
+          RELATIVE_COST_CLAIMS,
+          `${profile.slug} ${locale} scenarios`,
+        );
+        for (const signal of buildLocalizedComparisonSignals(profile, getSimilarDestinations(profile.slug, 4), locale)) {
+          assert.doesNotMatch(
+            `${signal.summary} ${signal.bestFor ?? ""}`,
+            RELATIVE_COST_CLAIMS,
+            `${profile.slug} → ${signal.slug} ${locale}`,
+          );
+        }
+      }
+
+      assert.doesNotMatch(faqAnswers(model.structuredData), RELATIVE_COST_CLAIMS, profile.slug);
+      if (!curatedSlugs.has(profile.slug)) {
+        assert.ok(!getCategoriesForDestination(profile.slug).some((category) => category.slug === "tanie-podróże"), profile.slug);
       }
     }
   });
@@ -228,7 +239,7 @@ describe("model przewodnika po kierunku", () => {
     const malaga = build("malaga-spain");
     assert.equal(malaga.model.text.title, "Malaga: przewodnik, kiedy lecieć i gdzie spać, lot 3.4 h");
     assert.notEqual(malaga.localizedGuide.routeComfort, "");
-    assert.equal(buildLocalizedWinningScenarios(malaga.guide, "pl").length, 3);
+    assert.equal(buildLocalizedWinningScenarios(malaga.guide, "pl").length, 2);
     const warsaw = build("warsaw-poland").model;
     assert.doesNotMatch(warsaw.text.title, HOURS);
     assert.equal(warsaw.flightChip, null);

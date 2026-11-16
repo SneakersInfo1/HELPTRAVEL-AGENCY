@@ -141,10 +141,10 @@ export function cityHotelsPageText({ city, price }: CityHotelsPageTextInput) {
 }
 
 const SEASON_HEADINGS: Record<Season, string> = {
-  wiosna: "Najlepsze kierunki na wiosnę — ranking pod krótki wyjazd",
-  lato: "Najlepsze kierunki na lato — gdzie ciepło i sensownie",
-  jesien: "Najlepsze kierunki na jesień — ciepła pogoda, mniej tłumów",
-  zima: "Najlepsze kierunki na zimę — ciepłe ucieczki i city break",
+  wiosna: "Kierunki na wiosnę: w dzień średnio 22–28°C",
+  lato: "Kierunki na lato: w dzień średnio 22–28°C",
+  jesien: "Kierunki na jesień: w dzień średnio 22–28°C",
+  zima: "Kierunki na zimę: w dzień średnio 22–28°C",
 };
 
 export function seasonPageHeading(season: Season): string {

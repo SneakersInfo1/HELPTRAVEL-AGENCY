@@ -68,6 +68,7 @@ describe("model porównania kierunków", () => {
       const coverage = comparisonCoverage(model.a.profile, model.b.profile);
       assert.equal(coverage.climate, Boolean(normalA && normalB), pair.slug);
       assert.equal(model.rows.some((row) => row.label === "Średnia maks. w dzień — styczeń"), coverage.climate, pair.slug);
+      assert.equal(model.rows.some((row) => row.label === "Okres normy WMO"), coverage.climate, pair.slug);
       assert.equal(model.climate.length, Number(Boolean(normalA)) + Number(Boolean(normalB)), pair.slug);
 
       for (const entry of model.climate) {
@@ -106,6 +107,38 @@ describe("model porównania kierunków", () => {
     assert.equal(model.b.facts.temperature?.byMonth[6], valencia.maxTempC[6]);
   });
 
+  it("identyczny okres daje dokładne porównanie lipca bez noty o nieporównywalności", () => {
+    const model = modelFor("barcelona-spain-vs-valencia-spain");
+    assert.equal(model.climatePeriodNote, null);
+    assert.deepEqual(model.rows.find((row) => row.label === "Okres normy WMO"), {
+      label: "Okres normy WMO",
+      av: "norma 1981–2010",
+      bv: "norma 1981–2010",
+    });
+    const julyFaq = model.faq.find((item) => /lipcu/.test(item.question));
+    assert.ok(julyFaq);
+    assert.doesNotMatch(julyFaq.answer, /orientacyjne|ok\. \d+°C/);
+    assert.match(model.quickAnswer, /W lipcu wyższa średnia maksymalna/);
+  });
+
+  it("sąsiednie okresy opisują lipiec orientacyjnie z obiema normami", () => {
+    const model = modelFor("barcelona-spain-vs-rome-italy");
+    assert.match(model.climatePeriodNote ?? "", /1981–2010 i 1971–2000/);
+    const julyFaq = model.faq.find((item) => /lipcu/.test(item.question));
+    assert.ok(julyFaq);
+    assert.match(julyFaq.answer, /Barcelona: \d+,\d°C, Rzym: \d+,\d°C/);
+    assert.match(julyFaq.answer, /różnica ok\. \d+°C/);
+    assert.match(julyFaq.answer, /normy z lat 1981–2010 i 1971–2000, porównanie orientacyjne/);
+    assert.match(model.quickAnswer, /porównanie orientacyjne/);
+  });
+
+  it("różne okresy usuwają pytanie i zdanie o lipcu, ale zostawiają notę", () => {
+    const model = modelFor("barcelona-spain-vs-lisbon-portugal");
+    assert.match(model.climatePeriodNote ?? "", /Normy pochodzą z różnych okresów \(1981–2010 i 1961–1990\)/);
+    assert.ok(!model.faq.some((item) => /lipcu/.test(item.question)));
+    assert.doesNotMatch(model.quickAnswer, /[Ww] lipcu/);
+  });
+
   it("kierunek bez normy nie dostaje liczb pogodowych ani źródła", () => {
     const model = modelFor("athens-greece-vs-tirana-albania");
     assert.equal(getClimateNormal("tirana-albania"), null);
@@ -133,14 +166,14 @@ describe("model porównania kierunków", () => {
     }
   });
 
-  it("względne twierdzenia kosztowe pozostają tylko przy dotychczasowej bramce", () => {
+  it("nie zawiera twierdzeń o relatywnych kosztach", () => {
     for (const pair of comparisonPairs) {
       const model = modelFor(pair.slug);
-      const bothCurated = curated.has(model.a.profile.slug) && curated.has(model.b.profile.slug);
-      assert.equal(model.verdicts.some((verdict) => verdict.title === "Budżet"), bothCurated, pair.slug);
-      if (!bothCurated) {
-        assert.doesNotMatch(JSON.stringify({ verdicts: model.verdicts, faq: model.faq, quick: model.quickAnswer }), /taniej|indeks kosztów|budżet/i, pair.slug);
-      }
+      assert.doesNotMatch(
+        JSON.stringify({ verdicts: model.verdicts, faq: model.faq, quick: model.quickAnswer, audience: model.audience }),
+        /taniej|drożej|tanio|budżet|opłacaln|cheaper|pricier/i,
+        pair.slug,
+      );
     }
   });
 

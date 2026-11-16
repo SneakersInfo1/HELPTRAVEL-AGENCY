@@ -159,9 +159,9 @@ const destinationStories: Record<string, DestinationStory> = {
   "valencia-spain": buildStory({
     slug: "valencia-spain",
     name: "Walencja",
-    tagline: "Najbardziej zbalansowany miks plaży, miasta i opłacalności.",
+    tagline: "Zbalansowany miks plaży, miasta i lokalnej kuchni.",
     summary:
-      "Walencja jest mocna, gdy chcesz mieć plażę, dobre jedzenie, miasto i sensowny koszt wyjazdu bez takiego tłoku jak w Barcelonie. To jeden z najlepszych kierunków dla osób szukających bardzo dobrego balansu.",
+      "Walencja jest mocna, gdy chcesz mieć plażę, dobre jedzenie i miasto bez takiego tłoku jak w Barcelonie. To jeden z najlepszych kierunków dla osób szukających bardzo dobrego balansu.",
     vibe: "jasno, wygodnie i bez przesadnego tłoku",
     heroImage: valenciaMedia.heroImage,
     gallery: valenciaMedia.gallery,
@@ -170,7 +170,7 @@ const destinationStories: Record<string, DestinationStory> = {
       "Miasto Sztuki i Nauki",
       "Malvarrosa i promenada",
       "park Turia jako naturalna os miasta",
-      "bardzo dobry stosunek ceny do jakości",
+      "plaża i miasto w jednym planie",
     ],
     attractions: ["Ciudad de las Artes y las Ciencias", "Malvarrosa", "Mercado Central", "Jardin del Turia", "La Lonja", "El Carmen"],
     foodSpots: ["paella w lokalnych restauracjach", "tapas w centrum", "spokojne lunche przy plaży"],
@@ -199,7 +199,7 @@ const destinationStories: Record<string, DestinationStory> = {
     name: "Ateny",
     tagline: "Kolebka Europy, w której antyk sąsiaduje z żywym, nocnym miastem — i z bramą na greckie wyspy.",
     summary:
-      "Ateny to rzadki przypadek miasta, w którym z dachowego baru patrzysz na oświetlony Partenon, a kwadrans później jesz świeże souvlaki w gwarnej Monastiraki. To kierunek na 3-4 dni z konkretem: Akropol i światowej klasy Muzeum Akropolu rano, leniwe popołudnia w cieniu uliczek Plaki, a jeśli masz dzień więcej — port w Pireusie i prom na Eginę lub Saronik. Tanio, słonecznie niemal przez cały rok i bez znużenia.",
+      "Ateny to rzadki przypadek miasta, w którym z dachowego baru patrzysz na oświetlony Partenon, a kwadrans później jesz świeże souvlaki w gwarnej Monastiraki. To kierunek na 3-4 dni z konkretem: Akropol i światowej klasy Muzeum Akropolu rano, leniwe popołudnia w cieniu uliczek Plaki, a jeśli masz dzień więcej — port w Pireusie i prom na Eginę lub Saronik. Słonecznie, intensywnie i bez znużenia.",
     vibe: "antyk, słońce i miejska energia w jednym",
     heroImage: athensMedia.heroImage,
     gallery: athensMedia.gallery,
@@ -394,7 +394,7 @@ const destinationStories: Record<string, DestinationStory> = {
       "lody i kawa przy mniej zatłoczonych campo",
     ],
     districts: [
-      "San Marco — w sercu zabytków, najwygodniej, ale najdrożej i najgwarniej",
+      "San Marco — w sercu zabytków, najwygodniej, ale też najgwarniej",
       "Cannaregio — bardziej lokalna dzielnica z autentycznymi bacari i Ghetto",
       "Dorsoduro — artystyczna, spokojniejsza okolica z muzeami i widokami",
       "Castello — najcichsza część miasta, blisko centrum, a bez tłoku",
@@ -482,7 +482,7 @@ const destinationStories: Record<string, DestinationStory> = {
     name: "Neapol",
     tagline: "Surowy, gorący i autentyczny — ojczyzna prawdziwej pizzy u stóp Wezuwiusza.",
     summary:
-      "Neapol to najbardziej żywiołowe miasto Włoch: wąska, tętniąca życiem Spaccanapoli, zapach pieca z pizzą margheritą na każdym rogu i Wezuwiusz górujący nad zatoką. To kierunek na 3-4 dni z konkretem dla odważnych — dzień na ruiny Pompejów i wejście na krater wulkanu, a stąd tylko krok do bramy na Capri i Wybrzeże Amalfi. Surowo, tanio i prawdziwie, z najlepszą pizzą, jaką zjesz w życiu.",
+      "Neapol to najbardziej żywiołowe miasto Włoch: wąska, tętniąca życiem Spaccanapoli, zapach pieca z pizzą margheritą na każdym rogu i Wezuwiusz górujący nad zatoką. To kierunek na 3-4 dni z konkretem dla odważnych — dzień na ruiny Pompejów i wejście na krater wulkanu, a stąd tylko krok do bramy na Capri i Wybrzeże Amalfi. Surowo i prawdziwie, z najlepszą pizzą, jaką zjesz w życiu.",
     vibe: "żywiołowo, surowo i bardzo autentycznie",
     highlights: [
       "Spaccanapoli — tętniąca życiem oś starego miasta",
@@ -650,7 +650,7 @@ const destinationStories: Record<string, DestinationStory> = {
     name: "Porto",
     tagline: "Malownicze miasto nad Douro, gdzie z piwnic dojrzewa porto, a domy mienią się błękitem azulejos.",
     summary:
-      "Porto to portugalski klimat w najlepszym wydaniu: spacer po brukowanej, schodzącej do rzeki dzielnicy Ribeira, degustacja w wiekowych piwnicach porto w Vila Nova de Gaia i widok z dwupoziomowego mostu Dom Luís I. To kierunek na 3-4 dni z charakterem — od bajkowej księgarni Livraria Lello po ściany pokryte błękitnymi azulejos. Tanio, klimatycznie i z dobrym jedzeniem, a do tego coraz łatwiej tu dolecieć z Polski.",
+      "Porto to portugalski klimat w najlepszym wydaniu: spacer po brukowanej, schodzącej do rzeki dzielnicy Ribeira, degustacja w wiekowych piwnicach porto w Vila Nova de Gaia i widok z dwupoziomowego mostu Dom Luís I. To kierunek na 3-4 dni z charakterem — od bajkowej księgarni Livraria Lello po ściany pokryte błękitnymi azulejos. Klimatycznie i z dobrym jedzeniem, a do tego coraz łatwiej tu dolecieć z Polski.",
     vibe: "klimatycznie, kameralnie i z kieliszkiem porto",
     highlights: [
       "Ribeira — kolorowa, brukowana dzielnica nad rzeką Douro",
@@ -761,7 +761,7 @@ const destinationStories: Record<string, DestinationStory> = {
     name: "Londyn",
     tagline: "Big Ben nad Tamizą, klejnoty koronne w Tower i nocne życie Soho — światowa metropolia bez znudzenia.",
     summary:
-      "Londyn działa wtedy, gdy chcesz mieć wszystko naraz: koronne klejnoty i krukami strzeżony Tower, darmowe arcydzieła British Museum z Kamieniem z Rosetty, panoramę z London Eye i wieczorne pubowe życie Soho. To kierunek na 3-4 dni, w którym czerwone autobusy i metro dowiozą cię wszędzie. Loty z Polski są bardzo częste, a większość wielkich muzeów jest darmowa — co realnie ratuje budżet w drogim mieście.",
+      "Londyn działa wtedy, gdy chcesz mieć wszystko naraz: koronne klejnoty i krukami strzeżony Tower, darmowe arcydzieła British Museum z Kamieniem z Rosetty, panoramę z London Eye i wieczorne pubowe życie Soho. To kierunek na 3-4 dni, w którym czerwone autobusy i metro dowiozą cię wszędzie, a większość wielkich muzeów jest darmowa.",
     vibe: "wielkomiejsko, różnorodnie i z energią",
     highlights: [
       "Tower of London z klejnotami koronnymi i strażnikami Beefeaters",
@@ -814,16 +814,16 @@ const destinationStories: Record<string, DestinationStory> = {
   "prague-czechia": buildStory({
     slug: "prague-czechia",
     name: "Praga",
-    tagline: "Most Karola o świcie, zegar Orloj wybijający godzinę i kufel piwa taniej niż w Polsce — bajka tuż za miedzą.",
+    tagline: "Most Karola o świcie, zegar Orloj wybijający godzinę i bajkowe miasto tuż za miedzą.",
     summary:
-      "Praga to jeden z najłatwiejszych i najtańszych kierunków z Polski — dojedziesz autem, autokarem albo pociągiem, a klimat dostajesz iście bajkowy. Spacer Mostem Karola o poranku, gdy nie ma jeszcze tłumów, wspinaczka na Zamek na Hradczanach z panoramą czerwonych dachów i wybijający co godzinę zegar Orloj na Staromiejskim Rynku to żelazny zestaw. Do tego świetne, tanie piwo w Małej Stranie — idealnie na weekend lub 3 dni.",
+      "Praga to jeden z najłatwiejszych kierunków z Polski — dojedziesz autem, autokarem albo pociągiem, a klimat dostajesz iście bajkowy. Spacer Mostem Karola o poranku, gdy nie ma jeszcze tłumów, wspinaczka na Zamek na Hradczanach z panoramą czerwonych dachów i wybijający co godzinę zegar Orloj na Staromiejskim Rynku to żelazny zestaw. Do tego czeskie piwo i Mała Strana — idealnie na weekend lub 3 dni.",
     vibe: "bajkowo, klimatycznie i blisko Polski",
     highlights: [
       "Most Karola o świcie, zanim wejdą tłumy i tłoczą się portreciści",
       "Zamek na Hradczanach z katedrą św. Wita i panoramą miasta",
       "średniowieczny zegar Orloj na Staromiejskim Rynku co pełną godzinę",
       "klimatyczne uliczki Małej Strany i Ściana Lennona",
-      "czeskie piwo i knajpki taniej niż w wielu polskich miastach",
+      "czeskie piwo i knajpki w Małej Stranie",
     ],
     attractions: [
       "Most Karola",
@@ -926,7 +926,7 @@ const destinationStories: Record<string, DestinationStory> = {
     name: "Stambuł",
     tagline: "Hagia Sophia, śpiew muezina znad Bosforu i tysiąc straganów Wielkiego Bazaru — miasto na styku dwóch kontynentów.",
     summary:
-      "Stambuł to jedyne miasto leżące na dwóch kontynentach i jeden z najbardziej intensywnych kierunków, jakie da się odwiedzić w 3-4 dni. W dzielnicy Sultanahmet naprzeciw siebie stoją Hagia Sophia i Błękitny Meczet, obok wznosi się sułtański Pałac Topkapı, a w labiryncie Wielkiego Bazaru targujesz się o dywany i przyprawy. Rejs po Bosforze między Europą a Azją domyka obraz. Tanie loty z Polski i korzystne ceny czynią go bardzo opłacalnym.",
+      "Stambuł to jedyne miasto leżące na dwóch kontynentach i jeden z najbardziej intensywnych kierunków, jakie da się odwiedzić w 3-4 dni. W dzielnicy Sultanahmet naprzeciw siebie stoją Hagia Sophia i Błękitny Meczet, obok wznosi się sułtański Pałac Topkapı, a w labiryncie Wielkiego Bazaru targujesz się o dywany i przyprawy. Rejs po Bosforze między Europą a Azją domyka obraz.",
     vibe: "orientalnie, intensywnie i na styku kultur",
     highlights: [
       "Hagia Sophia — bizantyjska bazylika, potem meczet, dziś znów świątynia",
@@ -1152,7 +1152,7 @@ function genericStory(destination: DestinationProfile): DestinationStory {
     slug: destination.slug,
     name: destination.city,
     tagline: `Kierunek przygotowany pod krótki lub średni wyjazd do ${destination.city}.`,
-    summary: `${destination.city} w ${destination.country} dobrze sprawdza się wtedy, gdy chcesz połączyć wygodny dojazd, sensowny budżet i jasny plan wyjazdu bez przeciazenia logistyka.`,
+    summary: `${destination.city} w ${destination.country} dobrze sprawdza się wtedy, gdy chcesz połączyć wygodny dojazd i jasny plan wyjazdu bez przeciążenia logistyką.`,
     vibe: isCoastal ? "nadmorski i relaksujący" : isNature ? "spokojny i krajobrazowy" : "miejski i zdecydowany",
     heroImage: media.heroImage,
     gallery: media.gallery,
@@ -1189,7 +1189,6 @@ function genericStory(destination: DestinationProfile): DestinationStory {
     bestFor: [
       destination.beachScore > 0.7 ? "plażą" : "zwiedzanie",
       destination.cityScore > 0.8 ? "city break" : "spokojniejszy pobyt",
-      // Bez „bardziej budżetowy scenariusz": tag wynikał z progu `safetyScore`, a nie z kosztów.
       ...(destination.safetyScore > 0.8 ? ["komfortowy wyjazd"] : []),
     ],
   };

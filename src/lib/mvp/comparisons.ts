@@ -59,12 +59,12 @@ makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat
   makePair("larnaca-cyprus", "valletta-malta", "Wyspy południa: Cypr kontra Malta"),
   makePair("athens-greece", "valletta-malta", "Krótki wyjazd nad ciepłym morzem"),
 
-  // Tanie city breaki Europy Srodkowej
+  // City breaki Europy Srodkowej
   makePair("budapest-hungary", "prague-czechia", "Klasyczny duet city breaku Europy Środkowej"),
   makePair("berlin-germany", "prague-czechia", "Berlin kontra Praga — weekend miejski"),
   makePair("budapest-hungary", "berlin-germany", "Atmosfera kontra design — Budapeszt vs Berlin"),
 
-  // Balkany / niedrogie
+  // Balkany
   makePair("athens-greece", "tirana-albania", "Bliska Grecja kontra wschodząca Albania"),
 
   // Pln Europa
@@ -112,8 +112,8 @@ makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plażowe na lato"
   makePair("larnaca-cyprus", "palma-spain", "Cypr czy Majorka — którą wyspę wybrać na wakacje", { "palma-spain": "Majorka" }),
   makePair("heraklion-greece", "larnaca-cyprus", "Kreta czy Cypr na wakacje nad ciepłym morzem", { "heraklion-greece": "Kreta" }),
   makePair("larnaca-cyprus", "rhodes-greece", "Cypr czy Rodos — porównanie pod plażę i pogodę", { "rhodes-greece": "Rodos" }),
-  makePair("agadir-morocco", "antalya-turkey", "Maroko czy Turcja — ciepły kierunek plażowy w dobrej cenie"),
-  makePair("larnaca-cyprus", "malaga-spain", "Andaluzja czy Cypr — plaża, słońce i koszty"),
+  makePair("agadir-morocco", "antalya-turkey", "Maroko czy Turcja — ciepły kierunek plażowy"),
+  makePair("larnaca-cyprus", "malaga-spain", "Andaluzja czy Cypr — plaża i słońce"),
   makePair("funchal-portugal", "santa-cruz-de-tenerife-spain", "Madera czy Teneryfa na zimową ucieczkę w ciepło", { "funchal-portugal": "Madera", "santa-cruz-de-tenerife-spain": "Teneryfa" }),
 
   // ── Klasyki city break — wysoka intencja zwiedzania ──

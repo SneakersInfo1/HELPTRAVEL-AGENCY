@@ -1,20 +1,19 @@
 // Model strony /porownanie/[para] (SEO Data Integrity, PR #1.5; normy WMO, 11.2026).
 //
 // Porównania zestawiały liczby z profili kierunków. Dla 212 z 235 kierunków
-// temperatura, czas lotu i budżet ze wzoru były szablonem regionu, więc Kreta–Rodos
+// temperatura i czas lotu ze wzoru były szablonem regionu, więc Kreta–Rodos
 // i Kreta–Majorka pokazywały po obu stronach identyczne wartości, a przy remisie
 // wyników szybka odpowiedź i FAQ i tak „wybierały zwycięzcę”.
 //
 // Model bierze liczby wyłącznie z bramki faktów (destination-facts.ts): wiersz
 // tabeli, zdanie FAQ albo sekcja pojawia się tylko wtedy, gdy obie strony mają
 // wartość dozwoloną kontraktem. Temperatury to normy WMO (średnie maksima
-// i minima), z widocznym źródłem. Kwot budżetu ze wzoru nie ma — stałe wzoru nie
-// miały żadnego źródła. Remis = brak zwycięzcy.
+// i minima), z widocznym źródłem. Remis = brak zwycięzcy.
 //
-// W profilu z szablonu `costIndex`, `accessScore` i oceny profilu (`deriveScores`)
-// to przeliczone stałe kraju, regionu i list miast. „Taniej”, „łatwiejszy dolot”,
-// „mocniejszy profil plażowy” i „dla kogo” wymagają więc danych kuratorowanych
-// po obu stronach; bez nich strona nie wskazuje zwycięzcy.
+// W profilu z szablonu `accessScore` i oceny profilu (`deriveScores`) to
+// przeliczone stałe kraju, regionu i list miast. „Łatwiejszy dolot”, „mocniejszy
+// profil plażowy” i „dla kogo” wymagają więc danych kuratorowanych po obu
+// stronach; bez nich strona nie wskazuje zwycięzcy.
 //
 // JĘZYK: nazwa kierunku stoi zawsze po dwukropku, bez orzeczenia, które musiałoby
 // się z nią zgadzać. „Lepszy jest Ateny”, „w kierunku Ateny” i „Ateny ma” to błędy
@@ -22,12 +21,17 @@
 // (Ateny — l.mn., Walencja — r.ż.), a odmiany nie ma w danych.
 
 import type { ComparisonPair } from "@/lib/mvp/comparisons";
-import { formatClimateNumber } from "@/lib/mvp/climate-normals";
+import { formatClimateNumber, getClimateNormal } from "@/lib/mvp/climate-normals";
+import {
+  APPROXIMATE_MIN_DIFF_C,
+  climatePeriodYears,
+  compareDaytimeMax,
+  periodRelation,
+} from "@/lib/mvp/climate-periods";
 import { polishMonthLabels, polishMonthSlugs } from "@/lib/mvp/months";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 import {
-  canClaimFromCostIndex,
   canClaimFromProfileScores,
   flightHoursForTripLength,
   formatFlightFact,
@@ -73,6 +77,7 @@ export interface ComparisonModel {
   b: ComparisonSide;
   rows: ComparisonRow[];
   scoreNote: string;
+  climatePeriodNote: string | null;
   verdicts: Array<{ title: string; body: string }>;
   faq: Array<{ question: string; answer: string }>;
   quickAnswer: string;
@@ -111,10 +116,6 @@ function bothScoresKnown(a: ComparisonSide, b: ComparisonSide): boolean {
   return canClaimFromProfileScores(a.facts) && canClaimFromProfileScores(b.facts);
 }
 
-function bothCostsKnown(a: ComparisonSide, b: ComparisonSide): boolean {
-  return canClaimFromCostIndex(a.facts) && canClaimFromCostIndex(b.facts);
-}
-
 function flightCell(fact: FlightFact): string {
   const hours = `~${fact.hours.toFixed(1)} h`;
   return fact.kind === "exact" ? hours : `${hours} (szacunek)`;
@@ -135,7 +136,6 @@ function audienceTags(side: ComparisonSide): string[] {
   if (destination.sightseeingScore >= 0.7) tags.push("zwiedzania i zabytków");
   if (destination.nightlifeScore >= 0.72) tags.push("nocnego życia");
   if (destination.natureScore >= 0.78) tags.push("natury i krajobrazów");
-  if (destination.costIndex <= 1 && canClaimFromCostIndex(side.facts)) tags.push("napiętego budżetu");
   const hours = flightHoursForTripLength(side.facts);
   if (hours !== null && hours <= 3.3) tags.push("krótkiego wypadu (bliski lot)");
   if (tags.length === 0) tags.push("uniwersalnego wyjazdu na 3-5 dni");
@@ -144,15 +144,6 @@ function audienceTags(side: ComparisonSide): string[] {
 
 function buildVerdicts(a: ComparisonSide, b: ComparisonSide): Array<{ title: string; body: string }> {
   const verdicts: Array<{ title: string; body: string }> = [];
-
-  if (bothCostsKnown(a, b)) {
-    const cheaper = winner(a, b, (destination) => -destination.costIndex);
-    verdicts.push(
-      cheaper
-        ? { title: "Budżet", body: `Taniej zwykle: ${cheaper.name}. To porównanie względne; aktualne ceny hoteli sprawdzisz dla swoich dat w wyszukiwarce.` }
-        : { title: "Budżet", body: `${a.name} i ${b.name} mają podobny redakcyjny indeks kosztów. Aktualne ceny hoteli sprawdzisz w wyszukiwarce.` },
-    );
-  }
 
   if (bothScoresKnown(a, b)) {
     const beach = winner(a, b, (destination) => destination.beachScore);
@@ -169,16 +160,63 @@ function buildVerdicts(a: ComparisonSide, b: ComparisonSide): Array<{ title: str
   return verdicts;
 }
 
-function cheaperName(a: ComparisonSide, b: ComparisonSide): string | null {
-  if (Math.abs(a.profile.costIndex - b.profile.costIndex) < TIE) return null;
-  return a.profile.costIndex < b.profile.costIndex ? a.name : b.name;
-}
+type JulyComparison =
+  | {
+      kind: "exact";
+      aValue: number;
+      bValue: number;
+      diffC: number;
+      higher: string | null;
+      aPeriod: string;
+      bPeriod: string;
+    }
+  | {
+      kind: "approximate";
+      aValue: number;
+      bValue: number;
+      diffC: number;
+      higher: string | null;
+      aPeriod: string;
+      bPeriod: string;
+    }
+  | { kind: "incomparable"; reason: "different" | "unknown" };
 
-function julyComparison(a: ComparisonSide, b: ComparisonSide) {
+function julyComparison(a: ComparisonSide, b: ComparisonSide): JulyComparison | null {
   if (!a.facts.temperature || !b.facts.temperature) return null;
+  const normalA = getClimateNormal(a.profile.slug);
+  const normalB = getClimateNormal(b.profile.slug);
+  if (!normalA || !normalB) return null;
+  const comparison = compareDaytimeMax(normalA, normalB, 6);
+  if (comparison.kind === "incomparable") return comparison;
+
   const aValue = a.facts.temperature.byMonth[6];
   const bValue = b.facts.temperature.byMonth[6];
-  return { aValue, bValue, higher: aValue === bValue ? null : aValue > bValue ? a.name : b.name };
+  const aPeriod = climatePeriodYears(normalA);
+  const bPeriod = climatePeriodYears(normalB);
+  if (!aPeriod || !bPeriod) return { kind: "incomparable", reason: "unknown" };
+  const directional = comparison.kind === "exact"
+    ? aValue !== bValue
+    : Math.abs(aValue - bValue) >= APPROXIMATE_MIN_DIFF_C;
+
+  return {
+    kind: comparison.kind,
+    aValue,
+    bValue,
+    diffC: comparison.diffC,
+    higher: directional ? (aValue > bValue ? a.name : b.name) : null,
+    aPeriod,
+    bPeriod,
+  };
+}
+
+function approximateJulySentence(
+  a: ComparisonSide,
+  b: ComparisonSide,
+  july: Extract<JulyComparison, { kind: "approximate" }>,
+): string {
+  const values = `${a.name}: ${formatClimateNumber(july.aValue)}°C, ${b.name}: ${formatClimateNumber(july.bValue)}°C`;
+  const conclusion = july.higher ? `wyższa wartość: ${july.higher}` : "wartości są podobne";
+  return `W lipcu ${values}; różnica ok. ${Math.abs(july.diffC)}°C, ${conclusion} (normy z lat ${july.aPeriod} i ${july.bPeriod}, porównanie orientacyjne).`;
 }
 
 function buildFaq(a: ComparisonSide, b: ComparisonSide): Array<{ question: string; answer: string }> {
@@ -212,22 +250,14 @@ function buildFaq(a: ComparisonSide, b: ComparisonSide): Array<{ question: strin
     );
   }
 
-  if (july) {
+  if (july && july.kind !== "incomparable") {
     faq.push({
       question: `Gdzie jest wyższa średnia maksymalna w lipcu — ${a.name} czy ${b.name}?`,
-      answer: july.higher
-        ? `Wyższą średnią maksymalną temperaturę w dzień ma w lipcu: ${july.higher} (${formatClimateNumber(Math.max(july.aValue, july.bValue))}°C wobec ${formatClimateNumber(Math.min(july.aValue, july.bValue))}°C). Źródło: WMO World Weather Information Service.`
-        : `Oba kierunki mają w lipcu taką samą średnią maksymalną temperaturę w dzień: ${formatClimateNumber(july.aValue)}°C. Źródło: WMO World Weather Information Service.`,
-    });
-  }
-
-  if (bothCostsKnown(a, b)) {
-    const cheaper = cheaperName(a, b);
-    faq.push({
-      question: `Który kierunek zwykle wypada taniej — ${a.name} czy ${b.name}?`,
-      answer: cheaper
-        ? `Według redakcyjnego indeksu kosztów zwykle taniej: ${cheaper}. Aktualne ceny hoteli dla swoich dat sprawdzisz w wyszukiwarce.`
-        : "Redakcyjny indeks kosztów jest podobny dla obu kierunków. Aktualne ceny hoteli dla swoich dat sprawdzisz w wyszukiwarce.",
+      answer: july.kind === "approximate"
+        ? approximateJulySentence(a, b, july)
+        : july.higher
+          ? `Wyższą średnią maksymalną temperaturę w dzień ma w lipcu: ${july.higher} (${formatClimateNumber(Math.max(july.aValue, july.bValue))}°C wobec ${formatClimateNumber(Math.min(july.aValue, july.bValue))}°C). Źródło: WMO World Weather Information Service.`
+          : `Oba kierunki mają w lipcu taką samą średnią maksymalną temperaturę w dzień: ${formatClimateNumber(july.aValue)}°C. Źródło: WMO World Weather Information Service.`,
     });
   }
   return faq;
@@ -238,11 +268,13 @@ function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide): string {
 
   if (!bothScoresKnown(a, b)) {
     const parts = [`${a.name} czy ${b.name}? Dla tej pary nie mamy pełnych ocen redakcyjnych obu kierunków, więc nie wskazujemy lepszego.`];
-    if (july) {
+    if (july && july.kind !== "incomparable") {
       parts.push(
-        july.higher
-          ? `W lipcu wyższa średnia maksymalna w dzień: ${july.higher}.`
-          : "W lipcu średnia maksymalna w dzień jest taka sama w obu kierunkach.",
+        july.kind === "approximate"
+          ? approximateJulySentence(a, b, july)
+          : july.higher
+            ? `W lipcu wyższa średnia maksymalna w dzień: ${july.higher}.`
+            : "W lipcu średnia maksymalna w dzień jest taka sama w obu kierunkach.",
       );
     }
     parts.push("Poniżej porównanie tego, co mamy sprawdzone.");
@@ -261,13 +293,27 @@ function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide): string {
     : null;
 
   let answer = `${a.name} czy ${b.name}? ${beachPart}; ${cityPart}.`;
-  if (bothCostsKnown(a, b)) {
-    const cheaper = cheaperName(a, b);
-    answer += cheaper ? ` Taniej zwykle: ${cheaper}.` : " Kosztowo oba kierunki są podobne.";
-  }
   if (accessPart) answer += ` ${accessPart}`;
-  if (july?.higher) answer += ` W lipcu wyższa średnia maksymalna w dzień: ${july.higher}.`;
+  if (july && july.kind === "approximate") answer += ` ${approximateJulySentence(a, b, july)}`;
+  else if (july?.kind === "exact" && july.higher) answer += ` W lipcu wyższa średnia maksymalna w dzień: ${july.higher}.`;
   return answer;
+}
+
+function buildClimatePeriodNote(a: ComparisonSide, b: ComparisonSide): string | null {
+  if (!a.facts.temperature || !b.facts.temperature) return null;
+  const normalA = getClimateNormal(a.profile.slug);
+  const normalB = getClimateNormal(b.profile.slug);
+  if (!normalA || !normalB) return null;
+  const relation = periodRelation(normalA, normalB);
+  if (relation === "same") return null;
+  if (relation === "unknown") {
+    return "Okres jednej z norm nie jest podany, więc wartości nie są w pełni porównywalne.";
+  }
+  const aPeriod = climatePeriodYears(normalA);
+  const bPeriod = climatePeriodYears(normalB);
+  return aPeriod && bPeriod
+    ? `Normy pochodzą z różnych okresów (${aPeriod} i ${bPeriod}), więc wartości nie są w pełni porównywalne.`
+    : "Okres jednej z norm nie jest podany, więc wartości nie są w pełni porównywalne.";
 }
 
 function monthNamesAtValue(values: readonly number[], expected: number): string[] {
@@ -296,6 +342,11 @@ export function buildComparisonModel(input: ComparisonModelInput): ComparisonMod
   }
   if (factsA.temperature && factsB.temperature) {
     rows.push(
+      {
+        label: "Okres normy WMO",
+        av: factsA.temperature.source.periodLabel,
+        bv: factsB.temperature.source.periodLabel,
+      },
       {
         label: "Średnia maks. w dzień — styczeń",
         av: `${formatClimateNumber(factsA.temperature.byMonth[0])}°C`,
@@ -356,6 +407,7 @@ export function buildComparisonModel(input: ComparisonModelInput): ComparisonMod
     b,
     rows,
     scoreNote: exactFlights ? PROFILE_SCORE_NOTE_WITH_ACCESS : PROFILE_SCORE_NOTE,
+    climatePeriodNote: buildClimatePeriodNote(a, b),
     verdicts: buildVerdicts(a, b),
     faq,
     quickAnswer: buildQuickAnswer(a, b),

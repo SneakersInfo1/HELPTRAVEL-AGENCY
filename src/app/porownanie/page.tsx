@@ -19,12 +19,12 @@ export const revalidate = 86400;
 export const metadata: Metadata = completeSocial({
   title: "Porównania kierunków — który wybrać na wyjazd?",
   description:
-    "Bezpośrednie porównania popularnych kierunków z Polski: pogoda, koszty, plaża, zwiedzanie i dolot. Kreta czy Turcja, Majorka czy Cypr, Rzym czy Ateny i wiele więcej.",
+    "Bezpośrednie porównania popularnych kierunków z Polski: pogoda, plaża, zwiedzanie i dolot. Kreta czy Turcja, Majorka czy Cypr, Rzym czy Ateny i wiele więcej.",
   alternates: { canonical: "/porownanie" },
   openGraph: {
     title: "Porównania kierunków — HelpTravel",
     description:
-      "Konkretne porównania kierunków pod realną decyzję wyjazdową: pogoda, koszty, plaża, zwiedzanie i dolot z Polski.",
+      "Konkretne porównania kierunków pod realną decyzję wyjazdową: pogoda, plaża, zwiedzanie i dolot z Polski.",
     url: `${getSiteUrl()}/porownanie`,
     type: "website",
   },
@@ -93,8 +93,8 @@ export default function ComparisonsHubPage() {
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-8 text-ink-muted">
           Nie wiesz, dokąd polecieć? Te porównania zestawiają dwa popularne kierunki na konkretach:
-          pogoda miesiąc po miesiącu, orientacyjny budżet na 4 dni, profil plażowy i miejski oraz
-          dolot z Polski. Każde kończy się jasnym wskazaniem, dla kogo lepszy będzie który kierunek.
+          pogoda miesiąc po miesiącu, profil plażowy i miejski oraz dolot z Polski. Każde kończy
+          się jasnym wskazaniem, dla kogo lepszy będzie który kierunek.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -138,8 +138,8 @@ export default function ComparisonsHubPage() {
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink-muted">
           Zacznij od tego, co jest dla Ciebie najważniejsze: jeśli liczy się plaża i pogoda — patrz
           na profil plażowy i temperatury w wybranym miesiącu. Jeśli zwiedzanie — na profil miejski i
-          listę atrakcji w przewodnikach. Budżet na 4 dni jest orientacyjny (lot, nocleg, jedzenie,
-          transport), a realne ceny sprawdzisz w wyszukiwarce w kilka sekund.
+          listę atrakcji w przewodnikach. Aktualne ceny noclegów sprawdzisz dla własnych dat w
+          wyszukiwarce.
         </p>
       </section>
     </main>

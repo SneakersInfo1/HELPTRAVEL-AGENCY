@@ -15,6 +15,7 @@ import { AuthorByline } from "@/components/publisher/author-byline";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { EDITOR_IN_CHIEF } from "@/lib/mvp/authors";
 import { formatClimateNumber } from "@/lib/mvp/climate-normals";
+import { APPROXIMATE_MIN_DIFF_C } from "@/lib/mvp/climate-periods";
 import { inMonthPhrase, polishMonthLabels, polishMonthSlugs, type PolishMonthSlug } from "@/lib/mvp/months";
 import type { MonthPageModel } from "@/lib/seo/month-page-model";
 
@@ -194,25 +195,35 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
                       <dt className="text-sm font-semibold text-ink-muted">Na tle Warszawy</dt>
                       <dd className="text-base leading-7 text-ink">
                         <span className="font-semibold tabular-nums">
-                          {context.home.maxDiffC > 0 ? "+" : context.home.maxDiffC < 0 ? "−" : ""}
-                          {formatClimateNumber(Math.abs(context.home.maxDiffC))}°C w dzień
+                          {context.home.approximate && Math.abs(context.home.maxDiffC) < APPROXIMATE_MIN_DIFF_C
+                            ? "Podobnie w dzień"
+                            : <>
+                                {context.home.approximate ? "ok. " : ""}
+                                {context.home.maxDiffC > 0 ? "+" : context.home.maxDiffC < 0 ? "−" : ""}
+                                {context.home.approximate
+                                  ? Math.abs(context.home.maxDiffC)
+                                  : formatClimateNumber(Math.abs(context.home.maxDiffC))}°C w dzień
+                              </>}
                         </span>
                         <span className="block text-sm text-ink-muted">
                           Warszawa {inMonth}: {formatClimateNumber(context.home.homeMaxC)}°C.
-                          {context.home.rainDaysDiff !== null && Math.abs(context.home.rainDaysDiff) >= 1
+                          {context.home.approximate
+                            ? ` Normy z lat ${context.home.periodLabel} i ${context.home.homePeriodLabel}; porównanie orientacyjne.`
+                            : ""}
+                          {!context.home.approximate && context.home.rainDaysDiff !== null && Math.abs(context.home.rainDaysDiff) >= 1
                             ? ` Dni z opadem: o ${formatClimateNumber(Math.abs(context.home.rainDaysDiff))} ${context.home.rainDaysDiff < 0 ? "mniej" : "więcej"}.`
                             : ""}
                         </span>
                       </dd>
                     </div>
                   ) : null}
-                  {context ? (
+                  {context?.standing ? (
                     <div className={ROW}>
                       <dt className="text-sm font-semibold text-ink-muted">Na tle innych kierunków</dt>
                       <dd className="text-base leading-7 text-ink">
                         {context.standing.warmerCount === 0
-                          ? `Najcieplejszy ${inMonth} spośród ${context.standing.total} kierunków, dla których mamy normy.`
-                          : `${capitalize(inMonth)} cieplej jest w ${context.standing.warmerCount} z ${context.standing.total} kierunków, dla których mamy normy.`}
+                          ? `Spośród ${context.standing.total} kierunków z normą z tych samych lat (${context.standing.periodLabel}) żaden nie ma ${inMonth} wyższej średniej temperatury maksymalnej.`
+                          : `${capitalize(inMonth)} cieplej jest w ${context.standing.warmerCount} z ${context.standing.total} kierunków z normą z tych samych lat (${context.standing.periodLabel}).`}
                       </dd>
                     </div>
                   ) : null}
@@ -243,13 +254,13 @@ export function MonthTemplate({ model, overview, hotelHref, cityHotels, comparis
               Gdzie {inMonth} jest cieplej
             </h2>
             <p className="mt-3 max-w-[65ch] text-base leading-7 text-ink-muted">
-              Kierunki z najbliższą wyższą średnią temperaturą maksymalną w tym samym miesiącu. W nawiasie: o ile cieplej niż tutaj.
+              Kierunki z najbliższą wyższą średnią temperaturą maksymalną w tym samym miesiącu. Porównujemy tylko normy z tego samego albo sąsiedniego okresu.
             </p>
             <div className="mt-4">
               <LinkPills
                 links={context.warmer.map((item) => ({
                   href: `/kierunki/${item.slug}/${month}`,
-                  label: `${item.name}: ${formatClimateNumber(item.maxTempC)}°C (+${formatClimateNumber(item.diffC)}°C)`,
+                  label: `${item.name}: ${formatClimateNumber(item.maxTempC)}°C (${item.approximate ? `ok. +${Math.abs(item.diffC)}°C` : `+${formatClimateNumber(item.diffC)}°C`})`,
                 }))}
               />
             </div>

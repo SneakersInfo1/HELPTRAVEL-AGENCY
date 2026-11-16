@@ -82,12 +82,15 @@ describe("tytuły i opisy bez roku i bez ceny modelowanej (testy C i F)", () => 
     }
   });
 
-  it("ranking sezonu: biernik po przyimku na i bez roku", () => {
+  it("lista sezonowa: poprawny przypadek, limit 60 znaków i bez słów rankingowych", () => {
     for (const season of seasonSlugs) {
-      assert.doesNotMatch(seasonPageHeading(season), YEAR);
+      const heading = seasonPageHeading(season);
+      assert.doesNotMatch(heading, YEAR);
+      assert.doesNotMatch(heading, /ranking|najlepsze/i);
+      assert.ok(heading.length <= 60, heading);
     }
-    assert.match(seasonPageHeading("zima"), /^Najlepsze kierunki na zimę /);
-    assert.match(seasonPageHeading("wiosna"), /^Najlepsze kierunki na wiosnę /);
+    assert.match(seasonPageHeading("zima"), /^Kierunki na zimę: w dzień średnio /);
+    assert.match(seasonPageHeading("wiosna"), /^Kierunki na wiosnę: w dzień średnio /);
   });
 
   it("porównania, także z ręcznie wpisanym tytułem", () => {

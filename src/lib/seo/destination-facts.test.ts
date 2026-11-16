@@ -11,7 +11,6 @@ import {
 
 import {
   ENTRY_REQUIREMENTS_NOTE,
-  canClaimFromCostIndex,
   exactFlightHours,
   flightHoursForTripLength,
   formatFlightFact,
@@ -146,12 +145,6 @@ describe("bramka faktów SEO", () => {
     assert.equal(factsOf("malaga-spain").countryName, "Hiszpania");
   });
 
-  it("względne twierdzenia z costIndex tylko dla danych kuratorowanych", () => {
-    for (const profile of profiles) {
-      assert.equal(canClaimFromCostIndex(getDestinationSeoFacts(profile)), curatedSlugs.has(profile.slug), profile.slug);
-    }
-  });
-
   it("wiza: zawsze neutralna notka, bez kategorycznego claimu (test G)", () => {
     assert.equal(ENTRY_REQUIREMENTS_NOTE, "Sprawdź aktualne wymagania wjazdowe");
     for (const profile of profiles) {
@@ -161,13 +154,12 @@ describe("bramka faktów SEO", () => {
     }
   });
 
-  it("profil bez pola pochodzenia nadal bierze pogodę z WMO, ale nie przepuszcza dokładnego lotu ani costIndex", () => {
+  it("profil bez pola pochodzenia nadal bierze pogodę z WMO, ale nie przepuszcza dokładnego lotu", () => {
     const malaga = bySlug.get("malaga-spain");
     assert.ok(malaga);
     const withoutProvenance = { ...malaga, provenance: undefined };
     const facts = getDestinationSeoFacts(withoutProvenance);
     assert.deepEqual(facts.temperature?.byMonth, getClimateNormal(malaga.slug)?.maxTempC);
     assert.equal(exactFlightHours(facts), null);
-    assert.equal(canClaimFromCostIndex(facts), false);
   });
 });

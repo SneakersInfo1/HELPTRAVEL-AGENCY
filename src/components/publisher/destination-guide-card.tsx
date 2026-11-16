@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "@/components/site/language-provider";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { sendClientEvent } from "@/lib/mvp/client-events";
-import { derivedProvenance, isFactGrade, provenanceOf } from "@/lib/mvp/data-provenance";
+import { isFactGrade, provenanceOf } from "@/lib/mvp/data-provenance";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import { localeFromPathname, type SiteLocale } from "@/lib/mvp/locale";
 import type { DestinationProfile } from "@/lib/mvp/types";
@@ -40,11 +40,8 @@ export function DestinationGuideCard({
           openGuide: "Open guide",
           flight: "flight",
           style: "style",
-          budget: "budget",
           beach: "beach",
           city: "city",
-          value: "better value",
-          mid: "mid+",
           showDestination: "View destination",
           planner: "Check hotels",
         }
@@ -52,11 +49,8 @@ export function DestinationGuideCard({
           openGuide: "Otwórz przewodnik",
           flight: "lot ok.",
           style: "styl",
-          budget: "budżet",
           beach: "plaża",
           city: "miasto",
-          value: "bardziej opłacalny",
-          mid: "średni+",
           showDestination: "Zobacz kierunek",
           planner: "Sprawdź hotele",
         };
@@ -64,8 +58,6 @@ export function DestinationGuideCard({
   // Czas lotu tylko z danych kuratorowanych: przy 212 kierunkach to stała regionu
   // („3,1 h" dla całej Europy Płd.), a karta trafia też do „podobnych kierunków".
   const showFlightHours = isFactGrade(provenanceOf(destination, "flightDuration"));
-  // Względne pasmo kosztu z `costIndex`: w profilu z szablonu to stała kraju albo regionu.
-  const showBudgetBand = derivedProvenance(provenanceOf(destination, "price")) === "derived";
   const cityLabel = locale === "en" ? destination.city : localizeCity(destination.city);
   const countryLabel = locale === "en" ? destination.country : localizeCountry(destination.country);
 
@@ -127,11 +119,6 @@ export function DestinationGuideCard({
           <span className="rounded-sm bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-ink">
             {copy.style} {destination.beachScore >= 0.7 ? copy.beach : copy.city}
           </span>
-          {showBudgetBand ? (
-            <span className="rounded-sm bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-ink">
-              {copy.budget} {destination.costIndex <= 1 ? copy.value : copy.mid}
-            </span>
-          ) : null}
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
           <LocalizedLink

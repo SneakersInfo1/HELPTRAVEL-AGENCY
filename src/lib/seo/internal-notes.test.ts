@@ -66,7 +66,6 @@ function renderedGuideTexts(guide: DestinationGuideContent): string[] {
     guide.overview,
     ...guide.whyGo,
     guide.bestTime,
-    guide.budgetNote,
     ...guide.whoFor,
     ...guide.highlights,
     ...guide.districts,

@@ -42,9 +42,9 @@ const dataSources = [
       "Czas lotu podajemy wprost tylko przy kierunkach z opracowanymi danymi. Przy pozostałych pokazujemy szacunek liczony z odległości od najbliższego lotniska w Polsce — zawsze oznaczony jako szacunek, bez uwzględnienia przesiadek i rozkładów.",
   },
   {
-    title: "Indeks kosztów i profile kierunków",
+    title: "Profile kierunków",
     body:
-      "Indeks kosztów oraz profil plażowy i miejski to nasza wewnętrzna, modelowana ocena. Pomaga porównywać kierunki jedną metodą, ale nie jest ceną ani pomiarem.",
+      "Profil plażowy i miejski porządkuje charakter kierunku. Wniosków o względnych kosztach nie wyprowadzamy z ręcznych ocen — pokazujemy wyłącznie ceny zmierzone dla wskazanego terminu i opatrzone datą pomiaru.",
   },
 ];
 

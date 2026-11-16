@@ -10,8 +10,6 @@
 //    najbliższego lotniska w Polsce (seed data/destinations.json) wyłącznie jako
 //    oznaczony szacunek do treści (nie do title, meta, OG ani JSON-LD); stała
 //    regionu nigdy; kierunek w Polsce nie ma „lotu z Polski";
-//  • względne twierdzenia o kosztach — tylko z danych kuratorowanych; żadnych
-//    konkretnych kwot liczonych ze wzoru;
 //  • wiza — bez kategorycznego claimu, dopóki nie ma zweryfikowanego źródła.
 //
 // Seed czytamy wprost z JSON-a: lib/mvp/destinations-seed.ts ma
@@ -20,7 +18,6 @@
 import seedJson from "../../../data/destinations.json";
 
 import {
-  derivedProvenance,
   isFactGrade,
   provenanceOf,
   type DataProvenance,
@@ -84,8 +81,6 @@ export interface DestinationSeoFacts {
   isDomestic: boolean;
   temperature: TemperatureFact | null;
   flight: FlightFact | null;
-  /** Pokrycie względnych porównań kosztu z `costIndex`; nie służy do kwot. */
-  relativeCost: DataProvenance;
   /** Pochodzenie ocen profilu (plaża, miasto, zwiedzanie, natura, bezpieczeństwo). */
   profileScores: DataProvenance;
   entryRequirementsNote: string;
@@ -186,7 +181,6 @@ export function getDestinationSeoFacts(profile: DestinationProfile): Destination
     isDomestic,
     temperature,
     flight: isDomestic ? null : resolveFlight(profile),
-    relativeCost: derivedProvenance(provenanceOf(profile, "price")),
     profileScores: provenanceOf(profile, "scores"),
     entryRequirementsNote: ENTRY_REQUIREMENTS_NOTE,
   };
@@ -223,9 +217,4 @@ export function formatFlightFact(fact: FlightFact): string {
   // Polski zapis ułamka: „2,6 h", nie „2.6 h".
   const hours = `${fact.hours.toFixed(1).replace(".", ",")} h`;
   return fact.kind === "exact" ? `ok. ${hours}` : `szacunkowo ok. ${hours} ${fact.fromHub} (liczone z odległości)`;
-}
-
-/** Czy wolno użyć `costIndex` wyłącznie do względnego porównania kosztów. */
-export function canClaimFromCostIndex(facts: DestinationSeoFacts): boolean {
-  return facts.relativeCost === "derived";
 }

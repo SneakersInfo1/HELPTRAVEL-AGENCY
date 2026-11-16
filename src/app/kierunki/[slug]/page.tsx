@@ -334,7 +334,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
       <section
         className={
-          localizedGuide.whoFor.length > 0 || localizedGuide.budgetNote
+          localizedGuide.whoFor.length > 0
             ? "grid gap-5 lg:grid-cols-3"
             : "grid gap-5 lg:grid-cols-2"
         }
@@ -367,7 +367,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
         {/* Odbiorcy tylko z ocen profilu, które mają pokrycie; w profilu
             z szablonu lista wychodzi ze stałych list miast i regionu. */}
-        {localizedGuide.whoFor.length > 0 || localizedGuide.budgetNote ? (
+        {localizedGuide.whoFor.length > 0 ? (
           <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
             <div className="mt-4 flex flex-wrap gap-2">
               {localizedGuide.whoFor.map((item) => (
@@ -379,9 +379,6 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                 </span>
               ))}
             </div>
-            {localizedGuide.budgetNote ? (
-              <p className="mt-5 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
-            ) : null}
           </article>
         ) : null}
       </section>
@@ -469,7 +466,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepsza długość</p>
                 <p className="mt-2 text-lg font-bold text-ink">{model.tripLength}</p>
                 <p className="mt-2 text-sm leading-6 text-ink-muted">
-                  Ten scenariusz zwykle daje najlepszy stosunek kosztu do wygody, bez poczucia, ze wyjazd jest za krótki
+                  Ten scenariusz zwykle daje dobry balans czasu w drodze i czasu na miejscu, bez poczucia, ze wyjazd jest za krótki
                   albo niepotrzebnie rozciagniety.
                 </p>
               </div>
@@ -511,7 +508,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           ) : null}
           <div className="mt-5 space-y-3 text-sm leading-7 text-ink-muted">
             <p>
-              Ta strona ma pomoc zdecydować, czy kierunek pasuje do stylu wyjazdu, budżetu i realnej logistyki z Polski.
+              Ta strona ma pomoc zdecydować, czy kierunek pasuje do stylu wyjazdu i realnej logistyki z Polski.
             </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -588,7 +585,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               ))
             ) : (
               <div className="rounded-2xl bg-surface-raised px-4 py-4 text-sm leading-7 text-ink-muted">
-                Kierunek wypada bardzo równo. W praktyce słabiej sprawdzi się tylko wtedy, gdy brief jest skrajnie budżetowy albo wymaga bardzo specyficznej logistyki.
+                Kierunek wypada bardzo równo. W praktyce słabiej sprawdzi się tylko wtedy, gdy wymaga bardzo specyficznej logistyki.
               </div>
             )}
           </div>

@@ -4,7 +4,6 @@ import type { DestinationGuideContent, EditorialFaq } from "./publisher-content"
 import type { DestinationProfile } from "./types";
 
 import {
-  canClaimFromCostIndex,
   destinationDisplayName,
   ENTRY_REQUIREMENTS_NOTE,
   flightHoursForTripLength,
@@ -19,7 +18,7 @@ const monthLabels = {
 const categoryTitleMap: Record<string, { pl: string; en: string }> = {
   "city-breaki": { pl: "City breaki", en: "City breaks" },
   "ciepłe-kierunki": { pl: "Ciepłe kierunki", en: "Warm escapes" },
-  "tanie-podróże": { pl: "Tanie podróże", en: "Budget travel" },
+  "tanie-podróże": { pl: "Ceny wyjazdów", en: "Trip prices" },
   "weekendowe-wyjazdy": { pl: "Weekendowe wyjazdy", en: "Weekend trips" },
   "bez-wizy": { pl: "Bez wizy", en: "Visa-free" },
   przewodniki: { pl: "Przewodniki", en: "Guides" },
@@ -29,7 +28,6 @@ export interface LocalizedDestinationGuide {
   overview: string;
   whyGo: string[];
   bestTime: string;
-  budgetNote: string;
   whoFor: string[];
   highlights: string[];
   districts: string[];
@@ -166,7 +164,7 @@ function englishWhyGo(guide: DestinationGuideContent, story: DestinationStory) {
   return [
     `${destination.city} is strongest when the brief points toward ${tags.slice(0, 2).join(" and ")} rather than a vague "anywhere warm" search.`,
     `It gives you a practical format for ${tripLengthLabel(destination.typicalFlightHoursFromPL, "en")} without forcing an overloaded itinerary or overly long travel time.`,
-    `The destination also converts well from inspiration into action: clear hotel areas, a defensible budget range and a strong next step into flights or local mobility.`,
+    `The destination also converts well from inspiration into action: clear hotel areas and a strong next step into flights or local mobility.`,
   ];
 }
 
@@ -177,18 +175,6 @@ function englishBestTime(destination: DestinationProfile) {
   }
 
   return `The average daytime maximum is in the 18–30°C range in ${months.join(", ")}. This is a climate normal, not a forecast.`;
-}
-
-function englishBudget(destination: DestinationProfile) {
-  if (destination.costIndex <= 0.95) {
-    return "This is one of the easier destinations to defend on a sensible budget without dropping straight into a low-standard trip.";
-  }
-
-  if (destination.costIndex >= 1.35) {
-    return "Budgeting with a bit of margin matters here, because accommodation and daily spend can rise faster than in cheaper alternatives with a similar climate or city profile.";
-  }
-
-  return "The strongest setup is usually a mid-range budget: a good base, enough room for food and a couple of paid highlights, without pushing the whole trip into a more expensive comfort-only zone.";
 }
 
 function englishWhoFor(destination: DestinationProfile, story: DestinationStory) {
@@ -211,7 +197,7 @@ function englishFaq(guide: DestinationGuideContent) {
   return [
     {
       question: `How long should you plan for ${destination.city}?`,
-      answer: `The strongest default is usually ${tripLength}. That window balances flight effort, budget and the amount you can realistically see without turning the trip into a checklist sprint.`,
+      answer: `The strongest default is usually ${tripLength}. That window balances flight effort, pace and the amount you can realistically see without turning the trip into a checklist sprint.`,
     },
     {
       question: `Does ${destination.city} work better as a city break or as a more relaxed stay?`,
@@ -265,7 +251,6 @@ export function getLocalizedDestinationGuide(
       overview: guide.overview,
       whyGo: guide.whyGo,
       bestTime: guide.bestTime,
-      budgetNote: guide.budgetNote,
       whoFor: guide.whoFor,
       highlights: guide.highlights,
       districts,
@@ -285,7 +270,6 @@ export function getLocalizedDestinationGuide(
     overview: englishOverview(guide, story),
     whyGo: englishWhyGo(guide, story),
     bestTime: englishBestTime(guide.destination),
-    budgetNote: englishBudget(guide.destination),
     whoFor: englishWhoFor(guide.destination, story),
     highlights: story.attractions.slice(0, 5),
     districts,
@@ -309,14 +293,6 @@ export function buildLocalizedAvoidNotes(guide: DestinationGuideContent, locale:
       locale === "en"
         ? "Less comfortable if the whole point is a very short, ultra-efficient weekend with minimal travel time."
         : "Mniej wygodny wybór na bardzo szybki weekend, jeśli liczysz na minimalny czas w drodze.",
-    );
-  }
-  // Indeks kosztów profilu z szablonu to stała kraju albo regionu (deriveCostIndex).
-  if (guide.destination.costIndex > 1.3 && canClaimFromCostIndex(facts)) {
-    notes.push(
-      locale === "en"
-        ? "Harder to defend when the budget is extremely tight and cheaper alternatives can deliver a similar climate or trip style."
-        : "Przy bardzo twardym budżecie łatwiej obronić tańsze alternatywy w podobnym klimacie.",
     );
   }
   if (guide.destination.beachScore < 0.45) {
@@ -376,27 +352,9 @@ export function buildLocalizedComparisonSignals(
   locale: SiteLocale,
 ) {
   const currentName = locale === "en" ? current.city : destinationDisplayName(current);
-  const currentCostKnown = canClaimFromCostIndex(getDestinationSeoFacts(current));
 
   return alternatives.slice(0, 3).map((destination) => {
     const name = locale === "en" ? destination.city : destinationDisplayName(destination);
-    // Kąt cenowy tylko przy kosztach spoza szablonu regionu po obu stronach: dla dwóch kierunków
-    // z tego samego kraju „podobny pułap cenowy" to po prostu ta sama stała z deriveCostIndex.
-    const costKnown = currentCostKnown && canClaimFromCostIndex(getDestinationSeoFacts(destination));
-    const priceAngle = !costKnown
-      ? null
-      : locale === "en"
-        ? destination.costIndex + 0.08 < current.costIndex
-          ? `${name} usually lands as the cheaper option when total trip cost is the main constraint.`
-          : destination.costIndex - 0.08 > current.costIndex
-            ? `${currentName} tends to protect the budget better if you do not want to pay more for a similar climate.`
-            : `${name} plays in a similar price band, so the decision is driven more by vibe and logistics.`
-        : destination.costIndex + 0.08 < current.costIndex
-          ? `${name} wypada zwykle taniej, jeśli priorytetem jest koszt całośći wyjazdu.`
-          : destination.costIndex - 0.08 > current.costIndex
-            ? `${currentName} zwykle lepiej broni budżet, jeśli nie chcesz doplacac za podobny klimat.`
-            : `${name} gra w podobnym pulapie cenowym, więc decyduje raczej klimat i logistyka.`;
-
     const styleAngle =
       locale === "en"
         ? destination.beachScore > current.beachScore + 0.12
@@ -417,8 +375,8 @@ export function buildLocalizedComparisonSignals(
     return {
       slug: destination.slug,
       city: name,
-      summary: priceAngle ?? styleAngle,
-      bestFor: priceAngle ? styleAngle : null,
+      summary: styleAngle,
+      bestFor: null,
     };
   });
 }
@@ -426,9 +384,8 @@ export function buildLocalizedComparisonSignals(
 export function buildLocalizedWinningScenarios(guide: DestinationGuideContent, locale: SiteLocale) {
   const destination = guide.destination;
   const facts = getDestinationSeoFacts(destination);
-  // `accessScore` i `costIndex` profilu z szablonu to przeliczone stałe regionu — bez scenariuszy na nich opartych.
+  // `accessScore` profilu z szablonu to przeliczona stała regionu — bez scenariuszy na niej opartych.
   const exactFlight = facts.flight?.kind === "exact";
-  const costKnown = canClaimFromCostIndex(facts);
 
   if (locale === "en") {
     return [
@@ -452,17 +409,6 @@ export function buildLocalizedWinningScenarios(guide: DestinationGuideContent, l
               ? "It becomes strongest when the core brief is city time, sightseeing and a clear 3-5 day plan without unnecessary sprawl."
               : "It tends to win when the brief asks for a calmer rhythm, more views and a balanced short escape rather than an overpacked weekend.",
       },
-      ...(costKnown
-        ? [
-            {
-              title: "It wins when value still matters",
-              body:
-                destination.costIndex <= 1.05
-                  ? "It is easier to hold a strong cost-to-experience ratio here than in many louder alternatives with a similar climate."
-                  : "This is not an ultra-budget pick, but it can still make strong sense if you avoid wasting the budget on the wrong hotel area.",
-            },
-          ]
-        : []),
     ];
   }
 
@@ -487,17 +433,6 @@ export function buildLocalizedWinningScenarios(guide: DestinationGuideContent, l
             ? "Najmocniej pracuje, gdy priorytetem jest miasto, zwiedzanie i czytelny plan na 3-5 dni bez rozłewania wyjazdu."
             : "Najlepiej wypada przy spokojniejszym briefie, gdzie liczą się widoki, rytm miejsca i bardziej zbalansowany plan.",
     },
-    ...(costKnown
-      ? [
-          {
-            title: "Wygrywa, gdy budżet ma być sensowny",
-            body:
-              destination.costIndex <= 1.05
-                ? "Łatwiej utrzymać tu dobry stosunek kosztu do efektu niż w wielu glosniejszych kierunkach o podobnym klimacie."
-                : "To nie jest kierunek ultrabudżetowy, ale nadal może być bardzo sensowny, jeśli nie przepalasz budżetu na zła lokalizacje noclegu.",
-          },
-        ]
-      : []),
   ];
 }
 

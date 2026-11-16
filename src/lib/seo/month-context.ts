@@ -7,10 +7,17 @@
 // źródło co normy i nie dokłada żadnego założenia.
 
 import normalsJson from "@/lib/mvp/climate-normals.generated.json";
+import {
+  climatePeriodYears,
+  compareDaytimeMax,
+  periodRelation,
+} from "@/lib/mvp/climate-periods";
 
 interface NormalRecord {
   slug: string;
   latitude?: number | null;
+  periodFrom: number | null;
+  periodTo: number | null;
   maxTempC: number[];
   minTempC: number[];
   rainDays: Array<number | null>;
@@ -55,6 +62,9 @@ export interface HomeComparison {
   homeMaxC: number;
   /** Różnica liczby dni z opadem; null bez kompletu danych po obu stronach. */
   rainDaysDiff: number | null;
+  approximate: boolean;
+  periodLabel: string;
+  homePeriodLabel: string;
 }
 
 /** Porównanie z Warszawą w tym samym miesiącu. Dla Warszawy zwraca null. */
@@ -63,12 +73,20 @@ export function homeComparison(slug: string, monthIndex: number): HomeComparison
   const normal = BY_SLUG.get(slug);
   const home = BY_SLUG.get(HOME_REFERENCE_SLUG);
   if (!normal || !home) return null;
+  const comparison = compareDaytimeMax(normal, home, monthIndex);
+  if (comparison.kind === "incomparable") return null;
+  const periodLabel = climatePeriodYears(normal);
+  const homePeriodLabel = climatePeriodYears(home);
+  if (!periodLabel || !homePeriodLabel) return null;
   const here = normal.rainDays[monthIndex];
   const there = home.rainDays[monthIndex];
   return {
-    maxDiffC: round1(normal.maxTempC[monthIndex] - home.maxTempC[monthIndex]),
+    maxDiffC: comparison.diffC,
     homeMaxC: home.maxTempC[monthIndex],
     rainDaysDiff: here !== null && there !== null ? round1(here - there) : null,
+    approximate: comparison.kind === "approximate",
+    periodLabel,
+    homePeriodLabel,
   };
 }
 
@@ -77,13 +95,22 @@ export interface MonthStanding {
   warmerCount: number;
   /** Liczba kierunków z danymi (łącznie z tym). */
   total: number;
+  periodLabel: string;
 }
 
 export function monthStanding(slug: string, monthIndex: number): MonthStanding | null {
   const normal = BY_SLUG.get(slug);
   if (!normal) return null;
+  const periodLabel = climatePeriodYears(normal);
+  if (!periodLabel) return null;
+  const cohort = NORMALS.filter((other) => periodRelation(normal, other) === "same");
+  if (cohort.length < 10) return null;
   const own = normal.maxTempC[monthIndex];
-  return { warmerCount: NORMALS.filter((other) => other.maxTempC[monthIndex] > own).length, total: NORMALS.length };
+  return {
+    warmerCount: cohort.filter((other) => other.maxTempC[monthIndex] > own).length,
+    total: cohort.length,
+    periodLabel,
+  };
 }
 
 export interface WarmerAlternative {
@@ -91,6 +118,8 @@ export interface WarmerAlternative {
   maxTempC: number;
   /** O ile cieplej niż na stronie, z której linkujemy. */
   diffC: number;
+  approximate: boolean;
+  periodLabel: string;
 }
 
 /**
@@ -109,10 +138,30 @@ export function warmerAlternatives(
   if (!normal) return [];
   const { limit = 3, minDiffC = 3, isEligible = () => true } = options;
   const own = normal.maxTempC[monthIndex];
-  return NORMALS.filter((other) => other.slug !== slug && other.maxTempC[monthIndex] - own >= minDiffC && isEligible(other.slug))
-    .map((other) => ({ slug: other.slug, maxTempC: other.maxTempC[monthIndex], diffC: round1(other.maxTempC[monthIndex] - own) }))
-    .sort((a, b) => a.diffC - b.diffC || a.slug.localeCompare(b.slug))
-    .slice(0, limit);
+  return NORMALS.flatMap((other) => {
+    const rawDiffC = other.maxTempC[monthIndex] - own;
+    if (other.slug === slug || rawDiffC < minDiffC || !isEligible(other.slug)) return [];
+    const comparison = compareDaytimeMax(other, normal, monthIndex);
+    const periodLabel = climatePeriodYears(other);
+    if (comparison.kind === "incomparable" || !periodLabel) return [];
+    return [{
+      slug: other.slug,
+      maxTempC: other.maxTempC[monthIndex],
+      diffC: comparison.diffC,
+      approximate: comparison.kind === "approximate",
+      periodLabel,
+      rawDiffC,
+    }];
+  })
+    .sort((a, b) => a.rawDiffC - b.rawDiffC || a.slug.localeCompare(b.slug))
+    .slice(0, limit)
+    .map((item) => ({
+      slug: item.slug,
+      maxTempC: item.maxTempC,
+      diffC: item.diffC,
+      approximate: item.approximate,
+      periodLabel: item.periodLabel,
+    }));
 }
 
 /** Szerokość geograficzna stacji (do długości dnia); null, gdy źródło jej nie podało. */
