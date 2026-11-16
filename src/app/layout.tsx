@@ -1,7 +1,8 @@
 import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { preload } from "react-dom";
 
+import "./fonts.css";
 import "./globals.css";
 import { LanguageProvider } from "@/components/site/language-provider";
 import { SiteShell } from "@/components/site/site-shell";
@@ -18,41 +19,25 @@ import { buildSiteStructuredData } from "@/lib/seo/site-schema";
 const siteUrl = getSiteUrl();
 const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 
-// Krój displayowy — WYŁĄCZNIE nagłówki hero i sekcji (28 px w górę).
+// Fonty są hostowane lokalnie: reguły @font-face w ./fonts.css, pliki w public/fonts
+// (kopie plików Google Fonts, identyczne bajt w bajt z tymi, które wcześniej
+// pobierał next/font/google przy każdym buildzie — i czasem na tym padał).
 //
-// Do 2026-08-02 stał też na nazwach miast w kartach, przy 18–22 px. Cormorant
-// jest krojem o bardzo wysokim kontraście kresek: w tych rozmiarach robi się
-// cienki, blady i „papierowy" — to była bezpośrednia przyczyna zgłoszenia
-// właściciela („czcionki wyglądają nieprzyjemnie"). Karty przeszły na Manrope
-// z mocną wagą; szeryf zostaje tam, gdzie ma dość miejsca, żeby wyglądać jak
-// decyzja, a nie jak awaria renderowania.
+// Krój displayowy (Cormorant Garamond 600/700) — WYŁĄCZNIE nagłówki hero i sekcji
+// (28 px w górę). Do 2026-08-02 stał też na nazwach miast w kartach, przy 18–22 px:
+// w tych rozmiarach robi się cienki i blady, co było przyczyną zgłoszenia
+// właściciela („czcionki wyglądają nieprzyjemnie”). Karty przeszły na Manrope.
 //
-// `latin-ext` jest konieczne dla polskich znaków (ą, ę, ł, ń, ó, ś, ż, ź) —
-// bez niego przeglądarka podmienia je z KROJU ZASTĘPCZEGO i w jednym wyrazie
-// mieszają się dwa fonty.
-const displayFont = Cormorant_Garamond({
-  variable: "--font-display",
-  subsets: ["latin", "latin-ext"],
-  weight: ["600", "700"],
-});
-
-const uiFont = Manrope({
-  variable: "--font-ui",
-  // `latin-ext` DOPISANE 2026-08-04, kiedy Manrope przejął wszystkie nagłówki
-  // strony głównej (patrz komentarz w home-hybrid-hero.tsx).
-  //
-  // Sprawdzone pomiarem, żeby nie naprawiać nieistniejącego błędu: polskie znaki
-  // renderują się poprawnie także bez tego wpisu — Google oddaje reguły
-  // `@font-face` dla wszystkich podzbiorów, a `subsets` decyduje tylko o tym,
-  // które są PRZEŁADOWANE z wyprzedzeniem. Zmierzone na produkcji: żaden
-  // z ą/ę/ł/ń/ś/ż/ó nie schodził z kroju zastępczego.
-  //
-  // Wpis ma więc sens wydajnościowy, nie poprawnościowy: bez niego pierwszy
-  // nagłówek z polskim znakiem — czyli praktycznie każdy — czeka na DRUGIE
-  // pobranie pliku już po rozpoczęciu rysowania.
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700", "800"],
-});
+// Wyprzedzające pobranie (preload) obejmuje te same pliki co wcześniej przy
+// `subsets: ["latin", "latin-ext"]`: łaciński i rozszerzony łaciński obu krojów.
+// `latin-ext` ma sens wydajnościowy — bez niego pierwszy nagłówek z polskim
+// znakiem czeka na drugie pobranie pliku już po rozpoczęciu rysowania.
+const PRELOADED_FONTS = [
+  "/fonts/cormorant-garamond-v21-latin.woff2",
+  "/fonts/cormorant-garamond-v21-latin-ext.woff2",
+  "/fonts/manrope-v23-latin.woff2",
+  "/fonts/manrope-v23-latin-ext.woff2",
+] as const;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -142,8 +127,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  for (const href of PRELOADED_FONTS) preload(href, { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
   return (
-    <html lang="pl" suppressHydrationWarning className={`${displayFont.variable} ${uiFont.variable} h-full antialiased`}>
+    <html lang="pl" suppressHydrationWarning className="ht-font-vars h-full antialiased">
       {/* Warm the connection to the hero-image CDN early so the LCP
           backdrop image isn't gated on a cold TLS handshake. */}
       <link rel="preconnect" href="https://images.pexels.com" />
