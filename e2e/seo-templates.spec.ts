@@ -123,3 +123,65 @@ test.describe("klawiatura i przejście do wyszukiwarki", () => {
     });
   }
 });
+
+// „Szukaj lotów” ze stron treści (17.11.2026): wyszukiwarka lotów na stronie
+// głównej otwiera się z wpisanym celem i — na stronie miesiąca — terminem.
+// Sam link NIE uruchamia wyszukiwania; adres wyników sprawdzamy po wpisaniu
+// lotniska wylotu, a stronę wyników PRZECHWYTUJEMY, żeby nic nie poszło do dostawcy.
+const FLIGHT_ENTRIES = [
+  { name: "miesiąc", path: "/kierunki/barcelona-spain/styczen", link: /^Szukaj lotów$/, field: "Barcelona", iata: "BCN", dates: true },
+  { name: "porównanie", path: "/porownanie/athens-greece-vs-rome-italy", link: /^Rzym$/, field: "Rzym", iata: "ROM", dates: false },
+  { name: "przewodnik", path: "/kierunki/barcelona-spain", link: /Sprawdź loty: Barcelona/, field: "Barcelona", iata: "BCN", dates: false },
+] as const;
+
+test.describe("przejście do wyszukiwarki lotów z celem i terminem", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  for (const entry of FLIGHT_ENTRIES) {
+    test(`${entry.name}: ${entry.dates ? "cel i termin trafiają" : "cel trafia"} do formularza lotów, wyszukiwanie dopiero po decyzji`, async ({ page }) => {
+      const providerRequests: string[] = [];
+      const resultsRequests: string[] = [];
+      await page.route("**/api/flights/**", async (route) => {
+        providerRequests.push(route.request().url());
+        await route.abort();
+      });
+      await page.route("**/loty/wyniki**", async (route) => {
+        resultsRequests.push(route.request().url());
+        await route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: "<!doctype html><title>wyniki lotów (atrapa)</title><p>ok</p>" });
+      });
+
+      await page.goto(entry.path, { waitUntil: "networkidle" });
+      await hideConsentBanner(page);
+      const link = page.locator("main a", { hasText: entry.link }).first();
+      const href = (await link.getAttribute("href")) ?? "";
+      const linked = new URLSearchParams(href.split("#")[1] ?? "");
+      expect(href.split("#")[0]).toBe("/?tab=loty");
+      expect(linked.get("destination")).toBe(entry.iata);
+      expect(Boolean(linked.get("depart") && linked.get("return"))).toBe(entry.dates);
+
+      await Promise.all([page.waitForURL(/\/\?tab=loty#/), link.click()]);
+      await hideConsentBanner(page);
+      await expect(page.locator('[role="tab"][aria-selected="true"]')).toContainText("Loty");
+      await expect(page.getByPlaceholder("Miasto lub kraj")).toHaveValue(entry.field);
+      const dateButton = page.locator("form button", { hasText: /–/ }).first();
+      if (entry.dates) await expect(dateButton).not.toContainText("Wylot – Powrót");
+      else await expect(dateButton).toContainText("Wylot – Powrót");
+      expect(providerRequests).toEqual([]);
+      expect(resultsRequests).toEqual([]);
+
+      if (!entry.dates) return;
+      // Po wpisaniu lotniska wylotu formularz prowadzi do wyników z celem i terminem z linku.
+      await page.getByLabel("Skąd (lotnisko wylotu)").fill("Warszawa");
+      await Promise.all([
+        page.waitForURL(/\/loty\/wyniki\?/),
+        page.locator("form button[type='submit']", { hasText: "Szukaj lotów" }).click(),
+      ]);
+      const results = new URL(page.url());
+      expect(results.searchParams.get("destination")).toBe(entry.iata);
+      expect(results.searchParams.get("depart")).toBe(linked.get("depart"));
+      expect(results.searchParams.get("return")).toBe(linked.get("return"));
+      expect(results.searchParams.get("origin")).toMatch(/WAW/);
+      expect(providerRequests).toEqual([]);
+    });
+  }
+});
