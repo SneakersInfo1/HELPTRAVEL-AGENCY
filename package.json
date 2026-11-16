@@ -47,6 +47,7 @@
     "seo:climate": "tsx scripts/seo/fetch-climate-normals.ts",
     "seo:month-diversity": "tsx scripts/seo/month-diversity.ts",
     "seo:shots": "tsx scripts/seo/shots.ts",
+    "seo:index-variant": "tsx scripts/seo/month-index-variant.ts",
     "content:verify": "tsx scripts/content-engine/verify-docs.ts",
     "content:check": "tsx scripts/content-engine/verify-docs.ts --offline --require-approved",
     "content:freshness": "tsx scripts/content-engine/verify-docs.ts --offline --strict-freshness",
