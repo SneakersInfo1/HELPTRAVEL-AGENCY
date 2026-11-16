@@ -156,8 +156,8 @@ async function main() {
     groups: [
       summarize("wszystkie strony miesięcy", rows),
       summarize("indeksowalne", indexable),
-      summarize("indeksowalne z liczbami pogodowymi", indexable.filter((row) => row.numericFacts > 0)),
-      summarize("indeksowalne bez żadnej liczby pogodowej", indexable.filter((row) => row.numericFacts === 0)),
+      summarize("indeksowalne z liczbami z jednostką (°C, mm, h)", indexable.filter((row) => row.numericFacts > 0)),
+      summarize("indeksowalne bez liczb z jednostką", indexable.filter((row) => row.numericFacts === 0)),
       summarize("bez indeksu", rows.filter((row) => !row.indexable)),
     ],
   };

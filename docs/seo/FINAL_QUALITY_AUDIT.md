@@ -34,23 +34,33 @@ Okresy norm różnią się między krajami: 1981–2010 (56 kierunków), 1971–
 
 ## 2. Powtarzalność stron miesięcy
 
-Pomiar: `pnpm seo:month-diversity`. Tekst treści głównej każdej strony po zamaskowaniu nazwy kierunku, nazw miesięcy i wszystkich liczb. Strony o tym samym tekście po zamaskowaniu różnią się wyłącznie podstawionymi wartościami.
+Pomiar: `pnpm seo:month-diversity`. Bierzemy tekst treści głównej każdej strony i maskujemy w nim nazwy, miesiące i wszystkie liczby. Strony, które po zamaskowaniu mają ten sam tekst, różnią się wyłącznie podstawionymi wartościami.
 
-| Miara (1039 stron indeksowalnych) | Przed | Po |
-|---|---|---|
-| Różne warianty tekstu | 274 | 900 |
-| Strony dzielące tekst z co najmniej 10 innymi | 644 | 86 |
-| Największa grupa identycznych stron | 178 | 36 |
-| Strony z danymi pogodowymi ze źródła | 220 (ręczne) | 881 (WMO) |
-| Mediana liczby słów | 179 | 527 |
+Są dwa tryby maskowania:
 
-Dla wszystkich 2820 stron: 348 → 2278 wariantów, największa grupa 444 → 78.
+- **podstawowy** maskuje tylko nazwę własnego kierunku;
+- **ostry** (`--strict`) maskuje wszystkie nazwy własne z danych serwisu: kierunki, kraje, miasta i stacje WMO oraz służby meteorologiczne.
 
-### Czego ta poprawa nie oznacza
+Tryb podstawowy zawyża wynik po zmianach, bo linki „gdzie jest cieplej” i nazwy służb różnicują tekst, choć to też podstawione wartości. Miarodajny jest tryb ostry. Obie wersje zmierzono na buildach produkcyjnych: przed zmianami WMO (`c4ba605`) i końcowym.
 
-Same różne liczby nie robią ze strony wartościowej treści i pomiar tego nie udaje: liczby są maskowane. Wzrost wariantów bierze się z tego, że strony różnią się teraz strukturą (które wskazania się pojawiają, które kierunki są cieplejszą alternatywą, które miesiące są skrajne).
+| Miara (1039 stron indeksowalnych) | Przed | Po (tryb ostry) | Po (tryb podstawowy) |
+|---|---|---|---|
+| Różne warianty tekstu | 271 | 803 | 903 |
+| Strony dzielące tekst z co najmniej 10 innymi | 649 | 86 | 86 |
+| Największa grupa identycznych stron | 178 | 36 | 36 |
+| Mediana udziału zdań szablonowych na stronie | 0,63 | **0,70** | 0,67 |
+| Strony z danymi pogodowymi ze źródła | 220 (ręczne) | 881 (WMO) | 881 (WMO) |
+| Mediana liczby słów | 179 | 533 | 533 |
 
-Nadal jednak mediana 67% zdań na stronie, po zamaskowaniu, występuje na ponad połowie stron miesięcy. **Proza pozostaje szablonem. Wartość strony pochodzi z danych, a nie z tekstu.** To uczciwy opis stanu, a nie sukces redakcyjny.
+Wartości „przed” w trybie podstawowym (274, 644, 178) zmierzono wcześniej na tym samym buildzie.
+
+Dla wszystkich 2820 stron w trybie ostrym: 334 → 1863 wariantów, największa grupa 444 → 84.
+
+### Jak to czytać
+
+- **Strony przestały być kopiami.** Przed zmianą 178 indeksowalnych stron miało dosłownie ten sam tekst po zamaskowaniu, a 649 należało do grup co najmniej 10 identycznych stron. Teraz jest to 36 i 86.
+- **Proza nie stała się bardziej unikalna, tylko bardziej szablonowa.** Udział zdań szablonowych na stronie wzrósł z 0,63 do 0,70, bo nowe sekcje (normy, porównanie z Warszawą, długość dnia) dokładają stałe zdania z podstawionymi wartościami. Strony różnią się gałęziami szablonu sterowanymi danymi: które wskazania się pojawiają, czy miesiąc jest najcieplejszy, czy w Warszawie pada częściej czy rzadziej, ile jest cieplejszych alternatyw.
+- **Wartość strony to dane, nie tekst.** To uczciwy opis: strony miesięcy są stronami programowymi z prawdziwymi, źródłowymi danymi dla konkretnego miejsca i miesiąca, a nie artykułami redakcyjnymi. Różne temperatury same w sobie nie są tu liczone jako unikalność, bo liczby są maskowane.
 
 ### Co strona miesiąca daje dziś czytelnikowi
 
@@ -85,7 +95,7 @@ Propozycja do Twojej decyzji:
 
 ## 4. Design i konwersja
 
-Kontrola sześciu stron w szerokościach 390, 768 i 1440 px (`pnpm seo:shots`): status 200, brak przepełnienia poziomego, 0 błędów konsoli, 0 żądań do API dostawców przy wczytaniu, pierwsze CTA w pierwszym ekranie na każdej stronie.
+Kontrola sześciu stron w szerokościach 390, 768 i 1440 px (`pnpm seo:shots`), lokalnie i na Preview Vercela (z prawdziwymi zdjęciami i danymi dostawców): status 200, brak przepełnienia poziomego, 0 błędów konsoli, 0 żądań do API dostawców przy wczytaniu, pierwsze CTA w pierwszym ekranie na każdej stronie. Na Preview sprawdzono też stronę kierunku bez nazwy stacji w WWIS (Aleksandria): linia źródła pokazuje służbę i punkt WWIS.
 
 | Sprawdzenie | Wynik |
 |---|---|
@@ -100,7 +110,7 @@ Znalezione i poprawione: przydługi, urzędowy lead strony miesiąca, błąd odm
 Znalezione i **niepoprawione**:
 
 - **Przycisk „Szukaj lotów” prowadzi do `/?tab=loty`**, czyli na stronę główną bez kierunku i terminu. Formularz lotów nie przyjmuje kierunku z adresu, a jego zmiana wymaga dotknięcia komponentów strony głównej, czego nie wolno mi robić bez zgody. To realna strata w lejku lotów.
-- Pierwsze CTA na stronie miesiąca jest na telefonie 576 px od góry (wcześniej 388 px), bo odpowiedź ma teraz więcej treści i linię źródła. Mieści się w pierwszym ekranie, ale przy pierwszej wizycie zasłania je baner cookies.
+- Pierwsze CTA na stronie miesiąca jest na telefonie 544 px od góry na Preview (wcześniej 388 px), bo odpowiedź ma teraz więcej treści i linię źródła. Mieści się w pierwszym ekranie, ale przy pierwszej wizycie zasłania je baner cookies.
 - Linki pomocnicze niższe niż 40 px (okruszki, źródła, podpis autora) zostały bez zmian.
 
 Ocena wyglądu: spokojny, redakcyjny, spójny z marką, bez gradientów, emoji i fałszywej presji. Nie jest to projekt „wyróżniający się” w sensie wizualnym. Jego siłą jest czytelność i widoczne źródła. Nie było testów z użytkownikami.
@@ -109,18 +119,44 @@ Ocena wyglądu: spokojny, redakcyjny, spójny z marką, bez gradientów, emoji i
 
 | Kontrola | Wynik |
 |---|---|
-| `pnpm test` | 1686 + 186 zaliczonych |
+| `pnpm test` | 1690 + 186 zaliczonych |
 | `tsc --noEmit`, `eslint` | czyste |
 | Build produkcyjny | udany |
-| Test dymny (`seo:smoke`) | 268/268 |
+| Test dymny (`seo:smoke`) | 268/268 lokalnie i 268/268 na Preview (`9681df4`) |
 | Playwright z axe | 13/13 |
+| GitHub Actions na PR (`9681df4`) | `content-check` i `templates-e2e` zaliczone, wdrożenie Preview na Vercelu gotowe |
 | Crawl buildu (1955 stron) | 0 błędów, 0 błędów JSON-LD, 0 złych linków, 0 stron bez `og:image`, 1402 indeksowalne (bez zmian), mapa witryny 1401 adresów, wszystkie 200 |
 | Scenariusze silnika treści | próbny, powtórka (`DUPLICATE_SKIPPED`), odrzucenie niepotwierdzonego faktu, wyłącznik awaryjny: zgodne z oczekiwaniem |
 | Koszt automatu | 0 USD. Działał wyłącznie na modelu testowym. |
 
-Nie wykonano: Lighthouse po ostatnich zmianach (ostatni pomiar pochodzi sprzed przebudowy stron miesięcy) oraz przebiegu automatu na prawdziwym modelu i prawdziwym API Search Console.
+**Lighthouse** (telefon, mediana z 3 przebiegów na przemian, build przed zmianami WMO kontra końcowy, localhost):
 
-## 6. Problemy, które zostają
+| Strona | Wydajność: przed → po | LCP: przed → po | Dostępność, dobre praktyki, SEO | CLS |
+|---|---|---|---|---|
+| Porównanie Ateny–Rzym | 89 → 89 | 3762 → 3763 ms | 100 / 100 / 100 | 0 |
+| Barcelona w styczniu | 88 → 94 | 3848 → 3029 ms | 100 / 100 / 100 | 0 |
+| Hub city break | 89 → 89 | 3802 → 3794 ms | 100 / 100 / 100 | 0 |
+
+Skrypt `pnpm lighthouse` ma w projekcie próg wydajności 90 i kończy się błędem dla porównania i huba (89). Tak samo było na `main` (89 na wszystkich trzech szablonach), więc to nie regresja, ale progu nie spełniamy. Poprawa strony miesiąca jest zmierzona, a jej przyczyna nie została ustalona. To pomiar laboratoryjny bez sieci CDN.
+
+Nie wykonano: przebiegu automatu na prawdziwym modelu i prawdziwym API Search Console.
+
+## 6. Przegląd kodu przebudowy WMO
+
+Przebudowę stron na normy WMO napisał Codex według specyfikacji. Diff został przeczytany w całości. Poprawiono:
+
+| Znalezisko | Poprawka |
+|---|---|
+| Usunięty komentarz z zasadami integralności danych i zasadą „nazwa kierunku po dwukropku” w modelu porównania | Przywrócony i zaktualizowany |
+| Odpowiedź FAQ „…jest w kierunku Ateny” (błąd przypadku, którego zasada miała unikać) | „Wyższą średnią maksymalną temperaturę w dzień ma w lipcu: Ateny (…)” |
+| Ostatni wariant tytułu strony miesiąca pomijał nazwę miesiąca, co dałoby 12 identycznych tytułów | Miesiąc zostaje zawsze. Test: każdy kierunek ma 12 różnych tytułów ≤ 60 znaków. |
+| Na każdej stronie przewodnika karta „Ceny hoteli — aktualne ceny pokazuje wyszukiwarka” bez żadnej informacji | Usunięta. Kolumna planowania znów pokazuje się tylko z danymi. |
+| „Dla Barcelona…”, „W miesiącach styczeń, luty…” | Zdania przepisane bez błędów odmiany |
+| 5 norm (4 w Egipcie, Trabzon) nie ma w WWIS nazwy stacji, przez co linia źródła pokazywałaby pusty dopisek „stacja” | Pokazujemy „punkt WWIS {miasto}”. Test pliku norm pilnuje kompletności, spójności (max ≥ min, zakresy), adresu źródła, współrzędnych i okresu. |
+
+**CI.** Zadanie `templates-e2e` padło raz, bo build nie pobrał fontu Google („next/font/google queries have exactly one entry” w Turbopacku). Ten sam błąd wystąpił w tym samym czasie lokalnie, a chwilę później Google Fonts odpowiadało poprawnie. Build w CI ma teraz jedną powtórkę; drugi błąd zatrzymuje kontrolę. Trwałym rozwiązaniem byłoby trzymanie fontów w repozytorium (`next/font/local`), ale to zmiana wspólnego układu strony, w tym strony głównej, więc zostaje do Twojej decyzji.
+
+## 7. Problemy, które zostają
 
 1. Proza stron miesięcy jest szablonem. Wartość daje dane, nie tekst.
 2. 158 indeksowalnych stron bez danych o miesiącu.

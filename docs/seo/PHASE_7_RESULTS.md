@@ -4,7 +4,7 @@
 
 | Rodzaj | Polecenie | Wynik |
 |---|---|---|
-| Jednostkowe i integracyjne całego projektu | `pnpm test` | 1686 zaliczonych |
+| Jednostkowe i integracyjne całego projektu | `pnpm test` | 1690 zaliczonych |
 | SEO, bramka treści, silnik, klient GSC | `pnpm test:seo` | 186 zaliczonych |
 | Kontrola dokumentów treści | `pnpm content:check` | 4/4, wszystkie `approved` |
 | Typy i linter | `pnpm exec tsc --noEmit`, `pnpm lint` | czyste |
