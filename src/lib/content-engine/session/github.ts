@@ -121,6 +121,38 @@ export async function addLabels(
   }
 }
 
+export interface PullRequestState {
+  number: number;
+  url: string;
+  state: "open" | "closed";
+  merged: boolean;
+}
+
+/** Stan PR (tylko odczyt) — do synchronizacji kolejki tematów po przeglądzie właściciela. */
+export async function getPullRequest(
+  input: GitHubRepository & { number: number },
+  runner: ProcessRunner = new ExecFileProcessRunner(),
+  cwd?: string,
+): Promise<PullRequestState> {
+  const result = await runner.run("gh", ["api", `repos/${input.owner}/${input.repo}/pulls/${input.number}`], { cwd });
+  const parsed = JSON.parse(result.stdout) as { number?: unknown; html_url?: unknown; state?: unknown; merged?: unknown; merged_at?: unknown };
+  if (!Number.isInteger(parsed.number) || (parsed.state !== "open" && parsed.state !== "closed") || typeof parsed.html_url !== "string") {
+    throw new Error(`GitHub REST zwrócił nieprawidłowy opis PR #${input.number}.`);
+  }
+  return {
+    number: parsed.number as number,
+    url: parsed.html_url,
+    state: parsed.state,
+    merged: parsed.merged === true || (typeof parsed.merged_at === "string" && parsed.merged_at !== ""),
+  };
+}
+
+/** Numer PR z adresu `https://github.com/<owner>/<repo>/pull/<n>` (null, gdy to nie adres PR). */
+export function pullRequestNumberFromUrl(url: string): number | null {
+  const match = url.match(/github\.com\/[^/]+\/[^/]+\/pull\/(\d+)(?:[/?#].*)?$/);
+  return match ? Number(match[1]) : null;
+}
+
 export class GitHubClient {
   constructor(
     private readonly runner: ProcessRunner = new ExecFileProcessRunner(),
@@ -133,5 +165,9 @@ export class GitHubClient {
 
   addLabels(input: GitHubRepository & { issueNumber: number; labels: readonly string[] }): Promise<boolean> {
     return addLabels(input, this.runner, this.cwd);
+  }
+
+  getPullRequest(input: GitHubRepository & { number: number }): Promise<PullRequestState> {
+    return getPullRequest(input, this.runner, this.cwd);
   }
 }

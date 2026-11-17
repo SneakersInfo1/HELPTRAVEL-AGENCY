@@ -27,12 +27,13 @@ import {
   verify,
   verifyCandidateClaims,
   writerInstructions,
+  type CollectedInput,
   type GscCsvInputs,
   type PrefetchedSources,
   type ResearchResult,
   type Task,
 } from "../pipeline";
-import { ContentDocumentSchema, POLICY_VERSION } from "../schema";
+import { ContentDocumentSchema, POLICY_VERSION, isClaimFresh } from "../schema";
 import { RENDERED_CONTENT_TYPES } from "../site-content";
 import { SOURCE_ALLOWLIST, type SourceFetchResult, type SourceFetcher } from "../sources";
 import { NODE_FS, type ContentStore, type FsLike } from "../store";
@@ -40,61 +41,79 @@ import type { SiteInventory } from "../inventory";
 import { backlogCsvToGscInputs } from "./backlog";
 import type { CreatedPullRequest, CreatePullRequestInput, GitHubRepository } from "./github";
 import { parseGitHubRemote } from "./github";
-import type { ClaimDayResult, ProposalBranch, StateClaim } from "./git-state";
+import { isProtectedPath, type ClaimDayResult, type ProposalBranch, type SessionChanges, type StateClaim, type StateFolder } from "./git-state";
+import type { FreshnessVerdict } from "./gsc-export";
+import { indexPolicyHits } from "./index-guard";
 import {
   DraftBodySchema,
   ResearchFileSchema,
-  RoutineResultSchema,
+  SessionResultSchema,
   WorkOrderSchema,
-  routinePaths,
-  type RoutinePaths,
-  type RoutineResult,
+  sessionPaths,
+  type SessionPaths,
+  type SessionResult,
   type WorkOrder,
 } from "./work-order";
 
-export type RoutineGscSource = "auto" | "api" | "backlog";
+export type SessionGscSource = "auto" | "export" | "api" | "backlog";
 
-export interface RoutineGit {
+/** Eksport GSC wczytany w pamięci (session/gsc-export.ts) z opisem wieku danych. */
+export interface LoadedGscExport {
+  inputs: GscCsvInputs;
+  dataEnd: string;
+  exact: boolean;
+  freshness: FreshnessVerdict;
+}
+
+export interface SessionGit {
   readonly stateBranch: string;
   useStateBranch(branch: string): void;
-  restoreState(stateDir: string): Promise<void>;
+  restoreState(stateDir: string, folders?: readonly StateFolder[]): Promise<void>;
   claimDay(day: string, runId: string): Promise<ClaimDayResult>;
-  persistState(stateDir: string, message: string): Promise<void>;
+  persistState(stateDir: string, message: string, folders?: readonly StateFolder[]): Promise<void>;
   listProposalBranches(): Promise<ProposalBranch[]>;
   listClaims(limit?: number): Promise<StateClaim[]>;
   statusPorcelain(): Promise<string>;
   remoteUrl(): Promise<string>;
-  createAndPushProposalBranch(branch: string, message: string): Promise<void>;
+  createAndPushProposalBranch(branch: string, message: string, paths?: readonly string[]): Promise<void>;
+  currentBranch(): Promise<string>;
+  changesSinceBase(base: string): Promise<SessionChanges>;
 }
 
-export interface RoutineGitHub {
+export interface SessionGitHub {
   createPullRequest(input: CreatePullRequestInput): Promise<CreatedPullRequest>;
   addLabels(input: GitHubRepository & { issueNumber: number; labels: readonly string[] }): Promise<boolean>;
 }
 
-export interface RoutineDependencies {
+export interface SessionDependencies {
   fs?: FsLike;
   sourceFetcher: SourceFetcher;
   inventory: SiteInventory;
   store: ContentStore;
-  git: RoutineGit;
-  gh: RoutineGitHub;
+  git: SessionGit;
+  gh: SessionGitHub;
   env?: Readonly<Record<string, string | undefined>>;
   now?: () => Date;
   randomUUID?: () => string;
-  routineDir?: string;
+  sessionDir?: string;
   stateDir?: string;
   backlogFile?: string;
   loadBacklog?: () => Promise<GscCsvInputs>;
   loadGscApi?: (scheduledAt: Date) => Promise<GscCsvInputs>;
+  /** Najnowszy lokalny eksport GSC (CSV z interfejsu) albo null, gdy go nie ma. */
+  loadGscExport?: () => LoadedGscExport | null;
 }
 
 export interface PrepareOptions {
   date?: string;
   base?: string;
   stateBranch?: string;
-  gscSource?: RoutineGscSource;
+  gscSource?: SessionGscSource;
   maxOpen?: number;
+  /** Cel wybrany przez sesję z planu (`pnpm seo:daily plan`). */
+  target?: string;
+  /** Druga sesja tego samego dnia: bez rezerwacji dnia (rejestr zadań nadal chroni przed duplikatem). */
+  again?: boolean;
 }
 
 export interface FinalizeOptions {
@@ -103,6 +122,23 @@ export interface FinalizeOptions {
 
 export interface PublishOptions {
   base?: string;
+  /** Dołącz zmiany w kodzie (poza `content/seo/`), z wyjątkiem plików chronionych. */
+  withCode?: boolean;
+  /** Opis pracy sesji dopisywany do opisu PR (zadania, dowody bez liczb GSC, testy). */
+  extraBody?: string;
+}
+
+/** PR z samymi zmianami kodu (bez dokumentu treści), np. linkowanie wewnętrzne. */
+export interface CodePublishOptions {
+  base: string;
+  title: string;
+  body: string;
+}
+
+const SESSION_BRANCH = /^claude\/seo-daily\/\d{4}-\d{2}-\d{2}(?:-\d+)?$/;
+
+function isWorkDir(file: string): boolean {
+  return file.startsWith(".seo-session/") || file.startsWith(".seo-engine-state/") || file.startsWith(".seo-daily/");
 }
 
 function isMissing(error: unknown): boolean {
@@ -143,7 +179,7 @@ function branchWithinDays(branch: ProposalBranch, day: string, days: number): bo
   return age >= 0 && age < days * 86_400_000;
 }
 
-function proposalPendingTargets(branches: readonly ProposalBranch[], inventory: SiteInventory): Set<string> {
+export function proposalPendingTargets(branches: readonly ProposalBranch[], inventory: SiteInventory): Set<string> {
   const result = new Set<string>();
   for (const branch of branches) {
     result.add(`/inspiracje/${branch.slug}`);
@@ -161,7 +197,46 @@ function proposalPendingTargets(branches: readonly ProposalBranch[], inventory: 
   return result;
 }
 
-function gateSummary(gate: GateReport): NonNullable<RoutineResult["gate"]> {
+function routeOfKey(raw: string): string {
+  try {
+    return new URL(raw, "https://helptravel.pl").pathname.replace(/\/$/, "") || "/";
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * Zadanie dla adresu wybranego przez sesję z planu. Reguły jak w `select`: adres istnieje,
+ * jego typ dokumentu jest renderowany, nie czeka w przeglądzie i nie ma aktualnego dokumentu.
+ * Dowody GSC są opcjonalne (np. odświeżenie faktów albo temat z kolejki).
+ */
+export function taskForTarget(
+  target: string,
+  collected: CollectedInput,
+  inventory: SiteInventory,
+  pending: ReadonlySet<string>,
+): { task: Task } | { reason: string } {
+  const route = routeOfKey(target);
+  const existing = inventory.existing().find((item) => item.canonicalUrl === route);
+  if (!existing) return { reason: `Adres ${route} nie istnieje w serwisie.` };
+  if (pending.has(route)) return { reason: `Propozycja dla ${route} czeka na przegląd.` };
+  const task: Task = {
+    operation: "refresh",
+    target: route,
+    primaryQuery: existing.title,
+    evidence: { source: "page", key: route, clicks: 0, impressions: 0, ctr: 0, position: 0 },
+    rationale: "Cel wybrany przez sesję z planu (dowody w planie sesji).",
+  };
+  if (!RENDERED_CONTENT_TYPES.has(contentTypeFor(task))) return { reason: `Typ dokumentu dla ${route} nie jest renderowany w serwisie.` };
+  const enrichmentClaims = inventory.enrichmentClaims?.(route) ?? [];
+  const enrichmentFresh = inventory.hasEnrichment(route) && (enrichmentClaims.length === 0 || enrichmentClaims.every((claim) => isClaimFresh(claim, new Date())));
+  if (enrichmentFresh) return { reason: `Adres ${route} ma już aktualny dokument ze źródłami.` };
+  const row = collected.pages.rows.find((candidate) => routeOfKey(candidate.key) === route);
+  if (row) task.evidence = { source: "page", key: route, clicks: row.clicks, impressions: row.impressions, ctr: row.ctr, position: row.position };
+  return { task };
+}
+
+function gateSummary(gate: GateReport): NonNullable<SessionResult["gate"]> {
   return {
     verdict: gate.verdict,
     metrics: {
@@ -184,21 +259,21 @@ function statusPaths(porcelain: string): string[] {
   return paths;
 }
 
-export class RoutinePhases {
+export class SessionPhases {
   private readonly fs: FsLike;
   private readonly env: Readonly<Record<string, string | undefined>>;
   private readonly now: () => Date;
   private readonly uuid: () => string;
-  private readonly paths: RoutinePaths;
+  private readonly paths: SessionPaths;
   private readonly stateDir: string;
   private readonly backlogFile: string;
 
-  constructor(private readonly deps: RoutineDependencies) {
+  constructor(private readonly deps: SessionDependencies) {
     this.fs = deps.fs ?? NODE_FS;
     this.env = deps.env ?? process.env;
     this.now = deps.now ?? (() => new Date());
     this.uuid = deps.randomUUID ?? randomUUID;
-    this.paths = routinePaths(deps.routineDir);
+    this.paths = sessionPaths(deps.sessionDir);
     this.stateDir = deps.stateDir ?? ".seo-engine-state";
     this.backlogFile = deps.backlogFile ?? "docs/seo/OPPORTUNITY_BACKLOG.csv";
   }
@@ -212,14 +287,14 @@ export class RoutinePhases {
     return JSON.parse(await this.fs.readFile(target, "utf8")) as unknown;
   }
 
-  private async writeResult(value: RoutineResult): Promise<RoutineResult> {
-    const result = RoutineResultSchema.parse(value);
+  private async writeResult(value: SessionResult): Promise<SessionResult> {
+    const result = SessionResultSchema.parse(value);
     await this.writeJson(this.paths.result, result);
     return result;
   }
 
-  private async failed(error: unknown, context?: Pick<RoutineResult, "runId" | "day">): Promise<RoutineResult> {
-    return this.writeResult({ status: "FAILED", ...context, errors: [safeMessage(error)], reason: "Faza Routine zakończyła się błędem." });
+  private async failed(error: unknown, context?: Pick<SessionResult, "runId" | "day">): Promise<SessionResult> {
+    return this.writeResult({ status: "FAILED", ...context, errors: [safeMessage(error)], reason: "Faza sesji zakończyła się błędem." });
   }
 
   private async workOrder(): Promise<WorkOrder> {
@@ -230,28 +305,35 @@ export class RoutinePhases {
     return new Ledger({ stateDir: this.stateDir, runId: workOrder.runId, fs: this.fs, now: this.now });
   }
 
-  private async gsc(source: RoutineGscSource, scheduledAt: Date): Promise<GscCsvInputs> {
+  private async gsc(source: SessionGscSource, scheduledAt: Date): Promise<{ inputs: GscCsvInputs; meta: NonNullable<SessionResult["gsc"]> }> {
     const hasApi = Boolean(this.env[SEO_GSC_SERVICE_ACCOUNT_JSON] && this.env[SEO_GSC_SITE_URL]);
+    const exported = source === "auto" || source === "export" ? (this.deps.loadGscExport?.() ?? null) : null;
+    if (source === "export" && !exported) throw new Error("Nie znaleziono eksportu GSC (CSV z interfejsu). Zobacz `pnpm seo:daily gsc`.");
+    if (exported) {
+      return { inputs: exported.inputs, meta: { source: "export", dataEnd: exported.dataEnd, exact: exported.exact, freshness: exported.freshness } };
+    }
     const selected = source === "auto" ? (hasApi ? "api" : "backlog") : source;
     if (selected === "backlog") {
-      if (this.deps.loadBacklog) return this.deps.loadBacklog();
-      return backlogCsvToGscInputs(await this.fs.readFile(this.backlogFile, "utf8"));
+      const inputs = this.deps.loadBacklog ? await this.deps.loadBacklog() : backlogCsvToGscInputs(await this.fs.readFile(this.backlogFile, "utf8"));
+      return { inputs, meta: { source: "backlog", dataEnd: null, exact: false, freshness: "backlog" } };
     }
     if (!hasApi) throw new Error(`Dla źródła GSC api ustaw ${SEO_GSC_SERVICE_ACCOUNT_JSON} i ${SEO_GSC_SITE_URL}.`);
-    if (this.deps.loadGscApi) return this.deps.loadGscApi(scheduledAt);
     const end = new Date(scheduledAt);
     end.setUTCDate(end.getUTCDate() - 3);
-    return toGscCsvInputs(
+    const meta = { source: "api" as const, dataEnd: end.toISOString().slice(0, 10), exact: true, freshness: "fresh" as const };
+    if (this.deps.loadGscApi) return { inputs: await this.deps.loadGscApi(scheduledAt), meta };
+    const inputs = toGscCsvInputs(
       await fetchGscExport({
         siteUrl: this.env[SEO_GSC_SITE_URL]!,
         serviceAccountJson: this.env[SEO_GSC_SERVICE_ACCOUNT_JSON]!,
-        endDate: end.toISOString().slice(0, 10),
+        endDate: meta.dataEnd,
         includePageQuery: false,
       }),
     );
+    return { inputs, meta };
   }
 
-  async prepare(options: PrepareOptions = {}): Promise<RoutineResult> {
+  async prepare(options: PrepareOptions = {}): Promise<SessionResult> {
     const runId = this.uuid();
     let day: string | undefined;
     try {
@@ -277,22 +359,39 @@ export class RoutinePhases {
         });
       }
 
-      const claimed = await this.deps.git.claimDay(day, runId);
-      if (claimed.status === "duplicate") {
-        return this.writeResult({ status: "DUPLICATE_SKIPPED", runId, day, reason: `Dzień przejął już przebieg ${claimed.previous.runId}.` });
-      }
-
-      const collected = collect(await this.gsc(options.gscSource ?? "auto", scheduled.scheduledAt), this.deps.inventory);
+      const gsc = await this.gsc(options.gscSource ?? "auto", scheduled.scheduledAt);
+      const collected = collect(gsc.inputs, this.deps.inventory);
       const ledger = new Ledger({ stateDir: this.stateDir, runId, fs: this.fs, now: this.now });
       const pending = await ledger.pendingTargets(scheduled.scheduledAt, PENDING_PROPOSAL_DAYS);
       for (const target of proposalPendingTargets(proposalBranches, this.deps.inventory)) pending.add(target);
-      const selection = select(collected, this.deps.inventory, scheduled.scheduledAt, pending, RENDERED_CONTENT_TYPES);
-      const task = selection.tasks.find((candidate) => candidate.decision !== "REVIEW_REQUIRED");
-      if (!task) {
-        if (selection.tasks.some((candidate) => candidate.decision === "REVIEW_REQUIRED")) {
-          return this.writeResult({ status: "REVIEW_REQUIRED", runId, day, reason: selection.reason });
+      let task: Task | undefined;
+      if (options.target) {
+        const chosen = taskForTarget(options.target, collected, this.deps.inventory, pending);
+        if ("reason" in chosen) return this.writeResult({ status: "NO_TASK", runId, day, reason: chosen.reason, gsc: gsc.meta });
+        task = chosen.task;
+      } else {
+        const selection = select(collected, this.deps.inventory, scheduled.scheduledAt, pending, RENDERED_CONTENT_TYPES);
+        task = selection.tasks.find((candidate) => candidate.decision !== "REVIEW_REQUIRED");
+        if (!task) {
+          if (selection.tasks.some((candidate) => candidate.decision === "REVIEW_REQUIRED")) {
+            return this.writeResult({ status: "REVIEW_REQUIRED", runId, day, reason: selection.reason, gsc: gsc.meta });
+          }
+          return this.writeResult({ status: "NO_TASK", runId, day, reason: selection.reason, gsc: gsc.meta });
         }
-        return this.writeResult({ status: "NO_TASK", runId, day, reason: selection.reason });
+      }
+
+      // Dzień rezerwujemy dopiero dla wybranego zadania: odrzucony cel albo brak zadania
+      // nie zużywają dnia, a sesja może od razu spróbować innego celu z planu.
+      if (!options.again) {
+        const claimed = await this.deps.git.claimDay(day, runId);
+        if (claimed.status === "duplicate") {
+          return this.writeResult({
+            status: "DUPLICATE_SKIPPED",
+            runId,
+            day,
+            reason: `Dzień przejął już przebieg ${claimed.previous.runId}. Drugie zadanie treści tego dnia: --again.`,
+          });
+        }
       }
 
       const begin = await ledger.begin(taskKey(task, day), runId);
@@ -349,7 +448,7 @@ export class RoutinePhases {
         limits: { maxRegisteredSources: MAX_REGISTERED_SOURCES, sourceExcerptChars: SOURCE_EXCERPT_CHARS, maxDraftRepairs: 1 },
       });
       await this.writeJson(this.paths.workOrder, workOrder);
-      return this.writeResult({ status: "TASK_READY", runId, day, reason: `Przygotowano zlecenie dla ${task.target}.` });
+      return this.writeResult({ status: "TASK_READY", runId, day, reason: `Przygotowano zlecenie dla ${task.target}.`, gsc: gsc.meta });
     } catch (error) {
       return this.failed(error, { runId, ...(day ? { day } : {}) });
     }
@@ -381,7 +480,7 @@ export class RoutinePhases {
     };
   }
 
-  async verifyClaims(): Promise<RoutineResult> {
+  async verifyClaims(): Promise<SessionResult> {
     let workOrder: WorkOrder | undefined;
     try {
       workOrder = await this.workOrder();
@@ -441,7 +540,7 @@ export class RoutinePhases {
 
   private async finalizeAttempt(): Promise<number> {
     try {
-      const previous = RoutineResultSchema.parse(await this.readJson(this.paths.result));
+      const previous = SessionResultSchema.parse(await this.readJson(this.paths.result));
       return (previous.finalizeAttempts ?? 0) + 1;
     } catch {
       return 1;
@@ -472,15 +571,15 @@ export class RoutinePhases {
     ].join("\n");
   }
 
-  async finalize(options: FinalizeOptions = {}): Promise<RoutineResult> {
-    if (options.mode === "AUTO_EVERGREEN") throw new Error("Tryb AUTO_EVERGREEN jest zabroniony w Routine.");
+  async finalize(options: FinalizeOptions = {}): Promise<SessionResult> {
+    if (options.mode === "AUTO_EVERGREEN") throw new Error("Tryb AUTO_EVERGREEN jest zabroniony w trybie sesji.");
     let workOrder: WorkOrder | undefined;
     let attempts = 1;
     try {
       workOrder = await this.workOrder();
       this.deps.git.useStateBranch(workOrder.stateBranch);
       attempts = await this.finalizeAttempt();
-      const current = RoutineResultSchema.parse(await this.readJson(this.paths.result));
+      const current = SessionResultSchema.parse(await this.readJson(this.paths.result));
       if (current.status === "DRAFT_READY") return current;
       if (current.status === "REJECTED" && current.retryAllowed === false) return current;
 
@@ -542,26 +641,59 @@ export class RoutinePhases {
     await this.deps.git.persistState(this.stateDir, message);
   }
 
-  async publish(options: PublishOptions = {}): Promise<RoutineResult> {
+  /**
+   * Kontrola zmian przed publikacją — wspólna dla PR z treścią i PR z kodem. Obejmuje CAŁĄ
+   * gałąź sesji względem bazy (także commity zrobione w sesji): bez plików chronionych,
+   * bez zmian polityki indeksowania, kod tylko na wyraźne żądanie.
+   */
+  private async reviewedChanges(base: string, withCode: boolean): Promise<{ changed: string[]; uncommitted: string[] }> {
+    const changes = await this.deps.git.changesSinceBase(base);
+    const changed = changes.files.filter((file) => !isWorkDir(file));
+    const outsideContent = changed.filter((file) => !file.startsWith("content/seo/"));
+    if (!withCode && outsideContent.length > 0) {
+      throw new Error(`Publish odmawia zmian spoza content/seo/ (dla kodu: --with-code): ${outsideContent.join(", ")}`);
+    }
+    const protectedChanges = changed.filter((file) => isProtectedPath(file));
+    if (protectedChanges.length > 0) throw new Error(`Publish odmawia plików chronionych (wymagają właściciela): ${protectedChanges.join(", ")}`);
+    const indexHits = indexPolicyHits(changes.added.filter((line) => !isWorkDir(line.file)));
+    if (indexHits.length > 0) {
+      throw new Error(`Publish odmawia zmian polityki indeksowania (decyzja właściciela — zapisz w kolejce): ${indexHits.join("; ")}`);
+    }
+    if (changed.length === 0) throw new Error("Brak zmian do publikacji.");
+    const uncommitted = statusPaths(await this.deps.git.statusPorcelain()).filter((file) => !isWorkDir(file));
+    return { changed, uncommitted };
+  }
+
+  /** Odmowa PRZED wysłaniem gałęzi: bez nadpisania `result.json`, więc po poprawce można ponowić publish. */
+  private refused(error: unknown, context?: Pick<SessionResult, "runId" | "day">): SessionResult {
+    return SessionResultSchema.parse({
+      status: "FAILED",
+      ...context,
+      errors: [safeMessage(error)],
+      reason: "Publikacja odrzucona przed wysłaniem gałęzi — stan sesji bez zmian; popraw i uruchom ponownie.",
+    });
+  }
+
+  async publish(options: PublishOptions = {}): Promise<SessionResult> {
     let workOrder: WorkOrder | undefined;
+    let pushed = false;
     try {
       workOrder = await this.workOrder();
       this.deps.git.useStateBranch(workOrder.stateBranch);
-      const current = RoutineResultSchema.parse(await this.readJson(this.paths.result));
+      const current = SessionResultSchema.parse(await this.readJson(this.paths.result));
       if (current.status !== "DRAFT_READY") throw new Error(`Publikacja wymaga statusu DRAFT_READY, jest ${current.status}.`);
 
-      const changed = statusPaths(await this.deps.git.statusPorcelain()).filter(
-        (file) => !file.startsWith(".seo-routine/") && !file.startsWith(".seo-engine-state/"),
-      );
-      const forbidden = changed.filter((file) => !file.startsWith("content/seo/"));
-      if (forbidden.length > 0) throw new Error(`Publish odmawia zmian spoza content/seo/: ${forbidden.join(", ")}`);
-      if (changed.length === 0) throw new Error("Brak zmian content/seo do publikacji.");
-
-      const branch = `claude/seo-content/${workOrder.day}-${workOrder.docId}`;
-      await this.deps.git.createAndPushProposalBranch(branch, `SEO: propozycja ${workOrder.docId}`);
-      const repository = parseGitHubRemote(await this.deps.git.remoteUrl());
       const base = options.base ?? workOrder.baseBranch;
-      const body = await this.fs.readFile(this.paths.prBody, "utf8");
+      const { uncommitted } = await this.reviewedChanges(base, options.withCode ?? false);
+      // Sesja pracuje na gałęzi `claude/seo-daily/<dzień>…` — propozycja zostaje na niej.
+      const sessionBranch = await this.deps.git.currentBranch();
+      const branch = SESSION_BRANCH.test(sessionBranch) ? sessionBranch : `claude/seo-daily/${workOrder.day}-${workOrder.docId}`;
+      pushed = true;
+      await this.deps.git.createAndPushProposalBranch(branch, `SEO daily: propozycja ${workOrder.docId}`, uncommitted);
+      const repository = parseGitHubRemote(await this.deps.git.remoteUrl());
+      const generated = await this.fs.readFile(this.paths.prBody, "utf8");
+      const extra = options.extraBody?.trim();
+      const body = extra ? `${generated.trimEnd()}\n\n## Praca sesji\n\n${extra}\n` : generated;
       let pullRequest: CreatedPullRequest;
       try {
         pullRequest = await this.deps.gh.createPullRequest({
@@ -581,7 +713,7 @@ export class RoutinePhases {
           cleanupErrors.push(`releasePending: ${safeMessage(cleanupError)}`);
         }
         try {
-          await this.persistAfterPublish(workOrder, `SEO routine: PR failed ${workOrder.runId}`);
+          await this.persistAfterPublish(workOrder, `SEO daily: PR failed ${workOrder.runId}`);
         } catch (cleanupError) {
           cleanupErrors.push(`persistState: ${safeMessage(cleanupError)}`);
         }
@@ -596,12 +728,12 @@ export class RoutinePhases {
       }
 
       try {
-        await this.deps.gh.addLabels({ ...repository, issueNumber: pullRequest.number, labels: ["seo-automat"] });
+        await this.deps.gh.addLabels({ ...repository, issueNumber: pullRequest.number, labels: ["seo-daily"] });
       } catch {
         // Etykieta jest pomocnicza; istniejącego PR nie wolno przez nią uznać za nieudany.
       }
       await this.ledger(workOrder).complete(taskKey(workOrder.task, workOrder.day), "PR_CREATED");
-      await this.persistAfterPublish(workOrder, `SEO routine: PR #${pullRequest.number}`);
+      await this.persistAfterPublish(workOrder, `SEO daily: PR #${pullRequest.number}`);
       return this.writeResult({
         status: "PR_CREATED",
         runId: workOrder.runId,
@@ -612,33 +744,77 @@ export class RoutinePhases {
         reason: `Utworzono PR #${pullRequest.number}.`,
       });
     } catch (error) {
-      return this.failed(error, workOrder ? { runId: workOrder.runId, day: workOrder.day } : undefined);
+      const context = workOrder ? { runId: workOrder.runId, day: workOrder.day } : undefined;
+      if (!pushed) return this.refused(error, context);
+      return this.failed(error, context);
     }
   }
 
-  async status(): Promise<RoutineResult> {
+  /**
+   * PR z samymi zmianami kodu (linkowanie, deduplikacja, konwersja, technika), gdy sesja
+   * nie przygotowała dokumentu treści. Te same kontrole co `publish`; gałąź musi być
+   * gałęzią sesji. Nie zmienia `result.json` zadania treści.
+   */
+  async publishCode(options: CodePublishOptions): Promise<SessionResult> {
+    let pushed = false;
     try {
-      await this.deps.git.restoreState(this.stateDir);
-      const proposals = await this.deps.git.listProposalBranches();
-      const claims = await this.deps.git.listClaims(10);
-      const pending = await new Ledger({ stateDir: this.stateDir, fs: this.fs, now: this.now }).pendingTargets(this.now(), PENDING_PROPOSAL_DAYS);
-      return this.writeResult({
-        status: "NO_TASK",
-        reason: "Podsumowanie stanu Routine.",
-        pending: pending.size,
-        proposalBranches: proposals.map((branch) => branch.branch),
-        claims: claims.map(({ day, runId }) => ({ day, runId })),
+      if (options.title.trim().length < 5) throw new Error("PR z kodem wymaga tytułu (--title).");
+      if (options.body.trim().length < 40) throw new Error("PR z kodem wymaga opisu pracy (--body-file).");
+      try {
+        const current = SessionResultSchema.parse(await this.readJson(this.paths.result));
+        if (current.status === "DRAFT_READY") {
+          throw new Error("Dokument treści czeka na publikację — użyj `publish --with-code`, żeby dołączyć kod do tego samego PR.");
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith("Dokument treści czeka")) throw error;
+      }
+      const branch = await this.deps.git.currentBranch();
+      if (!SESSION_BRANCH.test(branch)) throw new Error(`Zmiany kodu publikujemy tylko z gałęzi sesji claude/seo-daily/<dzień>, jest ${branch}.`);
+      const { uncommitted } = await this.reviewedChanges(options.base, true);
+      pushed = true;
+      await this.deps.git.createAndPushProposalBranch(branch, `SEO daily: ${options.title.trim()}`, uncommitted);
+      const repository = parseGitHubRemote(await this.deps.git.remoteUrl());
+      let pullRequest: CreatedPullRequest;
+      try {
+        pullRequest = await this.deps.gh.createPullRequest({
+          ...repository,
+          head: branch,
+          base: options.base,
+          title: `SEO: ${options.title.trim()}`,
+          body: options.body,
+          draft: false,
+        });
+      } catch (error) {
+        return SessionResultSchema.parse({
+          status: "PR_FAILED",
+          branch,
+          reason: "Gałąź wysłano, ale utworzenie PR przez REST nie powiodło się.",
+          errors: [safeMessage(error)],
+        });
+      }
+      try {
+        await this.deps.gh.addLabels({ ...repository, issueNumber: pullRequest.number, labels: ["seo-daily"] });
+      } catch {
+        // Etykieta jest pomocnicza.
+      }
+      return SessionResultSchema.parse({
+        status: "PR_CREATED",
+        branch,
+        prNumber: pullRequest.number,
+        prUrl: pullRequest.url,
+        reason: `Utworzono PR #${pullRequest.number}.`,
       });
     } catch (error) {
-      return this.failed(error);
+      if (!pushed) return this.refused(error);
+      return SessionResultSchema.parse({ status: "FAILED", errors: [safeMessage(error)], reason: "Publikacja kodu zakończyła się błędem." });
     }
   }
 
-  async release(runId: string): Promise<RoutineResult> {
+  async release(runId: string): Promise<SessionResult> {
     try {
       await this.deps.git.restoreState(this.stateDir);
       const removed = await new Ledger({ stateDir: this.stateDir, runId, fs: this.fs, now: this.now }).releasePending(runId);
-      await this.deps.git.persistState(this.stateDir, `SEO routine: release ${runId}`);
+      await this.deps.git.persistState(this.stateDir, `SEO daily: release ${runId}`);
       return this.writeResult({ status: "NO_TASK", runId, reason: `Zwolniono ${removed} wpisów pending.` });
     } catch (error) {
       return this.failed(error, { runId });
@@ -646,6 +822,6 @@ export class RoutinePhases {
   }
 }
 
-export function createRoutinePhases(dependencies: RoutineDependencies): RoutinePhases {
-  return new RoutinePhases(dependencies);
+export function createSessionPhases(dependencies: SessionDependencies): SessionPhases {
+  return new SessionPhases(dependencies);
 }

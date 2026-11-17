@@ -21,8 +21,8 @@ async function resolveModule(from: string, specifier: string): Promise<string | 
   return null;
 }
 
-test("graf importów Routine nie zawiera klienta Anthropic ani SDK", async () => {
-  const queue = [path.resolve(process.cwd(), "scripts", "content-engine", "routine.ts")];
+test("graf importów SEO daily nie zawiera klienta Anthropic ani SDK", async () => {
+  const queue = [path.resolve(process.cwd(), "scripts", "content-engine", "daily.ts")];
   const visited = new Set<string>();
   let source = "";
   while (queue.length > 0) {

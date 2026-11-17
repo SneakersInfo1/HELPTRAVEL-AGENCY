@@ -3,9 +3,38 @@ import * as fs from "node:fs/promises";
 import path from "node:path";
 
 export const DEFAULT_STATE_BRANCH = "claude/seo-engine-state";
-const STATE_FOLDERS = ["idempotency", "pending", "dead-letter"] as const;
-const GIT_NAME = "HelpTravel SEO routine";
-const GIT_EMAIL = "seo-routine@users.noreply.github.com";
+// `daily` = kolejka tematów i dziennik sesji (session/daily-state.ts): pamięć między sesjami.
+export const STATE_FOLDERS = ["idempotency", "pending", "dead-letter", "daily"] as const;
+export type StateFolder = (typeof STATE_FOLDERS)[number];
+/** Gałęzie propozycji: dawne automatu (`seo-content`) i sesji ręcznych (`seo-daily`). */
+const PROPOSAL_BRANCH = /^claude\/seo-(?:content|daily)\/(\d{4}-\d{2}-\d{2})(?:-(\d+))?(?:-([a-z0-9][a-z0-9-]*))?$/;
+
+/**
+ * Pliki, których publikacja z sesji nie może zmienić bez właściciela: polityka indeksu,
+ * robots, sitemap, przekierowania, konfiguracja buildu i CI, zależności, ustawienia Claude.
+ */
+export const PROTECTED_PATHS: readonly string[] = [
+  "src/lib/mvp/month-index-policy.ts",
+  "src/lib/mvp/month-index-baseline.ts",
+  "src/app/robots.ts",
+  "src/app/sitemap.ts",
+  "src/middleware.ts",
+  "middleware.ts",
+  "next.config.ts",
+  "vercel.json",
+  "public/robots.txt",
+  "package.json",
+  "pnpm-lock.yaml",
+  ".github/",
+  ".claude/",
+];
+
+export function isProtectedPath(file: string): boolean {
+  const normalized = file.replace(/\\/g, "/");
+  return PROTECTED_PATHS.some((protectedPath) => (protectedPath.endsWith("/") ? normalized.startsWith(protectedPath) : normalized === protectedPath));
+}
+const GIT_NAME = "HelpTravel SEO daily";
+const GIT_EMAIL = "seo-daily@users.noreply.github.com";
 
 export interface GitRunOptions {
   cwd?: string;
@@ -74,6 +103,21 @@ export interface ProposalBranch {
   slug: string;
 }
 
+/** Dodana linia w zmianach gałęzi sesji względem bazy (do strażnika polityki indeksu). */
+export interface AddedLine {
+  file: string;
+  line: string;
+}
+
+/** Wszystkie zmiany gałęzi sesji względem bazy: zatwierdzone, niezatwierdzone i nowe pliki. */
+export interface SessionChanges {
+  files: string[];
+  added: AddedLine[];
+}
+
+/** Nowe pliki większe niż ten limit nie są czytane linia po linii (to nie są pliki kodu ani treści). */
+const MAX_SCANNED_FILE_BYTES = 2 * 1024 * 1024;
+
 export interface GitStateOptions {
   cwd?: string;
   stateBranch?: string;
@@ -105,7 +149,7 @@ export class GitState {
     assertStateBranch(this.branch);
     this.runner = options.runner ?? new ExecFileGitRunner(this.cwd);
     this.now = options.now ?? (() => new Date());
-    this.worktreeDir = path.resolve(this.cwd, options.worktreeDir ?? path.join(".seo-routine", "state-worktree"));
+    this.worktreeDir = path.resolve(this.cwd, options.worktreeDir ?? path.join(".seo-session", "state-worktree"));
     if (!within(this.cwd, this.worktreeDir)) throw new Error("Worktree stanu musi znajdować się wewnątrz repozytorium.");
   }
 
@@ -183,7 +227,7 @@ export class GitState {
     await this.git(["push", "origin", `HEAD:refs/heads/${this.branch}`], this.worktreeDir);
   }
 
-  private async stateFiles(root: string): Promise<Set<string>> {
+  private async stateFiles(root: string, folders: readonly StateFolder[] = STATE_FOLDERS): Promise<Set<string>> {
     const result = new Set<string>();
     const visit = async (relative: string): Promise<void> => {
       const directory = path.join(root, relative);
@@ -200,13 +244,17 @@ export class GitState {
         else if (entry.isFile()) result.add(child);
       }
     };
-    for (const folder of STATE_FOLDERS) await visit(folder);
+    for (const folder of folders) await visit(folder);
     return result;
   }
 
-  async restoreState(stateDir: string): Promise<void> {
+  /**
+   * Odtwarza stan z gałęzi stanu. `folders` zawęża odtwarzanie (np. tylko `daily`), żeby
+   * polecenia kolejki i dziennika nie nadpisały niezapisanych jeszcze zmian rejestru zadań.
+   */
+  async restoreState(stateDir: string, folders: readonly StateFolder[] = STATE_FOLDERS): Promise<void> {
     const destination = path.resolve(this.cwd, stateDir);
-    for (const folder of STATE_FOLDERS) await fs.rm(path.join(destination, folder), { recursive: true, force: true });
+    for (const folder of folders) await fs.rm(path.join(destination, folder), { recursive: true, force: true });
     await fs.mkdir(destination, { recursive: true });
     if (!(await this.remoteStateExists())) {
       this.restoredFiles = new Set();
@@ -215,7 +263,7 @@ export class GitState {
 
     const opened = await this.openStateWorktree();
     try {
-      for (const folder of STATE_FOLDERS) {
+      for (const folder of folders) {
         const source = path.join(this.worktreeDir, folder);
         try {
           await fs.cp(source, path.join(destination, folder), { recursive: true, force: true });
@@ -223,7 +271,7 @@ export class GitState {
           if (!isMissing(error)) throw error;
         }
       }
-      this.restoredFiles = await this.stateFiles(destination);
+      this.restoredFiles = await this.stateFiles(destination, folders);
     } finally {
       await this.cleanupWorktree(opened.orphanBranch);
     }
@@ -248,7 +296,7 @@ export class GitState {
         const claim: StateClaim = { day, runId, claimedAt: this.now().toISOString() };
         await fs.mkdir(path.dirname(target), { recursive: true });
         await fs.writeFile(target, `${JSON.stringify(claim, null, 2)}\n`, "utf8");
-        await this.commit(`SEO routine: claim ${day}`);
+        await this.commit(`SEO daily: claim ${day}`);
         try {
           await this.pushState();
           return { status: "claimed", claim };
@@ -262,17 +310,18 @@ export class GitState {
     throw lastError instanceof Error ? lastError : new Error("Nie udało się zapisać claim po trzech próbach.");
   }
 
-  async persistState(stateDir: string, message: string): Promise<void> {
+  async persistState(stateDir: string, message: string, folders: readonly StateFolder[] = STATE_FOLDERS): Promise<void> {
     const sourceRoot = path.resolve(this.cwd, stateDir);
-    const currentFiles = await this.stateFiles(sourceRoot);
+    const currentFiles = await this.stateFiles(sourceRoot, folders);
+    const inScope = (relative: string) => folders.some((folder) => relative === folder || relative.startsWith(`${folder}${path.sep}`));
     let lastError: unknown;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const opened = await this.openStateWorktree();
       try {
         for (const relative of this.restoredFiles) {
-          if (!currentFiles.has(relative)) await fs.rm(path.join(this.worktreeDir, relative), { force: true });
+          if (inScope(relative) && !currentFiles.has(relative)) await fs.rm(path.join(this.worktreeDir, relative), { force: true });
         }
-        for (const folder of STATE_FOLDERS) {
+        for (const folder of folders) {
           const source = path.join(sourceRoot, folder);
           try {
             await fs.cp(source, path.join(this.worktreeDir, folder), { recursive: true, force: true });
@@ -300,12 +349,12 @@ export class GitState {
   }
 
   async listProposalBranches(): Promise<ProposalBranch[]> {
-    const result = await this.git(["ls-remote", "--heads", "origin", "refs/heads/claude/seo-content/*"]);
+    const result = await this.git(["ls-remote", "--heads", "origin", "refs/heads/claude/seo-content/*", "refs/heads/claude/seo-daily/*"]);
     const branches: ProposalBranch[] = [];
     for (const line of result.stdout.split(/\r?\n/)) {
-      const ref = line.split(/\s+/)[1];
-      const match = ref?.match(/^refs\/heads\/(claude\/seo-content\/(\d{4}-\d{2}-\d{2})-(.+))$/);
-      if (match) branches.push({ branch: match[1], day: match[2], slug: match[3] });
+      const ref = line.split(/\s+/)[1]?.replace(/^refs\/heads\//, "");
+      const match = ref?.match(PROPOSAL_BRANCH);
+      if (ref && match) branches.push({ branch: ref, day: match[1], slug: match[3] ?? "" });
     }
     return branches.sort((left, right) => right.day.localeCompare(left.day) || left.branch.localeCompare(right.branch));
   }
@@ -340,15 +389,64 @@ export class GitState {
     return (await this.git(["remote", "get-url", "origin"])).stdout.trim();
   }
 
-  async createAndPushProposalBranch(branch: string, message: string): Promise<void> {
-    if (!/^claude\/seo-content\/\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*$/.test(branch)) {
-      throw new Error(`Nieprawidłowa gałąź propozycji: ${branch}`);
+  async currentBranch(): Promise<string> {
+    return (await this.git(["rev-parse", "--abbrev-ref", "HEAD"])).stdout.trim();
+  }
+
+  /**
+   * Commit i push propozycji. Gdy sesja pracuje już na gałęzi `claude/seo-daily/…`,
+   * propozycja zostaje na niej (bez nowej gałęzi). `paths` to dokładna lista plików do
+   * commitu — sprawdzona wcześniej względem `PROTECTED_PATHS`. Push nigdy z `--force`.
+   */
+  async createAndPushProposalBranch(branch: string, message: string, paths: readonly string[] = ["content/seo"]): Promise<void> {
+    if (!PROPOSAL_BRANCH.test(branch)) throw new Error(`Nieprawidłowa gałąź propozycji: ${branch}`);
+    const forbidden = paths.filter((file) => isProtectedPath(file));
+    if (forbidden.length > 0) throw new Error(`Publikacja odmawia plików chronionych: ${forbidden.join(", ")}`);
+    if ((await this.currentBranch()) !== branch) await this.git(["checkout", "-b", branch]);
+    // Pusta lista = wszystko jest już zatwierdzone na gałęzi sesji; samo `git add --all --`
+    // dodałoby wtedy CAŁE drzewo robocze, więc w ogóle go nie wywołujemy.
+    if (paths.length > 0) {
+      await this.git(["add", "--all", "--", ...paths]);
+      const staged = await this.git(["diff", "--cached", "--name-only"]);
+      if (staged.stdout.trim() !== "") {
+        await this.git(["-c", `user.name=${GIT_NAME}`, "-c", `user.email=${GIT_EMAIL}`, "commit", "-m", message]);
+      }
     }
-    await this.git(["checkout", "-b", branch]);
-    await this.git(["add", "--", "content/seo"]);
-    const status = await this.git(["status", "--porcelain", "--", "content/seo"]);
-    if (status.stdout.trim() === "") throw new Error("Brak zmian content/seo do opublikowania.");
-    await this.git(["-c", `user.name=${GIT_NAME}`, "-c", `user.email=${GIT_EMAIL}`, "commit", "-m", message]);
     await this.git(["push", "origin", `HEAD:refs/heads/${branch}`]);
+  }
+
+  /**
+   * Zmiany gałęzi sesji względem `origin/<base>` (od wspólnego przodka): pliki zatwierdzone,
+   * niezatwierdzone i nowe oraz dodane linie. Publikacja sprawdza CAŁOŚĆ — także commity
+   * zrobione w sesji przed `publish`, żeby nie dało się ominąć listy plików chronionych.
+   */
+  async changesSinceBase(base: string): Promise<SessionChanges> {
+    const baseRef = `refs/remotes/origin/${base}`;
+    try {
+      await this.git(["rev-parse", "--verify", "--quiet", baseRef]);
+    } catch {
+      throw new Error(`Brak ${baseRef} — uruchom \`git fetch origin ${base}\`.`);
+    }
+    const mergeBase = (await this.git(["merge-base", baseRef, "HEAD"])).stdout.trim();
+    const lines = (text: string) => text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const tracked = lines((await this.git(["-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", mergeBase])).stdout);
+    const untracked = lines((await this.git(["-c", "core.quotePath=false", "ls-files", "--others", "--exclude-standard"])).stdout);
+    const added: AddedLine[] = [];
+    let current: string | null = null;
+    for (const line of (await this.git(["-c", "core.quotePath=false", "diff", "-U0", "--no-renames", "--no-color", mergeBase])).stdout.split(/\r?\n/)) {
+      if (line.startsWith("+++ ")) current = line === "+++ /dev/null" ? null : line.slice(4).replace(/^b\//, "");
+      else if (current && line.startsWith("+")) added.push({ file: current, line: line.slice(1) });
+    }
+    for (const file of untracked) {
+      const full = path.join(this.cwd, file);
+      try {
+        if ((await fs.stat(full)).size > MAX_SCANNED_FILE_BYTES) continue;
+        for (const line of (await fs.readFile(full, "utf8")).split(/\r?\n/)) added.push({ file, line });
+      } catch {
+        // Plik zniknął albo nie jest czytelny — lista plików i tak go obejmuje.
+      }
+    }
+    const files = [...new Set([...tracked, ...untracked].map((file) => file.replace(/\\/g, "/")))];
+    return { files, added };
   }
 }

@@ -1,10 +1,10 @@
-export type RoutineEnv = Readonly<Record<string, string | undefined>>;
+export type SessionEnv = Readonly<Record<string, string | undefined>>;
 
 export class PaidLlmCallBlockedError extends Error {
   readonly name = "PaidLlmCallBlockedError";
 
   constructor(readonly url: string) {
-    super(`Tryb Routine zablokował wywołanie płatnego API modelu: ${url}`);
+    super(`Tryb sesji SEO daily zablokował wywołanie płatnego API modelu: ${url}`);
   }
 }
 
@@ -38,13 +38,13 @@ function requestUrl(input: RequestInfo | URL): URL | null {
   }
 }
 
-export function assertNoPaidLlmCredentials(env: RoutineEnv): void {
+export function assertNoPaidLlmCredentials(env: SessionEnv): void {
   if ((env.SEO_ENGINE_ANTHROPIC_API_KEY ?? "").trim() !== "") {
-    throw new Error("Tryb Routine nie może działać z ustawionym SEO_ENGINE_ANTHROPIC_API_KEY.");
+    throw new Error("Tryb sesji SEO daily nie może działać z ustawionym SEO_ENGINE_ANTHROPIC_API_KEY.");
   }
 }
 
-export function installNoPaidLlmGuard(env: RoutineEnv): NoPaidLlmGuard {
+export function installNoPaidLlmGuard(env: SessionEnv): NoPaidLlmGuard {
   const originalFetch = globalThis.fetch;
   if (typeof originalFetch !== "function") throw new Error("Środowisko nie udostępnia globalnego fetch.");
 

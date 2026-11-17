@@ -21,7 +21,7 @@ export const TaskEvidenceSchema = z.object({
   internalLinkTargets: z.array(z.string().regex(/^\//)).optional(),
 });
 
-export const RoutineTaskSchema = z.object({
+export const SessionTaskSchema = z.object({
   operation: z.enum(["refresh", "new_article"]),
   target: z.string().regex(/^\//),
   primaryQuery: z.string().min(1),
@@ -45,7 +45,7 @@ export const WorkOrderSchema = z.object({
   scheduledAt: z.string().datetime(),
   baseBranch: z.string().min(1),
   stateBranch: z.string().startsWith("claude/"),
-  task: RoutineTaskSchema,
+  task: SessionTaskSchema,
   contentType: ContentTypeSchema,
   docId: z.string().min(1),
   internalLinkTargets: z.array(z.string().regex(/^\//)),
@@ -85,7 +85,7 @@ export type ResearchFile = z.infer<typeof ResearchFileSchema>;
 
 export { DraftBodySchema };
 
-export const RoutineStatusSchema = z.enum([
+export const SessionStatusSchema = z.enum([
   "KILLED",
   "NO_TASK",
   "REVIEW_REQUIRED",
@@ -99,11 +99,12 @@ export const RoutineStatusSchema = z.enum([
   "PR_CREATED",
   "PR_FAILED",
   "FAILED",
+  "OK",
 ]);
-export type RoutineStatus = z.infer<typeof RoutineStatusSchema>;
+export type SessionStatus = z.infer<typeof SessionStatusSchema>;
 
-export const RoutineResultSchema = z.object({
-  status: RoutineStatusSchema,
+export const SessionResultSchema = z.object({
+  status: SessionStatusSchema,
   runId: z.string().optional(),
   day: IsoDaySchema.optional(),
   reason: z.string().optional(),
@@ -119,10 +120,19 @@ export const RoutineResultSchema = z.object({
   pending: z.number().int().nonnegative().optional(),
   proposalBranches: z.array(z.string()).optional(),
   claims: z.array(z.object({ day: IsoDaySchema, runId: z.string() })).optional(),
+  /** Skąd sesja wzięła dane GSC i jak są stare (bez samych danych). */
+  gsc: z
+    .object({
+      source: z.enum(["export", "api", "backlog"]),
+      dataEnd: IsoDaySchema.nullable(),
+      exact: z.boolean(),
+      freshness: z.enum(["fresh", "aging", "stale", "backlog"]),
+    })
+    .optional(),
 });
-export type RoutineResult = z.infer<typeof RoutineResultSchema>;
+export type SessionResult = z.infer<typeof SessionResultSchema>;
 
-export interface RoutinePaths {
+export interface SessionPaths {
   root: string;
   sources: string;
   workOrder: string;
@@ -133,7 +143,7 @@ export interface RoutinePaths {
   result: string;
 }
 
-export function routinePaths(root = ".seo-routine"): RoutinePaths {
+export function sessionPaths(root = ".seo-session"): SessionPaths {
   return {
     root,
     sources: path.join(root, "sources"),

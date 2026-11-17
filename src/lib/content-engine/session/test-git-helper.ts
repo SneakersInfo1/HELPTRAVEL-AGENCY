@@ -20,7 +20,7 @@ export function git(cwd: string, args: readonly string[]): Promise<string> {
   });
 }
 
-export async function createGitFixture(prefix = "seo-routine-git-"): Promise<GitFixture> {
+export async function createGitFixture(prefix = "seo-session-git-"): Promise<GitFixture> {
   const root = await mkdtemp(path.join(os.tmpdir(), prefix));
   const bare = path.join(root, "acme", "travel.git");
   const seed = path.join(root, "seed");
@@ -29,7 +29,7 @@ export async function createGitFixture(prefix = "seo-routine-git-"): Promise<Git
   await mkdir(seed, { recursive: true });
   await git(seed, ["init", "-b", "main"]);
   await writeFile(path.join(seed, "README.md"), "fixture\n", "utf8");
-  await writeFile(path.join(seed, ".gitignore"), ".seo-routine/\n.seo-engine-state/\n", "utf8");
+  await writeFile(path.join(seed, ".gitignore"), ".seo-session/\n.seo-engine-state/\n", "utf8");
   await mkdir(path.join(seed, "content", "seo"), { recursive: true });
   await writeFile(path.join(seed, "content", "seo", "index.generated.ts"), "export const CONTENT_DOCUMENTS: unknown[] = [];\n", "utf8");
   await git(seed, ["add", "."]);

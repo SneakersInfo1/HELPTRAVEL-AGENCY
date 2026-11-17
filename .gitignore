@@ -40,7 +40,9 @@ CLAUDE.md
 
 # vercel
 .vercel
-.claude/
+# Lokalne ustawienia i worktree Claude Code; do repo trafia tylko wspólne reguły bezpieczeństwa.
+.claude/*
+!.claude/settings.json
 
 # typescript
 *.tsbuildinfo
@@ -85,3 +87,8 @@ docs/layout-hardening/shots/**/*.png
 
 # Dane GSC/GA4 i wyniki z metrykami ruchu — repo jest publiczne (patrz docs/seo/OWNER_ACTIONS.md)
 /seo-private/
+
+# Robocze katalogi sesji SEO daily (zlecenie, źródła, stan, plan z liczbami GSC) — repo jest publiczne
+/.seo-session/
+/.seo-engine-state/
+/.seo-daily/
