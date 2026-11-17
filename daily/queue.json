@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "content-new-c-program-files-git-porownanie-barcelona-spain-vs-malaga-spain",
+      "kind": "content_new",
+      "target": "C:/Program Files/Git/porownanie/barcelona-spain-vs-malaga-spain",
+      "title": "Dokument ze źródłami: Barcelona czy Malaga",
+      "why": "Porównanie ma popyt w GSC i pozycję w pierwszej piątce, ale CTR poniżej oczekiwanego i brak dokumentu ze zweryfikowanymi faktami.",
+      "source": "gsc",
+      "priority": 75,
+      "status": "in_progress",
+      "createdAt": "2026-11-17T20:14:46.458Z",
+      "updatedAt": "2026-11-17T20:14:46.458Z",
+      "notes": []
+    }
+  ]
+}
