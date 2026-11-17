@@ -14,6 +14,21 @@
       "createdAt": "2026-11-17T20:20:27.121Z",
       "updatedAt": "2026-11-17T20:33:20.928Z",
       "notes": []
+    },
+    {
+      "id": "technical-src-lib-content-engine-site-content-ts",
+      "kind": "technical",
+      "target": "src/lib/content-engine/site-content.ts",
+      "title": "Podgląd dokumentów in_review na Vercel Preview",
+      "why": "Strona renderuje tylko dokumenty approved, a flaga SEO_PREVIEW_DRAFTS nie jest ustawiona dla Preview, więc propozycji nie widać na podglądzie PR.",
+      "source": "session",
+      "priority": 45,
+      "status": "todo",
+      "createdAt": "2026-11-17T20:33:29.945Z",
+      "updatedAt": "2026-11-17T20:33:29.945Z",
+      "notes": [
+        "Decyzja właściciela: zmienna środowiskowa Vercel dla Preview."
+      ]
     }
   ]
 }
