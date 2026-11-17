@@ -1,6 +1,6 @@
 # Wyniki misji SEO
 
-Stan na 14.11.2026. PR: [SneakersInfo1/HELPTRAVEL-AGENCY#154](https://github.com/SneakersInfo1/HELPTRAVEL-AGENCY/pull/154) (szkic). Nic nie zostało wdrożone na produkcję.
+Stan na 17.11.2026. PR: [SneakersInfo1/HELPTRAVEL-AGENCY#154](https://github.com/SneakersInfo1/HELPTRAVEL-AGENCY/pull/154) (gotowy do przeglądu). Nic nie zostało wdrożone na produkcję.
 
 ## Co działa
 
@@ -29,7 +29,7 @@ Liczby przed i po (produkcja z 13.11 kontra build gałęzi):
 | LCP i CLS | — | bez regresji, CLS 0 |
 | Zmiany indeksu (robots) | — | 0 |
 
-Testy: `pnpm test` 1690 + 186 zaliczonych, `tsc` i `eslint` czyste.
+Testy: `pnpm test` 1722 + 186 zaliczonych, `tsc` i `eslint` czyste.
 
 ## Końcowa kontrola jakości (15–16.11.2026)
 
@@ -39,6 +39,16 @@ Pełny opis: `FINAL_QUALITY_AUDIT.md`. W skrócie:
 - Usunięte: temperatura morza liczona z powietrza i budżety w zł ze wzoru.
 - Powtarzalność 1039 indeksowalnych stron miesięcy (maskowane wszystkie nazwy, miesiące i liczby): 271 → 803 wariantów tekstu, największa grupa identycznych stron 178 → 36.
 - Proza tych stron jest jeszcze bardziej szablonowa (udział zdań szablonowych 0,63 → 0,70), a wartość daje dane. 158 indeksowalnych stron nie ma żadnych danych o miesiącu.
+
+## Ostatnia runda przed produkcją (17.11.2026)
+
+Szczegóły: `FINAL_QUALITY_AUDIT.md`, sekcja 8.
+
+- **Okresy norm WMO.** Normy porównujemy dokładnie tylko przy tym samym okresie, orientacyjnie (pełne stopnie, oba okresy, próg 1,5°C) przy sąsiednim, a przy różnym albo nieznanym wcale. Porównanie z Warszawą: dokładne na 660 stronach, orientacyjne na 768, usunięte z 804. Ranking sezonowy zastąpiony listą alfabetyczną.
+- **Koszty.** Usunięte wszystkie względne oceny kosztów bez pomiaru („Taniej zwykle”, pasma budżetu, notatki budżetowe, superlatywy). Zostały tylko ceny zmierzone z datą.
+- **Loty.** „Szukaj lotów” otwiera formularz lotów z wpisanym celem, a na stronie miesiąca także z terminem. Wyszukiwanie startuje dopiero po wybraniu lotniska wylotu.
+- **Fonty.** Build nie pobiera już fontów z Google. Wygląd identyczny: 0 różnych pikseli na 10 zrzutach.
+- **Wariant `noindex`** dla 158 stron bez danych jest gotowy, przetestowany i nieaktywny do Twojej decyzji.
 
 ## Co wymaga klucza albo Twojej zgody
 
@@ -65,7 +75,7 @@ Dokładne kroki: `OWNER_ACTIONS.md`.
 
 ## Co zostało opublikowane
 
-Nic. Na produkcji nie zmieniono żadnej strony ani ustawienia. Powstały: gałąź `claude/helptravel-seo-modernizacja-6f1b7c`, szkic PR i wdrożenia Preview na Vercelu (z linkiem udostępniania ważnym 23 godziny, utworzonym do testów). Automat nie utworzył żadnego PR.
+Nic. Na produkcji nie zmieniono żadnej strony ani ustawienia. Powstały: gałąź `claude/helptravel-seo-modernizacja-6f1b7c`, PR gotowy do przeglądu i wdrożenia Preview na Vercelu (z linkiem udostępniania ważnym 23 godziny, utworzonym do testów). Automat nie utworzył żadnego PR.
 
 ## Koszty
 
@@ -91,5 +101,6 @@ Jak to cofnąć: `TOOLING_AUDIT.md`, sekcja „Zmiany w konfiguracji”.
 | `DESIGN_QUALITY_STANDARD.md` | Kierunek wizualny i progi |
 | `TOOLING_AUDIT.md` | Narzędzia |
 | `PHASE_0…7_RESULTS.md` | Wyniki etapów |
-| `FINAL_QUALITY_AUDIT.md` | Końcowa kontrola: dane WMO, powtarzalność stron, strategia indeksu |
+| `FINAL_QUALITY_AUDIT.md` | Końcowa kontrola: dane WMO, powtarzalność stron, strategia indeksu, ostatnia runda poprawek |
+| `FONTS.md` | Fonty z własnego hostingu: dowody identyczności, licencja, odświeżanie |
 | `HANDOFF.md` | Przekazanie dla następnej sesji |

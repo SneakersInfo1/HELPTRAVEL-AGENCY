@@ -42,7 +42,9 @@ interface PageCase {
 const PAGES: PageCase[] = [
   { path: "/porownanie/athens-greece-vs-rome-italy", template: "comparison", enriched: true, minWords: 900 },
   { path: "/porownanie/funchal-portugal-vs-santa-cruz-de-tenerife-spain", template: "comparison", enriched: true, minWords: 900 },
-  { path: "/porownanie/malaga-spain-vs-valencia-spain", template: "comparison", enriched: true, minWords: 900 },
+  // Próg sprawdza, że treść ze źródeł jest w HTML serwera. 17.11.2026 z tej strony zniknęły
+  // werdykt i FAQ o kosztach (bez pomiaru), więc ma 897 słów — progu nie dobijamy tekstem.
+  { path: "/porownanie/malaga-spain-vs-valencia-spain", template: "comparison", enriched: true, minWords: 800 },
   { path: "/porownanie/barcelona-spain-vs-valencia-spain", template: "comparison", enriched: true, minWords: 800 },
   // Para flagowa: na produkcji ma też sekcję danych własnych z LiteAPI; lokalnie bez kluczy jej nie ma.
   { path: "/porownanie/heraklion-greece-vs-rhodes-greece", template: "comparison", minWords: 250 },

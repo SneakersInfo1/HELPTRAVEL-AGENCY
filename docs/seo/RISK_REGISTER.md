@@ -46,15 +46,18 @@ Stan na 14.11.2026. Skala: prawdopodobieństwo i skutek jako niskie (N), średni
 
 | ID | Ryzyko | Stan |
 |---|---|---|
-| R-26 | 158 indeksowalnych stron miesięcy (25 kierunków) nie ma żadnych danych o miesiącu, bo WMO nie ma jednoznacznie dopasowanej stacji. | Decyzja właściciela: wyłączyć z indeksu albo zostawić (`OWNER_ACTIONS.md`, pkt 16) |
-| R-27 | Okresy norm WMO różnią się między krajami (od 1961–1990 do 1991–2020), a dla 28 kierunków źródło ich nie podaje. Porównania między kierunkami zestawiają więc różne okresy. | Przyjęte: okres jest pokazany przy danych |
-| R-28 | Przycisk „Szukaj lotów” prowadzi na stronę główną bez kierunku i terminu. | Decyzja właściciela: zgoda na zmianę formularza lotów (`OWNER_ACTIONS.md`, pkt 17) |
+| R-26 | 158 indeksowalnych stron miesięcy (25 kierunków) nie ma żadnych danych o miesiącu, bo WMO nie ma jednoznacznie dopasowanej stacji. | Wariant `noindex` gotowy i nieaktywny; decyzja właściciela (`OWNER_ACTIONS.md`, pkt 16) |
+| R-27 | Okresy norm WMO różnią się między krajami (od 1961–1990 do 1991–2020), a dla 28 kierunków źródło ich nie podaje. | Ograniczone 17.11.2026: porównania tylko przy tym samym albo sąsiednim okresie (`climate-periods.ts`); 804 strony bez porównania z Warszawą |
+| R-28 | Przycisk „Szukaj lotów” prowadził na stronę główną bez kierunku i terminu. | Rozwiązane 17.11.2026: cel i termin we fragmencie adresu, test e2e |
 | R-29 | Proza stron miesięcy jest szablonem; mediana 67% zdań po zamaskowaniu powtarza się na ponad połowie stron. Google może je nadal oceniać jako treść o niskiej unikalności. | Otwarte: ocena po 28 dniach w GSC |
 | R-30 | Normy WMO są pobrane jednorazowo (16.11.2026). Służby aktualizują je rzadko, ale plik nie odświeża się sam. | Przyjęte: `pnpm seo:climate` raz w roku |
+| R-31 | Fonty są kopiami z 17.11.2026. Google może wydać nową wersję krojów, a serwis zostanie przy starej. | Przyjęte: wygląd się nie zmienia; procedura odświeżenia w `FONTS.md` |
+| R-32 | Wypełnienie formularza lotów z linku działa w przeglądarce. Bez JavaScriptu zakładka lotów otwiera się pusta, jak przed zmianą. | Przyjęte: formularz i tak wymaga JavaScriptu |
+| R-33 | Pozycja „na tle innych kierunków” jest liczona w grupie kierunków z normą z tych samych lat. Skład tej grupy wynika z praktyki krajowych służb, nie z geografii. | Przyjęte: zdanie podaje okres i liczbę kierunków w grupie |
 
 ## Czego celowo nie zrobiono
 
-- Żadnych masowych przekierowań, zmian `noindex` ani usunięć stron.
-- Żadnych zmian strony głównej ani wspólnej powłoki serwisu.
+- Żadnych masowych przekierowań, zmian `noindex` ani usunięć stron. Wariant `noindex` dla 158 stron jest przygotowany, ale nieaktywny.
+- Strona główna i wspólna powłoka zmienione tylko na Twoje polecenie z 17.11.2026: odczyt celu i terminu w zakładce lotów oraz fonty z własnego hostingu (wygląd identyczny).
 - Żadnego wdrożenia na produkcję i żadnego wypchnięcia na `main`.
 - Żadnych wydatków.

@@ -18,9 +18,9 @@ Lista rzeczy, których nie da się dokończyć bez Ciebie: decyzje, konta, klucz
 | 13 | Włączyć dzienny automat | gdy zechcesz | 30 min |
 | 14 | Odświeżyć godziny otwarcia w jednym dokumencie | przed 11.02.2027 | 10 min |
 | 15 | Włączyć ochronę gałęzi `main` | przed włączeniem automatu | 5 min |
-| 16 | Zdecydować o 158 stronach miesięcy bez danych | przed albo po scaleniu | 5 min |
-| 17 | Zdecydować o przycisku lotów bez kierunku | bez pośpiechu | 2 min |
-| 18 | Zdecydować o fontach w repozytorium (opcjonalne) | bez pośpiechu | 2 min |
+| 16 | Zdecydować o 158 stronach miesięcy bez danych (wariant gotowy, nieaktywny) | przed albo po scaleniu | 5 min |
+| 17 | ~~Przycisk lotów bez kierunku~~ — zrobione 17.11.2026 | — | — |
+| 18 | ~~Fonty w repozytorium~~ — zrobione 17.11.2026 | — | — |
 
 ## Przed scaleniem PR
 
@@ -152,16 +152,31 @@ Szczegóły i liczby: `FINAL_QUALITY_AUDIT.md`.
 
 Dla 25 kierunków (m.in. Kos, Zakynthos, Mykonos, Santorini, Tirana, Djerba, Bodrum) WMO nie ma jednoznacznie dopasowanej stacji. Ich strony miesięcy nie pokazują żadnej informacji o miesiącu, a 158 z nich jest w indeksie. W 92 dni zebrały 13 kliknięć i 1060 wyświetleń.
 
-Zalecam wyłączenie ich z indeksu (`noindex, follow`, adresy zostają) do czasu znalezienia wiarygodnych danych. Niczego nie zmieniłem. Po Twojej zgodzie to zmiana w jednym pliku (`src/lib/mvp/month-index-policy.ts`) z testem.
+Zalecam wyłączenie ich z indeksu (`noindex, follow`, adresy zostają) do czasu znalezienia wiarygodnych danych.
+
+**Wariant jest przygotowany i przetestowany, ale NIEAKTYWNY.** Indeks i sitemapa się nie zmieniają, dopóki go nie włączysz.
+
+- Kod: `src/lib/mvp/month-index-policy.ts`, wariant `baseline-without-climate-gap`. Odejmuje od bazy 1039 stron dokładnie te 158, których kierunek nie ma normy WMO. Niczego nie dodaje.
+- Podgląd bez włączania: `pnpm seo:index-variant` (podsumowanie 25 kierunków) albo `pnpm seo:index-variant -- --list` (wszystkie 158 adresów).
+- Testy pilnują, że wariant to podzbiór bazy (881 stron) i że odejmuje dokładnie strony bez danych o miesiącu. Strażnik w testach blokuje przypadkowe włączenie.
+
+Jak włączyć po Twojej zgodzie (osobny PR):
+
+1. W `month-index-policy.ts` ustaw `ACTIVE_MONTH_INDEX_POLICY = "baseline-without-climate-gap"`.
+2. Świadomie zaktualizuj testy, które wtedy padną: strażnika i test „dziś dokładnie bazę 1039” w `month-index-policy.test.ts` oraz trzy testy porównujące indeks z bazą w `month-index-baseline.test.ts`. Sprawdzone: po przełączeniu pada dokładnie pięć testów, a sitemapa ma 881 stron miesięcy.
+3. Na Preview sprawdź, że strona bez danych (np. `/kierunki/kos-greece/lipiec`) ma `noindex, follow`, a sitemapa nie zawiera żadnego z 158 adresów.
+4. Po wdrożeniu obserwuj w GSC, jak te adresy wypadają z indeksu. Cofnięcie to powrót stałej do `baseline-1039`.
 
 Osobna sprawa: 1363 strony mają teraz dane WMO, ale są poza indeksem. Nie zalecam włączania ich przed oceną wyników po 28 dniach.
 
-### 17. Przycisk „Szukaj lotów”
+### 17. Przycisk „Szukaj lotów” — zrobione 17.11.2026
 
-Prowadzi do `/?tab=loty`, czyli na stronę główną bez kierunku i terminu. Żeby przekazywał kierunek, formularz lotów na stronie głównej musi przyjmować go z adresu. To zmiana w komponentach strony głównej, więc potrzebuję Twojej zgody.
+Przycisk na stronach miesięcy, porównaniach i przewodnikach otwiera zakładkę lotów na stronie głównej z wpisanym celem. Na stronie miesiąca wpisuje też termin, ten sam co przy hotelach. Wyszukiwania nie uruchamia, bo lotnisko wylotu wybiera użytkownik.
 
-### 18. Fonty w repozytorium (opcjonalne)
+Cel i termin są we fragmencie adresu (`/?tab=loty#destination=…`), więc dla Google to nadal jeden adres `/?tab=loty`. Szczegóły: `src/lib/flights/prefill-link.ts`.
 
-Build pobiera fonty Manrope i Cormorant Garamond z Google Fonts. Gdy to pobieranie chwilowo zawiedzie, build pada: zdarzyło się to 15.11.2026 w CI, lokalnie i wcześniej raz na Vercelu. CI ma teraz jedną powtórkę, ale wdrożenie produkcyjne na Vercelu nadal może trafić na ten błąd. Wtedy wystarczy je ponowić.
+### 18. Fonty w repozytorium — zrobione 17.11.2026
 
-Trwałe rozwiązanie to trzymanie plików fontów w repozytorium (`next/font/local`). Zmienia to wspólny układ strony, także strony głównej, więc nie zrobiłem tego bez Twojej zgody. Wygląd strony zostałby taki sam.
+Build nie pobiera już fontów z Google Fonts. Pliki leżą w `public/fonts/` i są bajt w bajt tymi samymi plikami, których używał dotąd `next/font/google`. Obok leżą licencje SIL OFL 1.1. Porównanie dwóch buildów dało 0 różnych pikseli na 10 zrzutach.
+
+Opis, dowody i procedura odświeżenia: `docs/seo/FONTS.md`.

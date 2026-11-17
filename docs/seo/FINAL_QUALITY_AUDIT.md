@@ -154,15 +154,90 @@ Przebudowę stron na normy WMO napisał Codex według specyfikacji. Diff został
 | „Dla Barcelona…”, „W miesiącach styczeń, luty…” | Zdania przepisane bez błędów odmiany |
 | 5 norm (4 w Egipcie, Trabzon) nie ma w WWIS nazwy stacji, przez co linia źródła pokazywałaby pusty dopisek „stacja” | Pokazujemy „punkt WWIS {miasto}”. Test pliku norm pilnuje kompletności, spójności (max ≥ min, zakresy), adresu źródła, współrzędnych i okresu. |
 
-**CI.** Zadanie `templates-e2e` padło raz, bo build nie pobrał fontu Google („next/font/google queries have exactly one entry” w Turbopacku). Ten sam błąd wystąpił w tym samym czasie lokalnie, a chwilę później Google Fonts odpowiadało poprawnie. Build w CI ma teraz jedną powtórkę; drugi błąd zatrzymuje kontrolę. Trwałym rozwiązaniem byłoby trzymanie fontów w repozytorium (`next/font/local`), ale to zmiana wspólnego układu strony, w tym strony głównej, więc zostaje do Twojej decyzji.
+**CI.** Zadanie `templates-e2e` padło raz, bo build nie pobrał fontu Google („next/font/google queries have exactly one entry” w Turbopacku). Ten sam błąd wystąpił w tym samym czasie lokalnie. Rozwiązane trwale 17.11.2026: fonty są w repozytorium (sekcja 8).
 
 ## 7. Problemy, które zostają
 
 1. Proza stron miesięcy jest szablonem. Wartość daje dane, nie tekst.
-2. 158 indeksowalnych stron bez danych o miesiącu.
-3. Przycisk lotów bez kierunku i terminu.
-4. Okresy norm różnią się między krajami, a dla 28 kierunków źródło ich nie podaje.
-5. Twierdzenia względne o kosztach („Taniej zwykle: X”) nadal opierają się na ręcznie wpisanym wskaźniku kosztów bez źródła. Nie podają kwot, ale to nadal ocena bez pomiaru.
-6. Wzór budżetu został w `src/lib/mvp/scoring.ts`, bo korzysta z niego stary planer. Nie jest pokazywany na stronach treści.
-7. Treść ze źródeł mają 4 z 54 porównań.
-8. Gałąź `main` nie ma reguły ochrony.
+2. 158 indeksowalnych stron bez danych o miesiącu. Wariant `noindex` jest gotowy i przetestowany, ale nieaktywny do Twojej decyzji (sekcja 8).
+3. Normy różnych krajów pochodzą z różnych okresów, a dla 28 kierunków źródło okresu nie podaje. Porównujemy je teraz tylko przy porównywalnych okresach (sekcja 8), więc część stron straciła porównanie z Warszawą.
+4. Wzór budżetu został w `src/lib/mvp/scoring.ts`, bo korzysta z niego stary planer. Nie jest pokazywany na stronach treści.
+5. Treść ze źródeł mają 4 z 54 porównań.
+6. Gałąź `main` nie ma reguły ochrony.
+7. Tytuły przewodników zapisują czas lotu z kropką („lot 3.4 h”). Tak jest też na `main`, więc nie zmieniałem 235 tytułów w tej rundzie.
+
+## 8. Ostatnia runda przed produkcją (17.11.2026)
+
+### Porównywalność okresów norm WMO
+
+**Problem.** `month-context.ts` i model porównań odejmowały od siebie normy z różnych okresów (od 1961–1990 do 1991–2020, a 28 bez okresu), jakby były w pełni porównywalne. Dotyczyło to porównania z Warszawą, pozycji „na tle innych kierunków”, listy „gdzie cieplej”, lipca w porównaniach i rankingu sezonowego.
+
+**Reguła** (`src/lib/mvp/climate-periods.ts`). Normy z różnych 30-leci różnią się systematycznie: zmienia się klimat i stacje. Różnica z dokładnością do 0,1°C między takimi normami byłaby fałszywą precyzją. Z kolei wyrzucenie każdego porównania między okresami zabrałoby je prawie dwóm trzecim stron. Dlatego:
+
+| Relacja okresów | Kiedy | Co pokazujemy |
+|---|---|---|
+| ten sam | identyczne lata | różnica z dokładnością 0,1°C |
+| sąsiedni | oba okresy mają co najmniej 20 lat, a ich środki dzieli najwyżej 10 lat (np. 1971–2000 i 1981–2010) | różnica w pełnych stopniach z „ok.”, oba okresy i dopisek „porównanie orientacyjne”; kierunek („więcej”, „wyższa”) tylko przy różnicy co najmniej 1,5°C, poniżej „podobnie” |
+| różny | środki dalej niż 10 lat albo okres krótszy niż 20 lat | brak porównania |
+| nieznany | źródło nie podaje okresu | brak porównania |
+
+**Gdzie i z jakim skutkiem** (2244 strony miesięcy z normą WMO):
+
+| Element | Zmiana | Liczby |
+|---|---|---|
+| Porównanie z Warszawą (norma 1981–2010) w leadzie i wierszu „Na tle Warszawy” | według reguły; dni z opadem tylko przy tym samym okresie | dokładne na 660 stronach (55 kierunków), orientacyjne na 768 (64), brak na 804 (67: 39 z innym okresem, 28 bez okresu) |
+| „Na tle innych kierunków” | liczone tylko wśród kierunków z normą z tych samych lat, gdy jest ich co najmniej 10; zdanie podaje okres | na 1704 stronach (142 kierunki) |
+| „Gdzie {w miesiącu} jest cieplej” | bez kierunków z innym albo nieznanym okresem; przy sąsiednim okresie „ok. +N°C” | 3121 linków orientacyjnych |
+| Porównania: lipiec w FAQ i szybkiej odpowiedzi | dokładnie, orientacyjnie albo wcale | tabela pokazuje wiersz „Okres normy WMO” i notę, gdy okresy się różnią |
+| `/najlepsze-kierunki/[sezon]` | ranking ze wskaźnikiem kosztów i dostępności zastąpiony listą alfabetyczną kierunków ze średnią 22–28°C w dzień; nagłówek bez słów „ranking” i „najlepsze” | wiosna 29, lato 65, jesień 53, zima 19 kierunków; adres bez zmian |
+
+Testy: relacje ten sam, sąsiedni, różny i nieznany (także `null` po jednej i po obu stronach), zaokrąglenia i próg na danych syntetycznych oraz na prawdziwych normach (Barcelona–Walencja: ten sam okres, Barcelona–Rzym: sąsiedni, Barcelona–Lizbona: różny, Bangkok i Amman: bez porównania z Warszawą).
+
+### Twierdzenia o relatywnych kosztach
+
+Usunięte wszystkie widoczne oceny wyprowadzane z ręcznie wpisanego wskaźnika kosztów albo napisane bez pomiaru: werdykt i FAQ „Taniej zwykle” w porównaniach, tag „napiętego budżetu”, pasmo „budżet” na kartach kierunków, notatki budżetowe 23 przewodników, zdania typu „rzadko bywa najtańsza”, „opłacalny”, wersja angielska przewodników, superlatywy na hubie `/wyjazdy/budzet` i opisy listy porównań. Hub budżetowy zostaje przy swoim temacie, ale opiera go wyłącznie na zmierzonych cenach z datą.
+
+Zostają tylko ceny zmierzone (migawki „od X zł/noc” i ceny lotów z datą pomiaru). Strażnik w testach (`relative-cost-claims.test.ts` i testy przewodników) sprawdza modele porównań, stron miesięcy i przewodników PL i EN, artykuły, kategorie i huby. Tytuł porównania Malaga–Walencja zachowuje słowo „ceny”, bo to para flagowa ze zmierzonymi cenami hoteli. Stary planer (`scoring.ts`) i niepubliczny moduł raportów (`/raporty` przekierowuje na stronę główną) nie były zmieniane.
+
+### Przekazanie kierunku i terminu do wyszukiwarki lotów
+
+„Szukaj lotów” na stronie miesiąca prowadzi na `/?tab=loty#destination=BCN&destLabel=Barcelona&country=Spain&depart=…&return=…`. Zakładka lotów otwiera się z wpisanym celem i tym samym terminem co hotele. Porównanie ma osobny link dla każdego z dwóch kierunków, a przewodnik przekazuje sam cel. Wyszukiwanie nie startuje samo, bo lotnisko wylotu wybiera człowiek, a dostawca ma twardy limit tempa.
+
+- Dane są we fragmencie adresu, więc dla wyszukiwarek to nadal jeden adres `/?tab=loty`, a nie tysiące wariantów strony głównej. GA4 składa adres strony bez fragmentu, a ścieżka celu w zdarzeniu `seo_cta_click` odcina go (poprawka w `page-path.ts` z testem).
+- Wejście z adresu jest traktowane jako niezaufane: kod IATA musi mieć trzy litery, tekst ma limit długości i nie może zawierać znaków sterujących, a daty z przeszłości, zbyt odległe albo w złej kolejności są pomijane.
+- Test e2e dla trzech wejść: formularz ma cel (i termin), do dostawcy nie idzie żadne zapytanie, a po wpisaniu lotniska wylotu adres wyników ma ten sam cel i termin co link. Kontrola negatywna: na buildzie sprzed zmiany test pada.
+
+### Fonty bez pobierania przy buildzie
+
+Pliki Manrope i Cormorant Garamond leżą w `public/fonts/` z licencjami SIL OFL 1.1. Są bajt w bajt tymi samymi plikami, których używał `next/font/google`, z tymi samymi regułami `@font-face`, fallbackami i preloadem. Porównanie dwóch buildów (5 stron, 390 i 1440 px): te same kroje, te same metryki tekstu i 0 różnych pikseli na 10 zrzutach. Kontrola negatywna tym samym narzędziem: 1 028 032 różnych pikseli przy dwóch różnych stronach. Opis i procedura odświeżenia: `FONTS.md`.
+
+### Wariant `noindex` dla 158 stron bez danych
+
+Gotowy, przetestowany i nieaktywny (`OWNER_ACTIONS.md`, punkt 16). Wariant odejmuje od bazy 1039 stron dokładnie 158 stron 25 kierunków bez normy WMO, czyli te, których model nie pokazuje żadnej pogody. Nie dodaje żadnej strony. Kontrola negatywna: po tymczasowym przełączeniu sitemapa ma 881 stron miesięcy i pada pięć testów-strażników.
+
+### Wykonanie i przegląd
+
+Okresy norm i koszty napisał Codex według specyfikacji. Przerwał go limit konta przed uruchomieniem pełnych testów i bez podsumowania, więc diff został przeczytany w całości, a testy uruchomione od nowa. Poprawiono:
+
+| Znalezisko | Poprawka |
+|---|---|
+| Tytuł porównania Malaga–Walencja stracił słowo „ceny”, choć to para flagowa ze zmierzonymi cenami hoteli | Tytuł przywrócony (bez zmiany adresu i bez ryzyka dla dobrze działającej strony) |
+| „W kohorcie 56 kierunków…” — żargon statystyczny w zdaniu dla czytelnika | „Spośród 56 kierunków z normą z tych samych lat (1981–2010)…” |
+| Nagłówek „Kierunki na lato ze średnią 22–28°C” nie mówił, czego to średnia | „Kierunki na lato: w dzień średnio 22–28°C” |
+| Pytanie FAQ zmienione na „spokojny weekend”, a odpowiedź nadal zaczynała się od „Może się udać” | „Tak, jeśli wybierzesz kilka dzielnic…” |
+| „Bardzo dobry stosunek ceny do jakości” w wyróżnikach Walencji, poza zakresem przeszukania | Zastąpione „plaża i miasto w jednym planie” |
+| Literówka „od mają do” w dwóch przewodnikach | „od maja do” |
+
+### Kontrole końcowe
+
+| Kontrola | Wynik |
+|---|---|
+| `pnpm test` | 1722 + 186 zaliczonych |
+| `tsc --noEmit`, `eslint` | czyste |
+| Build produkcyjny | udany w 100 s, bez żadnego zapytania do Google Fonts |
+| Test dymny (`seo:smoke`) | 268/268. Próg słów dla porównania Malaga–Walencja obniżony z 900 do 800, bo po usunięciu werdyktu i FAQ o kosztach strona ma 897 słów. Progu nie dobijamy tekstem. |
+| Playwright z axe | 16/16 (13 dotychczasowych i 3 nowe dla lotów) |
+| Nagłówki fontów | `immutable` tylko dla plików woff2; README i licencje bez długiego cache |
+| Powtarzalność 1039 stron indeksowalnych, tryb ostry | 803 → 845 wariantów tekstu, strony w grupach ≥ 10: 86 (bez zmian), największa grupa 36 (bez zmian), udział zdań szablonowych 0,70 → 0,59. Spadek wynika z gałęzi zależnych od okresu normy (porównanie dokładne, orientacyjne albo żadne, okres i liczba kierunków w zdaniu), a nie z nowego tekstu. |
+
+Wyniki GitHub Actions i kontrola Preview dla końcowego commita są w opisie PR #154.
