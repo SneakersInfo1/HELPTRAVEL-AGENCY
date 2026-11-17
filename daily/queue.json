@@ -29,6 +29,19 @@
       "notes": [
         "Decyzja właściciela: zmienna środowiskowa Vercel dla Preview."
       ]
+    },
+    {
+      "id": "technical-src-lib-content-engine-sources-ts",
+      "kind": "technical",
+      "target": "src/lib/content-engine/sources.ts",
+      "title": "Źródło UNESCO zwraca 403 przy pobieraniu",
+      "why": "Strona whc.unesco.org odrzuca pobieranie silnika, więc kuratorowane twierdzenia UNESCO (np. dzieła Gaudíego) wypadają z dokumentów.",
+      "source": "session",
+      "priority": 40,
+      "status": "todo",
+      "createdAt": "2026-11-17T20:33:39.981Z",
+      "updatedAt": "2026-11-17T20:33:39.981Z",
+      "notes": []
     }
   ]
 }
