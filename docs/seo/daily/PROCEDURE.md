@@ -83,15 +83,15 @@ Wybierz zadania na tę sesję:
 Wpisz wybrane zadania do kolejki ze statusem `in_progress` (opis jakościowy, bez liczb GSC):
 
 ```bash
-pnpm seo:daily queue add --kind content_new --target /porownanie/... --title "..." --why "..." --source gsc --priority 75 --status in_progress
+pnpm seo:daily queue add --kind content_new --target https://helptravel.pl/porownanie/... --title "..." --why "..." --source gsc --priority 75 --status in_progress
 ```
 
-Polecenie wypisze identyfikator tematu (`id`). Temat zamknięty (`done`, `rejected`, `do_not_redo`) nie zostanie otwarty ponownie — wybierz inny.
+Cel podawaj pełnym adresem `https://helptravel.pl/...` — Git Bash na Windows zamienia argumenty zaczynające się od `/` na ścieżki (CLI to cofa, ale pełny adres jest pewniejszy). Obszar kodu podaj ścieżką w repo (`src/...`). Polecenie wypisze identyfikator tematu (`id`). Temat zamknięty (`done`, `rejected`, `do_not_redo`) nie zostanie otwarty ponownie — wybierz inny.
 
 ## 4. Zadanie treści
 
 ```bash
-pnpm seo:daily prepare --target /porownanie/... --base <BASE>
+pnpm seo:daily prepare --target https://helptravel.pl/porownanie/... --base <BASE>
 ```
 
 `TASK_READY` tworzy `.seo-session/work-order.json` (zadanie, instrukcje, limity, dozwolone domeny) i teksty źródeł z rejestru w `.seo-session/sources/`. Inny wynik (`NO_TASK` z powodem, `DUPLICATE_SKIPPED`) oznacza: wybierz inny cel z planu albo zrezygnuj z zadania treści na dziś.
@@ -213,5 +213,6 @@ Na końcu napisz w czacie krótko, po polsku:
 | `NO_TASK` z powodem przy `--target` | Weź następny cel z planu albo zrezygnuj z treści. |
 | `PR_FAILED` | Gałąź jest wysłana, PR nie powstał. Sprawdź `gh auth status`; utwórz PR ręcznie: `gh pr create --base <BASE> --head <BRANCH> --title "SEO: …" --body-file .seo-session/pr-body.md`. |
 | `gh` niezalogowany | Nie twórz PR; w raporcie poproś właściciela o `gh auth login`. Zmiany zostają na wysłanej gałęzi. |
+| Błędny wpis w kolejce (np. pomyłka w celu) | `pnpm seo:daily queue remove <id>`; temat odrzucony zamykaj przez `queue set <id> --status rejected`, nie usuwaj. |
 | Temat utknął jako oczekujący | `pnpm seo:daily release --run <runId>` (runId z `.seo-session/result.json`). |
 | Brak eksportu GSC | Pracuj bez decyzji „pod popyt” (zasada z kroku 2) i poproś o eksport. |

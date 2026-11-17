@@ -6,7 +6,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
-import { parseDailyCliArgs } from "../../../../scripts/content-engine/daily";
+import { normalizeTargetArg, parseDailyCliArgs } from "../../../../scripts/content-engine/daily";
 
 const DOCS = ["docs/seo/daily/PROCEDURE.md", "docs/seo/daily/README.md"];
 
@@ -53,4 +53,18 @@ test("parser odrzuca literówki i opcje spoza polecenia", () => {
   const parsed = parseDailyCliArgs(["--", "queue", "set", "abc-temat", "--status", "done", "--pr", "https://github.com/a/b/pull/1"]);
   assert.deepEqual(parsed.positional, ["set", "abc-temat"]);
   assert.equal(parsed.options.get("--status"), "done");
+});
+
+test("cel zadania: pełny adres, ścieżka, obszar kodu i ścieżka zniekształcona przez Git Bash", () => {
+  const route = "/porownanie/barcelona-spain-vs-malaga-spain";
+  assert.equal(normalizeTargetArg(`https://helptravel.pl${route}/`), route);
+  assert.equal(normalizeTargetArg(route), route);
+  assert.equal(normalizeTargetArg("src/lib/seo/links.ts"), "src/lib/seo/links.ts");
+  // Git Bash (MSYS) zamienia „/porownanie/…” na ścieżkę w katalogu instalacji Gita.
+  assert.equal(normalizeTargetArg(`C:/Program Files/Git${route}`, { EXEPATH: String.raw`C:\Program Files\Git\bin` }), route);
+  assert.equal(normalizeTargetArg(`C:/Program Files/Git${route}`, { EXEPATH: String.raw`C:\Program Files\Git` }), route);
+  assert.equal(normalizeTargetArg(String.raw`D:\Narzedzia\Git\porownanie\barcelona-spain-vs-malaga-spain`, {}), route);
+  // Korzeń bez katalogu (sam dysk) nie może „odciąć” dowolnej ścieżki.
+  assert.throws(() => normalizeTargetArg("C:/Users/ktos/porownanie/x", { EXEPATH: "C:" }), /wygląda na ścieżkę Windows/);
+  assert.throws(() => normalizeTargetArg("C:/Users/ktos/porownanie/x", {}), /wygląda na ścieżkę Windows/);
 });

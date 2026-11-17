@@ -250,6 +250,15 @@ export async function setQueueStatus(
   return updated;
 }
 
+/** Usuwa błędny wpis (np. z pomyłką w celu). Zamknięcie tematu to `setQueueStatus`, nie usunięcie. */
+export async function removeQueueItem(stateDir: string, id: string): Promise<QueueItem> {
+  const items = await readQueue(stateDir);
+  const removed = items.find((item) => item.id === id);
+  if (!removed) throw new Error(`Brak tematu ${id} w kolejce`);
+  await writeAll(stateDir, items.filter((item) => item.id !== id), null);
+  return removed;
+}
+
 export async function appendJournal(stateDir: string, entry: JournalEntry): Promise<void> {
   const entries = await readJournal(stateDir);
   const validated = JournalEntrySchema.parse(entry);

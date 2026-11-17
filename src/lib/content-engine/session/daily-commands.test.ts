@@ -13,6 +13,7 @@ import {
   dailyJournal,
   dailyPlan,
   dailyQueueAdd,
+  dailyQueueRemove,
   dailyQueueSet,
   dailyStatus,
   gscSearchDirs,
@@ -187,4 +188,15 @@ test("katalogi eksportów GSC: wskazany wygrywa, potem inbox, seo-private i Pobr
     ["/inbox", "/main/seo-private/gsc-inbox", "/main/seo-private/gsc", "/wt/seo-private/gsc-inbox", "/wt/seo-private/gsc", "/home/u/Downloads", "/home/u/Pobrane"].map((entry) => path.resolve(entry)),
   );
   assert.equal(queueIdFor("content_refresh", "/porównanie/Łódź-czy-Kraków"), "content-refresh-porownanie-lodz-czy-krakow");
+});
+
+test("kolejka: błędny wpis można usunąć, nieznany identyfikator to błąd", async (t) => {
+  const { ctx, git } = await context(t);
+  await seed(ctx.stateDir!, "zly-wpis", "todo");
+  await seed(ctx.stateDir!, "dobry-wpis", "todo");
+  const output = await dailyQueueRemove(ctx, "zly-wpis");
+  assert.match(output.report, /Usunięto: .*zly-wpis/);
+  assert.deepEqual((await readQueue(ctx.stateDir!)).map((item) => item.id), ["dobry-wpis"]);
+  assert.deepEqual(git.persists.at(-1)?.folders, ["daily"]);
+  await assert.rejects(dailyQueueRemove(ctx, "nie-ma"), /Brak tematu nie-ma/);
 });

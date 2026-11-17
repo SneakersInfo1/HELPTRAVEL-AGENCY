@@ -5,6 +5,7 @@
 
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 import { buildSiteInventory } from "../../src/lib/content-engine/site-inventory";
 import { StoreBackedInventory } from "../../src/lib/content-engine/inventory";
@@ -17,6 +18,7 @@ import {
   dailyPlan,
   dailyQueueAdd,
   dailyQueueList,
+  dailyQueueRemove,
   dailyQueueSet,
   dailyStatus,
   gscSearchDirs,
@@ -63,6 +65,7 @@ const USAGE = [
   "  queue list [--status S]",
   "  queue add --kind K --target T --title TXT --why TXT [--priority N] [--status S] [--source S] [--id ID] [--note TXT]",
   "  queue set <id> --status S [--pr URL] [--note TXT]",
+  "  queue remove <id>                    usuwa błędny wpis (zamknięcie tematu: queue set --status rejected)",
   "  journal --file PLIK.json             wpis dziennika sesji",
   "  prepare [--target URL] [--again] [--base B] [--gsc-source auto|export|api|backlog] [--gsc-dir DIR]",
   "  verify-claims | finalize",
@@ -95,11 +98,34 @@ export function parseDailyCliArgs(rawArgs: readonly string[]): DailyCliOptions {
   }
   const maxPositional = command === "queue" ? 2 : 0;
   if (positional.length > maxPositional) throw new Error(`Nieoczekiwany argument: ${positional.slice(maxPositional).join(" ")}.\n${USAGE}`);
-  if (command === "queue" && !["list", "add", "set"].includes(positional[0] ?? "")) throw new Error(`queue wymaga: list | add | set.\n${USAGE}`);
+  if (command === "queue" && !["list", "add", "set", "remove"].includes(positional[0] ?? "")) throw new Error(`queue wymaga: list | add | set | remove.\n${USAGE}`);
   if (command === "release" && !options.has("--run")) throw new Error("release wymaga --run <id>.");
   const gscSource = options.get("--gsc-source");
   if (gscSource !== undefined && !["auto", "export", "api", "backlog"].includes(String(gscSource))) throw new Error(`Nieznane źródło GSC: ${String(gscSource)}.`);
   return { command, positional, options };
+}
+
+/**
+ * Cel zadania jako ścieżka strony. Przyjmuje pełny adres (`https://helptravel.pl/porownanie/x`),
+ * ścieżkę (`/porownanie/x`) albo obszar kodu (`src/...`). Git Bash na Windows (MSYS) zamienia
+ * argument zaczynający się od „/” na ścieżkę Windows (`C:/Program Files/Git/porownanie/x`) —
+ * taką zamianę cofamy, a gdy się nie da, kończymy błędem zamiast zapisać zły cel.
+ */
+export function normalizeTargetArg(raw: string, env: Readonly<Record<string, string | undefined>> = process.env): string {
+  const value = raw.trim();
+  if (/^https?:\/\//i.test(value)) return new URL(value).pathname.replace(/\/+$/, "") || "/";
+  const slashed = value.replace(/\\/g, "/");
+  if (!/^[A-Za-z]:\//.test(slashed)) return value;
+  // EXEPATH to katalog Gita albo jego `bin`; korzeń musi mieć co najmniej jeden katalog (nie sam dysk).
+  const roots = (env.EXEPATH ? [env.EXEPATH, path.win32.dirname(env.EXEPATH)] : [])
+    .map((root) => root.replace(/\\/g, "/").replace(/\/+$/, ""))
+    .filter((root) => /^[A-Za-z]:\/[^/]+/.test(root));
+  for (const root of roots.sort((left, right) => right.length - left.length)) {
+    if (slashed.toLowerCase().startsWith(`${root.toLowerCase()}/`)) return slashed.slice(root.length);
+  }
+  const marker = `/${slashed}`.toLowerCase().lastIndexOf("/git/");
+  if (marker >= 0) return `/${slashed}`.slice(marker + "/git".length);
+  throw new Error(`Cel „${raw}” wygląda na ścieżkę Windows (Git Bash zamienia argumenty zaczynające się od „/”). Podaj pełny adres https://helptravel.pl/… albo poprzedź polecenie MSYS_NO_PATHCONV=1.`);
 }
 
 function text(options: Map<string, string | true>, name: string): string | undefined {
@@ -187,7 +213,7 @@ async function execute(cli: DailyCliOptions): Promise<DailyOutput> {
         return dailyQueueAdd(ctx, {
           id: text(options, "--id"),
           kind: required(options, "--kind", "queue add"),
-          target: required(options, "--target", "queue add"),
+          target: normalizeTargetArg(required(options, "--target", "queue add")),
           title: required(options, "--title", "queue add"),
           why: required(options, "--why", "queue add"),
           source: text(options, "--source"),
@@ -197,7 +223,8 @@ async function execute(cli: DailyCliOptions): Promise<DailyOutput> {
         });
       }
       const id = positional[1];
-      if (!id) throw new Error("queue set wymaga identyfikatora tematu.");
+      if (!id) throw new Error(`queue ${sub} wymaga identyfikatora tematu.`);
+      if (sub === "remove") return dailyQueueRemove(ctx, id);
       return dailyQueueSet(ctx, id, { status: required(options, "--status", "queue set"), prUrl: text(options, "--pr"), note: text(options, "--note") });
     }
     case "journal":
@@ -228,7 +255,7 @@ async function execute(cli: DailyCliOptions): Promise<DailyOutput> {
           stateBranch: text(options, "--state-branch") ?? DEFAULT_STATE_BRANCH,
           gscSource: (text(options, "--gsc-source") as SessionGscSource | undefined) ?? "auto",
           maxOpen: positiveInteger(options, "--max-open", 3),
-          target: text(options, "--target"),
+          target: text(options, "--target") === undefined ? undefined : normalizeTargetArg(text(options, "--target")!),
           again: options.has("--again"),
         }),
       );

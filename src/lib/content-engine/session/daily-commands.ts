@@ -26,6 +26,7 @@ import {
   appendJournal,
   readJournal,
   readQueue,
+  removeQueueItem,
   setQueueStatus,
   upsertQueueItem,
   type QueueItem,
@@ -371,6 +372,14 @@ export async function dailyQueueSet(ctx: DailyContext, id: string, input: { stat
   const item = await setQueueStatus(stateDir, id, QueueStatusSchema.parse(input.status), ctx.now(), { prUrl: input.prUrl, note: input.note });
   await ctx.git.persistState(stateDir, `SEO daily: kolejka ${id} → ${item.status}`, DAILY_ONLY);
   return { result: ok(`${id} → ${item.status}.`), report: `${queueLine(item)}\n` };
+}
+
+export async function dailyQueueRemove(ctx: DailyContext, id: string): Promise<DailyOutput> {
+  const { stateDir } = dirs(ctx);
+  await ctx.git.restoreState(stateDir, DAILY_ONLY);
+  const removed = await removeQueueItem(stateDir, id);
+  await ctx.git.persistState(stateDir, `SEO daily: kolejka − ${id}`, DAILY_ONLY);
+  return { result: ok(`Usunięto ${id} z kolejki.`), report: `Usunięto: ${queueLine(removed)}\n` };
 }
 
 // ── dziennik ──────────────────────────────────────────────────────────────────
