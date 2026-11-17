@@ -74,14 +74,11 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          # next/font pobiera fonty Google w czasie builda. Przejściowy błąd sieci daje
-          # w Turbopacku „next/font/google queries have exactly one entry” (15.11.2026
-          # w CI i raz na Vercelu). Jedna powtórka; drugi błąd jest już prawdziwy.
-          if ! pnpm build; then
-            echo "::warning::Build nie powiódł się — ponawiam raz (możliwy przejściowy błąd pobierania fontów Google)."
-            sleep 20
-            pnpm build
-          fi
+          # Do 17.11.2026 build pobierał fonty z Google (next/font/google) i bywało,
+          # że padał na przejściowym błędzie sieci, więc miał jedną powtórkę. Fonty
+          # są teraz w repozytorium (public/fonts, docs/seo/FONTS.md), więc każdy
+          # błąd builda jest prawdziwy — bez powtórki.
+          pnpm build
       - name: Start server
         shell: bash
         run: |
