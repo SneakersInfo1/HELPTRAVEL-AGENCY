@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "date": "2026-11-17",
+      "runId": "daily-2026-11-17-decd9117",
+      "branch": "claude/seo-daily/2026-11-17",
+      "base": "claude/seo-daily-workflow",
+      "gsc": {
+        "dataEnd": "2026-11-10",
+        "exact": true,
+        "freshness": "fresh"
+      },
+      "tasks": [
+        {
+          "queueId": "content-new-porownanie-barcelona-spain-vs-malaga-spain",
+          "kind": "content_new",
+          "target": "/porownanie/barcelona-spain-vs-malaga-spain",
+          "outcome": "PR z dokumentem in_review",
+          "prUrl": "https://github.com/SneakersInfo1/HELPTRAVEL-AGENCY/pull/156"
+        },
+        {
+          "queueId": "technical-src-lib-content-engine-site-content-ts",
+          "kind": "technical",
+          "target": "src/lib/content-engine/site-content.ts",
+          "outcome": "dopisane do kolejki: decyzja właściciela"
+        },
+        {
+          "queueId": "technical-src-lib-content-engine-sources-ts",
+          "kind": "technical",
+          "target": "src/lib/content-engine/sources.ts",
+          "outcome": "dopisane do kolejki"
+        }
+      ],
+      "tests": [
+        "pnpm -s test: zielone poza bramką zatwierdzenia in_review",
+        "tsc, lint, content:verify --offline: zielone",
+        "build z podglądem, smoke i Playwright seo-templates: zielone",
+        "375 px: bez poziomego przewijania, tabela faktów mieści się"
+      ],
+      "summary": "Pierwsza sesja seo-daily: dokument ze źródłami dla porównania Barcelona–Malaga (plaże, zwiedzanie, dolot), nowy meta tytuł i opis pod niski CTR. Cykl ujawnił błąd konwersji ścieżek w Git Bash — naprawiony w PR #155.",
+      "nextSteps": [
+        "Po zatwierdzeniu i scaleniu PR #156 następny kandydat z planu: Neapol–Rzym (źródła w rejestrze).",
+        "Porównania bez źródeł w rejestrze (Budapeszt–Praga, Antalya–Palma) wymagają najpierw dodania oficjalnych źródeł.",
+        "Ocenić wpływ nowego tytułu na CTR po kolejnym eksporcie GSC (co najmniej 4 tygodnie po publikacji)."
+      ]
+    }
+  ]
+}
