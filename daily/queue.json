@@ -9,9 +9,10 @@
       "why": "Porównanie ma popyt w GSC i pozycję w pierwszej piątce, ale CTR poniżej oczekiwanego i brak dokumentu ze zweryfikowanymi faktami.",
       "source": "gsc",
       "priority": 75,
-      "status": "in_progress",
+      "status": "pending_review",
+      "prUrl": "https://github.com/SneakersInfo1/HELPTRAVEL-AGENCY/pull/156",
       "createdAt": "2026-11-17T20:20:27.121Z",
-      "updatedAt": "2026-11-17T20:20:27.121Z",
+      "updatedAt": "2026-11-17T20:33:20.928Z",
       "notes": []
     }
   ]

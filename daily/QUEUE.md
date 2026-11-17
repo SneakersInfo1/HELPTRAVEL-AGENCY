@@ -5,4 +5,4 @@ Statusy `done`, `rejected` i `do_not_redo` oznaczają tematy, których nie oprac
 
 | Status | Priorytet | Rodzaj | Cel | Temat | Dlaczego | PR |
 |---|---|---|---|---|---|---|
-| in_progress | 75 | content_new | `/porownanie/barcelona-spain-vs-malaga-spain` | Dokument ze źródłami: Barcelona czy Malaga | Porównanie ma popyt w GSC i pozycję w pierwszej piątce, ale CTR poniżej oczekiwanego i brak dokumentu ze zweryfikowanymi faktami. |  |
+| pending_review | 75 | content_new | `/porownanie/barcelona-spain-vs-malaga-spain` | Dokument ze źródłami: Barcelona czy Malaga | Porównanie ma popyt w GSC i pozycję w pierwszej piątce, ale CTR poniżej oczekiwanego i brak dokumentu ze zweryfikowanymi faktami. | https://github.com/SneakersInfo1/HELPTRAVEL-AGENCY/pull/156 |
