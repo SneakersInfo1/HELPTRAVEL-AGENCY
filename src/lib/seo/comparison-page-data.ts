@@ -1,7 +1,7 @@
 // Dane strony /porownanie/[para] — wspólne dla strony produkcyjnej i trasy
 // laboratoryjnej, żeby warianty układu oglądać na dokładnie tej samej treści.
 
-import type { SideInfo } from "@/components/editorial/comparison-blocks";
+import type { GalleryPhoto, SideInfo } from "@/components/editorial/comparison-blocks";
 import type { ComparisonTemplateProps } from "@/components/editorial/comparison-template";
 import { getEnrichment } from "@/lib/content-engine/site-content";
 import { flightSearchPrefillHref } from "@/lib/flights/prefill-link";
@@ -14,6 +14,7 @@ import { getSiteUrl } from "@/lib/mvp/site";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 import { buildComparisonModel, comparisonCoverage } from "./comparison-model";
+import { PINNED_COMPARISON_PHOTOS } from "./comparison-photos";
 import { buildComparisonView } from "./comparison-view";
 import { pairsWithLabels } from "./comparison-view-data";
 
@@ -35,15 +36,22 @@ function flightHref(profile: DestinationProfile): string {
  * (zmierzone 18.11.2026) — a strona porównania pokazuje prawdziwe zdjęcia miejsca
  * albo żadne. Bez Pexels zostaje samo zdjęcie główne, jak przed przebudową.
  */
-function galleryOf(media: { heroImage?: string | null; gallery?: string[]; poster?: string | null }): string[] {
+function galleryOf(media: { heroImage?: string | null; gallery?: string[]; poster?: string | null }): GalleryPhoto[] {
   const seen = new Set([media.heroImage].filter(Boolean));
-  const result: string[] = [];
+  const result: GalleryPhoto[] = [];
   for (const url of [...(media.gallery ?? []), media.poster]) {
     if (!url || seen.has(url) || !url.includes("images.pexels.com")) continue;
     seen.add(url);
-    result.push(url);
+    result.push({ url, alt: null });
   }
   return result.slice(0, 3);
+}
+
+/** Zdjęcia strony porównania: przypięte (comparison-photos.ts), a bez wpisu — z integracji. */
+function photosFor(slug: string, media: { heroImage?: string | null; gallery?: string[]; poster?: string | null }): Pick<SideInfo, "image" | "imageAlt" | "gallery"> {
+  const pinned = PINNED_COMPARISON_PHOTOS[slug];
+  if (pinned) return { image: pinned.hero.url, imageAlt: pinned.hero.alt, gallery: pinned.gallery.map((photo) => ({ ...photo })) };
+  return { image: media.heroImage ?? null, imageAlt: null, gallery: galleryOf(media) };
 }
 
 /** Komplet danych szablonu (zdjęcia z istniejącej integracji, dane własne dla par flagowych). */
@@ -63,7 +71,10 @@ export async function loadComparisonPage(slug: string): Promise<Omit<ComparisonT
     isTop ? getCityHotelStats(ga.destination.city, ga.destination.country) : Promise.resolve(null),
     isTop ? getCityHotelStats(gb.destination.city, gb.destination.country) : Promise.resolve(null),
   ]);
-  const images = [mediaA.heroImage, mediaB.heroImage].filter((url): url is string => Boolean(url));
+  const photosA = photosFor(pair.a, mediaA);
+  const photosB = photosFor(pair.b, mediaB);
+  // Obrazy w danych strukturalnych = te same zdjęcia, które strona pokazuje w hero.
+  const images = [photosA.image, photosB.image].filter((url): url is string => Boolean(url));
 
   const model = buildComparisonModel({ pair, a: ga.destination, b: gb.destination, baseUrl, images, author: personSchema(EDITOR_IN_CHIEF) });
   const view = buildComparisonView({
@@ -76,8 +87,8 @@ export async function loadComparisonPage(slug: string): Promise<Omit<ComparisonT
   });
 
   const sides: [SideInfo, SideInfo] = [
-    { name: model.a.name, slug: pair.a, hotelHref: hotelHref(ga.destination), flightHref: flightHref(ga.destination), guideHref: `/kierunki/${pair.a}`, image: mediaA.heroImage ?? null, gallery: galleryOf(mediaA), overview: ga.overview },
-    { name: model.b.name, slug: pair.b, hotelHref: hotelHref(gb.destination), flightHref: flightHref(gb.destination), guideHref: `/kierunki/${pair.b}`, image: mediaB.heroImage ?? null, gallery: galleryOf(mediaB), overview: gb.overview },
+    { name: model.a.name, slug: pair.a, hotelHref: hotelHref(ga.destination), flightHref: flightHref(ga.destination), guideHref: `/kierunki/${pair.a}`, ...photosA, overview: ga.overview },
+    { name: model.b.name, slug: pair.b, hotelHref: hotelHref(gb.destination), flightHref: flightHref(gb.destination), guideHref: `/kierunki/${pair.b}`, ...photosB, overview: gb.overview },
   ];
 
   const seen = new Set<string>();

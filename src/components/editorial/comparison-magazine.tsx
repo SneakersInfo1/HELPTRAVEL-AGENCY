@@ -102,7 +102,7 @@ function HeroPhotos({ sides }: { sides: [SideInfo, SideInfo] }) {
           {side.image ? (
             <Image
               src={side.image}
-              alt={`${side.name} — zdjęcie kierunku`}
+              alt={side.imageAlt ?? `${side.name} — zdjęcie kierunku`}
               fill
               priority={index === 0}
               loading={index === 0 ? undefined : "eager"}
@@ -200,7 +200,7 @@ function VerdictPanels({ options, sides }: { options: ComparisonVerdictOption[];
           <article key={option.label} className="overflow-hidden rounded-lg border border-line bg-surface-raised">
             {photo ? (
               <div className="relative hidden aspect-[5/2] bg-surface-sunken md:block">
-                <Image src={photo} alt={`${option.label} — zdjęcie z galerii kierunku`} fill sizes="(min-width: 768px) 560px, 1px" className="object-cover" />
+                <Image src={photo.url} alt={photo.alt ?? `${option.label} — zdjęcie z galerii kierunku`} fill sizes="(min-width: 768px) 560px, 1px" className="object-cover" />
               </div>
             ) : null}
             <div className="p-5 sm:p-7">
@@ -245,7 +245,7 @@ function Overviews({ sides }: { sides: [SideInfo, SideInfo] }) {
           <article key={side.slug} className="overflow-hidden rounded-lg border border-line bg-surface-raised">
             {photo ? (
               <div className="relative aspect-[5/2] bg-surface-sunken">
-                <Image src={photo} alt={`${side.name} — zdjęcie z galerii kierunku`} fill sizes="(min-width: 768px) 560px, 92vw" className="object-cover" />
+                <Image src={photo.url} alt={photo.alt ?? `${side.name} — zdjęcie z galerii kierunku`} fill sizes="(min-width: 768px) 560px, 92vw" className="object-cover" />
               </div>
             ) : null}
             <div className="p-5 sm:p-7">
@@ -277,11 +277,11 @@ function PhotoBand({ sides, offset, credit }: { sides: [SideInfo, SideInfo]; off
         {groups.map(({ side, photos }) => (
           <figure key={side.slug}>
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              {photos.map((url, index) => (
-                <div key={url} className={`relative aspect-[4/3] overflow-hidden rounded-md bg-surface ${photos.length === 1 ? "col-span-2" : ""}`}>
+              {photos.map((photo, index) => (
+                <div key={photo.url} className={`relative aspect-[4/3] overflow-hidden rounded-md bg-surface ${photos.length === 1 ? "col-span-2" : ""}`}>
                   <Image
-                    src={url}
-                    alt={`${side.name} — zdjęcie ${index + 1} z galerii`}
+                    src={photo.url}
+                    alt={photo.alt ?? `${side.name} — zdjęcie ${index + 1} z galerii`}
                     fill
                     sizes={photos.length === 1 ? "(min-width: 768px) 620px, 92vw" : "(min-width: 768px) 320px, 52vw"}
                     className="object-cover"
