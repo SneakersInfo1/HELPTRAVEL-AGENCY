@@ -38,7 +38,7 @@ import { RENDERED_CONTENT_TYPES } from "../site-content";
 import { SOURCE_ALLOWLIST, type SourceFetchResult, type SourceFetcher } from "../sources";
 import { NODE_FS, type ContentStore, type FsLike } from "../store";
 import type { SiteInventory } from "../inventory";
-import { backlogCsvToGscInputs } from "./backlog";
+import { backlogCsvToGscInputs, DEFAULT_BACKLOG_FILE, missingBacklogMessage } from "./backlog";
 import type { CreatedPullRequest, CreatePullRequestInput, GitHubRepository } from "./github";
 import { parseGitHubRemote } from "./github";
 import { isProtectedPath, parsePorcelainZ, type ClaimDayResult, type ProposalBranch, type SessionChanges, type StateClaim, type StateFolder } from "./git-state";
@@ -276,7 +276,7 @@ export class SessionPhases {
     this.uuid = deps.randomUUID ?? randomUUID;
     this.paths = sessionPaths(deps.sessionDir);
     this.stateDir = deps.stateDir ?? ".seo-engine-state";
-    this.backlogFile = deps.backlogFile ?? "docs/seo/OPPORTUNITY_BACKLOG.csv";
+    this.backlogFile = deps.backlogFile ?? DEFAULT_BACKLOG_FILE;
   }
 
   private async writeJson(target: string, value: unknown): Promise<void> {
@@ -298,6 +298,15 @@ export class SessionPhases {
     return this.writeResult({ status: "FAILED", ...context, errors: [safeMessage(error)], reason: "Faza sesji zakończyła się błędem." });
   }
 
+  private async readBacklog(): Promise<string> {
+    try {
+      return await this.fs.readFile(this.backlogFile, "utf8");
+    } catch (error) {
+      if (isMissing(error)) throw new Error(missingBacklogMessage(this.backlogFile));
+      throw error;
+    }
+  }
+
   private async workOrder(): Promise<WorkOrder> {
     return WorkOrderSchema.parse(await this.readJson(this.paths.workOrder));
   }
@@ -315,7 +324,7 @@ export class SessionPhases {
     }
     const selected = source === "auto" ? (hasApi ? "api" : "backlog") : source;
     if (selected === "backlog") {
-      const inputs = this.deps.loadBacklog ? await this.deps.loadBacklog() : backlogCsvToGscInputs(await this.fs.readFile(this.backlogFile, "utf8"));
+      const inputs = this.deps.loadBacklog ? await this.deps.loadBacklog() : backlogCsvToGscInputs(await this.readBacklog());
       return { inputs, meta: { source: "backlog", dataEnd: null, exact: false, freshness: "backlog" } };
     }
     if (!hasApi) throw new Error(`Dla źródła GSC api ustaw ${SEO_GSC_SERVICE_ACCOUNT_JSON} i ${SEO_GSC_SITE_URL}.`);

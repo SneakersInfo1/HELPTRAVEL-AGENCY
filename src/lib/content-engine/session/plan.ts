@@ -6,7 +6,7 @@
 //  2. dane GSC z eksportu właściciela: adresy z potencjałem (wysokie wyświetlenia,
 //     pozycja w zasięgu, CTR poniżej oczekiwanego) bez dokumentu ze źródłami;
 //  3. tematy z kolejki (dopisane przez właściciela albo poprzednie sesje);
-//  4. kolejka możliwości z repo (`docs/seo/OPPORTUNITY_BACKLOG.csv`) — dane historyczne,
+//  4. kolejka możliwości spoza repo (`seo-private/OPPORTUNITY_BACKLOG.csv`) — dane historyczne,
 //     więc o niższej wadze.
 // Wagę danych GSC obniża ich wiek (świeże / starzejące się / przestarzałe).
 //
