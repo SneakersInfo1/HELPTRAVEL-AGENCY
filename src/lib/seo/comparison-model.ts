@@ -140,7 +140,8 @@ function bothScoresKnown(a: ComparisonSide, b: ComparisonSide): boolean {
 }
 
 function flightCell(fact: FlightFact): string {
-  const hours = `~${fact.hours.toFixed(1)} h`;
+  // Przecinek dziesiętny po polsku („~2,6 h”); kropka zostaje tylko w danych.
+  const hours = `~${fact.hours.toFixed(1).replace(".", ",")} h`;
   return fact.kind === "exact" ? hours : `${hours} (szacunek)`;
 }
 
@@ -459,7 +460,8 @@ export function buildComparisonModel(input: ComparisonModelInput): ComparisonMod
           description: pair.intent,
           url: pageUrl,
           mainEntityOfPage: pageUrl,
-          image: input.images,
+          // Bez prawdziwych zdjęć obu miast pole znika — lepiej żadne niż cudza ikona miasta.
+          ...(input.images.length > 0 ? { image: input.images } : {}),
           inLanguage: "pl-PL",
           author: input.author,
           publisher: { "@id": `${baseUrl}/#organization` },
