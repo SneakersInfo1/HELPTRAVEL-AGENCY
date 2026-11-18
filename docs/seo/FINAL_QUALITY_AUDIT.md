@@ -78,18 +78,18 @@ Czego nadal brakuje, żeby strona była pełną odpowiedzią na „czy warto lec
 
 ## 3. Strony o niskiej wartości i strategia
 
-| Grupa | Stron | W GSC (92 dni) | Ocena |
+| Grupa | Stron | Ruch z GSC (92 dni) | Ocena |
 |---|---|---|---|
-| Indeksowalne z normą WMO | 881 | 50 kliknięć, 15 860 wyświetleń | Mają dane i kontekst. Zostają. |
-| **Indeksowalne bez normy** | **158** (25 kierunków) | **13 kliknięć, 1060 wyświetleń** | **Niska wartość: brak jakiejkolwiek informacji o miesiącu.** |
-| Bez indeksu, z normą WMO | 1363 | 2 kliknięcia, 516 wyświetleń | Mają teraz dane, ale są poza indeksem. |
-| Bez indeksu, bez normy | 418 | 1 kliknięcie, 119 wyświetleń | Bez zmian. |
+| Indeksowalne z normą WMO | 881 | większość ruchu stron miesięcy | Mają dane i kontekst. Zostają. |
+| **Indeksowalne bez normy** | **158** (25 kierunków) | **śladowy** | **Niska wartość: brak jakiejkolwiek informacji o miesiącu.** |
+| Bez indeksu, z normą WMO | 1363 | śladowy | Mają teraz dane, ale są poza indeksem. |
+| Bez indeksu, bez normy | 418 | śladowy | Bez zmian. |
 
 **Polityka indeksu nie została zmieniona.** Zbiór 1039 indeksowalnych stron jest taki sam jak przed kontrolą (test).
 
 Propozycja do Twojej decyzji:
 
-1. **158 indeksowalnych stron bez danych: wyłączyć z indeksu** (`noindex, follow`, adresy zostają). To strony typu „Kos w czerwcu: hotele i loty” bez żadnej informacji o miesiącu. Najwyższy możliwy koszt to 13 kliknięć na 92 dni. Alternatywa: zostawić je do czasu znalezienia danych w krajowych służbach meteorologicznych dla tych 25 kierunków.
+1. **158 indeksowalnych stron bez danych: wyłączyć z indeksu** (`noindex, follow`, adresy zostają). To strony typu „Kos w czerwcu: hotele i loty” bez żadnej informacji o miesiącu. Najwyższy możliwy koszt to śladowy ruch z GSC (liczby w `seo-private/`). Alternatywa: zostawić je do czasu znalezienia danych w krajowych służbach meteorologicznych dla tych 25 kierunków.
 2. **1363 strony z danymi poza indeksem: na razie nie włączać.** Zamrożony indeks powstał na danych, które okazały się niewiarygodne, więc warto go kiedyś wyznaczyć od nowa. Najpierw jednak trzeba zobaczyć po 28 dniach, czy 881 stron z prawdziwymi danymi w ogóle zyskuje kliknięcia. Segment miesięcy miał CTR 0,38%, bo Google pokazuje własny widżet pogody.
 3. **567 osieroconych stron** (bez linków wewnętrznych): część dostała teraz linki z sekcji „gdzie jest cieplej”, ale tylko strony indeksowalne. Reszta czeka na decyzję z punktu 2.
 
