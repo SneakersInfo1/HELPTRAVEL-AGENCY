@@ -53,7 +53,7 @@ describe("kolejka tematów i dziennik SEO daily", () => {
     await assert.rejects(
       upsertQueueItem(
         path.join(root, "b"),
-        { id: "temat-z-liczbami", kind: "content_new", target: "/x", title: "Temat", why: "Ma 1060 wyświetleń i 13 kliknięć.", source: "gsc", priority: 50 },
+        { id: "temat-z-liczbami", kind: "content_new", target: "/x", title: "Temat", why: "Ma 1234 wyświetleń i 12 kliknięć.", source: "gsc", priority: 50 },
         now,
       ),
     );

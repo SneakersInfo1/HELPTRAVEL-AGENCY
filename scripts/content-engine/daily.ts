@@ -11,7 +11,7 @@ import { buildSiteInventory } from "../../src/lib/content-engine/site-inventory"
 import { StoreBackedInventory } from "../../src/lib/content-engine/inventory";
 import { HttpSourceFetcher } from "../../src/lib/content-engine/sources";
 import { ContentStore } from "../../src/lib/content-engine/store";
-import { backlogCsvToGscInputs } from "../../src/lib/content-engine/session/backlog";
+import { loadBacklogGscInputs } from "../../src/lib/content-engine/session/backlog";
 import {
   dailyGsc,
   dailyJournal,
@@ -192,7 +192,7 @@ async function execute(cli: DailyCliOptions): Promise<DailyOutput> {
   const gh = new GitHubClient(undefined, process.cwd());
   const ctx: DailyContext = { git, gh, now };
   const searchDirs = async () => gscSearchDirs({ explicitDir: text(options, "--gsc-dir"), env: process.env, cwd: process.cwd(), mainCheckout: await mainCheckout() });
-  const loadBacklog = async () => backlogCsvToGscInputs(await readFile("docs/seo/OPPORTUNITY_BACKLOG.csv", "utf8"));
+  const loadBacklog = () => loadBacklogGscInputs();
 
   switch (command) {
     case "status":

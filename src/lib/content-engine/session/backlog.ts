@@ -56,6 +56,30 @@ export function backlogCsvToGscInputs(content: string): GscCsvInputs {
 
 export const backlogToGscCsvInputs = backlogCsvToGscInputs;
 
-export async function loadBacklogGscInputs(file = "docs/seo/OPPORTUNITY_BACKLOG.csv"): Promise<GscCsvInputs> {
-  return backlogCsvToGscInputs(await readFile(file, "utf8"));
+/**
+ * Backlog 20 adresów ma liczby GSC na poziomie adresu, więc leży poza publicznym
+ * repozytorium (`seo-private/` jest w .gitignore). Odtwarza go `pnpm seo:inventory`.
+ */
+export const DEFAULT_BACKLOG_FILE = "seo-private/OPPORTUNITY_BACKLOG.csv";
+
+export function missingBacklogMessage(file: string): string {
+  return (
+    `Brak eksportu GSC i brak lokalnego backlogu (${file}). ` +
+    "Pobierz eksport z Search Console (`pnpm seo:daily gsc` pokazuje, gdzie go położyć) albo odtwórz backlog: `pnpm seo:inventory`."
+  );
+}
+
+function isMissingFile(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT";
+}
+
+export async function loadBacklogGscInputs(file = DEFAULT_BACKLOG_FILE): Promise<GscCsvInputs> {
+  let text: string;
+  try {
+    text = await readFile(file, "utf8");
+  } catch (error) {
+    if (isMissingFile(error)) throw new Error(missingBacklogMessage(file));
+    throw error;
+  }
+  return backlogCsvToGscInputs(text);
 }
