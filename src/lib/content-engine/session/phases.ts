@@ -41,9 +41,10 @@ import type { SiteInventory } from "../inventory";
 import { backlogCsvToGscInputs } from "./backlog";
 import type { CreatedPullRequest, CreatePullRequestInput, GitHubRepository } from "./github";
 import { parseGitHubRemote } from "./github";
-import { isProtectedPath, type ClaimDayResult, type ProposalBranch, type SessionChanges, type StateClaim, type StateFolder } from "./git-state";
+import { isProtectedPath, parsePorcelainZ, type ClaimDayResult, type ProposalBranch, type SessionChanges, type StateClaim, type StateFolder } from "./git-state";
 import type { FreshnessVerdict } from "./gsc-export";
 import { indexPolicyHits } from "./index-guard";
+import { assertPublicPrText, gscDataHits } from "./public-text";
 import {
   DraftBodySchema,
   ResearchFileSchema,
@@ -136,6 +137,15 @@ export interface CodePublishOptions {
 }
 
 const SESSION_BRANCH = /^claude\/seo-daily\/\d{4}-\d{2}-\d{2}(?:-\d+)?$/;
+
+/**
+ * Foldery rejestru zadań. `daily/` (kolejka, dziennik) utrwalają wyłącznie polecenia daily,
+ * każde zaraz po zmianie — publikacja nie może nadpisać ich starszą kopią z `prepare`.
+ */
+const LEDGER_FOLDERS: readonly StateFolder[] = ["idempotency", "pending", "dead-letter"];
+
+/** Zadanie treści, którego dokument czeka na publikację — nowe `prepare` by go nadpisało. */
+const CONTENT_AWAITING_PUBLISH = "DRAFT_READY";
 
 function isWorkDir(file: string): boolean {
   return file.startsWith(".seo-session/") || file.startsWith(".seo-engine-state/") || file.startsWith(".seo-daily/");
@@ -250,15 +260,6 @@ function gateSummary(gate: GateReport): NonNullable<SessionResult["gate"]> {
   };
 }
 
-function statusPaths(porcelain: string): string[] {
-  const paths: string[] = [];
-  for (const line of porcelain.split(/\r?\n/).filter(Boolean)) {
-    const raw = line.slice(3).trim().replace(/^"|"$/g, "");
-    for (const item of raw.split(" -> ")) paths.push(item.replace(/\\/g, "/"));
-  }
-  return paths;
-}
-
 export class SessionPhases {
   private readonly fs: FsLike;
   private readonly env: Readonly<Record<string, string | undefined>>;
@@ -343,6 +344,19 @@ export class SessionPhases {
         return this.writeResult({ status: "KILLED", runId, day, reason: "Kill switch zatrzymał przebieg przed odtworzeniem stanu i claimem dnia." });
       }
 
+      const awaiting = await this.awaitingPublish();
+      if (awaiting) {
+        // Bez zapisu result.json: stan DRAFT_READY musi zostać, żeby dało się opublikować.
+        return SessionResultSchema.parse({
+          status: "FAILED",
+          runId: awaiting.runId,
+          day: awaiting.day,
+          reason:
+            "Dokument poprzedniego zadania czeka na publikację (DRAFT_READY). Najpierw `pnpm seo:daily publish`, " +
+            "albo porzuć go: przywróć `content/seo/` (`git restore content/seo && git clean -fd content/seo`) i `pnpm seo:daily release --run " +
+            `${awaiting.runId ?? "<runId>"}\`.`,
+        });
+      }
       if (options.stateBranch) this.deps.git.useStateBranch(options.stateBranch);
       await this.deps.git.restoreState(this.stateDir);
       const proposalBranches = await this.deps.git.listProposalBranches();
@@ -451,6 +465,15 @@ export class SessionPhases {
       return this.writeResult({ status: "TASK_READY", runId, day, reason: `Przygotowano zlecenie dla ${task.target}.`, gsc: gsc.meta });
     } catch (error) {
       return this.failed(error, { runId, ...(day ? { day } : {}) });
+    }
+  }
+
+  private async awaitingPublish(): Promise<SessionResult | null> {
+    try {
+      const current = SessionResultSchema.parse(await this.readJson(this.paths.result));
+      return current.status === CONTENT_AWAITING_PUBLISH ? current : null;
+    } catch {
+      return null;
     }
   }
 
@@ -638,7 +661,7 @@ export class SessionPhases {
 
   private async persistAfterPublish(workOrder: WorkOrder, message: string): Promise<void> {
     this.deps.git.useStateBranch(workOrder.stateBranch);
-    await this.deps.git.persistState(this.stateDir, message);
+    await this.deps.git.persistState(this.stateDir, message, LEDGER_FOLDERS);
   }
 
   /**
@@ -648,6 +671,16 @@ export class SessionPhases {
    */
   private async reviewedChanges(base: string, withCode: boolean): Promise<{ changed: string[]; uncommitted: string[] }> {
     const changes = await this.deps.git.changesSinceBase(base);
+    // Katalogi robocze (zlecenie, stan, plan z liczbami GSC) mogą istnieć lokalnie, ale nigdy
+    // w gicie: zaindeksowane, zatwierdzone ani zmienione w historii gałęzi.
+    const untracked = new Set(changes.untracked);
+    const workDirInGit = changes.files.filter((file) => isWorkDir(file) && !untracked.has(file));
+    if (workDirInGit.length > 0) {
+      throw new Error(`Katalogi robocze sesji nie mogą trafić do gita (dane lokalne, m.in. liczby GSC): ${workDirInGit.join(", ")}`);
+    }
+    if (changes.tooLarge.length > 0) {
+      throw new Error(`Pliki zbyt duże, żeby je sprawdzić przed publikacją: ${changes.tooLarge.join(", ")}`);
+    }
     const changed = changes.files.filter((file) => !isWorkDir(file));
     const outsideContent = changed.filter((file) => !file.startsWith("content/seo/"));
     if (!withCode && outsideContent.length > 0) {
@@ -659,8 +692,13 @@ export class SessionPhases {
     if (indexHits.length > 0) {
       throw new Error(`Publish odmawia zmian polityki indeksowania (decyzja właściciela — zapisz w kolejce): ${indexHits.join("; ")}`);
     }
+    const rawGsc = changes.added
+      .filter((line) => !isWorkDir(line.file))
+      .flatMap((line) => gscDataHits(line.line).map((hit) => `${line.file}: ${hit}`))
+      .filter((hit) => /nagłówek eksportu|kolumny eksportu/.test(hit));
+    if (rawGsc.length > 0) throw new Error(`Publish odmawia surowych eksportów GSC (repozytorium jest publiczne): ${rawGsc.slice(0, 5).join("; ")}`);
     if (changed.length === 0) throw new Error("Brak zmian do publikacji.");
-    const uncommitted = statusPaths(await this.deps.git.statusPorcelain()).filter((file) => !isWorkDir(file));
+    const uncommitted = parsePorcelainZ(await this.deps.git.statusPorcelain()).filter((file) => !isWorkDir(file));
     return { changed, uncommitted };
   }
 
@@ -684,16 +722,17 @@ export class SessionPhases {
       if (current.status !== "DRAFT_READY") throw new Error(`Publikacja wymaga statusu DRAFT_READY, jest ${current.status}.`);
 
       const base = options.base ?? workOrder.baseBranch;
+      const generated = await this.fs.readFile(this.paths.prBody, "utf8");
+      const extra = options.extraBody?.trim();
+      const body = extra ? `${generated.trimEnd()}\n\n## Praca sesji\n\n${extra}\n` : generated;
+      assertPublicPrText(body, "Opis PR (--body-file)");
       const { uncommitted } = await this.reviewedChanges(base, options.withCode ?? false);
       // Sesja pracuje na gałęzi `claude/seo-daily/<dzień>…` — propozycja zostaje na niej.
       const sessionBranch = await this.deps.git.currentBranch();
       const branch = SESSION_BRANCH.test(sessionBranch) ? sessionBranch : `claude/seo-daily/${workOrder.day}-${workOrder.docId}`;
-      pushed = true;
       await this.deps.git.createAndPushProposalBranch(branch, `SEO daily: propozycja ${workOrder.docId}`, uncommitted);
+      pushed = true;
       const repository = parseGitHubRemote(await this.deps.git.remoteUrl());
-      const generated = await this.fs.readFile(this.paths.prBody, "utf8");
-      const extra = options.extraBody?.trim();
-      const body = extra ? `${generated.trimEnd()}\n\n## Praca sesji\n\n${extra}\n` : generated;
       let pullRequest: CreatedPullRequest;
       try {
         pullRequest = await this.deps.gh.createPullRequest({
@@ -760,6 +799,8 @@ export class SessionPhases {
     try {
       if (options.title.trim().length < 5) throw new Error("PR z kodem wymaga tytułu (--title).");
       if (options.body.trim().length < 40) throw new Error("PR z kodem wymaga opisu pracy (--body-file).");
+      assertPublicPrText(options.title, "Tytuł PR (--title)", 120);
+      assertPublicPrText(options.body, "Opis PR (--body-file)");
       try {
         const current = SessionResultSchema.parse(await this.readJson(this.paths.result));
         if (current.status === "DRAFT_READY") {
@@ -771,8 +812,8 @@ export class SessionPhases {
       const branch = await this.deps.git.currentBranch();
       if (!SESSION_BRANCH.test(branch)) throw new Error(`Zmiany kodu publikujemy tylko z gałęzi sesji claude/seo-daily/<dzień>, jest ${branch}.`);
       const { uncommitted } = await this.reviewedChanges(options.base, true);
-      pushed = true;
       await this.deps.git.createAndPushProposalBranch(branch, `SEO daily: ${options.title.trim()}`, uncommitted);
+      pushed = true;
       const repository = parseGitHubRemote(await this.deps.git.remoteUrl());
       let pullRequest: CreatedPullRequest;
       try {
@@ -812,9 +853,9 @@ export class SessionPhases {
 
   async release(runId: string): Promise<SessionResult> {
     try {
-      await this.deps.git.restoreState(this.stateDir);
+      await this.deps.git.restoreState(this.stateDir, LEDGER_FOLDERS);
       const removed = await new Ledger({ stateDir: this.stateDir, runId, fs: this.fs, now: this.now }).releasePending(runId);
-      await this.deps.git.persistState(this.stateDir, `SEO daily: release ${runId}`);
+      await this.deps.git.persistState(this.stateDir, `SEO daily: release ${runId}`, LEDGER_FOLDERS);
       return this.writeResult({ status: "NO_TASK", runId, reason: `Zwolniono ${removed} wpisów pending.` });
     } catch (error) {
       return this.failed(error, { runId });

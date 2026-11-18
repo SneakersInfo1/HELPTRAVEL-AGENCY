@@ -20,6 +20,10 @@ const INDEX_POLICY_PATTERNS: ReadonlyArray<{ label: string; pattern: RegExp }> =
   { label: "X-Robots-Tag", pattern: /x-robots-tag/i },
   { label: "canonical", pattern: /\b(?:alternates|canonical)\s*:|rel\s*=\s*["']canonical/i },
   { label: "przekierowanie", pattern: /\b(?:permanentRedirect|redirect)\s*\(/ },
+  // Modele stron (np. src/lib/seo/month-page-model.ts) liczą `indexable`, z którego szablon
+  // wystawia `noindex`. Definicja albo przypisanie pola to zmiana polityki; odczyt
+  // (`page.indexable`, `const indexable = …`) nie.
+  { label: "indexable", pattern: /\b(?:indexable|isIndexable|shouldIndex)\s*:|\.(?:indexable|isIndexable|shouldIndex)\s*=(?!=)/ },
 ];
 
 /** Zwraca opisy dodanych linii, które zmieniają indeksowanie (pusta lista = brak zmian polityki). */

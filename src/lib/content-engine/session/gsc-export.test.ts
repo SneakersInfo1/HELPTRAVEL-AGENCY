@@ -153,6 +153,22 @@ describe("eksporty GSC z interfejsu", () => {
     assert.deepEqual(found.map((candidate) => path.basename(candidate.path)), ["eksport.zip"]);
   });
 
+  it("katalog wskazany wprost i ścieżka do ZIP są eksportem; przypadkowy pages.csv bez kolumn GSC nie jest", () => {
+    const direct = path.join(root, "wprost");
+    mkdirSync(direct, { recursive: true });
+    writeFileSync(path.join(direct, "Strony.csv"), PAGES_COMPARISON);
+    writeFileSync(path.join(direct, "Zapytania.csv"), QUERIES_PLAIN);
+    assert.deepEqual(findGscExports([direct]).map((candidate) => candidate.path), [direct]);
+    const zipPath = path.join(root, "wprost.zip");
+    writeFileSync(zipPath, zip({ "Pages.csv": PAGES_COMPARISON, "Queries.csv": QUERIES_PLAIN }, new Date(2026, 10, 16, 9, 0, 0)));
+    assert.deepEqual(findGscExports([zipPath]).map((candidate) => candidate.path), [zipPath]);
+    const unrelated = path.join(root, "pobrane-inne");
+    mkdirSync(unrelated, { recursive: true });
+    writeFileSync(path.join(unrelated, "landing-pages-report.csv"), ["Page,Views,Bounce", "/a,10,0.5"].join("\n"));
+    writeFileSync(path.join(unrelated, "queries-backup.csv"), ["Query,Count", "x,1"].join("\n"));
+    assert.deepEqual(findGscExports([unrelated]), []);
+  });
+
   it("ocenia świeżość danych: do 10 dni świeże, do 35 starzejące się, potem przestarzałe", () => {
     assert.deepEqual(gscFreshness("2026-11-14", "2026-11-17"), { ageDays: 3, verdict: "fresh" });
     assert.equal(gscFreshness("2026-11-07", "2026-11-17").verdict, "fresh");

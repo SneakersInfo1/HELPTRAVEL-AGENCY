@@ -14,6 +14,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 
+import { PUBLIC_TEXT_MESSAGE, isPublicSafe } from "./public-text";
+
 export const DAILY_FOLDER = "daily";
 
 export const QueueKindSchema = z.enum([
@@ -34,20 +36,18 @@ export const QueueStatusSchema = z.enum([
   "do_not_redo",
 ]);
 
-/** Tekst w kolejce i dzienniku nie może zawierać surowych liczb GSC. */
-const PublicText = z
-  .string()
-  .min(3)
-  .max(600)
-  .refine((value) => !/\b\d+\s*(kliknię|klikni|wyświetl|wyswietl|impressions?|clicks?)/i.test(value), {
-    message: "Bez surowych liczb GSC (kliknięcia, wyświetlenia) w danych publicznych",
-  });
+/** Każdy zapisywany tekst przechodzi ten sam walidator danych publicznych (session/public-text.ts). */
+function publicString(min: number, max: number) {
+  return z.string().min(min).max(max).refine(isPublicSafe, { message: PUBLIC_TEXT_MESSAGE });
+}
+
+const PublicText = publicString(3, 600);
 
 export const QueueItemSchema = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]{2,80}$/),
   kind: QueueKindSchema,
   /** Adres na stronie (`/porownanie/...`) albo obszar techniczny (`src/...`, `szablon:...`). */
-  target: z.string().min(1).max(200),
+  target: publicString(1, 200),
   title: PublicText,
   why: PublicText,
   source: z.enum(["gsc", "freshness", "backlog", "audit", "owner", "session"]),
@@ -65,21 +65,21 @@ export const QueueFileSchema = z.object({ version: z.literal(1), items: z.array(
 
 export const JournalEntrySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  runId: z.string().min(1),
-  branch: z.string().nullable(),
-  base: z.string().min(1),
+  runId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{2,80}$/),
+  branch: publicString(1, 200).nullable(),
+  base: publicString(1, 200),
   gsc: z.object({
-    dataEnd: z.string().nullable(),
+    dataEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
     exact: z.boolean(),
     freshness: z.enum(["fresh", "aging", "stale", "missing"]),
   }),
   tasks: z
     .array(
       z.object({
-        queueId: z.string().nullable(),
+        queueId: z.string().regex(/^[a-z0-9][a-z0-9-]{2,80}$/).nullable(),
         kind: QueueKindSchema,
-        target: z.string(),
-        outcome: z.string().min(2).max(60),
+        target: publicString(1, 200),
+        outcome: publicString(2, 60),
         prUrl: z.string().url().optional(),
       }),
     )
