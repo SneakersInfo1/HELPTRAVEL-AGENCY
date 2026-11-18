@@ -108,6 +108,29 @@ function winner(
   return av > bv ? a : b;
 }
 
+/**
+ * Od tej oceny profil plażowy oznacza kierunek z plażą nad morzem — ten sam próg co odbiorcy
+ * „plaży i wypoczynku nad morzem”. Gdy żaden kierunek go nie osiąga, strona nie mówi o plaży.
+ */
+export const BEACH_DESTINATION_MIN = 0.7;
+
+type BeachVerdict = { kind: "none" } | { kind: "tie" } | { kind: "winner"; side: ComparisonSide };
+
+/**
+ * Plaża w odpowiedzi, werdyktach i FAQ tylko przy kierunku plażowym. Sama przewaga w ocenie
+ * nie wystarcza: Budapeszt (15/100) wygrywał z Pragą (8/100) i strona pisała „Na plażę
+ * i wypoczynek nad morzem: Budapeszt” — 8 z 54 par (zmierzone 18.11.2026).
+ */
+function beachVerdict(a: ComparisonSide, b: ComparisonSide): BeachVerdict {
+  if (Math.max(a.profile.beachScore, b.profile.beachScore) < BEACH_DESTINATION_MIN) return { kind: "none" };
+  const side = winner(a, b, (destination) => destination.beachScore);
+  return side ? { kind: "winner", side } : { kind: "tie" };
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toLocaleUpperCase("pl-PL") + text.slice(1);
+}
+
 function bothExactFlights(a: ComparisonSide, b: ComparisonSide): boolean {
   return a.facts.flight?.kind === "exact" && b.facts.flight?.kind === "exact";
 }
@@ -132,7 +155,7 @@ function audienceTags(side: ComparisonSide): string[] {
   if (!canClaimFromProfileScores(side.facts)) return [];
   const destination = side.profile;
   const tags: string[] = [];
-  if (destination.beachScore >= 0.7) tags.push("plaży i wypoczynku nad morzem");
+  if (destination.beachScore >= BEACH_DESTINATION_MIN) tags.push("plaży i wypoczynku nad morzem");
   if (destination.cityScore >= 0.7) tags.push("klasycznego city breaku");
   if (destination.sightseeingScore >= 0.7) tags.push("zwiedzania i zabytków");
   if (destination.nightlifeScore >= 0.72) tags.push("nocnego życia");
@@ -147,8 +170,10 @@ function buildVerdicts(a: ComparisonSide, b: ComparisonSide): Array<{ title: str
   const verdicts: Array<{ title: string; body: string }> = [];
 
   if (bothScoresKnown(a, b)) {
-    const beach = winner(a, b, (destination) => destination.beachScore);
-    if (beach) verdicts.push({ title: "Plaża i klimat morski", body: `Mocniejszy profil plażowy: ${beach.name}. Lepszy wybór pod reset nad morzem.` });
+    const beach = beachVerdict(a, b);
+    if (beach.kind === "winner") {
+      verdicts.push({ title: "Plaża i klimat morski", body: `Mocniejszy profil plażowy: ${beach.side.name}. Lepszy wybór pod reset nad morzem.` });
+    }
 
     const city = winner(a, b, (destination) => destination.cityScore);
     if (city) verdicts.push({ title: "City break i tło miejskie", body: `Mocniejszy profil city breaku: ${city.name}. Gęstsze zwiedzanie i klimat uliczny.` });
@@ -220,11 +245,18 @@ function approximateJulySentence(
   return `W lipcu ${values}; różnica ok. ${Math.abs(july.diffC)}°C, ${conclusion} (normy z lat ${july.aPeriod} i ${july.bPeriod}, porównanie orientacyjne).`;
 }
 
+/** Odpowiedź FAQ „co wybrać na pierwszy raz” — plaża tylko przy kierunku plażowym. */
+function firstTripAnswer(beach: BeachVerdict, city: ComparisonSide | null): string {
+  const cityClause = city ? `na zwiedzaniu i miejskim klimacie: ${city.name}.` : null;
+  if (beach.kind === "none") return cityClause ? `Jeśli zależy Ci ${cityClause}` : "Pod zwiedzanie żaden nie ma wyraźnej przewagi.";
+  const beachClause = beach.kind === "winner" ? `Jeśli zależy Ci głównie na plaży: ${beach.side.name}` : "Pod plażę oba kierunki wypadają podobnie";
+  return `${beachClause}; ${cityClause ? `jeśli ${cityClause}` : "pod zwiedzanie żaden nie ma wyraźnej przewagi."}`;
+}
+
 function buildFaq(a: ComparisonSide, b: ComparisonSide): Array<{ question: string; answer: string }> {
   const scoresKnown = bothScoresKnown(a, b);
   const exactFlights = bothExactFlights(a, b);
   const easier = winner(a, b, (destination) => destination.accessScore);
-  const beach = scoresKnown ? winner(a, b, (destination) => destination.beachScore) : null;
   const city = scoresKnown ? winner(a, b, (destination) => destination.cityScore + destination.sightseeingScore) : null;
   const july = julyComparison(a, b);
   const logistics = exactFlights
@@ -238,9 +270,7 @@ function buildFaq(a: ComparisonSide, b: ComparisonSide): Array<{ question: strin
     faq.push(
       {
         question: `${a.name} czy ${b.name} — co wybrać na pierwszy raz?`,
-        answer: `${logistics}${beach ? `Jeśli zależy Ci głównie na plaży: ${beach.name}` : "Pod plażę oba kierunki wypadają podobnie"}; ${
-          city ? `jeśli na zwiedzaniu i miejskim klimacie: ${city.name}.` : "pod zwiedzanie żaden nie ma wyraźnej przewagi."
-        }`,
+        answer: `${logistics}${firstTripAnswer(beachVerdict(a, b), city)}`,
       },
       {
         question: `Co lepsze na zwiedzanie i city break — ${a.name} czy ${b.name}?`,
@@ -282,10 +312,15 @@ function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide): string {
     return parts.join(" ");
   }
 
-  const beach = winner(a, b, (destination) => destination.beachScore);
+  const beach = beachVerdict(a, b);
   const city = winner(a, b, (destination) => destination.cityScore + destination.sightseeingScore);
   const easier = winner(a, b, (destination) => destination.accessScore);
-  const beachPart = beach ? `Na plażę i wypoczynek nad morzem: ${beach.name}` : "Pod plażę i wypoczynek nad morzem oba kierunki wypadają podobnie";
+  const beachPart =
+    beach.kind === "winner"
+      ? `Na plażę i wypoczynek nad morzem: ${beach.side.name}`
+      : beach.kind === "tie"
+        ? "Pod plażę i wypoczynek nad morzem oba kierunki wypadają podobnie"
+        : null;
   const cityPart = city ? `na zwiedzanie i miejski klimat: ${city.name}` : "pod zwiedzanie żaden nie ma wyraźnej przewagi";
   const accessPart = bothExactFlights(a, b)
     ? easier
@@ -293,7 +328,7 @@ function buildQuickAnswer(a: ComparisonSide, b: ComparisonSide): string {
       : "Dolot z Polski jest porównywalny."
     : null;
 
-  let answer = `${a.name} czy ${b.name}? ${beachPart}; ${cityPart}.`;
+  let answer = `${a.name} czy ${b.name}? ${beachPart ? `${beachPart}; ${cityPart}` : capitalize(cityPart)}.`;
   if (accessPart) answer += ` ${accessPart}`;
   if (july && july.kind === "approximate") answer += ` ${approximateJulySentence(a, b, july)}`;
   else if (july?.kind === "exact" && july.higher) answer += ` W lipcu wyższa średnia maksymalna w dzień: ${july.higher}.`;
@@ -425,7 +460,8 @@ export function buildComparisonModel(input: ComparisonModelInput): ComparisonMod
           description: pair.intent,
           url: pageUrl,
           mainEntityOfPage: pageUrl,
-          image: input.images,
+          // Bez prawdziwych zdjęć obu miast pole znika — lepiej żadne niż cudza ikona miasta.
+          ...(input.images.length > 0 ? { image: input.images } : {}),
           inLanguage: "pl-PL",
           author: input.author,
           publisher: { "@id": `${baseUrl}/#organization` },
