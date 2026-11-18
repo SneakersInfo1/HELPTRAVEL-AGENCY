@@ -15,36 +15,14 @@ Punkt odniesienia dla każdej późniejszej oceny efektu. Wszystkie liczby da si
 
 ## 2. Search Console
 
-Cała usługa, 92 dni: **1166 kliknięć, 35 393 wyświetlenia**.
-
-| Okno 28 dni | Kliknięcia | Wyświetlenia | CTR | Pozycja |
-|---|---|---|---|---|
-| 16.09–13.10 → 14.10–10.11 | 110 → 74 (−32,7%) | 6106 → 17 742 (+190,6%) | 1,80% → 0,42% | 10,1 → 11,1 |
-
-Okna 56 dni nie da się policzyć, bo eksport ma 92 dni, a porównanie potrzebuje 112.
-
-**Marka.** Zapytania z nazwą marki dały co najmniej 830 kliknięć, czyli co najmniej 71,2% całości. To dolne ograniczenie, bo zapytania anonimizowane nie trafiają do eksportu. Poza marką eksport pokazuje 23 kliknięcia przy 11 211 wyświetleniach.
-
-**Urządzenia.** Telefon: 84% kliknięć i 69% wyświetleń.
-
-**Segmenty adresów** (suma po adresach jest większa niż suma usługi, bo w jednym wyniku może być kilka adresów):
-
-| Segment | Adresy | Kliknięcia | Wyświetlenia | CTR | Pozycja |
-|---|---|---|---|---|---|
-| Strony miesięcy | 692 | 66 | 17 555 | 0,38% | 9,4 |
-| Porównania | 52 | 178 | 9432 | 1,89% | 5,3 |
-| Huby „wyjazdy” | 6 | 71 | 4851 | 1,46% | 13,5 |
-| Strony informacyjne | 8 | 13 | 4086 | 0,32% | 1,3 |
-| Strona główna | 1 | 860 | 2437 | 35,29% | 7,2 |
-| Przewodniki | 123 | 4 | 1671 | 0,24% | 19,6 |
-| Hub porównań | 1 | 3 | 1206 | 0,25% | 2,4 |
-| Stare adresy | 12 | 0 | 882 | 0,00% | 30,6 |
+Liczby z Search Console (sumy usługi, okna 28 dni, marka, urządzenia, segmenty adresów) leżą poza repozytorium, w `seo-private/`, bo repo jest publiczne.
 
 Wnioski:
 
-- Wyświetlenia prawie się potroiły, a kliknięcia spadły. Nowe wyświetlenia pochodzą głównie ze stron miesięcy, gdzie Google pokazuje własny widżet pogody i CTR wynosi 0,38%. To zmiana składu zapytań, a nie załamanie pozycji.
-- Ruch spoza marki jest dziś mały: 23 widoczne kliknięcia w 92 dni. Każda prognoza wzrostu byłaby zgadywaniem, więc ten projekt żadnej nie podaje.
-- Porównania są jedynym segmentem treści z sensownym CTR (1,89% na pozycji 5,3), dlatego dostały najwięcej pracy.
+- Wyświetlenia wyraźnie wzrosły, a kliknięcia spadły. Nowe wyświetlenia pochodzą głównie ze stron miesięcy, gdzie Google pokazuje własny widżet pogody. To zmiana składu zapytań, a nie załamanie ruchu.
+- Większość kliknięć daje nazwa marki, a większość ruchu pochodzi z telefonów.
+- Ruch spoza marki jest dziś mały. Każda prognoza wzrostu byłaby zgadywaniem, więc ten projekt żadnej nie podaje.
+- Porównania są jedynym segmentem treści z sensownym CTR, dlatego dostały najwięcej pracy.
 - Eksport nie ma wymiaru strona × zapytanie. Nie da się więc stwierdzić, na jakie zapytania wyświetla się konkretny adres.
 
 Pełny raport tworzy `pnpm seo:weekly -- --gsc-dir <katalog>`.

@@ -211,7 +211,7 @@ const SEGMENT_WEIGHT: Record<UrlSegment, number> = {
   // kuratorowane nie poprawiły CTR), więc ten sam odstęp CTR waży mniej.
   month: 0.35,
   // Strony informacyjne i główna żyją z linków dodatkowych przy marce
-  // (Faza 2.1: 93/93 kliknięć /cennik z zapytań markowych) — to nie są szanse treści.
+  // (Faza 2.1: kliknięcia /cennik pochodziły wyłącznie z zapytań markowych) — to nie są szanse treści.
   home: 0,
   info: 0,
   hotel_detail: 0,
