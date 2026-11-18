@@ -398,7 +398,7 @@ function highRiskReviewTasks(rows: readonly GscRow[]): Task[] {
     }));
 }
 
-const CandidateClaimSchema = z.object({
+export const CandidateClaimSchema = z.object({
   claim: z.string().min(8),
   value: z.string().default(""),
   dataClass: DataClassSchema,
@@ -406,7 +406,25 @@ const CandidateClaimSchema = z.object({
   observedEvidence: z.string().min(8).max(400),
 });
 
-type CandidateClaim = z.infer<typeof CandidateClaimSchema>;
+export type CandidateClaim = z.infer<typeof CandidateClaimSchema>;
+
+export function parseCandidateClaims(value: unknown): CandidateClaim[] {
+  const raw = Array.isArray(value) ? value : typeof value === "object" && value !== null && "claims" in value ? (value as { claims: unknown }).claims : value;
+  return z.array(CandidateClaimSchema).parse(raw);
+}
+
+export type CandidateRejectionReason =
+  | "source_not_allowed"
+  | "source_unreachable"
+  | "source_http_error"
+  | "evidence_not_found"
+  | "numbers_not_covered";
+
+export interface CandidateClaimRejection {
+  candidate: CandidateClaim;
+  reason: CandidateRejectionReason;
+  detail: string;
+}
 
 export interface ResearchResult {
   claims: FactClaim[];
@@ -415,6 +433,7 @@ export interface ResearchResult {
   droppedCount: number;
   unreachableCount: number;
   sourceTextById: ReadonlyMap<string, string>;
+  rejected: CandidateClaimRejection[];
 }
 
 type StageComplete = (request: { role: LlmRole; system: string; prompt: string; maxOutputTokens: number }) => Promise<LlmResponse>;
@@ -428,11 +447,6 @@ function parseJsonText(text: string): unknown {
   return JSON.parse(trimmed.slice(start)) as unknown;
 }
 
-function candidateArray(value: unknown): CandidateClaim[] {
-  const raw = Array.isArray(value) ? value : typeof value === "object" && value !== null && "claims" in value ? (value as { claims: unknown }).claims : value;
-  return z.array(CandidateClaimSchema).parse(raw);
-}
-
 function sourceKind(candidate: CandidateClaim): Source["kind"] {
   if (candidate.dataClass === "entry_requirements") return "government";
   if (candidate.dataClass === "climate_normal") return "climate_dataset";
@@ -442,8 +456,8 @@ function sourceKind(candidate: CandidateClaim): Source["kind"] {
 }
 
 /** Ile znaków tekstu jednego źródła trafia do promptu researchera. */
-const SOURCE_EXCERPT_CHARS = 9_000;
-const MAX_REGISTERED_SOURCES = 4;
+export const SOURCE_EXCERPT_CHARS = 9_000;
+export const MAX_REGISTERED_SOURCES = 4;
 
 /** Fragment z największym zagęszczeniem treści: nawigacja stron jest na początku i końcu. */
 function sourceExcerpt(text: string): string {
@@ -452,90 +466,137 @@ function sourceExcerpt(text: string): string {
   return text.slice(start, start + SOURCE_EXCERPT_CHARS);
 }
 
-export async function research(task: Task, complete: StageComplete, sourceFetcher: SourceFetcher): Promise<ResearchResult> {
-  const fetchedByUrl = new Map<string, SourceFetchResult | null>();
+export interface PrefetchedRegisteredSource {
+  url: string;
+  publisher: string;
+  covers: string;
+  aiInput: boolean;
+  status: number | null;
+  text: string | null;
+  retrievedAt: string | null;
+  error?: string;
+}
 
-  // Model nie zna dosłownej treści stron. Dla kierunków z rejestru pobieramy
-  // źródła PRZED pytaniem i podajemy ich tekst, żeby cytat dało się przepisać;
-  // o tym, czy cytat jest prawdziwy, i tak decyduje kontrola mechaniczna niżej.
-  const excerpts: string[] = [];
-  const curatedCandidates: CandidateClaim[] = [];
+export interface PrefetchedSources {
+  registeredSources: PrefetchedRegisteredSource[];
+  curatedClaims: CandidateClaim[];
+  fetchedByUrl: ReadonlyMap<string, SourceFetchResult | null>;
+}
+
+export function researcherInstructions(task: Task): string {
+  return [
+    "Zwracaj wyłącznie JSON. Proponuj tylko krótkie, dosłowne fragmenty źródeł urzędowych lub oficjalnych.",
+    `Zbierz kandydackie twierdzenia dla zadania ${task.operation} pod adresem ${task.target} i intencji „${task.primaryQuery}”.`,
+    'Format: {"claims":[{"claim":"...","value":"","dataClass":"geography","sourceUrl":"https://...","observedEvidence":"..."}]}.',
+    "Pole observedEvidence musi być przepisane znak w znak ze źródła, bez tłumaczenia i skracania.",
+  ].join("\n");
+}
+
+export function writerInstructions(task: Task): string {
+  return [
+    "Jesteś redaktorem HelpTravel. Zwracasz wyłącznie poprawny JSON, bez markdownu i bez faktów spoza dostarczonego zestawu.",
+    `Napisz polski korpus JSON dla ${task.target}, intencja: „${task.primaryQuery}”.`,
+    "Nie dodawaj pól stanu, identyfikatora dokumentu, dat, statusu, klasy ryzyka ani twierdzeń. Używaj wyłącznie zweryfikowanych twierdzeń i ich identyfikatorów w section.claimIds.",
+    "Sekcja prose lub list bez faktów musi mieć opinion:true, puste claimIds i nie może zawierać liczb z jednostką.",
+    `Dla nowego artykułu użyj linków wewnętrznych: ${JSON.stringify(task.evidence.internalLinkTargets ?? [])}.`,
+    "Zwróć: topicCluster, title, description, lead, sections, imageAsset, relatedContent, ctaTarget.",
+  ].join("\n");
+}
+
+export async function prefetchRegisteredSources(task: Task, sourceFetcher: SourceFetcher): Promise<PrefetchedSources> {
+  const fetchedByUrl = new Map<string, SourceFetchResult | null>();
+  const registeredSources: PrefetchedRegisteredSource[] = [];
+  const curatedClaims: CandidateClaim[] = [];
+
   for (const registered of registeredSourcesForTarget(task.target).slice(0, MAX_REGISTERED_SOURCES)) {
+    let normalizedUrl = registered.url;
     try {
-      const url = assertAllowedSource(registered.url).href;
-      const fetched = await sourceFetcher.fetchText(url);
-      fetchedByUrl.set(url, fetched);
-      for (const curated of registered.curated ?? []) {
-        curatedCandidates.push({ ...curated, sourceUrl: url });
-      }
-      // Źródło z zakazem `aiInput` służy tylko do mechanicznej kontroli cytatów.
-      if (registered.aiInput === false) continue;
-      if (fetched.status >= 200 && fetched.status < 300 && fetched.text.length > 0) {
-        excerpts.push(`ŹRÓDŁO ${url} (${registered.publisher}; ${registered.covers}):\n${sourceExcerpt(fetched.text)}`);
-      }
-    } catch {
-      // Niedostępne źródło z rejestru nie przerywa researchu — po prostu nie ma go w prompcie.
+      normalizedUrl = assertAllowedSource(registered.url).href;
+      const fetched = await sourceFetcher.fetchText(normalizedUrl);
+      fetchedByUrl.set(normalizedUrl, fetched);
+      registeredSources.push({
+        url: normalizedUrl,
+        publisher: registered.publisher,
+        covers: registered.covers,
+        aiInput: registered.aiInput !== false,
+        status: fetched.status,
+        text: fetched.text,
+        retrievedAt: fetched.retrievedAt,
+      });
+      for (const curated of registered.curated ?? []) curatedClaims.push({ ...curated, sourceUrl: normalizedUrl });
+    } catch (error) {
+      fetchedByUrl.set(normalizedUrl, null);
+      registeredSources.push({
+        url: normalizedUrl,
+        publisher: registered.publisher,
+        covers: registered.covers,
+        aiInput: registered.aiInput !== false,
+        status: null,
+        text: null,
+        retrievedAt: null,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
-  const sourceBlock =
-    excerpts.length > 0
-      ? `\nKorzystaj WYŁĄCZNIE z tekstów poniżej. Pole observedEvidence musi być przepisane znak w znak z tekstu źródła (bez tłumaczenia i skracania).\n\n${excerpts.join("\n\n")}`
-      : "";
 
-  const response = await complete({
-    role: "researcher",
-    system: "Zwracaj wyłącznie JSON. Proponuj tylko krótkie, dosłowne fragmenty źródeł urzędowych lub oficjalnych.",
-    prompt: `Zbierz kandydackie twierdzenia dla zadania ${task.operation} pod adresem ${task.target} i intencji „${task.primaryQuery}”. Format: {"claims":[{"claim":"...","value":"","dataClass":"geography","sourceUrl":"https://...","observedEvidence":"..."}]}.${sourceBlock}`,
-    maxOutputTokens: 8_000,
-  });
-  const candidates = [...curatedCandidates, ...candidateArray(parseJsonText(response.text))];
+  return { registeredSources, curatedClaims, fetchedByUrl };
+}
+
+export async function verifyCandidateClaims(
+  candidates: readonly CandidateClaim[],
+  prefetched: PrefetchedSources,
+  sourceFetcher: SourceFetcher,
+): Promise<ResearchResult> {
+  const fetchedByUrl = new Map(prefetched.fetchedByUrl);
   const sources: Source[] = [];
   const claims: FactClaim[] = [];
+  const rejected: CandidateClaimRejection[] = [];
   const sourceByUrl = new Map<string, Source>();
   const sourceTextById = new Map<string, string>();
-  let droppedCount = 0;
   let unreachableCount = 0;
+
+  const reject = (candidate: CandidateClaim, reason: CandidateRejectionReason, detail: string, unreachable = false) => {
+    rejected.push({ candidate, reason, detail });
+    if (unreachable) unreachableCount += 1;
+  };
 
   for (const candidate of candidates) {
     let normalizedUrl: string;
-    let fetched: SourceFetchResult | null | undefined;
     try {
       normalizedUrl = assertAllowedSource(candidate.sourceUrl).href;
-      fetched = fetchedByUrl.get(normalizedUrl);
-      if (fetched === undefined) {
-        fetched = await sourceFetcher.fetchText(normalizedUrl);
-        fetchedByUrl.set(normalizedUrl, fetched);
-      }
-    } catch {
-      try {
-        fetchedByUrl.set(new URL(candidate.sourceUrl).href, null);
-      } catch {
-        // Zod odrzuca niepoprawne URL-e wcześniej; blok chroni tylko granicę typu.
-      }
-      droppedCount += 1;
-      unreachableCount += 1;
+    } catch (error) {
+      reject(candidate, "source_not_allowed", error instanceof Error ? error.message : String(error), true);
       continue;
     }
+
+    let fetched = fetchedByUrl.get(normalizedUrl);
+    if (fetched === undefined) {
+      try {
+        fetched = await sourceFetcher.fetchText(normalizedUrl);
+        fetchedByUrl.set(normalizedUrl, fetched);
+      } catch (error) {
+        fetchedByUrl.set(normalizedUrl, null);
+        reject(candidate, "source_unreachable", error instanceof Error ? error.message : String(error), true);
+        continue;
+      }
+    }
     if (fetched === null) {
-      droppedCount += 1;
-      unreachableCount += 1;
+      reject(candidate, "source_unreachable", "Źródło nie zostało pobrane.", true);
       continue;
     }
     if (fetched.status < 200 || fetched.status >= 300) {
-      droppedCount += 1;
-      unreachableCount += 1;
+      reject(candidate, "source_http_error", `Źródło odpowiedziało statusem HTTP ${fetched.status}.`, true);
       continue;
     }
     if (!evidenceFoundIn(fetched.text, candidate.observedEvidence)) {
-      droppedCount += 1;
+      reject(candidate, "evidence_not_found", "Dosłownego cytatu nie znaleziono w pobranym źródle.");
       continue;
     }
-    // Cytat musi zawierać liczby twierdzenia — inaczej prawdziwy, ale niezwiązany
-    // fragment („Tenerife South Airport") „potwierdzałby" dowolną liczbę („60 km").
     if (!numbersCoveredBy(`${candidate.claim} ${candidate.value}`, candidate.observedEvidence).ok) {
-      droppedCount += 1;
+      reject(candidate, "numbers_not_covered", "Cytat nie pokrywa liczb lub identyfikatorów z twierdzenia.");
       continue;
     }
+
     let source = sourceByUrl.get(normalizedUrl);
     if (!source) {
       const host = new URL(normalizedUrl).hostname;
@@ -565,18 +626,42 @@ export async function research(task: Task, complete: StageComplete, sourceFetche
       verification: "source_verified",
     });
   }
+
   const usedSourceIds = new Set(claims.map((claim) => claim.sourceId));
   return {
     claims,
     sources: sources.filter((source) => usedSourceIds.has(source.id)),
     candidateCount: candidates.length,
-    droppedCount,
+    droppedCount: rejected.length,
     unreachableCount,
     sourceTextById,
+    rejected,
   };
 }
 
-const DraftBodySchema = z.object({
+export async function research(task: Task, complete: StageComplete, sourceFetcher: SourceFetcher): Promise<ResearchResult> {
+  const prefetched = await prefetchRegisteredSources(task, sourceFetcher);
+  const excerpts: string[] = [];
+  for (const source of prefetched.registeredSources) {
+    if (!source.aiInput || source.status === null || source.status < 200 || source.status >= 300 || !source.text) continue;
+    excerpts.push(`ŹRÓDŁO ${source.url} (${source.publisher}; ${source.covers}):\n${sourceExcerpt(source.text)}`);
+  }
+  const sourceBlock =
+    excerpts.length > 0
+      ? `Korzystaj WYŁĄCZNIE z tekstów poniżej.\n\n${excerpts.join("\n\n")}`
+      : "Zwróć JSON zgodny z instrukcją.";
+
+  const response = await complete({
+    role: "researcher",
+    system: researcherInstructions(task),
+    prompt: sourceBlock,
+    maxOutputTokens: 8_000,
+  });
+  const candidates = [...prefetched.curatedClaims, ...parseCandidateClaims(parseJsonText(response.text))];
+  return verifyCandidateClaims(candidates, prefetched, sourceFetcher);
+}
+
+export const DraftBodySchema = z.object({
   topicCluster: z.string().min(2),
   title: z.string().min(10).max(70),
   description: z.string().min(50).max(170),
@@ -587,7 +672,7 @@ const DraftBodySchema = z.object({
   ctaTarget: z.string().regex(/^\//),
 });
 
-function contentTypeFor(task: Task): ContentType {
+export function contentTypeFor(task: Task): ContentType {
   if (task.operation === "new_article") return "article";
   const segment = classifyUrl(task.target).segment;
   if (segment === "comparison") return "comparison_enrichment";
@@ -595,7 +680,7 @@ function contentTypeFor(task: Task): ContentType {
   return "hub_enrichment";
 }
 
-function idForTask(task: Task): string {
+export function idForTask(task: Task): string {
   const parts = task.target.split("/").filter(Boolean);
   const classified = classifyUrl(task.target);
   if (classified.segment === "month" && parts.length >= 3) return asciiSlug(`${parts[1]}-${parts[2]}`);
@@ -607,7 +692,7 @@ function zodMessages(error: unknown): string[] {
   return [error instanceof Error ? error.message : String(error)];
 }
 
-function buildDocument(
+export function buildDocument(
   bodyValue: unknown,
   task: Task,
   result: ResearchResult,
@@ -676,15 +761,8 @@ export async function draft(
     })),
     sources: result.sources.map(({ id, url, title, publisher, kind, licence, retrievedAt }) => ({ id, url, title, publisher, kind, licence, retrievedAt })),
   };
-  const basePrompt = [
-    `Napisz polski korpus JSON dla ${task.target}, intencja: „${task.primaryQuery}”.`,
-    "Nie dodawaj pól stanu, identyfikatora dokumentu, dat, statusu, klasy ryzyka ani twierdzeń. Używaj wyłącznie poniższych zweryfikowanych twierdzeń i ich identyfikatorów w section.claimIds.",
-    "Sekcja prose lub list bez faktów musi mieć opinion:true, puste claimIds i nie może zawierać liczb z jednostką.",
-    `Dla nowego artykułu użyj linków wewnętrznych: ${JSON.stringify(task.evidence.internalLinkTargets ?? [])}.`,
-    "Zwróć: topicCluster, title, description, lead, sections, imageAsset, relatedContent, ctaTarget.",
-    JSON.stringify(verifiedFacts),
-  ].join("\n");
-  const system = "Jesteś redaktorem HelpTravel. Zwracasz wyłącznie poprawny JSON, bez markdownu i bez faktów spoza dostarczonego zestawu.";
+  const basePrompt = JSON.stringify(verifiedFacts);
+  const system = writerInstructions(task);
 
   let firstError: string[] = [];
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -729,7 +807,7 @@ export function verify(
   return { document: checked, gateReport, decision: publishDecision(gateReport, checked, mode) };
 }
 
-function noMaterialGate(now: Date, blocked: boolean, result: ResearchResult): GateReport {
+export function noMaterialGate(now: Date, blocked: boolean, result: ResearchResult): GateReport {
   return {
     verdict: blocked ? "BLOCKED_FACTS" : "SKIPPED_QUALITY_GATE",
     findings: [

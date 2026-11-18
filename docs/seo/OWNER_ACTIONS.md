@@ -10,12 +10,12 @@ Lista rzeczy, których nie da się dokończyć bez Ciebie: decyzje, konta, klucz
 | 2 | Obejrzeć Preview na telefonie i przyjąć skalę zmian | przed scaleniem PR | 15 min |
 | 3 | Zdecydować o liczbach GSC w publicznym repo | przed scaleniem PR | 2 min |
 | 4 | Zarejestrować trzy wymiary w GA4 | po scaleniu | 5 min |
-| 5 | Dać automatowi dostęp do danych (GSC, GA4) | gdy chcesz raportów i automatu | 20 min |
+| 5 | (opcjonalnie) Dostęp tylko do odczytu do GA4; GSC wystarczy eksport CSV | gdy chcesz lejka w raportach | 5 min |
 | 6 | Uruchomić raport po 28 dniach | 28 dni po wdrożeniu | 5 min |
 | 7 | Zdecydować o planie indeksu stron miesięcy | bez pośpiechu | — |
 | 8 | Zdecydować o dwóch drobnych sprawach technicznych | bez pośpiechu | — |
 | 9–12 | Narzędzia (opcjonalne) | kiedykolwiek | — |
-| 13 | Włączyć dzienny automat | gdy zechcesz | 30 min |
+| 13 | Dzienna praca SEO: otworzyć projekt i wysłać `/seo-daily` | codziennie albo co 2 dni | 1 min |
 | 14 | Odświeżyć godziny otwarcia w jednym dokumencie | przed 11.02.2027 | 10 min |
 | 15 | Włączyć ochronę gałęzi `main` | przed włączeniem automatu | 5 min |
 | 16 | Zdecydować o 158 stronach miesięcy bez danych (wariant gotowy, nieaktywny) | przed albo po scaleniu | 5 min |
@@ -63,7 +63,7 @@ Parametry są wysyłane ze zdarzeniem `seo_cta_click`. GA4 zaczyna je pokazywać
 
 ### 5. Dostęp do danych
 
-- **Search Console.** Konto usługi z uprawnieniem ograniczonym. Kroki są w `AUTOMATION_RUNBOOK.md`, pkt 3, krok 2. To odblokowuje raport z wymiarem strona × zapytanie i dzienny automat.
+- **Search Console.** Nie jest potrzebne konto usługi: sesja `/seo-daily` czyta eksport CSV z interfejsu GSC zostawiony w folderze Pobrane (`docs/seo/daily/README.md`). Konto usługi zostaje opcją dla raportu z wymiarem strona × zapytanie.
 - **GA4.** Wystarczy eksport stron wejścia z ruchu organicznego albo dostęp tylko do odczytu. Bez tego raport tygodniowy pokazuje `NOT_CONNECTED` i nie liczy lejka.
 
 ### 6. Raport po 28 dniach
@@ -117,16 +117,9 @@ Ochrona wdrożeń Vercela blokuje automaty. Żeby mierzyć Preview w CI, trzeba 
 
 ## Dzienny automat
 
-### 13. Włączenie
+### 13. Dzienna praca SEO
 
-Pełna instrukcja jest w `AUTOMATION_RUNBOOK.md`, pkt 3. W skrócie:
-
-1. Sekret `SEO_ENGINE_ANTHROPIC_API_KEY` (osobny klucz z limitem wydatków).
-2. Sekret `SEO_GSC_SERVICE_ACCOUNT_JSON` i zmienna `SEO_GSC_SITE_URL`.
-3. Ręczny przebieg próbny, potem ręczny przebieg w trybie roboczym i przegląd pierwszego PR.
-4. Zmienne `SEO_ENGINE_MODE=draft-and-pr` i `SEO_ENGINE_SCHEDULE_ENABLED=true`.
-
-Koszt: twardy limit 1,50 USD na przebieg, czyli najwyżej 45 USD miesięcznie przy pracy codziennej. Do tej pory automat nie wydał nic, bo działał tylko na modelu testowym.
+Od 17.11.2026 nie ma automatu z harmonogramem ani płatnego API. Otwierasz projekt w Claude Code i wysyłasz `/seo-daily`; resztę robi sesja w ramach abonamentu. Instrukcja: `docs/seo/daily/README.md`. Dawny automat (`AUTOMATION_RUNBOOK.md`) zostaje jako wyłączona alternatywa.
 
 Naturalne pierwsze zadania to porównania z kolejki w `OPPORTUNITY_BACKLOG.csv` (Budapeszt–Praga, Antalya–Palma, Barcelona–Malaga).
 

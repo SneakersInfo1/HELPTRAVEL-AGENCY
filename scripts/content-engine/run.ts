@@ -32,6 +32,8 @@ interface CliOptions {
   /** Gdzie zapisać raport bez danych GSC (artefakt CI). */
   publicReport?: string;
   releasePending?: string;
+  /** Jawna zgoda na płatne wywołania API modelu (tryb na żywo). Domyślnie wyłączone. */
+  allowPaidApi: boolean;
 }
 
 const FIXTURE_RENDERABLE_TYPES: ReadonlySet<ContentType> = new Set([
@@ -76,6 +78,7 @@ export function parseCliArgs(args: readonly string[], currentDate = new Date()):
     storeDir: "content/seo",
     gscDir: "data/gsc",
     gscSource: "csv",
+    allowPaidApi: false,
   };
   for (let index = 0; index < args.length; index += 1) {
     const option = args[index];
@@ -90,6 +93,7 @@ export function parseCliArgs(args: readonly string[], currentDate = new Date()):
     else if (option === "--gsc-source") result.gscSource = parseGscSource(valueAfter(args, index++, option));
     else if (option === "--public-report") result.publicReport = valueAfter(args, index++, option);
     else if (option === "--release-pending") result.releasePending = valueAfter(args, index++, option);
+    else if (option === "--allow-paid-api") result.allowPaidApi = true;
     else throw new Error(`Nieznana opcja: ${option}`);
   }
   if (!Number.isFinite(new Date(result.scheduledAt).getTime())) throw new Error("--scheduled-at wymaga poprawnego czasu ISO");
@@ -127,9 +131,14 @@ async function main(): Promise<void> {
     console.log(`Zwolniono ${removed} wpisów pending przebiegu ${options.releasePending}.`);
     return;
   }
+  // Tryb na żywo (model przez płatne API) jest WYŁĄCZONĄ alternatywą. Dzienna praca SEO
+  // odbywa się w sesji Claude Code (`/seo-daily`, docs/seo/daily/README.md) bez API.
   const hasApiKey = Boolean(process.env.SEO_ENGINE_ANTHROPIC_API_KEY);
-  if (!hasApiKey && !options.scenario) {
-    throw new Error("Bez SEO_ENGINE_ANTHROPIC_API_KEY podaj --scenario refresh|new-evergreen|reject-unverified; scenariusz działa całkowicie offline.");
+  if (!options.scenario && !(hasApiKey && options.allowPaidApi)) {
+    throw new Error(
+      "Tryb na żywo jest wyłączony: wymaga SEO_ENGINE_ANTHROPIC_API_KEY i jawnej flagi --allow-paid-api (płatne API). " +
+        "Dzienna praca SEO: /seo-daily w Claude Code (docs/seo/daily/README.md). Offline: --scenario refresh|new-evergreen|reject-unverified.",
+    );
   }
 
   const store = new ContentStore(options.storeDir);
