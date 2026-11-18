@@ -173,6 +173,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Lokalne fonty (src/app/fonts.css). Nazwy plików zawierają wersję z Google
+        // Fonts (v21, v23), więc odświeżenie pliku zmienia adres — bezpieczne „immutable”.
+        // Tylko pliki woff2: README i teksty licencji w tym katalogu nie mają wersji w nazwie.
+        source: "/fonts/:file(.+\\.woff2)",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         source: "/robots.txt",
         headers: [
           { key: "Cache-Control", value: "public, max-age=0, s-maxage=86400, stale-while-revalidate=86400" },

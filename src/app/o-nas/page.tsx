@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 import { MediaHero } from "@/components/site/media-hero";
@@ -25,7 +26,7 @@ export const revalidate = 86400;
 // Dlatego rdzeniem jest teraz podział ról (kto przyjmuje pieniądze, kto widnieje
 // na wyciągu, kto dotyka danych karty), a nie kafelki z hasłami.
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "O serwisie",
   description:
     "HelpTravel to polski serwis rezerwacji hoteli i lotów. Sprawdź, kto przyjmuje płatność, dlaczego na wyciągu widnieje NUITEE TRAVEL i czego na tej stronie nie robimy.",
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pl_PL",
   },
-};
+});
 
 const HERO_SLUG = "barcelona-spain";
 const TILE_SLUGS = ["malaga-spain", "lisbon-portugal", "rome-italy", "athens-greece"] as const;

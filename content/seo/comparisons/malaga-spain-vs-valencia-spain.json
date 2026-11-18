@@ -1,0 +1,394 @@
+{
+  "id": "malaga-spain-vs-valencia-spain",
+  "canonicalUrl": "/porownanie/malaga-spain-vs-valencia-spain",
+  "primaryQueryIntent": "malaga czy walencja",
+  "contentType": "comparison_enrichment",
+  "topicCluster": "porownania-hiszpania",
+  "locale": "pl-PL",
+  "title": "Malaga czy Walencja? Porównanie: plaże, miasto, pogoda",
+  "description": "Malaga czy Walencja: 16 plaż i muzea sztuki kontra ogród Turii, futurystyczna architektura i paella. Porównanie w faktach ze źródłami, temperatury i dolot z Polski.",
+  "lead": "Malagę wybierz, jeśli chcesz mieć plażę i muzea sztuki w jednym, zwartym mieście oraz bazę na Costa del Sol. Walencja będzie lepsza, gdy wolisz większe miasto z ogrodem Turii, nowoczesną architekturą i paellą u źródła. Niżej różnice w faktach, źródła i jedna data, pod którą warto planować Walencję.",
+  "sections": [
+    {
+      "id": "werdykt",
+      "heading": "Co wybrać: Malaga czy Walencja",
+      "claimIds": [
+        "malaga-plaze",
+        "malaga-malagueta",
+        "malaga-picasso",
+        "malaga-pompidou",
+        "malaga-costa",
+        "walencja-kontrast",
+        "walencja-turia",
+        "walencja-paella"
+      ],
+      "kind": "verdict",
+      "options": [
+        {
+          "label": "Malaga",
+          "chooseIf": [
+            "plaża ma być pod ręką: miasto ma 16 plaż, a La Malagueta leży w samym mieście",
+            "lubisz muzea sztuki — to miejsce urodzenia Picassa, z jedynym Centre Pompidou poza Francją",
+            "chcesz bazy wypadowej na Costa del Sol, której Malaga jest stolicą"
+          ],
+          "skipIf": [
+            "szukasz większego miasta z rozległym parkiem i nowoczesną architekturą — tu mocniejsza jest Walencja"
+          ]
+        },
+        {
+          "label": "Walencja",
+          "chooseIf": [
+            "chcesz miasta o dwóch twarzach: stare miasto i futurystyczne budynki obok siebie",
+            "lubisz długie spacery — przez miasto ciągnie się rozległy ogród Turii",
+            "jedziesz także dla kuchni: paella to tutejsze danie numer jeden"
+          ],
+          "skipIf": [
+            "zależy Ci na bliskości kurortów Costa del Sol — wtedy wygodniejsza będzie Malaga"
+          ]
+        }
+      ],
+      "basis": "Werdykt wynika z tego, co o obu miastach podaje oficjalny portal turystyczny Hiszpanii i UNESCO oraz z temperatur i czasu lotu w tabeli HelpTravel na tej stronie. To ocena redakcyjna, nie relacja z podróży."
+    },
+    {
+      "id": "plaze",
+      "heading": "Plaże",
+      "claimIds": [
+        "malaga-plaze",
+        "malaga-malagueta",
+        "malaga-muelle",
+        "walencja-malvarrosa",
+        "walencja-piasek"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "W obu miastach na plażę dojdziesz bez wyjeżdżania z miasta, ale charakter jest inny. Malaga ma 16 plaż i miejską La Malaguetę, obok której leży portowa promenada Muelle Uno. W Walencji najbardziej znana jest Malvarrosa — duża plaża z drobnym złotym piaskiem."
+      ]
+    },
+    {
+      "id": "miasto",
+      "heading": "Kultura i miasto",
+      "claimIds": [
+        "malaga-picasso",
+        "malaga-pompidou",
+        "malaga-alcazaba",
+        "walencja-kontrast",
+        "walencja-lonja",
+        "walencja-lonja-gotyk",
+        "walencja-turia"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "Malaga postawiła na muzea: to miejsce urodzenia Pabla Picassa, działa tu jedyne Centre Pompidou poza Francją, a w centrum stoi Alcazaba — jedna z największych arabskich twierdz Andaluzji.",
+        "Walencja gra kontrastem. Obok starego miasta z La Lonja de la Seda, dawną giełdą jedwabiu, którą UNESCO wpisało na listę w 1996 roku jako arcydzieło późnego gotyku, stoją futurystyczne budynki, a przez miasto ciągnie się rozległy ogród Turii."
+      ]
+    },
+    {
+      "id": "termin",
+      "heading": "Kiedy termin ma znaczenie",
+      "claimIds": [
+        "walencja-fallas",
+        "malaga-costa",
+        "walencja-turia"
+      ],
+      "kind": "list",
+      "intro": "Jedna data w kalendarzu wyróżnia Walencję.",
+      "items": [
+        "Walencja w marcu: 19 marca miasto świętuje Fallas — jeśli chcesz to zobaczyć, planuj wyjazd pod tę datę",
+        "Poza tym terminem o wyborze częściej decyduje to, czy wolisz muzea i Costa del Sol (Malaga), czy miasto z parkiem i nowoczesną architekturą (Walencja)"
+      ]
+    },
+    {
+      "id": "fakty",
+      "heading": "Malaga i Walencja w faktach",
+      "claimIds": [
+        "malaga-plaze",
+        "malaga-malagueta",
+        "walencja-malvarrosa",
+        "walencja-piasek",
+        "malaga-alcazaba",
+        "walencja-lonja",
+        "walencja-lonja-gotyk",
+        "malaga-picasso",
+        "malaga-pompidou",
+        "walencja-kontrast",
+        "malaga-costa",
+        "walencja-paella",
+        "walencja-fallas"
+      ],
+      "kind": "table",
+      "columns": [
+        "Kryterium",
+        "Malaga",
+        "Walencja"
+      ],
+      "rows": [
+        {
+          "label": "Plaże",
+          "cells": [
+            "16 plaż, miejska La Malagueta",
+            "Malvarrosa i inne duże plaże z drobnym złotym piaskiem"
+          ]
+        },
+        {
+          "label": "Zabytek-wizytówka",
+          "cells": [
+            "Alcazaba — jedna z największych arabskich twierdz Andaluzji",
+            "La Lonja de la Seda — późny gotyk, UNESCO od 1996 r."
+          ]
+        },
+        {
+          "label": "Sztuka i architektura",
+          "cells": [
+            "Miejsce urodzenia Picassa, jedyne Centre Pompidou poza Francją",
+            "Stare miasto obok futurystycznych budynków"
+          ]
+        },
+        {
+          "label": "Tylko tutaj",
+          "cells": [
+            "Stolica Costa del Sol",
+            "Paella i święto Fallas (19 marca)"
+          ]
+        }
+      ],
+      "note": "Temperatury, czas lotu i szacunek budżetu są w osobnej tabeli HelpTravel niżej."
+    }
+  ],
+  "factClaims": [
+    {
+      "id": "malaga-plaze",
+      "claim": "Malaga ma 16 plaż",
+      "value": "16",
+      "dataClass": "geography",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-malaga",
+      "observedEvidence": "Beyond its 16 sunny beaches",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "malaga-picasso",
+      "claim": "Malaga to miejsce urodzenia Pabla Picassa",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-malaga",
+      "observedEvidence": "the birthplace of Pablo Picasso",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "malaga-alcazaba",
+      "claim": "Alcazaba w Maladze to jedna z największych arabskich twierdz Andaluzji",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-malaga",
+      "observedEvidence": "one of the largest Arab fortresses in Andalusia",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "malaga-pompidou",
+      "claim": "W Maladze działa jedyne Centre Pompidou poza Francją",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-malaga",
+      "observedEvidence": "the only Pompidou Centre outside France",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "malaga-malagueta",
+      "claim": "La Malagueta to miejska plaża Malagi",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-malaga",
+      "observedEvidence": "La Malagueta city beach",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "malaga-muelle",
+      "claim": "Obok La Malaguety leży portowa promenada Muelle Uno",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-malaga",
+      "observedEvidence": "a harbour promenade lined with shops",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "malaga-costa",
+      "claim": "Malaga jest stolicą Costa del Sol",
+      "value": "",
+      "dataClass": "geography",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-malaga",
+      "observedEvidence": "The capital of the Costa del Sol",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-kontrast",
+      "claim": "Walencja łączy stare miasto z futurystycznymi budynkami",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "a charming old town next to futuristic buildings",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-malvarrosa",
+      "claim": "Malvarrosa to jedna z najbardziej znanych plaż Walencji",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "The Malvarrosa beach is one of the most well-known options",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-piasek",
+      "claim": "Plaże Walencji mają drobny złoty piasek",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "the fine golden sand and blue water",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-turia",
+      "claim": "Przez Walencję ciągnie się rozległy miejski ogród Turii",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "take a walk along the huge Turia city garden",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-paella",
+      "claim": "Sztandarowym daniem Walencji jest paella",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "you must try the star dish, paella",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-pieszo",
+      "claim": "Walencję dobrze zwiedza się pieszo",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "Valencia is perfect to discover on foot",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-fallas",
+      "claim": "Święto Fallas Walencja obchodzi 19 marca",
+      "value": "19 marca",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "it's 19 March, when they celebrate the famous Fallas",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-lonja",
+      "claim": "La Lonja de la Seda jest na liście UNESCO od 1996 roku",
+      "value": "1996",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-lonja",
+      "observedEvidence": "Date of Inscription: 1996",
+      "retrievedAt": "2026-11-13T18:32:00Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-lonja-gotyk",
+      "claim": "UNESCO nazywa La Lonję, dawną giełdę jedwabiu, arcydziełem późnego gotyku",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-lonja",
+      "observedEvidence": "It is a masterpiece of late Gothic architecture",
+      "retrievedAt": "2026-11-13T18:32:00Z",
+      "verification": "source_verified"
+    }
+  ],
+  "sources": [
+    {
+      "id": "unesco-lonja",
+      "url": "https://whc.unesco.org/en/list/782",
+      "title": "La Lonja de la Seda de Valencia",
+      "publisher": "UNESCO World Heritage Centre",
+      "kind": "heritage_or_museum",
+      "licence": "Opis UNESCO na licencji CC BY-SA IGO 3.0; krótki cytat",
+      "retrievedAt": "2026-11-13T18:32:00Z",
+      "snapshotSha256": "d27c243b353b1385e6d595892ef5ff92a4d3161e0122b175ebe2f6003eaa6ca7"
+    },
+    {
+      "id": "spain-info-malaga",
+      "url": "https://www.spain.info/en/destination/malaga/",
+      "title": "Málaga — oficjalny portal turystyczny Hiszpanii",
+      "publisher": "Turespaña (spain.info)",
+      "kind": "official_tourism",
+      "licence": "Fakt i krótki cytat w granicach prawa cytatu",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "snapshotSha256": "2e36664d55a8118fc2081dd4412cc199f86198286aa5a140ac288e278fbfd703"
+    },
+    {
+      "id": "spain-info-walencja",
+      "url": "https://www.spain.info/en/destination/valencia/",
+      "title": "Valencia — oficjalny portal turystyczny Hiszpanii",
+      "publisher": "Turespaña (spain.info)",
+      "kind": "official_tourism",
+      "licence": "Fakt i krótki cytat w granicach prawa cytatu",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "snapshotSha256": "71233aa27cb38d7cf3a8c0b6452d9a79beba79ab7a77529067bc7143f418b17b"
+    }
+  ],
+  "imageAsset": {
+    "provider": "pexels_integration",
+    "licence": "Pexels License — zdjęcia pobierane istniejącą integracją serwisu",
+    "alt": "Zdjęcia obu porównywanych kierunków",
+    "credit": "Pexels"
+  },
+  "relatedContent": [
+    "/kierunki/malaga-spain",
+    "/kierunki/valencia-spain",
+    "/porownanie",
+    "/wyjazdy/plaza",
+    "/porownanie/barcelona-spain-vs-valencia-spain",
+    "/porownanie/barcelona-spain-vs-malaga-spain"
+  ],
+  "ctaTarget": "/hotele/szukaj",
+  "riskClass": "EVERGREEN",
+  "contentHash": "169a1ba7d60e224413fa7e6146062b9eb051598310b58bb0c22ace22171a705b",
+  "createdAt": "2026-11-13T23:14:30Z",
+  "publishedAt": null,
+  "materiallyModifiedAt": "2026-11-13T23:14:30Z",
+  "verifiedAt": "2026-11-13T23:14:51Z",
+  "owner": "Redakcja HelpTravel",
+  "reviewStatus": "approved",
+  "reviewedBy": "właściciel serwisu — akceptacja przez merge PR",
+  "generationRunId": "redakcja-2026-11-14",
+  "aiDisclosure": "Tekst przygotowany z pomocą AI na podstawie wskazanych źródeł. Każdy cytowany fakt został sprawdzony mechanicznie w treści źródła; ocena „co wybrać” jest opinią redakcji, nie relacją z podróży.",
+  "policyVersion": "2026-11-13.1"
+}

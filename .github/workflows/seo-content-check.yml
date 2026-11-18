@@ -1,0 +1,94 @@
+name: SEO content check
+
+# Kontrola PR-ów zmieniających treść SEO albo jej silnik. Uruchamia testy treści,
+# bramkę jakości na wszystkich dokumentach (offline, bez sieci) i wymaga, żeby każdy
+# dokument w content/seo miał status approved z podpisem człowieka — propozycja
+# z pipeline'u nie wejdzie do main bez jawnego zatwierdzenia.
+
+on:
+  pull_request:
+    paths:
+      - "content/seo/**"
+      - "src/lib/content-engine/**"
+      - "src/lib/content-quality/**"
+      - "src/lib/seo-ops/**"
+      - "scripts/content-engine/**"
+      - "scripts/seo/**"
+      - "src/lib/seo/**"
+      - "src/lib/analytics/**"
+      - "src/components/editorial/**"
+      - "src/components/publisher/**"
+      - "src/components/analytics/**"
+      - "src/app/porownanie/**"
+      - "src/app/kierunki/**"
+      - "src/app/wyjazdy/**"
+      - "src/app/sitemap.ts"
+      - "middleware.ts"
+      - "e2e/seo-templates.spec.ts"
+      - "package.json"
+      - ".github/workflows/seo-content-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  content-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:seo
+
+  # Szablony stron treści: build produkcyjny, test dymny (statusy, tytuły, canonicale,
+  # robots, JSON-LD, sitemap) i Playwright z axe w 390/768/1440 px. Bez kluczy dostawców —
+  # strony treści muszą renderować się bez nich.
+  templates-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_SITE_URL: https://helptravel.pl
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Build
+        shell: bash
+        run: |
+          # Do 17.11.2026 build pobierał fonty z Google (next/font/google) i bywało,
+          # że padał na przejściowym błędzie sieci, więc miał jedną powtórkę. Fonty
+          # są teraz w repozytorium (public/fonts, docs/seo/FONTS.md), więc każdy
+          # błąd builda jest prawdziwy — bez powtórki.
+          pnpm build
+      - name: Start server
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm start > "$RUNNER_TEMP/next-start.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://localhost:3000/wyjazdy/city-break; then exit 0; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/next-start.log"
+          exit 1
+      - run: pnpm seo:smoke -- --base http://localhost:3000 --out "$RUNNER_TEMP/smoke.json"
+      - run: pnpm exec playwright test e2e/seo-templates.spec.ts

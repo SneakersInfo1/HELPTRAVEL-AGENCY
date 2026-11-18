@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -34,7 +35,7 @@ const admin = {
 const EFFECTIVE_DATE = "8 lipca 2026 r.";
 const EFFECTIVE_DATE_ISO = "2026-07-08";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Polityka prywatności",
   description:
     "Polityka prywatności HelpTravel — pełne informacje o przetwarzaniu danych zgodnie z RODO: administrator, podstawy prawne, odbiorcy, retencja, prawa osób.",
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
     type: "article",
   },
   robots: { index: true, follow: true },
-};
+});
 
 // ────────────────────────────────────────────────────────────────────────────
 // Schemat dokumentu

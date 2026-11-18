@@ -7,8 +7,8 @@
 // Do tej pory każdy klik z treści do wyszukiwarki był niewidoczny: żaden
 // event nie leciał, bo linki treściowe prowadzą prosto do `/hotele/szukaj`,
 // czyli NIE przechodzą przez formularz i `hotel_search_submit` się nie odpala.
-// Audyt GA4 (wrzesień 2026) pokazał to jako dziurę nr 1: 197 kliknięć na
-// porównaniach w 3 miesiące, a zero wiedzy, czy ktokolwiek poszedł dalej.
+// Audyt GA4 (wrzesień 2026) pokazał to jako dziurę nr 1: kliknięcia na
+// porównaniach były, a zero wiedzy, czy ktokolwiek poszedł dalej.
 //
 // Komponent jest CELOWO cienki: renderuje zwykły `next/link`, nie narzuca
 // żadnych klas ani stylów i przekazuje `className` na wylot. Strona treściowa
@@ -24,10 +24,17 @@ import Link from "next/link";
 import { useCallback } from "react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
+import { defaultCtaPrefetch } from "@/lib/analytics/cta-prefetch";
 import { analyticsPagePath, currentAnalyticsPagePath } from "@/lib/analytics/page-path";
 import { track, type TrackEventMap } from "@/lib/analytics/track";
 
 type SeoCtaParams = TrackEventMap["seo_cta_click"];
+
+export interface SeoContentContext {
+  id: string;
+  version: string;
+  topicCluster: string;
+}
 
 export interface SeoCtaLinkProps {
   href: string;
@@ -35,6 +42,8 @@ export interface SeoCtaLinkProps {
   ctaType: SeoCtaParams["cta_type"];
   destinationSlug?: string;
   month?: string;
+  /** Kontekst dokumentu treści (content/seo), jeśli strona go ma. */
+  content?: SeoContentContext | null;
   /**
    * Renderuj `LocalizedLink` zamiast gołego `next/link`.
    *
@@ -57,7 +66,8 @@ export interface SeoCtaLinkProps {
  *
  * Adres bezwzględny (gdyby kiedyś się pojawił) traci host, a ścieżka i tak
  * przechodzi przez `analyticsPagePath`, więc obowiązują ją te same zasady
- * co ścieżce strony: jeden `?` i żadnych poświadczeń w parametrach.
+ * co ścieżce strony: jeden `?`, bez fragmentu (`#…`) i żadnych poświadczeń
+ * w parametrach.
  */
 function sciezkaCelu(href: string): string {
   try {
@@ -78,7 +88,9 @@ export function SeoCtaLink({
   ctaType,
   destinationSlug,
   month,
+  content,
   localized = false,
+  prefetch,
   children,
   ...rest
 }: SeoCtaLinkProps) {
@@ -90,13 +102,14 @@ export function SeoCtaLink({
       cta_type: ctaType,
       ...(destinationSlug ? { destination_slug: destinationSlug } : {}),
       ...(month ? { month } : {}),
+      ...(content ? { content_id: content.id, content_version: content.version, topic_cluster: content.topicCluster } : {}),
     });
-  }, [href, typTresci, ctaType, destinationSlug, month]);
+  }, [href, typTresci, ctaType, destinationSlug, month, content]);
 
   const Znacznik = localized ? LocalizedLink : Link;
 
   return (
-    <Znacznik href={href} onClick={onClick} {...rest}>
+    <Znacznik href={href} onClick={onClick} prefetch={defaultCtaPrefetch(href, prefetch)} {...rest}>
       {children}
     </Znacznik>
   );

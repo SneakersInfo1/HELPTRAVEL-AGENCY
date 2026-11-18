@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { contentLastModified } from "@/lib/content-engine/site-content";
 import { categoryPath } from "@/lib/mvp/category-slug";
 import { comparisonPairs } from "@/lib/mvp/comparisons";
 import { commercialCitySlugs } from "@/lib/mvp/commercial-cities";
@@ -95,6 +96,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       .map((month) => `/kierunki/${destination.slug}/${month}`),
   );
 
+  // Jedyne źródło prawdy dat zmian: dokumenty treści z content/seo, w których
+  // `materiallyModifiedAt` rusza się tylko przy zmianie hasha treści.
+  const lastModifiedByRoute = contentLastModified();
+
   const seenUrls = new Set<string>();
   const entries: MetadataRoute.Sitemap = [];
   const allRoutes = [
@@ -172,13 +177,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority = 0.6;
     }
 
-    // Bez lastModified: do 2026-09 był tu zegar generowania sitemapy — ta sama data
-    // dla 1401 adresów, zmieniana przy każdym renderze, a nie przy zmianie treści.
-    // Serwis nie ma dziś źródła prawdy dat zmian, więc `lastmod` nie podajemy wcale.
+    // `lastmod` tylko tam, gdzie ma źródło prawdy (dokument treści). Do 2026-09
+    // był tu zegar generowania sitemapy — ta sama data dla 1401 adresów,
+    // zmieniana przy każdym renderze. Reszta adresów nadal nie podaje daty wcale.
+    const lastModified = lastModifiedByRoute.get(route);
     entries.push({
       url: `${siteUrl}${route}`,
       changeFrequency,
       priority,
+      ...(lastModified ? { lastModified } : {}),
     });
   }
 

@@ -4,6 +4,7 @@
 // moods only.
 
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import { notFound } from "next/navigation";
 
 import { MoodLanding } from "@/components/publisher/mood-landing";
@@ -27,8 +28,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { typ } = await params;
   const mood = getMoodBySlug(typ);
   if (!mood) return { title: "Pomysły na wyjazd" };
-  return {
-    title: mood.metaTitle,
+  return completeSocial({
+    // Bez sufiksu marki: z „| HelpTravel” tytuły hubów miały 63–73 znaki.
+    title: { absolute: mood.metaTitle },
     description: mood.metaDescription,
     alternates: { canonical: `/wyjazdy/${mood.slug}` },
     openGraph: {
@@ -37,7 +39,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${getSiteUrl()}/wyjazdy/${mood.slug}`,
       type: "website",
     },
-  };
+  });
 }
 
 export default async function MoodPage({ params }: PageProps) {

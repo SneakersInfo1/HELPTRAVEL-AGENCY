@@ -1,4 +1,6 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -6,7 +8,7 @@ import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { getSiteUrl } from "@/lib/mvp/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Redakcja — kto tworzy HelpTravel",
   description:
     "Poznaj autora i metodologię HelpTravel: skąd biorą się ceny hoteli, dane o pogodzie i czasy lotów, i jak weryfikujemy treści, zanim trafią na stronę.",
@@ -18,7 +20,7 @@ export const metadata: Metadata = {
     type: "profile",
     locale: "pl_PL",
   },
-};
+});
 
 const dataSources = [
   {
@@ -29,9 +31,10 @@ const dataSources = [
   {
     // Do 2026-09 stało tu „wieloletnie średnie dla każdego kierunku", podczas gdy
     // 212 z 235 kierunków miało jedną tablicę temperatur na cały region (audyt Faza 2.2).
+    // Od 2026-11 liczby pochodzą wyłącznie z norm WMO (src/lib/mvp/climate-normals.generated.json).
     title: "Pogoda i sezon",
     body:
-      "Temperatury i sezon podajemy tylko dla kierunków, dla których mamy ręcznie opracowane średnie miesięczne. Gdzie takich danych jeszcze nie ma, nie pokazujemy ani temperatury, ani sezonu. Temperatura morza to szacunek liczony z temperatur powietrza.",
+      "Temperatury i opady pochodzą z norm klimatycznych publikowanych przez WMO World Weather Information Service na podstawie danych krajowych służb meteorologicznych. Podajemy średnią temperaturę maksymalną i minimalną, liczbę dni z opadem i sumę opadu, zawsze z nazwą źródła i okresem normy. Gdzie nie ma jednoznacznie dopasowanej stacji, nie pokazujemy żadnych liczb. Nie podajemy temperatury morza ani orientacyjnych budżetów, bo nie mamy dla nich wiarygodnego źródła.",
   },
   {
     title: "Czasy lotów z Polski",
@@ -39,9 +42,9 @@ const dataSources = [
       "Czas lotu podajemy wprost tylko przy kierunkach z opracowanymi danymi. Przy pozostałych pokazujemy szacunek liczony z odległości od najbliższego lotniska w Polsce — zawsze oznaczony jako szacunek, bez uwzględnienia przesiadek i rozkładów.",
   },
   {
-    title: "Indeks kosztów i profile kierunków",
+    title: "Profile kierunków",
     body:
-      "Indeks kosztów oraz profil plażowy i miejski to nasza wewnętrzna, modelowana ocena. Pomaga porównywać kierunki jedną metodą, ale nie jest ceną ani pomiarem.",
+      "Profil plażowy i miejski porządkuje charakter kierunku. Wniosków o względnych kosztach nie wyprowadzamy z ręcznych ocen — pokazujemy wyłącznie ceny zmierzone dla wskazanego terminu i opatrzone datą pomiaru.",
   },
 ];
 
@@ -73,7 +76,7 @@ export default function RedakcjaPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
 
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm sm:p-8">
         <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: "Redakcja" }]} />

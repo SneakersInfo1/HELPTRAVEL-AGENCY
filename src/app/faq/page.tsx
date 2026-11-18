@@ -1,4 +1,6 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 import { TRUSTED_TRAVEL_RESOURCES } from "@/lib/mvp/trusted-resources";
@@ -46,7 +48,7 @@ const faqItems = [
   },
 ];
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "FAQ",
   description:
     "Najczęstsze pytania o HelpTravel, planner, linki partnerskie, ceny, zapisywanie planów i sposób działania serwisu.",
@@ -60,7 +62,7 @@ export const metadata: Metadata = {
     url: "/faq",
     type: "website",
   },
-};
+});
 
 export default function FaqPage() {
   const structuredData = {
@@ -78,7 +80,7 @@ export default function FaqPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
 
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <h1 className="mt-3 font-display text-3xl leading-[1.08] text-ink sm:text-4xl sm:leading-[1.0] md:text-5xl md:leading-[0.95]">Najczęstsze pytania o HelpTravel</h1>
@@ -117,7 +119,8 @@ export default function FaqPage() {
             </Link>
             <Link href="/cennik" className="rounded-2xl bg-white px-4 py-3 text-sm text-ink-muted transition hover:text-brand">
               Cennik i model płatności
-            </Link>
+            </Link>
+
           </div>
         </article>
 

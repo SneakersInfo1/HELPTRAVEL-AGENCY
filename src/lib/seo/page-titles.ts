@@ -1,4 +1,5 @@
 import { formatPricePln } from "@/lib/home/deal-card";
+import { formatClimateNumber } from "@/lib/mvp/climate-normals";
 import type { CommercialCity } from "@/lib/mvp/commercial-cities";
 import type { ComparisonPair } from "@/lib/mvp/comparisons";
 import { inMonthPhrase, type PolishMonthSlug, type Season } from "@/lib/mvp/months";
@@ -64,13 +65,31 @@ export interface MonthPageTextInput {
   /** Polska nazwa kierunku z bramki faktów SEO. */
   name: string;
   month: PolishMonthSlug;
-  tempC: number | null;
+  /** Średnia maksymalna temperatura w dzień z normy WMO. */
+  maxTempC: number | null;
+  /** Średnia minimalna temperatura w nocy z normy WMO. */
+  minTempC: number | null;
   price?: VerifiedTitlePrice | null;
 }
 
-export function monthPageText({ name, month, tempC, price }: MonthPageTextInput) {
+/**
+ * Tytuł strony miesiąca z pogodą. Jest ustawiany jako tytuł absolutny, bez
+ * sufiksu marki, i zawsze mieści się w 60 znakach.
+ */
+export function monthWeatherTitle(name: string, inMonth: string, maxTempC: number): string {
+  const value = formatClimateNumber(maxTempC);
+  const candidates = [
+    `${name} ${inMonth}: pogoda, w dzień ${value}°C`,
+    `${name} ${inMonth}: w dzień ${value}°C`,
+    // Miesiąc zostaje zawsze: bez niego 12 stron kierunku miałoby ten sam tytuł.
+    `${name} ${inMonth}: ${value}°C`,
+  ];
+  return candidates.find((candidate) => candidate.length <= 60) ?? candidates[candidates.length - 1];
+}
+
+export function monthPageText({ name, month, maxTempC, minTempC, price }: MonthPageTextInput) {
   const inMonth = inMonthPhrase(month);
-  if (tempC === null) {
+  if (maxTempC === null) {
     return {
       title: price ? `${name} ${inMonth}: ${hotelsFromPhrase(price)}` : `${name} ${inMonth}: hotele i kiedy lecieć`,
       description: `${name} ${inMonth}: hotele z cenami w PLN i loty na ten termin. Sprawdź dostępność w wyszukiwarce.`,
@@ -79,15 +98,17 @@ export function monthPageText({ name, month, tempC, price }: MonthPageTextInput)
     };
   }
 
+  const max = formatClimateNumber(maxTempC);
+  const min = minTempC === null ? null : formatClimateNumber(minTempC);
   return {
     title: price
-      ? `${name} ${inMonth}: pogoda ${tempC}°C, ${hotelsFromPhrase(price)}`
-      : `${name} ${inMonth}: pogoda ${tempC}°C, hotele i kiedy lecieć`,
-    description: `${name} ${inMonth}: średnia temperatura ${tempC}°C. Sprawdź, czy to dobry termin, i przejdź do hoteli i lotów z cenami w PLN.`,
+      ? `${name} ${inMonth}: ${max}°C w dzień, ${hotelsFromPhrase(price)}`
+      : monthWeatherTitle(name, inMonth, maxTempC),
+    description: `${name} ${inMonth}: średnia maksymalna w dzień ${max}°C${min ? `, minimalna w nocy ${min}°C` : ""}. Aktualne ceny hoteli na wybrany termin pokazuje wyszukiwarka.`,
     ogTitle: price
-      ? `${name} ${inMonth} — pogoda ${tempC}°C i ${hotelsFromPhrase(price)}`
-      : `${name} ${inMonth} — pogoda ${tempC}°C i hotele`,
-    headline: `${name} ${inMonth} — pogoda, hotele i kiedy lecieć`,
+      ? `${name} ${inMonth} — ${max}°C w dzień i ${hotelsFromPhrase(price)}`
+      : `${name} ${inMonth} — pogoda, w dzień ${max}°C`,
+    headline: `${name} ${inMonth} — pogoda i temperatura`,
   };
 }
 
@@ -120,10 +141,10 @@ export function cityHotelsPageText({ city, price }: CityHotelsPageTextInput) {
 }
 
 const SEASON_HEADINGS: Record<Season, string> = {
-  wiosna: "Najlepsze kierunki na wiosnę — ranking pod krótki wyjazd",
-  lato: "Najlepsze kierunki na lato — gdzie ciepło i sensownie",
-  jesien: "Najlepsze kierunki na jesień — ciepła pogoda, mniej tłumów",
-  zima: "Najlepsze kierunki na zimę — ciepłe ucieczki i city break",
+  wiosna: "Kierunki na wiosnę: w dzień średnio 22–28°C",
+  lato: "Kierunki na lato: w dzień średnio 22–28°C",
+  jesien: "Kierunki na jesień: w dzień średnio 22–28°C",
+  zima: "Kierunki na zimę: w dzień średnio 22–28°C",
 };
 
 export function seasonPageHeading(season: Season): string {
@@ -134,26 +155,15 @@ export interface ComparisonPageTextInput {
   pair: ComparisonPair;
   nameA: string;
   nameB: string;
-  /** Obie strony mają temperaturę kuratorowaną — tylko wtedy strona pokazuje pogodę. */
+  /** Obie strony mają normę WMO — tylko wtedy strona pokazuje pogodę. */
   hasClimate?: boolean;
-  /** Obie strony mają szacunek budżetu z danych kuratorowanych. */
-  hasBudget?: boolean;
 }
 
-// Tytuł i opis obiecują tylko to, co strona pokazuje. Po PR #1.5 porównanie bez
-// danych kuratorowanych (np. Kreta–Rodos) nie ma sekcji pogody ani budżetu.
-export function comparisonPageText({ pair, nameA, nameB, hasClimate = false, hasBudget = false }: ComparisonPageTextInput) {
-  const titleTopics =
-    hasClimate && hasBudget
-      ? "pogoda, budżet i dolot"
-      : hasClimate
-        ? "pogoda, plaże i dolot"
-        : hasBudget
-          ? "budżet, plaże i dolot"
-          : "plaże, zwiedzanie i dolot";
+// Tytuł i opis obiecują tylko to, co strona pokazuje. Bez kwot budżetu ze wzoru.
+export function comparisonPageText({ pair, nameA, nameB, hasClimate = false }: ComparisonPageTextInput) {
+  const titleTopics = hasClimate ? "pogoda, plaże i dolot" : "plaże, zwiedzanie i dolot";
   const descriptionTopics = [
     hasClimate ? "pogoda w sezonie" : null,
-    hasBudget ? "orientacyjny budżet na 4 dni" : null,
     "plaże i dolot z Polski",
   ]
     .filter((topic): topic is string => topic !== null)

@@ -4,6 +4,7 @@ import { Check, CreditCard, Mail, ShieldCheck } from "lucide-react";
 
 import { PaymentMethods } from "@/components/home/payment-methods";
 import { FinalCtaBanner } from "@/components/site/final-cta-banner";
+import { completeSocial } from "@/lib/seo/social-meta";
 
 // Ta strona opisywała model, którego już nie ma: „częściowo przez linki
 // partnerskie", „finalna cena jest po stronie partnera", „planner". Rezerwacja
@@ -22,7 +23,7 @@ import { FinalCtaBanner } from "@/components/site/final-cta-banner";
 //   • „Bezpłatna anulacja do {data}" przy ofercie — card-price.tsx:86
 //   • lot = osobna płatność — loty/platnosc/page.tsx:93
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Ile kosztuje rezerwacja",
   description:
     "Wyszukiwanie i porównywanie jest bezpłatne. Płacisz kwotę z podsumowania rezerwacji, w złotówkach. Przy ofertach, w których obiekt pobiera część podatków na miejscu, pokazujemy tę kwotę osobno przed płatnością.",
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
       "Za wyszukiwanie nie płacisz nic. Za nocleg płacisz tyle, ile widnieje w podsumowaniu rezerwacji — w PLN. Ewentualne opłaty pobierane przez obiekt pokazujemy osobno.",
     url: "/cennik",
   },
-};
+});
 
 const FREE = [
   "Wyszukiwanie hoteli i lotów, filtry i porównywanie cen",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 
 import {
@@ -10,7 +11,7 @@ import { categoryPath } from "@/lib/mvp/category-slug";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { SHELL_DISCOVERY } from "@/lib/ui/layout";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Mapa serwisu",
   description: "Przeglad najwazniejszych sekcji, kierunków, przewodników i stron zaufania w HelpTravel.",
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     url: "/mapa-serwisu",
     type: "website",
   },
-};
+});
 
 export default function SiteMapPage() {
   const categories = getEditorialCategories();

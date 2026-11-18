@@ -77,7 +77,11 @@ async function main() {
 
   const rows: Row[] = [];
   try {
-    for (const route of ROUTES) {
+    // --routes=/a,/b — mierzy tylko podane adresy. Domyślna lista zawiera
+    // wyszukiwarkę i kartę hotelu, czyli strony wołające dostawcę; pomiary stron
+    // treści (SEO) podają własną listę i nie generują ruchu do LiteAPI.
+    const routes = (parseArg("routes")?.split(",").filter(Boolean) ?? [...ROUTES]).map((route) => (route.startsWith("/") ? route : `/${route}`));
+    for (const route of routes) {
       const url = `${baseUrl}${route}`;
       const flags: Flags = {
         port: chrome.port,

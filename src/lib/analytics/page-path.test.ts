@@ -27,6 +27,13 @@ describe("analyticsPagePath — jeden pathname + jeden query string (test A)", (
     );
   });
 
+  it("odcina fragment także z query — cel i termin z linku do lotów nie trafiają do GA4", () => {
+    // Tak SeoCtaLink rozkłada `href` „/?tab=loty#destination=BCN…” (lib/flights/prefill-link.ts).
+    assert.equal(analyticsPagePath("/", "tab=loty#destination=BCN&destLabel=Barcelona&depart=2027-01-10"), "/?tab=loty");
+    assert.equal(analyticsPagePath("/", "#destination=BCN"), "/");
+    assert.equal(analyticsPagePath("/", "a=%23b"), "/?a=%23b");
+  });
+
   it("traktuje nadmiarowy `?` w samym query jak separator i skleja duplikaty", () => {
     assert.equal(analyticsPagePath("/", "tab=loty?tab=loty"), "/?tab=loty");
     assert.equal(analyticsPagePath("/hotele/szukaj", "?a=1?a=1?a=1"), "/hotele/szukaj?a=1");

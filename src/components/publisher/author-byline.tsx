@@ -42,7 +42,8 @@ export function AuthorByline({
         <Link href={author.url} className="font-semibold underline-offset-2 hover:underline">
           <span className="text-emerald-800">{author.name}</span>
         </Link>
-        <p className="mt-0.5 text-emerald-900/60">
+        {/* text-ink-muted (6,5:1): poprzednie text-emerald-900/60 nie spełniało AA (axe, 2026-11). */}
+        <p className="mt-0.5 text-ink-muted">
           {author.role}
           {updated ? ` · Zaktualizowano ${updated}` : ""}
         </p>

@@ -4,12 +4,12 @@
 // biorą liczby o kierunku wyłącznie stąd. Bramka przepuszcza wartość według jej
 // pochodzenia (lib/mvp/data-provenance.ts), a nie według tego, czy liczba
 // „wygląda wiarygodnie":
-//  • temperatura — tylko verified/curated; tablica regionu nigdy;
+//  • temperatura — wyłącznie oficjalna norma WMO WWIS; ręczna tablica profilu
+//    i tablica regionu nigdy;
 //  • czas lotu — verified/curated jako fakt; szacunek z odległości od
 //    najbliższego lotniska w Polsce (seed data/destinations.json) wyłącznie jako
 //    oznaczony szacunek do treści (nie do title, meta, OG ani JSON-LD); stała
 //    regionu nigdy; kierunek w Polsce nie ma „lotu z Polski";
-//  • budżet ze wzoru — tylko z danych kuratorowanych i tylko jako szacunek;
 //  • wiza — bez kategorycznego claimu, dopóki nie ma zweryfikowanego źródła.
 //
 // Seed czytamy wprost z JSON-a: lib/mvp/destinations-seed.ts ma
@@ -18,19 +18,39 @@
 import seedJson from "../../../data/destinations.json";
 
 import {
-  derivedProvenance,
   isFactGrade,
   provenanceOf,
   type DataProvenance,
   type FactGradeProvenance,
 } from "@/lib/mvp/data-provenance";
+import {
+  formatClimatePeriod,
+  getClimateNormal,
+  type ClimateMonthlyValues,
+} from "@/lib/mvp/climate-normals";
 import { getStoryBySlug } from "@/lib/mvp/destination-content";
 import { localizeCity, localizeCountry } from "@/lib/mvp/i18n-geo";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 export interface TemperatureFact {
-  byMonth: readonly number[];
-  provenance: FactGradeProvenance;
+  /** Średnia miesięczna temperatura maksymalna w dzień. */
+  byMonth: ClimateMonthlyValues<number>;
+  /** Średnia miesięczna temperatura minimalna w nocy. */
+  minByMonth: ClimateMonthlyValues<number>;
+  rainDays: ClimateMonthlyValues<number | null>;
+  rainfallMm: ClimateMonthlyValues<number>;
+  provenance: "verified";
+  source: ClimateFactSource;
+}
+
+export interface ClimateFactSource {
+  name: "WMO World Weather Information Service";
+  provider: string;
+  /** Nazwa stacji albo, gdy WWIS jej nie podaje, nazwa miasta w WWIS — z jawną etykietą. */
+  station: string;
+  stationLabel: "stacja" | "punkt WWIS";
+  periodLabel: string;
+  url: string;
 }
 
 export interface ExactFlightFact {
@@ -61,8 +81,6 @@ export interface DestinationSeoFacts {
   isDomestic: boolean;
   temperature: TemperatureFact | null;
   flight: FlightFact | null;
-  /** Pochodzenie budżetów ze wzoru (costIndex × czas lotu) dla tego kierunku. */
-  budgetEstimate: DataProvenance;
   /** Pochodzenie ocen profilu (plaża, miasto, zwiedzanie, natura, bezpieczeństwo). */
   profileScores: DataProvenance;
   entryRequirementsNote: string;
@@ -137,11 +155,24 @@ function resolveFlight(profile: DestinationProfile): FlightFact | null {
 
 export function getDestinationSeoFacts(profile: DestinationProfile): DestinationSeoFacts {
   const isDomestic = profile.country === HOME_COUNTRY;
-  const temperatureProvenance = provenanceOf(profile, "temperature");
-  const temperature =
-    isFactGrade(temperatureProvenance) && profile.avgTempByMonth.length === 12
-      ? { byMonth: profile.avgTempByMonth, provenance: temperatureProvenance }
-      : null;
+  const normal = getClimateNormal(profile.slug);
+  const temperature: TemperatureFact | null = normal
+    ? {
+        byMonth: normal.maxTempC,
+        minByMonth: normal.minTempC,
+        rainDays: normal.rainDays,
+        rainfallMm: normal.rainfallMm,
+        provenance: "verified",
+        source: {
+          name: "WMO World Weather Information Service",
+          provider: normal.provider,
+          station: normal.stationName ?? normal.wwisCity,
+          stationLabel: normal.stationName ? "stacja" : "punkt WWIS",
+          periodLabel: formatClimatePeriod(normal.periodFrom, normal.periodTo),
+          url: normal.sourceUrl,
+        },
+      }
+    : null;
 
   return {
     slug: profile.slug,
@@ -150,7 +181,6 @@ export function getDestinationSeoFacts(profile: DestinationProfile): Destination
     isDomestic,
     temperature,
     flight: isDomestic ? null : resolveFlight(profile),
-    budgetEstimate: derivedProvenance(provenanceOf(profile, "price")),
     profileScores: provenanceOf(profile, "scores"),
     entryRequirementsNote: ENTRY_REQUIREMENTS_NOTE,
   };
@@ -166,7 +196,8 @@ export function canClaimFromProfileScores(facts: DestinationSeoFacts): boolean {
   return isFactGrade(facts.profileScores);
 }
 
-export function monthTemperature(facts: DestinationSeoFacts, monthIndex: number): number | null {
+/** Średnia maksymalna temperatura w dzień dla miesiąca. */
+export function monthDaytimeMaxTemperature(facts: DestinationSeoFacts, monthIndex: number): number | null {
   const value = facts.temperature?.byMonth[monthIndex];
   return typeof value === "number" ? value : null;
 }
@@ -183,11 +214,7 @@ export function flightHoursForTripLength(facts: DestinationSeoFacts): number | n
 
 /** Tekst do widocznej treści. Szacunek zawsze niesie etykietę i hub. */
 export function formatFlightFact(fact: FlightFact): string {
-  const hours = `${fact.hours.toFixed(1)} h`;
+  // Polski zapis ułamka: „2,6 h", nie „2.6 h".
+  const hours = `${fact.hours.toFixed(1).replace(".", ",")} h`;
   return fact.kind === "exact" ? `ok. ${hours}` : `szacunkowo ok. ${hours} ${fact.fromHub} (liczone z odległości)`;
-}
-
-/** Budżet ze wzoru wolno pokazać wyłącznie jako oznaczony szacunek z danych kuratorowanych. */
-export function canShowBudgetEstimate(facts: DestinationSeoFacts): boolean {
-  return facts.budgetEstimate === "derived";
 }

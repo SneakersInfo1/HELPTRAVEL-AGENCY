@@ -1,4 +1,6 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -38,7 +40,7 @@ export async function generateMetadata({ params }: InspirationPageProps): Promis
     };
   }
 
-  return {
+  return completeSocial({
     title: article.title,
     description: article.description,
     alternates: {
@@ -50,7 +52,7 @@ export async function generateMetadata({ params }: InspirationPageProps): Promis
       url: `${getSiteUrl()}/inspiracje/${article.slug}`,
       type: "article",
     },
-  };
+  }, { ownImage: true });
 }
 
 export default async function InspirationPage({ params }: InspirationPageProps) {
@@ -126,7 +128,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
 
       <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         <div className="relative flex min-h-[24rem] flex-col justify-end sm:min-h-[26rem]">

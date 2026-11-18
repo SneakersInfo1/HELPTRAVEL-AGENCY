@@ -40,48 +40,48 @@ function makePair(
 
 export const comparisonPairs: ComparisonPair[] = [
   // Hiszpania - city break
-  makePair("barcelona-spain", "valencia-spain", "Drugie miasto Hiszpanii — porównańie pod city break"),
-makePair("barcelona-spain", "malaga-spain", "Plaża i miasto: kierunki katalońskie kontra Andaluzja"),
+  makePair("barcelona-spain", "valencia-spain", "Drugie miasto Hiszpanii — porównanie pod city break"),
+makePair("barcelona-spain", "malaga-spain", "Plaża i miasto: Katalonia kontra Andaluzja"),
 makePair("malaga-spain", "valencia-spain", "Andaluzja kontra Walencja — klimat plażowo-miejski", undefined, "Malaga czy Walencja? Porównanie (plaża, ceny, pogoda)"),
 
   // Iberia: Portugalia + Hiszpania
-  makePair("lisbon-portugal", "barcelona-spain", "Dwie ikony Iberii — co lepiej pod 4 dni"),
-  makePair("lisbon-portugal", "malaga-spain", "Cieplo i atmosfera: Lizbona kontra Malaga"),
-  makePair("lisbon-portugal", "valencia-spain", "Atlantyk kontra Morze Srodziemne na city break"),
+  makePair("lisbon-portugal", "barcelona-spain", "Dwie ikony Półwyspu Iberyjskiego — co lepsze na 4 dni"),
+  makePair("lisbon-portugal", "malaga-spain", "Ciepło i atmosfera: Lizbona kontra Malaga"),
+  makePair("lisbon-portugal", "valencia-spain", "Atlantyk kontra Morze Śródziemne na city break"),
 
   // Wlochy
-  makePair("rome-italy", "naples-italy", "Klasyk kontra wloskie poludnie"),
+  makePair("rome-italy", "naples-italy", "Klasyk kontra włoskie południe"),
   makePair("rome-italy", "barcelona-spain", "Dwie kultowe stolice na city break"),
 
   // Wschodnie srodziemnomorze
   makePair("athens-greece", "istanbul-turkey", "Antyk kontra metropolia — Grecja vs Turcja"),
   makePair("antalya-turkey", "larnaca-cyprus", "Wakacje all-inclusive: Turcja vs Cypr"),
   makePair("larnaca-cyprus", "valletta-malta", "Wyspy południa: Cypr kontra Malta"),
-  makePair("athens-greece", "valletta-malta", "Krotki wyjazd nad ciepłym morzem"),
+  makePair("athens-greece", "valletta-malta", "Krótki wyjazd nad ciepłym morzem"),
 
-  // Tanie city breaki Europy Srodkowej
-  makePair("budapest-hungary", "prague-czechia", "Klasyczny duet city breaku Europy Srodkowej"),
+  // City breaki Europy Srodkowej
+  makePair("budapest-hungary", "prague-czechia", "Klasyczny duet city breaku Europy Środkowej"),
   makePair("berlin-germany", "prague-czechia", "Berlin kontra Praga — weekend miejski"),
   makePair("budapest-hungary", "berlin-germany", "Atmosfera kontra design — Budapeszt vs Berlin"),
 
-  // Balkany / niedrogie
-  makePair("athens-greece", "tirana-albania", "Bliska Grecja kontra wschodzaca Albania"),
+  // Balkany
+  makePair("athens-greece", "tirana-albania", "Bliska Grecja kontra wschodząca Albania"),
 
   // Pln Europa
-  makePair("amsterdam-netherlands", "berlin-germany", "Dwa rowne city breaki w Europie Zachodniej"),
-  makePair("dublin-ireland", "london-uk", "Wyspy Brytyjskie — gdzie krótki wypad"),
-  makePair("amsterdam-netherlands", "london-uk", "Krotki lot, mocny city break"),
+  makePair("amsterdam-netherlands", "berlin-germany", "Dwa równorzędne city breaki w Europie Zachodniej"),
+  makePair("dublin-ireland", "london-uk", "Wyspy Brytyjskie — gdzie na krótki wypad"),
+  makePair("amsterdam-netherlands", "london-uk", "Krótki lot, mocny city break"),
 
   // Maroko
-  makePair("agadir-morocco", "marrakesh-morocco", "Maroko: plaża Atlantyku kontra Medyna"),
+  makePair("agadir-morocco", "marrakesh-morocco", "Maroko: plaża nad Atlantykiem kontra medyna"),
   makePair("istanbul-turkey", "marrakesh-morocco", "Bizancjum kontra Maghreb — egzotyczny city break"),
 
   // Cieplo zima — wyspy
-  makePair("funchal-portugal", "las-palmas-spain", "Madera kontra Wyspy Kanaryjskie zima"),
-  makePair("agadir-morocco", "las-palmas-spain", "Cieplo zimowe: Maroko kontra Kanary"),
+  makePair("funchal-portugal", "las-palmas-spain", "Madera kontra Wyspy Kanaryjskie zimą"),
+  makePair("agadir-morocco", "las-palmas-spain", "Zimowe ciepło: Maroko kontra Kanary"),
 
 // Plaża południa
-makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plażowe lata"),
+makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plażowe na lato"),
 
   // Wyspy — najwyższy wolumen pakietów wakacyjnych z Polski. Slug kierunku to
   // miasto-lotnisko, więc etykiety pokazują nazwę wyspy (intencja wyszukiwania).
@@ -112,8 +112,8 @@ makePair("antalya-turkey", "malaga-spain", "Dwa pewne kierunki plażowe lata"),
   makePair("larnaca-cyprus", "palma-spain", "Cypr czy Majorka — którą wyspę wybrać na wakacje", { "palma-spain": "Majorka" }),
   makePair("heraklion-greece", "larnaca-cyprus", "Kreta czy Cypr na wakacje nad ciepłym morzem", { "heraklion-greece": "Kreta" }),
   makePair("larnaca-cyprus", "rhodes-greece", "Cypr czy Rodos — porównanie pod plażę i pogodę", { "rhodes-greece": "Rodos" }),
-  makePair("agadir-morocco", "antalya-turkey", "Maroko czy Turcja — ciepły kierunek plażowy w dobrej cenie"),
-  makePair("larnaca-cyprus", "malaga-spain", "Andaluzja czy Cypr — plaża, słońce i koszty"),
+  makePair("agadir-morocco", "antalya-turkey", "Maroko czy Turcja — ciepły kierunek plażowy"),
+  makePair("larnaca-cyprus", "malaga-spain", "Andaluzja czy Cypr — plaża i słońce"),
   makePair("funchal-portugal", "santa-cruz-de-tenerife-spain", "Madera czy Teneryfa na zimową ucieczkę w ciepło", { "funchal-portugal": "Madera", "santa-cruz-de-tenerife-spain": "Teneryfa" }),
 
   // ── Klasyki city break — wysoka intencja zwiedzania ──

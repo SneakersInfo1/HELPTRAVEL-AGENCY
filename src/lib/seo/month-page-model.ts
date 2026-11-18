@@ -1,16 +1,21 @@
+import { formatClimateNumber } from "@/lib/mvp/climate-normals";
+import { APPROXIMATE_MIN_DIFF_C } from "@/lib/mvp/climate-periods";
+import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import { isMonthIndexable } from "@/lib/mvp/month-index-policy";
 import { getMonthIndex, inMonthPhrase, polishMonthSlugs, type PolishMonthSlug } from "@/lib/mvp/months";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 import {
-  canShowBudgetEstimate,
+  destinationDisplayName,
   exactFlightHours,
   formatFlightFact,
   getDestinationSeoFacts,
-  monthTemperature,
+  type ClimateFactSource,
   type DestinationSeoFacts,
 } from "./destination-facts";
-import { buildMonthPageStructuredData } from "./month-page-schema";
+import { formatDayLength, midMonthDayLength } from "./daylight";
+import { homeComparison, monthStanding, stationLatitude, warmerAlternatives } from "./month-context";
+import { buildMonthPageStructuredData, monthPageQuestions, type MonthQuestion } from "./month-page-schema";
 import { monthPageText } from "./page-titles";
 
 export interface MonthPageModelInput {
@@ -23,17 +28,49 @@ export interface MonthPageModelInput {
 }
 
 export interface MonthWeather {
-  tempC: number;
-  description: string;
-  verdict: string;
-  positionInYear: "wysokie" | "średnie" | "niskie";
-  yearMin: number;
-  yearMax: number;
-  yearTemps: readonly number[];
-  warmestMonth: PolishMonthSlug;
-  coldestMonth: PolishMonthSlug;
-  /** Tylko dla `beachScore >= 0.6`; model z temperatur powietrza. */
-  seaTempEstimate: number | null;
+  /** Średnia maksymalna temperatura w dzień z normy WMO. */
+  maxTempC: number;
+  /** Średnia minimalna temperatura w nocy z normy WMO. */
+  minTempC: number;
+  rainDays: number | null;
+  rainfallMm: number;
+  rankInYear: number;
+  rankShared: boolean;
+  yearMinMaxTempC: number;
+  yearMaxMaxTempC: number;
+  yearMaxTemps: readonly number[];
+  warmestMonths: PolishMonthSlug[];
+  coldestMonths: PolishMonthSlug[];
+  source: ClimateFactSource;
+}
+
+/**
+ * Miesiąc na tle Polski i innych kierunków. Każda wartość to różnica albo pozycja
+ * policzona z tych samych norm WMO; długość dnia wynika z szerokości geograficznej stacji.
+ */
+export interface MonthContext {
+  /** Długość dnia 15. dnia miesiąca, np. „9 h 35 min”. */
+  dayLength: string | null;
+  /** Porównanie z Warszawą w tym samym miesiącu; null dla samej Warszawy. */
+  home: {
+    maxDiffC: number;
+    homeMaxC: number;
+    rainDaysDiff: number | null;
+    approximate: boolean;
+    periodLabel: string;
+    homePeriodLabel: string;
+  } | null;
+  /** Ile kierunków z normą ma w tym miesiącu wyższe średnie maksimum. */
+  standing: { warmerCount: number; total: number; periodLabel: string } | null;
+  /** Najbliższe cieplejsze kierunki z indeksowalną stroną tego samego miesiąca. */
+  warmer: Array<{
+    slug: string;
+    name: string;
+    maxTempC: number;
+    diffC: number;
+    approximate: boolean;
+    periodLabel: string;
+  }>;
 }
 
 export interface MonthPageModel {
@@ -44,112 +81,174 @@ export interface MonthPageModel {
   facts: DestinationSeoFacts;
   text: { title: string; description: string; ogTitle: string; h1: string; lead: string };
   weather: MonthWeather | null;
-  budgetEstimate: { min: number; max: number } | null;
+  /** Tylko dla stron z normą WMO. */
+  context: MonthContext | null;
   flightText: string | null;
+  /** Widoczne FAQ — identyczne z węzłem FAQPage. */
+  faq: MonthQuestion[];
+  /** Wskazania wyłącznie z maksymalnej temperatury w dzień i dni z opadem. */
+  fit: MonthFit | null;
   structuredData: Record<string, unknown>;
 }
 
-function estimateBudgetForMonth(costIndex: number, flightHours: number, monthIndex: number) {
-  const days = 4;
-  const travelers = 2;
-  const peakMonths = [5, 6, 7];
-  const seasonalMultiplier = peakMonths.includes(monthIndex)
-    ? 1.18
-    : monthIndex === 11 || monthIndex === 0
-      ? 1.06
-      : 0.96;
-  const flightBasePerPerson = (380 + flightHours * 70) * seasonalMultiplier;
-  const stayPerDayPerPerson = 170 * costIndex * (peakMonths.includes(monthIndex) ? 1.12 : 1);
-  const localPerDay = 65 * costIndex;
-  const total = travelers * flightBasePerPerson + travelers * days * stayPerDayPerPerson + days * localPerDay;
-  return { min: Math.round(total * 0.9), max: Math.round(total * 1.18) };
+export interface MonthFit {
+  goodFor: string[];
+  skipIf: string[];
+  basis: string;
 }
 
-function describeWeather(temp: number) {
-  if (temp >= 27) return "bardzo ciepło, często upały w środku dnia";
-  if (temp >= 22) return "ciepło, komfortowo na zwiedzanie i plażę";
-  if (temp >= 17) return "łagodnie, idealnie na chodzenie i tarasy";
-  if (temp >= 12) return "chłodno, ale przyjemnie na spacer i kawiarnie";
-  if (temp >= 6) return "zimno, warto mieć cieplejszą warstwę";
-  return "zimno, często wymaga kurtki zimowej";
+function buildFit(weather: MonthWeather): MonthFit {
+  const goodFor: string[] = [];
+  const skipIf: string[] = [];
+  const maxTemp = weather.maxTempC;
+
+  if (maxTemp >= 30) {
+    goodFor.push("aktywności na zewnątrz rano i późnym popołudniem");
+    skipIf.push("chcesz zwiedzać pieszo przez cały dzień bez przerw od wysokiej temperatury");
+  } else if (maxTemp >= 24) {
+    goodFor.push("spacery, zwiedzanie i posiłki na zewnątrz w ciągu dnia");
+  } else if (maxTemp >= 18) {
+    goodFor.push("zwiedzanie pieszo bez wysokich temperatur w środku dnia");
+  } else if (maxTemp >= 12) {
+    goodFor.push("zwiedzanie miasta z cieplejszą warstwą pod ręką");
+    skipIf.push("zależy Ci na ciepłych dniach przez większość wyjazdu");
+  } else {
+    goodFor.push("muzea, wnętrza i krótki miejski plan");
+    skipIf.push("chcesz spędzać większość dnia na zewnątrz w łagodnej temperaturze");
+  }
+
+  if (weather.rainDays !== null && weather.rainDays >= 12) {
+    skipIf.push(`chcesz ograniczyć liczbę dni z opadem — norma wskazuje ${formatClimateNumber(weather.rainDays)} dnia w miesiącu`);
+  } else if (weather.rainDays !== null && weather.rainDays <= 3) {
+    goodFor.push(`plan z dużą ilością czasu na zewnątrz — norma wskazuje ${formatClimateNumber(weather.rainDays)} dnia z opadem`);
+  }
+
+  const rainBasis =
+    weather.rainDays === null ? "" : ` oraz średniej liczbie dni z opadem (${formatClimateNumber(weather.rainDays)})`;
+  return {
+    goodFor,
+    skipIf,
+    basis: `Wskazania oparto na średniej maksymalnej temperaturze w dzień (${formatClimateNumber(weather.maxTempC)}°C)${rainBasis} z ${weather.source.name}, ${weather.source.periodLabel}. To norma wieloletnia, nie prognoza; wskazania nie uwzględniają tłumów ani cen.`,
+  };
 }
 
-// Werdykt mówi wyłącznie o pogodzie z danych kuratorowanych. Sama temperatura
-// nie niesie informacji o sezonie turystycznym, tłumach ani cenach, więc nie ma
-// tu „poza sezonem" ani „wysokiego sezonu".
-function suitabilityVerdict(temp: number, beachScore: number) {
-  if (temp >= 22 && beachScore >= 0.7) return "Tak — to jeden z cieplejszych terminów na tym kierunku.";
-  if (temp >= 18) return "Tak — komfortowa temperatura na city break i sensowne zwiedzanie.";
-  if (temp >= 12) return "Warto, jeśli akceptujesz chłodniejszą pogodę i nie liczysz na plażę.";
-  return "Możliwe, ale trzeba liczyć się z chłodem — to termin raczej na miasto i wnętrza niż na plażę.";
+function monthsAtValue(values: readonly number[], expected: number): PolishMonthSlug[] {
+  return polishMonthSlugs.filter((_, index) => values[index] === expected);
 }
 
-// Morze reaguje na temperaturę powietrza z opóźnieniem, dlatego model waży
-// bieżący i dwa poprzednie miesiące. To szacunek, nie pomiar.
-function estimateSeaTemperature(avgTempByMonth: readonly number[], monthIndex: number): number {
-  const m0 = avgTempByMonth[monthIndex];
-  const m1 = avgTempByMonth[(monthIndex + 11) % 12];
-  const m2 = avgTempByMonth[(monthIndex + 10) % 12];
-  const modeled = m0 * 0.45 + m1 * 0.33 + m2 * 0.22;
-  return Math.min(29, Math.max(10, Math.round(modeled)));
-}
+function buildWeather(facts: DestinationSeoFacts, monthIndex: number): MonthWeather | null {
+  const temperature = facts.temperature;
+  if (!temperature) return null;
 
-// Bez „sezonu", tłumów i cen. Klasyfikacja sezonu z samej temperatury
-// („Styczeń to poza sezonem — najspokojniej, ceny najniższe") nie ma źródła
-// o ruchu ani cenach i myli się dla kierunków zimowego słońca: na Teneryfie
-// styczeń to szczyt sezonu. Temperatura z danych kuratorowanych zostaje
-// faktem; sezon i ceny wrócą dopiero z własnym źródłem.
-function buildWeather(profile: DestinationProfile, facts: DestinationSeoFacts, monthIndex: number): MonthWeather | null {
-  const tempC = monthTemperature(facts, monthIndex);
-  const yearTemps = facts.temperature?.byMonth;
-  if (tempC === null || !yearTemps) return null;
-
-  const yearMin = Math.min(...yearTemps);
-  const yearMax = Math.max(...yearTemps);
+  const maxTempC = temperature.byMonth[monthIndex];
+  const minTempC = temperature.minByMonth[monthIndex];
+  const yearMinMaxTempC = Math.min(...temperature.byMonth);
+  const yearMaxMaxTempC = Math.max(...temperature.byMonth);
+  const equalMonths = temperature.byMonth.filter((value) => value === maxTempC).length;
 
   return {
-    tempC,
-    description: describeWeather(tempC),
-    verdict: suitabilityVerdict(tempC, profile.beachScore),
-    positionInYear: tempC >= yearMax - 2 ? "wysokie" : tempC <= yearMin + 2 ? "niskie" : "średnie",
-    yearMin,
-    yearMax,
-    yearTemps,
-    warmestMonth: polishMonthSlugs[yearTemps.indexOf(yearMax)],
-    coldestMonth: polishMonthSlugs[yearTemps.indexOf(yearMin)],
-    seaTempEstimate: profile.beachScore >= 0.6 ? estimateSeaTemperature(yearTemps, monthIndex) : null,
+    maxTempC,
+    minTempC,
+    rainDays: temperature.rainDays[monthIndex],
+    rainfallMm: temperature.rainfallMm[monthIndex],
+    rankInYear: temperature.byMonth.filter((value) => value > maxTempC).length + 1,
+    rankShared: equalMonths > 1,
+    yearMinMaxTempC,
+    yearMaxMaxTempC,
+    yearMaxTemps: temperature.byMonth,
+    warmestMonths: monthsAtValue(temperature.byMonth, yearMaxMaxTempC),
+    coldestMonths: monthsAtValue(temperature.byMonth, yearMinMaxTempC),
+    source: temperature.source,
   };
+}
+
+let profilesBySlug: Map<string, DestinationProfile> | null = null;
+
+function profileBySlug(slug: string): DestinationProfile | undefined {
+  profilesBySlug ??= new Map(getAllDestinationProfiles().map((profile) => [profile.slug, profile]));
+  return profilesBySlug.get(slug);
+}
+
+function buildContext(slug: string, monthIndex: number): MonthContext | null {
+  const standing = monthStanding(slug, monthIndex);
+  const latitude = stationLatitude(slug);
+  const warmer = warmerAlternatives(slug, monthIndex, {
+    // Linkujemy tylko do stron, które istnieją i są w indeksie — nie do noindex.
+    isEligible: (other) => {
+      const profile = profileBySlug(other);
+      return profile !== undefined && isMonthIndexable(profile, monthIndex);
+    },
+  }).map((item) => ({ ...item, name: destinationDisplayName(profileBySlug(item.slug)!) }));
+  return {
+    dayLength: latitude === null ? null : formatDayLength(midMonthDayLength(latitude, monthIndex)),
+    home: homeComparison(slug, monthIndex),
+    standing,
+    warmer,
+  };
+}
+
+/** Jedno zdanie do odpowiedzi: jak to wypada wobec tego, co czytelnik ma w tym czasie w Polsce. */
+function homeLead(context: MonthContext | null, inMonth: string): string {
+  const home = context?.home;
+  if (!home) return "";
+  if (home.approximate) {
+    const periods = `normy z lat ${home.periodLabel} i ${home.homePeriodLabel}, porównanie orientacyjne`;
+    if (Math.abs(home.maxDiffC) < APPROXIMATE_MIN_DIFF_C) {
+      return ` W dzień jest podobnie jak w Warszawie ${inMonth} (${periods}).`;
+    }
+    const difference = Math.abs(home.maxDiffC);
+    return home.maxDiffC > 0
+      ? ` W dzień to ok. ${difference}°C więcej niż w Warszawie ${inMonth} (${periods}).`
+      : ` W dzień to ok. ${difference}°C mniej niż w Warszawie ${inMonth} (${periods}).`;
+  }
+  const difference = formatClimateNumber(Math.abs(home.maxDiffC));
+  const warsaw = `${formatClimateNumber(home.homeMaxC)}°C`;
+  if (home.maxDiffC >= 1) return ` W dzień to o ${difference}°C więcej niż w Warszawie ${inMonth} (${warsaw}).`;
+  if (home.maxDiffC <= -1) return ` W dzień to o ${difference}°C mniej niż w Warszawie ${inMonth} (${warsaw}).`;
+  return ` W dzień to niemal tyle samo co w Warszawie ${inMonth} (${warsaw}).`;
+}
+
+function precipitationLead(weather: MonthWeather): string {
+  if (weather.rainDays !== null) {
+    return ` Opad notuje się średnio w ${formatClimateNumber(weather.rainDays)} dnia miesiąca, łącznie ${formatClimateNumber(weather.rainfallMm)} mm.`;
+  }
+  return ` Średnia suma opadu to ${formatClimateNumber(weather.rainfallMm)} mm; źródło nie podaje liczby dni z opadem.`;
 }
 
 export function buildMonthPageModel(input: MonthPageModelInput): MonthPageModel {
   const { profile, month, baseUrl, author } = input;
   const monthIndex = getMonthIndex(month);
   const facts = getDestinationSeoFacts(profile);
-  const weather = buildWeather(profile, facts, monthIndex);
-  const pageText = monthPageText({ name: facts.name, month, tempC: weather?.tempC ?? null });
-  const budgetEstimate = canShowBudgetEstimate(facts) && facts.flight?.kind === "exact"
-    ? estimateBudgetForMonth(profile.costIndex, facts.flight.hours, monthIndex)
-    : null;
+  const weather = buildWeather(facts, monthIndex);
+  const pageText = monthPageText({
+    name: facts.name,
+    month,
+    maxTempC: weather?.maxTempC ?? null,
+    minTempC: weather?.minTempC ?? null,
+  });
   const inMonth = inMonthPhrase(month);
-  const h1 = weather
-    ? `${facts.name} ${inMonth} — pogoda ${weather.tempC}°C, hotele i kiedy lecieć`
-    : `${facts.name} ${inMonth} — hotele i kiedy lecieć`;
+  const context = weather ? buildContext(profile.slug, monthIndex) : null;
+  // Nagłówek to fraza, której ludzie szukają; o tym, że liczby są normą, mówi treść pod nim.
+  const h1 = weather ? `${facts.name} ${inMonth}: pogoda i temperatura` : `${facts.name} ${inMonth}: hotele i loty`;
   const lead = weather
-    ? `${facts.name} ${inMonth}: ${weather.description} (śr. ${weather.tempC}°C${weather.seaTempEstimate !== null ? `, morze szacunkowo ~${weather.seaTempEstimate}°C` : ""}).${budgetEstimate ? " Poniżej orientacyjny budżet, temperatury w ciągu roku i przejście do hoteli z cenami w PLN." : " Poniżej temperatury w ciągu roku i przejście do hoteli z cenami w PLN."}`
+    ? `${facts.name} ${inMonth}: w dzień średnio ${formatClimateNumber(weather.maxTempC)}°C (średnia temperatura maksymalna), w nocy ${formatClimateNumber(weather.minTempC)}°C (średnia minimalna).${homeLead(context, inMonth)}${precipitationLead(weather)}`
     : `${facts.name} ${inMonth}: przejdź do hoteli z cenami w PLN na ten termin i sprawdź dostępność.`;
+  const schemaWeather = weather
+    ? {
+        maxTempC: weather.maxTempC,
+        minTempC: weather.minTempC,
+        rainDays: weather.rainDays,
+        rainfallMm: weather.rainfallMm,
+        source: weather.source,
+      }
+    : null;
   const structuredData = buildMonthPageStructuredData({
     baseUrl,
     destinationSlug: facts.slug,
     month,
     name: facts.name,
     countryName: facts.countryName,
-    weather: weather
-      ? {
-          tempC: weather.tempC,
-          description: weather.description,
-          verdict: weather.verdict,
-        }
-      : null,
+    weather: schemaWeather,
     exactFlightHours: exactFlightHours(facts),
     author,
   });
@@ -168,8 +267,15 @@ export function buildMonthPageModel(input: MonthPageModelInput): MonthPageModel 
       lead,
     },
     weather,
-    budgetEstimate,
+    context,
     flightText: facts.flight ? formatFlightFact(facts.flight) : null,
+    faq: monthPageQuestions({
+      month,
+      name: facts.name,
+      weather: schemaWeather,
+      exactFlightHours: exactFlightHours(facts),
+    }),
+    fit: weather ? buildFit(weather) : null,
     structuredData,
   };
 }

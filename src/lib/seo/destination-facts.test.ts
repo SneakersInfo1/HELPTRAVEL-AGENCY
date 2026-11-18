@@ -2,15 +2,20 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { curatedDestinations, getAllDestinationProfiles } from "@/lib/mvp/destinations";
+import {
+  climateNormalCount,
+  formatClimateNumber,
+  formatClimatePeriod,
+  getClimateNormal,
+} from "@/lib/mvp/climate-normals";
 
 import {
   ENTRY_REQUIREMENTS_NOTE,
-  canShowBudgetEstimate,
   exactFlightHours,
   flightHoursForTripLength,
   formatFlightFact,
   getDestinationSeoFacts,
-  monthTemperature,
+  monthDaytimeMaxTemperature,
 } from "./destination-facts";
 
 // Bramka faktów SEO (PR #1.5). Renderery title, H1, FAQ, JSON-LD, OG i treści
@@ -28,20 +33,47 @@ function factsOf(slug: string) {
 }
 
 describe("bramka faktów SEO", () => {
-  it("temperatura: tylko kuratorowana, nigdy tablica regionu", () => {
+  it("temperatura: wyłącznie norma WMO, nigdy ręczna tablica profilu ani regionu", () => {
+    let withNormal = 0;
     for (const profile of profiles) {
       const facts = getDestinationSeoFacts(profile);
-      if (curatedSlugs.has(profile.slug)) {
-        assert.deepEqual(facts.temperature?.byMonth, profile.avgTempByMonth, profile.slug);
-        assert.equal(facts.temperature?.provenance, "curated", profile.slug);
-        assert.equal(monthTemperature(facts, 6), profile.avgTempByMonth[6], profile.slug);
+      const normal = getClimateNormal(profile.slug);
+      if (normal) {
+        withNormal += 1;
+        assert.deepEqual(facts.temperature?.byMonth, normal.maxTempC, profile.slug);
+        assert.deepEqual(facts.temperature?.minByMonth, normal.minTempC, profile.slug);
+        assert.deepEqual(facts.temperature?.rainDays, normal.rainDays, profile.slug);
+        assert.deepEqual(facts.temperature?.rainfallMm, normal.rainfallMm, profile.slug);
+        assert.equal(facts.temperature?.provenance, "verified", profile.slug);
+        assert.equal(monthDaytimeMaxTemperature(facts, 6), normal.maxTempC[6], profile.slug);
+        assert.equal(facts.temperature?.source.name, "WMO World Weather Information Service", profile.slug);
+        assert.equal(facts.temperature?.source.provider, normal.provider, profile.slug);
+        // Gdy WWIS nie podaje stacji, pokazujemy miasto WWIS z jawną etykietą, nigdy pusty dopisek.
+        assert.equal(facts.temperature?.source.station, normal.stationName ?? normal.wwisCity, profile.slug);
+        assert.equal(facts.temperature?.source.stationLabel, normal.stationName ? "stacja" : "punkt WWIS", profile.slug);
+        assert.equal(
+          facts.temperature?.source.periodLabel,
+          formatClimatePeriod(normal.periodFrom, normal.periodTo),
+          profile.slug,
+        );
+        assert.equal(facts.temperature?.source.url, normal.sourceUrl, profile.slug);
+        assert.match(facts.temperature?.source.url ?? "", /^https:\/\/worldweather\.wmo\.int\//, profile.slug);
       } else {
         assert.equal(facts.temperature, null, profile.slug);
         for (let month = 0; month < 12; month += 1) {
-          assert.equal(monthTemperature(facts, month), null, `${profile.slug} ${month}`);
+          assert.equal(monthDaytimeMaxTemperature(facts, month), null, `${profile.slug} ${month}`);
         }
       }
     }
+    assert.equal(withNormal, 187);
+    assert.equal(climateNormalCount, 187);
+  });
+
+  it("format normy zachowuje jedno miejsce po przecinku i opisuje okres", () => {
+    assert.equal(formatClimateNumber(13.6), "13,6");
+    assert.equal(formatClimateNumber(4), "4,0");
+    assert.equal(formatClimatePeriod(1981, 2010), "norma 1981–2010");
+    assert.equal(formatClimatePeriod(null, null), "okres normy niepodany przez źródło");
   });
 
   it("czas lotu: kuratorowany jest faktem, szablon regionu nigdy", () => {
@@ -113,12 +145,6 @@ describe("bramka faktów SEO", () => {
     assert.equal(factsOf("malaga-spain").countryName, "Hiszpania");
   });
 
-  it("budżet ze wzoru tylko z danych kuratorowanych", () => {
-    for (const profile of profiles) {
-      assert.equal(canShowBudgetEstimate(getDestinationSeoFacts(profile)), curatedSlugs.has(profile.slug), profile.slug);
-    }
-  });
-
   it("wiza: zawsze neutralna notka, bez kategorycznego claimu (test G)", () => {
     assert.equal(ENTRY_REQUIREMENTS_NOTE, "Sprawdź aktualne wymagania wjazdowe");
     for (const profile of profiles) {
@@ -128,13 +154,12 @@ describe("bramka faktów SEO", () => {
     }
   });
 
-  it("profil bez pola pochodzenia nie przepuszcza temperatury ani dokładnego lotu", () => {
+  it("profil bez pola pochodzenia nadal bierze pogodę z WMO, ale nie przepuszcza dokładnego lotu", () => {
     const malaga = bySlug.get("malaga-spain");
     assert.ok(malaga);
     const withoutProvenance = { ...malaga, provenance: undefined };
     const facts = getDestinationSeoFacts(withoutProvenance);
-    assert.equal(facts.temperature, null);
+    assert.deepEqual(facts.temperature?.byMonth, getClimateNormal(malaga.slug)?.maxTempC);
     assert.equal(exactFlightHours(facts), null);
-    assert.equal(canShowBudgetEstimate(facts), false);
   });
 });

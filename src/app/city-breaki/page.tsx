@@ -3,10 +3,11 @@
 import { CategoryPage } from "@/components/publisher/category-page";
 import { getEditorialCategoryBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
+import { completeSocial } from "@/lib/seo/social-meta";
 
 const category = getEditorialCategoryBySlug("city-breaki");
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: category?.title ?? "City breaki",
   description: category?.description ?? "City breaki i krótkie wyjazdy z Polski.",
   alternates: {
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
     url: `${getSiteUrl()}/city-breaki`,
     type: "website",
   },
-};
+});
 
 export default function CityBreaksCategoryPage() {
   return <CategoryPage slug="city-breaki" />;

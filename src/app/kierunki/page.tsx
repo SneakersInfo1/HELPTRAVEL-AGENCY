@@ -1,7 +1,9 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 import Image from "next/image";
-import { Plane, Plus, Sun } from "lucide-react";
+import { Plane, Plus } from "lucide-react";
 
 import { MediaHero } from "@/components/site/media-hero";
 import { FinalCtaBanner } from "@/components/site/final-cta-banner";
@@ -17,7 +19,6 @@ import {
   destinationDisplayName,
   exactFlightHours,
   getDestinationSeoFacts,
-  monthTemperature,
 } from "@/lib/seo/destination-facts";
 import { getDestinationGuideBySlug, getEditorialCategories, getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
@@ -72,7 +73,7 @@ export function getDestinationsIndexMetadata(locale: SiteLocale): Metadata {
   };
 }
 
-export const metadata: Metadata = getDestinationsIndexMetadata("pl");
+export const metadata: Metadata = completeSocial(getDestinationsIndexMetadata("pl"));
 
 // Flagship mix (city + beach) for the "popularne teraz" tiles — links into the
 // hotel search (conversion path). Order = visual rhythm, not ranking.
@@ -101,10 +102,10 @@ const CATEGORY_IMAGE_SLUG: Record<string, string> = {
 
 // Season → representative destination photo + a short, true hook.
 const SEASONS: Array<{ key: "wiosna" | "lato" | "jesien" | "zima"; label: string; slug: string; hook: string }> = [
-  { key: "wiosna", label: "Na wiosnę", slug: "lisbon-portugal", hook: "Ciepło bez upału, taniej niż latem" },
+  { key: "wiosna", label: "Na wiosnę", slug: "lisbon-portugal", hook: "Miasta, spacery i wyjazdy poza latem" },
   { key: "lato", label: "Na lato", slug: "heraklion-greece", hook: "Wyspy, plaże i ciepłe morze" },
-  { key: "jesien", label: "Na jesień", slug: "barcelona-spain", hook: "Miasta bez tłumów, świetne ceny" },
-  { key: "zima", label: "Na zimę", slug: "antalya-turkey", hook: "Słońce i +20°C w zasięgu lotu" },
+  { key: "jesien", label: "Na jesień", slug: "barcelona-spain", hook: "Miasta, zwiedzanie i weekendowe wyjazdy" },
+  { key: "zima", label: "Na zimę", slug: "antalya-turkey", hook: "Wyspy, miasta i ucieczka od polskiej zimy" },
 ];
 
 // Locative ("w …") — Polish month names are irregular, so a fixed table
@@ -129,9 +130,9 @@ function pluralDestinations(n: number): string {
   return `${n} kierunków`;
 }
 
-// Compact card for a COMMERCIAL money-page (/hotele/w/[slug]) — image + czas lotu
-// i pogoda teraz, ale tylko z danych kuratorowanych (lib/seo/destination-facts.ts;
-// szablon regionu nie trafia na kartę). This is the SEO/conversion spine: it passes
+// Compact card for a COMMERCIAL money-page (/hotele/w/[slug]) — image + czas lotu.
+// Normy klimatyczne mają pełne źródło dopiero na stronie kierunku, więc karta
+// nie wyrywa pojedynczej liczby z kontekstu. This is the SEO/conversion spine: it passes
 // link equity from the hub to the head-term landing pages and pulls
 // commercial-intent users one click from booking. ("od X zł" removed
 // 2026-06-11 — the number came from a hash, not from any real offer.)
@@ -141,14 +142,12 @@ function CommercialCityCard({
   country,
   image,
   flightHours,
-  tempNow,
 }: {
   slug: string;
   city: string;
   country: string;
   image: string | null;
   flightHours?: number;
-  tempNow?: number;
 }) {
   return (
     <Link
@@ -181,12 +180,6 @@ function CommercialCityCard({
                 {flightLabel(flightHours)}
               </span>
             )}
-            {typeof tempNow === "number" && (
-              <span className="inline-flex items-center gap-1 rounded-sm bg-white/20 px-2 py-0.5 text-xs font-semibold text-white">
-                <Sun aria-hidden className="size-3" />
-                teraz ~{Math.round(tempNow)}°C
-              </span>
-            )}
           </div>
           <span className="mt-2.5 block text-sm font-bold text-white group-hover:underline group-hover:underline-offset-4">
             Zobacz hotele
@@ -200,7 +193,6 @@ function CommercialCityCard({
 export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale }) {
   const text = pageCopy[locale];
   const monthIdx = new Date().getMonth();
-
   const destinations = getPublishedDestinations();
   const allDestinations = getAllDestinationProfiles();
   const categories = getEditorialCategories();
@@ -265,7 +257,6 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
         country: c.countryNominative,
         image: imageBySlug.get(c.destinationId) ?? null,
         flightHours: (facts && exactFlightHours(facts)) ?? undefined,
-        tempNow: (facts && monthTemperature(facts, monthIdx)) ?? undefined,
       };
     });
 
@@ -280,15 +271,15 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
   const faqs: Array<{ q: string; a: string }> = [
     {
       q: "Jaki kierunek wybrać na city break z Polski?",
-      a: "Na krótki wypad miejski najlepiej sprawdzają się Barcelona, Rzym, Lizbona, Praga i Budapeszt — krótki lot, dużo do zwiedzania pieszo i hotele w każdym budżecie. Pełną listę miejskich kierunków znajdziesz w sekcji city breaki, a ceny i terminy sprawdzisz w wyszukiwarce hoteli.",
+      a: "Na krótki wypad miejski najlepiej sprawdzają się Barcelona, Rzym, Lizbona, Praga i Budapeszt — krótki lot i dużo do zwiedzania pieszo. Pełną listę miejskich kierunków znajdziesz w sekcji city breaki, a ceny i terminy sprawdzisz w wyszukiwarce hoteli.",
     },
     {
       q: "Gdzie jest ciepło zimą w zasięgu krótkiego lotu?",
-      a: "Zimą najpewniejsze słońce mają Wyspy Kanaryjskie (Teneryfa, Gran Canaria), Madera, Malta, Cypr oraz Maroko (Marrakesz, Agadir) — temperatury ok. 18–24°C i 3–5 h lotu z Polski. Zobacz kierunki na zimę i ciepłe kierunki.",
+      a: "Wśród kierunków rozważanych zimą są Wyspy Kanaryjskie, Madera, Malta, Cypr oraz Maroko. Konkretne normy temperatur i opadów sprawdź na stronie wybranego kierunku; zobacz też kierunki na zimę i ciepłe kierunki.",
     },
     {
       q: "Ile kosztują wakacje w Grecji albo Hiszpanii?",
-      a: "Cena zależy od sezonu, terminu i standardu hotelu, a loty z Polski to zwykle 3–4 h. Realne, finalne ceny w PLN dla wybranych dat zobaczysz po wejściu na stronę miasta, np. hotele na Krecie czy w Barcelonie.",
+      a: "Cena zależy od terminu i standardu hotelu. Aktualne ceny w PLN dla wybranych dat zobaczysz po wejściu na stronę miasta, np. hotele na Krecie czy w Barcelonie.",
     },
     {
       q: "Które kierunki są bez wizy dla obywateli Polski?",
@@ -352,7 +343,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
 
   return (
     <main className={`flex w-full flex-1 flex-col gap-10 py-6 ${SHELL_DISCOVERY}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
 
       {/* HERO */}
       <MediaHero

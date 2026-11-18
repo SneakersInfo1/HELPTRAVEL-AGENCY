@@ -1,0 +1,288 @@
+{
+  "id": "athens-greece-vs-rome-italy",
+  "canonicalUrl": "/porownanie/athens-greece-vs-rome-italy",
+  "primaryQueryIntent": "ateny czy rzym",
+  "contentType": "comparison_enrichment",
+  "topicCluster": "porownania-city-break",
+  "locale": "pl-PL",
+  "title": "Ateny czy Rzym? Co wybrać na city break — porównanie",
+  "description": "Ateny czy Rzym na 3–4 dni: Akropol kontra Fora, Panteon i Watykan, morze przy Atenach, dolot z Polski i temperatury. Sprawdź, które miasto pasuje do Twojego wyjazdu.",
+  "lead": "Ateny wybierz, jeśli chcesz połączyć starożytne zabytki z morzem i mieć jeden wyraźny cel zwiedzania — Akropol. Rzym będzie lepszy, gdy liczy się liczba wielkich zabytków w jednym mieście: Fora, Panteon i Watykan zobaczysz podczas jednego wyjazdu. Niżej konkretne różnice, źródła i propozycja planu na 3–4 dni.",
+  "sections": [
+    {
+      "id": "werdykt",
+      "heading": "Co wybrać: Ateny czy Rzym",
+      "claimIds": [
+        "akropol-unesco",
+        "rzym-zabytki",
+        "rzym-watykan",
+        "ateny-riwiera",
+        "ateny-pireus"
+      ],
+      "kind": "verdict",
+      "options": [
+        {
+          "label": "Ateny",
+          "chooseIf": [
+            "chcesz w jednym wyjeździe mieć starożytne zabytki i morze — Riwiera Ateńska zaczyna się w Faliro",
+            "wolisz jeden dominujący punkt programu, Akropol, i więcej czasu na dzielnice, jedzenie i wybrzeże",
+            "planujesz dzień nad wodą: tuż obok leży Pireus, największy port Grecji"
+          ],
+          "skipIf": [
+            "zależy Ci przede wszystkim na liczbie wielkich zabytków i muzeów — tu Rzym ma więcej do pokazania"
+          ]
+        },
+        {
+          "label": "Rzym",
+          "chooseIf": [
+            "chcesz zobaczyć jak najwięcej zabytków w jednym mieście: sam wpis UNESCO wymienia Fora, Panteon, Mauzoleum Augusta i Mauzoleum Hadriana",
+            "ważny jest dla Ciebie Watykan — leży w granicach miasta i nie wymaga osobnego wyjazdu",
+            "to wyjazd nastawiony na zwiedzanie, a plaża nie ma znaczenia"
+          ],
+          "skipIf": [
+            "morze ma być ważną częścią wyjazdu — to mocniejsza strona Aten"
+          ]
+        }
+      ],
+      "basis": "Werdykt wynika z tego, co UNESCO wpisało na Listę Światowego Dziedzictwa w obu miastach, z opisów oficjalnych organizacji turystycznych Grecji i Włoch oraz z temperatur i czasu lotu w tabeli HelpTravel na tej stronie. To ocena redakcyjna, nie relacja z podróży."
+    },
+    {
+      "id": "zabytki",
+      "heading": "Zabytki: jeden symbol kontra miasto pełne zabytków",
+      "claimIds": [
+        "akropol-unesco",
+        "akropol-ranga",
+        "rzym-unesco",
+        "rzym-zabytki",
+        "rzym-watykan"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "W Atenach wszystko kręci się wokół Akropolu. UNESCO, które wpisało go na Listę Światowego Dziedzictwa w 1987 roku, opisuje wzgórze jako najwspanialszy zespół architektoniczny i artystyczny, jaki starożytna Grecja pozostawiła światu. To jeden, bardzo wyraźny cel — po jego zobaczeniu zostaje dużo czasu na resztę miasta.",
+        "Rzym działa odwrotnie: zabytki są rozrzucone po całym historycznym centrum, wpisanym na listę UNESCO w 1980 roku. Sam wpis wymienia między innymi Fora, Panteon, Mauzoleum Augusta i Mauzoleum Hadriana, a do tego dochodzi Watykan, który leży w granicach miasta. Kto chce zobaczyć jak najwięcej, w Rzymie będzie miał pełniejsze dni; kto woli jeden mocny punkt i wolniejsze tempo, lepiej odnajdzie się w Atenach."
+      ]
+    },
+    {
+      "id": "morze",
+      "heading": "Morze i okolice",
+      "claimIds": [
+        "ateny-riwiera",
+        "ateny-pireus",
+        "rzym-watykan"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "Ateny mają wybrzeże pod bokiem. Riwiera Ateńska, czyli południowy brzeg Attyki, ciągnie się od Faliro aż po Sunio, a tuż obok miasta leży Pireus — największy port Grecji. Dzień nad wodą da się więc wpleść w city break. Oficjalne włoskie materiały o Rzymie stawiają na samo miasto i Watykan; jeśli morze ma być równorzędną częścią planu, Ateny są prostszym wyborem."
+      ]
+    },
+    {
+      "id": "fakty",
+      "heading": "Ateny i Rzym w faktach",
+      "claimIds": [
+        "akropol-unesco",
+        "rzym-unesco",
+        "rzym-zabytki",
+        "ateny-riwiera",
+        "ateny-pireus",
+        "rzym-watykan"
+      ],
+      "kind": "table",
+      "columns": [
+        "Kryterium",
+        "Ateny",
+        "Rzym"
+      ],
+      "rows": [
+        {
+          "label": "Wpis na listę UNESCO",
+          "cells": [
+            "Akropol, od 1987 r.",
+            "Historyczne centrum, od 1980 r."
+          ]
+        },
+        {
+          "label": "Co obejmuje wpis",
+          "cells": [
+            "Wzgórze Akropolu z zabytkami",
+            "m.in. Fora, Panteon, Mauzoleum Augusta i Hadriana"
+          ]
+        },
+        {
+          "label": "Dodatkowy atut",
+          "cells": [
+            "Riwiera Ateńska od Faliro do Sunio, port w Pireusie",
+            "Watykan w granicach miasta"
+          ]
+        }
+      ],
+      "note": "Temperatury, czas lotu i szacunek budżetu są w osobnej tabeli HelpTravel niżej."
+    },
+    {
+      "id": "plan",
+      "heading": "Propozycja na 3–4 dni",
+      "claimIds": [
+        "akropol-unesco",
+        "ateny-riwiera",
+        "rzym-zabytki",
+        "rzym-watykan"
+      ],
+      "kind": "list",
+      "intro": "To propozycja ułożenia czasu, nie relacja z wyjazdu — dopasuj ją do swoich dat i tempa.",
+      "items": [
+        "Ateny, dzień 1–2: Akropol i okolice wzgórza, potem spokojniejsze dzielnice w centrum",
+        "Ateny, dzień 3: wybrzeże — wybrany odcinek Riwiery Ateńskiej albo port w Pireusie",
+        "Rzym, dzień 1–2: historyczne centrum z Forami i Panteonem",
+        "Rzym, dzień 3: Watykan",
+        "W obu miastach czwarty dzień zostaw bez sztywnego planu — na to, co po drodze okaże się najciekawsze"
+      ]
+    }
+  ],
+  "factClaims": [
+    {
+      "id": "akropol-unesco",
+      "claim": "Akropol w Atenach jest na Liście Światowego Dziedzictwa UNESCO od 1987 roku",
+      "value": "1987",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-akropol",
+      "observedEvidence": "Date of Inscription: 1987",
+      "retrievedAt": "2026-11-13T18:31:59Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "akropol-ranga",
+      "claim": "UNESCO opisuje Akropol jako najwspanialszy zespół architektoniczny i artystyczny pozostawiony światu przez starożytną Grecję",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-akropol",
+      "observedEvidence": "form the greatest architectural and artistic complex bequeathed by Greek Antiquity to the world",
+      "retrievedAt": "2026-11-13T18:31:59Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "rzym-unesco",
+      "claim": "Historyczne centrum Rzymu jest na liście UNESCO od 1980 roku",
+      "value": "1980",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-rzym",
+      "observedEvidence": "Date of Inscription: 1980",
+      "retrievedAt": "2026-11-13T18:31:59Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "rzym-zabytki",
+      "claim": "Wpis UNESCO obejmuje między innymi Fora, Mauzoleum Augusta, Mauzoleum Hadriana i Panteon",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-rzym",
+      "observedEvidence": "the Forums, the Mausoleum of Augustus, the Mausoleum of Hadrian, the Pantheon",
+      "retrievedAt": "2026-11-13T18:31:59Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "rzym-watykan",
+      "claim": "W granicach Rzymu leży Watykan, siedziba papieża",
+      "value": "",
+      "dataClass": "geography",
+      "riskClass": "EVERGREEN",
+      "sourceId": "italia-rzym",
+      "observedEvidence": "the Italian capital and the home of the Pope in the Vatican",
+      "retrievedAt": "2026-11-13T18:32:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "ateny-riwiera",
+      "claim": "Riwiera Ateńska, południowe wybrzeże Attyki, ciągnie się od Faliro do Sunio",
+      "value": "",
+      "dataClass": "geography",
+      "riskClass": "EVERGREEN",
+      "sourceId": "visitgreece-attyka",
+      "observedEvidence": "known as the Athens Riviera, stretches from Faliro to Sounio",
+      "retrievedAt": "2026-11-13T18:33:45Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "ateny-pireus",
+      "claim": "Pireus przy Atenach to największy port Grecji",
+      "value": "",
+      "dataClass": "geography",
+      "riskClass": "EVERGREEN",
+      "sourceId": "visitgreece-attyka",
+      "observedEvidence": "Greece's largest port",
+      "retrievedAt": "2026-11-13T18:33:45Z",
+      "verification": "source_verified"
+    }
+  ],
+  "sources": [
+    {
+      "id": "unesco-akropol",
+      "url": "https://whc.unesco.org/en/list/404",
+      "title": "Acropolis, Athens",
+      "publisher": "UNESCO World Heritage Centre",
+      "kind": "heritage_or_museum",
+      "licence": "Opis UNESCO na licencji CC BY-SA IGO 3.0; krótki cytat",
+      "retrievedAt": "2026-11-13T18:31:59Z",
+      "snapshotSha256": "b983a5d93ea2d42d76e5aa42d85cc59eaa2800f7689a4b50cb45400bf4c79e6c"
+    },
+    {
+      "id": "unesco-rzym",
+      "url": "https://whc.unesco.org/en/list/91",
+      "title": "Historic Centre of Rome",
+      "publisher": "UNESCO World Heritage Centre",
+      "kind": "heritage_or_museum",
+      "licence": "Opis UNESCO na licencji CC BY-SA IGO 3.0; krótki cytat",
+      "retrievedAt": "2026-11-13T18:31:59Z",
+      "snapshotSha256": "ed38509fdb0b58e64366beb55532e22b815dfff90969d89da955ada0035bb904"
+    },
+    {
+      "id": "visitgreece-attyka",
+      "url": "https://www.visitgreece.gr/mainland/attica/",
+      "title": "Attica — Visit Greece",
+      "publisher": "Greek National Tourism Organisation",
+      "kind": "official_tourism",
+      "licence": "Fakt i krótki cytat w granicach prawa cytatu",
+      "retrievedAt": "2026-11-13T18:33:45Z",
+      "snapshotSha256": "283e972964622824dce25106dfd3c5f5e90c32ee23054827d7b92ae98b47d60d"
+    },
+    {
+      "id": "italia-rzym",
+      "url": "https://www.italia.it/en/lazio/rome",
+      "title": "Rome — Italia.it",
+      "publisher": "ENIT — Agenzia Nazionale del Turismo",
+      "kind": "official_tourism",
+      "licence": "Fakt i krótki cytat w granicach prawa cytatu",
+      "retrievedAt": "2026-11-13T18:32:39Z",
+      "snapshotSha256": "4a49fe16df5ad1773c009ee496eddc1e371f522d0bb8db5495ba2431f407e351"
+    }
+  ],
+  "imageAsset": {
+    "provider": "pexels_integration",
+    "licence": "Pexels License — zdjęcia pobierane istniejącą integracją serwisu",
+    "alt": "Zdjęcia obu porównywanych kierunków",
+    "credit": "Pexels"
+  },
+  "relatedContent": [
+    "/kierunki/athens-greece",
+    "/kierunki/rome-italy",
+    "/porownanie",
+    "/wyjazdy/city-break",
+    "/porownanie/lisbon-portugal-vs-rome-italy",
+    "/porownanie/athens-greece-vs-istanbul-turkey"
+  ],
+  "ctaTarget": "/hotele/szukaj",
+  "riskClass": "EVERGREEN",
+  "contentHash": "af9c9a013ff90c16a7a0754e1d7e14ecb21a531430993abcbd7d13490342f454",
+  "createdAt": "2026-11-13T23:14:30Z",
+  "publishedAt": null,
+  "materiallyModifiedAt": "2026-11-13T23:14:30Z",
+  "verifiedAt": "2026-11-13T23:14:51Z",
+  "owner": "Redakcja HelpTravel",
+  "reviewStatus": "approved",
+  "reviewedBy": "właściciel serwisu — akceptacja przez merge PR",
+  "generationRunId": "redakcja-2026-11-14",
+  "aiDisclosure": "Tekst przygotowany z pomocą AI na podstawie wskazanych źródeł. Każdy cytowany fakt został sprawdzony mechanicznie w treści źródła; ocena „co wybrać” jest opinią redakcji, nie relacją z podróży.",
+  "policyVersion": "2026-11-13.1"
+}

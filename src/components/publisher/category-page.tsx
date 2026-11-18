@@ -1,3 +1,4 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import Link from "next/link";
 import { FinalCtaBanner } from "@/components/site/final-cta-banner";
 
@@ -90,7 +91,7 @@ export async function CategoryPage({ slug }: { slug: string }) {
 
   return (
     <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
       <section className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
         <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: category.title }]} />
         <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[0.95] text-ink">{category.title}</h1>

@@ -1,4 +1,6 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
+import { completeSocial } from "@/lib/seo/social-meta";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -20,7 +22,7 @@ export const revalidate = 86400;
 // działa tak, jak napisano. Poniżej jest przebieg, który faktycznie ma
 // miejsce, krok po kroku, zgodnie z docs/booking-flow.md.
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeSocial({
   title: "Jak to działa",
   description:
     "Od wyszukania do potwierdzenia: pięć kroków rezerwacji na helptravel.pl. Kiedy podajesz dane, kiedy płacisz, kto pobiera pieniądze i co dostajesz na e-mail.",
@@ -32,7 +34,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pl_PL",
   },
-};
+});
 
 const HERO_SLUG = "rome-italy";
 const EXAMPLE_SLUG = "lisbon-portugal";
@@ -120,7 +122,7 @@ export default async function HowItWorksPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }} />
 
       <MediaHero
         imageUrl={heroMedia?.heroImage ?? null}

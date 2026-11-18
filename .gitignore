@@ -82,3 +82,8 @@ next-env.d.ts
 # Do repo trafiaja tylko pomiary (pomiary.json) i raport porownawczy.
 docs/layout-hardening/shots/**/*.png
 
+
+# Dane GSC/GA4 i wyniki z metrykami ruchu — repo jest publiczne (patrz docs/seo/OWNER_ACTIONS.md)
+/seo-private/
+# Domyślny katalog eksportu GSC silnika treści (`content:run --gsc-dir`).
+/data/gsc/

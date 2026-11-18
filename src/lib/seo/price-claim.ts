@@ -7,7 +7,7 @@ import { travelToday } from "@/lib/time/travel-now";
 // Tytuł żyje dłużej niż cena: w cache ISR (do doby) i w indeksie Google (dni).
 // Dlatego kwota trafia tam wyłącznie z rekordu, który w chwili renderu jest
 // FRESH (≤ 12 h — ta sama definicja co w snapshocie konsjerża) i dotyczy
-// terminu, który da się jeszcze kupić. Cena modelowana (estimateBudget) nie ma
+// terminu, który da się jeszcze kupić. Dawna cena modelowana nie miała
 // ani `pricedAt`, ani terminu, więc przez ten kontrakt nie przejdzie.
 //
 // Strona, która podłączy realne źródło, musi mieć revalidate ≤ 12 h — inaczej

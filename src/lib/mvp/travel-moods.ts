@@ -149,9 +149,9 @@ export const TRAVEL_MOODS: TravelMood[] = [
           "Tak. Kierunki takie jak Malaga, Walencja czy Larnaka pozwalają rano być na plaży, a po południu zwiedzać miasto. To dobry wybór, gdy nie chcesz wyłącznie leżeć nad wodą.",
       },
       {
-        question: "Kiedy rezerwować, żeby było taniej?",
+        question: "Gdzie sprawdzić aktualną cenę wyjazdu?",
         answer:
-          "Najlepsze ceny hoteli i lotów łapie się zwykle 1,5–3 miesiące przed wyjazdem, a poza lipcem i sierpniem jest wyraźnie taniej przy podobnej pogodzie.",
+          "Karty pokazują świeże migawki cen, gdy są dostępne. Dokładną cenę i dostępność dla swoich dat sprawdzisz po przejściu do wyszukiwarki.",
       },
     ],
   },
@@ -163,7 +163,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
     aura: "from-indigo-400/30 via-fuchsia-300/20 to-emerald-300/25",
     eyebrow: "Miasto na krótko",
     h1: "City break — najlepsze miasta na krótki wyjazd z Polski",
-    metaTitle: "City break — najlepsze miasta na weekend i 3–5 dni",
+    metaTitle: "City break z Polski — miasta na weekend i 3–5 dni",
     metaDescription:
       "Najlepsze city breaki z Polski: czytelne miasta na 2–5 dni z dobrym dojazdem. Porównaj kierunki, sprawdź ceny hoteli i lotów w PLN.",
     lead:
@@ -180,8 +180,8 @@ export const TRAVEL_MOODS: TravelMood[] = [
       {
         name: "Budapeszt", searchCity: "Budapest", country: "Hungary", countryPl: "Węgry", slug: "budapest-hungary",
         region: "Węgry",
-        overview: "Najlepsza relacja ceny do jakości wśród stolic regionu, do tego termy i panorama Dunaju.",
-        tags: ["termy", "cena/jakość", "wieczory"], season: "cały rok",
+        overview: "Termy, panorama Dunaju i zwarty plan zwiedzania dobrze pasują do krótkiego wyjazdu.",
+        tags: ["termy", "Dunaj", "wieczory"], season: "cały rok",
       },
       {
         name: "Barcelona", searchCity: "Barcelona", country: "Spain", countryPl: "Hiszpania", slug: "barcelona-spain",
@@ -205,14 +205,14 @@ export const TRAVEL_MOODS: TravelMood[] = [
         name: "Porto", searchCity: "Porto", country: "Portugal", countryPl: "Portugalia",
         region: "Dolina Douro",
         overview: "Wino, mosty nad Douro i klimatyczne uliczki — kameralna alternatywa dla Lizbony.",
-        tags: ["wino", "klimat", "niedrogo"], season: "wiosna–jesień",
+        tags: ["wino", "klimat", "Ribeira"], season: "wiosna–jesień",
       },
     ],
     sections: [
       {
         title: "Co sprawia, że city break naprawdę działa",
         paragraphs: [
-          "Najmocniejsze kierunki na krótki wyjazd to te, w których najwięcej zobaczysz pieszo, a baza noclegowa w centrum nie kosztuje fortuny. Im mniej czasu tracisz na dojazdy, tym więcej zostaje na samo miasto.",
+          "Najmocniejsze kierunki na krótki wyjazd to te, w których najwięcej zobaczysz pieszo, a baza noclegowa leży blisko głównych miejsc. Im mniej czasu tracisz na dojazdy, tym więcej zostaje na samo miasto.",
         ],
         bullets: [
           "zwarte centrum, w którym da się chodzić pieszo",
@@ -231,7 +231,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
       {
         question: "Jaki city break jest dobry na pierwszy raz?",
         answer:
-          "Budapeszt i Praga są bezpiecznym wyborem: blisko, tanio i prosto logistycznie. Dają mocny efekt już przy 2–3 dniach.",
+          "Budapeszt i Praga są czytelnym wyborem: blisko i prosto logistycznie. Dają mocny efekt już przy 2–3 dniach.",
       },
       {
         question: "Czy na city break trzeba wynajmować samochód?",
@@ -282,8 +282,8 @@ export const TRAVEL_MOODS: TravelMood[] = [
       {
         name: "Tirana", searchCity: "Tirana", country: "Albania", countryPl: "Albania", slug: "tirana-albania",
         region: "Alpy Albańskie",
-        overview: "Brama w dzikie Alpy Albańskie i kanion Osumi — tanio, surowo i wciąż mało oblegane.",
-        tags: ["Alpy Albańskie", "tanio", "dziko"], season: "maj–październik",
+        overview: "Brama w dzikie Alpy Albańskie i kanion Osumi — surowo i wciąż mało oblegane.",
+        tags: ["Alpy Albańskie", "kanion", "dziko"], season: "maj–październik",
       },
       {
         name: "Bergen", searchCity: "Bergen", country: "Norway", countryPl: "Norwegia",
@@ -431,87 +431,87 @@ export const TRAVEL_MOODS: TravelMood[] = [
     label: "Budżet",
     icon: "💰",
     aura: "from-emerald-400/30 via-lime-300/20 to-amber-200/25",
-    eyebrow: "Dobra cena",
-    h1: "Tanie kierunki z Polski — wyjazd w dobrym budżecie",
-    metaTitle: "Tanie kierunki z Polski — najlepszy stosunek ceny do jakości",
+    eyebrow: "Aktualne migawki cen",
+    h1: "Tanie kierunki z Polski — sprawdź aktualne ceny",
+    metaTitle: "Tanie kierunki z Polski — sprawdź aktualne ceny",
     metaDescription:
-      "Kierunki z najlepszym stosunkiem ceny do jakości: niższe koszty noclegu i życia na miejscu bez schodzenia do najniższego standardu. Ceny hoteli i lotów w PLN.",
+      "Tanie kierunki z Polski z aktualnymi migawkami cen hoteli i lotów w PLN. Porównaj zmierzone ceny dla pokazanych terminów i sprawdź dostępność.",
     lead:
-      "Dobry budżetowy wyjazd to nie najniższa możliwa cyfra za wszelką cenę, tylko najlepszy stosunek ceny do jakości. Poniżej kierunki, w których za rozsądne pieniądze nadal dostaniesz sensowny standard i prosty plan.",
-    highlights: ["Najlepszy stosunek ceny do jakości", "Niższe koszty na miejscu", "Krótkie loty z Polski"],
-    gridIntro: "Kierunki, w których budżet idzie najdalej — bez schodzenia do najniższego standardu:",
+      "Ta strona odpowiada na intencję szukania tanich kierunków, ale nie przypisuje miastom stałego poziomu cen. Karty pokazują świeże migawki cen hoteli i lotów, gdy mamy pomiar; ostateczną cenę dla swoich dat sprawdzisz w wyszukiwarce.",
+    highlights: ["Świeże migawki cen", "Ceny hoteli i lotów w PLN", "Kierunki na krótki wyjazd"],
+    gridIntro: "Kierunki do porównania na podstawie świeżych migawek cen i własnego terminu:",
     picks: [
       {
         name: "Budapeszt", searchCity: "Budapest", country: "Hungary", countryPl: "Węgry", slug: "budapest-hungary",
         region: "Węgry",
-        overview: "Niski koszt życia, termy i panorama Dunaju — chyba najlepsza relacja ceny do jakości wśród stolic.",
-        tags: ["tanio", "termy", "blisko"], season: "cały rok",
+        overview: "Termy, panorama Dunaju i zwarty układ miasta dobrze pasują do krótkiego wyjazdu.",
+        tags: ["termy", "Dunaj", "blisko"], season: "cały rok",
       },
       {
         name: "Tirana", searchCity: "Tirana", country: "Albania", countryPl: "Albania", slug: "tirana-albania",
         region: "Albania",
-        overview: "Jeden z najtańszych kierunków w zasięgu lotu — mało oblegany i z poczuciem odkrywania nowego.",
-        tags: ["najtaniej", "mniej tłumów", "nowe"], season: "kwiecień–październik",
+        overview: "Mniej oczywista stolica z poczuciem odkrywania nowego i dobrym punktem startowym do poznawania Albanii.",
+        tags: ["mniej tłumów", "nowe", "Albania"], season: "kwiecień–październik",
       },
       {
         name: "Praga", searchCity: "Prague", country: "Czechia", countryPl: "Czechy", slug: "prague-czechia",
         region: "Czechy",
-        overview: "Blisko i tanio na krótki wyjazd — większość atrakcji obejdziesz pieszo, co dodatkowo ogranicza koszty.",
+        overview: "Blisko na krótki wyjazd — większość głównych atrakcji obejdziesz pieszo.",
         tags: ["blisko", "weekend", "pieszo"], season: "kwiecień–czerwiec, wrzesień–październik",
       },
       {
         name: "Ateny", searchCity: "Athens", country: "Greece", countryPl: "Grecja", slug: "athens-greece",
         region: "Grecja",
-        overview: "Historia i ciepło w rozsądnej cenie — przy dobrym terminie wychodzi taniej niż większość stolic Zachodu.",
+        overview: "Historia i ciepło w jednym planie — Akropol, Plaka i lokalna kuchnia na krótki wyjazd.",
         tags: ["historia", "ciepło", "rozsądnie"], season: "wiosna i jesień",
       },
       {
         name: "Sofia", searchCity: "Sofia", country: "Bulgaria", countryPl: "Bułgaria",
         region: "Bułgaria",
-        overview: "Niedrogo, blisko gór Witosza i z lokalnym klimatem — niedoceniana, tania stolica regionu.",
-        tags: ["tanio", "góry obok", "lokalnie"], season: "maj–październik",
+        overview: "Blisko gór Witosza i z lokalnym klimatem — niedoceniana stolica regionu.",
+        tags: ["góry obok", "lokalnie", "stolica"], season: "maj–październik",
       },
       {
         name: "Porto", searchCity: "Porto", country: "Portugal", countryPl: "Portugalia",
         region: "Portugalia",
-        overview: "Najbardziej opłacalne duże miasto Portugalii — wino, klimat i dobre jedzenie bez cen Lizbony.",
-        tags: ["wino", "klimat", "opłacalnie"], season: "wiosna–jesień",
+        overview: "Wino, nadrzeczny klimat i dobre jedzenie w mieście wygodnym na 3–4 dni.",
+        tags: ["wino", "klimat", "Ribeira"], season: "wiosna–jesień",
       },
     ],
     sections: [
       {
-        title: "Jak dobrze wydać budżet",
+        title: "Jak czytać migawki cen",
         paragraphs: [
-          "Najwięcej oszczędza dobrze dobrany termin i lokalizacja noclegu, a nie sam tani lot. Kierunki o niższym koszcie życia pozwalają jeść na mieście i korzystać z atrakcji bez nerwowego liczenia każdej złotówki.",
+          "Cena na karcie jest pomiarem dla konkretnego terminu, a nie stałą oceną kierunku. Porównuj ten sam zakres dat i liczbę podróżnych, a przed decyzją sprawdź aktualną dostępność w wyszukiwarce.",
         ],
         bullets: [
-          "koszt życia na miejscu, nie tylko cena lotu",
-          "lokalizacja noclegu blisko tego, co Cię interesuje",
-          "termin poza szczytem sezonu",
+          "ten sam termin i liczba podróżnych po obu stronach porównania",
+          "osobno cena hotelu za noc i cena lotu w obie strony",
+          "data pomiaru oraz aktualna dostępność po przejściu do wyszukiwarki",
         ],
       },
       {
         title: "Na co uważać",
         paragraphs: [
-          "Nie warto łączyć bardzo taniego lotu z bardzo słabym noclegiem daleko od centrum tylko po to, by zmieścić się w kwocie. Często lepszy jest prosty hotel blisko wszystkiego niż pozornie tańszy nocleg na obrzeżach.",
+          "Migawka może zniknąć, gdy pomiar straci ważność, a cena dla innego terminu może być inna. Brak kwoty na karcie oznacza brak świeżego pomiaru, nie ocenę kierunku.",
         ],
       },
     ],
     faq: [
       {
-        question: "Jakie kierunki są najtańsze z Polski?",
+        question: "Jak sprawdzić, który kierunek jest najtańszy w moim terminie?",
         answer:
-          "Budapeszt, Praga, Tirana, Sofia i Ateny zwykle dają najlepszą relację ceny do jakości — niski koszt życia i krótki lot.",
+          "Porównaj świeże ceny dla tych samych dat i tej samej liczby osób. Nie wskazujemy stałego zwycięzcy, bo ceny hoteli i lotów zmieniają się wraz z terminem i dostępnością.",
       },
       {
-        question: "Czy tani wyjazd musi oznaczać niski standard?",
+        question: "Czy cena z karty jest ceną końcową?",
         answer:
-          "Nie. Przy dobrym terminie i lokalizacji da się mieć rozsądny standard w niskim budżecie. Kluczowy jest wybór kierunku, w którym pieniądze idą dalej.",
+          "Nie. To świeża migawka oznaczona jako cena od. Dokładną ofertę, warunki i dostępność zobaczysz dopiero w wyszukiwarce dla wybranych dat.",
       },
       {
-        question: "Jak najbardziej obniżyć koszt wyjazdu?",
+        question: "Jak porównywać cenę hotelu i lotu?",
         answer:
-          "Lecąc poza weekendem i poza szczytem sezonu, rezerwując z wyprzedzeniem i wybierając nocleg w dobrze skomunikowanej, ale nie najdroższej dzielnicy.",
+          "Traktuj je jako dwa osobne pomiary i porównuj dla tego samego terminu. Cena hotelu jest podawana za noc, a okazja lotnicza jako kwota w obie strony na osobę.",
       },
     ],
   },
@@ -546,8 +546,8 @@ export const TRAVEL_MOODS: TravelMood[] = [
       {
         name: "Agadir", searchCity: "Agadir", country: "Morocco", countryPl: "Maroko", slug: "agadir-morocco",
         region: "Maroko",
-        overview: "Słoneczne wybrzeże Atlantyku z długą plażą — ciepło i tanio właśnie w sezonie polskiej zimy.",
-        tags: ["plaża", "słońce", "tanio"], season: "październik–kwiecień",
+        overview: "Słoneczne wybrzeże Atlantyku z długą plażą — ciepło właśnie w sezonie polskiej zimy.",
+        tags: ["plaża", "słońce", "Atlantyk"], season: "październik–kwiecień",
       },
       {
         name: "Marrakesz", searchCity: "Marrakesh", country: "Morocco", countryPl: "Maroko", slug: "marrakesh-morocco",

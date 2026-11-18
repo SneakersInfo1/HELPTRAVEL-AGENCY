@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 
 import sitemap from "@/app/sitemap";
+import { contentLastModified } from "@/lib/content-engine/site-content";
 
 // Strażnicy źródeł (SEO Data Integrity, PR #1.5). Testy modeli sprawdzają
 // wynik; ten plik pilnuje, żeby wzorce zastane przez audyt Faza 2.2 nie wróciły
@@ -58,6 +59,14 @@ const SEO_RENDERERS = [
   "src/lib/seo/page-titles.ts",
 ].map((file) => path.join(ROOT, file));
 
+const WEATHER_AND_COST_MODELS = [
+  "src/lib/seo/destination-facts.ts",
+  "src/lib/seo/month-page-model.ts",
+  "src/lib/seo/month-page-schema.ts",
+  "src/lib/seo/guide-page-model.ts",
+  "src/lib/seo/comparison-model.ts",
+].map((file) => path.join(ROOT, file));
+
 describe("strażnicy integralności danych SEO", () => {
   it("bez daty publikacji wpisanej na sztywno", () => {
     assert.deepEqual(hits(/datePublished:\s*["'`]20\d\d-/), []);
@@ -68,10 +77,21 @@ describe("strażnicy integralności danych SEO", () => {
     assert.deepEqual(hits(/updatedISO=\{\s*new Date\(/), []);
   });
 
-  it("sitemap bez lastmod z zegara generowania", () => {
+  it("sitemap podaje lastmod wyłącznie z dokumentów treści, nigdy z zegara generowania", () => {
+    const fromContent = contentLastModified();
+    let dated = 0;
     for (const entry of sitemap()) {
-      assert.equal(entry.lastModified, undefined, entry.url);
+      const route = new URL(entry.url).pathname;
+      const expected = fromContent.get(route);
+      if (expected === undefined) {
+        assert.equal(entry.lastModified, undefined, entry.url);
+      } else {
+        assert.equal(entry.lastModified, expected, entry.url);
+        dated += 1;
+      }
     }
+    // Każdy dokument treści musi trafić na adres obecny w sitemapie.
+    assert.equal(dated, fromContent.size);
   });
 
   it("bez TouristAttraction z tagów (test F)", () => {
@@ -89,6 +109,13 @@ describe("strażnicy integralności danych SEO", () => {
 
   it("renderery SEO nie czytają temperatury ani czasu lotu z profilu z pominięciem bramki", () => {
     assert.deepEqual(hits(/avgTempByMonth|typicalFlightHoursFromPL/, SEO_RENDERERS), []);
+  });
+
+  it("modele SEO nie przywracają temperatury morza ani kwot liczonych ze wzoru", () => {
+    assert.deepEqual(
+      hits(/estimateSeaTemperature|seaTemp|budgetEstimate|canShowBudgetEstimate|estimateBudget/, WEATHER_AND_COST_MODELS),
+      [],
+    );
   });
 
   // Metodologia na /redakcja obiecywała „realne dane dostawców i wieloletnie średnie

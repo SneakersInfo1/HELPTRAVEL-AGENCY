@@ -1,12 +1,13 @@
 import { ImageResponse } from "next/og";
 
+import { formatClimateNumber } from "@/lib/mvp/climate-normals";
 import { getAllDestinationProfiles } from "@/lib/mvp/destinations";
 import {
   getMonthIndex,
   inMonthPhrase,
   isPolishMonthSlug,
 } from "@/lib/mvp/months";
-import { getDestinationSeoFacts, monthTemperature } from "@/lib/seo/destination-facts";
+import { getDestinationSeoFacts, monthDaytimeMaxTemperature } from "@/lib/seo/destination-facts";
 
 export const runtime = "nodejs";
 export const alt = "Kierunek w danym miesiącu - HelpTravel";
@@ -42,7 +43,7 @@ export default async function OgImage({ params }: { params: { slug: string; mies
   const monthIndex = getMonthIndex(params.miesiac);
   const inMonth = inMonthPhrase(params.miesiac);
   const facts = getDestinationSeoFacts(destination);
-  const temp = monthTemperature(facts, monthIndex);
+  const temp = monthDaytimeMaxTemperature(facts, monthIndex);
 
   return new ImageResponse(
     (
@@ -85,9 +86,10 @@ export default async function OgImage({ params }: { params: { slug: string; mies
               }}
             >
               <div style={{ fontSize: 18, opacity: 0.8, textTransform: "uppercase", letterSpacing: 2 }}>
-                Pogoda
+                Średnia maks. w dzień
               </div>
-              <div style={{ fontSize: 44, fontWeight: 800 }}>{temp}°C</div>
+              <div style={{ fontSize: 44, fontWeight: 800 }}>{formatClimateNumber(temp)}°C</div>
+              <div style={{ fontSize: 18, opacity: 0.8 }}>WMO World Weather Information Service</div>
             </div>
           </div>
         )}

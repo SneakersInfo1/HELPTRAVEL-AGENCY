@@ -1,17 +1,21 @@
+import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { AuthorByline } from "@/components/publisher/author-byline";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
+import { ClimateSourceLine } from "@/components/editorial/climate-source-line";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
 import { EditorialArticleCard } from "@/components/publisher/editorial-article-card";
 import { SaveDestinationButton } from "@/components/publisher/save-destination-button";
 import { LocalizedLink } from "@/components/site/localized-link";
 import { SeoCtaLink } from "@/components/analytics/seo-cta-link";
+import { flightSearchPrefillHref } from "@/lib/flights/prefill-link";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { categoryPath } from "@/lib/mvp/category-slug";
+import { formatClimateNumber } from "@/lib/mvp/climate-normals";
 import { getComparisonsForDestination } from "@/lib/mvp/comparisons";
 import { findCommercialCityByDestinationId } from "@/lib/mvp/commercial-cities";
 import { localizeCity } from "@/lib/mvp/i18n-geo";
@@ -156,11 +160,11 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
       : winningScenarios.length === 2
         ? "Dwie sytuacje, w których"
         : "Sytuacja, w której";
-  // Karty planowania tylko z danymi, które mają pokrycie; bez żadnej z nich kolumna znika.
+  // Karty liczbowe tylko z danymi, które mają pokrycie; bez żadnej z nich kolumna znika.
+  // Kwot budżetu ze wzoru nie ma — ceny pokazuje wyszukiwarka, do której prowadzi CTA.
   const showTimingCard = Boolean(localizedGuide.bestTime.trim() || model.tripLength);
-  const showBudgetCard = Boolean(model.budgetEstimate || localizedGuide.budgetNote);
-  const showLogisticsCard = Boolean(model.flightSentence || model.bestMonths.length > 0);
-  const showPlanningColumn = showTimingCard || showBudgetCard || showLogisticsCard;
+  const showLogisticsCard = Boolean(model.flightSentence || model.climate);
+  const showPlanningColumn = showTimingCard || showLogisticsCard;
   // Internal links to this destination's 1:1 comparison pages (/porownanie/…).
   // Passes equity from the ~235 guide pages into the high-CTR comparison pages
   // and gives "X czy Y" searchers a direct entry. SEO master plan D6 (extended).
@@ -195,6 +199,13 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     adults: "2",
     rooms: "1",
   }).toString()}`;
+  // Wyszukiwarka lotów z wpisanym celem; termin i lotnisko wylotu wybiera
+  // czytelnik (przewodnik nie dotyczy konkretnego miesiąca).
+  const flightsHref = flightSearchPrefillHref({
+    destIata: guide.destination.airportCode,
+    city: guide.destination.city,
+    country: guide.destination.country,
+  });
   // If this destination has a dedicated commercial landing page
   // (/hotele/w/[miasto]), link to it — passes link equity from this guide
   // into the high-intent money page and gives the user a direct "hotele w X"
@@ -203,7 +214,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
   return (
     <main className={`flex w-full flex-1 flex-col gap-8 py-6 ${SHELL_DISCOVERY}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(model.structuredData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(model.structuredData) }} />
 
       <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         <div className="relative flex min-h-[24rem] flex-col justify-end sm:min-h-[26rem]">
@@ -286,8 +297,8 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
         </article>
 
         {showPlanningColumn ? (
-          <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(225,243,231,0.9))] p-6 shadow-sm">
-            <div className="mt-4 grid gap-3">
+        <article className="rounded-[2rem] border border-line bg-[linear-gradient(180deg,rgba(236,249,240,0.98),rgba(225,243,231,0.9))] p-6 shadow-sm">
+          <div className="mt-4 grid gap-3">
               {showTimingCard ? (
                 <div className="rounded-2xl bg-surface-raised px-4 py-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepszy czas i tempo</p>
@@ -301,44 +312,37 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                   ) : null}
                 </div>
               ) : null}
-              {showBudgetCard ? (
-                <div className="rounded-2xl bg-surface-raised px-4 py-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-                    {model.budgetEstimate ? "Orientacyjny budżet" : "Budżet"}
-                  </p>
-                  {model.budgetEstimate ? (
-                    <p className="mt-2 text-sm leading-7 text-ink-muted">
-                      Dla 2 osób na 4 dni zwykle warto liczyć okolice {model.budgetEstimate.min}-{model.budgetEstimate.max} PLN.
-                      To orientacyjny zakres planistyczny, a nie cena gwarantowana.
-                    </p>
-                  ) : null}
-                  {localizedGuide.budgetNote ? (
-                    <p className="mt-2 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
-                  ) : null}
-                </div>
-              ) : null}
               {showLogisticsCard ? (
                 <div className="rounded-2xl bg-surface-raised px-4 py-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Dojazd i logistyka</p>
                   {model.flightSentence ? (
                     <p className="mt-2 text-sm leading-7 text-ink-muted">{model.flightSentence}</p>
                   ) : null}
-                  {model.bestMonths.length > 0 ? (
-                    <p className="mt-2 text-sm leading-7 text-ink-muted">
-                      Kierunek najlepiej wygląda zwykle w miesiącach:{" "}
-                      {model.bestMonths.slice(0, 4).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
-                    </p>
+                  {model.climate ? (
+                    <>
+                      <p className="mt-2 text-sm leading-7 text-ink-muted">
+                        Średnia maksymalna temperatura w dzień mieści się w ciągu roku między{" "}
+                        <strong className="font-semibold text-ink">{formatClimateNumber(model.climate.lowestDaytimeMaxC)}°C</strong> a{" "}
+                        <strong className="font-semibold text-ink">{formatClimateNumber(model.climate.highestDaytimeMaxC)}°C</strong>.
+                      </p>
+                      {model.climate.daytimeMaxMonths.length > 0 ? (
+                        <p className="mt-2 text-sm leading-7 text-ink-muted">
+                          Średnia maksymalna 18–30°C: {model.climate.daytimeMaxMonths.map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+                        </p>
+                      ) : null}
+                      <ClimateSourceLine source={model.climate.source} className="mt-3 text-xs leading-6 text-ink-muted" />
+                    </>
                   ) : null}
                 </div>
               ) : null}
-            </div>
-          </article>
+          </div>
+        </article>
         ) : null}
       </section>
 
       <section
         className={
-          localizedGuide.whoFor.length > 0 || localizedGuide.budgetNote
+          localizedGuide.whoFor.length > 0
             ? "grid gap-5 lg:grid-cols-3"
             : "grid gap-5 lg:grid-cols-2"
         }
@@ -371,7 +375,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
         {/* Odbiorcy tylko z ocen profilu, które mają pokrycie; w profilu
             z szablonu lista wychodzi ze stałych list miast i regionu. */}
-        {localizedGuide.whoFor.length > 0 || localizedGuide.budgetNote ? (
+        {localizedGuide.whoFor.length > 0 ? (
           <article className="rounded-[2rem] border border-line bg-surface-raised p-6 shadow-sm">
             <div className="mt-4 flex flex-wrap gap-2">
               {localizedGuide.whoFor.map((item) => (
@@ -383,9 +387,6 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                 </span>
               ))}
             </div>
-            {localizedGuide.budgetNote ? (
-              <p className="mt-5 text-sm leading-7 text-ink-muted">{localizedGuide.budgetNote}</p>
-            ) : null}
           </article>
         ) : null}
       </section>
@@ -429,7 +430,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             </p>
           </SeoCtaLink>
           <SeoCtaLink
-            href="/?tab=loty"
+            href={flightsHref}
             localized
             typTresci="guide"
             ctaType="flight_search"
@@ -473,21 +474,26 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Najlepsza długość</p>
                 <p className="mt-2 text-lg font-bold text-ink">{model.tripLength}</p>
                 <p className="mt-2 text-sm leading-6 text-ink-muted">
-                  Ten scenariusz zwykle daje najlepszy stosunek kosztu do wygody, bez poczucia, ze wyjazd jest za krótki
+                  Ten scenariusz zwykle daje dobry balans czasu w drodze i czasu na miejscu, bez poczucia, ze wyjazd jest za krótki
                   albo niepotrzebnie rozciagniety.
                 </p>
               </div>
             ) : null}
             <div className="rounded-2xl bg-surface-sunken px-4 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-                {model.bestMonths.length > 0 ? "Formalności i sezon" : "Formalności"}
+                {model.climate ? "Formalności i normy klimatyczne" : "Formalności"}
               </p>
               <p className="mt-2 text-lg font-bold text-ink">{visaNote}</p>
-              {model.bestMonths.length > 0 ? (
-                <p className="mt-2 text-sm leading-6 text-ink-muted">
-                  Najmocniejsze miesiące dla tego kierunku to zwykle{" "}
-                  {model.bestMonths.slice(0, 3).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
-                </p>
+              {model.climate ? (
+                <>
+                  {model.climate.daytimeMaxMonths.length > 0 ? (
+                    <p className="mt-2 text-sm leading-6 text-ink-muted">
+                      Średnia maksymalna temperatura w dzień mieści się w przedziale 18–30°C w miesiącach:{" "}
+                      {model.climate.daytimeMaxMonths.slice(0, 3).map((month) => formatDestinationMonth(month, "pl")).join(", ")}.
+                    </p>
+                  ) : null}
+                  <ClimateSourceLine source={model.climate.source} className="mt-3 text-xs leading-6 text-ink-muted" />
+                </>
               ) : null}
             </div>
           </div>
@@ -510,7 +516,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
           ) : null}
           <div className="mt-5 space-y-3 text-sm leading-7 text-ink-muted">
             <p>
-              Ta strona ma pomoc zdecydować, czy kierunek pasuje do stylu wyjazdu, budżetu i realnej logistyki z Polski.
+              Ta strona ma pomoc zdecydować, czy kierunek pasuje do stylu wyjazdu i realnej logistyki z Polski.
             </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -587,7 +593,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
               ))
             ) : (
               <div className="rounded-2xl bg-surface-raised px-4 py-4 text-sm leading-7 text-ink-muted">
-                Kierunek wypada bardzo równo. W praktyce słabiej sprawdzi się tylko wtedy, gdy brief jest skrajnie budżetowy albo wymaga bardzo specyficznej logistyki.
+                Kierunek wypada bardzo równo. W praktyce słabiej sprawdzi się tylko wtedy, gdy wymaga bardzo specyficznej logistyki.
               </div>
             )}
           </div>
@@ -649,7 +655,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
             <div className="max-w-3xl">
               <h2 className="mt-2 font-display text-4xl text-ink">Porównaj {model.name} z innym kierunkiem</h2>
               <p className="mt-3 text-sm leading-7 text-ink-muted">
-                Wahasz się między dwoma kierunkami? Zobacz bezpośrednie porównanie obok siebie — plaże, zwiedzanie i dolot z Polski, a przy kierunkach z opracowanymi danymi także pogoda i orientacyjny budżet.
+                Wahasz się między dwoma kierunkami? Zobacz bezpośrednie porównanie obok siebie — plaże, zwiedzanie i dolot z Polski, a przy kierunkach z normami WMO także pogodę.
               </p>
             </div>
             <LocalizedLink

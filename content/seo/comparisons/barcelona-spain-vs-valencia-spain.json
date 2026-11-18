@@ -1,0 +1,363 @@
+{
+  "id": "barcelona-spain-vs-valencia-spain",
+  "canonicalUrl": "/porownanie/barcelona-spain-vs-valencia-spain",
+  "primaryQueryIntent": "barcelona czy walencja",
+  "contentType": "comparison_enrichment",
+  "topicCluster": "porownania-hiszpania",
+  "locale": "pl-PL",
+  "title": "Barcelona czy Walencja? Porównanie na city break",
+  "description": "Barcelona czy Walencja: architektura Gaudíego i wielkomiejskie tempo kontra ogród Turii, plaża Malvarrosa i paella. Porównanie w faktach ze źródłami i dolot z Polski.",
+  "lead": "Barcelonę wybierz dla architektury Gaudíego i intensywnego, wielkomiejskiego rytmu. Walencja będzie lepsza, jeśli wolisz spokojniejsze miasto do chodzenia pieszo, z ogrodem Turii, plażą Malvarrosa i paellą. Niżej różnice w faktach i źródła.",
+  "sections": [
+    {
+      "id": "werdykt",
+      "heading": "Co wybrać: Barcelona czy Walencja",
+      "claimIds": [
+        "barcelona-gaudi",
+        "barcelona-ikony",
+        "barcelona-ruch",
+        "walencja-turia",
+        "walencja-malvarrosa",
+        "walencja-kontrast",
+        "walencja-paella"
+      ],
+      "kind": "verdict",
+      "options": [
+        {
+          "label": "Barcelona",
+          "chooseIf": [
+            "jedziesz dla architektury: Sagrada Família, Park Güell, Casa Batlló i La Pedrera to cel sam w sobie",
+            "chcesz dużego, intensywnego miasta z morzem w tle",
+            "program zwiedzania jest dla Ciebie ważniejszy niż odpoczynek"
+          ],
+          "skipIf": [
+            "męczą Cię tłumy — to jedno z najczęściej odwiedzanych miast świata"
+          ]
+        },
+        {
+          "label": "Walencja",
+          "chooseIf": [
+            "wolisz spokojniejsze tempo: spacer ogrodem Turii, stare miasto i plaża Malvarrosa",
+            "chcesz zobaczyć zestawienie starego miasta z futurystyczną architekturą",
+            "ważna jest kuchnia — paella to tutejsze danie numer jeden"
+          ],
+          "skipIf": [
+            "zależy Ci na ikonach architektury znanych z pocztówek — te są w Barcelonie"
+          ]
+        }
+      ],
+      "basis": "Werdykt wynika z tego, co o obu miastach podaje oficjalny portal turystyczny Hiszpanii i UNESCO oraz z temperatur i czasu lotu w tabeli HelpTravel na tej stronie. To ocena redakcyjna, nie relacja z podróży."
+    },
+    {
+      "id": "architektura",
+      "heading": "Architektura",
+      "claimIds": [
+        "gaudi-unesco",
+        "gaudi-siedem",
+        "barcelona-ikony",
+        "walencja-lonja",
+        "walencja-lonja-gotyk",
+        "walencja-kontrast"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "Barcelona to przede wszystkim Gaudí. Siedem jego dzieł w mieście i okolicach UNESCO wpisało na Listę Światowego Dziedzictwa w 1984 roku, a Sagrada Família, Park Güell, Casa Batlló i La Pedrera należą do najbardziej znanych miejsc w mieście.",
+        "Walencja nie ma jednej ikony tej skali — jej siłą jest zestawienie: La Lonja de la Seda, arcydzieło późnego gotyku na liście UNESCO od 1996 roku, i futurystyczne budynki w tym samym mieście."
+      ]
+    },
+    {
+      "id": "tempo",
+      "heading": "Tempo i plaża",
+      "claimIds": [
+        "barcelona-ruch",
+        "walencja-pieszo",
+        "walencja-turia",
+        "walencja-malvarrosa",
+        "walencja-paella"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "Oficjalny portal turystyczny Hiszpanii opisuje Barcelonę jako jedno z najczęściej odwiedzanych miast świata, o szybkim rytmie. Walencję przedstawia inaczej: jako miasto do zwiedzania pieszo, z rozległym ogrodem Turii i dużymi plażami, wśród których najbardziej znana jest Malvarrosa. Jeśli po zwiedzaniu chcesz po prostu usiąść nad morzem z talerzem paelli, łatwiej o to w Walencji."
+      ]
+    },
+    {
+      "id": "fakty",
+      "heading": "Barcelona i Walencja w faktach",
+      "claimIds": [
+        "gaudi-unesco",
+        "gaudi-siedem",
+        "walencja-lonja",
+        "barcelona-ikony",
+        "walencja-kontrast",
+        "barcelona-ruch",
+        "walencja-pieszo",
+        "walencja-turia",
+        "barcelona-gaudi",
+        "walencja-malvarrosa",
+        "walencja-paella"
+      ],
+      "kind": "table",
+      "columns": [
+        "Kryterium",
+        "Barcelona",
+        "Walencja"
+      ],
+      "rows": [
+        {
+          "label": "Wpis na listę UNESCO",
+          "cells": [
+            "Siedem dzieł Gaudíego, od 1984 r.",
+            "La Lonja de la Seda, od 1996 r."
+          ]
+        },
+        {
+          "label": "Ikony",
+          "cells": [
+            "Sagrada Família, Park Güell, Casa Batlló, La Pedrera",
+            "Stare miasto i futurystyczne budynki"
+          ]
+        },
+        {
+          "label": "Tempo",
+          "cells": [
+            "Szybki rytm, jedno z najczęściej odwiedzanych miast świata",
+            "Miasto do zwiedzania pieszo, ogród Turii"
+          ]
+        },
+        {
+          "label": "Plaża i kuchnia",
+          "cells": [
+            "Miasto nad Morzem Śródziemnym",
+            "Malvarrosa, paella"
+          ]
+        }
+      ],
+      "note": "Temperatury, czas lotu i szacunek budżetu są w osobnej tabeli HelpTravel niżej."
+    }
+  ],
+  "factClaims": [
+    {
+      "id": "barcelona-gaudi",
+      "claim": "Barcelona leży nad Morzem Śródziemnym i słynie z architektury Gaudíego i secesji",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-barcelona",
+      "observedEvidence": "famous for Gaudí and other Art Nouveau architecture",
+      "retrievedAt": "2026-11-13T18:32:35Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "barcelona-ikony",
+      "claim": "Do najbardziej znanych miejsc Barcelony należą Sagrada Família, Park Güell, Casa Batlló i La Pedrera",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-barcelona",
+      "observedEvidence": "like the Sagrada Familia, Park Güell , Casa Batlló and La Pedrera",
+      "retrievedAt": "2026-11-13T18:32:35Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "barcelona-ruch",
+      "claim": "Barcelona jest jednym z najczęściej odwiedzanych miast świata i ma szybki rytm",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-barcelona",
+      "observedEvidence": "most visited cities",
+      "retrievedAt": "2026-11-13T18:32:35Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "gaudi-unesco",
+      "claim": "Dzieła Antoniego Gaudíego są na liście UNESCO od 1984 roku",
+      "value": "1984",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-gaudi",
+      "observedEvidence": "Date of Inscription: 1984",
+      "retrievedAt": "2026-11-13T18:32:01Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "gaudi-siedem",
+      "claim": "Wpis obejmuje siedem obiektów Gaudíego w Barcelonie i okolicach",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-gaudi",
+      "observedEvidence": "Seven properties built by the architect Antoni Gaudí",
+      "retrievedAt": "2026-11-13T18:32:01Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-kontrast",
+      "claim": "Walencja łączy stare miasto z futurystycznymi budynkami",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "a charming old town next to futuristic buildings",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-malvarrosa",
+      "claim": "Malvarrosa to jedna z najbardziej znanych plaż Walencji",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "The Malvarrosa beach is one of the most well-known options",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-piasek",
+      "claim": "Plaże Walencji mają drobny złoty piasek",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "the fine golden sand and blue water",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-turia",
+      "claim": "Przez Walencję ciągnie się rozległy miejski ogród Turii",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "take a walk along the huge Turia city garden",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-paella",
+      "claim": "Sztandarowym daniem Walencji jest paella",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "you must try the star dish, paella",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-pieszo",
+      "claim": "Walencję dobrze zwiedza się pieszo",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "Valencia is perfect to discover on foot",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-fallas",
+      "claim": "Święto Fallas Walencja obchodzi 19 marca",
+      "value": "19 marca",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "spain-info-walencja",
+      "observedEvidence": "it's 19 March, when they celebrate the famous Fallas",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-lonja",
+      "claim": "La Lonja de la Seda jest na liście UNESCO od 1996 roku",
+      "value": "1996",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-lonja",
+      "observedEvidence": "Date of Inscription: 1996",
+      "retrievedAt": "2026-11-13T18:32:00Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "walencja-lonja-gotyk",
+      "claim": "UNESCO nazywa La Lonję, dawną giełdę jedwabiu, arcydziełem późnego gotyku",
+      "value": "",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "unesco-lonja",
+      "observedEvidence": "It is a masterpiece of late Gothic architecture",
+      "retrievedAt": "2026-11-13T18:32:00Z",
+      "verification": "source_verified"
+    }
+  ],
+  "sources": [
+    {
+      "id": "unesco-lonja",
+      "url": "https://whc.unesco.org/en/list/782",
+      "title": "La Lonja de la Seda de Valencia",
+      "publisher": "UNESCO World Heritage Centre",
+      "kind": "heritage_or_museum",
+      "licence": "Opis UNESCO na licencji CC BY-SA IGO 3.0; krótki cytat",
+      "retrievedAt": "2026-11-13T18:32:00Z",
+      "snapshotSha256": "d27c243b353b1385e6d595892ef5ff92a4d3161e0122b175ebe2f6003eaa6ca7"
+    },
+    {
+      "id": "unesco-gaudi",
+      "url": "https://whc.unesco.org/en/list/320",
+      "title": "Works of Antoni Gaudí",
+      "publisher": "UNESCO World Heritage Centre",
+      "kind": "heritage_or_museum",
+      "licence": "Opis UNESCO na licencji CC BY-SA IGO 3.0; krótki cytat",
+      "retrievedAt": "2026-11-13T18:32:01Z",
+      "snapshotSha256": "1f2a47c682cd03ffa7cd72e96d48a5c2994e674266e5210bf3d5a5856a5761dc"
+    },
+    {
+      "id": "spain-info-walencja",
+      "url": "https://www.spain.info/en/destination/valencia/",
+      "title": "Valencia — oficjalny portal turystyczny Hiszpanii",
+      "publisher": "Turespaña (spain.info)",
+      "kind": "official_tourism",
+      "licence": "Fakt i krótki cytat w granicach prawa cytatu",
+      "retrievedAt": "2026-11-13T18:32:34Z",
+      "snapshotSha256": "71233aa27cb38d7cf3a8c0b6452d9a79beba79ab7a77529067bc7143f418b17b"
+    },
+    {
+      "id": "spain-info-barcelona",
+      "url": "https://www.spain.info/en/destination/barcelona/",
+      "title": "Barcelona — oficjalny portal turystyczny Hiszpanii",
+      "publisher": "Turespaña (spain.info)",
+      "kind": "official_tourism",
+      "licence": "Fakt i krótki cytat w granicach prawa cytatu",
+      "retrievedAt": "2026-11-13T18:32:35Z",
+      "snapshotSha256": "19f2b7d17ab56eabe82e14e46d02615a12728af3461bb766bb1be930830127f9"
+    }
+  ],
+  "imageAsset": {
+    "provider": "pexels_integration",
+    "licence": "Pexels License — zdjęcia pobierane istniejącą integracją serwisu",
+    "alt": "Zdjęcia obu porównywanych kierunków",
+    "credit": "Pexels"
+  },
+  "relatedContent": [
+    "/kierunki/barcelona-spain",
+    "/kierunki/valencia-spain",
+    "/porownanie",
+    "/wyjazdy/city-break",
+    "/porownanie/malaga-spain-vs-valencia-spain",
+    "/porownanie/barcelona-spain-vs-malaga-spain"
+  ],
+  "ctaTarget": "/hotele/szukaj",
+  "riskClass": "EVERGREEN",
+  "contentHash": "c4c362ddd91f93c34e3dbabe8f506b100476bfd7ad754af386d6a627462731b7",
+  "createdAt": "2026-11-13T23:14:30Z",
+  "publishedAt": null,
+  "materiallyModifiedAt": "2026-11-13T23:14:30Z",
+  "verifiedAt": "2026-11-13T23:14:51Z",
+  "owner": "Redakcja HelpTravel",
+  "reviewStatus": "approved",
+  "reviewedBy": "właściciel serwisu — akceptacja przez merge PR",
+  "generationRunId": "redakcja-2026-11-14",
+  "aiDisclosure": "Tekst przygotowany z pomocą AI na podstawie wskazanych źródeł. Każdy cytowany fakt został sprawdzony mechanicznie w treści źródła; ocena „co wybrać” jest opinią redakcji, nie relacją z podróży.",
+  "policyVersion": "2026-11-13.1"
+}
