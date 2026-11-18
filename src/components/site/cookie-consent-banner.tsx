@@ -113,61 +113,50 @@ export function CookieConsentBanner() {
   return (
     <>
       {needsDecision && !isSuppressed ? (
+        // Zwarty baner (18.11.2026): na telefonie niski pasek u dołu, na desktopie karta
+        // w lewym dolnym rogu — nie zasłania treści ani dymka czatu (ten i tak czeka na
+        // decyzję). Obie decyzje są na pierwszym ekranie, obok siebie i tej samej wielkości;
+        // pełne kategorie i opisy są w „Ustawieniach”.
         <div
           role="dialog"
           aria-modal="false"
           aria-labelledby="cookie-consent-title"
           aria-describedby="cookie-consent-body"
-          className="fixed inset-x-2 bottom-2 z-40 mx-auto max-w-3xl rounded-[1.5rem] border border-emerald-900/15 bg-white/98 p-5 shadow-[0_20px_60px_rgba(12,58,34,0.18)] backdrop-blur-xl sm:bottom-4 sm:p-6"
+          className="fixed inset-x-2 bottom-2 z-40 rounded-lg border border-line bg-surface-raised p-4 shadow-lg sm:inset-x-auto sm:bottom-4 sm:left-4 sm:w-[25rem] sm:p-5"
         >
-          <p
-            id="cookie-consent-title"
-            className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700"
-          >
-            Pliki cookie i prywatność
-          </p>
-          <h2 className="mt-2 text-lg font-bold text-emerald-950 sm:text-xl">
-            Używamy plików cookie, aby HelpTravel działał poprawnie.
+          <h2 id="cookie-consent-title" className="text-sm font-bold text-ink">
+            Pliki cookie
           </h2>
-          <p
-            id="cookie-consent-body"
-            className="mt-2 text-sm leading-7 text-emerald-900/82"
-          >
-            Niezbędne pliki cookie są zawsze włączone. Możesz dodatkowo zgodzić się
-            na cookie analityczne (pomagają nam ulepszać serwis) oraz marketingowe i
-            afiliacyjne (mierzą skuteczność współpracy z partnerami). Szczegóły
-            znajdziesz w{" "}
-            <Link
-              href="/polityka-prywatnosci"
-              className="font-semibold text-emerald-700 underline-offset-2 hover:underline"
-            >
-              Polityce prywatności
+          <p id="cookie-consent-body" className="mt-1 text-xs leading-5 text-ink-muted sm:text-[0.8125rem]">
+            Niezbędne działają zawsze. Analityczne i marketingowe (afiliacyjne) włączymy tylko za Twoją zgodą —
+            wybór zmienisz w dowolnej chwili.{" "}
+            <Link href="/polityka-prywatnosci" className="font-semibold text-ink underline underline-offset-2 hover:text-brand">
+              Polityka prywatności
             </Link>
-            . Możesz zmienić swój wybór w dowolnej chwili.
           </p>
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <button
-              type="button"
-              onClick={acceptAll}
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-700 px-5 text-sm font-bold text-white transition hover:bg-emerald-800"
-            >
-              Akceptuję wszystkie
-            </button>
+          <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={rejectAll}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/15 bg-white px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
+              className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-line bg-surface px-2 text-[0.8125rem] font-semibold text-ink transition hover:bg-surface-sunken sm:px-3 sm:text-sm"
             >
               Tylko niezbędne
             </button>
             <button
               type="button"
-              onClick={openSettings}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-emerald-50/80 px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100"
+              onClick={acceptAll}
+              className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full bg-brand px-2 text-[0.8125rem] font-bold text-white transition hover:bg-brand-strong sm:px-3 sm:text-sm"
             >
-              Ustawienia
+              Akceptuję wszystkie
             </button>
           </div>
+          <button
+            type="button"
+            onClick={openSettings}
+            className="mt-1 inline-flex min-h-11 w-full items-center justify-center text-xs font-semibold text-ink-muted underline underline-offset-4 transition hover:text-ink"
+          >
+            Ustawienia
+          </button>
         </div>
       ) : null}
 

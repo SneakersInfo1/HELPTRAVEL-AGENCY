@@ -20,8 +20,18 @@ export interface SideInfo {
   flightHref: string;
   guideHref: string;
   image: string | null;
+  /** Dalsze zdjęcia kierunku z tej samej integracji (bez powtórzeń i bez zdjęcia głównego). */
+  gallery?: string[];
   /** Opis kierunku z przewodnika (publisher-content) — treść redakcyjna, bez liczb. */
   overview: string;
+}
+
+/** Podpis źródła zdjęć (prawdziwe zdjęcia miejsca z istniejącej integracji). */
+export function photoCreditFor(sides: readonly SideInfo[]): string | null {
+  const urls = sides.flatMap((side) => [side.image, ...(side.gallery ?? [])]).filter((url): url is string => Boolean(url));
+  if (urls.some((url) => url.includes("pexels.com"))) return "Pexels";
+  if (urls.some((url) => url.includes("unsplash.com"))) return "Unsplash";
+  return null;
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Warsaw" });

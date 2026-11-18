@@ -40,12 +40,15 @@ interface PageCase {
 }
 
 const PAGES: PageCase[] = [
-  { path: "/porownanie/athens-greece-vs-rome-italy", template: "comparison", enriched: true, minWords: 900 },
-  { path: "/porownanie/funchal-portugal-vs-santa-cruz-de-tenerife-spain", template: "comparison", enriched: true, minWords: 900 },
+  // Progi porównań po przebudowie „Magazyn” (18.11.2026): treść celowo skrócona o 20–30% (bez
+  // zdublowanej sekcji klimatu, powtórzeń i zapowiedzi). Próg ≈ 90% zmierzonej liczby słów —
+  // nadal łapie przypadkową utratę sekcji, ale nie wymusza lania wody.
+  { path: "/porownanie/athens-greece-vs-rome-italy", template: "comparison", enriched: true, minWords: 650 },
+  { path: "/porownanie/funchal-portugal-vs-santa-cruz-de-tenerife-spain", template: "comparison", enriched: true, minWords: 750 },
   // Próg sprawdza, że treść ze źródeł jest w HTML serwera. 17.11.2026 z tej strony zniknęły
-  // werdykt i FAQ o kosztach (bez pomiaru), więc ma 897 słów — progu nie dobijamy tekstem.
-  { path: "/porownanie/malaga-spain-vs-valencia-spain", template: "comparison", enriched: true, minWords: 800 },
-  { path: "/porownanie/barcelona-spain-vs-valencia-spain", template: "comparison", enriched: true, minWords: 800 },
+  // werdykt i FAQ o kosztach (bez pomiaru) — progu nie dobijamy tekstem (po przebudowie ~780 słów).
+  { path: "/porownanie/malaga-spain-vs-valencia-spain", template: "comparison", enriched: true, minWords: 700 },
+  { path: "/porownanie/barcelona-spain-vs-valencia-spain", template: "comparison", enriched: true, minWords: 650 },
   // Para flagowa: na produkcji ma też sekcję danych własnych z LiteAPI; lokalnie bez kluczy jej nie ma.
   { path: "/porownanie/heraklion-greece-vs-rhodes-greece", template: "comparison", minWords: 250 },
   { path: "/kierunki/barcelona-spain/styczen", template: "month", minWords: 250 },

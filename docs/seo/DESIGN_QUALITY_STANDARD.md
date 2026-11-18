@@ -33,6 +33,26 @@ We wszystkich wariantach pierwsze CTA mieści się w pierwszym ekranie i żaden 
 
 Wybór opiera się na zrzutach, pomiarach układu i testach automatycznych. Nie ma za nim badań z użytkownikami ani danych o konwersji, bo GA4 nie jest podłączone. Warianty B i C zostają w laboratorium i można do nich wrócić w teście A/B, gdy pomiar będzie działał.
 
+### Wariant D „Magazyn” — domyślny od 18.11.2026
+
+Właściciel ocenił A na desktopie jako zbyt wąski (szpalta 46 rem na ekranie 1440 px, puste boki), zbyt długi i ubogi w zdjęcia. D zachowuje to, co rozstrzygnęło o wyborze A — odpowiedź i parę CTA nad zgięciem na 390 px, werdykt jako element charakterystyczny, tylko tokeny marki — i zmienia kompozycję:
+
+- szerokość kontenera serwisu (`max-w-page`, 75 rem); hero w dwóch kolumnach (tekst + duże zdjęcia obu miast); śródtytuły sekcji w lewej kolumnie, tekst w prawej (bez zbyt długich wierszy);
+- „Najważniejsze różnice w skrócie”: wartości obu kierunków obok siebie, przy ocenach 0–100 pasek — dane z bramki faktów, nie ozdobne kafle;
+- werdykt jako dwa panele „{miasto} — wybierz, jeśli” ze zdjęciem; blok „{A} i {B} w zdjęciach” w treści;
+- jedna tabela faktów (wiersze dokumentu treści + liczby + najcieplejsze/najchłodniejsze miesiące) zamiast dwóch tabel i zdublowanej sekcji „Normy klimatyczne”; źródła klimatu raz;
+- sekcje na przemian na tle `surface` i `surface-sunken`, większe śródtytuły; loty jako link pomocniczy w panelu CTA, nie trzeci przycisk.
+
+Zdjęcia dodatkowe wyłącznie z wyszukiwania Pexels dla kierunku. Zapasowe zdjęcia z `commercial-assets` (środowiska bez klucza) są ogólne — dla Aten m.in. tropikalna plaża — więc bez Pexels strona pokazuje tylko zdjęcie główne.
+
+| Ateny–Rzym, build lokalny | A „Werdykt” | D „Magazyn” |
+|---|---|---|
+| Słowa w `<main>` | 973 | 717 (−26%) |
+| Wysokość strony 1440 / 768 / 390 px | 6009 / 6338 / 8323 | 4975 / 6348 / 7997 |
+| Zdjęcia (z kluczem Pexels) | 2 | do 8 |
+
+Skrócenie treści: zdublowana sekcja klimatu i podwójne źródła (szablon), zdania-zapowiedzi i powtórzenia werdyktu w dokumencie Ateny–Rzym (sekcja „Morze i okolice” powtarzała fakty z werdyktu i tabeli). Twierdzenia i źródła bez zmian; cytaty potwierdzone na kopiach stron z 13.11.2026 (UNESCO blokuje automaty).
+
 ### Rola narzędzi inspiracji
 
 | Narzędzie | Co wzięto | Co odrzucono |

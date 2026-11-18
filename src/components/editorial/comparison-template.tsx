@@ -31,10 +31,13 @@ import {
   type FactRow,
   type SideInfo,
 } from "./comparison-blocks";
+import { ComparisonMagazine } from "./comparison-magazine";
 
-export type ComparisonVariant = "werdykt" | "pojedynek" | "karta";
+export type ComparisonVariant = "magazyn" | "werdykt" | "pojedynek" | "karta";
 
-export const DEFAULT_COMPARISON_VARIANT: ComparisonVariant = "werdykt";
+// „Magazyn” (18.11.2026): szeroki układ z hero, zdjęciami obu kierunków i jedną tabelą
+// faktów — comparison-magazine.tsx. „Werdykt” (wąska szpalta) zostaje do porównań w lab.
+export const DEFAULT_COMPARISON_VARIANT: ComparisonVariant = "magazyn";
 
 export interface ComparisonTemplateProps {
   view: ComparisonView;
@@ -399,7 +402,15 @@ export function ComparisonTemplate(props: ComparisonTemplateProps) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(props.view.structuredData) }} />
-      {variant === "pojedynek" ? <VariantPojedynek {...props} /> : variant === "karta" ? <VariantKarta {...props} /> : <VariantWerdykt {...props} />}
+      {variant === "magazyn" ? (
+        <ComparisonMagazine {...props} />
+      ) : variant === "pojedynek" ? (
+        <VariantPojedynek {...props} />
+      ) : variant === "karta" ? (
+        <VariantKarta {...props} />
+      ) : (
+        <VariantWerdykt {...props} />
+      )}
     </>
   );
 }

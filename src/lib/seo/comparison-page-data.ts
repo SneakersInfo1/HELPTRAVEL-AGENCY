@@ -26,6 +26,26 @@ function flightHref(profile: DestinationProfile): string {
   return flightSearchPrefillHref({ destIata: profile.airportCode, city: profile.city, country: profile.country });
 }
 
+/**
+ * Dalsze zdjęcia kierunku z tej samej integracji: galeria i plakat, bez powtórzeń
+ * i bez zdjęcia głównego (integracja dubluje adresy, gdy ma mniej trafień).
+ *
+ * WYŁĄCZNIE wyniki wyszukiwania Pexels dla kierunku. Zapasowe zdjęcia z
+ * commercial-assets (bez klucza Pexels) są ogólne — dla Aten m.in. tropikalna plaża
+ * (zmierzone 18.11.2026) — a strona porównania pokazuje prawdziwe zdjęcia miejsca
+ * albo żadne. Bez Pexels zostaje samo zdjęcie główne, jak przed przebudową.
+ */
+function galleryOf(media: { heroImage?: string | null; gallery?: string[]; poster?: string | null }): string[] {
+  const seen = new Set([media.heroImage].filter(Boolean));
+  const result: string[] = [];
+  for (const url of [...(media.gallery ?? []), media.poster]) {
+    if (!url || seen.has(url) || !url.includes("images.pexels.com")) continue;
+    seen.add(url);
+    result.push(url);
+  }
+  return result.slice(0, 3);
+}
+
 /** Komplet danych szablonu (zdjęcia z istniejącej integracji, dane własne dla par flagowych). */
 export async function loadComparisonPage(slug: string): Promise<Omit<ComparisonTemplateProps, "variant"> | null> {
   const pair = getComparisonPairBySlug(slug);
@@ -56,8 +76,8 @@ export async function loadComparisonPage(slug: string): Promise<Omit<ComparisonT
   });
 
   const sides: [SideInfo, SideInfo] = [
-    { name: model.a.name, slug: pair.a, hotelHref: hotelHref(ga.destination), flightHref: flightHref(ga.destination), guideHref: `/kierunki/${pair.a}`, image: mediaA.heroImage ?? null, overview: ga.overview },
-    { name: model.b.name, slug: pair.b, hotelHref: hotelHref(gb.destination), flightHref: flightHref(gb.destination), guideHref: `/kierunki/${pair.b}`, image: mediaB.heroImage ?? null, overview: gb.overview },
+    { name: model.a.name, slug: pair.a, hotelHref: hotelHref(ga.destination), flightHref: flightHref(ga.destination), guideHref: `/kierunki/${pair.a}`, image: mediaA.heroImage ?? null, gallery: galleryOf(mediaA), overview: ga.overview },
+    { name: model.b.name, slug: pair.b, hotelHref: hotelHref(gb.destination), flightHref: flightHref(gb.destination), guideHref: `/kierunki/${pair.b}`, image: mediaB.heroImage ?? null, gallery: galleryOf(mediaB), overview: gb.overview },
   ];
 
   const seen = new Set<string>();
