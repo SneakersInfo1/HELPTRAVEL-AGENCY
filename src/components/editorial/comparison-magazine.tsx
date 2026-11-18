@@ -64,7 +64,7 @@ function climateMonthRows(model: ComparisonModel, nameA: string): FactRow[] {
 function Band({ id, tone = "plain", children, className = "" }: { id: string; tone?: "plain" | "sunken"; children: ReactNode; className?: string }) {
   return (
     <section aria-labelledby={id} className={`${tone === "sunken" ? "bg-surface-sunken" : ""} ${className}`}>
-      <div className={`${CONTAINER} py-8 sm:py-14`}>{children}</div>
+      <div className={`${CONTAINER} py-8 sm:py-12`}>{children}</div>
     </section>
   );
 }
@@ -170,14 +170,14 @@ function SideValue({ name, value, score, strong }: { name: string; value: string
 /** „Najważniejsze różnice w skrócie”: oba kierunki obok siebie, przy ocenach 0–100 pasek. */
 function KeyDifferences({ rows, nameA, nameB }: { rows: ComparisonRow[]; nameA: string; nameB: string }) {
   return (
-    <dl className="grid gap-x-10 gap-y-5 md:grid-cols-2 lg:grid-cols-3">
+    <dl className="grid gap-x-10 gap-y-4 md:grid-cols-2 md:gap-y-5 lg:grid-cols-3">
       {rows.map((row) => {
         const a = row.av.match(SCORE);
         const b = row.bv.match(SCORE);
         const scoreA = a && b ? Number(a[1]) : null;
         const scoreB = a && b ? Number(b[1]) : null;
         return (
-          <div key={row.label} className="border-t border-line pt-3">
+          <div key={row.label} className="border-t border-line pt-2.5 md:pt-3">
             <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">{KEY_ROW_DISPLAY[row.label] ?? row.label}</dt>
             <dd className="mt-2 grid grid-cols-2 gap-x-5">
               <SideValue name={nameA} value={row.av} score={scoreA} strong={scoreA !== null && scoreB !== null && scoreA >= scoreB} />
@@ -197,17 +197,17 @@ function VerdictPanels({ options, sides }: { options: ComparisonVerdictOption[];
         const side = sides.find((candidate) => candidate.name === option.label) ?? sides[index] ?? null;
         const photo = side?.gallery?.[0] ?? null;
         return (
-          <article key={option.label} className="overflow-hidden rounded-lg border border-line bg-surface-raised shadow-sm">
+          <article key={option.label} className="overflow-hidden rounded-lg border border-line bg-surface-raised">
             {photo ? (
-              <div className="relative aspect-[5/2] bg-surface-sunken">
-                <Image src={photo} alt={`${option.label} — zdjęcie z galerii kierunku`} fill sizes="(min-width: 768px) 560px, 92vw" className="object-cover" />
+              <div className="relative hidden aspect-[5/2] bg-surface-sunken md:block">
+                <Image src={photo} alt={`${option.label} — zdjęcie z galerii kierunku`} fill sizes="(min-width: 768px) 560px, 1px" className="object-cover" />
               </div>
             ) : null}
             <div className="p-5 sm:p-7">
               {/* Nazwa zostaje w mianowniku: „Wybierz Barcelona" byłoby błędem (biernik:
                   „Barcelonę"), a odmiany nazw nie mamy w danych. */}
-              <h3 className="font-display text-2xl font-semibold text-ink sm:text-3xl">{option.label} — wybierz, jeśli</h3>
-              <ul className="mt-4 space-y-3 text-base leading-7">
+              <h3 className="font-display text-2xl font-semibold text-ink lg:text-3xl">{option.label} — wybierz, jeśli</h3>
+              <ul className="mt-4 space-y-2.5 text-base leading-7">
                 {option.chooseIf.map((item) => (
                   <li key={item} className="flex gap-2.5 text-ink">
                     <Check aria-hidden className="mt-1.5 h-4 w-4 shrink-0 text-brand" strokeWidth={2.5} />
@@ -242,7 +242,7 @@ function Overviews({ sides }: { sides: [SideInfo, SideInfo] }) {
       {sides.map((side) => {
         const photo = side.gallery?.[0] ?? null;
         return (
-          <article key={side.slug} className="overflow-hidden rounded-lg border border-line bg-surface-raised shadow-sm">
+          <article key={side.slug} className="overflow-hidden rounded-lg border border-line bg-surface-raised">
             {photo ? (
               <div className="relative aspect-[5/2] bg-surface-sunken">
                 <Image src={photo} alt={`${side.name} — zdjęcie z galerii kierunku`} fill sizes="(min-width: 768px) 560px, 92vw" className="object-cover" />
@@ -308,7 +308,7 @@ function EditorialBody({ section }: { section: EditorialSection }) {
     return (
       <div className="max-w-[65ch] space-y-4">
         {section.paragraphs.map((paragraph, index) => (
-          <p key={`${index}-${paragraph.slice(0, 24)}`} className="text-lg leading-8 text-ink">
+          <p key={`${index}-${paragraph.slice(0, 24)}`} className="text-base leading-7 text-ink sm:text-lg sm:leading-8">
             {paragraph}
           </p>
         ))}
@@ -321,7 +321,7 @@ function EditorialBody({ section }: { section: EditorialSection }) {
         {section.intro ? <p className="text-base leading-7 text-ink-muted">{section.intro}</p> : null}
         <ul className="mt-4 divide-y divide-line border-y border-line">
           {section.items.map((item, index) => (
-            <li key={`${index}-${item.slice(0, 24)}`} className="flex gap-3 py-3 text-base leading-7 text-ink">
+            <li key={`${index}-${item.slice(0, 24)}`} className="flex gap-3 py-2.5 text-base leading-7 text-ink">
               <span aria-hidden className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
               <span>{item}</span>
             </li>
@@ -348,9 +348,9 @@ function EditorialBody({ section }: { section: EditorialSection }) {
 function EditorialFlow({ sections }: { sections: EditorialSection[] }) {
   if (sections.length === 0) return null;
   return (
-    <div className={`${CONTAINER} flex flex-col gap-8 py-8 sm:gap-14 sm:py-14`}>
+    <div className={`${CONTAINER} flex flex-col gap-8 py-8 sm:gap-12 sm:py-12`}>
       {sections.map((section, index) => (
-        <section key={section.id} aria-labelledby={`sekcja-${section.id}`} className={index > 0 ? "border-t border-line pt-8 sm:pt-14" : ""}>
+        <section key={section.id} aria-labelledby={`sekcja-${section.id}`} className={index > 0 ? "border-t border-line pt-8 sm:pt-12" : ""}>
           <Rail id={`sekcja-${section.id}`} heading={section.heading}>
             <EditorialBody section={section} />
           </Rail>
@@ -360,9 +360,27 @@ function EditorialFlow({ sections }: { sections: EditorialSection[] }) {
   );
 }
 
+/** Linki do podobnych porównań: jedna lista — na telefonie dwie kolumny linków, od sm pigułki. */
+function CompactLinks({ links }: { links: Array<{ href: string; label: string }> }) {
+  return (
+    <ul className="grid grid-cols-2 gap-x-4 sm:flex sm:flex-wrap sm:gap-2">
+      {links.map((link) => (
+        <li key={link.href}>
+          <Link
+            href={link.href}
+            className="flex min-h-11 items-center text-sm font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand sm:inline-flex sm:rounded-full sm:border sm:border-line sm:bg-surface-raised sm:px-4 sm:no-underline sm:hover:bg-brand-soft"
+          >
+            <span className="text-ink">{link.label}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function MagazineCta({ sides, content }: { sides: [SideInfo, SideInfo]; content: ComparisonView["content"] }) {
   return (
-    <section aria-labelledby="sprawdz-hotele" className={`${CONTAINER} py-8 sm:py-14`}>
+    <section aria-labelledby="sprawdz-hotele" className={`${CONTAINER} py-8 sm:py-12`}>
       <div className="rounded-lg bg-brand-strong p-6 [--focus-ring:#fff] sm:p-10 lg:grid lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:items-center lg:gap-12">
         <div>
           <h2 id="sprawdz-hotele" className="text-balance font-display text-3xl font-semibold text-white sm:text-4xl">
@@ -462,7 +480,7 @@ export function ComparisonMagazine({ view, model, sides, liveStats, articleLinks
       <Hero view={view} sides={sides} />
 
       {keyRows.length > 0 ? (
-        <Band id="roznice" tone="sunken" className="mt-8 sm:mt-14">
+        <Band id="roznice" tone="sunken" className="mt-8 sm:mt-12">
           <h2 id="roznice" className={H2}>
             Najważniejsze różnice w skrócie
           </h2>
@@ -538,7 +556,7 @@ export function ComparisonMagazine({ view, model, sides, liveStats, articleLinks
       <MagazineCta sides={sides} content={view.content} />
 
       <section aria-labelledby="czytaj-dalej" className="bg-surface-sunken">
-        <div className={`${CONTAINER} grid gap-8 py-8 sm:py-14 lg:grid-cols-2 lg:gap-14`}>
+        <div className={`${CONTAINER} grid gap-8 py-8 sm:py-12 lg:grid-cols-2 lg:gap-14`}>
           <div className="min-w-0">
             <h2 id="czytaj-dalej" className={H2}>
               Czytaj dalej
@@ -547,7 +565,7 @@ export function ComparisonMagazine({ view, model, sides, liveStats, articleLinks
               <LinkPills links={[...sides.map((side) => ({ href: side.guideHref, label: `${side.name} — przewodnik` })), ...articleLinks]} />
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">Podobne porównania</p>
-                <LinkPills links={view.relatedComparisons} />
+                <CompactLinks links={view.relatedComparisons} />
                 <p className="mt-3">
                   <Link href="/porownanie" className="text-sm font-semibold underline decoration-line underline-offset-4 transition hover:decoration-brand">
                     <span className="text-brand">Wszystkie porównania kierunków</span>

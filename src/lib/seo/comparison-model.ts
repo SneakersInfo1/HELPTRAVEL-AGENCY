@@ -117,7 +117,8 @@ function bothScoresKnown(a: ComparisonSide, b: ComparisonSide): boolean {
 }
 
 function flightCell(fact: FlightFact): string {
-  const hours = `~${fact.hours.toFixed(1)} h`;
+  // Przecinek dziesiętny po polsku („~2,6 h”); kropka zostaje tylko w danych.
+  const hours = `~${fact.hours.toFixed(1).replace(".", ",")} h`;
   return fact.kind === "exact" ? hours : `${hours} (szacunek)`;
 }
 
