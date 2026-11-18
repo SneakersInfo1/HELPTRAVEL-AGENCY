@@ -10,9 +10,9 @@ Liczby wyjściowe są w `BASELINE.md`.
 | Klasyfikacja adresów i zapytań (segmenty, marka, intencje wysokiego ryzyka) | `src/lib/seo-ops/gsc/segments.ts` |
 | Analizy: marka, porównanie okresów, CTR odniesienia, anomalie, ranking szans | `src/lib/seo-ops/gsc/analysis.ts` |
 | Klient API Search Console (tylko odczyt, konto usługi) | `src/lib/seo-ops/gsc/api-client.ts` |
-| Backlog 20 adresów | `OPPORTUNITY_BACKLOG.csv` (`pnpm seo:inventory`) |
+| Backlog 20 adresów | `seo-private/OPPORTUNITY_BACKLOG.csv`, poza repozytorium (`pnpm seo:inventory`) |
 
-Testy sprawdzają parser na trudnych przypadkach, a gdy na dysku jest prywatny eksport, także sumy z prawdziwych plików (1166 kliknięć i 35 393 wyświetlenia).
+Testy sprawdzają parser na trudnych przypadkach, a gdy na dysku jest prywatny eksport, także sumy z prawdziwych plików. Oczekiwane liczby leżą razem z eksportem w `seo-private/`, nie w kodzie.
 
 ## Jak liczony jest ranking szans
 
@@ -33,7 +33,7 @@ Wynik adresu to luka CTR przemnożona przez wagę segmentu.
 
 Porównania z kolejki mają już nowy szablon. Brakuje im dokumentu treści ze źródłami i to jest naturalne pierwsze zadanie dla automatu.
 
-Backlog zawiera kliknięcia, wyświetlenia, CTR i pozycję na poziomie adresu. Nie zawiera zapytań. Repozytorium jest publiczne, więc decyzja, czy te liczby mają w nim zostać, należy do właściciela (`OWNER_ACTIONS.md`, pkt 3).
+Backlog zawiera kliknięcia, wyświetlenia, CTR i pozycję na poziomie adresu, więc od 19.11.2026 leży poza repozytorium, w `seo-private/OPPORTUNITY_BACKLOG.csv` (repo jest publiczne).
 
 ## Klient API Search Console
 

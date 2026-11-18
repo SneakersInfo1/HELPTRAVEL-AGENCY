@@ -7,8 +7,8 @@
 // Do tej pory każdy klik z treści do wyszukiwarki był niewidoczny: żaden
 // event nie leciał, bo linki treściowe prowadzą prosto do `/hotele/szukaj`,
 // czyli NIE przechodzą przez formularz i `hotel_search_submit` się nie odpala.
-// Audyt GA4 (wrzesień 2026) pokazał to jako dziurę nr 1: 197 kliknięć na
-// porównaniach w 3 miesiące, a zero wiedzy, czy ktokolwiek poszedł dalej.
+// Audyt GA4 (wrzesień 2026) pokazał to jako dziurę nr 1: kliknięcia na
+// porównaniach były, a zero wiedzy, czy ktokolwiek poszedł dalej.
 //
 // Komponent jest CELOWO cienki: renderuje zwykły `next/link`, nie narzuca
 // żadnych klas ani stylów i przekazuje `className` na wylot. Strona treściowa
