@@ -21,17 +21,17 @@ const BOM = "﻿";
 describe("parseGscCsv", () => {
   it("czyta eksport z polskiego interfejsu z BOM i CTR jako ułamkiem", () => {
     const table = parseGscCsv(
-      `${BOM}Najpopularniejsze strony,Kliknięcia,Wyświetlenia,CTR,Pozycja\nhttps://helptravel.pl/,860,2437,0.3529,7.24\nhttps://helptravel.pl/cennik,4,1332,0.003,1.3\n`,
+      `${BOM}Najpopularniejsze strony,Kliknięcia,Wyświetlenia,CTR,Pozycja\nhttps://helptravel.pl/,120,1000,0.12,7.5\nhttps://helptravel.pl/cennik,2,800,0.0025,1.5\n`,
     );
     assert.equal(table.dimension, "Najpopularniejsze strony");
     assert.equal(table.rows.length, 2);
-    assert.deepEqual(table.rows[0], { key: "https://helptravel.pl/", clicks: 860, impressions: 2437, ctr: 0.3529, position: 7.24 });
+    assert.deepEqual(table.rows[0], { key: "https://helptravel.pl/", clicks: 120, impressions: 1000, ctr: 0.12, position: 7.5 });
   });
 
   it("czyta CTR w procentach z przecinkiem dziesiętnym i nagłówki angielskie", () => {
-    const table = parseGscCsv(`Query,Clicks,Impressions,CTR,Position\n"ateny, czy rzym",5,39,"12,82%","3,33"\n`);
-    assert.equal(table.rows[0].key, "ateny, czy rzym");
-    assert.ok(Math.abs(table.rows[0].ctr - 0.1282) < 1e-9);
+    const table = parseGscCsv(`Query,Clicks,Impressions,CTR,Position\n"plaża, czy góry",5,40,"12,50%","3,33"\n`);
+    assert.equal(table.rows[0].key, "plaża, czy góry");
+    assert.ok(Math.abs(table.rows[0].ctr - 0.125) < 1e-9);
     assert.equal(table.rows[0].position, 3.33);
   });
 
@@ -47,10 +47,10 @@ describe("parseGscCsv", () => {
   });
 
   it("pole w cudzysłowie ze znakiem nowej linii to jeden rekord", () => {
-    const table = parseGscCsv('Query,Clicks,Impressions,CTR,Position\n"-site:x.com \n-site:t.co ""electra \nmetropolis""",0,6,0,15.17\nmadera,3,192,0.0156,3.01\n');
+    const table = parseGscCsv('Query,Clicks,Impressions,CTR,Position\n"-site:a.example \n-site:b.example ""fraza \nw cudzysłowie""",0,5,0,14.5\nmiasto,3,200,0.015,3.2\n');
     assert.equal(table.rows.length, 2);
-    assert.equal(table.rows[0].key, '-site:x.com -site:t.co "electra metropolis"');
-    assert.equal(table.rows[1].key, "madera");
+    assert.equal(table.rows[0].key, '-site:a.example -site:b.example "fraza w cudzysłowie"');
+    assert.equal(table.rows[1].key, "miasto");
   });
 
   it("splitCsvLine obsługuje podwojony cudzysłów", () => {
@@ -191,7 +191,7 @@ describe("anomalie i scoring", () => {
     const anomalies = pageAnomalies([
       { key: "https://helptravel.pl/en/kierunki/x", clicks: 0, impressions: 7, ctr: 0, position: 9 },
       { key: "https://helptravel.pl/redakcja?lang=en", clicks: 0, impressions: 4, ctr: 0, position: 3 },
-      { key: "https://helptravel.pl/o-nas", clicks: 4, impressions: 1367, ctr: 0.003, position: 1.3 },
+      { key: "https://helptravel.pl/o-nas", clicks: 3, impressions: 1500, ctr: 0.002, position: 1.5 },
       { key: "https://helptravel.pl/porownanie/a-vs-b", clicks: 30, impressions: 600, ctr: 0.05, position: 4.8 },
     ]);
     assert.deepEqual(
@@ -224,7 +224,7 @@ describe("anomalie i scoring", () => {
   });
 
   it("scoring: pozycje 11–20 dostają składnik odległości do top 10", () => {
-    const hub = scoreOpportunity({ url: "https://helptravel.pl/wyjazdy/city-break", clicks: 11, impressions: 2506, position: 17.78 });
+    const hub = scoreOpportunity({ url: "https://helptravel.pl/wyjazdy/city-break", clicks: 10, impressions: 2500, position: 17.5 });
     assert.ok(hub.score > 20, String(hub.score));
   });
 
@@ -241,54 +241,76 @@ describe("anomalie i scoring", () => {
 });
 
 // ── Kontrola na prawdziwym eksporcie ─────────────────────────────────────
-// Pliki leżą poza repo (seo-private/, repo jest publiczne). Gdy ich nie ma
-// (CI, świeży checkout), blok jest pomijany JAWNIE — widać to w raporcie testów.
+// Eksport i oczekiwane liczby leżą poza repo (seo-private/, repo jest publiczne):
+// pliki CSV z interfejsu GSC oraz expected.json z sumami policzonymi w misji.
+// Gdy ich nie ma (CI, świeży checkout), blok jest pomijany JAWNIE — widać to
+// w raporcie testów. Żadna liczba z prawdziwego eksportu nie trafia do kodu.
 const realDir = join(process.cwd(), "seo-private", "gsc", "2026-11-10");
-const hasReal = existsSync(join(realDir, "gsc_daily_2026-08-11_2026-11-10.csv"));
+const expectedFile = join(realDir, "expected.json");
+const hasReal = existsSync(join(realDir, "gsc_daily_2026-08-11_2026-11-10.csv")) && existsSync(expectedFile);
 
-describe("eksport GSC 11.08–10.11.2026 — liczby z misji", { skip: hasReal ? false : "brak seo-private/gsc/2026-11-10" }, () => {
+interface RealWindow {
+  from: string;
+  to: string;
+  clicks: number;
+  impressions: number;
+  ctrPercent: string;
+}
+
+interface RealExportExpectations {
+  daily: { rows: number; clicks: number; impressions: number; ctrPercent: string };
+  windows: { previous: RealWindow; current: RealWindow; impressionsChangePercent: string; clicksChangePercent: string; anomaly: string };
+  pages: { rows: number; clicks: number; impressions: number; comparisons: number[]; hub: number[]; containingKierunki: number[] };
+  queries: { clicks: number; propertyClicks: number; brandClicksAtLeast: number; brandShareAtLeast: number };
+}
+
+describe("eksport GSC 11.08–10.11.2026 — liczby z misji (prywatne)", { skip: hasReal ? false : "brak seo-private/gsc/2026-11-10 z expected.json" }, () => {
   const read = (name: string) => parseGscCsv(readFileSync(join(realDir, name), "utf8")).rows;
+  const expected = (): RealExportExpectations => JSON.parse(readFileSync(expectedFile, "utf8")) as RealExportExpectations;
 
-  it("dzienne: 92 dni, 1166 kliknięć, 35393 wyświetlenia, CTR 3,294%", () => {
+  it("dzienne: liczba dni, kliknięcia, wyświetlenia i CTR zgodne z expected.json", () => {
+    const e = expected().daily;
     const daily = read("gsc_daily_2026-08-11_2026-11-10.csv");
     const t = totals(daily);
-    assert.equal(daily.length, 92);
-    assert.equal(t.clicks, 1166);
-    assert.equal(t.impressions, 35393);
-    assert.equal((t.ctr * 100).toFixed(3), "3.294");
+    assert.equal(daily.length, e.rows);
+    assert.equal(t.clicks, e.clicks);
+    assert.equal(t.impressions, e.impressions);
+    assert.equal((t.ctr * 100).toFixed(3), e.ctrPercent);
   });
 
-  it("okna 30-dniowe: 129/6389 → 83/18398", () => {
+  it("okna 30-dniowe: sumy, CTR, zmiany i anomalia zgodne z expected.json", () => {
+    const e = expected().windows;
     const daily = read("gsc_daily_2026-08-11_2026-11-10.csv");
-    const comparison = comparePeriods(inDateRange(daily, "2026-09-12", "2026-10-11"), inDateRange(daily, "2026-10-12", "2026-11-10"));
-    assert.deepEqual([comparison.previous.clicks, comparison.previous.impressions], [129, 6389]);
-    assert.deepEqual([comparison.current.clicks, comparison.current.impressions], [83, 18398]);
-    assert.equal((comparison.previous.ctr * 100).toFixed(3), "2.019");
-    assert.equal((comparison.current.ctr * 100).toFixed(3), "0.451");
-    assert.equal(((comparison.impressionsChange ?? 0) * 100).toFixed(0), "188");
-    assert.equal(((comparison.clicksChange ?? 0) * 100).toFixed(1), "-35.7");
-    assert.equal(periodAnomalies(comparison)[0]?.kind, "impressions_up_clicks_down");
+    const comparison = comparePeriods(inDateRange(daily, e.previous.from, e.previous.to), inDateRange(daily, e.current.from, e.current.to));
+    assert.deepEqual([comparison.previous.clicks, comparison.previous.impressions], [e.previous.clicks, e.previous.impressions]);
+    assert.deepEqual([comparison.current.clicks, comparison.current.impressions], [e.current.clicks, e.current.impressions]);
+    assert.equal((comparison.previous.ctr * 100).toFixed(3), e.previous.ctrPercent);
+    assert.equal((comparison.current.ctr * 100).toFixed(3), e.current.ctrPercent);
+    assert.equal(((comparison.impressionsChange ?? 0) * 100).toFixed(0), e.impressionsChangePercent);
+    assert.equal(((comparison.clicksChange ?? 0) * 100).toFixed(1), e.clicksChangePercent);
+    assert.equal(periodAnomalies(comparison)[0]?.kind, e.anomaly);
   });
 
-  it("strony: 1000 adresów, 1200 kliknięć, 43262 wyświetlenia; porównania 52/178/9432 + hub 3/1206", () => {
+  it("strony: sumy całości, porównań, huba i adresów z /kierunki/ zgodne z expected.json", () => {
+    const e = expected().pages;
     const pages = read("gsc_pages_top1000.csv");
     const t = totals(pages);
-    assert.deepEqual([pages.length, t.clicks, t.impressions], [1000, 1200, 43262]);
+    assert.deepEqual([pages.length, t.clicks, t.impressions], [e.rows, e.clicks, e.impressions]);
     const comparisons = totals(pages.filter((row) => classifyUrl(row.key).segment === "comparison"));
-    assert.deepEqual([comparisons.rows, comparisons.clicks, comparisons.impressions], [52, 178, 9432]);
+    assert.deepEqual([comparisons.rows, comparisons.clicks, comparisons.impressions], e.comparisons);
     const hub = totals(pages.filter((row) => classifyUrl(row.key).segment === "comparison_hub"));
-    assert.deepEqual([hub.rows, hub.clicks, hub.impressions], [1, 3, 1206]);
-    // „Adresy zawierające /kierunki/" z misji (818 / 70 / 19236) to dopasowanie
-    // podciągu — obejmuje też /en/kierunki/ i warianty z parametrami.
+    assert.deepEqual([hub.rows, hub.clicks, hub.impressions], e.hub);
+    // Dopasowanie podciągu „/kierunki/” obejmuje też /en/kierunki/ i warianty z parametrami.
     const containing = totals(pages.filter((row) => row.key.includes("/kierunki/")));
-    assert.deepEqual([containing.rows, containing.clicks, containing.impressions], [818, 70, 19236]);
+    assert.deepEqual([containing.rows, containing.clicks, containing.impressions], e.containingKierunki);
   });
 
-  it("zapytania: 853 kliknięcia w eksporcie, marka co najmniej 826", () => {
+  it("zapytania: kliknięcia w eksporcie i dolna granica udziału marki zgodne z expected.json", () => {
+    const e = expected().queries;
     const queries = read("gsc_queries_top1000.csv");
-    assert.equal(totals(queries).clicks, 853);
-    const split = brandSplit(queries, 1166);
-    assert.ok(split.brand.clicks >= 826, `marka ${split.brand.clicks}`);
-    assert.ok((split.brandShareOfPropertyLowerBound ?? 0) >= 0.708);
+    assert.equal(totals(queries).clicks, e.clicks);
+    const split = brandSplit(queries, e.propertyClicks);
+    assert.ok(split.brand.clicks >= e.brandClicksAtLeast, `marka ${split.brand.clicks}`);
+    assert.ok((split.brandShareOfPropertyLowerBound ?? 0) >= e.brandShareAtLeast);
   });
 });

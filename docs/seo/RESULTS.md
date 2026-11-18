@@ -66,7 +66,7 @@ Dokładne kroki: `OWNER_ACTIONS.md`.
 
 - **Automat nie pracował na prawdziwym modelu.** Nie ma klucza, a misja zabrania wydatków. Ścieżka ma testy na modelu testowym.
 - **Klient API Search Console nie pobrał prawdziwych danych.** Żądanie OAuth zostało potwierdzone na serwerze Google fikcyjnym kontem. Samo zapytanie o dane ma tylko testy na podstawionych odpowiedziach.
-- **Nie ma pomiaru efektu.** GSC pokaże zmianę najwcześniej po 28 dniach od wdrożenia. Nie podaję prognozy ruchu, bo ruch spoza marki jest dziś za mały, by ją uzasadnić (23 widoczne kliknięcia w 92 dni).
+- **Nie ma pomiaru efektu.** GSC pokaże zmianę najwcześniej po 28 dniach od wdrożenia. Nie podaję prognozy ruchu, bo ruch spoza marki jest dziś za mały, by ją uzasadnić.
 - **Nie było testów z użytkownikami.** Kierunek wizualny wybrano na podstawie zrzutów i pomiarów układu.
 - **Treść ze źródeł mają 4 z 54 porównań.** Pozostałe korzystają z nowego szablonu z danymi bazowymi.
 - **Bez masowych zmian indeksu.** 567 osieroconych stron miesięcy i plan indeksu zostają do Twojej decyzji.
