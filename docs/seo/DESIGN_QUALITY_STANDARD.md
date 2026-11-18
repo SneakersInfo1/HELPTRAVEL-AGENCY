@@ -43,13 +43,24 @@ Właściciel ocenił A na desktopie jako zbyt wąski (szpalta 46 rem na ekranie 
 - jedna tabela faktów (wiersze dokumentu treści + liczby + najcieplejsze/najchłodniejsze miesiące) zamiast dwóch tabel i zdublowanej sekcji „Normy klimatyczne”; źródła klimatu raz;
 - sekcje na przemian na tle `surface` i `surface-sunken`, większe śródtytuły; loty jako link pomocniczy w panelu CTA, nie trzeci przycisk.
 
-Zdjęcia dodatkowe wyłącznie z wyszukiwania Pexels dla kierunku. Zapasowe zdjęcia z `commercial-assets` (środowiska bez klucza) są ogólne — dla Aten m.in. tropikalna plaża — więc bez Pexels strona pokazuje tylko zdjęcie główne.
+Zasada dla zdjęć: prawdziwe zdjęcie miejsca albo żadne.
 
-| Ateny–Rzym, build lokalny | A „Werdykt” | D „Magazyn” |
+- **Ateny i Rzym** mają zdjęcia przypięte w `src/lib/seo/comparison-photos.ts`, obejrzane ręcznie i opisane po polsku. Wyszukiwanie Pexels działa w trakcie builda i ma limit zapytań. Drugi build na Preview w ciągu godziny dostał zdjęcia zapasowe.
+- **Pozostałe kierunki** biorą z wyszukiwania Pexels wszystkie zdjęcia, także główne. Zapasowe zdjęcia z `commercial-assets` przypisują miastom cudze ikony (Preview 18.11.2026: Barcelona — wieża Eiffla, Budapeszt — Brama Brandenburska, Ateny — tropikalna plaża), więc strona ich nie pokazuje. Hero ma wtedy samą kolumnę tekstu, a dane strukturalne nie mają pola `image`.
+- **Zdjęcia zawsze w parze:** jedno miasto ze zdjęciem, a drugie bez, wyglądałoby na faworyzowanie.
+
+| Ateny–Rzym | A „Werdykt” | D „Magazyn” |
 |---|---|---|
-| Słowa w `<main>` | 973 | 717 (−26%) |
-| Wysokość strony 1440 / 768 / 390 px | 6009 / 6338 / 8323 | 4975 / 6348 / 7997 |
-| Zdjęcia (z kluczem Pexels) | 2 | do 8 |
+| Słowa w `<main>` (build lokalny) | 973 | 730 (−25%) |
+| Wysokość strony na Preview, 1440 / 768 / 390 px | 6321 / 6685 / 8724 | 5796 / 7063 / 8830 |
+| Zdjęcia | 2 | 8 |
+
+Na desktopie strona jest niższa o 8%. Na tablecie jest wyższa o 6%, a na telefonie o 1%, bo doszło sześć zdjęć: oszczędność na tekście zjadają zdjęcia.
+
+Przy przeglądzie innych par wyszły dwa błędy generatora porównań bez dokumentu treści:
+
+- **Plaża dla miast bez morza:** 8 z 54 par wskazywało „na plażę” miasto bez plaży, np. „Na plażę i wypoczynek nad morzem: Budapeszt” przy ocenie 15/100 wobec 8/100. Teraz odpowiedź, FAQ i werdykty mówią o plaży tylko wtedy, gdy któryś kierunek ma profil plażowy co najmniej 70/100, czyli ten sam próg co odbiorcy „plaży”.
+- **Identyczne listy:** 14 z 39 par bez dokumentu miało po obu stronach te same listy „wybierz, jeśli”. Zostają tylko cechy, które różnią kierunki. Gdy którejś stronie nic nie zostaje, zamiast list stoi sekcja „O obu kierunkach” z opisami z przewodników.
 
 Skrócenie treści: zdublowana sekcja klimatu i podwójne źródła (szablon), zdania-zapowiedzi i powtórzenia werdyktu w dokumencie Ateny–Rzym (sekcja „Morze i okolice” powtarzała fakty z werdyktu i tabeli). Twierdzenia i źródła bez zmian; cytaty potwierdzone na kopiach stron z 13.11.2026 (UNESCO blokuje automaty).
 

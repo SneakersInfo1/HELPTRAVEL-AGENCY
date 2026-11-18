@@ -110,9 +110,7 @@ function HeroPhotos({ sides }: { sides: [SideInfo, SideInfo] }) {
               sizes="(min-width: 1024px) 720px, (min-width: 640px) 62vw, 86vw"
               className="object-cover"
             />
-          ) : (
-            <div className="absolute inset-0 bg-brand-strong" />
-          )}
+          ) : null}
           {/* Przyciemnienie dołu tylko pod podpisem — czytelność nazwy na zdjęciu. */}
           <div aria-hidden className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,.66)_0%,rgba(0,0,0,.16)_42%,transparent_68%)]" />
           <figcaption className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
@@ -124,11 +122,21 @@ function HeroPhotos({ sides }: { sides: [SideInfo, SideInfo] }) {
   );
 }
 
+/** Zdjęcia tylko w parze: jedno miasto ze zdjęciem, a drugie bez, wyglądałoby na faworyzowanie. */
+function bothHave(sides: [SideInfo, SideInfo], pick: (side: SideInfo) => unknown): boolean {
+  return sides.every((side) => Boolean(pick(side)));
+}
+
 function Hero({ view, sides }: { view: ComparisonView; sides: [SideInfo, SideInfo] }) {
+  const withPhotos = bothHave(sides, (side) => side.image);
   return (
     <header className={`${CONTAINER} pt-6 sm:pt-8`}>
       <Breadcrumbs items={view.breadcrumbs} />
-      <div className="mt-5 grid gap-8 lg:mt-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-center lg:gap-14">
+      <div
+        className={
+          withPhotos ? "mt-5 grid gap-8 lg:mt-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-center lg:gap-14" : "mt-5 max-w-3xl lg:mt-8"
+        }
+      >
         <div className="flex flex-col gap-5">
           <div>
             <h1 className="text-balance font-display text-hero font-semibold text-ink">{view.h1}</h1>
@@ -138,7 +146,7 @@ function Hero({ view, sides }: { view: ComparisonView; sides: [SideInfo, SideInf
           <DualHotelCta sides={sides} placement="hero_search" content={view.content} />
           <ReviewLine view={view} />
         </div>
-        <HeroPhotos sides={sides} />
+        {withPhotos ? <HeroPhotos sides={sides} /> : null}
       </div>
     </header>
   );
@@ -191,11 +199,12 @@ function KeyDifferences({ rows, nameA, nameB }: { rows: ComparisonRow[]; nameA: 
 }
 
 function VerdictPanels({ options, sides }: { options: ComparisonVerdictOption[]; sides: [SideInfo, SideInfo] }) {
+  const withPhotos = bothHave(sides, (side) => side.gallery?.[0]);
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:gap-8">
       {options.map((option, index) => {
         const side = sides.find((candidate) => candidate.name === option.label) ?? sides[index] ?? null;
-        const photo = side?.gallery?.[0] ?? null;
+        const photo = withPhotos ? (side?.gallery?.[0] ?? null) : null;
         return (
           <article key={option.label} className="overflow-hidden rounded-lg border border-line bg-surface-raised">
             {photo ? (
@@ -237,10 +246,11 @@ function VerdictPanels({ options, sides }: { options: ComparisonVerdictOption[];
 
 /** Bez dokumentu treści: opisy obu kierunków z przewodników, ze zdjęciem każdego. */
 function Overviews({ sides }: { sides: [SideInfo, SideInfo] }) {
+  const withPhotos = bothHave(sides, (side) => side.gallery?.[0]);
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:gap-8">
       {sides.map((side) => {
-        const photo = side.gallery?.[0] ?? null;
+        const photo = withPhotos ? (side.gallery?.[0] ?? null) : null;
         return (
           <article key={side.slug} className="overflow-hidden rounded-lg border border-line bg-surface-raised">
             {photo ? (
@@ -504,7 +514,7 @@ export function ComparisonMagazine({ view, model, sides, liveStats, articleLinks
       ) : (
         <Band id="oba-kierunki">
           <h2 id="oba-kierunki" className={H2}>
-            Oba kierunki w skrócie
+            O obu kierunkach
           </h2>
           <div className="mt-8">
             <Overviews sides={sides} />

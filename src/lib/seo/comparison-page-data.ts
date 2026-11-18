@@ -40,18 +40,27 @@ function galleryOf(media: { heroImage?: string | null; gallery?: string[]; poste
   const seen = new Set([media.heroImage].filter(Boolean));
   const result: GalleryPhoto[] = [];
   for (const url of [...(media.gallery ?? []), media.poster]) {
-    if (!url || seen.has(url) || !url.includes("images.pexels.com")) continue;
+    if (!isPexelsPhoto(url) || seen.has(url)) continue;
     seen.add(url);
     result.push({ url, alt: null });
   }
   return result.slice(0, 3);
 }
 
-/** Zdjęcia strony porównania: przypięte (comparison-photos.ts), a bez wpisu — z integracji. */
+function isPexelsPhoto(url: string | null | undefined): url is string {
+  return Boolean(url?.includes("images.pexels.com"));
+}
+
+/**
+ * Zdjęcia strony porównania: przypięte (comparison-photos.ts), a bez wpisu — tylko prawdziwe
+ * wyniki wyszukiwania Pexels. Zdjęcie główne z zapasowych commercial-assets bywa cudzą ikoną
+ * (Preview 18.11.2026: Barcelona = wieża Eiffla, Budapeszt = Brama Brandenburska), więc wtedy
+ * strona nie pokazuje zdjęcia wcale.
+ */
 function photosFor(slug: string, media: { heroImage?: string | null; gallery?: string[]; poster?: string | null }): Pick<SideInfo, "image" | "imageAlt" | "gallery"> {
   const pinned = PINNED_COMPARISON_PHOTOS[slug];
   if (pinned) return { image: pinned.hero.url, imageAlt: pinned.hero.alt, gallery: pinned.gallery.map((photo) => ({ ...photo })) };
-  return { image: media.heroImage ?? null, imageAlt: null, gallery: galleryOf(media) };
+  return { image: isPexelsPhoto(media.heroImage) ? media.heroImage : null, imageAlt: null, gallery: galleryOf(media) };
 }
 
 /** Komplet danych szablonu (zdjęcia z istniejącej integracji, dane własne dla par flagowych). */
