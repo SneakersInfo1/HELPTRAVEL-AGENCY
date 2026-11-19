@@ -1,6 +1,7 @@
 import { serializeJsonLd } from "@/lib/seo/jsonld-serialize";
 import type { Metadata } from "next";
 import Image from "next/image";
+import { PhotoPlaceholder } from "@/components/media/photo-placeholder";
 import { notFound } from "next/navigation";
 
 import { AuthorByline } from "@/components/publisher/author-byline";
@@ -41,6 +42,10 @@ import { addDaysToIsoDate, defaultTravelStartDate, formatShortDate } from "@/lib
 import { flightHoursForTripLength } from "@/lib/seo/destination-facts";
 import { buildGuidePageModel } from "@/lib/seo/guide-page-model";
 import { SHELL_DISCOVERY } from "@/lib/ui/layout";
+
+// Dobowe ISR jawnie. Wcześniej wynikało z zapytania do Pexels (revalidate 1 dzień);
+// kierunki z rejestru zdjęć nie pytają API, a wyniki wyszukiwania leżą w cache 30 dni.
+export const revalidate = 86400;
 
 interface DestinationGuidePageProps {
   params: Promise<{ slug: string }>;
@@ -128,7 +133,7 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
     guide,
     localizedGuide,
     baseUrl,
-    heroImage: media.heroImage,
+    heroImage: media.heroImage ?? undefined,
     author: personSchema(EDITOR_IN_CHIEF),
   });
   const relatedArticles = getArticlesForDestination(slug).slice(0, 4);
@@ -218,7 +223,11 @@ export default async function DestinationGuidePage({ params }: DestinationGuideP
 
       <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         <div className="relative flex min-h-[24rem] flex-col justify-end sm:min-h-[26rem]">
-          <Image src={media.heroImage} alt={`${model.name}, ${model.facts.countryName}`} fill priority className="object-cover" sizes="100vw" />
+          {media.heroImage ? (
+            <Image src={media.heroImage} alt={media.heroAlt ?? `${model.name}, ${model.facts.countryName}`} fill priority className="object-cover" sizes="100vw" />
+          ) : (
+            <PhotoPlaceholder />
+          )}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.12)_0%,rgba(5,18,11,0.72)_100%)]" />
           <div className="relative z-10 p-6 text-white sm:p-8">
             <Breadcrumbs

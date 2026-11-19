@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { PhotoPlaceholder } from "@/components/media/photo-placeholder";
 import { usePathname } from "next/navigation";
 
 import { useLanguage } from "@/components/site/language-provider";
@@ -77,6 +78,7 @@ export function DestinationGuideCard({
         }
         className="relative block h-56"
       >
+        {media.heroImage ? (
         <Image
           src={media.heroImage}
           alt=""
@@ -92,6 +94,9 @@ export function DestinationGuideCard({
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1440px) 33vw, 25vw"
           className="object-cover"
         />
+        ) : (
+          <PhotoPlaceholder />
+        )}
         {/* Scrim przypięty do bloku tekstu (0,72 = zmierzona podłoga dla 4,5:1
             bieli na najjaśniejszym zdjęciu). Poprzednia wersja kończyła się na
             0,5 i nazwa miasta potrafiła zniknąć na jasnym kadrze. */}

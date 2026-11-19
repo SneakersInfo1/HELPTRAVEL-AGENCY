@@ -133,7 +133,7 @@ export async function HomePageView() {
       [...new Set(freshDeals.map((d) => d.destinationId))].map(async (slug): Promise<[string, string | undefined]> => {
         const profile = getDestinationProfileBySlug(slug);
         if (!profile) return [slug, undefined];
-        return [slug, (await resolveDestinationMedia(profile)).heroImage];
+        return [slug, (await resolveDestinationMedia(profile)).heroImage ?? undefined];
       }),
     ),
   );
@@ -200,10 +200,9 @@ export async function HomePageView() {
   // IDENTYCZNY z tym, który zapisuje formularz (foldowane „miasto|kraj" po
   // angielsku) — inaczej mapa nigdy nie trafi i karty zostaną z ikoną.
   const destinationImages: Record<string, string> = Object.fromEntries(
-    resolvedHeroDestinations.map((item) => [
-      foldText(`${item.destination.city}|${item.destination.country}`),
-      item.media.heroImage,
-    ]),
+    resolvedHeroDestinations.flatMap((item) =>
+      item.media.heroImage ? [[foldText(`${item.destination.city}|${item.destination.country}`), item.media.heroImage]] : [],
+    ),
   );
 
   const featuredTiles = resolvedHeroDestinations.map((item) => ({

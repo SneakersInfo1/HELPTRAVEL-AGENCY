@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { PhotoPlaceholder } from "@/components/media/photo-placeholder";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -72,7 +73,11 @@ export default async function TripDetailsPage({ params }: TripDetailsPageProps) 
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <section className="animate-fade-in-up overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-white shadow-[0_20px_60px_rgba(16,84,48,0.08)]">
         <div className="relative h-72 sm:h-96">
-          <Image src={resolvedMedia.heroImage} alt={story.name} fill priority className="object-cover" sizes="100vw" />
+          {resolvedMedia.heroImage ? (
+            <Image src={resolvedMedia.heroImage} alt={story.name} fill priority className="object-cover" sizes="100vw" />
+          ) : (
+            <PhotoPlaceholder />
+          )}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,16,10,0.06)_0%,rgba(6,16,10,0.7)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">Plan szczegółowy</p>

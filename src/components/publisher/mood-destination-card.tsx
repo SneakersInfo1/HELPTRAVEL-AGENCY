@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PhotoPlaceholder } from "@/components/media/photo-placeholder";
 import Link from "next/link";
 
 import { formatPricePln } from "@/lib/home/deal-card";
@@ -31,13 +32,17 @@ export function MoodDestinationCard({
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <div className="relative aspect-[16/10] overflow-hidden">
-        <Image
-          src={media.heroImage}
-          alt=""
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover"
-        />
+        {media.heroImage ? (
+          <Image
+            src={media.heroImage}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover"
+          />
+        ) : (
+          <PhotoPlaceholder />
+        )}
         {/* Scrim przypięty do tekstu, 0,72 = zmierzona podłoga dla 4,5:1 bieli
             na najjaśniejszym zdjęciu z puli. Wcześniej gradient startował od
             0,06 i nazwa miasta ginęła na jasnym kadrze. */}
