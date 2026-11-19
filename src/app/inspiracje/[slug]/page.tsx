@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PhotoPlaceholder } from "@/components/media/photo-placeholder";
 import { Breadcrumbs } from "@/components/publisher/breadcrumbs";
 import { DestinationGuideCard } from "@/components/publisher/destination-guide-card";
 import { EditorialMetaBar } from "@/components/publisher/editorial-meta-bar";
@@ -78,12 +79,11 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
     }),
   );
   const heroDestination = destinationCards.find(Boolean);
-  const heroImage = heroDestination?.media.heroImage ?? "/branding/helptravel-logo.png";
+  // Zdjęcie pierwszego kierunku artykułu albo żadne (układ bez zdjęcia). Logo
+  // rozciągnięte na hero i podane jako obraz artykułu udawało ilustrację.
+  const heroImage = heroDestination?.media.heroImage ?? null;
   const siteUrl = getSiteUrl();
   const articleUrl = `${siteUrl}/inspiracje/${article.slug}`;
-  // Hero to absolutny URL z Pexels albo lokalny fallback — schema wymaga
-  // adresu absolutnego, więc dopinamy origin do ścieżek względnych.
-  const articleImage = heroImage.startsWith("http") ? heroImage : `${siteUrl}${heroImage}`;
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -93,7 +93,8 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
         description: article.description,
         url: articleUrl,
         mainEntityOfPage: articleUrl,
-        image: articleImage,
+        // Zdjęcia kierunków to absolutne adresy Pexels.
+        ...(heroImage ? { image: heroImage } : {}),
         inLanguage: "pl-PL",
         // Bez datePublished i dateModified: model treści nie ma dat artykułów.
         // Do 2026-09 stała tu data wymyślona („2026-01-01") i data renderu ISR
@@ -132,7 +133,7 @@ export default async function InspirationPage({ params }: InspirationPageProps) 
 
       <section className="overflow-hidden rounded-[2rem] border border-line bg-surface-raised shadow-sm">
         <div className="relative flex min-h-[24rem] flex-col justify-end sm:min-h-[26rem]">
-          <Image src={heroImage} alt={article.title} fill priority className="object-cover" sizes="100vw" />
+          {heroImage ? <Image src={heroImage} alt={article.title} fill priority className="object-cover" sizes="100vw" /> : <PhotoPlaceholder />}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,11,0.16)_0%,rgba(5,18,11,0.76)_100%)]" />
           <div className="relative z-10 p-6 text-white sm:p-8">
             <Breadcrumbs

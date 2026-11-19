@@ -81,7 +81,7 @@ const HONESTY = [
   },
 ];
 
-async function resolveTile(slug: string): Promise<{ destination: DestinationProfile; heroImage: string } | null> {
+async function resolveTile(slug: string): Promise<{ destination: DestinationProfile; heroImage: string | null } | null> {
   const destination = getDestinationProfileBySlug(slug);
   if (!destination) return null;
   const media = await resolveDestinationMedia(destination);
@@ -92,7 +92,7 @@ export default async function AboutPage() {
   const heroProfile = getDestinationProfileBySlug(HERO_SLUG);
   const heroMedia = heroProfile ? await resolveDestinationMedia(heroProfile) : null;
   const tiles = (await Promise.all(TILE_SLUGS.map(resolveTile))).filter(
-    (tile): tile is { destination: DestinationProfile; heroImage: string } => tile !== null,
+    (tile): tile is { destination: DestinationProfile; heroImage: string | null } => tile !== null,
   );
 
   // Obie liczby są liczone z zacommitowanego seeda, nie wpisane z ręki.

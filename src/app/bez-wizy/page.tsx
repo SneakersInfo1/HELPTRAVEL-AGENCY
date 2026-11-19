@@ -5,6 +5,10 @@ import { getEditorialCategoryBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { completeSocial } from "@/lib/seo/social-meta";
 
+// Dobowe ISR jawnie. Wcześniej wynikało z zapytania do Pexels (revalidate 1 dzień);
+// kierunki z rejestru zdjęć nie pytają API, a wyniki wyszukiwania leżą w cache 30 dni.
+export const revalidate = 86400;
+
 const category = getEditorialCategoryBySlug("bez-wizy");
 
 export const metadata: Metadata = completeSocial({

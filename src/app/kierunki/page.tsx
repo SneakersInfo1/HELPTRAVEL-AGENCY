@@ -22,6 +22,7 @@ import {
 } from "@/lib/seo/destination-facts";
 import { getDestinationGuideBySlug, getEditorialCategories, getPublishedDestinations } from "@/lib/mvp/publisher-content";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
+import { verifiedPhotosFor } from "@/lib/media/verified-photos";
 import { commercialCities } from "@/lib/mvp/commercial-cities";
 import { foldCategorySlug } from "@/lib/mvp/category-slug";
 import { getSiteUrl } from "@/lib/mvp/site";
@@ -237,12 +238,12 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
   ).filter((c): c is NonNullable<typeof c> => c !== null);
 
   // Popular flagship tiles (image + price + flight → hotel search).
+  // Kafel bez wiarygodnego zdjęcia zostaje (układ bez zdjęcia), zamiast znikać.
   const popularTiles = TILE_SLUGS.map((slug) => {
     const destination = getDestinationProfileBySlug(slug);
-    const heroImage = imageBySlug.get(slug) ?? null;
-    if (!destination || !heroImage) return null;
-    return { destination, heroImage };
-  }).filter((t): t is { destination: DestinationProfile; heroImage: string } => t !== null);
+    if (!destination) return null;
+    return { destination, heroImage: imageBySlug.get(slug) ?? null };
+  }).filter((t): t is { destination: DestinationProfile; heroImage: string | null } => t !== null);
 
   // Commercial money-page cards, highest PL search volume first.
   const commercialCards = [...commercialCities]
@@ -348,7 +349,7 @@ export async function DestinationsIndexPageView({ locale }: { locale: SiteLocale
       {/* HERO */}
       <MediaHero
         imageUrl={heroImage}
-        imageAlt="Barcelona — panorama miasta i wybrzeża"
+        imageAlt={verifiedPhotosFor(HERO_SLUG)?.hero.alt ?? "Barcelona"}
         title="Zacznij od kierunku"
         /* Liczba z `allDestinations.length`, nie wpisana z ręki. Wcześniej
            w tym zdaniu stało „Ponad 235", podczas gdy tuż obok renderowała się

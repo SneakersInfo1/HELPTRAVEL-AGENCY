@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PhotoPlaceholder } from "@/components/media/photo-placeholder";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { AssistantTile, ThemeGrid, TrackedTile } from "./theme-tiles-client";
@@ -20,7 +21,7 @@ export interface ThemeTile {
   label: string;
   /** Krótki podtytuł (eyebrow moodu z travel-moods — treść redakcyjna). */
   tagline: string;
-  heroImage: string;
+  heroImage: string | null;
   imageAlt: string;
   /**
    * Najtańszy świeży pakiet (lot+hotel, na osobę) wśród kierunków kategorii.
@@ -64,13 +65,17 @@ export function ThemeTiles({ tiles }: { tiles: ThemeTile[] }) {
             href={`/wyjazdy/${tile.slug}`}
             className="group relative flex aspect-[4/3] overflow-hidden rounded-md border border-line bg-brand-soft shadow-md transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 lg:aspect-[4/3]"
           >
-            <Image
-              src={tile.heroImage}
-              alt={tile.imageAlt}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-              className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-            />
+            {tile.heroImage ? (
+              <Image
+                src={tile.heroImage}
+                alt={tile.imageAlt}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+              />
+            ) : (
+              <PhotoPlaceholder />
+            )}
             {/* Scrim jak na kafelkach sekcji A: przejście NAD tekstem, blok
                 tekstowy startuje od krycia 0,72. Przy gradiencie zaczynającym
                 się od przezroczystości nazwa klimatu stała na kryciu bliskim

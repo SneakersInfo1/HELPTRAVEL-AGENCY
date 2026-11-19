@@ -31,11 +31,11 @@ const commonImages = {
   coast: image("https://images.unsplash.com/photo-1507525428034-b723cf961d3e"),
 };
 
-const malagaMedia = getDestinationMediaBySlug("malaga-spain", { city: "Malaga", country: "Spain" });
-const barcelonaMedia = getDestinationMediaBySlug("barcelona-spain", { city: "Barcelona", country: "Spain" });
-const lisbonMedia = getDestinationMediaBySlug("lisbon-portugal", { city: "Lizbona", country: "Portugal" });
-const valenciaMedia = getDestinationMediaBySlug("valencia-spain", { city: "Walencja", country: "Spain" });
-const athensMedia = getDestinationMediaBySlug("athens-greece", { city: "Ateny", country: "Greece" });
+const malagaMedia = getDestinationMediaBySlug("malaga-spain");
+const barcelonaMedia = getDestinationMediaBySlug("barcelona-spain");
+const lisbonMedia = getDestinationMediaBySlug("lisbon-portugal");
+const valenciaMedia = getDestinationMediaBySlug("valencia-spain");
+const athensMedia = getDestinationMediaBySlug("athens-greece");
 
 function buildStory(params: Omit<DestinationStory, "slug"> & { slug: string }): DestinationStory {
   return params;
@@ -49,9 +49,9 @@ const destinationStories: Record<string, DestinationStory> = {
     summary:
       "Malaga łączy nadmorski odpoczynek z wygodnym centrum, kultura i bardzo prostym planowaniem. To jeden z najmocniejszych kierunków, gdy chcesz mieć plażę, zwiedzanie i dobry standard wyjazdu bez zbędnej logistyki.",
     vibe: "słonecznie, lekko i bez pośpiechu",
-    heroImage: malagaMedia.heroImage,
+    heroImage: malagaMedia.heroImage ?? undefined,
     gallery: malagaMedia.gallery,
-    heroVideoPoster: malagaMedia.poster,
+    heroVideoPoster: malagaMedia.poster ?? undefined,
     highlights: [
       "La Malagueta i spacery nad morzem",
       "Alcazaba oraz punkt widokowy Gibralfaro",
@@ -87,9 +87,9 @@ const destinationStories: Record<string, DestinationStory> = {
     summary:
       "Barcelona daje bardzo silny miks architektury, energii dużego miasta i nadmorskiego klimatu. To dobry wybór, gdy chcesz mieć mocne first impression, więcej tempa i dużo opcji na wieczór.",
     vibe: "dynamicznie, stylowo i bardzo miejsko",
-    heroImage: barcelonaMedia.heroImage,
+    heroImage: barcelonaMedia.heroImage ?? undefined,
     gallery: barcelonaMedia.gallery,
-    heroVideoPoster: barcelonaMedia.poster,
+    heroVideoPoster: barcelonaMedia.poster ?? undefined,
     highlights: [
       "ikony Gaudiego i rozpoznawalna architektura",
       "Barceloneta oraz nadmorski reset po mieście",
@@ -125,9 +125,9 @@ const destinationStories: Record<string, DestinationStory> = {
     summary:
       "Lizbona wypada mocno, gdy szukasz klimatu, spacerów, punktów widokowych i spokojniejszego rytmu niż w najbardziej intensywnych stolicach. To kierunek, który zostaje w pamięci i dobrze działa na 4-5 dni.",
     vibe: "widokowo, klimatycznie i z oddechem",
-    heroImage: lisbonMedia.heroImage,
+    heroImage: lisbonMedia.heroImage ?? undefined,
     gallery: lisbonMedia.gallery,
-    heroVideoPoster: lisbonMedia.poster,
+    heroVideoPoster: lisbonMedia.poster ?? undefined,
     highlights: [
       "tramwaj 28 i pocztówkowe wzgórza",
       "Alfama z lokalnym klimatem",
@@ -163,9 +163,9 @@ const destinationStories: Record<string, DestinationStory> = {
     summary:
       "Walencja jest mocna, gdy chcesz mieć plażę, dobre jedzenie i miasto bez takiego tłoku jak w Barcelonie. To jeden z najlepszych kierunków dla osób szukających bardzo dobrego balansu.",
     vibe: "jasno, wygodnie i bez przesadnego tłoku",
-    heroImage: valenciaMedia.heroImage,
+    heroImage: valenciaMedia.heroImage ?? undefined,
     gallery: valenciaMedia.gallery,
-    heroVideoPoster: valenciaMedia.poster,
+    heroVideoPoster: valenciaMedia.poster ?? undefined,
     highlights: [
       "Miasto Sztuki i Nauki",
       "Malvarrosa i promenada",
@@ -201,9 +201,9 @@ const destinationStories: Record<string, DestinationStory> = {
     summary:
       "Ateny to rzadki przypadek miasta, w którym z dachowego baru patrzysz na oświetlony Partenon, a kwadrans później jesz świeże souvlaki w gwarnej Monastiraki. To kierunek na 3-4 dni z konkretem: Akropol i światowej klasy Muzeum Akropolu rano, leniwe popołudnia w cieniu uliczek Plaki, a jeśli masz dzień więcej — port w Pireusie i prom na Eginę lub Saronik. Słonecznie, intensywnie i bez znużenia.",
     vibe: "antyk, słońce i miejska energia w jednym",
-    heroImage: athensMedia.heroImage,
+    heroImage: athensMedia.heroImage ?? undefined,
     gallery: athensMedia.gallery,
-    heroVideoPoster: athensMedia.poster,
+    heroVideoPoster: athensMedia.poster ?? undefined,
     highlights: [
       "Akropol i Partenon — najważniejszy zabytek antycznej Europy",
       "Muzeum Akropolu ze szklaną podłogą nad wykopaliskami",
@@ -1154,9 +1154,9 @@ function genericStory(destination: DestinationProfile): DestinationStory {
     tagline: `Kierunek przygotowany pod krótki lub średni wyjazd do ${destination.city}.`,
     summary: `${destination.city} w ${destination.country} dobrze sprawdza się wtedy, gdy chcesz połączyć wygodny dojazd i jasny plan wyjazdu bez przeciążenia logistyką.`,
     vibe: isCoastal ? "nadmorski i relaksujący" : isNature ? "spokojny i krajobrazowy" : "miejski i zdecydowany",
-    heroImage: media.heroImage,
+    heroImage: media.heroImage ?? undefined,
     gallery: media.gallery,
-    heroVideoPoster: media.poster,
+    heroVideoPoster: media.poster ?? undefined,
     highlights: [
       isCoastal ? "dobre warunki na pobyt blisko wody" : "główna strefa zwiedzania i spacerów",
       destination.sightseeingScore > 0.8 ? "dużo miejsc do zwiedzania" : "czytelny city break bez nadmiaru logistyki",
@@ -1203,9 +1203,9 @@ export function getDestinationStory(destination: DestinationProfile): Destinatio
   const media = getDestinationMedia(destination);
   return {
     ...knownStory,
-    heroImage: media.heroImage,
+    heroImage: media.heroImage ?? undefined,
     gallery: media.gallery,
-    heroVideoPoster: media.poster,
+    heroVideoPoster: media.poster ?? undefined,
   };
 }
 

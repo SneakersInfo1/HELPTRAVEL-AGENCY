@@ -23,6 +23,11 @@ export interface MoodPick {
   countryPl: string;
   /** Present only when a /kierunki/[slug] guide exists. */
   slug?: string;
+  /**
+   * Kierunek z katalogu, którego zweryfikowane zdjęcie ilustruje kartę bez przewodnika
+   * (`slug`). Bez tego karta szukałaby zdjęcia po nazwie miasta w Pexels.
+   */
+  photoSlug?: string;
   /** Small eyebrow on the card, e.g. "Alpy Tyrolskie". */
   region: string;
   overview: string;
@@ -106,13 +111,13 @@ export const TRAVEL_MOODS: TravelMood[] = [
         tags: ["plaża + miasto", "paella", "rodziny"], season: "maj–wrzesień",
       },
       {
-        name: "Faro / Algarve", searchCity: "Faro", country: "Portugal", countryPl: "Portugalia",
+        name: "Faro / Algarve", searchCity: "Faro", country: "Portugal", countryPl: "Portugalia", photoSlug: "faro-portugal",
         region: "Algarve",
         overview: "Klify, zatoczki i jedne z najładniejszych plaż Europy na południu Portugalii.",
         tags: ["klify", "zatoczki", "surfing"], season: "czerwiec–wrzesień",
       },
       {
-        name: "Palma de Mallorca", searchCity: "Palma de Mallorca", country: "Spain", countryPl: "Hiszpania",
+        name: "Palma de Mallorca", searchCity: "Palma de Mallorca", country: "Spain", countryPl: "Hiszpania", photoSlug: "palma-spain",
         region: "Baleary",
         overview: "Wyspa z dużym wyborem plaż i zatok, od rodzinnych po kameralne — łatwa do ogarnięcia na tydzień.",
         tags: ["wyspa", "zatoki", "rodzinnie"], season: "maj–wrzesień",
@@ -196,13 +201,13 @@ export const TRAVEL_MOODS: TravelMood[] = [
         tags: ["klimat", "widoki", "jedzenie"], season: "wiosna i jesień",
       },
       {
-        name: "Wiedeń", searchCity: "Vienna", country: "Austria", countryPl: "Austria",
+        name: "Wiedeń", searchCity: "Vienna", country: "Austria", countryPl: "Austria", photoSlug: "vienna-austria",
         region: "Austria",
         overview: "Eleganckie muzea, pałace i kawiarnie — uporządkowany city break, który działa o każdej porze roku.",
         tags: ["muzea", "kawiarnie", "elegancko"], season: "cały rok",
       },
       {
-        name: "Porto", searchCity: "Porto", country: "Portugal", countryPl: "Portugalia",
+        name: "Porto", searchCity: "Porto", country: "Portugal", countryPl: "Portugalia", photoSlug: "porto-portugal",
         region: "Dolina Douro",
         overview: "Wino, mosty nad Douro i klimatyczne uliczki — kameralna alternatywa dla Lizbony.",
         tags: ["wino", "klimat", "Ribeira"], season: "wiosna–jesień",
@@ -262,13 +267,13 @@ export const TRAVEL_MOODS: TravelMood[] = [
     gridIntro: "Kierunki dla osób, które w górach i naturze czują się lepiej niż na leżaku:",
     picks: [
       {
-        name: "Innsbruck", searchCity: "Innsbruck", country: "Austria", countryPl: "Austria",
+        name: "Innsbruck", searchCity: "Innsbruck", country: "Austria", countryPl: "Austria", photoSlug: "innsbruck-austria",
         region: "Alpy Tyrolskie",
         overview: "Miasto w sercu Alp z wyciągami tuż za rogatkami: zimą narty, latem szlaki i kolejki na granie.",
         tags: ["Alpy", "narty", "szlaki"], season: "zima (narty) / lato (trekking)",
       },
       {
-        name: "Teneryfa (Teide)", searchCity: "Santa Cruz de Tenerife", country: "Spain", countryPl: "Hiszpania",
+        name: "Teneryfa (Teide)", searchCity: "Santa Cruz de Tenerife", country: "Spain", countryPl: "Hiszpania", photoSlug: "santa-cruz-de-tenerife-spain",
         region: "Wyspy Kanaryjskie",
         overview: "Najwyższy szczyt Hiszpanii — wulkan Teide — i krajobrazy jak z innej planety, dostępne cały rok.",
         tags: ["wulkan Teide", "park narodowy", "całoroczne"], season: "cały rok",
@@ -286,13 +291,13 @@ export const TRAVEL_MOODS: TravelMood[] = [
         tags: ["Alpy Albańskie", "kanion", "dziko"], season: "maj–październik",
       },
       {
-        name: "Bergen", searchCity: "Bergen", country: "Norway", countryPl: "Norwegia",
+        name: "Bergen", searchCity: "Bergen", country: "Norway", countryPl: "Norwegia", photoSlug: "bergen-norway",
         region: "Fiordy Norwegii",
         overview: "Najlepszy punkt startowy do norweskich fiordów: rejsy, kolejki widokowe i krótkie szlaki nad miastem.",
         tags: ["fiordy", "rejsy", "widoki"], season: "maj–wrzesień",
       },
       {
-        name: "Lublana", searchCity: "Ljubljana", country: "Slovenia", countryPl: "Słowenia",
+        name: "Lublana", searchCity: "Ljubljana", country: "Slovenia", countryPl: "Słowenia", photoSlug: "ljubljana-slovenia",
         region: "Alpy Julijskie",
         overview: "Kompaktowa stolica u stóp Alp Julijskich — jezioro Bled i park Triglav są w zasięgu wycieczki.",
         tags: ["Alpy Julijskie", "Bled", "jeziora"], season: "maj–wrzesień / zima (narty)",
@@ -466,13 +471,13 @@ export const TRAVEL_MOODS: TravelMood[] = [
         tags: ["historia", "ciepło", "rozsądnie"], season: "wiosna i jesień",
       },
       {
-        name: "Sofia", searchCity: "Sofia", country: "Bulgaria", countryPl: "Bułgaria",
+        name: "Sofia", searchCity: "Sofia", country: "Bulgaria", countryPl: "Bułgaria", photoSlug: "sofia-bulgaria",
         region: "Bułgaria",
         overview: "Blisko gór Witosza i z lokalnym klimatem — niedoceniana stolica regionu.",
         tags: ["góry obok", "lokalnie", "stolica"], season: "maj–październik",
       },
       {
-        name: "Porto", searchCity: "Porto", country: "Portugal", countryPl: "Portugalia",
+        name: "Porto", searchCity: "Porto", country: "Portugal", countryPl: "Portugalia", photoSlug: "porto-portugal",
         region: "Portugalia",
         overview: "Wino, nadrzeczny klimat i dobre jedzenie w mieście wygodnym na 3–4 dni.",
         tags: ["wino", "klimat", "Ribeira"], season: "wiosna–jesień",
@@ -538,7 +543,7 @@ export const TRAVEL_MOODS: TravelMood[] = [
         tags: ["Kanary", "22°C w styczniu", "plaża"], season: "cały rok (mocna zima)",
       },
       {
-        name: "Teneryfa", searchCity: "Santa Cruz de Tenerife", country: "Spain", countryPl: "Hiszpania",
+        name: "Teneryfa", searchCity: "Santa Cruz de Tenerife", country: "Spain", countryPl: "Hiszpania", photoSlug: "santa-cruz-de-tenerife-spain",
         region: "Wyspy Kanaryjskie",
         overview: "Łagodna zima, plaże i wulkan Teide — można łączyć słońce nad morzem z górską wycieczką tego samego dnia.",
         tags: ["Kanary", "łagodna zima", "Teide"], season: "cały rok",

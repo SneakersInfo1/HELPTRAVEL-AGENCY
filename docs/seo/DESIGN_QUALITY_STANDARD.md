@@ -45,8 +45,8 @@ Właściciel ocenił A na desktopie jako zbyt wąski (szpalta 46 rem na ekranie 
 
 Zasada dla zdjęć: prawdziwe zdjęcie miejsca albo żadne.
 
-- **Ateny i Rzym** mają zdjęcia przypięte w `src/lib/seo/comparison-photos.ts`, obejrzane ręcznie i opisane po polsku. Wyszukiwanie Pexels działa w trakcie builda i ma limit zapytań. Drugi build na Preview w ciągu godziny dostał zdjęcia zapasowe.
-- **Pozostałe kierunki** biorą z wyszukiwania Pexels wszystkie zdjęcia, także główne. Zapasowe zdjęcia z `commercial-assets` przypisują miastom cudze ikony (Preview 18.11.2026: Barcelona — wieża Eiffla, Budapeszt — Brama Brandenburska, Ateny — tropikalna plaża), więc strona ich nie pokazuje. Hero ma wtedy samą kolumnę tekstu, a dane strukturalne nie mają pola `image`.
+- **Najważniejsze kierunki** (strona główna, huby, porównania, strony „Hotele w …”) mają zdjęcia z rejestru `src/lib/media/verified-photos.ts`, obejrzane ręcznie i opisane po polsku. Test pilnuje, żeby każdy nowy kierunek z tych miejsc dostał wpis.
+- **Pozostałe kierunki** biorą zdjęcia z wyszukiwania Pexels tylko na produkcji i tylko wtedy, gdy opis zdjęcia wymienia to miasto i jego kraj. Zdjęć zastępczych z `commercial-assets` już nie ma: przypisywały miastom cudze ikony (19.11.2026 na produkcji: Barcelona — wieża Eiffla, Ateny — czerwona fasada). Bez wiarygodnego zdjęcia strona pokazuje układ bez zdjęcia (`PhotoPlaceholder`), a dane strukturalne nie mają pola `image`.
 - **Zdjęcia zawsze w parze:** jedno miasto ze zdjęciem, a drugie bez, wyglądałoby na faworyzowanie.
 
 | Ateny–Rzym | A „Werdykt” | D „Magazyn” |
