@@ -55,19 +55,6 @@
       "createdAt": "2026-11-19T19:56:10.343Z",
       "updatedAt": "2026-11-19T19:56:10.343Z",
       "notes": []
-    },
-    {
-      "id": "technical",
-      "kind": "technical",
-      "target": "/",
-      "title": "Zdjęcia z rejestru dla kart „Tanie loty” na stronie głównej",
-      "why": "Kierunki kart z DEAL_ROUTES (m.in. Katania, Saloniki, Sztokholm, Bruksela, Oslo, Bukareszt, Kopenhaga, Zagrzeb, Tallinn, Ryga, Wilno) są poza rejestrem zdjęć. Sekcja jest ukryta bez świeżych cen lotów; zanim wróci, dopisać zweryfikowane zdjęcia i objąć je testem pokrycia rejestru.",
-      "source": "owner",
-      "priority": 25,
-      "status": "todo",
-      "createdAt": "2026-11-19T19:56:27.334Z",
-      "updatedAt": "2026-11-19T19:56:27.334Z",
-      "notes": []
     }
   ]
 }
