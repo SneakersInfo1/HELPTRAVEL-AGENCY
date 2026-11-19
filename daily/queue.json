@@ -42,6 +42,19 @@
       "createdAt": "2026-11-17T20:33:39.981Z",
       "updatedAt": "2026-11-17T20:33:39.981Z",
       "notes": []
+    },
+    {
+      "id": "technical-wyjazdy-gory",
+      "kind": "technical",
+      "target": "/wyjazdy/gory",
+      "title": "Zdjęcie wulkanu Teide na karcie „Teneryfa (Teide)” w hubie „góry”",
+      "why": "Karta pokazuje Auditorio w Santa Cruz: właściwa wyspa, ale nie temat karty. Potrzebne zweryfikowane zdjęcie Teide jako osobne zdjęcie karty, bo photoSlug wskazuje zdjęcie kierunku santa-cruz-de-tenerife-spain z rejestru.",
+      "source": "owner",
+      "priority": 30,
+      "status": "todo",
+      "createdAt": "2026-11-19T19:56:10.343Z",
+      "updatedAt": "2026-11-19T19:56:10.343Z",
+      "notes": []
     }
   ]
 }
