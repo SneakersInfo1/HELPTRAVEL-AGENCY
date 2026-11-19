@@ -70,7 +70,8 @@ export const VERIFIED_DESTINATION_PHOTOS: Readonly<Record<string, VerifiedDestin
     gallery: [
       pexels("998736", "Sagrada Família wśród drzew w Barcelonie"),
       pexels("34998182", "Plaża Barceloneta w słoneczny dzień"),
-      pexels("36286755", "Plaża Barceloneta i hotel W w Barcelonie"),
+      // Opis autora na Pexels mówi „hotel W”, ale na zdjęciu są wieże Hotel Arts i Mapfre.
+      pexels("36286755", "Wieże Hotel Arts i Mapfre oraz rzeźba ryby Gehry’ego nad morzem w Barcelonie"),
     ],
   },
   "valencia-spain": {
