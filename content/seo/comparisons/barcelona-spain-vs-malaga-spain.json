@@ -1,0 +1,447 @@
+{
+  "id": "barcelona-spain-vs-malaga-spain",
+  "canonicalUrl": "/porownanie/barcelona-spain-vs-malaga-spain",
+  "primaryQueryIntent": "Barcelona czy Malaga? Porównanie: plaże, zwiedzanie i dolot",
+  "contentType": "comparison_enrichment",
+  "topicCluster": "porownania-hiszpania",
+  "locale": "pl-PL",
+  "title": "Barcelona czy Malaga? Plaże, zwiedzanie i dolot — porównanie",
+  "description": "Malaga to 16 plaż i lotnisko 8 km od miasta, Barcelona — Gaudí i duże miasto nad morzem. Porównanie ze źródłami: plaże, zwiedzanie i dojazd z lotniska.",
+  "lead": "Malagę wybierz, jeśli plaże są dla Ciebie równie ważne jak zwiedzanie: miasto ma 16 plaż, a większość atrakcji skupia się w centrum, które łatwo obejść pieszo. Barcelona będzie lepsza, gdy jedziesz przede wszystkim dla architektury Gaudíego i dużego miasta nad morzem.",
+  "sections": [
+    {
+      "id": "werdykt",
+      "heading": "Co wybrać: Barcelona czy Malaga",
+      "claimIds": [
+        "claim-1",
+        "claim-6",
+        "claim-7",
+        "claim-8",
+        "claim-10",
+        "claim-12",
+        "claim-17"
+      ],
+      "kind": "verdict",
+      "options": [
+        {
+          "label": "Malaga",
+          "chooseIf": [
+            "plaża ma wyznaczać rytm dnia, a zabytki mają być w zasięgu spaceru",
+            "chcesz krótkiego dojazdu z lotniska do centrum"
+          ],
+          "skipIf": [
+            "głównym celem jest architektura Gaudíego — po nią jedź do Barcelony"
+          ]
+        },
+        {
+          "label": "Barcelona",
+          "chooseIf": [
+            "jedziesz dla budowli Gaudíego i secesji",
+            "plaża ma być tylko przerwą między zabytkami"
+          ],
+          "skipIf": [
+            "chcesz jeździć po mieście samochodem — przeszkodą są strefy niskiej emisji"
+          ]
+        }
+      ],
+      "basis": "Werdykt opiera się na opisach obu miast w oficjalnym portalu turystycznym Hiszpanii (spain.info) i na danych HelpTravel o temperaturach i czasie lotu podanych na tej stronie. To ocena redakcyjna, nie relacja z podróży."
+    },
+    {
+      "id": "plaze",
+      "heading": "Plaże",
+      "claimIds": [
+        "claim-1",
+        "claim-2",
+        "claim-6",
+        "claim-10",
+        "claim-12"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "W Maladze plaża jest częścią miasta, a nie osobną wyprawą: oficjalny portal turystyczny Hiszpanii wylicza tu 16 plaż, wśród nich słynną miejską La Malagueta, więc dzień na piasku łatwo przeplatać zwiedzaniem.",
+        "Barcelona też ma plaże miejskie nad Morzem Śródziemnym, ale w opisie miasta są jedną z wielu propozycji obok architektury i muzeów."
+      ]
+    },
+    {
+      "id": "zwiedzanie",
+      "heading": "Zwiedzanie",
+      "claimIds": [
+        "claim-3",
+        "claim-4",
+        "claim-5",
+        "claim-6",
+        "claim-10",
+        "claim-11",
+        "claim-13",
+        "claim-18",
+        "claim-19"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "Barcelona to przede wszystkim architektura: miasto słynie z dzieł Gaudíego i secesji, a Sagrada Família, Park Güell, Casa Batlló i La Pedrera to miejsca, dla których przyjeżdża się tu specjalnie. Do programu łatwo dodać Muzeum Picassa.",
+        "Malaga to zwiedzanie w mniejszej skali, ale skupione: Alcazaba to jedna z największych arabskich twierdz w Andaluzji, a w mieście działa filia paryskiego Centrum Pompidou. To także miasto urodzenia Picassa — działa tu muzeum poświęcone malarzowi, a dom, w którym przyszedł na świat, można zwiedzać. Śladem Picassa da się więc iść w obu miastach."
+      ]
+    },
+    {
+      "id": "dolot",
+      "heading": "Dolot i dojazd z lotniska",
+      "claimIds": [
+        "claim-7",
+        "claim-8",
+        "claim-14",
+        "claim-15",
+        "claim-17"
+      ],
+      "kind": "list",
+      "intro": "Czas lotu z Polski podajemy na tej stronie z danych HelpTravel. Tu różnice po wylądowaniu:",
+      "items": [
+        "Malaga: lotnisko Málaga – Costa del Sol leży 8 km od miasta, a autobus Express Aeropuerto dojeżdża do centrum w około 15 minut.",
+        "Barcelona: lotnisko El Prat leży 12 km od miasta, a transport publiczny dowozi do centrum w około 35 minut lub krócej.",
+        "Samochód w Barcelonie: duża część miasta to strefy niskiej emisji z ograniczeniami jazdy i parkowania, więc auto z wypożyczalni przyda się raczej na wycieczki poza miasto niż w centrum."
+      ]
+    },
+    {
+      "id": "oba-miasta",
+      "heading": "Oba miasta w jednej podróży",
+      "claimIds": [
+        "claim-9",
+        "claim-16"
+      ],
+      "kind": "prose",
+      "paragraphs": [
+        "Wybór nie musi być ostateczny. Malagę i Barcelonę łączą szybkie pociągi: ze stacji María Zambrano w Maladze kursują składy AVE między innymi do Barcelony, a z dworca Barcelona-Sants pociągi jadą między innymi do Malagi. Przy dłuższym urlopie można zacząć od plaż Malagi i skończyć na zwiedzaniu Barcelony bez drugiego lotu po drodze."
+      ]
+    },
+    {
+      "id": "fakty",
+      "heading": "Barcelona i Malaga w faktach",
+      "claimIds": [
+        "claim-1",
+        "claim-2",
+        "claim-3",
+        "claim-4",
+        "claim-5",
+        "claim-7",
+        "claim-8",
+        "claim-9",
+        "claim-10",
+        "claim-11",
+        "claim-12",
+        "claim-13",
+        "claim-14",
+        "claim-15",
+        "claim-16",
+        "claim-18",
+        "claim-19"
+      ],
+      "kind": "table",
+      "columns": [
+        "Kryterium",
+        "Barcelona",
+        "Malaga"
+      ],
+      "rows": [
+        {
+          "label": "Plaże",
+          "cells": [
+            "Plaże miejskie nad Morzem Śródziemnym",
+            "16 plaż, w tym miejska La Malagueta"
+          ]
+        },
+        {
+          "label": "Ikony zwiedzania",
+          "cells": [
+            "Sagrada Família, Park Güell, Casa Batlló, La Pedrera",
+            "Alcazaba, Centrum Pompidou"
+          ]
+        },
+        {
+          "label": "Picasso",
+          "cells": [
+            "Muzeum Picassa",
+            "Muzeum Picassa i dom, w którym się urodził"
+          ]
+        },
+        {
+          "label": "Lotnisko",
+          "cells": [
+            "El Prat, 12 km od miasta",
+            "Málaga – Costa del Sol, 8 km od miasta"
+          ]
+        },
+        {
+          "label": "Z lotniska do centrum",
+          "cells": [
+            "Transport publiczny, około 35 minut lub krócej",
+            "Autobus Express Aeropuerto, około 15 minut"
+          ]
+        },
+        {
+          "label": "Pociąg do drugiego miasta",
+          "cells": [
+            "Szybkie pociągi z dworca Sants",
+            "Pociągi AVE ze stacji María Zambrano"
+          ]
+        }
+      ]
+    }
+  ],
+  "factClaims": [
+    {
+      "id": "claim-1",
+      "claim": "Malaga ma 16 plaż",
+      "value": "16",
+      "dataClass": "geography",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "Beyond its 16 sunny beaches",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-2",
+      "claim": "La Malagueta to miejska plaża Malagi",
+      "value": "La Malagueta",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "a sunny day spent on the legendary La Malagueta city beach is a must",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-3",
+      "claim": "Alcazaba w Maladze to jedna z największych twierdz arabskich w Andaluzji",
+      "value": "Alcazaba",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "the Alcazaba , one of the largest Arab fortresses in Andalusia",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-4",
+      "claim": "Malaga jest miejscem urodzenia Pabla Picassa",
+      "value": "Pablo Picasso",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "the birthplace of Pablo Picasso",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-5",
+      "claim": "W Maladze działa filia paryskiego Centrum Pompidou",
+      "value": "Centre Pompidou",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "Pompidou Centre outside France",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-6",
+      "claim": "Większość atrakcji Malagi skupia się w centrum, które łatwo zwiedzić pieszo",
+      "value": "",
+      "dataClass": "geography",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "Most tourist points of interest are concentrated within the city centre, which makes it easy to explore them on foot.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-7",
+      "claim": "Lotnisko Málaga – Costa del Sol leży 8 km od miasta",
+      "value": "8 km",
+      "dataClass": "transport",
+      "riskClass": "DYNAMIC",
+      "sourceId": "source-1",
+      "observedEvidence": "The Málaga – Costa del Sol Airport is situated 8 kilometres from the city.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-8",
+      "claim": "Autobus Express Aeropuerto jedzie z lotniska do centrum Malagi około 15 minut",
+      "value": "15 minut",
+      "dataClass": "transport",
+      "riskClass": "DYNAMIC",
+      "sourceId": "source-1",
+      "observedEvidence": "The Express Aeropuerto city bus line connects to the centre of Málaga in a journey time of approximately 15 minutes.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-9",
+      "claim": "Ze stacji María Zambrano w Maladze kursują pociągi AVE między innymi do Barcelony",
+      "value": "AVE",
+      "dataClass": "transport",
+      "riskClass": "DYNAMIC",
+      "sourceId": "source-1",
+      "observedEvidence": "Other AVE lines run to Córdoba, Zaragoza and Barcelona.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-10",
+      "claim": "Barcelona leży nad Morzem Śródziemnym i słynie z architektury Gaudíego i secesji",
+      "value": "Gaudí",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-2",
+      "observedEvidence": "Overlooking the Mediterranean Sea, and famous for Gaudí and other Art Nouveau architecture, Barcelona is one of Europe’s trendiest cities.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-11",
+      "claim": "Do najbardziej znanych miejsc Barcelony należą Sagrada Família, Park Güell, Casa Batlló i La Pedrera",
+      "value": "Sagrada Família, Park Güell, Casa Batlló, La Pedrera",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-2",
+      "observedEvidence": "Barcelona draws visitors to its famous sights , like the Sagrada Familia, Park Güell , Casa Batlló and La Pedrera.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-12",
+      "claim": "Barcelona ma plaże miejskie",
+      "value": "plaże miejskie",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-2",
+      "observedEvidence": "relaxing moments on the city beaches",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-13",
+      "claim": "W Barcelonie działa Muzeum Picassa",
+      "value": "Muzeum Picassa",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-2",
+      "observedEvidence": "major art centres, like the Picasso Museum, the National Art Museum of Catalonia, and CaixaForum",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-14",
+      "claim": "Lotnisko Barcelona – El Prat leży 12 km od miasta",
+      "value": "12 km",
+      "dataClass": "transport",
+      "riskClass": "DYNAMIC",
+      "sourceId": "source-2",
+      "observedEvidence": "Barcelona – El Prat Airport is located 12 kilometres from the city.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-15",
+      "claim": "Z lotniska El Prat do centrum Barcelony transport publiczny jedzie około 35 minut lub krócej",
+      "value": "35 minut",
+      "dataClass": "transport",
+      "riskClass": "DYNAMIC",
+      "sourceId": "source-2",
+      "observedEvidence": "You can reach the city centre by various means of public transport in about 35 minutes or less",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-16",
+      "claim": "Z dworca Barcelona-Sants kursują szybkie pociągi między innymi do Malagi",
+      "value": "Malaga",
+      "dataClass": "transport",
+      "riskClass": "DYNAMIC",
+      "sourceId": "source-2",
+      "observedEvidence": "International high-speed train links to France and to Spanish cities such as Madrid, Valencia, Malaga, Seville and Zaragoza.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-17",
+      "claim": "Duża część Barcelony to strefy niskiej emisji z ograniczeniami jazdy i parkowania",
+      "value": "strefy niskiej emisji",
+      "dataClass": "transport",
+      "riskClass": "DYNAMIC",
+      "sourceId": "source-2",
+      "observedEvidence": "Please note that large parts of Barcelona are Low Emission Zones, where driving and parking are restricted.",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-18",
+      "claim": "W centrum Malagi działa muzeum poświęcone Picassowi",
+      "value": "Muzeum Picassa",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "We are in the city of Picasso – so in the centre there’s also a highly recommended museum dedicated to the painter",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-19",
+      "claim": "W Maladze można zwiedzić dom, w którym urodził się Picasso",
+      "value": "dom urodzenia Picassa",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "it is possible to visit his Birthplace",
+      "retrievedAt": "2026-11-19T20:35:39Z",
+      "verification": "source_verified"
+    }
+  ],
+  "sources": [
+    {
+      "id": "source-1",
+      "url": "https://www.spain.info/en/destination/malaga/",
+      "title": "Málaga — oficjalny portal turystyczny Hiszpanii",
+      "publisher": "www.spain.info",
+      "kind": "official_tourism",
+      "licence": "Fakt i krótki cytat w granicach prawa cytatu",
+      "retrievedAt": "2026-11-19T20:35:39Z"
+    },
+    {
+      "id": "source-2",
+      "url": "https://www.spain.info/en/destination/barcelona/",
+      "title": "Barcelona — oficjalny portal turystyczny Hiszpanii",
+      "publisher": "www.spain.info",
+      "kind": "official_tourism",
+      "licence": "Fakt i krótki cytat w granicach prawa cytatu",
+      "retrievedAt": "2026-11-19T20:35:39Z"
+    }
+  ],
+  "imageAsset": {
+    "provider": "pexels_integration",
+    "licence": "Pexels License — zdjęcia pobierane istniejącą integracją serwisu",
+    "alt": "Zdjęcia Barcelony i Malagi",
+    "credit": "Pexels"
+  },
+  "relatedContent": [
+    "/kierunki/barcelona-spain",
+    "/kierunki/malaga-spain",
+    "/wyjazdy/plaza",
+    "/wyjazdy/city-break",
+    "/porownanie/barcelona-spain-vs-valencia-spain",
+    "/porownanie/malaga-spain-vs-valencia-spain"
+  ],
+  "ctaTarget": "/hotele/szukaj",
+  "riskClass": "DYNAMIC",
+  "contentHash": "0bc35a246458afa8c9b2de5244535b7fba8550f19e882d38741510be5c33b9b2",
+  "createdAt": "2026-11-17T00:00:00.000Z",
+  "publishedAt": null,
+  "materiallyModifiedAt": "2026-11-19T20:25:19Z",
+  "verifiedAt": "2026-11-19T20:35:38Z",
+  "owner": "HelpTravel SEO",
+  "reviewStatus": "approved",
+  "reviewedBy": "właściciel serwisu — akceptacja przez merge PR",
+  "generationRunId": "576f3cbd-7d60-4ce3-99e1-5175e9436baf",
+  "aiDisclosure": "Treść przygotowano z pomocą AI i zweryfikowano mechanicznie względem podanych źródeł.",
+  "policyVersion": "2026-11-15.1"
+}
