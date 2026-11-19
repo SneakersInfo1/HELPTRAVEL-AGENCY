@@ -137,7 +137,11 @@ export function audienceClause(tag: string): string {
 }
 
 function verdictFromModel(model: ComparisonModel): ComparisonView["verdict"] {
-  const [audienceA, audienceB] = model.audience;
+  // Zostają tylko cechy, które różnią kierunki: wspólne nie pomagają wybrać, a dwie jednakowe
+  // listy (14 z 39 par bez dokumentu, np. Budapeszt–Praga; 18.11.2026) wyglądały jak błąd.
+  const [tagsA, tagsB] = model.audience;
+  const audienceA = tagsA.filter((tag) => !tagsB.includes(tag));
+  const audienceB = tagsB.filter((tag) => !tagsA.includes(tag));
   if (audienceA.length === 0 || audienceB.length === 0) return null;
   return {
     heading: `Dla kogo ${model.a.name}, a dla kogo ${model.b.name}`,
