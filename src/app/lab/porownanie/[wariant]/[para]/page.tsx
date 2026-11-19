@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const VARIANTS: readonly ComparisonVariant[] = ["werdykt", "pojedynek", "karta"];
+const VARIANTS: readonly ComparisonVariant[] = ["magazyn", "werdykt", "pojedynek", "karta"];
 
 export default async function ComparisonLabPage({ params }: { params: Promise<{ wariant: string; para: string }> }) {
   if (process.env.SEO_LAB !== "1") notFound();

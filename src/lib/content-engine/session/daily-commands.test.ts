@@ -116,7 +116,7 @@ test("kolejka: dodanie z identyfikatorem z celu, bez liczb GSC i bez ponownego o
   assert.equal(item.source, "session");
   await assert.rejects(
     dailyQueueAdd(ctx, { kind: "content_new", target: "/porownanie/x", title: "Temat z liczbami", why: "Ma 120 kliknięć i 4000 wyświetleń." }),
-    /Bez surowych liczb GSC/,
+    /Bez surowych danych GSC/,
   );
   await dailyQueueSet(ctx, item.id, { status: "rejected", note: "Właściciel odrzucił temat." });
   const persistsBefore = git.persists.length;

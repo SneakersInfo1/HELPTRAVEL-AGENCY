@@ -6,6 +6,7 @@ import { comparisonPairs } from "@/lib/mvp/comparisons";
 import { curatedDestinations, getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 
 import {
+  BEACH_DESTINATION_MIN,
   buildComparisonModel,
   comparisonCoverage,
   PROFILE_SCORE_NOTE,
@@ -189,6 +190,37 @@ describe("model porównania kierunków", () => {
         assert.ok(!model.verdicts.some((verdict) => verdict.title === "Plaża i klimat morski" || verdict.title === "City break i tło miejskie"), pair.slug);
       }
     }
+  });
+});
+
+describe("plaża tylko przy kierunku plażowym", () => {
+  it("odpowiedź, werdykty i FAQ nie kierują na plażę do miasta bez plaży", () => {
+    for (const pair of comparisonPairs) {
+      const model = modelFor(pair.slug);
+      const text = JSON.stringify({ quick: model.quickAnswer, faq: model.faq, verdicts: model.verdicts });
+      for (const side of [model.a, model.b]) {
+        if (side.profile.beachScore >= BEACH_DESTINATION_MIN) continue;
+        for (const phrase of [
+          `Na plażę i wypoczynek nad morzem: ${side.name}`,
+          `Jeśli zależy Ci głównie na plaży: ${side.name}`,
+          `Mocniejszy profil plażowy: ${side.name}`,
+        ]) {
+          assert.ok(!text.includes(phrase), `${pair.slug}: ${phrase}`);
+        }
+      }
+    }
+  });
+
+  it("dwa miasta bez morza: bez słowa o plaży, odpowiedź zaczyna się wielką literą", () => {
+    const model = modelFor("budapest-hungary-vs-prague-czechia");
+    assert.ok(model.a.profile.beachScore < BEACH_DESTINATION_MIN && model.b.profile.beachScore < BEACH_DESTINATION_MIN);
+    assert.doesNotMatch(JSON.stringify({ quick: model.quickAnswer, faq: model.faq, verdicts: model.verdicts }), /plaż/i);
+    assert.match(model.quickAnswer, /^Budapeszt czy Praga\? [A-ZĄĆĘŁŃÓŚŹŻ]/);
+  });
+
+  it("kierunek plażowy nadal wygrywa „na plażę”", () => {
+    const model = modelFor("athens-greece-vs-rome-italy");
+    assert.match(model.quickAnswer, /Na plażę i wypoczynek nad morzem: Ateny; na zwiedzanie/);
   });
 });
 

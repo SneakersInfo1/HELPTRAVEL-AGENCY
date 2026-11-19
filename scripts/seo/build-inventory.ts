@@ -6,11 +6,11 @@
 // INVENTORY.csv: wszystkie strony HTML 200 z crawla produkcji, z wartościami po
 // zmianach z crawla buildu tej gałęzi. Bez danych GSC (to informacja publiczna:
 // każdy może pobrać te strony).
-// OPPORTUNITY_BACKLOG.csv: 20 adresów priorytetowych z metrykami GSC na poziomie
+// seo-private/OPPORTUNITY_BACKLOG.csv (poza repo): 20 adresów priorytetowych z metrykami GSC na poziomie
 // strony (agregaty, bez surowych zapytań) i decyzją: co zrobiono, co dalej.
 
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import { parseGscCsv, type GscRow } from "../../src/lib/seo-ops/gsc/csv";
 import { referenceCtrForPosition, scoreOpportunity } from "../../src/lib/seo-ops/gsc/analysis";
@@ -64,6 +64,7 @@ function csvCell(value: unknown): string {
 }
 
 function writeCsv(file: string, columns: string[], rows: Array<Record<string, unknown>>) {
+  mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${[columns.join(","), ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(","))].join("\n")}\n`, "utf8");
 }
 
@@ -220,7 +221,7 @@ function backlog(dir: string, out: string) {
       gsc_ctr_92d: ctr === null ? "" : (ctr * 100).toFixed(2),
       gsc_position_92d: row?.position ?? "",
       reference_ctr_at_position: row ? (referenceCtrForPosition(row.position) * 100).toFixed(1) : "",
-      device_note: "eksport bez podziału urządzeń per strona; całość: mobile 69% wyświetleń, 84% kliknięć",
+      device_note: "eksport bez podziału urządzeń per strona",
       impression_trend: "brak danych per strona w czasie (wymaga eksportu strona×data)",
       content_audit: "",
       business_relevance: ["comparison", "mood_hub"].includes(classifyUrl(`https://helptravel.pl${path}`).segment) ? "wysoka (CTA do hoteli z kierunkiem)" : "średnia",
@@ -237,4 +238,4 @@ function backlog(dir: string, out: string) {
 }
 
 inventory(arg("before"), arg("after"), arg("inventory-out", "docs/seo/INVENTORY.csv"));
-backlog(arg("gsc-dir"), arg("backlog-out", "docs/seo/OPPORTUNITY_BACKLOG.csv"));
+backlog(arg("gsc-dir"), arg("backlog-out", "seo-private/OPPORTUNITY_BACKLOG.csv"));

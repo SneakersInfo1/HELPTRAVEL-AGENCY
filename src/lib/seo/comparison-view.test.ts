@@ -140,6 +140,14 @@ describe("defaultComparisonMeta", () => {
 });
 
 describe("język werdyktu", () => {
+  it("wskazania z profilu różnią kierunki — żaden punkt nie stoi po obu stronach", () => {
+    for (const view of views.filter((item) => item.sources.length === 0)) {
+      if (!view.verdict) continue;
+      const [first, second] = view.verdict.options;
+      assert.ok(!first.chooseIf.some((item) => second.chooseIf.includes(item)), view.slug);
+    }
+  });
+
   it("wskazania z profilu to pełne zdania — bez „szukasz napiętego budżetu”", () => {
     for (const view of views) {
       for (const option of view.verdict?.options ?? []) {

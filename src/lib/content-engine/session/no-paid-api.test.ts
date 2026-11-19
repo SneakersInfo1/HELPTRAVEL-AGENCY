@@ -47,3 +47,42 @@ test("seo:daily kończy się błędem, gdy w środowisku jest klucz silnika (fai
   assert.match(result.output, /SEO_DAILY_STATUS=FAILED/);
   assert.match(result.output, /SEO_DAILY_PAID_LLM_CALLS_BLOCKED=0/);
 });
+
+/** Reguła `Bash(wzorzec)` z `.claude/settings.json`: `*` pasuje do dowolnego ciągu (jak w Claude Code). */
+function ruleMatches(rule: string, command: string): boolean {
+  const pattern = rule.match(/^Bash\((.*)\)$/)?.[1];
+  if (!pattern) return false;
+  const escaped = pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(`^${escaped.join(".*")}$`);
+  return regex.test(command);
+}
+
+test("reguły deny blokują push do main, wymuszony push w każdej postaci i curl do API modeli", async () => {
+  const settings = JSON.parse(await readFile(path.resolve(process.cwd(), ".claude", "settings.json"), "utf8")) as { permissions: { deny: string[] } };
+  const denied = (command: string) => settings.permissions.deny.some((rule) => ruleMatches(rule, command));
+  for (const command of [
+    "git push origin main",
+    "git push -u origin main",
+    "git push origin HEAD:main",
+    "git push origin HEAD:refs/heads/main",
+    "git push origin --delete main",
+    "git push origin +HEAD:claude/seo-daily/2026-11-17",
+    "git push --force origin claude/seo-daily/2026-11-17",
+    "git push origin claude/seo-daily/2026-11-17 --force-with-lease",
+    "git push -f origin claude/seo-daily/2026-11-17",
+    "git push --mirror origin",
+    "git -C . push origin claude/seo-daily/2026-11-17",
+    "git --git-dir=.git push origin x",
+    "git -c core.hooksPath=/dev/null push origin x",
+    "curl -s https://api.anthropic.com/v1/messages",
+  ]) {
+    assert.equal(denied(command), true, command);
+  }
+  for (const command of [
+    "git push -u origin claude/seo-daily/2026-11-17",
+    "git push origin HEAD:refs/heads/claude/seo-daily-workflow",
+    "git push origin feature-fix",
+  ]) {
+    assert.equal(denied(command), false, command);
+  }
+});

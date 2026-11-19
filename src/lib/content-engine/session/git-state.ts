@@ -109,10 +109,36 @@ export interface AddedLine {
   line: string;
 }
 
-/** Wszystkie zmiany gałęzi sesji względem bazy: zatwierdzone, niezatwierdzone i nowe pliki. */
+/**
+ * Wszystkie zmiany gałęzi sesji względem bazy: pliki z KAŻDEGO commitu gałęzi (także
+ * cofniętego później — historia trafia na publiczny serwer), zmiany niezatwierdzone
+ * i nowe pliki. `added` obejmuje dodane linie z każdego commitu i ze zmian lokalnych.
+ */
 export interface SessionChanges {
   files: string[];
+  /** Nowe pliki spoza gita (nie w indeksie) — część z nich (katalogi robocze) nie wchodzi do commitu. */
+  untracked: string[];
   added: AddedLine[];
+  /** Nowe pliki większe niż limit skanu — publikacja ich odmawia (nie da się ich sprawdzić). */
+  tooLarge: string[];
+}
+
+/** Ścieżki z wyjścia `git status --porcelain=v1 -z` (z obiema nazwami przy zmianie nazwy). */
+export function parsePorcelainZ(output: string): string[] {
+  const tokens = output.split("\0");
+  const paths: string[] = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const entry = tokens[index];
+    if (entry.length < 4) continue;
+    const status = entry.slice(0, 2);
+    paths.push(entry.slice(3));
+    if (status.includes("R") || status.includes("C")) {
+      const original = tokens[index + 1];
+      if (original) paths.push(original);
+      index += 1;
+    }
+  }
+  return paths.map((file) => file.replace(/\\/g, "/"));
 }
 
 /** Nowe pliki większe niż ten limit nie są czytane linia po linii (to nie są pliki kodu ani treści). */
@@ -254,8 +280,9 @@ export class GitState {
    */
   async restoreState(stateDir: string, folders: readonly StateFolder[] = STATE_FOLDERS): Promise<void> {
     const destination = path.resolve(this.cwd, stateDir);
-    for (const folder of folders) await fs.rm(path.join(destination, folder), { recursive: true, force: true });
     await fs.mkdir(destination, { recursive: true });
+    // Brak gałęzi stanu (pierwsza sesja) — lokalnego stanu NIE kasujemy: może zawierać
+    // jeszcze nieutrwalone zapisy. Błąd sieci rzuca wyjątek przed jakimkolwiek kasowaniem.
     if (!(await this.remoteStateExists())) {
       this.restoredFiles = new Set();
       return;
@@ -264,6 +291,7 @@ export class GitState {
     const opened = await this.openStateWorktree();
     try {
       for (const folder of folders) {
+        await fs.rm(path.join(destination, folder), { recursive: true, force: true });
         const source = path.join(this.worktreeDir, folder);
         try {
           await fs.cp(source, path.join(destination, folder), { recursive: true, force: true });
@@ -381,8 +409,9 @@ export class GitState {
     }
   }
 
+  /** Wyjście `git status --porcelain=v1 -z` (rozbierz przez `parsePorcelainZ`). */
   async statusPorcelain(): Promise<string> {
-    return (await this.git(["status", "--porcelain", "--untracked-files=all"])).stdout;
+    return (await this.git(["-c", "core.quotePath=false", "status", "--porcelain=v1", "-z", "--untracked-files=all"])).stdout;
   }
 
   async remoteUrl(): Promise<string> {
@@ -407,10 +436,18 @@ export class GitState {
     // dodałoby wtedy CAŁE drzewo robocze, więc w ogóle go nie wywołujemy.
     if (paths.length > 0) {
       await this.git(["add", "--all", "--", ...paths]);
-      const staged = await this.git(["diff", "--cached", "--name-only"]);
-      if (staged.stdout.trim() !== "") {
-        await this.git(["-c", `user.name=${GIT_NAME}`, "-c", `user.email=${GIT_EMAIL}`, "commit", "-m", message]);
-      }
+    }
+    // Commit bierze CAŁY indeks — także pliki dodane wcześniej ręcznie. Dlatego indeks musi
+    // zawierać wyłącznie sprawdzone ścieżki; inaczej odmawiamy przed commitem.
+    const allowed = new Set(paths.map((file) => file.replace(/\\/g, "/")));
+    const staged = (await this.git(["-c", "core.quotePath=false", "diff", "--cached", "--name-only", "--no-renames", "-z"])).stdout
+      .split("\0")
+      .filter(Boolean)
+      .map((file) => file.replace(/\\/g, "/"));
+    const unexpected = staged.filter((file) => !allowed.has(file));
+    if (unexpected.length > 0) throw new Error(`W indeksie są pliki spoza sprawdzonej publikacji: ${unexpected.join(", ")}`);
+    if (staged.length > 0) {
+      await this.git(["-c", `user.name=${GIT_NAME}`, "-c", `user.email=${GIT_EMAIL}`, "commit", "-m", message]);
     }
     await this.git(["push", "origin", `HEAD:refs/heads/${branch}`]);
   }
@@ -428,25 +465,41 @@ export class GitState {
       throw new Error(`Brak ${baseRef} — uruchom \`git fetch origin ${base}\`.`);
     }
     const mergeBase = (await this.git(["merge-base", baseRef, "HEAD"])).stdout.trim();
-    const lines = (text: string) => text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    const tracked = lines((await this.git(["-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", mergeBase])).stdout);
-    const untracked = lines((await this.git(["-c", "core.quotePath=false", "ls-files", "--others", "--exclude-standard"])).stdout);
+    const quiet = ["-c", "core.quotePath=false"];
+    const nulList = (text: string) => text.split("\0").map((line) => line.trim()).filter(Boolean);
+    // Pliki z każdego commitu gałęzi: plik dodany i potem usunięty i tak jest w historii.
+    const committed = nulList((await this.git([...quiet, "log", "--format=", "--name-only", "--no-renames", "-z", `${mergeBase}..HEAD`])).stdout);
+    // Zmiany lokalne względem HEAD (zaindeksowane i nie) oraz nowe pliki spoza gita.
+    const local = nulList((await this.git([...quiet, "diff", "HEAD", "--name-only", "--no-renames", "-z"])).stdout);
+    const untracked = nulList((await this.git([...quiet, "ls-files", "--others", "--exclude-standard", "-z"])).stdout);
+
     const added: AddedLine[] = [];
-    let current: string | null = null;
-    for (const line of (await this.git(["-c", "core.quotePath=false", "diff", "-U0", "--no-renames", "--no-color", mergeBase])).stdout.split(/\r?\n/)) {
-      if (line.startsWith("+++ ")) current = line === "+++ /dev/null" ? null : line.slice(4).replace(/^b\//, "");
-      else if (current && line.startsWith("+")) added.push({ file: current, line: line.slice(1) });
-    }
+    const collect = (patch: string) => {
+      let current: string | null = null;
+      for (const line of patch.split(/\r?\n/)) {
+        if (line.startsWith("+++ ")) current = line === "+++ /dev/null" ? null : line.slice(4).replace(/^b\//, "");
+        else if (line.startsWith("diff --git ")) current = null;
+        else if (current && line.startsWith("+")) added.push({ file: current, line: line.slice(1) });
+      }
+    };
+    collect((await this.git([...quiet, "log", "-p", "--format=", "-U0", "--no-renames", "--no-color", `${mergeBase}..HEAD`])).stdout);
+    collect((await this.git([...quiet, "diff", "HEAD", "-U0", "--no-renames", "--no-color"])).stdout);
+
+    const tooLarge: string[] = [];
     for (const file of untracked) {
       const full = path.join(this.cwd, file);
       try {
-        if ((await fs.stat(full)).size > MAX_SCANNED_FILE_BYTES) continue;
+        if ((await fs.stat(full)).size > MAX_SCANNED_FILE_BYTES) {
+          tooLarge.push(file.replace(/\\/g, "/"));
+          continue;
+        }
         for (const line of (await fs.readFile(full, "utf8")).split(/\r?\n/)) added.push({ file, line });
       } catch {
         // Plik zniknął albo nie jest czytelny — lista plików i tak go obejmuje.
       }
     }
-    const files = [...new Set([...tracked, ...untracked].map((file) => file.replace(/\\/g, "/")))];
-    return { files, added };
+    const normalize = (file: string) => file.replace(/\\/g, "/");
+    const files = [...new Set([...committed, ...local, ...untracked].map(normalize))];
+    return { files, untracked: untracked.map(normalize), added, tooLarge };
   }
 }

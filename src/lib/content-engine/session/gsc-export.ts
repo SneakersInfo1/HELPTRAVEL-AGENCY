@@ -160,7 +160,23 @@ function decode(buffer: Buffer): string {
   return buffer.toString("utf8").replace(/^﻿/, "");
 }
 
+/** Nagłówek eksportu GSC ma kolumnę kliknięć i kolumnę wyświetleń (także w trybie porównania). */
+function looksLikeGscCsv(content: string | null): boolean {
+  if (!content) return false;
+  const metrics = splitCsvLine(splitCsvRecords(content.replace(/^﻿/, ""))[0] ?? "").map((header) => metricOf(header.trim()));
+  const clicks = metrics.some((metric) => metric === "kliknięcia" || metric === "klikniecia" || metric === "clicks");
+  const impressions = metrics.some((metric) => metric === "wyświetlenia" || metric === "wyswietlenia" || metric === "impressions");
+  return clicks && impressions;
+}
+
+/** Pliki eksportu albo null, gdy to nie jest eksport GSC (np. przypadkowy pages.csv w Pobranych). */
 function readExportFiles(candidatePath: string): ExportFiles | null {
+  const files = readExportFilesRaw(candidatePath);
+  if (!files || !looksLikeGscCsv(files.pages) || !looksLikeGscCsv(files.queries)) return null;
+  return files;
+}
+
+function readExportFilesRaw(candidatePath: string): ExportFiles | null {
   const stat = statSync(candidatePath);
   if (stat.isDirectory()) {
     const names = readdirSync(candidatePath).filter((name) => name.toLowerCase().endsWith(".csv"));
@@ -301,7 +317,8 @@ export function findGscExports(directories: readonly string[]): GscExportCandida
     } catch {
       return;
     }
-    const self = depth > 0 ? safeRead(directory) : null;
+    // Także katalog wskazany wprost (`--gsc-dir` na folder z CSV) bywa samym eksportem.
+    const self = safeRead(directory);
     if (self && !seen.has(directory)) {
       seen.add(directory);
       candidates.push(describe(directory, self));
@@ -325,7 +342,18 @@ export function findGscExports(directories: readonly string[]): GscExportCandida
       }
     }
   };
-  for (const directory of directories) visit(directory, 0);
+  for (const directory of directories) {
+    // Ścieżka wprost do pliku ZIP z eksportem.
+    if (directory.toLowerCase().endsWith(".zip") && !seen.has(directory)) {
+      const files = safeRead(directory);
+      if (files) {
+        seen.add(directory);
+        candidates.push(describe(directory, files));
+      }
+      continue;
+    }
+    visit(directory, 0);
+  }
   return candidates.sort((left, right) => right.dataEnd.localeCompare(left.dataEnd) || right.exportedAt.localeCompare(left.exportedAt));
 }
 

@@ -122,7 +122,7 @@ describe("eksporty GSC z interfejsu", () => {
   it("obsługuje folder z plikami *pages*/*queries*/*daily* i wczytuje dane wyłącznie w pamięci", () => {
     const folder = path.join(root, "gsc", "2026-11-10");
     mkdirSync(folder, { recursive: true });
-    writeFileSync(path.join(folder, "gsc_pages_top1000.csv"), "﻿Najpopularniejsze strony,Kliknięcia,Wyświetlenia,CTR,Pozycja\nhttps://helptravel.pl/,860,2437,0.3529,7.24");
+    writeFileSync(path.join(folder, "gsc_pages_top1000.csv"), "﻿Najpopularniejsze strony,Kliknięcia,Wyświetlenia,CTR,Pozycja\nhttps://helptravel.pl/,120,1000,0.12,7.5");
     writeFileSync(path.join(folder, "gsc_queries_top1000.csv"), "Najpopularniejsze zapytania,Kliknięcia,Wyświetlenia,CTR,Pozycja\nhelptravel,5,10,0.5,1");
     writeFileSync(path.join(folder, "gsc_daily_2026-08-11_2026-11-10.csv"), "Data,Kliknięcia,Wyświetlenia,CTR,Pozycja\n2026-11-10,3,40,0.075,8");
     const old = new Date("2026-11-11T10:00:00Z");
@@ -131,7 +131,7 @@ describe("eksporty GSC z interfejsu", () => {
     assert.equal(candidate.kind, "folder");
     assert.equal(candidate.dataEnd, "2026-11-10");
     const inputs = loadGscExport(candidate);
-    assert.equal(parseGscCsv(inputs.pages).rows[0].clicks, 860);
+    assert.equal(parseGscCsv(inputs.pages).rows[0].clicks, 120);
     assert.equal(parseGscCsv(inputs.daily).rows.length, 1);
   });
 
@@ -151,6 +151,22 @@ describe("eksporty GSC z interfejsu", () => {
     );
     const found = findGscExports([downloads]);
     assert.deepEqual(found.map((candidate) => path.basename(candidate.path)), ["eksport.zip"]);
+  });
+
+  it("katalog wskazany wprost i ścieżka do ZIP są eksportem; przypadkowy pages.csv bez kolumn GSC nie jest", () => {
+    const direct = path.join(root, "wprost");
+    mkdirSync(direct, { recursive: true });
+    writeFileSync(path.join(direct, "Strony.csv"), PAGES_COMPARISON);
+    writeFileSync(path.join(direct, "Zapytania.csv"), QUERIES_PLAIN);
+    assert.deepEqual(findGscExports([direct]).map((candidate) => candidate.path), [direct]);
+    const zipPath = path.join(root, "wprost.zip");
+    writeFileSync(zipPath, zip({ "Pages.csv": PAGES_COMPARISON, "Queries.csv": QUERIES_PLAIN }, new Date(2026, 10, 16, 9, 0, 0)));
+    assert.deepEqual(findGscExports([zipPath]).map((candidate) => candidate.path), [zipPath]);
+    const unrelated = path.join(root, "pobrane-inne");
+    mkdirSync(unrelated, { recursive: true });
+    writeFileSync(path.join(unrelated, "landing-pages-report.csv"), ["Page,Views,Bounce", "/a,10,0.5"].join("\n"));
+    writeFileSync(path.join(unrelated, "queries-backup.csv"), ["Query,Count", "x,1"].join("\n"));
+    assert.deepEqual(findGscExports([unrelated]), []);
   });
 
   it("ocenia świeżość danych: do 10 dni świeże, do 35 starzejące się, potem przestarzałe", () => {

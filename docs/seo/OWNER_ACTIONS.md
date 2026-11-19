@@ -43,9 +43,9 @@ Otwórz na telefonie trzy strony: porównanie Ateny–Rzym, „Barcelona w stycz
 
 Scalenie zmienia H1 na 1592 stronach i tytuł na 338. Adresy, canonicale, mapa witryny i dyrektywy robots zostają bez zmian. Wycofanie to revert jednego PR. Szczegóły: `BASELINE.md`, pkt 4, oraz ryzyko R-01.
 
-### 3. Liczby GSC w publicznym repozytorium
+### 3. Liczby GSC w publicznym repozytorium: przeniesione poza repo (19.11.2026)
 
-`BASELINE.md` i `OPPORTUNITY_BACKLOG.csv` zawierają zagregowane kliknięcia i wyświetlenia (cała usługa, segmenty, 20 adresów). Nie ma w nich zapytań. Jeśli nie chcesz ich publicznie, usuń te liczby przed scaleniem albo powiedz, a przeniosę je poza repo.
+Liczby z Search Console (backlog 20 adresów, sumy i segmenty z `BASELINE.md`, wiersze z eksportu w testach) leżą teraz w `seo-private/`, poza repozytorium. W repo zostały wnioski bez liczb i syntetyczne dane testowe. Historia gita gałęzi PR nadal zawiera dawne wersje plików.
 
 ## Po scaleniu
 
@@ -143,7 +143,7 @@ Szczegóły i liczby: `FINAL_QUALITY_AUDIT.md`.
 
 ### 16. 158 indeksowalnych stron miesięcy bez danych
 
-Dla 25 kierunków (m.in. Kos, Zakynthos, Mykonos, Santorini, Tirana, Djerba, Bodrum) WMO nie ma jednoznacznie dopasowanej stacji. Ich strony miesięcy nie pokazują żadnej informacji o miesiącu, a 158 z nich jest w indeksie. W 92 dni zebrały 13 kliknięć i 1060 wyświetleń.
+Dla 25 kierunków (m.in. Kos, Zakynthos, Mykonos, Santorini, Tirana, Djerba, Bodrum) WMO nie ma jednoznacznie dopasowanej stacji. Ich strony miesięcy nie pokazują żadnej informacji o miesiącu, a 158 z nich jest w indeksie. W 92 dni zebrały śladowy ruch z GSC.
 
 Zalecam wyłączenie ich z indeksu (`noindex, follow`, adresy zostają) do czasu znalezienia wiarygodnych danych.
 
