@@ -1,5 +1,7 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+
 import { liveSearchAllowed, photoDescribesDestination } from "@/lib/media/photo-guards";
 import { noPhotoMedia, verifiedMediaFor } from "@/lib/media/verified-photos";
 
@@ -50,8 +52,8 @@ function scoreCandidate(candidate: PhotoCandidate, keywords: string[]): number {
 
 // Najwyżej tyle zapytań do Pexels naraz w jednym procesie (worker builda, funkcja ISR).
 // To limit lokalny: build ma kilka workerów, więc globalnie zapytań może być więcej.
-// Całościowo limit chronią: rejestr (ważne kierunki bez API), Data Cache 30 dni,
-// brak zapytań na Preview i wyłącznik po pierwszej odmowie (niżej).
+// Całościowo limit chronią: rejestr (ważne kierunki bez API), cache 30 dni,
+// brak zapytań na Preview i wyłącznik po pierwszej porażce (niżej).
 const MAX_CONCURRENT_PEXELS_REQUESTS = 2;
 let activePexelsRequests = 0;
 const pexelsQueue: Array<() => void> = [];
@@ -69,9 +71,9 @@ async function withPexelsSlot<T>(task: () => Promise<T>): Promise<T> {
   }
 }
 
-// Wyłącznik: po odmowie (429), błędzie serwera, przekroczeniu czasu albo błędzie sieci
+// Wyłącznik: po odmowie (429), błędzie HTTP, przekroczeniu czasu albo błędzie sieci
 // proces przestaje pytać Pexels na 10 minut. Strony w tym czasie dostają układ bez
-// zdjęcia (bez zapamiętywania), zamiast dobijać wyczerpany limit kolejnymi zapytaniami.
+// zdjęcia, zamiast dobijać wyczerpany limit kolejnymi zapytaniami.
 const PEXELS_PAUSE_MS = 10 * 60 * 1000;
 const PEXELS_TIMEOUT_MS = 8000;
 let pexelsPausedUntil = 0;
@@ -80,67 +82,77 @@ function pexelsPaused(): boolean {
   return Date.now() < pexelsPausedUntil;
 }
 
-/**
- * Wyniki wyszukiwania trzymamy w Data Cache 30 dni (wcześniej 1 dzień — po dobie
- * każdy build pytał API o wszystkie kierunki naraz). Zdjęcia miejsc nie wymagają
- * częstszego odświeżania; ręcznie odświeża je unieważnienie tagu `pexels-media`.
- * Odpowiedzi z błędem (np. 429) Next nie zapisuje, więc nie utrwalają awarii.
- */
-const PEXELS_CACHE_SECONDS = 30 * 24 * 60 * 60;
+class PexelsUnavailableError extends Error {}
 
-/** `null` = awaria (odmowa, timeout, sieć); `[]` = API odpowiedziało, ale bez zdjęć. */
-async function fetchCandidates(query: string, apiKey: string): Promise<PhotoCandidate[] | null> {
-  const response = await withPexelsSlot(async () => {
-    // Sprawdzane w slocie: zapytania czekające w kolejce nie ruszą po otwarciu wyłącznika.
-    if (pexelsPaused()) return null;
+/**
+ * Jedno wyszukiwanie w slocie: zapytanie, status, treść i ewentualne otwarcie
+ * wyłącznika dzieją się, zanim slot przejmie kolejne zadanie. Każda porażka rzuca
+ * wyjątek, więc `unstable_cache` niczego nie zapisuje (awarie nie są cache'owane).
+ */
+async function searchPexelsStrict(query: string): Promise<PhotoCandidate[]> {
+  const apiKey = process.env.PEXELS_API_KEY;
+  if (!apiKey) throw new PexelsUnavailableError("brak klucza Pexels");
+  return withPexelsSlot(async () => {
+    // Sprawdzane w slocie: zadania czekające w kolejce nie ruszą po otwarciu wyłącznika.
+    if (pexelsPaused()) throw new PexelsUnavailableError("wyłącznik Pexels otwarty");
     try {
-      // Bez `locale=pl-PL`: z nim Pexels oddaje opisy po polsku, odmienione („w Paryżu”,
-      // „Pragi”), których strażnik nazwy miasta i kraju nie rozpozna. Zapytanie jest po angielsku.
-      return await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=15&orientation=landscape`, {
-        headers: {
-          Authorization: apiKey,
-        },
+      // `no-store`: cache'uje `unstable_cache` niżej. Gdyby cache'ował fetch, Next przy
+      // odświeżaniu przeterminowanego wpisu pomijałby `signal`, czyli limit czasu i slot.
+      // Bez `locale=pl-PL`: z nim Pexels oddaje opisy po polsku, odmienione („w Paryżu”),
+      // których strażnik nazwy miasta i kraju nie rozpozna. Zapytanie jest po angielsku.
+      const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=15&orientation=landscape`, {
+        headers: { Authorization: apiKey },
         signal: AbortSignal.timeout(PEXELS_TIMEOUT_MS),
-        // Silently ignored outside the Next runtime, so tests/scripts are unaffected.
-        cache: "force-cache",
-        next: { revalidate: PEXELS_CACHE_SECONDS, tags: ["pexels-media"] },
+        cache: "no-store",
       });
-    } catch {
+      if (!response.ok) throw new PexelsUnavailableError(`Pexels HTTP ${response.status}`);
+      const data = (await response.json()) as { photos?: PexelsPhoto[] };
+      return (data.photos ?? [])
+        .map((photo, index) => {
+          const url = extractUrl(photo);
+          if (!url) return null;
+          return { url, alt: photo.alt ?? "", baseScore: Math.max(0, 20 - index) };
+        })
+        .filter((item): item is PhotoCandidate => Boolean(item));
+    } catch (error) {
       pexelsPausedUntil = Date.now() + PEXELS_PAUSE_MS;
-      return null;
+      throw error;
     }
   });
-
-  if (!response) return null;
-  if (!response.ok) {
-    if (response.status === 429 || response.status >= 500) pexelsPausedUntil = Date.now() + PEXELS_PAUSE_MS;
-    return null;
-  }
-
-  const data = (await response.json()) as { photos?: PexelsPhoto[] };
-  return (data.photos ?? [])
-    .map((photo, index) => {
-      const url = extractUrl(photo);
-      if (!url) return null;
-      return {
-        url,
-        alt: photo.alt ?? "",
-        baseScore: Math.max(0, 20 - index),
-      };
-    })
-    .filter((item): item is PhotoCandidate => Boolean(item));
 }
+
+/**
+ * Wyniki wyszukiwania w cache danych 30 dni (wcześniej 1 dzień — po dobie każdy build
+ * pytał API o wszystkie kierunki naraz). Odświeżenie przeterminowanego wpisu w tle też
+ * idzie przez `searchPexelsStrict`, więc obowiązuje je slot, limit czasu i wyłącznik.
+ * Ręcznie odświeża unieważnienie tagu `pexels-media`.
+ */
+const PEXELS_CACHE_SECONDS = 30 * 24 * 60 * 60;
+const searchPexelsCached = unstable_cache(searchPexelsStrict, ["pexels-search", "v2"], {
+  revalidate: PEXELS_CACHE_SECONDS,
+  tags: ["pexels-media"],
+});
 
 /**
  * Jedno zapytanie na kierunek. Zostają tylko zdjęcia, których opis wymienia miasto
  * i kraj kierunku (`photoDescribesDestination`).
  */
 async function fetchDestinationMedia(destination: DestinationProfile): Promise<DestinationMedia | null> {
-  const apiKey = process.env.PEXELS_API_KEY;
-  if (!apiKey || !liveSearchAllowed(process.env) || pexelsPaused()) return null;
+  if (!liveSearchAllowed(process.env) || pexelsPaused()) return null;
 
-  const candidates = await fetchCandidates(buildGenericQuery(destination), apiKey);
-  if (!candidates) return null;
+  const query = buildGenericQuery(destination);
+  let candidates: PhotoCandidate[];
+  try {
+    candidates = await searchPexelsCached(query);
+  } catch (error) {
+    // Skrypty i testy bez serwera Nexta: `unstable_cache` nie ma gdzie trzymać danych.
+    if (!(error instanceof Error && /incrementalCache missing/i.test(error.message))) return null;
+    try {
+      candidates = await searchPexelsStrict(query);
+    } catch {
+      return null;
+    }
+  }
 
   const keywords = [destination.city, destination.country];
   const urls = candidates
@@ -163,8 +175,8 @@ async function fetchDestinationMedia(destination: DestinationProfile): Promise<D
 }
 
 // Tylko deduplikacja zapytań w locie (kilka sekcji jednej strony pyta o ten sam kierunek).
-// Wyników nie trzymamy dłużej: każdy render ponownie woła `fetch` (trafienie w Data Cache),
-// więc strona dostaje tag `pexels-media` i jego unieważnienie odświeża WSZYSTKIE strony.
+// Wyników nie trzymamy dłużej: każdy render ponownie woła cache (trafienie), więc strona
+// dostaje tag `pexels-media` i jego unieważnienie odświeża WSZYSTKIE strony.
 // Porażka nie zostaje w pamięci procesu.
 const inFlight = new Map<string, Promise<DestinationMedia>>();
 

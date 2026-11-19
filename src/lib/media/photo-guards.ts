@@ -36,27 +36,27 @@ const COUNTRY_ALIASES: Readonly<Record<string, readonly string[]>> = {
 };
 
 /**
+ * Sprawdzone ręcznie inne nazwy miast. Bez reguł ogólnych typu „ostatni wyraz nazwy”:
+ * z „Playa del Carmen” robiła „Carmen” (imię), z „Sharm el Sheikh” — „Sheikh”.
+ */
+const CITY_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  "Santa Cruz de Tenerife": ["Tenerife"],
+};
+
+/**
  * Nazwy miast, które są też zwykłymi słowami albo początkiem innych nazw
  * („a nice view”, „male traveler”, „Porto Santo” na Maderze, „Faro de Trafalgar”).
- * Dla nich nazwa nie może otwierać opisu ani stać przed kolejnym słowem z wielkiej litery.
+ * Dla nich liczy się tylko konstrukcja „Miasto, Kraj” albo „Miasto (Kraj)”.
  */
 const AMBIGUOUS_CITY_NAMES = new Set(["Nice", "Male", "Split", "Bar", "Cork", "Faro", "Porto", "Palma", "Sofia", "Florence", "Victoria", "Santiago", "Kos", "Bled", "Pula"]);
 
 function wholeWord(name: string): RegExp {
-  return new RegExp(`(^|[^\\p{L}])(${escapeRegExp(name)})(?=[^\\p{L}]|$)`, "gu");
+  return new RegExp(`(^|[^\\p{L}])${escapeRegExp(name)}(?=[^\\p{L}]|$)`, "u");
 }
 
-function mentionsCity(alt: string, name: string): boolean {
-  for (const match of alt.matchAll(wholeWord(name))) {
-    if (!AMBIGUOUS_CITY_NAMES.has(name)) return true;
-    const start = (match.index ?? 0) + match[1].length;
-    const before = alt.slice(0, start).trim();
-    const after = alt.slice(start + name.length);
-    const sentenceStart = before === "" || /[.!?]$/.test(before);
-    const partOfLongerName = /^\s+\p{Lu}/u.test(after);
-    if (!sentenceStart && !partOfLongerName) return true;
-  }
-  return false;
+function cityWithCountry(name: string, countries: readonly string[]): RegExp {
+  const country = countries.map(escapeRegExp).join("|");
+  return new RegExp(`(^|[^\\p{L}])${escapeRegExp(name)}\\s*(?:,|\\()\\s*(?:${country})(?=[^\\p{L}]|$)`, "u");
 }
 
 /**
@@ -71,19 +71,26 @@ export function photoDescribesDestination(alt: string, destination: { city: stri
   const text = stripDiacritics(alt);
   if (!text) return false;
 
-  const cityNames = new Set([destination.city, localizeCityPl(destination.city)].map(stripDiacritics).filter((name) => name.length >= 3));
-  for (const name of [...cityNames]) {
-    const words = name.split(/\s+/).filter(Boolean);
-    // „Santa Cruz de Tenerife” → opis „Tenerife” też jest tym kierunkiem.
-    if (words.length >= 3 && words[words.length - 1].length >= 5) cityNames.add(words[words.length - 1]);
+  const cityNames = new Set(
+    [destination.city, localizeCityPl(destination.city), ...(CITY_ALIASES[destination.city] ?? [])].map(stripDiacritics).filter((name) => name.length >= 3),
+  );
+  const countryOwnNames = [destination.country, localizeCountryPl(destination.country)].map(stripDiacritics);
+  // Miasto-państwo (Singapur, Hongkong): nazwa miasta jest zarazem nazwą kraju.
+  if (countryOwnNames.some((name) => cityNames.has(name))) {
+    return [...cityNames].some((name) => wholeWord(name).test(text));
   }
-  if (![...cityNames].some((name) => mentionsCity(text, name))) return false;
 
   // Alias kraju równy nazwie miasta niczego nie potwierdza („Rhodes” jako Grecja dla Rodos).
-  const countryNames = [destination.country, localizeCountryPl(destination.country), ...(COUNTRY_ALIASES[destination.country] ?? [])]
-    .map(stripDiacritics)
-    .filter((name) => name.length >= 2 && !cityNames.has(name));
-  return countryNames.some((name) => wholeWord(name).test(text));
+  const countryNames = [...countryOwnNames, ...(COUNTRY_ALIASES[destination.country] ?? []).map(stripDiacritics)].filter(
+    (name) => name.length >= 2 && !cityNames.has(name),
+  );
+  if (countryNames.length === 0) return false;
+
+  return [...cityNames].some((name) =>
+    AMBIGUOUS_CITY_NAMES.has(name)
+      ? cityWithCountry(name, countryNames).test(text)
+      : wholeWord(name).test(text) && countryNames.some((country) => wholeWord(country).test(text)),
+  );
 }
 
 /**

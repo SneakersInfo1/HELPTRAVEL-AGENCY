@@ -17,6 +17,10 @@ const PEXELS_PHOTO = /^https:\/\/images\.pexels\.com\/photos\/(\d+)\/pexels-phot
  * Kierunki z najważniejszych stron: strona główna, karty hubów „wyjazdy”
  * (przewodnik albo przypisane zdjęcie), porównania i strony „Hotele w …”
  * (sekcja komercyjna katalogu).
+ *
+ * Poza zakresem: karty „Tanie loty” na stronie głównej (DEAL_ROUTES). Sekcja jest
+ * ukryta, dopóki nie ma świeżych cen lotów; jej karty biorą zdjęcie z wyszukiwania
+ * (opis z miastem i krajem) albo pokazują układ bez zdjęcia.
  */
 function importantDestinations(): string[] {
   const hubs = TRAVEL_MOODS.flatMap((mood) => mood.picks.map((pick) => pick.slug ?? pick.photoSlug));
