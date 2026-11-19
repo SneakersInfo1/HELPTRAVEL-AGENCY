@@ -1,4 +1,6 @@
-# Runbook: dzienny automat treści
+# Runbook: dzienny automat treści (WYŁĄCZONY — zastąpiony 17.11.2026)
+
+> **Ten automat nie jest używany.** Od 17.11.2026 praca SEO odbywa się w sesji Claude Code uruchamianej ręcznie przez właściciela (`/seo-daily`), bez harmonogramu i bez płatnych wywołań API modeli: `docs/seo/daily/README.md` i `docs/seo/daily/PROCEDURE.md`. Workflow `seo-content-daily.yml` nie ma już harmonogramu ani ścieżki z kluczem API, a `pnpm content:run` w trybie na żywo wymaga jawnej flagi `--allow-paid-api`. Opis poniżej zostaje jako dokumentacja wyłączonej alternatywy.
 
 Automat raz dziennie wybiera jeden temat (odświeżenie istniejącej strony albo nową treść), zbiera fakty z dozwolonych źródeł, pisze szkic, sprawdza go bramką jakości i otwiera PR z propozycją. Niczego nie publikuje sam. Na `main` treść trafia wyłącznie przez scalenie PR przez człowieka.
 

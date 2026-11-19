@@ -1,40 +1,25 @@
-name: SEO content daily
+name: SEO content engine (offline)
 
-# Dzienny przebieg silnika treści (evidence-first). Runbook: docs/seo/AUTOMATION_RUNBOOK.md
+# Ręczny test silnika treści NA DANYCH TESTOWYCH (FakeLlm, źródła z fixture).
 #
-# BEZPIECZNIKI:
-#  • harmonogram jest WYŁĄCZONY, dopóki właściciel nie ustawi zmiennej repozytorium
-#    SEO_ENGINE_SCHEDULE_ENABLED=true — samo zmergowanie tego pliku niczego nie uruchamia;
-#  • tryb na żywo wymaga OBU: sekretu SEO_ENGINE_ANTHROPIC_API_KEY i źródła danych GSC.
-#    Preferowane API wymaga sekretu SEO_GSC_SERVICE_ACCOUNT_JSON i zmiennej SEO_GSC_SITE_URL;
-#    awaryjnie obsługiwany jest katalog data/gsc. Bez kompletu przebieg jest offline;
-#  • domyślny tryb to dry-run; draft-and-pr otwiera PR, nigdy nie pisze do main;
-#  • SEO_ENGINE_KILL_SWITCH=1 zatrzymuje przebieg przed pierwszym wywołaniem modelu;
-#  • limit kosztu na przebieg: SEO_ENGINE_MAX_USD_PER_RUN (domyślnie 1,50 USD);
-#  • repozytorium jest PUBLICZNE: surowy eksport z API GSC żyje tylko w pamięci,
-#    gałąź stanu przechowuje tylko ledger, a artefakt to raport bez danych GSC
-#    (zapytań, kliknięć, wyświetleń);
-#  • sekrety trafiają tylko do kroków, które ich potrzebują — nie do `pnpm install`;
-#  • akcje są przypięte do pełnych SHA; PR powstaje PRZED zapisem rejestru, a gdy się nie
-#    uda, temat jest zwalniany z listy oczekujących.
+# Od 17.11.2026 praca SEO odbywa się w sesji Claude Code uruchamianej ręcznie przez
+# właściciela (`/seo-daily`), w ramach abonamentu: docs/seo/daily/README.md.
+# Ten workflow celowo:
+#  • NIE ma harmonogramu (`schedule`) — nic nie generuje treści automatycznie;
+#  • NIE ma ścieżki z kluczem API modelu — żadne płatne wywołanie API modelu AI
+#    nie jest możliwe z poziomu CI;
+#  • NIE tworzy gałęzi, PR ani gałęzi stanu — tylko uruchamia scenariusz offline
+#    i zapisuje publiczny raport jako artefakt.
+# Dawny dzienny automat (harmonogram + klucz API) jest w historii gita i opisany
+# w docs/seo/AUTOMATION_RUNBOOK.md jako wyłączona alternatywa.
 
 on:
-  schedule:
-    - cron: "17 4 * * *"
   workflow_dispatch:
     inputs:
-      mode:
-        description: Tryb publikacji
-        required: true
-        default: dry-run
-        type: choice
-        options:
-          - dry-run
-          - draft-and-pr
-          - auto-evergreen
       scenario:
-        description: Opcjonalny scenariusz offline (FakeLlm)
-        required: false
+        description: Scenariusz offline (FakeLlm, źródła z fixture)
+        required: true
+        default: refresh
         type: choice
         options:
           - refresh
@@ -42,25 +27,21 @@ on:
           - reject-unverified
 
 concurrency:
-  group: seo-content-daily
+  group: seo-content-engine-offline
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  content-engine:
-    if: github.event_name == 'workflow_dispatch' || vars.SEO_ENGINE_SCHEDULE_ENABLED == 'true'
+  content-engine-offline:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          fetch-depth: 0
-          # Token nie zostaje w konfiguracji gita — skrypty instalacji i testy go nie widzą.
           persist-credentials: false
 
       - name: Setup pnpm
@@ -80,198 +61,22 @@ jobs:
       - name: Run content tests
         run: node --import tsx --test "src/lib/content-engine/**/*.test.ts" "src/lib/content-quality/**/*.test.ts"
 
-      - name: Restore engine ledger
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p .seo-engine-state
-          if git fetch --no-tags "https://github.com/${GITHUB_REPOSITORY}.git" seo-engine-state:refs/remotes/origin/seo-engine-state; then
-            if git ls-tree -r --name-only origin/seo-engine-state -- .seo-engine-state | grep -q '^\.seo-engine-state/'; then
-              git archive origin/seo-engine-state .seo-engine-state | tar -x
-            fi
-          else
-            echo "State branch is absent; it will be created as an orphan."
-          fi
-          # Raporty nie są przechowywane między przebiegami — wszystko w reports/ jest z TEGO przebiegu.
-          rm -rf .seo-engine-state/reports
-
-      - name: Run evidence-first engine
-        id: engine
+      - name: Run offline scenario
         shell: bash
         env:
-          SEO_ENGINE_ANTHROPIC_API_KEY: ${{ secrets.SEO_ENGINE_ANTHROPIC_API_KEY }}
-          SEO_GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.SEO_GSC_SERVICE_ACCOUNT_JSON }}
-          SEO_GSC_SITE_URL: ${{ vars.SEO_GSC_SITE_URL }}
-          SEO_ENGINE_KILL_SWITCH: ${{ vars.SEO_ENGINE_KILL_SWITCH }}
-          SEO_ENGINE_MAX_USD_PER_RUN: ${{ vars.SEO_ENGINE_MAX_USD_PER_RUN }}
-          SEO_ENGINE_MAX_REQUESTS_PER_RUN: ${{ vars.SEO_ENGINE_MAX_REQUESTS_PER_RUN }}
-          REQUESTED_MODE: ${{ inputs.mode || vars.SEO_ENGINE_MODE || 'dry-run' }}
-          REQUESTED_SCENARIO: ${{ inputs.scenario }}
+          SCENARIO: ${{ inputs.scenario }}
         run: |
           set -euo pipefail
           scheduled_at="$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"
-          mode="$REQUESTED_MODE"
-          # Raport publiczny (bez zapytań, liczb i uzasadnień z GSC) pisze sam silnik — redactRunReport, z testem.
-          public_report="$RUNNER_TEMP/seo-run-report.public.json"
-          args=(--mode "$mode" --scheduled-at "$scheduled_at" --state-dir .seo-engine-state --store-dir content/seo --public-report "$public_report")
-
-          gsc_source=""
-          if [[ -n "${SEO_GSC_SERVICE_ACCOUNT_JSON:-}" && -n "${SEO_GSC_SITE_URL:-}" ]]; then
-            gsc_source="api"
-          elif [[ -f data/gsc/pages.csv ]]; then
-            gsc_source="csv"
-          fi
-
-          missing=()
-          if [[ -z "${SEO_ENGINE_ANTHROPIC_API_KEY:-}" ]]; then
-            missing+=("SEO_ENGINE_ANTHROPIC_API_KEY")
-          fi
-          if [[ -z "$gsc_source" ]]; then
-            missing+=("źródła GSC: komplet SEO_GSC_SERVICE_ACCOUNT_JSON + SEO_GSC_SITE_URL albo data/gsc/pages.csv")
-          fi
-
-          if (( ${#missing[@]} > 0 )); then
-            mode="dry-run"
-            scenario="${REQUESTED_SCENARIO:-refresh}"
-            args=(--mode "$mode" --scenario "$scenario" --scheduled-at "$scheduled_at" --state-dir .seo-engine-state --store-dir content/seo --public-report "$public_report")
-            missing_text="$(printf '%s, ' "${missing[@]}")"
-            missing_text="${missing_text%, }"
-            echo "BLOCKED: brak ${missing_text} — przebieg offline, scenariusz '${scenario}'."
-          else
-            if [[ "$gsc_source" == "api" ]]; then
-              args+=(--gsc-source api)
-            fi
-            if [[ -n "${REQUESTED_SCENARIO:-}" ]]; then
-              args+=(--scenario "$REQUESTED_SCENARIO")
-            fi
-          fi
-
-          set +e
-          pnpm exec tsx scripts/content-engine/run.ts "${args[@]}"
-          engine_exit=$?
-          set -e
-
-          if [[ ! -f "$public_report" ]]; then
-            echo "Engine did not create a run report." >&2
-            echo "exit_code=${engine_exit}" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-          day="$(jq -r '.scheduledAt[0:10]' "$public_report")"
-          target="$(jq -r '[.selectedTasks[] | select(.decision != "REVIEW_REQUIRED")][0].target // "no-target"' "$public_report")"
-          target_slug="$(basename "$target" | tr -cd 'a-z0-9-')"
-          [[ -n "$target_slug" ]] || target_slug="no-target"
-          changed=false
-          if [[ -n "$(git status --porcelain -- content/seo)" ]]; then changed=true; fi
-          # Pełny raport (z danymi GSC) nie opuszcza maszyny przebiegu.
-          rm -rf .seo-engine-state/reports
-
-          echo "exit_code=$engine_exit" >> "$GITHUB_OUTPUT"
-          echo "run_id=$(jq -r '.runId // empty' "$public_report")" >> "$GITHUB_OUTPUT"
-          echo "public_report=$public_report" >> "$GITHUB_OUTPUT"
-          echo "day=$day" >> "$GITHUB_OUTPUT"
-          echo "target_slug=$target_slug" >> "$GITHUB_OUTPUT"
-          echo "content_changed=$changed" >> "$GITHUB_OUTPUT"
-
-      - name: Create content branch and pull request
-        id: pr
-        # Niepowodzenie nie przerywa zadania: rejestr musi najpierw zwolnić temat (krok niżej).
-        continue-on-error: true
-        if: steps.engine.outputs.exit_code == '0' && steps.engine.outputs.content_changed == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          branch="seo-content/${{ steps.engine.outputs.day }}-${{ steps.engine.outputs.target_slug }}"
-          if git ls-remote --exit-code --heads "$remote" "refs/heads/$branch" >/dev/null 2>&1; then
-            echo "Remote branch '$branch' already exists; skipping duplicate PR."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$branch"
-          git add content/seo
-          git commit -m "feat(seo): propozycja treści ${{ steps.engine.outputs.day }}"
-          git push "$remote" "HEAD:$branch"
-
-          report='${{ steps.engine.outputs.public_report }}'
-          body="$RUNNER_TEMP/seo-content-pr.md"
-          {
-            echo "## Propozycja treści (silnik evidence-first)"
-            echo
-            echo "- Dzień (UTC): ${{ steps.engine.outputs.day }}"
-            echo "- Wynik: $(jq -r '.outcome' "$report")"
-            echo "- Decyzja: $(jq -r '.decision // "brak"' "$report")"
-            echo
-            echo "Merge wymaga zatwierdzenia przez człowieka: przejrzyj treść i źródła, potem"
-            echo '`pnpm content:verify -- --approve <id> --by "Imię Nazwisko" --write` na tej gałęzi.'
-            echo 'Kontrola „SEO content check” nie przepuści dokumentu w statusie innym niż approved.'
-            echo
-            echo "### Bramka jakości"
-            echo '```json'
-            jq '.gateReport' "$report"
-            echo '```'
-          } > "$body"
-          gh pr create --base main --head "$branch" --title "Treść SEO: ${{ steps.engine.outputs.target_slug }} (${{ steps.engine.outputs.day }})" --body-file "$body"
-
-      - name: Release pending proposal after failed pull request
-        if: always() && steps.pr.outcome == 'failure' && steps.engine.outputs.run_id != ''
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Bez PR-a temat nie może wisieć w „oczekujących” przez 14 dni.
-          pnpm exec tsx scripts/content-engine/run.ts --release-pending "${{ steps.engine.outputs.run_id }}" --state-dir .seo-engine-state
-
-      - name: Persist ledger branch
-        if: always() && steps.engine.outputs.day != ''
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          state_worktree="$RUNNER_TEMP/seo-engine-state-worktree"
-          rm -rf "$state_worktree"
-          if git show-ref --verify --quiet refs/remotes/origin/seo-engine-state; then
-            git worktree add --detach "$state_worktree" origin/seo-engine-state
-            git -C "$state_worktree" switch -C seo-engine-state origin/seo-engine-state
-          else
-            git worktree add --detach "$state_worktree" HEAD
-            git -C "$state_worktree" switch --orphan seo-engine-state
-            # --orphan już czyści indeks; bez --ignore-unmatch `git rm` kończył krok błędem.
-            git -C "$state_worktree" rm -rf --quiet --ignore-unmatch .
-          fi
-          rm -rf "$state_worktree/.seo-engine-state"
-          mkdir -p "$state_worktree/.seo-engine-state"
-          for part in idempotency locks pending dead-letter; do
-            if [[ -d ".seo-engine-state/$part" ]]; then cp -a ".seo-engine-state/$part" "$state_worktree/.seo-engine-state/"; fi
-          done
-          git -C "$state_worktree" config user.name "github-actions[bot]"
-          git -C "$state_worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C "$state_worktree" add -A .seo-engine-state
-          if ! git -C "$state_worktree" diff --cached --quiet; then
-            git -C "$state_worktree" commit -m "chore(seo): ledger silnika treści ${{ steps.engine.outputs.day }}"
-          fi
-          git -C "$state_worktree" push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:seo-engine-state
-          git worktree remove "$state_worktree" --force
+          pnpm exec tsx scripts/content-engine/run.ts --mode dry-run --scenario "$SCENARIO" \
+            --scheduled-at "$scheduled_at" --state-dir "$RUNNER_TEMP/seo-engine-state" \
+            --store-dir content/seo --public-report "$RUNNER_TEMP/seo-run-report.public.json"
 
       - name: Upload public run report
-        if: always() && steps.engine.outputs.public_report != ''
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: seo-content-report-${{ steps.engine.outputs.day }}-${{ github.run_id }}
-          path: ${{ steps.engine.outputs.public_report }}
-          if-no-files-found: error
-
-      - name: Propagate engine failure
-        if: always() && steps.engine.outputs.exit_code != '' && steps.engine.outputs.exit_code != '0'
-        shell: bash
-        run: exit "${{ steps.engine.outputs.exit_code }}"
-
-      - name: Propagate pull request failure
-        if: always() && steps.pr.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "Nie udało się utworzyć gałęzi albo PR-a z propozycją treści." >&2
-          exit 1
+          name: seo-run-report-offline
+          path: ${{ runner.temp }}/seo-run-report.public.json
+          if-no-files-found: ignore
+          retention-days: 14
