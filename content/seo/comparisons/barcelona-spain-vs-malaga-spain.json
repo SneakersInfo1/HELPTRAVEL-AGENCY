@@ -76,7 +76,7 @@
       "kind": "prose",
       "paragraphs": [
         "Barcelona to przede wszystkim architektura: miasto słynie z dzieł Gaudíego i secesji, a Sagrada Família, Park Güell, Casa Batlló i La Pedrera to miejsca, dla których przyjeżdża się tu specjalnie. Do programu łatwo dodać Muzeum Picassa.",
-        "Malaga daje zwiedzanie w mniejszej skali, ale gęste: Alcazaba to jedna z największych arabskich twierdz w Andaluzji, w mieście działa jedyne Centrum Pompidou poza Francją, a Malaga jest miejscem urodzenia Picassa. Kto jedzie śladem malarza, w Barcelonie zobaczy jego muzeum, a w Maladze miasto, w którym się urodził."
+        "Malaga daje zwiedzanie w mniejszej skali, ale gęste: Alcazaba to jedna z największych arabskich twierdz w Andaluzji, w mieście działa filia paryskiego Centrum Pompidou, a Malaga jest miejscem urodzenia Picassa. Kto jedzie śladem malarza, w Barcelonie zobaczy jego muzeum, a w Maladze miasto, w którym się urodził."
       ]
     },
     {
@@ -191,7 +191,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "Beyond its 16 sunny beaches",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
@@ -202,7 +202,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "a sunny day spent on the legendary La Malagueta city beach is a must",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
@@ -213,7 +213,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "the Alcazaba , one of the largest Arab fortresses in Andalusia",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
@@ -224,18 +224,18 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "the birthplace of Pablo Picasso",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
       "id": "claim-5",
-      "claim": "W Maladze działa jedyne Centrum Pompidou poza Francją",
+      "claim": "W Maladze działa filia paryskiego Centrum Pompidou",
       "value": "Centre Pompidou",
       "dataClass": "attraction",
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
-      "observedEvidence": "the only Pompidou Centre outside France",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "observedEvidence": "Pompidou Centre outside France",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
@@ -246,7 +246,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "Most tourist points of interest are concentrated within the city centre, which makes it easy to explore them on foot.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
@@ -257,7 +257,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-1",
       "observedEvidence": "The Málaga – Costa del Sol Airport is situated 8 kilometres from the city.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
@@ -268,7 +268,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-1",
       "observedEvidence": "The Express Aeropuerto city bus line connects to the centre of Málaga in a journey time of approximately 15 minutes.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
@@ -279,7 +279,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-1",
       "observedEvidence": "Other AVE lines run to Córdoba, Zaragoza and Barcelona.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:49Z",
       "verification": "source_verified"
     },
     {
@@ -290,7 +290,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-2",
       "observedEvidence": "Overlooking the Mediterranean Sea, and famous for Gaudí and other Art Nouveau architecture, Barcelona is one of Europe’s trendiest cities.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:51Z",
       "verification": "source_verified"
     },
     {
@@ -301,7 +301,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-2",
       "observedEvidence": "Barcelona draws visitors to its famous sights , like the Sagrada Familia, Park Güell , Casa Batlló and La Pedrera.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:51Z",
       "verification": "source_verified"
     },
     {
@@ -312,7 +312,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-2",
       "observedEvidence": "relaxing moments on the city beaches",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:51Z",
       "verification": "source_verified"
     },
     {
@@ -323,7 +323,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-2",
       "observedEvidence": "major art centres, like the Picasso Museum, the National Art Museum of Catalonia, and CaixaForum",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:51Z",
       "verification": "source_verified"
     },
     {
@@ -334,7 +334,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-2",
       "observedEvidence": "Barcelona – El Prat Airport is located 12 kilometres from the city.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:51Z",
       "verification": "source_verified"
     },
     {
@@ -345,7 +345,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-2",
       "observedEvidence": "You can reach the city centre by various means of public transport in about 35 minutes or less",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:51Z",
       "verification": "source_verified"
     },
     {
@@ -356,7 +356,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-2",
       "observedEvidence": "International high-speed train links to France and to Spanish cities such as Madrid, Valencia, Malaga, Seville and Zaragoza.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:51Z",
       "verification": "source_verified"
     },
     {
@@ -367,7 +367,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-2",
       "observedEvidence": "Please note that large parts of Barcelona are Low Emission Zones, where driving and parking are restricted.",
-      "retrievedAt": "2026-11-17T00:00:00.000Z",
+      "retrievedAt": "2026-11-19T19:50:51Z",
       "verification": "source_verified"
     }
   ],
@@ -379,7 +379,7 @@
       "publisher": "www.spain.info",
       "kind": "official_tourism",
       "licence": "Fakt i krótki cytat w granicach prawa cytatu",
-      "retrievedAt": "2026-11-17T00:00:00.000Z"
+      "retrievedAt": "2026-11-19T19:50:49Z"
     },
     {
       "id": "source-2",
@@ -388,7 +388,7 @@
       "publisher": "www.spain.info",
       "kind": "official_tourism",
       "licence": "Fakt i krótki cytat w granicach prawa cytatu",
-      "retrievedAt": "2026-11-17T00:00:00.000Z"
+      "retrievedAt": "2026-11-19T19:50:51Z"
     }
   ],
   "imageAsset": {
@@ -407,11 +407,11 @@
   ],
   "ctaTarget": "/hotele/szukaj",
   "riskClass": "DYNAMIC",
-  "contentHash": "a7daac96beb33d13447a68614220fbf1dfbf98a54d36e5efb0cb543ec02d002f",
+  "contentHash": "e952db856efb4e7fc7d2e024991260bdaadc325d961f99c9f66ace701968cc0a",
   "createdAt": "2026-11-17T00:00:00.000Z",
   "publishedAt": null,
-  "materiallyModifiedAt": "2026-11-17T00:00:00.000Z",
-  "verifiedAt": "2026-11-17T00:00:00.000Z",
+  "materiallyModifiedAt": "2026-11-19T19:50:47Z",
+  "verifiedAt": "2026-11-19T19:50:47Z",
   "owner": "HelpTravel SEO",
   "reviewStatus": "in_review",
   "generationRunId": "576f3cbd-7d60-4ce3-99e1-5175e9436baf",
