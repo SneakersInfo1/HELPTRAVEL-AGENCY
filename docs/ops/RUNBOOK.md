@@ -157,6 +157,30 @@ z przeterminowanego Data Cache, a świeże pobierało się w tle bez limitu. Ter
   nie regresja;
 - `vercel.function_invocation.function_duration_ms`: czas całej funkcji, łącznie z tłem.
 
+## Zdjęcia kierunków i limit Pexels
+
+Kolejność źródeł (`resolveDestinationMedia` w `src/lib/mvp/pexels-media.ts`):
+
+1. **Rejestr zweryfikowanych zdjęć** (`src/lib/media/verified-photos.ts`) — 45 kierunków ze strony głównej, kart hubów, porównań i stron „Hotele w …”. Zero zapytań do API, zdjęcia identyczne w każdym buildzie. Rozszerzenie jest częścią adresu (kilka zdjęć Pexels to PNG, adres `.jpeg` daje 404), więc nowy adres sprawdź na CDN przed dopisaniem.
+2. **Wyszukiwanie Pexels** — tylko na produkcji (`VERCEL_ENV=production`, lokalnie jawnie `PEXELS_LIVE_SEARCH=1`). Jedno zapytanie na kierunek, najwyżej 2 naraz w procesie, limit czasu 8 s, wynik w Data Cache 30 dni, tag `pexels-media`. Zdjęcie przechodzi tylko wtedy, gdy jego opis wymienia miasto i kraj (`photo-guards.ts`). Zapytanie idzie bez `locale=pl-PL`: z nim opisy przychodzą po polsku i odmienione („w Paryżu”), a strażnik ich nie rozpozna. Po odmowie (429), błędzie serwera lub przekroczeniu czasu proces nie pyta API przez 10 minut.
+3. **Brak zdjęcia** — komponenty pokazują `PhotoPlaceholder`. Zdjęć zastępczych innych miejsc nie ma.
+
+Dobowe ISR przewodników i stron kategorii (`/kierunki/[slug]`, `/bez-wizy`, `/cieple-kierunki`, `/city-breaki`, `/tanie-podroze`) jest ustawione jawnie (`revalidate = 86400`). Wcześniej wynikało z zapytania do Pexels, którego kierunki z rejestru już nie wysyłają.
+
+Limit: konto ma miesięczną pulę (nagłówki `x-ratelimit-limit/remaining/reset`, `reset` to koniec okresu) i limit godzinowy, którego nagłówki nie pokazują. 19.11.2026 seria buildów Preview i produkcji wyczerpała limit w trakcie builda i strona główna dostała zdjęcia zastępcze (Barcelona = wieża Eiffla). Po tej zmianie Preview nie pyta API.
+
+Ręczne odświeżenie zdjęć z wyszukiwania (bez builda), dopiero po sprawdzeniu limitu jednym zapytaniem:
+
+1. Unieważnij tag w Data Cache: `vercel cache invalidate --tag pexels-media --project <projectId> --scope <teamId> --yes` (identyfikatory w `.vercel/project.json`). MCP `invalidate_by_tags` tu nie działa: czyści cache CDN i zwraca 404 „CDN Cache Namespace not found”.
+2. Strony, które w buildzie wzięły zdjęcia z pamięci procesu, nie mają tego tagu. Odśwież je tagiem ścieżki: `--tag "_N_T_/kierunki,_N_T_/kierunki/athens-greece"` (w Git Bash poprzedź poleceniem `MSYS_NO_PATHCONV=1`).
+3. Strony odświeżą zdjęcia przy kolejnych wejściach (ISR). Sprawdź HTML, nie tylko kod odpowiedzi: zdjęcia idą przez `wsrv.nl?url=…images.pexels.com…`.
+
+Uwaga na falę zapytań: po unieważnieniu tagu kolejne wejścia odbudowują strony i każda pyta API od nowa. 19.11.2026 (jeszcze stary kod, bez rejestru) produkcja zużyła 71 zapytań w 17 minut. W tym czasie nie uruchamiaj innych zapytań do Pexels tym samym kluczem. Z rejestrem fala obejmuje tylko kierunki spoza rejestru.
+
+Pierwszy build produkcji po wdrożeniu tej zmiany zapyta API raz o kierunki spoza rejestru, bo adres zapytania jest nowy (bez `locale`). Jeśli limit się skończy, część przewodników pokaże układ bez zdjęcia do następnej odbudowy (najwyżej doba). Kolejne buildy biorą wyniki z Data Cache.
+
+Nowy kierunek na stronie głównej, w hubie, w porównaniu albo na liście „Hotele w …”: dopisz zweryfikowane zdjęcie do rejestru. Zdjęcie musi pokazywać to miejsce, a opis autora na Pexels musi je nazywać (uwaga na pułapki: na „Antalya” wyszukiwarka zwraca zamek w Alanyi, na „Faro” Lagos, na „Bergen” Trondheim). Test `verified-photos.test.ts` nie przepuści brakującego wpisu.
+
 ## Wycofanie wdrożenia
 
 Vercel → Deployments → filtr *Production* → wdrożenie z poprzednim commitem →

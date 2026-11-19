@@ -8,13 +8,13 @@ import { flightSearchPrefillHref } from "@/lib/flights/prefill-link";
 import { EDITOR_IN_CHIEF, personSchema } from "@/lib/mvp/authors";
 import { getComparisonPairBySlug, isTopComparison } from "@/lib/mvp/comparisons";
 import { getCityHotelStats } from "@/lib/mvp/live-hotel-stats";
+import { VERIFIED_DESTINATION_PHOTOS } from "@/lib/media/verified-photos";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getArticlesForDestination, getDestinationGuideBySlug } from "@/lib/mvp/publisher-content";
 import { getSiteUrl } from "@/lib/mvp/site";
 import type { DestinationProfile } from "@/lib/mvp/types";
 
 import { buildComparisonModel, comparisonCoverage } from "./comparison-model";
-import { PINNED_COMPARISON_PHOTOS } from "./comparison-photos";
 import { buildComparisonView } from "./comparison-view";
 import { pairsWithLabels } from "./comparison-view-data";
 
@@ -52,13 +52,13 @@ function isPexelsPhoto(url: string | null | undefined): url is string {
 }
 
 /**
- * Zdjęcia strony porównania: przypięte (comparison-photos.ts), a bez wpisu — tylko prawdziwe
+ * Zdjęcia strony porównania: zweryfikowane (src/lib/media/verified-photos.ts), a bez wpisu — tylko prawdziwe
  * wyniki wyszukiwania Pexels. Zdjęcie główne z zapasowych commercial-assets bywa cudzą ikoną
  * (Preview 18.11.2026: Barcelona = wieża Eiffla, Budapeszt = Brama Brandenburska), więc wtedy
  * strona nie pokazuje zdjęcia wcale.
  */
 function photosFor(slug: string, media: { heroImage?: string | null; gallery?: string[]; poster?: string | null }): Pick<SideInfo, "image" | "imageAlt" | "gallery"> {
-  const pinned = PINNED_COMPARISON_PHOTOS[slug];
+  const pinned = VERIFIED_DESTINATION_PHOTOS[slug];
   if (pinned) return { image: pinned.hero.url, imageAlt: pinned.hero.alt, gallery: pinned.gallery.map((photo) => ({ ...photo })) };
   return { image: isPexelsPhoto(media.heroImage) ? media.heroImage : null, imageAlt: null, gallery: galleryOf(media) };
 }

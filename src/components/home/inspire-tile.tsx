@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PhotoPlaceholder } from "@/components/media/photo-placeholder";
 import { ChevronRight, Plane } from "lucide-react";
 
 import { LocalizedLink } from "@/components/site/localized-link";
@@ -28,7 +29,7 @@ import type { DestinationProfile } from "@/lib/mvp/types";
 
 interface InspireTileProps {
   destination: DestinationProfile;
-  heroImage: string;
+  heroImage: string | null;
   defaultTravelers?: number;
   /** Cena hotelu „od X zł/noc" ze snapshotu dstprice:v1. */
   fromPricePerNight?: number;
@@ -127,14 +128,18 @@ export function InspireTile({
       // biały ring realnie oddziela kartę od pasa.
       className="group relative flex aspect-[9/10] overflow-hidden rounded-md bg-brand-strong ring-1 ring-white/10 transition duration-200 ease-out hover:-translate-y-0.5 hover:ring-white/25 active:scale-[0.985] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 sm:aspect-square"
     >
-      <Image
-        src={heroImage}
-        alt={`${cityLabel}, ${countryLabel}`}
-        fill
-        sizes={SIZES_KAFELKA}
-        loading={eager ? "eager" : "lazy"}
-        className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-      />
+      {heroImage ? (
+        <Image
+          src={heroImage}
+          alt={`${cityLabel}, ${countryLabel}`}
+          fill
+          sizes={SIZES_KAFELKA}
+          loading={eager ? "eager" : "lazy"}
+          className="object-cover transition duration-200 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+        />
+      ) : (
+        <PhotoPlaceholder />
+      )}
 
       {/* Czas lotu jako CHIP na zdjęciu, nie kolejny wiersz tekstu. Powód:
           w bloku tekstowym konkurowałby z ceną o tę samą uwagę, a jako chip

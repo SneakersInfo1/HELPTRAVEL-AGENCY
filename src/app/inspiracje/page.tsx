@@ -62,7 +62,7 @@ async function heroImageFor(slug?: string): Promise<string | null> {
   return media.heroImage;
 }
 
-async function resolveTile(slug: string): Promise<{ destination: DestinationProfile; heroImage: string } | null> {
+async function resolveTile(slug: string): Promise<{ destination: DestinationProfile; heroImage: string | null } | null> {
   const destination = getDestinationProfileBySlug(slug);
   if (!destination) return null;
   const media = await resolveDestinationMedia(destination);
@@ -89,7 +89,7 @@ export default async function InspirationsIndexPage() {
       })),
     ),
     Promise.all(TILE_SLUGS.map(resolveTile)).then((list) =>
-      list.filter((tile): tile is { destination: DestinationProfile; heroImage: string } => tile !== null),
+      list.filter((tile): tile is { destination: DestinationProfile; heroImage: string | null } => tile !== null),
     ),
   ]);
 

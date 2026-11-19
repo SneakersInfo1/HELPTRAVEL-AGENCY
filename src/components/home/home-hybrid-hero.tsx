@@ -10,7 +10,7 @@ import type { DestinationProfile } from "@/lib/mvp/types";
 
 interface FeaturedTile {
   destination: DestinationProfile;
-  heroImage: string;
+  heroImage: string | null;
   /** Prawdziwa cena ze snapshotu dstprice:v1 (patrz DestinationTile). */
   fromPricePerNight?: number;
   /** Najtańszy lot w obie strony z WAW (snapshot, Faza 6). */
@@ -40,10 +40,14 @@ export function HomeHybridHero({
   trustpilot,
   bandHeading = HOME_COPY.inspire.heading,
 }: HomeHybridHeroProps) {
-  const backdropImages = featured.slice(0, 6).map((tile) => ({
-    src: tile.heroImage,
-    alt: `${tile.destination.city}, ${tile.destination.country}`,
-  }));
+  // Tło tylko ze zdjęć, które istnieją — kierunek bez zdjęcia nie wnosi tu nic.
+  const backdropImages = featured
+    .filter((tile): tile is FeaturedTile & { heroImage: string } => Boolean(tile.heroImage))
+    .slice(0, 6)
+    .map((tile) => ({
+      src: tile.heroImage,
+      alt: `${tile.destination.city}, ${tile.destination.country}`,
+    }));
 
   return (
     <>

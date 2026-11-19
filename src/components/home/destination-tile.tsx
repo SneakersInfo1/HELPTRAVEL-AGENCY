@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PhotoPlaceholder } from "@/components/media/photo-placeholder";
 
 import { LocalizedLink } from "@/components/site/localized-link";
 import { isFactGrade, provenanceOf } from "@/lib/mvp/data-provenance";
@@ -20,7 +21,8 @@ import type { DestinationProfile } from "@/lib/mvp/types";
 
 interface DestinationTileProps {
   destination: DestinationProfile;
-  heroImage: string;
+  /** `null` = brak wiarygodnego zdjęcia kierunku → układ bez zdjęcia. */
+  heroImage: string | null;
   defaultNights?: number;
   defaultTravelers?: number;
   /** Optional editorial badge shown top-left (e.g. „Polecane"). */
@@ -111,13 +113,17 @@ export function DestinationTile({
       // ~130px szerokości — 5 linii tekstu kolidowało z badge „Polecane".
       className={`group relative flex ${isLarge ? "aspect-[3/4] sm:aspect-[4/5]" : "aspect-[4/3]"} overflow-hidden rounded-2xl border border-emerald-900/10 bg-emerald-50 shadow-[0_8px_24px_rgba(16,84,48,0.08)] transition hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(16,84,48,0.16)]`}
     >
-      <Image
-        src={heroImage}
-        alt={`${cityLabel}, ${localizeCountry(destination.country)}`}
-        fill
-        sizes={isLarge ? "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"}
-        className="object-cover transition duration-300 group-hover:scale-[1.04]"
-      />
+      {heroImage ? (
+        <Image
+          src={heroImage}
+          alt={`${cityLabel}, ${localizeCountry(destination.country)}`}
+          fill
+          sizes={isLarge ? "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"}
+          className="object-cover transition duration-300 group-hover:scale-[1.04]"
+        />
+      ) : (
+        <PhotoPlaceholder />
+      )}
 
       {/* Editorial badge (np. „Polecane") — prawdziwa etykieta o NASZYM
           wyborze, nie zmyślona ocena/recenzja. */}

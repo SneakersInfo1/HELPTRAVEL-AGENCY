@@ -12,7 +12,7 @@ import { pickFreshFlightPrice, pickFreshPrice } from "@/lib/prices/destination-p
 // strony /wyjazdy/* render dynamiczny mimo ISR (src/lib/redis/cached-reads.ts).
 import { readPriceSnapshotCached as readPriceSnapshot } from "@/lib/redis/cached-reads";
 import { buildAffiliateLinks } from "@/lib/mvp/affiliate-links";
-import { curatedDestinations } from "@/lib/mvp/destinations";
+import { curatedDestinations, getDestinationProfileBySlug } from "@/lib/mvp/destinations";
 import { resolveDestinationMedia } from "@/lib/mvp/pexels-media";
 import { getSiteUrl } from "@/lib/mvp/site";
 import { TRAVEL_MOODS, getMoodBySlug, type MoodPick } from "@/lib/mvp/travel-moods";
@@ -29,13 +29,19 @@ function plusDaysIso(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// A real catalogue profile when the pick has a guide (gives recipe-based
-// imagery); otherwise a minimal synthesised profile so media resolution still
-// works for any real city (Pexels by name, with a safe generic fallback).
+// Profil z katalogu, gdy karta ma przewodnik (`slug`) albo przypisane zdjęcie
+// (`photoSlug`) — wtedy zdjęcie pochodzi z rejestru zweryfikowanych zdjęć.
+// W pozostałych przypadkach minimalny profil: wyszukiwanie Pexels po nazwie
+// miasta (tylko zdjęcia z miastem i krajem w opisie) albo układ bez zdjęcia.
 function profileForPick(pick: MoodPick): DestinationProfile {
   if (pick.slug) {
     const real = curatedDestinations.find((d) => d.slug === pick.slug);
     if (real) return real;
+  }
+  if (pick.photoSlug) {
+    // Pełny katalog (235 kierunków), nie tylko kierunki z przewodnikiem.
+    const catalog = getDestinationProfileBySlug(pick.photoSlug);
+    if (catalog) return catalog;
   }
   const slug = `mood-${`${pick.searchCity}-${pick.country}`.toLowerCase().replace(/\s+/g, "-")}`;
   return {

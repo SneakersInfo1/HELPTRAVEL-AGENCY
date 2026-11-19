@@ -15,7 +15,8 @@ export interface GuidePageModelInput {
   guide: DestinationGuideContent;
   localizedGuide: LocalizedDestinationGuide;
   baseUrl: string;
-  heroImage: string;
+  /** Zdjęcie główne kierunku; bez wiarygodnego zdjęcia dane strukturalne nie mają pola `image`. */
+  heroImage?: string;
   author: Record<string, unknown>;
 }
 
@@ -105,7 +106,7 @@ export function buildGuidePageModel(input: GuidePageModelInput): GuidePageModel 
         description: localizedGuide.overview,
         inLanguage: "pl-PL",
         mainEntityOfPage: pageUrl,
-        image: heroImage,
+        ...(heroImage ? { image: heroImage } : {}),
         author,
         publisher: { "@id": `${baseUrl}/#organization` },
         about: [name, facts.countryName, "city break", "planowanie podróży"],
@@ -118,7 +119,7 @@ export function buildGuidePageModel(input: GuidePageModelInput): GuidePageModel 
         description: localizedGuide.overview,
         ...(localizedGuide.whoFor.length > 0 ? { touristType: localizedGuide.whoFor } : {}),
         url: pageUrl,
-        image: heroImage,
+        ...(heroImage ? { image: heroImage } : {}),
         address: {
           "@type": "PostalAddress",
           addressCountry: facts.countryName,
