@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(git push * main)",
+      "Bash(git push * HEAD:main)",
+      "Bash(git push * *:main)",
+      "Bash(git push * refs/heads/main)",
+      "Bash(git push * *:refs/heads/main)",
+      "Bash(git push * --delete main)",
+      "Bash(git push * -d main)",
+      "Bash(git push --force*)",
+      "Bash(git push * --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * -f*)",
+      "Bash(git push * +*)",
+      "Bash(git push --mirror*)",
+      "Bash(git push * --mirror*)",
+      "Bash(git -C * push*)",
+      "Bash(git --git-dir* push*)",
+      "Bash(git --work-tree* push*)",
+      "Bash(git -c * push*)",
+      "Bash(curl *api.anthropic.com*)",
+      "Bash(wget *api.anthropic.com*)",
+      "Bash(curl *openrouter.ai*)",
+      "Bash(curl *api.openai.com*)"
+    ]
+  }
+}
