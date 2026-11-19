@@ -7,7 +7,7 @@
   "locale": "pl-PL",
   "title": "Barcelona czy Malaga? Plaże, zwiedzanie i dolot — porównanie",
   "description": "Malaga to 16 plaż i lotnisko 8 km od miasta, Barcelona — Gaudí i duże miasto nad morzem. Porównanie ze źródłami: plaże, zwiedzanie i dojazd z lotniska.",
-  "lead": "Malagę wybierz, jeśli plaże są dla Ciebie równie ważne jak zwiedzanie: miasto ma 16 plaż, a większość atrakcji skupia się w centrum, które łatwo obejść pieszo. Barcelona będzie lepsza, gdy jedziesz przede wszystkim dla architektury Gaudíego i dużego miasta nad morzem. Niżej porównanie ze źródłami — plaże, zwiedzanie i dolot: lotniska, dojazd do centrum i pociąg, który łączy oba miasta.",
+  "lead": "Malagę wybierz, jeśli plaże są dla Ciebie równie ważne jak zwiedzanie: miasto ma 16 plaż, a większość atrakcji skupia się w centrum, które łatwo obejść pieszo. Barcelona będzie lepsza, gdy jedziesz przede wszystkim dla architektury Gaudíego i dużego miasta nad morzem.",
   "sections": [
     {
       "id": "werdykt",
@@ -16,8 +16,9 @@
         "claim-1",
         "claim-6",
         "claim-7",
+        "claim-8",
         "claim-10",
-        "claim-11",
+        "claim-12",
         "claim-17"
       ],
       "kind": "verdict",
@@ -25,8 +26,8 @@
         {
           "label": "Malaga",
           "chooseIf": [
-            "plaża ma być równie ważna jak zwiedzanie: miasto ma 16 plaż, a większość atrakcji leży w centrum, które obejdziesz pieszo",
-            "chcesz krótkiego transferu — lotnisko leży 8 km od miasta"
+            "plaża ma wyznaczać rytm dnia, a zabytki mają być w zasięgu spaceru",
+            "chcesz krótkiego dojazdu z lotniska do centrum"
           ],
           "skipIf": [
             "głównym celem jest architektura Gaudíego — po nią jedź do Barcelony"
@@ -35,15 +36,15 @@
         {
           "label": "Barcelona",
           "chooseIf": [
-            "chcesz zobaczyć ikony architektury: Sagradę Família, Park Güell, Casę Batlló i La Pedrerę",
-            "szukasz dużego miasta nad Morzem Śródziemnym, w którym plaża jest dodatkiem do zwiedzania"
+            "jedziesz dla budowli Gaudíego i secesji",
+            "plaża ma być tylko przerwą między zabytkami"
           ],
           "skipIf": [
-            "chcesz jeździć po mieście samochodem — w dużej części Barcelony obowiązują strefy niskiej emisji"
+            "chcesz jeździć po mieście samochodem — przeszkodą są strefy niskiej emisji"
           ]
         }
       ],
-      "basis": "Werdykt opiera się na opisach obu miast w oficjalnym portalu turystycznym Hiszpanii (spain.info) i na tabeli HelpTravel z temperaturami i czasem lotu na tej stronie. To ocena redakcyjna, nie relacja z podróży."
+      "basis": "Werdykt opiera się na opisach obu miast w oficjalnym portalu turystycznym Hiszpanii (spain.info) i na danych HelpTravel o temperaturach i czasie lotu podanych na tej stronie. To ocena redakcyjna, nie relacja z podróży."
     },
     {
       "id": "plaze",
@@ -57,8 +58,8 @@
       ],
       "kind": "prose",
       "paragraphs": [
-        "W Maladze plaża jest częścią miasta, a nie osobną wyprawą. Oficjalny portal turystyczny Hiszpanii wylicza tu 16 plaż, wśród nich słynną miejską La Malagueta, a większość atrakcji skupia się w centrum, więc dzień na piasku łatwo przeplatać zwiedzaniem.",
-        "Barcelona też leży nad Morzem Śródziemnym i ma plaże miejskie, ale w opisie miasta są jedną z wielu propozycji obok architektury i muzeów. Jeśli to plaża ma wyznaczać rytm dnia, Malaga lepiej pasuje do takiego planu; jeśli jest przerwą między zabytkami, wystarczy i Barcelona."
+        "W Maladze plaża jest częścią miasta, a nie osobną wyprawą: oficjalny portal turystyczny Hiszpanii wylicza tu 16 plaż, wśród nich słynną miejską La Malagueta, więc dzień na piasku łatwo przeplatać zwiedzaniem.",
+        "Barcelona też ma plaże miejskie nad Morzem Śródziemnym, ale w opisie miasta są jedną z wielu propozycji obok architektury i muzeów."
       ]
     },
     {
@@ -71,12 +72,14 @@
         "claim-6",
         "claim-10",
         "claim-11",
-        "claim-13"
+        "claim-13",
+        "claim-18",
+        "claim-19"
       ],
       "kind": "prose",
       "paragraphs": [
         "Barcelona to przede wszystkim architektura: miasto słynie z dzieł Gaudíego i secesji, a Sagrada Família, Park Güell, Casa Batlló i La Pedrera to miejsca, dla których przyjeżdża się tu specjalnie. Do programu łatwo dodać Muzeum Picassa.",
-        "Malaga daje zwiedzanie w mniejszej skali, ale gęste: Alcazaba to jedna z największych arabskich twierdz w Andaluzji, w mieście działa filia paryskiego Centrum Pompidou, a Malaga jest miejscem urodzenia Picassa. Kto jedzie śladem malarza, w Barcelonie zobaczy jego muzeum, a w Maladze miasto, w którym się urodził."
+        "Malaga to zwiedzanie w mniejszej skali, ale skupione: Alcazaba to jedna z największych arabskich twierdz w Andaluzji, a w mieście działa filia paryskiego Centrum Pompidou. To także miasto urodzenia Picassa — działa tu muzeum poświęcone malarzowi, a dom, w którym przyszedł na świat, można zwiedzać. Śladem Picassa da się więc iść w obu miastach."
       ]
     },
     {
@@ -90,7 +93,7 @@
         "claim-17"
       ],
       "kind": "list",
-      "intro": "Czas lotu z Polski jest w tabeli HelpTravel na tej stronie. Tu różnice po wylądowaniu:",
+      "intro": "Czas lotu z Polski podajemy na tej stronie z danych HelpTravel. Tu różnice po wylądowaniu:",
       "items": [
         "Malaga: lotnisko Málaga – Costa del Sol leży 8 km od miasta, a autobus Express Aeropuerto dojeżdża do centrum w około 15 minut.",
         "Barcelona: lotnisko El Prat leży 12 km od miasta, a transport publiczny dowozi do centrum w około 35 minut lub krócej.",
@@ -127,7 +130,9 @@
         "claim-13",
         "claim-14",
         "claim-15",
-        "claim-16"
+        "claim-16",
+        "claim-18",
+        "claim-19"
       ],
       "kind": "table",
       "columns": [
@@ -154,7 +159,7 @@
           "label": "Picasso",
           "cells": [
             "Muzeum Picassa",
-            "Miasto urodzenia Picassa"
+            "Muzeum Picassa i dom, w którym się urodził"
           ]
         },
         {
@@ -178,8 +183,7 @@
             "Pociągi AVE ze stacji María Zambrano"
           ]
         }
-      ],
-      "note": "Temperatury, czas lotu z Polski i szacunek budżetu są w osobnej tabeli HelpTravel na tej stronie."
+      ]
     }
   ],
   "factClaims": [
@@ -191,7 +195,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "Beyond its 16 sunny beaches",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -202,7 +206,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "a sunny day spent on the legendary La Malagueta city beach is a must",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -213,7 +217,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "the Alcazaba , one of the largest Arab fortresses in Andalusia",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -224,7 +228,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "the birthplace of Pablo Picasso",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -235,7 +239,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "Pompidou Centre outside France",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -246,7 +250,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-1",
       "observedEvidence": "Most tourist points of interest are concentrated within the city centre, which makes it easy to explore them on foot.",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -257,7 +261,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-1",
       "observedEvidence": "The Málaga – Costa del Sol Airport is situated 8 kilometres from the city.",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -268,7 +272,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-1",
       "observedEvidence": "The Express Aeropuerto city bus line connects to the centre of Málaga in a journey time of approximately 15 minutes.",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -279,7 +283,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-1",
       "observedEvidence": "Other AVE lines run to Córdoba, Zaragoza and Barcelona.",
-      "retrievedAt": "2026-11-19T20:01:59Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -290,7 +294,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-2",
       "observedEvidence": "Overlooking the Mediterranean Sea, and famous for Gaudí and other Art Nouveau architecture, Barcelona is one of Europe’s trendiest cities.",
-      "retrievedAt": "2026-11-19T20:02:00Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -301,7 +305,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-2",
       "observedEvidence": "Barcelona draws visitors to its famous sights , like the Sagrada Familia, Park Güell , Casa Batlló and La Pedrera.",
-      "retrievedAt": "2026-11-19T20:02:00Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -312,7 +316,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-2",
       "observedEvidence": "relaxing moments on the city beaches",
-      "retrievedAt": "2026-11-19T20:02:00Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -323,7 +327,7 @@
       "riskClass": "EVERGREEN",
       "sourceId": "source-2",
       "observedEvidence": "major art centres, like the Picasso Museum, the National Art Museum of Catalonia, and CaixaForum",
-      "retrievedAt": "2026-11-19T20:02:00Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -334,7 +338,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-2",
       "observedEvidence": "Barcelona – El Prat Airport is located 12 kilometres from the city.",
-      "retrievedAt": "2026-11-19T20:02:00Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -345,7 +349,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-2",
       "observedEvidence": "You can reach the city centre by various means of public transport in about 35 minutes or less",
-      "retrievedAt": "2026-11-19T20:02:00Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -356,7 +360,7 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-2",
       "observedEvidence": "International high-speed train links to France and to Spanish cities such as Madrid, Valencia, Malaga, Seville and Zaragoza.",
-      "retrievedAt": "2026-11-19T20:02:00Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     },
     {
@@ -367,7 +371,29 @@
       "riskClass": "DYNAMIC",
       "sourceId": "source-2",
       "observedEvidence": "Please note that large parts of Barcelona are Low Emission Zones, where driving and parking are restricted.",
-      "retrievedAt": "2026-11-19T20:02:00Z",
+      "retrievedAt": "2026-11-19T20:25:20Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-18",
+      "claim": "W centrum Malagi działa muzeum poświęcone Picassowi",
+      "value": "Muzeum Picassa",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "We are in the city of Picasso – so in the centre there’s also a highly recommended museum dedicated to the painter",
+      "retrievedAt": "2026-11-19T20:25:20Z",
+      "verification": "source_verified"
+    },
+    {
+      "id": "claim-19",
+      "claim": "W Maladze można zwiedzić dom, w którym urodził się Picasso",
+      "value": "dom urodzenia Picassa",
+      "dataClass": "attraction",
+      "riskClass": "EVERGREEN",
+      "sourceId": "source-1",
+      "observedEvidence": "it is possible to visit his Birthplace",
+      "retrievedAt": "2026-11-19T20:25:20Z",
       "verification": "source_verified"
     }
   ],
@@ -379,7 +405,7 @@
       "publisher": "www.spain.info",
       "kind": "official_tourism",
       "licence": "Fakt i krótki cytat w granicach prawa cytatu",
-      "retrievedAt": "2026-11-19T20:01:59Z"
+      "retrievedAt": "2026-11-19T20:25:20Z"
     },
     {
       "id": "source-2",
@@ -388,7 +414,7 @@
       "publisher": "www.spain.info",
       "kind": "official_tourism",
       "licence": "Fakt i krótki cytat w granicach prawa cytatu",
-      "retrievedAt": "2026-11-19T20:02:00Z"
+      "retrievedAt": "2026-11-19T20:25:20Z"
     }
   ],
   "imageAsset": {
@@ -407,11 +433,11 @@
   ],
   "ctaTarget": "/hotele/szukaj",
   "riskClass": "DYNAMIC",
-  "contentHash": "e952db856efb4e7fc7d2e024991260bdaadc325d961f99c9f66ace701968cc0a",
+  "contentHash": "0bc35a246458afa8c9b2de5244535b7fba8550f19e882d38741510be5c33b9b2",
   "createdAt": "2026-11-17T00:00:00.000Z",
   "publishedAt": null,
-  "materiallyModifiedAt": "2026-11-19T19:50:47Z",
-  "verifiedAt": "2026-11-19T20:01:59Z",
+  "materiallyModifiedAt": "2026-11-19T20:25:19Z",
+  "verifiedAt": "2026-11-19T20:25:19Z",
   "owner": "HelpTravel SEO",
   "reviewStatus": "in_review",
   "generationRunId": "576f3cbd-7d60-4ce3-99e1-5175e9436baf",
